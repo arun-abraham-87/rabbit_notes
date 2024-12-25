@@ -1,11 +1,29 @@
 import React from 'react';
+import moment from 'moment';
 
 const NotesList = ({ notes }) => {
-  
+
+
+
+  const formatDate = (dateString) => {
+    // Parse the date and get the relative time
+    const noteDate = moment(dateString, "DD/MM/YYYY, h:mm:ss a");
+
+    // Return the formatted date with relative time
+    return `${dateString} (${noteDate.fromNow()})`;
+  };
+
+
+
+
   const processContent = (content) => {
+    if (typeof content !== 'string') {
+      return content; // Return content as is if it's not a string
+    }
+
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     let isFirstTextSegment = true;
-  
+
     return content.split(urlRegex).map((part, index) => {
       if (urlRegex.test(part)) {
         try {
@@ -31,8 +49,8 @@ const NotesList = ({ notes }) => {
       return part; // Return subsequent non-URL parts as-is
     });
   };
-  
-  
+
+
 
   return (
     <div>
@@ -47,7 +65,7 @@ const NotesList = ({ notes }) => {
             </div>
             <div className="tags">{note.tags.join(', ')}</div>
             <div className="text-sm text-muted-foreground mt-2">
-              {new Date(note.created_datetime).toLocaleString()}
+              {formatDate(note.created_datetime)}
             </div>
           </div>
         </div>

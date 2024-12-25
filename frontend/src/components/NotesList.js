@@ -1,9 +1,11 @@
 import React from 'react';
 
 const NotesList = ({ notes }) => {
-  // Function to process note content and render links
+  
   const processContent = (content) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
+    let isFirstTextSegment = true;
+  
     return content.split(urlRegex).map((part, index) => {
       if (urlRegex.test(part)) {
         try {
@@ -22,10 +24,15 @@ const NotesList = ({ notes }) => {
         } catch {
           return part; // If URL parsing fails, return the original part
         }
+      } else if (isFirstTextSegment && typeof part === 'string') {
+        isFirstTextSegment = false;
+        return part.charAt(0).toUpperCase() + part.slice(1); // Capitalize first text segment
       }
-      return part; // Return non-URL parts as-is
+      return part; // Return subsequent non-URL parts as-is
     });
   };
+  
+  
 
   return (
     <div>

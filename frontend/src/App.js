@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+
 import Navbar from './components/Navbar';
 import AddNoteBar from './components/AddNoteBar.js';
 import SearchBar from './components/SearchBar.js';
@@ -36,11 +37,13 @@ const App = () => {
   return (
     <div className="App">
       <Navbar />
-      <div className="main">
-        <AddNoteBar addNote={addNote} />
-        <SearchBar setSearchQuery={setSearchQuery} />
-        <InfoPanel totals={totals} />
-        <NotesList notes={notes} />
+      <div className='p-8'>
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
+          <AddNoteBar addNote={addNote} />
+          <SearchBar setSearchQuery={setSearchQuery} />
+          <InfoPanel totals={totals} />
+          <NotesList notes={notes} />
+        </div>
       </div>
     </div>
   );

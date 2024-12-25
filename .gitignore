@@ -1,6 +1,6 @@
 # Ignore node_modules in the backend and frontend
 backend/node_modules/
-bacend/notes/
+backend/notes/
 frontend/node_modules/
 
 # Dependency directories

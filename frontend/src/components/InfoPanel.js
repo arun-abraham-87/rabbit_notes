@@ -2,7 +2,7 @@ import React from 'react';
 
 const InfoPanel = ({ totals }) => (
   <div className="flex justify-between items-center mb-4">
-    <p>Total Notes: {totals}</p>
+    <p>Count: {totals}</p>
   </div>
 );
 

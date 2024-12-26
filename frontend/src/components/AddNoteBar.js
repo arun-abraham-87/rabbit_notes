@@ -12,15 +12,18 @@ const AddNoteBar = ({ addNote }) => {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Prevent the default behavior for Enter
       handleAdd();
     }
+    // If Shift + Enter, default behavior will occur (new line)
   };
+  
 
   return (
     <div className="mb-6">
       <div className='flex mb-6'>
-        <input
+        <textarea
           type="text"
           placeholder="Enter note content..."
           value={content}

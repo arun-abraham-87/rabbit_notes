@@ -7,7 +7,7 @@ import ConfirmationModal from './ConfirmationModal';
 
 
 
-const NotesList = ({ notes, updateNoteCallback }) => {
+const NotesList = ({ notes, updateNoteCallback, updateTotals }) => {
   const [editedContent, setEditedContent] = useState('');
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [isModalOpen, setModalOpen] = useState(false);
@@ -18,6 +18,7 @@ const NotesList = ({ notes, updateNoteCallback }) => {
 
   const confirmDelete = () => {
     deleteNote(deletingNoteId)
+    
     closeModal();
   };
 
@@ -58,6 +59,7 @@ const NotesList = ({ notes, updateNoteCallback }) => {
       updateNoteCallback(
         notes.filter((note) => note.id !== id) // Filter out the deleted note from the list
       );
+      updateTotals(notes.length)
       setDeletingNoteId(0)
     } else {
       console.error('Err: Failed to delete note');

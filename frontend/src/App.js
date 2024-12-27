@@ -36,11 +36,6 @@ const App = () => {
     setTotals((prev) => prev + 1);
   };
 
-  const updateNoteCallback = (notes)=>{
-   setNotes(notes) 
-  };
-  
-
   return (
     <div className="App">
       <Navbar />
@@ -49,7 +44,7 @@ const App = () => {
           <AddNoteBar addNote={addNote} />
           <SearchBar setSearchQuery={setSearchQuery} />
           <InfoPanel totals={totals} />
-          <NotesList notes={notes} updateNoteCallback={updateNoteCallback} />
+          <NotesList notes={notes} updateNoteCallback={setNotes} updateTotals={setTotals} />
         </div>
       </div>
     </div>

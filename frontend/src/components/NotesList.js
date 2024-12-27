@@ -80,7 +80,7 @@ const NotesList = ({ notes, updateNoteCallback }) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     let isFirstTextSegment = true;
 
-    return content.split(urlRegex).map((part, index) => {
+    return content.trim().split(urlRegex).map((part, index) => {
       if (urlRegex.test(part)) {
         try {
           const url = new URL(part);

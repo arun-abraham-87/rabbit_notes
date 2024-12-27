@@ -13,11 +13,13 @@ const App = () => {
 
   useEffect(() => {
     const fetchNotes = async () => {
-      const response = await fetch(`http://localhost:5001/api/notes?search=${searchQuery}`);
+      const encodedQuery = encodeURIComponent(searchQuery); 
+      const response = await fetch(`http://localhost:5001/api/notes?search=${encodedQuery}`);
       const data = await response.json();
       setNotes(data.notes);
       setTotals(data.totals);
     };
+    console.log(searchQuery)
 
     const debounceFetch = setTimeout(() => fetchNotes(), 300);
     return () => clearTimeout(debounceFetch);

@@ -135,10 +135,10 @@ const NotesList = ({ notes, updateNoteCallback }) => {
                 <textarea
                   value={editedContent}
                   onChange={(e) => setEditedContent(e.target.value)}
-                  className="w-full border rounded-md p-2"
+                  className="w-full border rounded-md p-2 min-h-32 "
                 />
               ) : (
-                <p>{processContent(note.content)}</p>
+                <pre>{processContent(note.content)}</pre>
               )}
             </div>
             <div className="text-xs text-gray-700 p-1">

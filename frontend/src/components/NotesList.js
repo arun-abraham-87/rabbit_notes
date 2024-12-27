@@ -135,7 +135,7 @@ const NotesList = ({ notes, updateNoteCallback }) => {
                 <textarea
                   value={editedContent}
                   onChange={(e) => setEditedContent(e.target.value)}
-                  className="w-full border rounded-md p-2 min-h-32 "
+                  className="w-full border rounded-md p-2 min-h-64"
                 />
               ) : (
                 <pre>{processContent(note.content)}</pre>

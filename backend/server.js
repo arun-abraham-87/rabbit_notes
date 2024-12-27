@@ -10,7 +10,7 @@ app.use(express.json());
 const cors = require('cors');
 
 app.use(cors({
-    origin: 'http://localhost:3000', // Allow requests only from this origin
+  origin: 'http://localhost:3000', // Allow requests only from this origin
 }));
 
 
@@ -18,19 +18,43 @@ const NOTES_DIR = './notes';
 
 if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);
 
+const filterNotes = (searchQuery, notes) => {
+  if (!searchQuery) {
+    return notes
+  }
+
+  searchQueryParts = searchQuery.split(' ')
+  console.log(searchQueryParts)
+  
+
+
+  console.log(searchQuery)
+
+  let filteredNotes = notes.filter((note) =>
+    note && (
+      !searchQuery ||
+      note.content.toLowerCase().includes(searchQuery) ||
+      note.tags.some((tag) => tag.toLowerCase().includes(searchQuery))
+    )
+  );
+  return filteredNotes
+
+}
+
+
 app.get('/api/notes', (req, res) => {
   try {
     const searchQuery = req.query.search ? req.query.search.toLowerCase() : ''; // Normalize search query for case-insensitive search
     const files = fs.readdirSync(NOTES_DIR); // Read files from the directory
     let notesArray = [];
-    
+
     // Process each file and add valid notes to notesArray
     files.forEach((file) => {
       try {
         const filePath = path.join(NOTES_DIR, file);
         const fileContent = fs.readFileSync(filePath, 'utf-8'); // Read file content
         const notesInFile = JSON.parse(fileContent); // Parse JSON content
-        
+
         if (Array.isArray(notesInFile)) {
           notesArray = notesArray.concat(notesInFile); // If the file contains an array, merge it into notesArray
         } else {
@@ -42,13 +66,8 @@ app.get('/api/notes', (req, res) => {
     });
 
     // Filter notes based on the search query
-    const filteredNotes = notesArray.filter((note) => 
-      note && (
-        !searchQuery || 
-        note.content.toLowerCase().includes(searchQuery) || 
-        note.tags.some((tag) => tag.toLowerCase().includes(searchQuery))
-      )
-    );
+    const filteredNotes = filterNotes(searchQuery, notesArray)
+
 
     console.log("Returning Notes", filteredNotes);
     res.json({ notes: filteredNotes, totals: filteredNotes.length }); // Respond with filtered notes and count
@@ -73,7 +92,7 @@ app.put('/api/notes/:id', (req, res) => {
       try {
         const fileContent = fs.readFileSync(filePath, 'utf-8'); // Read file content
         let notesInFile = JSON.parse(fileContent); // Parse JSON content
-        
+
         if (Array.isArray(notesInFile)) {
           console.log("File found")
           // Find the note by its ID
@@ -82,7 +101,7 @@ app.put('/api/notes/:id', (req, res) => {
           if (noteIndex !== -1) {
             // Update the note content
             notesInFile[noteIndex].content = content;
-            console.log("Note found for update",content)
+            console.log("Note found for update", content)
             noteUpdated = true;
 
             // Write the updated notes array back to the file
@@ -130,7 +149,7 @@ app.post('/api/notes', (req, res) => {
     if (fs.existsSync(filePath)) {
       try {
         const fileContent = fs.readFileSync(filePath, 'utf-8');
-        console.log("File contents",fileContent)
+        console.log("File contents", fileContent)
         notesArray = JSON.parse(fileContent); // Parse existing notes from the file
       } catch (err) {
         console.error(`Error parsing existing file content: ${err.message}`);
@@ -169,7 +188,7 @@ app.delete('/api/notes/:id', (req, res) => {
       try {
         const fileContent = fs.readFileSync(filePath, 'utf-8'); // Read file content
         let notesInFile = JSON.parse(fileContent); // Parse JSON content
-        
+
         if (Array.isArray(notesInFile)) {
           console.log("File found");
           // Find the note by its ID

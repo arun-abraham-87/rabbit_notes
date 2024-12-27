@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import moment from 'moment';
 import { PencilIcon } from '@heroicons/react/24/solid';
 import { TrashIcon } from '@heroicons/react/24/solid';
-
+import {processContent} from '../utils/TextUtils'
 import ConfirmationModal from './ConfirmationModal';
 
 
@@ -73,40 +73,6 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals }) => {
     return `${dateString} (${noteDate.fromNow()})`;
   };
 
-  // Function to process the content with links and capitalization
-  const processContent = (content) => {
-    if (typeof content !== 'string') {
-      return content; // Return content as is if it's not a string
-    }
-
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    let isFirstTextSegment = true;
-
-    return content.trim().split(urlRegex).map((part, index) => {
-      if (urlRegex.test(part)) {
-        try {
-          const url = new URL(part);
-          return (
-            <a
-              key={index}
-              href={part}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
-            >
-              {url.hostname}
-            </a>
-          );
-        } catch {
-          return part; // If URL parsing fails, return the original part
-        }
-      } else if (isFirstTextSegment && typeof part === 'string') {
-        isFirstTextSegment = false;
-        return part.charAt(0).toUpperCase() + part.slice(1); // Capitalize first text segment
-      }
-      return part; // Return subsequent non-URL parts as-is
-    });
-  };
 
   // Handle editing the note content
   const handleEdit = (noteId) => {

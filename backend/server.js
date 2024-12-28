@@ -18,33 +18,52 @@ const NOTES_DIR = './notes';
 
 if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);
 
-const filterNotes = (searchQuery, notes) => {
-  if (!searchQuery) {
-    return notes
+
+
+
+const filterNotes = (searchQuery, notes, isCurrentDaySearch) => {
+  if (!searchQuery && !isCurrentDaySearch) {
+    console.log("Returning notes")
+    return notes;
   }
+  console.log(`Notes count : ${notes.length}`)
+  // Split the search query into parts
+  const searchQueryParts = searchQuery.split(' ');
+  console.log(searchQueryParts);
+  console.log(searchQuery);
 
-  searchQueryParts = searchQuery.split(' ')
-  console.log(searchQueryParts)
-  
+  // Get today's date in DD/MM/YYYY format (Australia's format)
+  const today = new Date().toLocaleDateString('en-AU');  // This will return the date in 'DD/MM/YYYY' format
+
+  let filteredNotes = notes.filter((note) => {
+
+    if (searchQuery) {
+      const matchesSearchQuery = !searchQuery ||
+        note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesSearchQuery
+    } else {
+      // Extract the date portion from created_datetime
+      const noteDate = note.created_datetime.split(',')[0].trim();  // Get the 'DD/MM/YYYY' part
+      // Check if the note is from today
+      const isNoteFromToday = noteDate === today;
+      return isNoteFromToday;
+
+    }
+  });
 
 
-  console.log(searchQuery)
+  return filteredNotes;
+};
 
-  let filteredNotes = notes.filter((note) =>
-    note && (
-      !searchQuery ||
-      note.content.toLowerCase().includes(searchQuery) ||
-      note.tags.some((tag) => tag.toLowerCase().includes(searchQuery))
-    )
-  );
-  return filteredNotes
-
-}
 
 
 app.get('/api/notes', (req, res) => {
   try {
     const searchQuery = req.query.search ? req.query.search.toLowerCase() : ''; // Normalize search query for case-insensitive search
+    const currentDateNotesOnly = req.query.currentDate ? req.query.currentDate : false; // Normalize search query for case-insensitive search
+    console.log(`Current Date Filter : ${currentDateNotesOnly}`)
+
     const files = fs.readdirSync(NOTES_DIR); // Read files from the directory
     let notesArray = [];
 
@@ -66,10 +85,10 @@ app.get('/api/notes', (req, res) => {
     });
 
     // Filter notes based on the search query
-    const filteredNotes = filterNotes(searchQuery, notesArray)
+    const filteredNotes = filterNotes(searchQuery, notesArray, currentDateNotesOnly)
 
 
-    console.log("Returning Notes", filteredNotes);
+    //console.log("Returning Notes", filteredNotes);
     res.json({ notes: filteredNotes, totals: filteredNotes.length }); // Respond with filtered notes and count
   } catch (err) {
     console.error("Error fetching notes:", err.message);

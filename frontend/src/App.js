@@ -12,18 +12,20 @@ const App = () => {
   const [totals, setTotals] = useState(0);
   const [checked, setChecked] = useState(false);
 
+  const fetchNotes = async (searchText) => {
+    const encodedQuery = encodeURIComponent(searchText);
+    let url = `http://localhost:5001/api/notes?search=${encodedQuery}`;
+    url += `&currentDate=${encodedQuery.trim().length === 0}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    setNotes(data.notes);
+    setTotals(data.totals);
+  };
 
   useEffect(() => {
-    const fetchNotes = async () => {
-      const encodedQuery = encodeURIComponent(searchQuery);
-      const response = await fetch(`http://localhost:5001/api/notes?search=${encodedQuery}`);
-      const data = await response.json();
-      setNotes(data.notes);
-      setTotals(data.totals);
-    };
     console.log(searchQuery)
-
-    const debounceFetch = setTimeout(() => fetchNotes(), 300);
+    console.log("Search Query Based Fetch")
+    const debounceFetch = setTimeout(() => fetchNotes(searchQuery), 300);
     return () => clearTimeout(debounceFetch);
   }, [searchQuery]);
 
@@ -33,12 +35,9 @@ const App = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content, tags }),
     });
-    const newNote = await response.json();
-    setNotes((prevNotes) => [...prevNotes, newNote]);
-    setTotals((prev) => prev + 1);
+    setSearchQuery('')
+    fetchNotes(searchQuery)
   };
-
-
 
   return (
     <div className="App">

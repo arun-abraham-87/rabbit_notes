@@ -1,14 +1,9 @@
 
 import moment from 'moment';
 
-export  const getAge = (datePart) => {
-    const daysAgo = moment().diff(moment(datePart, "DD/MM/YYYY"), 'days');
-    if(daysAgo==0){
-      return 'Today'
-    }else if (daysAgo==1){
-      return '(' + daysAgo + ' Day Ago) ' 
-    }
-    return '(' + daysAgo + ' Days Ago) '
+export  const getAge = (dateString) => {
+    const noteDate = moment(dateString, "DD/MM/YYYY, h:mm:ss a");
+    return  `${noteDate.fromNow()}`
   }
 
   export const getDayOfWeek = (datePart) => {
@@ -16,3 +11,9 @@ export  const getAge = (datePart) => {
     const dayOfWeek = date.format('dddd');  // Get the full name of the day (e.g., Monday)
     return dayOfWeek;
 };
+
+
+  // Function to format the date with relative time
+  export const formatDate = (dateString) => {
+    return `${dateString} (${getAge(dateString)})`;
+  };

@@ -1,9 +1,78 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const AddNoteBar = ({ addNote,searchQuery }) => {
+const AddNoteBar = ({ addNote, searchQuery, objList }) => {
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
   const textareaRef = useRef(null); // Create a ref to the textarea
+
+  const [text, setText] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+  const popupRef = useRef(null);
+  const [selectedTagIndex, setSelectedTagIndex] = useState(-1); // Track the focused tag
+  const [filteredTags, setFilteredTags] = useState([]); // Filtered tags based on input
+
+
+  const handleSelectTag = (tag) => {
+    // Find the last word (anything after the last space)
+    const lastSpaceIndex = text.lastIndexOf(" ");
+    const updatedText =
+      (lastSpaceIndex === -1 ? "" : text.slice(0, lastSpaceIndex + 1)) + `${tag} `;
+    setText(updatedText);
+    setContent(updatedText);
+    setShowPopup(false);
+    setSelectedTagIndex(-1);
+  };
+  
+
+  const getCursorCoordinates1 = (event) => {
+    const { left, top } = event.target.getBoundingClientRect();
+    return { x: left + event.target.selectionEnd*6, y: top + 20 };
+  };
+
+  const getCursorCoordinates = (event) => {
+    const textarea = event.target;
+    const { selectionStart } = textarea;
+  
+    // Create a temporary div to mimic the textarea
+    const div = document.createElement("div");
+    const style = window.getComputedStyle(textarea);
+  
+    // Copy textarea styles to the div
+    Array.from(style).forEach((prop) => {
+      div.style[prop] = style.getPropertyValue(prop);
+    });
+  
+    // Configure the div
+    div.style.position = "absolute";
+    div.style.visibility = "hidden";
+    div.style.whiteSpace = "pre-wrap";
+    div.style.wordWrap = "break-word";
+  
+    // Set content to match the textarea up to the cursor position
+    div.textContent = textarea.value.substring(0, selectionStart);
+  
+    // Add a marker to determine the caret position
+    const span = document.createElement("span");
+    span.textContent = "\u200B"; // Zero-width space
+    div.appendChild(span);
+  
+    document.body.appendChild(div);
+  
+    // Calculate coordinates
+    const { offsetLeft, offsetTop } = textarea;
+    const { offsetLeft: spanLeft, offsetTop: spanTop } = span;
+  
+    const x = offsetLeft + spanLeft - textarea.scrollLeft;
+    const y = offsetTop + spanTop - textarea.scrollTop-20;
+  
+    // Cleanup
+    document.body.removeChild(div);
+  
+      
+    return { x, y };
+  };
+  
 
   const handleAdd = () => {
     if (content.trim() === '') return; // Prevent adding an empty note
@@ -12,103 +81,117 @@ const AddNoteBar = ({ addNote,searchQuery }) => {
     setTags('');
   };
 
-  useEffect(() => {
-    const textarea = textareaRef.current; // Access the textarea through the ref
-    if (textarea) {
-      // Reset the height to auto to allow recalculation
-      textarea.style.height = 'auto';
-
-      // Get the line height of the text area to estimate the number of lines
-      const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight, 10);
-
-      // Add the scrollHeight and 10 extra lines
-      textarea.style.height = `${textarea.scrollHeight + (lineHeight * 3)}px`;
-    }
-  }, [content]);
-
-
-  const getCurrentLine = (textarea) => {
-    // Get the position of the cursor
-    const cursorPosition = textarea.selectionStart;
-
-    // Get the text content from the textarea
-    const content = textarea.value;
-
-    // Split the content up to the cursor position into lines
-    const linesBeforeCursor = content.substring(0, cursorPosition).split("\n");
-
-    // The cursor's line is the length of the lines before it
-    return linesBeforeCursor.length; // 1-based line index
-  };
-
   const handleKeyDown = (e) => {
-    // Detect Cmd (or Ctrl) + Enter for submission
+    if (showPopup) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedTagIndex((prev) =>
+          prev < filteredTags.length - 1 ? prev + 1 : 0
+        );
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedTagIndex((prev) =>
+          prev > 0 ? prev - 1 : filteredTags.length - 1
+        );
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (selectedTagIndex >= 0) {
+          handleSelectTag(filteredTags[selectedTagIndex]);
+        }
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+        if (filteredTags.length > 0) {
+          handleSelectTag(filteredTags[0]);
+        }
+      } else if (e.key === "Escape") {
+        setShowPopup(false);
+        setSelectedTagIndex(-1);
+      }
+    }
+  
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
       handleAdd();
       return;
     }
+  };
+  
 
+  const handleChange = (event) => {
+    const text = event.target.value;
+    setContent(text);
+    searchQuery(text);
+    setText(text);
 
-    // Handle Enter key to insert a new line with bullet indentation
-    if (e.key === "Enter") {
-      e.preventDefault();
+    const match = text.match(/(\S+)$/); // Match the last word
+    if (match) {
+      const filterText = match[1].toLowerCase();
+      const filtered = objList.filter((tag) =>
+        tag.toLowerCase().includes(filterText)
+      );
+      setFilteredTags(filtered);
 
-      // Get the current cursor position
-      const textarea = e.target;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-
-      // Check if the current line starts with a bullet point
-      const lines = content.split("\n");
-      const currentLine = lines[textarea.value.substring(0, start).split("\n").length - 1];
-
-      if (currentLine.trim().startsWith("•")) {
-        // If the line is a bullet, create a new bullet point with the same indentation
-        const newText =
-          content.substring(0, start) + "\n\t• " + content.substring(end);
-
-        setContent(newText);
-
-        // Move the cursor position after the bullet point
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = start + 3; // Adjust for '\n\t•'
-        }, 0);
+      if (filtered.length > 0) {
+        const { x, y } = getCursorCoordinates(event);
+        setCursorPosition({ x, y });
+        setShowPopup(true);
       } else {
-        // Handle other cases if needed (like normal text entry)
-        const newText = content.substring(0, start) + "\n" + content.substring(end);
-        setContent(newText);
+        setShowPopup(false);
       }
+    } else {
+      setShowPopup(false);
     }
   };
 
-  const handleChange = (text) => {
-    setContent(text)
-    searchQuery(text)
-  }
-
-
-
   return (
     <div className="mb-6">
-      <div className='flex mb-6 items-center gap-2'  >
+      <div className="flex mb-6 items-center gap-2">
         <textarea
           type="text"
           ref={textareaRef}
           placeholder="Enter note content..."
           value={content}
-          onChange={(e) => handleChange(e.target.value)}
-          onKeyDown={handleKeyDown} // Trigger handleAdd when Enter is pressed
-          className='items-center min-h-32 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          className="items-center min-h-32 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           style={{ resize: 'none' }}
         />
         <button
-          className='items-center text-white bg-black inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2'
+          className="text-white bg-black rounded-md text-sm px-4 py-2"
           onClick={handleAdd}
         >
           Add Note
         </button>
       </div>
+
+      {showPopup && (
+        <div
+          id="tagpop"
+          ref={popupRef}
+          className="absolute bg-white border border-gray-300 rounded shadow-md p-2 z-10 max-h-36 overflow-y-auto no-scrollbar text-sm"
+          style={{
+            left: cursorPosition.x,
+            top: cursorPosition.y,
+          }}
+        >
+
+
+
+          {filteredTags.map((tag, index) => (
+            <div
+              key={tag}
+              onClick={() => handleSelectTag(tag)}
+              style={{
+                padding: "5px",
+                cursor: "pointer",
+                backgroundColor: selectedTagIndex === index ? "#e6f7ff" : "white",
+              }}
+            >
+              {tag}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

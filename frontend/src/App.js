@@ -11,6 +11,8 @@ const App = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [totals, setTotals] = useState(0);
   const [checked, setChecked] = useState(false);
+  const [objects, setObjects] = useState([]);
+
 
   const fetchNotes = async (searchText) => {
     const encodedQuery = encodeURIComponent(searchText);
@@ -21,6 +23,11 @@ const App = () => {
     setNotes(data.notes);
     setTotals(data.totals);
   };
+
+  useEffect(() => {
+    const obj_list = ["karthikey", "kitchen", "RQ Project", "Nitish"];
+    setObjects(obj_list)
+  }, []);
 
   useEffect(() => {
     console.log(searchQuery)
@@ -39,18 +46,23 @@ const App = () => {
     fetchNotes(searchQuery)
   };
 
+  const addObject = (objText)=>{
+    setObjects([...objects,objText])
+    console.log(`New Objects = ${objects}`)
+  }
+
   return (
     <div className="App">
       <Navbar />
       <div className='p-8'>
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
-          <AddNoteBar addNote={addNote} searchQuery={setSearchQuery} />
+          <AddNoteBar addNote={addNote} searchQuery={setSearchQuery} objList={objects}/>
           <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
           {checked ? (
             <NotesListByDate notes={notes} />
           ) : (
-            <NotesList notes={notes} updateNoteCallback={setNotes} updateTotals={setTotals} />
-          )}
+            <NotesList notes={notes} updateNoteCallback={setNotes} updateTotals={setTotals} objects={objects} addObjects={addObject} />)
+          }
         </div>
       </div>
     </div>

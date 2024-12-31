@@ -58,49 +58,79 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch) => {
   return filteredNotes;
 };
 
+function parseDate(dateString) {
+  const [datePart, timePart] = dateString.split(", ");
+  const [day, month, year] = datePart.split("/");
+  const [time, period] = timePart.split(" ");
 
+  // Convert time into a 24-hour format
+  let [hours, minutes, seconds] = time.split(":").map(Number);
+  if (period === "pm" && hours !== 12) {
+    hours += 12; // Convert PM hours to 24-hour format
+  } else if (period === "am" && hours === 12) {
+    hours = 0; // Convert 12 AM to 00 hours
+  }
+
+  // Build a new date string in a format that JavaScript can understand
+  const formattedDate = `${year}-${month}-${day}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+  return new Date(formattedDate); // Return the Date object
+}
+
+const sortNotes = (notes) => {
+  return [...notes].sort((a, b) => {
+    
+    const dateA = parseDate(a.created_datetime);
+    const dateB = parseDate(b.created_datetime);
+    console.log(`Trying to sort ${dateA} and ${dateB}`)
+    console.log(dateA-dateB)
+    return dateB - dateA; // Sort by date descending
+  });
+};
 
 app.get('/api/notes', (req, res) => {
   try {
-    const searchQuery = req.query.search ? req.query.search.toLowerCase() : ''; // Normalize search query for case-insensitive search
-    const currentDateNotesOnly = req.query.currentDate ? req.query.currentDate : false; // Normalize search query for case-insensitive search
-    console.log(`Current Date Filter : ${currentDateNotesOnly}`)
+    const searchQuery = req.query.search ? req.query.search.toLowerCase() : '';
+    const currentDateNotesOnly = req.query.currentDate === 'true'; // Check for current date filter
+    console.log(`Current Date Filter: ${currentDateNotesOnly}`);
 
-    const files = fs.readdirSync(NOTES_DIR); // Read files from the directory
+    const files = fs.readdirSync(NOTES_DIR);
     let notesArray = [];
 
-    // Process each file and add valid notes to notesArray
     files.forEach((file) => {
       try {
+        if (file === 'objects.md') return;
 
-        if (file === 'objects.md') {
-          return;
-        }
-        
         const filePath = path.join(NOTES_DIR, file);
-        const fileContent = fs.readFileSync(filePath, 'utf-8'); // Read file content
-        const notesInFile = JSON.parse(fileContent); // Parse JSON content
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const notesInFile = JSON.parse(fileContent);
 
         if (Array.isArray(notesInFile)) {
-          notesArray = notesArray.concat(notesInFile); // If the file contains an array, merge it into notesArray
+          notesArray = notesArray.concat(notesInFile);
         } else {
           console.error(`File ${file} does not contain a valid notes array.`);
         }
       } catch (err) {
-        console.error(`Failed to process file: ${file}`, err.message); // Log specific file errors
+        console.error(`Failed to process file: ${file}`, err.message);
       }
     });
-    console.log("NOtes fetched")  
-    // Filter notes based on the search query
-    const filteredNotes = filterNotes(searchQuery, notesArray, currentDateNotesOnly)
 
-    console.log("NOtes filtered") 
+    console.log("Notes fetched");
 
-    //console.log("Returning Notes", filteredNotes);
-    res.json({ notes: filteredNotes, totals: filteredNotes.length }); // Respond with filtered notes and count
+    const filteredNotes = filterNotes(searchQuery, notesArray, currentDateNotesOnly);
+
+
+    const sortedNotes=sortNotes(filteredNotes)
+
+    console.log("Notes filtered & sorted");
+
+    console.log(filteredNotes[0])
+    console.log(sortedNotes[0])
+    
+    res.json({ notes: sortedNotes, totals: sortedNotes.length });
   } catch (err) {
     console.error("Error fetching notes:", err.message);
-    res.status(500).json({ error: "Failed to fetch notes. Please try again later." }); // Respond with a 500 status for server errors
+    res.status(500).json({ error: "Failed to fetch notes. Please try again later." });
   }
 });
 

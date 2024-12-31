@@ -10,18 +10,30 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null); // To store the selected date from the calendar
   const popupRef = useRef(null);
   const [filteredTags, setFilteredTags] = useState([]);
   const [selectedTagIndex, setSelectedTagIndex] = useState(-1);
   const textareaRef = useRef(null);
+  const throttleRef = useRef(null);
+
+
+  const [calendarPosition, setCalendarPosition] = useState({ x: 0, y: 0 });
+
+  
+
+  const isValidDate = (dateString) => {
+    const dateRegex = /^\d{2}[-/]\d{2}[-/]\d{4}$/;
+    return dateRegex.test(dateString);
+  };
 
   const focusTextareaAtEnd = () => {
     if (textareaRef.current) {
       const textarea = textareaRef.current;
-  
+
       // Set focus to the textarea
       textarea.focus();
-  
+
       // Move the cursor to the end of the text
       const length = textarea.value.length;
       textarea.setSelectionRange(length, length);
@@ -67,70 +79,78 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
     setTags("");
   };
 
+
   const handleChange = (event) => {
     const text = event.target.value;
-    setText(text)
+    setText(text);
     setContent(text);
     searchQuery(text);
-
+  
     const match = text.match(/(\S+)$/); // Match the last word
     if (match) {
       const filterText = match[1].toLowerCase();
       let filtered = [];
-
-      if (filterText === "cal") {
-        const { x, y } = getCursorCoordinates(event);
-        setCursorPosition({ x, y });
-        setShowCalendar(true);
-        setShowPopup(false);
-        focusTextareaAtEnd();
-      } else if (filterText === "td" || filterText === "today") {
-        const today = new Date();
-        const formattedDate = `${today
-          .getDate()
-          .toString()
-          .padStart(2, "0")}/${(today.getMonth() + 1)
-            .toString()
-            .padStart(2, "0")}/${today.getFullYear()}`;
-        filtered=[formattedDate];
-      } else if (/^t[+-]\d+$/.test(filterText)) {
-        const operator = filterText[1];
-        const days = parseInt(filterText.slice(2), 10);
-        const today = new Date();
-        const adjustedDate = new Date();
-        if (operator === "+") {
-          adjustedDate.setDate(today.getDate() + days);
-        } else if (operator === "-") {
-          adjustedDate.setDate(today.getDate() - days);
-        }
-        const formattedDate = `${adjustedDate
-          .getDate()
-          .toString()
-          .padStart(2, "0")}/${(adjustedDate.getMonth() + 1)
-            .toString()
-            .padStart(2, "0")}/${adjustedDate.getFullYear()}`;
-        filtered=[formattedDate];
-      } else {
-        filtered = objList.filter((tag) =>
-          tag.toLowerCase().startsWith(filterText)
-        );
-      }
-
-      setFilteredTags(filtered);
-
-      if (filtered.length > 0 && filterText !== "cal") {
-        const { x, y } = getCursorCoordinates(event);
-        setCursorPosition({ x, y });
-        setShowPopup(true);
-        setShowCalendar(false);
-      } else {
-        setShowPopup(false);
+      
+      // Throttle logic
+      if (filterText !== "") {
+        clearTimeout(throttleRef.current); // Clear the existing timeout
+        throttleRef.current = setTimeout(() => {
+          if (filterText === "cal") {
+            const { x, y } = getCursorCoordinates(event);
+            setCursorPosition({ x, y });
+            setShowCalendar(true);
+            setShowPopup(false);
+            focusTextareaAtEnd();
+          } else if (filterText === "td" || filterText === "today") {
+            const today = new Date();
+            const formattedDate = `${today
+              .getDate()
+              .toString()
+              .padStart(2, "0")}/${(today.getMonth() + 1)
+                .toString()
+                .padStart(2, "0")}/${today.getFullYear()}`;
+            filtered = [formattedDate];
+          } else if (/^t[+-]\d+$/.test(filterText)) {
+            const operator = filterText[1];
+            const days = parseInt(filterText.slice(2), 10);
+            const today = new Date();
+            const adjustedDate = new Date();
+            if (operator === "+") {
+              adjustedDate.setDate(today.getDate() + days);
+            } else if (operator === "-") {
+              adjustedDate.setDate(today.getDate() - days);
+            }
+            const formattedDate = `${adjustedDate
+              .getDate()
+              .toString()
+              .padStart(2, "0")}/${(adjustedDate.getMonth() + 1)
+                .toString()
+                .padStart(2, "0")}/${adjustedDate.getFullYear()}`;
+            filtered = [formattedDate];
+          } else {
+            filtered = objList.filter((tag) =>
+              tag.toLowerCase().startsWith(filterText)
+            );
+          }
+  
+          setFilteredTags(filtered);
+  
+          if (filtered.length > 0 && filterText !== "cal") {
+            const { x, y } = getCursorCoordinates(event);
+            setCursorPosition({ x, y });
+            setShowPopup(true);
+            setShowCalendar(false);
+          } else {
+            setShowPopup(false);
+          }
+        }, 500); // 300ms delay for throttling
       }
     } else {
       setShowPopup(false);
       focusTextareaAtEnd();
     }
   };
+  
 
   const handleDateSelect = (date) => {
     const formattedDate = `${date.getDate().toString().padStart(2, "0")}/${(
@@ -182,8 +202,15 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
       else if (e.key === "Escape") {
         setShowPopup(false);
         setShowCalendar(false);
-      }      
+      }
     }
+
+    if (showCalendar) {
+      if (e.key === "Escape") {
+        setShowCalendar(false);
+      }
+    }
+
 
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
@@ -191,6 +218,24 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
       return;
     }
   };
+
+  const handleSelect = () => {
+    const textarea = textareaRef.current;
+    const selectedText = textarea.value.substring(
+      textarea.selectionStart,
+      textarea.selectionEnd
+    ).trim();
+
+    if (isValidDate(selectedText)) {
+      const rect = textarea.getBoundingClientRect();
+      setCalendarPosition({
+        x: rect.left + window.scrollX,
+        y: rect.top + window.scrollY + 40,
+      });
+      setShowCalendar(true);
+    }
+  };
+
 
   return (
     <div className="mb-6">
@@ -201,6 +246,7 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
           value={content}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          onSelect={handleSelect}
           className="min-h-32 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           style={{ resize: "none" }}
         />
@@ -241,15 +287,31 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
 
       {showCalendar && (
         <div
-          className="absolute bg-white border border-gray-300 rounded shadow-md z-10 p-2"
+          className="absolute z-50"
           style={{
-            left: cursorPosition.x,
-            top: cursorPosition.y,
+            left: calendarPosition.x,
+            top: calendarPosition.y,
           }}
         >
-          <Calendar value={calendarDate} onChange={handleDateSelect} />
+          <Calendar
+            onChange={(date) => {
+              const formattedDate = `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")
+                }/${date.getFullYear()}`;
+
+              const start = textareaRef.current.selectionStart;
+              const end = textareaRef.current.selectionEnd;
+              const updatedContent =
+                content.slice(0, start) + formattedDate + content.slice(end);
+
+              setContent(updatedContent);
+              setText(updatedContent);
+              setShowCalendar(false);
+              textareaRef.current.focus();
+            }}
+          />
         </div>
       )}
+
     </div>
   );
 };

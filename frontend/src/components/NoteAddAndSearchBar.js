@@ -24,12 +24,6 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
     setSelectedTagIndex(-1);
   };
   
-
-  const getCursorCoordinates1 = (event) => {
-    const { left, top } = event.target.getBoundingClientRect();
-    return { x: left + event.target.selectionEnd*6, y: top + 20 };
-  };
-
   const getCursorCoordinates = (event) => {
     const textarea = event.target;
     const { selectionStart } = textarea;
@@ -126,6 +120,7 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
     const match = text.match(/(\S+)$/); // Match the last word
     if (match) {
       const filterText = match[1].toLowerCase();
+      
       const filtered = objList.filter((tag) =>
         tag.toLowerCase().includes(filterText)
       );

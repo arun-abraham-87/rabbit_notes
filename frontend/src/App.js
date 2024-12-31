@@ -25,8 +25,20 @@ const App = () => {
   };
 
   useEffect(() => {
-    const obj_list = ["karthikey", "kitchen", "RQ Project", "Nitish"];
-    setObjects(obj_list)
+    const fetchObjects = async () => {
+      console.log(`Calling Object Fetch`)
+      try {
+        const response = await fetch("http://localhost:5001/api/objects");
+        const data = await response.json();  
+        const objectTexts = data.map((obj) => obj.text);
+        setObjects(objectTexts||[]);
+        console.log(`objects loaded: ${objects}`)
+      } catch (error) {
+        console.error("Error fetching objects:", error.message);
+      }
+    };
+
+    fetchObjects();
   }, []);
 
   useEffect(() => {
@@ -46,17 +58,30 @@ const App = () => {
     fetchNotes(searchQuery)
   };
 
-  const addObject = (objText)=>{
-    setObjects([...objects,objText])
-    console.log(`New Objects = ${objects}`)
-  }
+  const addObject = async (objText) => {
+    try {
+      const response = await fetch('http://localhost:5001/api/objects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: objText }),
+      }); 
+
+      // Use the response to update the objects state
+      setObjects((prevObjects) => [...prevObjects, objText]);
+
+      // Log the new objects array (state update happens asynchronously)
+      console.log(`New Object Added: ${JSON.stringify(response.data.object)}`);
+    } catch (error) {
+      console.error("Error adding the object:", error.message);
+    }
+  };
 
   return (
     <div className="App">
       <Navbar />
       <div className='p-8'>
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
-          <AddNoteBar addNote={addNote} searchQuery={setSearchQuery} objList={objects}/>
+          <AddNoteBar addNote={addNote} searchQuery={setSearchQuery} objList={objects} />
           <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
           {checked ? (
             <NotesListByDate notes={notes} />

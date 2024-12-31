@@ -44,6 +44,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch) => {
       return matchesSearchQuery
     } else {
       // Extract the date portion from created_datetime
+      console.log("Date parse")
       const noteDate = note.created_datetime.split(',')[0].trim();  // Get the 'DD/MM/YYYY' part
       // Check if the note is from today
       const isNoteFromToday = noteDate === today;
@@ -51,6 +52,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch) => {
 
     }
   });
+
 
 
   return filteredNotes;
@@ -70,6 +72,11 @@ app.get('/api/notes', (req, res) => {
     // Process each file and add valid notes to notesArray
     files.forEach((file) => {
       try {
+
+        if (file === 'objects.md') {
+          return;
+        }
+        
         const filePath = path.join(NOTES_DIR, file);
         const fileContent = fs.readFileSync(filePath, 'utf-8'); // Read file content
         const notesInFile = JSON.parse(fileContent); // Parse JSON content
@@ -83,10 +90,11 @@ app.get('/api/notes', (req, res) => {
         console.error(`Failed to process file: ${file}`, err.message); // Log specific file errors
       }
     });
-
+    console.log("NOtes fetched")  
     // Filter notes based on the search query
     const filteredNotes = filterNotes(searchQuery, notesArray, currentDateNotesOnly)
 
+    console.log("NOtes filtered") 
 
     //console.log("Returning Notes", filteredNotes);
     res.json({ notes: filteredNotes, totals: filteredNotes.length }); // Respond with filtered notes and count
@@ -241,6 +249,89 @@ app.delete('/api/notes/:id', (req, res) => {
 });
 
 
+
+// GET: Return the objects as an array
+app.get('/api/objects', (req, res) => {
+  try {
+    const fileName = `objects.md`;
+
+    const filePath = path.join(NOTES_DIR, fileName);
+
+    // Read the existing notes from the file (if any)
+    let objectsArray = [];
+    if (fs.existsSync(filePath)) {
+      try {
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        console.log("Object File contents", fileContent)
+        objectsArray = JSON.parse(fileContent); // Parse existing notes from the file
+      } catch (err) {
+        console.error(`Error parsing existing file content: ${err.message}`);
+        return res.status(500).json({ error: "Failed to read existing notes." });
+      }
+    }
+    res.json(objectsArray);
+  } catch (err) {
+    console.error('Error processing the request:', err.message);
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
+  }
+});
+
+// POST: Add the object to objects.md as JSON
+app.post('/api/objects', (req, res) => {
+  try {
+    const newObject = req.body;
+    newObject.id = uuidv4(); // Add a unique UUID to the object
+
+    const fileName = `objects.md`;
+    const filePath = path.join(NOTES_DIR, fileName);
+
+    let objects = [];
+    if (fs.existsSync(filePath)) {
+      try {
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        objects = JSON.parse(fileContent); // Parse existing notes from the file
+      } catch (err) {
+        console.error(`Error parsing existing file content: ${err.message}`);
+        return res.status(500).json({ error: "Failed to read existing objects." });
+      }
+    }
+
+
+    objects.push(newObject);
+
+    fs.writeFileSync(filePath, JSON.stringify(objects, null, 2));
+    res.status(201).json({ message: 'Object added successfully', object: newObject });
+  } catch (err) {
+    console.error('Error processing the request:', err.message);
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
+  }
+});
+
+// DELETE: Delete an object by UUID
+// app.delete('/api/objects/:id', (req, res) => {
+//   try {
+//     const id = req.params.id;
+
+//     if (!fs.existsSync(NOTES_FILE)) {
+//       return res.status(404).json({ error: 'Objects not found' });
+//     }
+
+//     const fileContent = fs.readFileSync(NOTES_FILE, 'utf-8');
+//     let objects = JSON.parse(fileContent || '[]');
+
+//     const filteredObjects = objects.filter(obj => obj.id !== id);
+
+//     if (filteredObjects.length === objects.length) {
+//       return res.status(404).json({ error: 'Object not found' });
+//     }
+
+//     fs.writeFileSync(NOTES_FILE, JSON.stringify(filteredObjects, null, 2));
+//     res.json({ message: 'Object deleted successfully' });
+//   } catch (err) {
+//     console.error('Error processing the request:', err.message);
+//     res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
+//   }
+// });
 
 const PORT = 5001;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

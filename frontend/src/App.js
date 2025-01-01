@@ -5,6 +5,7 @@ import AddNoteBar from './components/NoteAddAndSearchBar.js';
 import InfoPanel from './components/InfoPanel.js';
 import NotesList from './components/NotesList.js';
 import NotesListByDate from './components/NotesListByDate.js';
+import DateSelectorBar from './components/DateSelectorBar.js';
 
 const App = () => {
   const [notes, setNotes] = useState([]);
@@ -12,6 +13,8 @@ const App = () => {
   const [totals, setTotals] = useState(0);
   const [checked, setChecked] = useState(false);
   const [objects, setObjects] = useState([]);
+  const [noteDate, setNoteDate] = useState(null);
+
 
 
   const fetchNotes = async (searchText) => {
@@ -52,7 +55,7 @@ const App = () => {
     const response = await fetch('http://localhost:5001/api/notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, tags }),
+      body: JSON.stringify({ content, tags ,noteDate }),
     });
     setSearchQuery('')
     fetchNotes(searchQuery)
@@ -81,6 +84,7 @@ const App = () => {
       <Navbar />
       <div className='p-8'>
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
+          <DateSelectorBar setNoteDate={setNoteDate}/>
           <AddNoteBar addNote={addNote} searchQuery={setSearchQuery} objList={objects} />
           <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
           {checked ? (

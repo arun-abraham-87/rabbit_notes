@@ -6,6 +6,8 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 app.use(express.json());
 
+const moment = require('moment'); // Assuming moment is available
+
 
 const cors = require('cors');
 
@@ -23,14 +25,14 @@ if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);
 
 const filterNotes = (searchQuery, notes, isCurrentDaySearch) => {
   if (!searchQuery && !isCurrentDaySearch) {
-    console.log("Returning notes")
+    //console.log("Returning notes")
     return notes;
   }
-  console.log(`Notes count : ${notes.length}`)
+  //console.log(`Notes count : ${notes.length}`)
   // Split the search query into parts
   const searchQueryParts = searchQuery.split(' ');
-  console.log(searchQueryParts);
-  console.log(searchQuery);
+  //console.log(searchQueryParts);
+  //console.log(searchQuery);
 
   // Get today's date in DD/MM/YYYY format (Australia's format)
   const today = new Date().toLocaleDateString('en-AU');  // This will return the date in 'DD/MM/YYYY' format
@@ -44,7 +46,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch) => {
       return matchesSearchQuery
     } else {
       // Extract the date portion from created_datetime
-      console.log("Date parse")
+      //console.log("Date parse")
       const noteDate = note.created_datetime.split(',')[0].trim();  // Get the 'DD/MM/YYYY' part
       // Check if the note is from today
       const isNoteFromToday = noteDate === today;
@@ -79,11 +81,11 @@ function parseDate(dateString) {
 
 const sortNotes = (notes) => {
   return [...notes].sort((a, b) => {
-    
+
     const dateA = parseDate(a.created_datetime);
     const dateB = parseDate(b.created_datetime);
-    console.log(`Trying to sort ${dateA} and ${dateB}`)
-    console.log(dateA-dateB)
+    //console.log(`Trying to sort ${dateA} and ${dateB}`)
+    //console.log(dateA-dateB)
     return dateB - dateA; // Sort by date descending
   });
 };
@@ -92,7 +94,7 @@ app.get('/api/notes', (req, res) => {
   try {
     const searchQuery = req.query.search ? req.query.search.toLowerCase() : '';
     const currentDateNotesOnly = req.query.currentDate === 'true'; // Check for current date filter
-    console.log(`Current Date Filter: ${currentDateNotesOnly}`);
+    //console.log(`Current Date Filter: ${currentDateNotesOnly}`);
 
     const files = fs.readdirSync(NOTES_DIR);
     let notesArray = [];
@@ -115,18 +117,18 @@ app.get('/api/notes', (req, res) => {
       }
     });
 
-    console.log("Notes fetched");
+    //console.log("Notes fetched");
 
     const filteredNotes = filterNotes(searchQuery, notesArray, currentDateNotesOnly);
 
 
-    const sortedNotes=sortNotes(filteredNotes)
+    const sortedNotes = sortNotes(filteredNotes)
 
-    console.log("Notes filtered & sorted");
+    //console.log("Notes filtered & sorted");
 
-    console.log(filteredNotes[0])
-    console.log(sortedNotes[0])
-    
+    //console.log(filteredNotes[0])
+    //console.log(sortedNotes[0])
+
     res.json({ notes: sortedNotes, totals: sortedNotes.length });
   } catch (err) {
     console.error("Error fetching notes:", err.message);
@@ -137,11 +139,11 @@ app.get('/api/notes', (req, res) => {
 app.put('/api/notes/:id', (req, res) => {
   const noteId = req.params.id;
   const { content } = req.body;
-  console.log("Recevied Update Request")
+  //console.log("Recevied Update Request")
   try {
     const files = fs.readdirSync(NOTES_DIR); // Read all files in the directory
     let noteUpdated = false;
-    console.log(files);
+    //console.log(files);
     // Process each file and search for the note with the given ID
     files.forEach((file) => {
       const filePath = path.join(NOTES_DIR, file);
@@ -151,14 +153,14 @@ app.put('/api/notes/:id', (req, res) => {
         let notesInFile = JSON.parse(fileContent); // Parse JSON content
 
         if (Array.isArray(notesInFile)) {
-          console.log("File found")
+          //console.log("File found")
           // Find the note by its ID
           const noteIndex = notesInFile.findIndex(note => note.id === noteId);
 
           if (noteIndex !== -1) {
             // Update the note content
             notesInFile[noteIndex].content = content;
-            console.log("Note found for update", content)
+            //console.log("Note found for update", content)
             noteUpdated = true;
 
             // Write the updated notes array back to the file
@@ -182,35 +184,71 @@ app.put('/api/notes/:id', (req, res) => {
   }
 });
 
+function createFilename(created_datetime) {
+  console.log(created_datetime)
+  const dateParts = created_datetime.split(",")[0].split("/"); // Extract date in dd/mm/yyyy format
+  const [day, month, year] = dateParts;
 
+  // Format the filename
+  const fileName = `${String(day).padStart(2, '0')}_${String(month).padStart(2, '0')}_${year}.md`;
+
+  return fileName;
+}
 
 app.post('/api/notes', (req, res) => {
   try {
-    const { content, tags } = req.body;
-
+    const { content, tags, noteDate } = req.body;
     const id = uuidv4();
 
-    // Use local timezone for created_datetime
-    const created_datetime = new Date().toLocaleString('en-AU', { timeZone: 'Australia/Sydney' });
+    // Define the timezone as a constant
+    const TIMEZONE = 'Australia/Sydney';
+
+    // Get today's date in the specified timezone
+    const todayInTimezone = new Date().toLocaleDateString('en-AU', {
+      timeZone: TIMEZONE,
+    }).split('/'); // Split into [day, month, year]
+
+    const formattedToday = `${todayInTimezone[2]}-${todayInTimezone[1].padStart(2, '0')}-${todayInTimezone[0].padStart(2, '0')}`;
+
+    let created_datetime;
+    console.log("=============================");
+    console.log(noteDate)
+    console.log(formattedToday)
+
+    if (noteDate === formattedToday) {
+      // Use the current timestamp in the specified timezone
+      created_datetime = new Date().toLocaleString('en-AU', {
+        timeZone: TIMEZONE,
+      });
+    } else {
+      // Use 12 AM on the given `noteDate`
+      // Construct a moment object using the provided date
+      const noteDateObj = moment(noteDate, "YYYY-MM-DD");
+      // Format it to the desired format: "dd/MM/yyyy, hh:mm:ss am/pm"
+      created_datetime= noteDateObj.format("DD/MM/YYYY, hh:mm:ss a");
+    }
+    console.log("Date");
+    console.log(created_datetime);
+    console.log("=============================");
 
     const note = { id, content, created_datetime, tags };
 
     // Generate the filename based on the current date
-    const currentDate = new Date();
-    const fileName = `${String(currentDate.getDate()).padStart(2, '0')}_${String(currentDate.getMonth() + 1).padStart(2, '0')}_${currentDate.getFullYear()}.md`;
+    const fileName = createFilename(note.created_datetime);
 
     const filePath = path.join(NOTES_DIR, fileName);
+
+    console.log(filePath)
 
     // Read the existing notes from the file (if any)
     let notesArray = [];
     if (fs.existsSync(filePath)) {
       try {
         const fileContent = fs.readFileSync(filePath, 'utf-8');
-        console.log("File contents", fileContent)
         notesArray = JSON.parse(fileContent); // Parse existing notes from the file
       } catch (err) {
         console.error(`Error parsing existing file content: ${err.message}`);
-        return res.status(500).json({ error: "Failed to read existing notes." });
+        return res.status(500).json({ error: 'Failed to read existing notes.' });
       }
     }
 
@@ -223,17 +261,18 @@ app.post('/api/notes', (req, res) => {
       res.json(note); // Respond with the new note
     } catch (err) {
       console.error(`Error writing to file: ${err.message}`);
-      return res.status(500).json({ error: "Failed to save the note." });
+      return res.status(500).json({ error: 'Failed to save the note.' });
     }
   } catch (err) {
-    console.error("Error processing the request:", err.message);
-    res.status(500).json({ error: "An unexpected error occurred. Please try again later." });
+    console.error('Error processing the request:', err.message);
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
   }
 });
 
+
 app.delete('/api/notes/:id', (req, res) => {
   const noteId = req.params.id;
-  console.log("Received Delete Request for Note ID:", noteId);
+  //console.log("Received Delete Request for Note ID:", noteId);
   try {
     const files = fs.readdirSync(NOTES_DIR); // Read all files in the directory
     let noteDeleted = false;
@@ -247,14 +286,14 @@ app.delete('/api/notes/:id', (req, res) => {
         let notesInFile = JSON.parse(fileContent); // Parse JSON content
 
         if (Array.isArray(notesInFile)) {
-          console.log("File found");
+          //console.log("File found");
           // Find the note by its ID
           const noteIndex = notesInFile.findIndex(note => note.id === noteId);
 
           if (noteIndex !== -1) {
             // Delete the note from the array
             notesInFile.splice(noteIndex, 1);
-            console.log("Note deleted", noteId);
+            //console.log("Note deleted", noteId);
             noteDeleted = true;
 
             // Write the updated notes array back to the file
@@ -292,7 +331,7 @@ app.get('/api/objects', (req, res) => {
     if (fs.existsSync(filePath)) {
       try {
         const fileContent = fs.readFileSync(filePath, 'utf-8');
-        console.log("Object File contents", fileContent)
+        //console.log("Object File contents", fileContent)
         objectsArray = JSON.parse(fileContent); // Parse existing notes from the file
       } catch (err) {
         console.error(`Error parsing existing file content: ${err.message}`);

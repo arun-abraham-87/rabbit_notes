@@ -23,42 +23,62 @@ if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);
 
 
 
+
 const filterNotes = (searchQuery, notes, isCurrentDaySearch) => {
-  if (!searchQuery && !isCurrentDaySearch) {
-    //console.log("Returning notes")
-    return notes;
-  }
-  //console.log(`Notes count : ${notes.length}`)
-  // Split the search query into parts
-  const searchQueryParts = searchQuery.split(' ');
-  //console.log(searchQueryParts);
-  //console.log(searchQuery);
-
-  // Get today's date in DD/MM/YYYY format (Australia's format)
-  const today = new Date().toLocaleDateString('en-AU');  // This will return the date in 'DD/MM/YYYY' format
-
-  let filteredNotes = notes.filter((note) => {
-
-    if (searchQuery) {
-      const matchesSearchQuery = !searchQuery ||
-        note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchesSearchQuery
-    } else {
-      // Extract the date portion from created_datetime
-      //console.log("Date parse")
-      const noteDate = note.created_datetime.split(',')[0].trim();  // Get the 'DD/MM/YYYY' part
-      // Check if the note is from today
-      const isNoteFromToday = noteDate === today;
-      return isNoteFromToday;
-
+  try {
+    if (!Array.isArray(notes)) {
+      throw new Error("'notes' must be an array.");
     }
-  });
 
+    // If no search query and current day search is not required, return all notes
+    if (!searchQuery && !isCurrentDaySearch) {
+      return notes;
+    }
 
+    // Split the search query into parts (words) and normalize to lowercase
+    const searchQueryParts = searchQuery
+      ? searchQuery
+          .split(' ')
+          .map((part) => part.trim().toLowerCase())
+          .filter((part) => part !== '') // Remove empty strings
+      : [];
 
-  return filteredNotes;
+    // Get today's date in 'DD/MM/YYYY' format
+    const today = new Date().toLocaleDateString('en-AU');
+
+    // Filter notes
+    return notes.filter((note) => {
+      if (!note || typeof note !== 'object') {
+        console.warn("Invalid note encountered:", note);
+        return false;
+      }
+
+      const noteContent = (note.content || "").toLowerCase();
+      const noteTags = Array.isArray(note.tags)
+        ? note.tags.map((tag) => (tag || "").toLowerCase())
+        : [];
+
+      // Check if all words in the search query are present
+      const matchesSearchQuery = searchQueryParts.every((part) =>
+        noteContent.includes(part) || noteTags.some((tag) => tag.includes(part))
+      );
+
+      // Check if the note is from today (if required)
+      if (isCurrentDaySearch) {
+        const noteDate = (note.created_datetime || "").split(',')[0].trim();
+        const isNoteFromToday = noteDate === today;
+        return matchesSearchQuery && isNoteFromToday;
+      }
+
+      return matchesSearchQuery;
+    });
+  } catch (error) {
+    console.error("An error occurred in filterNotes:", error);
+    return []; // Return an empty array as a fallback
+  }
 };
+
+
 
 function parseDate(dateString) {
   const [datePart, timePart] = dateString.split(", ");

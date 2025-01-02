@@ -65,17 +65,26 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
     }
   };
 
-  // Handle editing the note content
   const handleEdit = (noteId) => {
     setEditingNoteId(noteId);
     const noteToEdit = notes.find((note) => note.id === noteId);
     setEditedContent(noteToEdit ? noteToEdit.content : '');
   };
 
-  // Handle saving the edited note content
   const handleSave = (noteId) => {
-    updateNote(noteId, editedContent); // Call the updateNote function passed as a prop
+    updateNote(noteId, editedContent);
     setEditingNoteId(0);
+  };
+
+  const handleKeyDown = (e, noteId) => {
+    if (e.metaKey && e.key === 'Enter') {
+      handleSave(noteId);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingNoteId(0);
+    setEditedContent('');
   };
 
   const handleTextSelection = (e) => {
@@ -89,12 +98,10 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
         y: rect.top + window.scrollY - 60, // Position the popup above the selected text
       });
 
-      // Clear any previous timeout
       if (popupTimeoutRef.current) {
         clearTimeout(popupTimeoutRef.current);
       }
 
-      // Set a new timeout to show the popup after 500ms
       popupTimeoutRef.current = setTimeout(() => {
         setPopupVisible(true);
       }, 500);
@@ -104,9 +111,8 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
   };
 
   const handleConvertToTag = () => {
-    // Add the selected text as a tag to the note's tags list
     console.log(`Tag added: ${selectedText}`);
-    addObjects(selectedText)
+    addObjects(selectedText);
     setPopupVisible(false);
   };
 
@@ -118,7 +124,6 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
     document.addEventListener('selectionchange', handleTextSelection);
     return () => {
       document.removeEventListener('selectionchange', handleTextSelection);
-      // Clean up the timeout when the component is unmounted
       if (popupTimeoutRef.current) {
         clearTimeout(popupTimeoutRef.current);
       }
@@ -138,6 +143,7 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
                 <textarea
                   value={editedContent}
                   onChange={(e) => setEditedContent(e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, note.id)}
                   className="w-full border rounded-md p-2 min-h-64"
                 />
               ) : (
@@ -151,12 +157,20 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
 
           <div className="flex-none">
             {editingNoteId === note.id ? (
-              <button
-                onClick={() => handleSave(note.id)}
-                className="bg-green-500 text-white px-4 py-2 rounded-md"
-              >
-                Save
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleSave(note.id)}
+                  className="bg-green-500 text-white px-4 py-2 rounded-md"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="bg-gray-500 text-white px-4 py-2 rounded-md"
+                >
+                  Cancel
+                </button>
+              </div>
             ) : (
               <div className="flex">
                 <div

@@ -40,7 +40,7 @@ const App = () => {
         console.error("Error fetching objects:", error.message);
       }
     };
-
+    
     fetchObjects();
   }, []);
 

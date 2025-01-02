@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef ,useEffect} from "react";
 import Calendar from "react-calendar"; // Install via `npm install react-calendar`
 import "react-calendar/dist/Calendar.css";
 
@@ -21,6 +21,15 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
   const [calendarPosition, setCalendarPosition] = useState({ x: 0, y: 0 });
 
   
+
+
+  useEffect(() => {
+    // Focus the textarea when the component is mounted
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, []);
+
 
   const isValidDate = (dateString) => {
     const dateRegex = /^\d{2}[-/]\d{2}[-/]\d{4}$/;

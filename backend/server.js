@@ -7,24 +7,16 @@ const app = express();
 app.use(express.json());
 
 const moment = require('moment'); // Assuming moment is available
-
-
 const cors = require('cors');
-
 app.use(cors({
   origin: 'http://localhost:3000', // Allow requests only from this origin
 }));
 
 
 const NOTES_DIR = './notes';
-
 if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);
 
-
-
-
-
-const filterNotes = (searchQuery, notes, isCurrentDaySearch) => {
+const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
   try {
     if (!Array.isArray(notes)) {
       throw new Error("'notes' must be an array.");
@@ -38,13 +30,15 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch) => {
     // Split the search query into parts (words) and normalize to lowercase
     const searchQueryParts = searchQuery
       ? searchQuery
-          .split(' ')
-          .map((part) => part.trim().toLowerCase())
-          .filter((part) => part !== '') // Remove empty strings
+        .split(' ')
+        .map((part) => part.trim().toLowerCase())
+        .filter((part) => part !== '') // Remove empty strings
       : [];
 
     // Get today's date in 'DD/MM/YYYY' format
-    const today = new Date().toLocaleDateString('en-AU');
+    //const today = new Date().toLocaleDateString('en-AU');
+    const noteDate=moment(new Date(noteDateStr)).format('DD/MM/YYYY');
+    console.log(noteDate)
 
     // Filter notes
     return notes.filter((note) => {
@@ -65,8 +59,10 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch) => {
 
       // Check if the note is from today (if required)
       if (isCurrentDaySearch) {
-        const noteDate = (note.created_datetime || "").split(',')[0].trim();
-        const isNoteFromToday = noteDate === today;
+        const noteRecordedDate = (note.created_datetime || "").split(',')[0].trim();
+        //console.log(`NoteRecorded Date: ${noteRecordedDate}`)
+        //console.log(`Note Filter Date: ${noteDate}`)
+        const isNoteFromToday = noteRecordedDate === noteDate;
         return matchesSearchQuery && isNoteFromToday;
       }
 
@@ -77,8 +73,6 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch) => {
     return []; // Return an empty array as a fallback
   }
 };
-
-
 
 function parseDate(dateString) {
   const [datePart, timePart] = dateString.split(", ");
@@ -100,21 +94,33 @@ function parseDate(dateString) {
 }
 
 const sortNotes = (notes) => {
-  return [...notes].sort((a, b) => {
-
-    const dateA = parseDate(a.created_datetime);
-    const dateB = parseDate(b.created_datetime);
-    //console.log(`Trying to sort ${dateA} and ${dateB}`)
-    //console.log(dateA-dateB)
-    return dateB - dateA; // Sort by date descending
-  });
+  try {
+    return [...notes].sort((a, b) => {
+      // console.log("-----------------------------------------")
+      // console.log(a.created_datetime)
+      // console.log(a)
+      // console.log(b)
+      // console.log(b.created_datetime)
+      const dateA = parseDate(a.created_datetime);
+      const dateB = parseDate(b.created_datetime);
+      //console.log(`Trying to sort ${dateA} and ${dateB}`)
+      //console.log(dateA - dateB)
+      return dateB - dateA; // Sort by date descending
+    });
+  } catch (error) {
+    console.error("An error occurred in sort notes:", error);
+  }
 };
 
 app.get('/api/notes', (req, res) => {
   try {
-    const searchQuery = req.query.search ? req.query.search.toLowerCase() : '';
+    
+    const searchQuery = req.query.search.trim() ? req.query.search. trim().toLowerCase() : '';
+    console.log(`Search quwery recevied:==${searchQuery}==`)
     const currentDateNotesOnly = req.query.currentDate === 'true'; // Check for current date filter
-    //console.log(`Current Date Filter: ${currentDateNotesOnly}`);
+    console.log(`Current Date Filter: ${currentDateNotesOnly}`);
+    const noteDate = req.query.noteDate; // Check for current date filter
+    console.log(`NoteDate: ${noteDate}`);
 
     const files = fs.readdirSync(NOTES_DIR);
     let notesArray = [];
@@ -139,12 +145,13 @@ app.get('/api/notes', (req, res) => {
 
     //console.log("Notes fetched");
 
-    const filteredNotes = filterNotes(searchQuery, notesArray, currentDateNotesOnly);
+    const filteredNotes = filterNotes(searchQuery, notesArray, currentDateNotesOnly, noteDate);
 
+    //console.log("Notes filtered");
 
     const sortedNotes = sortNotes(filteredNotes)
 
-    //console.log("Notes filtered & sorted");
+    //console.log(`Notes filtered & sorted ${sortedNotes}`);
 
     //console.log(filteredNotes[0])
     //console.log(sortedNotes[0])
@@ -245,7 +252,7 @@ app.post('/api/notes', (req, res) => {
       // Construct a moment object using the provided date
       const noteDateObj = moment(noteDate, "YYYY-MM-DD");
       // Format it to the desired format: "dd/MM/yyyy, hh:mm:ss am/pm"
-      created_datetime= noteDateObj.format("DD/MM/YYYY, hh:mm:ss a");
+      created_datetime = noteDateObj.format("DD/MM/YYYY, hh:mm:ss a");
     }
     console.log("Date");
     console.log(created_datetime);
@@ -288,7 +295,6 @@ app.post('/api/notes', (req, res) => {
     res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
   }
 });
-
 
 app.delete('/api/notes/:id', (req, res) => {
   const noteId = req.params.id;
@@ -337,9 +343,6 @@ app.delete('/api/notes/:id', (req, res) => {
   }
 });
 
-
-
-// GET: Return the objects as an array
 app.get('/api/objects', (req, res) => {
   try {
     const fileName = `objects.md`;
@@ -365,7 +368,6 @@ app.get('/api/objects', (req, res) => {
   }
 });
 
-// POST: Add the object to objects.md as JSON
 app.post('/api/objects', (req, res) => {
   try {
     const newObject = req.body;

@@ -8,7 +8,7 @@ const InfoPanel = ({ totals, grpbyViewChkd, enableGroupByView }) => {
   };
 
   return (
-    <div className="flex justify-between items-center mb-4">
+    <div className="flex justify-between items-center mb-4 mt-4">
       <p>Count: {totals}</p>
 
       <div>

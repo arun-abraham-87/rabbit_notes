@@ -6,21 +6,21 @@ import InfoPanel from './components/InfoPanel.js';
 import NotesList from './components/NotesList.js';
 import NotesListByDate from './components/NotesListByDate.js';
 import DateSelectorBar from './components/DateSelectorBar.js';
+import TextEditor from './components/TextEditor.js'
 
 const App = () => {
   const [notes, setNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [totals, setTotals] = useState(0);
-  const [checked, setChecked] = useState(false);
+  const [checked, setChecked] = useState(true);
   const [objects, setObjects] = useState([]);
   const [noteDate, setNoteDate] = useState(null);
-
-
 
   const fetchNotes = async (searchText) => {
     const encodedQuery = encodeURIComponent(searchText);
     let url = `http://localhost:5001/api/notes?search=${encodedQuery}`;
-    url += `&currentDate=${encodedQuery.trim().length === 0}`;
+    url += `&currentDate=${searchText.trim().length === 0}`;
+    url += `&noteDate=${noteDate}`;
     const response = await fetch(url);
     const data = await response.json();
     setNotes(data.notes);
@@ -40,7 +40,7 @@ const App = () => {
         console.error("Error fetching objects:", error.message);
       }
     };
-    
+
     fetchObjects();
   }, []);
 
@@ -49,7 +49,7 @@ const App = () => {
     console.log("Search Query Based Fetch")
     const debounceFetch = setTimeout(() => fetchNotes(searchQuery), 300);
     return () => clearTimeout(debounceFetch);
-  }, [searchQuery]);
+  }, [searchQuery,noteDate]);
 
   const addNote = async (content, tags) => {
     const response = await fetch('http://localhost:5001/api/notes', {
@@ -79,16 +79,17 @@ const App = () => {
     }
   };
 
+
   return (
     <div className="App">
       <Navbar />
       <div className='p-8'>
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
           <DateSelectorBar setNoteDate={setNoteDate}/>
-          <AddNoteBar addNote={addNote} searchQuery={setSearchQuery} objList={objects} />
+          <TextEditor addNotes={addNote} objList={objects} searchQuery={setSearchQuery} />
           <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
           {checked ? (
-            <NotesListByDate notes={notes} />
+            <NotesListByDate notes={notes} searchQuery={searchQuery} />
           ) : (
             <NotesList notes={notes} updateNoteCallback={setNotes} updateTotals={setTotals} objects={objects} addObjects={addObject} />)
           }

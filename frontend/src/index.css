@@ -25,3 +25,10 @@ font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe U
     display: none; /* For Chrome, Safari, and Edge */
   }
   
+  .OneDayNoteContainer{
+    overflow:hidden;
+  }
+
+  .editable-div:focus {
+    outline: none; /* Removes the focus outline */
+}

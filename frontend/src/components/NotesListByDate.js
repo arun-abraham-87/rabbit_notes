@@ -1,9 +1,8 @@
 import React from "react";
-import { processContent } from '../utils/TextUtils'
-import { getAge, getDayOfWeek } from '../utils/DateUtils'
+import { processContent } from '../utils/TextUtils';
+import { getAge, getDayOfWeek } from '../utils/DateUtils';
 
-function NotesListByDate({ notes }) {
-
+function NotesListByDate({ notes, searchQuery }) {
   const groupNotesByDate = (notes) => {
     const parseDateTime = (dateTimeString) => {
       const [date, timePart] = dateTimeString.split(", ");
@@ -36,46 +35,42 @@ function NotesListByDate({ notes }) {
       }, {});
   };
 
-
-
-
-
   const groupedNotes = groupNotesByDate(notes);
 
   return (
-    <div >
-      {Object.keys(groupedNotes).map((date) => (
-        <div key={date} className="flex justify-content p-4 mb-6 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 items-center">
-          <div className="p-6 flex flex-col min-w-64 flex-none">
-            <div className="flex">
-              <div className="text-sm">
-                {date}
-
-              </div>
+    <div>
+      {Object.keys(groupedNotes).map((date, index) => (
+        <div
+          key={date}
+          className={`flex justify-content p-4 mb-6 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 items-center `}
+        >
+          <div className="p-6 flex flex-col min-w-64 flex-col self-start">
+            <div className="flex self-start">
+              <div className="text-sm">{date}</div>
               <div className="text-xs text-gray-700 p-1">
                 {getDayOfWeek(date)}
               </div>
             </div>
-            <div className="text-xs text-gray-700 p-1">
-              {getAge(date)}
-            </div>
+            <div className="text-xs text-gray-700 p-1">{getAge(date)}</div>
           </div>
-          <div className="flex-1">
-            {groupedNotes[date].map((note) => (
-              <div className="p-6 flex">
-                <div className="text-xs text-gray-700 p-1">
-                  {note.time}
-                </div>
+          <div className="flex-1 OneDayNoteContainer">
+            {groupedNotes[date].map((note, noteIndex) => (
+              <div
+                key={noteIndex}
+                className={`p-6 flex ${noteIndex % 2 === 0 ? "bg-gray-100" : "bg-white"
+                  }`}
+              >
+                <div className="text-xs text-gray-700 p-1">{note.time}</div>
                 <div className="pl-6">
-                  <pre>{processContent(note.content)}</pre>
+                  <pre>{processContent(note.content, searchQuery)}</pre>
                 </div>
               </div>
             ))}
+
           </div>
         </div>
-      ))
-      }
-    </div >
+      ))}
+    </div>
   );
 }
 

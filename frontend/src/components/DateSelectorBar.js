@@ -1,44 +1,58 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { getAustralianDate, getNextOrPrevDate } from '../utils/DateUtils.js'
+
 
 const DateSelectorBar = ({ setNoteDate }) => {
-  // Get today's date in the Australian timezone and format as YYYY-MM-DD
-  const getAustralianDate = () => {
-    const ausDate = new Date().toLocaleDateString("en-AU", {
-      timeZone: "Australia/Sydney",
-    });
-    const [day, month, year] = ausDate.split("/");
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-  };
-
+  //STATE
   const [selectedDate, setSelectedDate] = useState(getAustralianDate()); // Default to today's date in Australia
 
 
+  //EFFECTS
   useEffect(() => {
     setSelectedDate(getAustralianDate());
     setNoteDate(getAustralianDate())
   }, []);
 
-  const handleDateChange = (event) => {
-    const updatedDate= event.target.value
-    if(updatedDate){
-      setSelectedDate(updatedDate);
-    }
-    console.log(selectedDate)
-    setNoteDate(selectedDate); // Update parent state if provided
+
+  //HELPERS
+  const updateDate = (nextDay) => {
+    const nextDateStr = getNextOrPrevDate(selectedDate, nextDay)
+    console.log(`Next / Prev Date: ${nextDateStr}`)
+    setSelectedDate(nextDateStr);
+    setNoteDate(nextDateStr)
+  }
+
+  // HANDLERS
+  const handleDateChange = (dateStr) => {
+    setSelectedDate(dateStr);
+    setNoteDate(dateStr);
   };
 
   return (
-    <div className="flex justify-between items-center mb-4">
+    <div className="flex items-center mb-4">
+      <button
+        onClick={(x) => updateDate(false)}
+        className="bg-blue-500 text-white px-2 py-1 rounded flex items-center"
+      >
+        &#60; {/* Unicode for '<' */}
+      </button>
       <div>
         <input
           type="date"
           value={selectedDate}
-          onChange={handleDateChange}
+          onChange={(e) => handleDateChange(e.target.value)}
           className="border px-2 py-1 rounded"
         />
       </div>
+      <button
+        onClick={() => updateDate(true)}
+        className="bg-blue-500 text-white px-2 py-1 rounded flex items-center"
+      >
+        &#62; {/* Unicode for '>' */}
+      </button>
     </div>
   );
+
 };
 
 export default DateSelectorBar;

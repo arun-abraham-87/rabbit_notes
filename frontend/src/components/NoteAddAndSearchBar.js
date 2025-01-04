@@ -8,10 +8,10 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
   const [text, setText] = useState("");
   const [showPopup, setShowPopup] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null); // To store the selected date from the calendar
   const popupRef = useRef(null);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [filteredTags, setFilteredTags] = useState([]);
   const [selectedTagIndex, setSelectedTagIndex] = useState(-1);
   const textareaRef = useRef(null);
@@ -26,7 +26,7 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
   useEffect(() => {
     // Focus the textarea when the component is mounted
     if (textareaRef.current) {
-      textareaRef.current.focus();
+   //   textareaRef.current.focus();
     }
   }, []);
 

@@ -5,6 +5,7 @@ import "react-calendar/dist/Calendar.css";
 const TextEditor = ({ addNotes, objList, searchQuery }) => {
     const [notes, setNotes] = useState([""]);
     const [selectedIndices, setSelectedIndices] = useState([]);
+    const [anchorIndex, setAnchorIndex] = useState(null); // Starting point for shift selection
     const editorRef = useRef(null);
 
     const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
@@ -143,7 +144,6 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
                 updatedNotes.splice(index + 1, 0, newNote);
                 setNotes(updatedNotes);
                 setSelectedIndices([]);
-                setAnchorIndex(null);
                 setTimeout(() => focusDiv(index + 1, true), 0);
                 return;
             }
@@ -174,7 +174,6 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
                 updatedNotes.splice(index, 1, noteToEdit);
                 setNotes(updatedNotes);
                 setSelectedIndices([]);
-                setAnchorIndex(null);
                 setTimeout(() => focusDiv(index, true), 0);
 
                 return;
@@ -186,7 +185,6 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
                 updatedNotes.splice(index, 1);
                 setNotes(updatedNotes);
                 setSelectedIndices([]);
-                setAnchorIndex(null);
                 setTimeout(() => focusDiv(index - 1, true), 0);
                 return;
             }

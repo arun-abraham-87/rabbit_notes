@@ -15,6 +15,8 @@ const App = () => {
   const [checked, setChecked] = useState(true);
   const [objects, setObjects] = useState([]);
   const [noteDate, setNoteDate] = useState(null);
+  const [activePage, setActivePage] = useState('notes');
+
 
   const fetchNotes = async (searchText) => {
     const encodedQuery = encodeURIComponent(searchText);
@@ -82,20 +84,31 @@ const App = () => {
 
   return (
     <div className="App">
-      <Navbar />
-      <div className='p-8'>
+    <Navbar activePage={activePage} setActivePage={setActivePage} />
+    <div className='p-8'>
+      {activePage === 'notes' && (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
-          <DateSelectorBar setNoteDate={setNoteDate}/>
+          <DateSelectorBar setNoteDate={setNoteDate} />
           <TextEditor addNotes={addNote} objList={objects} searchQuery={setSearchQuery} />
           <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
           {checked ? (
             <NotesListByDate notes={notes} searchQuery={searchQuery} />
           ) : (
-            <NotesList notes={notes} updateNoteCallback={setNotes} updateTotals={setTotals} objects={objects} addObjects={addObject} />)
-          }
+            <NotesList notes={notes} updateNoteCallback={setNotes} updateTotals={setTotals} objects={objects} addObjects={addObject} />
+          )}
         </div>
-      </div>
+      )}
+  
+      {activePage === 'tags' && (
+        <div className="max-w-[80%] mx-auto rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+          <h2 className="text-xl font-bold mb-4">Tags Page</h2>
+          {/* Placeholder: Replace with your tag component or logic */}
+          <p>List of tags will appear here.</p>
+        </div>
+      )}
     </div>
+  </div>
+  
   );
 };
 

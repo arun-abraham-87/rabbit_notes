@@ -31,6 +31,16 @@ const App = () => {
     setTotals(data.totals);
   };
 
+  const fetchTodos = async () => {
+    try {
+      const response = await fetch('http://localhost:5001/api/todos');
+      const data = await response.json();
+      setTodos(data.todos || []);
+    } catch (error) {
+      console.error("Error fetching todos:", error.message);
+    }
+  };
+
   useEffect(() => {
     const fetchObjects = async () => {
       console.log(`Calling Object Fetch`)
@@ -50,18 +60,8 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    const fetchTodos = async () => {
-      try {
-        const response = await fetch('http://localhost:5001/api/todos');
-        const data = await response.json();
-        setTodos(data.todos || []);
-      } catch (error) {
-        console.error("Error fetching todos:", error.message);
-      }
-    };
-
     fetchTodos();
-  }, []);
+  }, [activePage]);
 
   useEffect(() => {
     console.log(searchQuery)

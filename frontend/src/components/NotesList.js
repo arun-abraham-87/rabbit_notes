@@ -130,9 +130,11 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
     };
   }, []);
 
+  const safeNotes = notes || [];
+
   return (
     <div>
-      {notes.map((note) => (
+      {safeNotes.map((note) => (
         <div
           key={note.id}
           className="flex justify-content p-4 mb-6 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 items-center"

@@ -60,7 +60,7 @@ const TodoList = ({ todos }) => {
           >
             <div className="flex flex-col flex-auto">
               <div className="flex items-center justify-between space-x-2 p-2">
-                <pre className="flex-1">{processContent(todo.content)}</pre>
+                <pre className="flex-1">{processContent(todo.content.replace(/\btodo\b/i, '').trim())}</pre>
                 <span className={`text-xs ${ageColorClass}`}>{getAgeLabel(todo.created_datetime)}</span>
               </div>
             </div>

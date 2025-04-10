@@ -50,6 +50,31 @@ const TodoList = ({ todos }) => {
     todo.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const computePriorityCounts = () => {
+    let high = 0, medium = 0, low = 0;
+    filteredTodos.forEach(todo => {
+      const tag = todo.content.includes('#high')
+        ? 'high'
+        : todo.content.includes('#medium')
+        ? 'medium'
+        : todo.content.includes('#low')
+        ? 'low'
+        : 'low';
+      const assigned = priorities[todo.id] || tag;
+      if (assigned === 'high') high++;
+      else if (assigned === 'medium') medium++;
+      else low++;
+    });
+    return {
+      total: filteredTodos.length,
+      high,
+      medium,
+      low
+    };
+  };
+
+  const { total, high, medium, low } = computePriorityCounts();
+
   return (
     <div>
       <div className="my-2">
@@ -60,6 +85,24 @@ const TodoList = ({ todos }) => {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="border px-2 py-1 rounded w-full"
         />
+      </div>
+      <div className="flex space-x-4 mb-4 text-sm">
+        <div className="flex-1 border rounded p-3 bg-white shadow text-center">
+          <div className="text-gray-500 text-xs">Total</div>
+          <div className="text-lg font-bold">{total}</div>
+        </div>
+        <div className="flex-1 border rounded p-3 bg-white shadow text-center">
+          <div className="text-red-500 text-xs">High</div>
+          <div className="text-lg font-bold">{high}</div>
+        </div>
+        <div className="flex-1 border rounded p-3 bg-white shadow text-center">
+          <div className="text-yellow-500 text-xs">Medium</div>
+          <div className="text-lg font-bold">{medium}</div>
+        </div>
+        <div className="flex-1 border rounded p-3 bg-white shadow text-center">
+          <div className="text-green-500 text-xs">Low</div>
+          <div className="text-lg font-bold">{low}</div>
+        </div>
       </div>
       {filteredTodos.map((todo) => {
         const ageColorClass = getAgeClass(todo.created_datetime);

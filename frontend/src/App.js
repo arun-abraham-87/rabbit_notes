@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import AddNoteBar from './components/NoteAddAndSearchBar.js';
 import InfoPanel from './components/InfoPanel.js';
 import NotesList from './components/NotesList.js';
+import TodoList from './components/TodoList.js';
 import NotesListByDate from './components/NotesListByDate.js';
 import DateSelectorBar from './components/DateSelectorBar.js';
 import TextEditor from './components/TextEditor.js'
@@ -12,7 +13,7 @@ const App = () => {
   const [notes, setNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [totals, setTotals] = useState(0);
-  const [checked, setChecked] = useState(true);
+  const [checked, setChecked] = useState(false);
   const [objects, setObjects] = useState([]);
   const [objectList, setObjectList] = useState([]);
   const [noteDate, setNoteDate] = useState(null);
@@ -104,7 +105,7 @@ const App = () => {
       {activePage === 'notes' && (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
           <DateSelectorBar setNoteDate={setNoteDate} />
-          <TextEditor addNotes={addNote} objList={objects} searchQuery={setSearchQuery} />
+          <TextEditor addNotes={addNote} objList={objects} setSearchQuery={setSearchQuery} />
           <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
           {checked ? (
             <NotesListByDate notes={notes} searchQuery={searchQuery} />
@@ -126,13 +127,8 @@ const App = () => {
       )}
 
       {activePage === 'todos' && (
-        <div className="max-w-[80%] mx-auto rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-          <h2 className="text-xl font-bold mb-4">Todos Page</h2>
-          <ul className="list-disc pl-6">
-            {todos.map((todo, index) => (
-              <li key={index}>{todo.content}</li>
-            ))}
-          </ul>
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
+         <TodoList todos={todos}/> 
         </div>
       )}
     </div>

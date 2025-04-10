@@ -5,10 +5,24 @@ import { processContent } from '../utils/TextUtils';
 import { formatDate } from '../utils/DateUtils';
 
 const TodoList = ({ todos }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredTodos = todos.filter((todo) =>
+    todo.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div>
-      {todos.map((todo) => (
+      <div className="my-2">
+        <input
+          type="text"
+          placeholder="Search todos..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="border px-2 py-1 rounded w-full"
+        />
+      </div>
+      {filteredTodos.map((todo) => (
         <div
           key={todo.id}
           className="flex justify-content p-4 mb-6 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 items-center"

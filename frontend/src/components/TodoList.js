@@ -7,6 +7,7 @@ import { formatDate } from '../utils/DateUtils';
 const TodoList = ({ todos }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [priorities, setPriorities] = useState({});
+  const [priorityFilter, setPriorityFilter] = useState(null);
 
   const parseAusDate = (str) => {
     const [datePart, timePart, ampm] = str.split(/[\s,]+/);
@@ -46,9 +47,22 @@ const TodoList = ({ todos }) => {
     onPriorityChange(id, level);
   };
 
-  const filteredTodos = todos.filter((todo) =>
-    todo.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTodos = todos.filter((todo) => {
+    const matchesSearch = todo.content.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const tag = todo.content.includes('#high')
+      ? 'high'
+      : todo.content.includes('#medium')
+      ? 'medium'
+      : todo.content.includes('#low')
+      ? 'low'
+      : 'low';
+
+    const assignedPriority = priorities[todo.id] || tag;
+    const matchesPriority = priorityFilter ? assignedPriority === priorityFilter : true;
+
+    return matchesSearch && matchesPriority;
+  });
 
   const computePriorityCounts = () => {
     let high = 0, medium = 0, low = 0;
@@ -87,19 +101,51 @@ const TodoList = ({ todos }) => {
         />
       </div>
       <div className="flex space-x-4 mb-4 text-sm">
-        <div className="flex-1 border rounded p-3 bg-white shadow text-center">
+        <div
+          onClick={() => setPriorityFilter(null)}
+          className={`flex-1 border rounded p-3 bg-white shadow text-center cursor-pointer ${
+            priorityFilter === null ? '' : 'opacity-50 hover:opacity-100'
+          }`}
+        >
           <div className="text-gray-500 text-xs">Total</div>
           <div className="text-lg font-bold">{total}</div>
         </div>
-        <div className="flex-1 border rounded p-3 bg-white shadow text-center">
+        <div
+          onClick={() => setPriorityFilter('high')}
+          className={`flex-1 border rounded p-3 bg-white shadow text-center cursor-pointer ${
+            priorityFilter === null
+              ? ''
+              : priorityFilter === 'high'
+              ? 'ring-2 ring-red-500'
+              : 'opacity-50 hover:opacity-100'
+          }`}
+        >
           <div className="text-red-500 text-xs">High</div>
           <div className="text-lg font-bold">{high}</div>
         </div>
-        <div className="flex-1 border rounded p-3 bg-white shadow text-center">
+        <div
+          onClick={() => setPriorityFilter('medium')}
+          className={`flex-1 border rounded p-3 bg-white shadow text-center cursor-pointer ${
+            priorityFilter === null
+              ? ''
+              : priorityFilter === 'medium'
+              ? 'ring-2 ring-yellow-500'
+              : 'opacity-50 hover:opacity-100'
+          }`}
+        >
           <div className="text-yellow-500 text-xs">Medium</div>
           <div className="text-lg font-bold">{medium}</div>
         </div>
-        <div className="flex-1 border rounded p-3 bg-white shadow text-center">
+        <div
+          onClick={() => setPriorityFilter('low')}
+          className={`flex-1 border rounded p-3 bg-white shadow text-center cursor-pointer ${
+            priorityFilter === null
+              ? ''
+              : priorityFilter === 'low'
+              ? 'ring-2 ring-green-500'
+              : 'opacity-50 hover:opacity-100'
+          }`}
+        >
           <div className="text-green-500 text-xs">Low</div>
           <div className="text-lg font-bold">{low}</div>
         </div>

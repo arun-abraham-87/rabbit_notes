@@ -41,7 +41,7 @@ const TodoList = ({ todos , updateTodosCallback}) => {
     return `${diffHours}h ${diffMinutes}m ago`;
   };
 
-  const updateNote = async (id, updatedContent) => {
+  const updateNote = async (id, updatedContent, removeNote = false) => {
     const response = await fetch(`http://localhost:5001/api/notes/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -50,11 +50,15 @@ const TodoList = ({ todos , updateTodosCallback}) => {
 
     if (response.ok) {
       console.log('Note Updated:', id);
-      updateTodosCallback(
-      todos.map((note) =>
-           note.id === id ? { ...note, content: updatedContent } : note
-         )
-       );
+      let updatedTodos;
+      if (removeNote) {
+        updatedTodos = todos.filter((note) => note.id !== id);
+      } else {
+        updatedTodos = todos.map((note) =>
+          note.id === id ? { ...note, content: updatedContent } : note
+        );
+      }
+      updateTodosCallback(updatedTodos);
     } else {
       console.error('Err: Failed to update note');
     }
@@ -76,6 +80,17 @@ const TodoList = ({ todos , updateTodosCallback}) => {
   const handlePriorityClick = (id, level) => {
     setPriorities((prev) => ({ ...prev, [id]: level }));
     onPriorityChange(id, level);
+  };
+
+  const handleCheckboxChange = (id) => {
+    console.log(`Checkbox toggled for todo ${id}`);
+    const note = todos.find((todo) => todo.id === id);
+    if (note) {
+      const updatedContent = note.content.replace(/\b#?todo\b/gi, '').trim();
+      updateNote(id, updatedContent, true);
+    } else {
+      console.warn(`Note with id ${id} not found.`);
+    }
   };
 
   const filteredTodos = todos.filter((todo) => {
@@ -201,7 +216,7 @@ const TodoList = ({ todos , updateTodosCallback}) => {
               <input
                 type="checkbox"
                 className="mr-2"
-                // Placeholder for checkbox state handling
+                onChange={() => handleCheckboxChange(todo.id)}
               />
               <pre className="whitespace-pre-wrap">{processContent(todo.content.replace(/\btodo\b/i, '').trim())}</pre>
             </div>

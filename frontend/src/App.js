@@ -105,7 +105,7 @@ const App = () => {
       {activePage === 'notes' && (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
           <DateSelectorBar setNoteDate={setNoteDate} />
-          <TextEditor addNotes={addNote} objList={objects} setSearchQuery={setSearchQuery} />
+          <TextEditor addNotes={addNote} objList={objects} searchQuery={setSearchQuery} />
           <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
           {checked ? (
             <NotesListByDate notes={notes} searchQuery={searchQuery} />

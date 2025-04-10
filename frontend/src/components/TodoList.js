@@ -4,10 +4,12 @@ import { TrashIcon } from '@heroicons/react/24/solid';
 import { processContent } from '../utils/TextUtils';
 import { formatDate } from '../utils/DateUtils';
 
-const TodoList = ({ todos , updateTodosCallback}) => {
+const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [priorities, setPriorities] = useState({});
   const [priorityFilter, setPriorityFilter] = useState(null);
+  const [snackbar, setSnackbar] = useState(null); // { id, content, timeoutId }
+  const [removedTodo, setRemovedTodo] = useState(null); // { id, content }
 
   const parseAusDate = (str) => {
     const [datePart, timePart, ampmRaw] = str.split(/[\s,]+/);
@@ -41,7 +43,7 @@ const TodoList = ({ todos , updateTodosCallback}) => {
     return `${diffHours}h ${diffMinutes}m ago`;
   };
 
-  const updateNote = async (id, updatedContent, removeNote = false) => {
+  const updateTodo = async (id, updatedContent, removeNote = false) => {
     const response = await fetch(`http://localhost:5001/api/notes/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -58,6 +60,11 @@ const TodoList = ({ todos , updateTodosCallback}) => {
           note.id === id ? { ...note, content: updatedContent } : note
         );
       }
+      updateNoteCallBack(
+        notes.map((note) =>
+          note.id === id ? { ...note, content: updatedContent } : note
+        )
+      );
       updateTodosCallback(updatedTodos);
     } else {
       console.error('Err: Failed to update note');
@@ -71,7 +78,7 @@ const TodoList = ({ todos , updateTodosCallback}) => {
       console.log(`Content: ${note.content}`);
       const cleanedContent = note.content.replace(/#(high|medium|low)/gi, '').trim();
       const updatedContent = `${cleanedContent} #${level}`;
-      updateNote(id, updatedContent);
+      updateTodo(id, updatedContent);
     } else {
       console.warn(`Note with id ${id} not found.`);
     }
@@ -82,15 +89,36 @@ const TodoList = ({ todos , updateTodosCallback}) => {
     onPriorityChange(id, level);
   };
 
-  const handleCheckboxChange = (id) => {
-    console.log(`Checkbox toggled for todo ${id}`);
+  const handleCheckboxChange = (id, checked) => {
+    console.log(`Checkbox toggled for todo ${id} - Checked: ${checked}`);
     const note = todos.find((todo) => todo.id === id);
-    if (note) {
+    if (!note) return console.warn(`Note with id ${id} not found.`);
+
+    if (checked) {
       const updatedContent = note.content.replace(/\b#?todo\b/gi, '').trim();
-      updateNote(id, updatedContent, true);
+      updateTodo(id, updatedContent, true)
+
+      const timeoutId = setTimeout(() => {
+        updateTodo(id, updatedContent, true);
+        setSnackbar(null);
+        setRemovedTodo(null);
+      }, 5000);
+
+      setSnackbar({ id, content: note.content, timeoutId });
+      setRemovedTodo({ ...note, content: updatedContent });
     } else {
-      console.warn(`Note with id ${id} not found.`);
+      console.log(`Todo ${id} unchecked - no action taken`);
     }
+  };
+
+  const handleUndo = () => {
+    if (snackbar?.timeoutId) clearTimeout(snackbar.timeoutId);
+    if (removedTodo) {
+      const updatedTodos = [removedTodo, ...todos];
+      updateTodosCallback(updatedTodos);
+    }
+    setSnackbar(null);
+    setRemovedTodo(null);
   };
 
   const filteredTodos = todos.filter((todo) => {
@@ -216,7 +244,7 @@ const TodoList = ({ todos , updateTodosCallback}) => {
               <input
                 type="checkbox"
                 className="mr-2"
-                onChange={() => handleCheckboxChange(todo.id)}
+                onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
               />
               <pre className="whitespace-pre-wrap">{processContent(todo.content.replace(/\btodo\b/i, '').trim())}</pre>
             </div>
@@ -245,7 +273,12 @@ const TodoList = ({ todos , updateTodosCallback}) => {
           </div>
         );
       })}
-
+      {snackbar && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50 transition-opacity duration-300">
+          Todo marked complete
+          <button onClick={handleUndo} className="ml-4 underline">Undo</button>
+        </div>
+      )}
     </div>
   );
 };

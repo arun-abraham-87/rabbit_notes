@@ -128,7 +128,7 @@ const App = () => {
 
       {activePage === 'todos' && (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
-         <TodoList todos={todos} updateTodosCallback={setTodos}/> 
+         <TodoList todos={todos} notes={notes} updateTodosCallback={setTodos} updateNoteCallBack={setNotes}/> 
         </div>
       )}
     </div>

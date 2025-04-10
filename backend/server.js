@@ -188,6 +188,11 @@ app.get('/api/todos', (req, res) => {
       }
     });
    console.log(todos)
+    todos.sort((a, b) => {
+      const dateA = new Date(a.created_datetime);
+      const dateB = new Date(b.created_datetime);
+      return dateA - dateB;
+    });
     res.json({ todos });
   } catch (err) {
     console.error("Error fetching todos:", err.message);

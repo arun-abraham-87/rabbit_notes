@@ -10,12 +10,15 @@ const TodoList = ({ todos }) => {
   const [priorityFilter, setPriorityFilter] = useState(null);
 
   const parseAusDate = (str) => {
-    const [datePart, timePart, ampm] = str.split(/[\s,]+/);
-    const [day, month, year] = datePart.split('/').map(Number);
-    let [hour, minute, second] = timePart.split(':').map(Number);
-    if (ampm.toLowerCase() === 'pm' && hour !== 12) hour += 12;
-    if (ampm.toLowerCase() === 'am' && hour === 12) hour = 0;
-    return new Date(year, month - 1, day, hour, minute, second);
+    const [datePart, timePart, ampmRaw] = str.split(/[\s,]+/);
+    const [day, month, year] = datePart?.split('/')?.map(Number) || [];
+    let [hour, minute, second] = timePart?.split(':')?.map(Number) || [];
+    const ampm = ampmRaw ? ampmRaw.toLowerCase() : null;
+
+    if (ampm === 'pm' && hour !== 12) hour += 12;
+    if (ampm === 'am' && hour === 12) hour = 0;
+
+    return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
   };
 
   const getAgeClass = (createdDate) => {

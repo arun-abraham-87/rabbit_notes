@@ -4,7 +4,7 @@ import { TrashIcon } from '@heroicons/react/24/solid';
 import { processContent } from '../utils/TextUtils';
 import { formatDate } from '../utils/DateUtils';
 
-const TodoList = ({ todos }) => {
+const TodoList = ({ todos , updateTodosCallback}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [priorities, setPriorities] = useState({});
   const [priorityFilter, setPriorityFilter] = useState(null);
@@ -41,8 +41,36 @@ const TodoList = ({ todos }) => {
     return `${diffHours}h ${diffMinutes}m ago`;
   };
 
+  const updateNote = async (id, updatedContent) => {
+    const response = await fetch(`http://localhost:5001/api/notes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: updatedContent }),
+    });
+
+    if (response.ok) {
+      console.log('Note Updated:', id);
+      updateTodosCallback(
+      todos.map((note) =>
+           note.id === id ? { ...note, content: updatedContent } : note
+         )
+       );
+    } else {
+      console.error('Err: Failed to update note');
+    }
+  };
+
   const onPriorityChange = (id, level) => {
     console.log(`Todo ${id} marked as ${level} priority.`);
+    const note = todos.find((todo) => todo.id === id);
+    if (note) {
+      console.log(`Content: ${note.content}`);
+      const cleanedContent = note.content.replace(/#(high|medium|low)/gi, '').trim();
+      const updatedContent = `${cleanedContent} #${level}`;
+      updateNote(id, updatedContent);
+    } else {
+      console.warn(`Note with id ${id} not found.`);
+    }
   };
 
   const handlePriorityClick = (id, level) => {

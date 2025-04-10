@@ -152,8 +152,28 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
                 <pre>{processContent(note.content)}</pre>
               )}
             </div>
-            <div className="text-xs text-gray-700 p-1">
-              {formatDate(note.created_datetime)}
+            <div className="flex text-xs text-gray-700 px-4 pb-2">
+              <span>{formatDate(note.created_datetime)}</span>
+              {note.content.toLowerCase().includes('#todo') ? (
+                <button
+                  onClick={() => {
+                    const updatedContent = note.content.replace(/#todo/gi, '').trim();
+                    updateNote(note.id, updatedContent);
+                  }}
+                  className="ml-auto text-gray-400 text-xs hover:text-blue-600"
+                >
+                  Unmark as Todo
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    updateNote(note.id, `${note.content.trim()} #todo`);
+                  }}
+                  className="ml-auto text-gray-400 text-xs hover:text-blue-600"
+                >
+                  Mark as Todo
+                </button>
+              )}
             </div>
           </div>
 

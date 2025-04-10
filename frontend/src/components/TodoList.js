@@ -133,17 +133,17 @@ const TodoList = ({ todos }) => {
                 <button
                   title="High Priority"
                   onClick={() => handlePriorityClick(todo.id, 'high')}
-                  className={`text-xs transition-opacity hover:opacity-100 ${currentPriority === 'high' ? 'scale-125 opacity-90' : 'opacity-20'}`}
+                  className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'high' ? 'opacity-80' : ''}`}
                 >🔴</button>
                 <button
                   title="Medium Priority"
                   onClick={() => handlePriorityClick(todo.id, 'medium')}
-                  className={`text-xs transition-opacity hover:opacity-100 ${currentPriority === 'medium' ? 'scale-125 opacity-90' : 'opacity-20'}`}
+                  className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'medium' ? 'opacity-80' : ''}`}
                 >🟡</button>
                 <button
                   title="Low Priority"
                   onClick={() => handlePriorityClick(todo.id, 'low')}
-                  className={`text-xs transition-opacity hover:opacity-100 ${currentPriority === 'low' ? 'scale-125 opacity-90' : 'opacity-20'}`}
+                  className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'low' ? 'opacity-80' : ''}`}
                 >🟢</button>
               </div>
               <div className={`text-xs ${ageColorClass}`}>

@@ -140,6 +140,7 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
           className="flex justify-content p-4 mb-6 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 items-center"
         >
           <div className="flex flex-col flex-auto">
+            {/* Layer 1: Content and Edit/Delete */}
             <div className="p-2">
               {editingNoteId === note.id ? (
                 <textarea
@@ -149,10 +150,24 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
                   className="w-full border rounded-md p-2 min-h-64"
                 />
               ) : (
-                <pre>{processContent(note.content)}</pre>
+                <pre className="bg-gray-50 p-3 rounded-md border">{processContent(note.content)}</pre>
               )}
             </div>
-            <div className="flex text-xs text-gray-700 px-4 pb-2">
+
+            {/* Layer 2: Tags */}
+            <div className="flex flex-wrap gap-2 px-4 pb-2">
+              {note.content.match(/#\w+/g)?.map((tag, index) => (
+                <span
+                  key={index}
+                  className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+
+            {/* Layer 3: Date and Todo Toggle */}
+            <div className="flex text-xs text-gray-700 px-4 pb-2 justify-between">
               <span>{formatDate(note.created_datetime)}</span>
               {note.content.toLowerCase().includes('#todo') ? (
                 <button
@@ -160,7 +175,7 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
                     const updatedContent = note.content.replace(/#todo/gi, '').trim();
                     updateNote(note.id, updatedContent);
                   }}
-                  className="ml-auto text-gray-400 text-xs hover:text-blue-600"
+                  className="text-gray-400 text-xs hover:text-blue-600"
                 >
                   Unmark as Todo
                 </button>
@@ -169,7 +184,7 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
                   onClick={() => {
                     updateNote(note.id, `${note.content.trim()} #todo`);
                   }}
-                  className="ml-auto text-gray-400 text-xs hover:text-blue-600"
+                  className="text-gray-400 text-xs hover:text-blue-600"
                 >
                   Mark as Todo
                 </button>

@@ -75,38 +75,36 @@ const TodoList = ({ todos }) => {
         return (
           <div
             key={todo.id}
-            className="flex justify-content p-2 mb-3 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 items-center"
+            className="flex justify-between items-start p-2 mb-3 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200"
           >
-            <div className="flex flex-col flex-auto w-full">
-              <div className="flex items-center justify-between py-1 px-2">
-                <div className="flex items-center flex-1">
-                  <input
-                    type="checkbox"
-                    className="mr-2"
-                    // Placeholder for checkbox state handling
-                  />
-                  <pre className="whitespace-pre-wrap">{processContent(todo.content.replace(/\btodo\b/i, '').trim())}</pre>
-                </div>
-                <div className="flex space-x-1 mr-2">
-                  <button
-                    title="High Priority"
-                    onClick={() => handlePriorityClick(todo.id, 'high')}
-                    className={`transition-opacity hover:opacity-100 ${currentPriority === 'high' ? 'scale-125 opacity-90' : 'opacity-20'}`}
-                  >🔴</button>
-                  <button
-                    title="Medium Priority"
-                    onClick={() => handlePriorityClick(todo.id, 'medium')}
-                    className={`transition-opacity hover:opacity-100 ${currentPriority === 'medium' ? 'scale-125 opacity-90' : 'opacity-20'}`}
-                  >🟡</button>
-                  <button
-                    title="Low Priority"
-                    onClick={() => handlePriorityClick(todo.id, 'low')}
-                    className={`transition-opacity hover:opacity-100 ${currentPriority === 'low' ? 'scale-125 opacity-90' : 'opacity-20'}`}
-                  >🟢</button>
-                </div>
-                <div className={`text-xs text-right ${ageColorClass}`}>
-                  {formatDate(todo.created_datetime)}
-                </div>
+            <div className="flex items-center flex-1">
+              <input
+                type="checkbox"
+                className="mr-2"
+                // Placeholder for checkbox state handling
+              />
+              <pre className="whitespace-pre-wrap">{processContent(todo.content.replace(/\btodo\b/i, '').trim())}</pre>
+            </div>
+            <div className="flex flex-col items-end space-y-1 ml-2">
+              <div className="flex space-x-1">
+                <button
+                  title="High Priority"
+                  onClick={() => handlePriorityClick(todo.id, 'high')}
+                  className={`text-xs transition-opacity hover:opacity-100 ${currentPriority === 'high' ? 'scale-125 opacity-90' : 'opacity-20'}`}
+                >🔴</button>
+                <button
+                  title="Medium Priority"
+                  onClick={() => handlePriorityClick(todo.id, 'medium')}
+                  className={`text-xs transition-opacity hover:opacity-100 ${currentPriority === 'medium' ? 'scale-125 opacity-90' : 'opacity-20'}`}
+                >🟡</button>
+                <button
+                  title="Low Priority"
+                  onClick={() => handlePriorityClick(todo.id, 'low')}
+                  className={`text-xs transition-opacity hover:opacity-100 ${currentPriority === 'low' ? 'scale-125 opacity-90' : 'opacity-20'}`}
+                >🟢</button>
+              </div>
+              <div className={`text-xs ${ageColorClass}`}>
+                {formatDate(todo.created_datetime)}
               </div>
             </div>
           </div>

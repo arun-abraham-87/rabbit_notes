@@ -163,6 +163,38 @@ app.get('/api/notes', (req, res) => {
   }
 });
 
+app.get('/api/todos', (req, res) => {
+  try {
+    const files = fs.readdirSync(NOTES_DIR);
+    let todos = [];
+
+    files.forEach((file) => {
+      try {
+        // Skip processing objects.md as it is not a note file
+        if (file === 'objects.md') return;
+
+        const filePath = path.join(NOTES_DIR, file);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const notesInFile = JSON.parse(fileContent);
+
+        if (Array.isArray(notesInFile)) {
+          const todosInFile = notesInFile
+            .filter(note => note.content && note.content.toLowerCase().includes('todo'));
+          todos = todos.concat(todosInFile);
+        }
+
+      } catch (err) {
+        console.error(`Failed to process file: ${file}`, err.message);
+      }
+    });
+   console.log(todos)
+    res.json({ todos });
+  } catch (err) {
+    console.error("Error fetching todos:", err.message);
+    res.status(500).json({ error: "Failed to fetch todos. Please try again later." });
+  }
+});
+
 app.put('/api/notes/:id', (req, res) => {
   const noteId = req.params.id;
   const { content } = req.body;

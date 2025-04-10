@@ -14,9 +14,10 @@ const App = () => {
   const [totals, setTotals] = useState(0);
   const [checked, setChecked] = useState(true);
   const [objects, setObjects] = useState([]);
+  const [objectList, setObjectList] = useState([]);
   const [noteDate, setNoteDate] = useState(null);
   const [activePage, setActivePage] = useState('notes');
-
+  const [todos, setTodos] = useState([]);
 
   const fetchNotes = async (searchText) => {
     const encodedQuery = encodeURIComponent(searchText);
@@ -36,7 +37,8 @@ const App = () => {
         const response = await fetch("http://localhost:5001/api/objects");
         const data = await response.json();  
         const objectTexts = data.map((obj) => obj.text);
-        setObjects(objectTexts||[]);
+        setObjects(objectTexts || []);
+        setObjectList(data);
         console.log(`objects loaded: ${objects}`)
       } catch (error) {
         console.error("Error fetching objects:", error.message);
@@ -44,6 +46,20 @@ const App = () => {
     };
 
     fetchObjects();
+  }, []);
+
+  useEffect(() => {
+    const fetchTodos = async () => {
+      try {
+        const response = await fetch('http://localhost:5001/api/todos');
+        const data = await response.json();
+        setTodos(data.todos || []);
+      } catch (error) {
+        console.error("Error fetching todos:", error.message);
+      }
+    };
+
+    fetchTodos();
   }, []);
 
   useEffect(() => {
@@ -81,7 +97,6 @@ const App = () => {
     }
   };
 
-
   return (
     <div className="App">
     <Navbar activePage={activePage} setActivePage={setActivePage} />
@@ -102,8 +117,22 @@ const App = () => {
       {activePage === 'tags' && (
         <div className="max-w-[80%] mx-auto rounded-lg border bg-card text-card-foreground shadow-sm p-6">
           <h2 className="text-xl font-bold mb-4">Tags Page</h2>
-          {/* Placeholder: Replace with your tag component or logic */}
-          <p>List of tags will appear here.</p>
+          <ul className="list-disc pl-6">
+            {todos.map((todo, index) => (
+              <li key={index}>{todo}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {activePage === 'todos' && (
+        <div className="max-w-[80%] mx-auto rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+          <h2 className="text-xl font-bold mb-4">Todos Page</h2>
+          <ul className="list-disc pl-6">
+            {todos.map((todo, index) => (
+              <li key={index}>{todo.content}</li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

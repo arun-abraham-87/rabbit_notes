@@ -27,6 +27,14 @@ const Navbar = ({ activePage, setActivePage }) => (
         >
           Tags
         </button>
+        <button
+          onClick={() => setActivePage('todos')}
+          className={`text-base font-medium hover:text-blue-600 transition ${
+            activePage === 'todos' ? 'text-blue-600 underline' : 'text-gray-700'
+          }`}
+        >
+          Todos
+        </button>
       </div>
     </div>
   </nav>

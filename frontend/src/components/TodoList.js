@@ -6,6 +6,7 @@ import { formatDate } from '../utils/DateUtils';
 
 const TodoList = ({ todos }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [priorities, setPriorities] = useState({});
 
   const parseAusDate = (str) => {
     const [datePart, timePart, ampm] = str.split(/[\s,]+/);
@@ -17,9 +18,9 @@ const TodoList = ({ todos }) => {
   };
 
   const getAgeClass = (createdDate) => {
-    const ageInDays = Math.floor((Date.now() - parseAusDate(createdDate)) / (1000 * 60 * 60 * 24));
-    if (ageInDays <= 2) return 'text-red-500';
-    if (ageInDays <= 5) return 'text-yellow-500';
+    const ageInDays = (Date.now() - parseAusDate(createdDate)) / (1000 * 60 * 60 * 24);
+    if (ageInDays > 2) return 'text-red-500';
+    if (ageInDays > 1) return 'text-yellow-500';
     return 'text-green-500';
   };
 
@@ -34,6 +35,15 @@ const TodoList = ({ todos }) => {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     return `${diffHours}h ${diffMinutes}m ago`;
+  };
+
+  const onPriorityChange = (id, level) => {
+    console.log(`Todo ${id} marked as ${level} priority.`);
+  };
+
+  const handlePriorityClick = (id, level) => {
+    setPriorities((prev) => ({ ...prev, [id]: level }));
+    onPriorityChange(id, level);
   };
 
   const filteredTodos = todos.filter((todo) =>
@@ -53,15 +63,50 @@ const TodoList = ({ todos }) => {
       </div>
       {filteredTodos.map((todo) => {
         const ageColorClass = getAgeClass(todo.created_datetime);
+        const tagPriority = todo.content.includes('#high')
+          ? 'high'
+          : todo.content.includes('#medium')
+          ? 'medium'
+          : todo.content.includes('#low')
+          ? 'low'
+          : null;
+        const currentPriority = priorities[todo.id] || tagPriority || 'low';
+
         return (
           <div
             key={todo.id}
-            className="flex justify-content p-4 mb-6 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 items-center"
+            className="flex justify-content p-2 mb-3 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 items-center"
           >
-            <div className="flex flex-col flex-auto">
-              <div className="flex items-center justify-between space-x-2 p-2">
-                <pre className="flex-1">{processContent(todo.content.replace(/\btodo\b/i, '').trim())}</pre>
-                <span className={`text-xs ${ageColorClass}`}>{getAgeLabel(todo.created_datetime)}</span>
+            <div className="flex flex-col flex-auto w-full">
+              <div className="flex items-center justify-between py-1 px-2">
+                <div className="flex items-center flex-1">
+                  <input
+                    type="checkbox"
+                    className="mr-2"
+                    // Placeholder for checkbox state handling
+                  />
+                  <pre className="whitespace-pre-wrap">{processContent(todo.content.replace(/\btodo\b/i, '').trim())}</pre>
+                </div>
+                <div className="flex space-x-1 mr-2">
+                  <button
+                    title="High Priority"
+                    onClick={() => handlePriorityClick(todo.id, 'high')}
+                    className={`transition-opacity hover:opacity-100 ${currentPriority === 'high' ? 'scale-125 opacity-90' : 'opacity-20'}`}
+                  >🔴</button>
+                  <button
+                    title="Medium Priority"
+                    onClick={() => handlePriorityClick(todo.id, 'medium')}
+                    className={`transition-opacity hover:opacity-100 ${currentPriority === 'medium' ? 'scale-125 opacity-90' : 'opacity-20'}`}
+                  >🟡</button>
+                  <button
+                    title="Low Priority"
+                    onClick={() => handlePriorityClick(todo.id, 'low')}
+                    className={`transition-opacity hover:opacity-100 ${currentPriority === 'low' ? 'scale-125 opacity-90' : 'opacity-20'}`}
+                  >🟢</button>
+                </div>
+                <div className={`text-xs text-right ${ageColorClass}`}>
+                  {formatDate(todo.created_datetime)}
+                </div>
               </div>
             </div>
           </div>

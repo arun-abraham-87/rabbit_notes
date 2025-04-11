@@ -178,7 +178,11 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
     return (
       <div
         key={todo.id}
-        className="flex justify-between items-start p-2 mb-3 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200"
+        className={`flex justify-between items-start p-2 mb-3 rounded-lg border-l-4 border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 ${
+          currentPriority === 'high' ? 'border-l-red-500'
+          : currentPriority === 'medium' ? 'border-l-yellow-500'
+          : 'border-l-green-500'
+        }`}
       >
         <div className="flex items-center flex-1">
           <input
@@ -187,40 +191,58 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
             onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
           />
           <pre className="whitespace-pre-wrap">
-            {todo.content
-              .replace(/#?todo/gi, '')
-              .trim()
-              .split(/(https?:\/\/[^\s]+)/g)
-              .map((segment, i) => {
-                if (segment.match(/^https?:\/\//)) {
-                  try {
-                    const url = new URL(segment);
-                    return (
-                      <a
-                        key={`link-${i}`}
-                        href={segment}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-700 underline"
-                      >
-                        {url.hostname.replace(/^www\./, '')}
-                      </a>
+            {(() => {
+              const processedSegments = [];
+              let started = false;
+
+              todo.content
+                .replace(/#?todo/gi, '')
+                .trim()
+                .split(/(https?:\/\/[^\s]+)/g)
+                .forEach((segment, i) => {
+                  if (segment.match(/^https?:\/\//)) {
+                    try {
+                      const url = new URL(segment);
+                      processedSegments.push(
+                        <a
+                          key={`link-${i}`}
+                          href={segment}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-700 underline"
+                        >
+                          {url.hostname.replace(/^www\./, '')}
+                        </a>
+                      );
+                    } catch {
+                      processedSegments.push(segment);
+                    }
+                  } else {
+                    const words = segment.split(/(\s+)/);
+                    const processed = words.map((word, j) => {
+                      if (!started && word.trim() && !word.match(/^\s+$/)) {
+                        started = true;
+                        return word.charAt(0).toUpperCase() + word.slice(1);
+                      }
+                      return word;
+                    }).join('');
+
+                    processedSegments.push(
+                      processed
+                        .split(new RegExp(`(${searchQuery})`, 'gi'))
+                        .map((part, index) =>
+                          part.toLowerCase() === searchQuery.toLowerCase() ? (
+                            <mark key={`highlight-${i}-${index}`} className="bg-yellow-300">{part}</mark>
+                          ) : (
+                            part
+                          )
+                        )
                     );
-                  } catch {
-                    return segment;
                   }
-                } else {
-                  return segment
-                    .split(new RegExp(`(${searchQuery})`, 'gi'))
-                    .map((part, index) =>
-                      part.toLowerCase() === searchQuery.toLowerCase() ? (
-                        <mark key={`highlight-${i}-${index}`} className="bg-yellow-300">{part}</mark>
-                      ) : (
-                        part
-                      )
-                    );
-                }
-              })}
+                });
+
+              return processedSegments;
+            })()}
           </pre>
         </div>
         <div className="flex flex-col items-end space-y-1 ml-2">
@@ -353,7 +375,9 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
               }`}>
                 {priority} Priority
               </h3>
-              {group.map(renderTodoCard)}
+              <div className="pl-8">
+                {group.map(renderTodoCard)}
+              </div>
             </div>
           );
         })

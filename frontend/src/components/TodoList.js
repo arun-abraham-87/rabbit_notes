@@ -186,7 +186,42 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
             className="mr-2"
             onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
           />
-          <pre className="whitespace-pre-wrap">{processContent(todo.content.replace(/#?todo/gi, '').trim())}</pre>
+          <pre className="whitespace-pre-wrap">
+            {todo.content
+              .replace(/#?todo/gi, '')
+              .trim()
+              .split(/(https?:\/\/[^\s]+)/g)
+              .map((segment, i) => {
+                if (segment.match(/^https?:\/\//)) {
+                  try {
+                    const url = new URL(segment);
+                    return (
+                      <a
+                        key={`link-${i}`}
+                        href={segment}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-700 underline"
+                      >
+                        {url.hostname.replace(/^www\./, '')}
+                      </a>
+                    );
+                  } catch {
+                    return segment;
+                  }
+                } else {
+                  return segment
+                    .split(new RegExp(`(${searchQuery})`, 'gi'))
+                    .map((part, index) =>
+                      part.toLowerCase() === searchQuery.toLowerCase() ? (
+                        <mark key={`highlight-${i}-${index}`} className="bg-yellow-300">{part}</mark>
+                      ) : (
+                        part
+                      )
+                    );
+                }
+              })}
+          </pre>
         </div>
         <div className="flex flex-col items-end space-y-1 ml-2">
           <div className="flex space-x-1">

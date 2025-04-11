@@ -10,6 +10,7 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
   const [priorityFilter, setPriorityFilter] = useState(null);
   const [snackbar, setSnackbar] = useState(null); // { id, content, timeoutId }
   const [removedTodo, setRemovedTodo] = useState(null); // { id, content }
+  const [groupByPriority, setGroupByPriority] = useState(true);
 
   const parseAusDate = (str) => {
     const [datePart, timePart, ampmRaw] = str.split(/[\s,]+/);
@@ -163,6 +164,56 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
 
   const { total, high, medium, low } = computePriorityCounts();
 
+  const renderTodoCard = (todo) => {
+    const ageColorClass = getAgeClass(todo.created_datetime);
+    const tagPriority = todo.content.includes('#high')
+      ? 'high'
+      : todo.content.includes('#medium')
+      ? 'medium'
+      : todo.content.includes('#low')
+      ? 'low'
+      : null;
+    const currentPriority = priorities[todo.id] || tagPriority || 'low';
+
+    return (
+      <div
+        key={todo.id}
+        className="flex justify-between items-start p-2 mb-3 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200"
+      >
+        <div className="flex items-center flex-1">
+          <input
+            type="checkbox"
+            className="mr-2"
+            onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
+          />
+          <pre className="whitespace-pre-wrap">{processContent(todo.content.replace(/#?todo/gi, '').trim())}</pre>
+        </div>
+        <div className="flex flex-col items-end space-y-1 ml-2">
+          <div className="flex space-x-1">
+            <button
+              title="High Priority"
+              onClick={() => handlePriorityClick(todo.id, 'high')}
+              className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'high' ? 'opacity-80' : ''}`}
+            >🔴</button>
+            <button
+              title="Medium Priority"
+              onClick={() => handlePriorityClick(todo.id, 'medium')}
+              className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'medium' ? 'opacity-80' : ''}`}
+            >🟡</button>
+            <button
+              title="Low Priority"
+              onClick={() => handlePriorityClick(todo.id, 'low')}
+              className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'low' ? 'opacity-80' : ''}`}
+            >🟢</button>
+          </div>
+          <div className={`text-xs ${ageColorClass}`}>
+            {formatDate(todo.created_datetime)}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <div className="my-2">
@@ -173,6 +224,15 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
           onChange={(e) => setSearchQuery(e.target.value)}
           className="border px-2 py-1 rounded w-full"
         />
+      </div>
+      <div className="my-2 flex items-center space-x-2">
+        <input
+          type="checkbox"
+          checked={groupByPriority}
+          onChange={(e) => setGroupByPriority(e.target.checked)}
+          id="groupPriority"
+        />
+        <label htmlFor="groupPriority" className="text-sm">Group by Priority</label>
       </div>
       <div className="flex space-x-4 mb-4 text-sm">
         <div
@@ -224,55 +284,36 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
           <div className="text-lg font-bold">{low}</div>
         </div>
       </div>
-      {filteredTodos.map((todo) => {
-        const ageColorClass = getAgeClass(todo.created_datetime);
-        const tagPriority = todo.content.includes('#high')
-          ? 'high'
-          : todo.content.includes('#medium')
-          ? 'medium'
-          : todo.content.includes('#low')
-          ? 'low'
-          : null;
-        const currentPriority = priorities[todo.id] || tagPriority || 'low';
-
-        return (
-          <div
-            key={todo.id}
-            className="flex justify-between items-start p-2 mb-3 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200"
-          >
-            <div className="flex items-center flex-1">
-              <input
-                type="checkbox"
-                className="mr-2"
-                onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
-              />
-              <pre className="whitespace-pre-wrap">{processContent(todo.content.replace(/#?todo/gi, '').trim())}</pre>
+      {groupByPriority ? (
+        ['high', 'medium', 'low'].map(priority => {
+          const group = filteredTodos.filter(todo => {
+            const tag = todo.content.includes('#high')
+              ? 'high'
+              : todo.content.includes('#medium')
+              ? 'medium'
+              : todo.content.includes('#low')
+              ? 'low'
+              : 'low';
+            const assignedPriority = priorities[todo.id] || tag;
+            return assignedPriority === priority;
+          });
+          if (!group.length) return null;
+          return (
+            <div key={priority}>
+              <h3 className={`text-md font-semibold capitalize my-2 ${
+                priority === 'high' ? 'text-red-500'
+                : priority === 'medium' ? 'text-yellow-500'
+                : 'text-green-500'
+              }`}>
+                {priority} Priority
+              </h3>
+              {group.map(renderTodoCard)}
             </div>
-            <div className="flex flex-col items-end space-y-1 ml-2">
-              <div className="flex space-x-1">
-                <button
-                  title="High Priority"
-                  onClick={() => handlePriorityClick(todo.id, 'high')}
-                  className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'high' ? 'opacity-80' : ''}`}
-                >🔴</button>
-                <button
-                  title="Medium Priority"
-                  onClick={() => handlePriorityClick(todo.id, 'medium')}
-                  className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'medium' ? 'opacity-80' : ''}`}
-                >🟡</button>
-                <button
-                  title="Low Priority"
-                  onClick={() => handlePriorityClick(todo.id, 'low')}
-                  className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'low' ? 'opacity-80' : ''}`}
-                >🟢</button>
-              </div>
-              <div className={`text-xs ${ageColorClass}`}>
-                {formatDate(todo.created_datetime)}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+          );
+        })
+      ) : (
+        filteredTodos.map(renderTodoCard)
+      )}
       {snackbar && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50 transition-opacity duration-300">
           Todo marked complete

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import AddNoteBar from './components/NoteAddAndSearchBar.js';
 import NotesListing from './components/NotesListing.js';
+import TagListing from './components/TagListing.js';
 import TodoList from './components/TodoList.js';
 
 import { addNewNote, addNewTag, loadNotes, loadTags, loadTodos } from './utils/ApiUtils';
@@ -15,7 +16,6 @@ const App = () => {
   const [objectList, setObjectList] = useState([]);
   const [activePage, setActivePage] = useState('notes');
   const [todos, setTodos] = useState([]);
-  const [tagSearch, setTagSearch] = useState('');
   const [noteDate, setNoteDate] = useState(null);
   const [totals, setTotals] = useState(0);
 
@@ -70,23 +70,7 @@ const App = () => {
         )}
 
         {activePage === 'tags' && (
-          <div className="max-w-[80%] mx-auto rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-            <h2 className="text-xl font-bold mb-4">Tags Page</h2>
-            <input
-              type="text"
-              placeholder="Search tags..."
-              value={tagSearch}
-              onChange={(e) => setTagSearch(e.target.value)}
-              className="w-full mb-4 px-3 py-2 border rounded-md"
-            />
-            <ul className="list-disc pl-6">
-              {objectList
-                .filter(obj => obj.text.toLowerCase().includes(tagSearch.toLowerCase()))
-                .map((obj) => (
-                  <li key={obj.id}>{obj.text}</li>
-                ))}
-            </ul>
-          </div>
+          <TagListing objectList={objects}/>
         )}
 
         {activePage === 'todos' && (

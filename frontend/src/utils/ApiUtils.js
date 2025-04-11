@@ -71,6 +71,7 @@ export const loadNotes = async (searchText,noteDate) => {
       const response = await fetch("http://localhost:5001/api/objects");
       const data = await response.json();
       const tagsList = data.map((obj) => obj.text);
+      console.log(tagsList)
       return tagsList
     } catch (error) {
       console.error("Error fetching objects:", error.message);

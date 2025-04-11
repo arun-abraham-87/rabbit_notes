@@ -19,6 +19,7 @@ const App = () => {
   const [noteDate, setNoteDate] = useState(null);
   const [activePage, setActivePage] = useState('notes');
   const [todos, setTodos] = useState([]);
+  const [tagSearch, setTagSearch] = useState('');
 
   const fetchNotes = async (searchText) => {
     const encodedQuery = encodeURIComponent(searchText);
@@ -118,10 +119,19 @@ const App = () => {
       {activePage === 'tags' && (
         <div className="max-w-[80%] mx-auto rounded-lg border bg-card text-card-foreground shadow-sm p-6">
           <h2 className="text-xl font-bold mb-4">Tags Page</h2>
+          <input
+            type="text"
+            placeholder="Search tags..."
+            value={tagSearch}
+            onChange={(e) => setTagSearch(e.target.value)}
+            className="w-full mb-4 px-3 py-2 border rounded-md"
+          />
           <ul className="list-disc pl-6">
-            {todos.map((todo, index) => (
-              <li key={index}>{todo}</li>
-            ))}
+            {objectList
+              .filter(obj => obj.text.toLowerCase().includes(tagSearch.toLowerCase()))
+              .map((obj) => (
+                <li key={obj.id}>{obj.text}</li>
+              ))}
           </ul>
         </div>
       )}

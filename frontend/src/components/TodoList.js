@@ -217,13 +217,24 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
   return (
     <div>
       <div className="my-2">
-        <input
-          type="text"
-          placeholder="Search todos..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="border px-2 py-1 rounded w-full"
-        />
+        <div className="relative w-full">
+          <input
+            type="text"
+            placeholder="Search todos..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border px-2 py-1 rounded w-full pr-8"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+              title="Clear"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
       <div className="my-2 flex items-center space-x-2">
         <input

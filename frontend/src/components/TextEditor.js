@@ -124,7 +124,7 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
 
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();
-            addNotes(notes.join("\n"), []);
+                addNotes(notes.join("\n"), []);
                 setNotes([""])
                 focusDiv(0, true)
                 return;

@@ -4,6 +4,7 @@ import { TrashIcon } from '@heroicons/react/24/solid';
 import { processContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
 import { formatDate } from '../utils/DateUtils';
+import {updateNoteById,deleteNoteById} from '../utils/ApiUtils';
 
 const HOSTNAME_MAP = {
   'mail.google.com': 'Gmail',
@@ -64,6 +65,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
   const [isPopupVisible, setPopupVisible] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState([]);
   const popupTimeoutRef = useRef(null);
+  const safeNotes = notes || [];
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -78,46 +80,27 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
     openModal();
   };
 
-  const updateNote = async (id, updatedContent) => {
-    const response = await fetch(`http://localhost:5001/api/notes/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: updatedContent }),
-    });
-
-    if (response.ok) {
-      console.log('Note Updated:', id);
-      updateNoteCallback(
-        notes.map((note) =>
-          note.id === id ? { ...note, content: updatedContent } : note
-        )
-      );
-    } else {
-      console.error('Err: Failed to update note');
-    }
+  const updateNote = (id, updatedContent) => {
+    updateNoteById(id, updatedContent);
+    updateNoteCallback(
+      notes.map((note) =>
+        note.id === id ? { ...note, content: updatedContent } : note
+      )
+    );
   };
 
   const deleteNote = async (id) => {
-    const response = await fetch(`http://localhost:5001/api/notes/${id}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    if (response.ok) {
-      console.log('Note Deleted:', id);
-      updateNoteCallback(
-        notes.filter((note) => note.id !== id) // Filter out the deleted note from the list
-      );
-      updateTotals(notes.length);
-      setDeletingNoteId(0);
-    } else {
-      console.error('Err: Failed to delete note');
-    }
+    deleteNoteById(id)
+    updateNoteCallback(
+      notes.filter((note) => note.id !== id) // Filter out the deleted note from the list
+    );
+    updateTotals(notes.length);
+    setDeletingNoteId(0);
   };
 
-  const handleEdit = (noteId) => {
-    setEditingNoteId(noteId);
-    const noteToEdit = notes.find((note) => note.id === noteId);
+  const handleEdit = (id) => {
+    setEditingNoteId(id);
+    const noteToEdit = notes.find((note) => note.id === id);
     setEditedContent(noteToEdit ? noteToEdit.content : '');
   };
 
@@ -181,18 +164,12 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
       .map((id) => notes.find((n) => n.id === id)?.content)
       .filter(Boolean)
       .join('\n-----------------------------------\n') + '\n#merged';
-
     console.log('Merged Note')
     console.log(mergedContent)
-
-   
-
     for (const id of selectedNotes) {
       await deleteNote(id);
     }
-
     addNotes(mergedContent)
-    
     setSelectedNotes([]);
   };
 
@@ -206,7 +183,6 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
     };
   }, []);
 
-  const safeNotes = notes || [];
 
   return (
     <div>

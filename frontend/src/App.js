@@ -111,7 +111,7 @@ const App = () => {
           {checked ? (
             <NotesListByDate notes={notes} searchQuery={searchQuery} />
           ) : (
-            <NotesList notes={notes} updateNoteCallback={setNotes} updateTotals={setTotals} objects={objects} addObjects={addObject} />
+            <NotesList notes={notes}  addNotes={addNote} updateNoteCallback={setNotes} updateTotals={setTotals} objects={objects} addObjects={addObject} />
           )}
         </div>
       )}

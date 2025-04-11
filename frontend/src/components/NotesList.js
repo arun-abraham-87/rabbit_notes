@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { PencilIcon } from '@heroicons/react/24/solid';
 import { TrashIcon } from '@heroicons/react/24/solid';
 import { processContent } from '../utils/TextUtils';
@@ -54,7 +54,7 @@ const renderSmartLink = (url) => {
   }
 };
 
-const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObjects }) => {
+const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm }) => {
   const [editedContent, setEditedContent] = useState('');
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [isModalOpen, setModalOpen] = useState(false);
@@ -62,6 +62,7 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
   const [selectedText, setSelectedText] = useState('');
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [isPopupVisible, setPopupVisible] = useState(false);
+  const [selectedNotes, setSelectedNotes] = useState([]);
   const popupTimeoutRef = useRef(null);
 
   const openModal = () => setModalOpen(true);
@@ -169,6 +170,32 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
     setPopupVisible(false);
   };
 
+  const toggleNoteSelection = (id) => {
+    setSelectedNotes((prev) =>
+      prev.includes(id) ? prev.filter((nid) => nid !== id) : [...prev, id]
+    );
+  };
+
+  const handleMergeNotes = async () => {
+    const mergedContent = selectedNotes
+      .map((id) => notes.find((n) => n.id === id)?.content)
+      .filter(Boolean)
+      .join('\n-----------------------------------\n') + '\n#merged';
+
+    console.log('Merged Note')
+    console.log(mergedContent)
+
+   
+
+    for (const id of selectedNotes) {
+      await deleteNote(id);
+    }
+
+    addNotes(mergedContent)
+    
+    setSelectedNotes([]);
+  };
+
   useEffect(() => {
     document.addEventListener('selectionchange', handleTextSelection);
     return () => {
@@ -183,11 +210,28 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
 
   return (
     <div>
+      {selectedNotes.length > 1 && (
+        <div className="mb-4">
+          <button
+            onClick={handleMergeNotes}
+            className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
+          >
+            Merge Selected Notes
+          </button>
+        </div>
+      )}
       {safeNotes.map((note) => (
         <div
           key={note.id}
           className="flex justify-content p-4 mb-6 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 items-center"
         >
+          <div className="mr-2">
+            <input
+              type="checkbox"
+              checked={selectedNotes.includes(note.id)}
+              onChange={() => toggleNoteSelection(note.id)}
+            />
+          </div>
           <div className="flex flex-col flex-auto">
             {/* Layer 1: Content and Edit/Delete */}
             <div className="p-2">

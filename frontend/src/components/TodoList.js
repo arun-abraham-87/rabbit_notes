@@ -246,7 +246,7 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
                 className="mr-2"
                 onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
               />
-              <pre className="whitespace-pre-wrap">{processContent(todo.content.replace(/\btodo\b/i, '').trim())}</pre>
+              <pre className="whitespace-pre-wrap">{processContent(todo.content.replace(/#?todo/gi, '').trim())}</pre>
             </div>
             <div className="flex flex-col items-end space-y-1 ml-2">
               <div className="flex space-x-1">

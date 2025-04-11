@@ -5,6 +5,55 @@ import { processContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
 import { formatDate } from '../utils/DateUtils';
 
+const HOSTNAME_MAP = {
+  'mail.google.com': 'Gmail',
+  'docs.google.com': 'Google Docs',
+  'drive.google.com': 'Google Drive',
+  'calendar.google.com': 'Google Calendar',
+  'slack.com': 'Slack',
+  'github.com': 'GitHub',
+};
+
+const renderSmartLink = (url) => {
+  try {
+    const parsedUrl = new URL(url);
+    const host = parsedUrl.hostname.replace(/^www\./, '');
+    const path = parsedUrl.pathname.split('/').filter(Boolean);
+    let label = HOSTNAME_MAP[host] || host;
+    let icon = '🔗';
+
+    if (host.includes('slack.com') && path.includes('archives')) {
+      label = 'Slack Thread';
+      icon = '💬';
+    } else if (url.startsWith('mail.google.com')) {
+      label = url.replace('mailto:', '');
+      icon = '✉️';
+    } else if (host.includes('docs.google.com')) {
+      label = 'Google Doc';
+      icon = '📄';
+    } else {
+      const mappedHost = HOSTNAME_MAP[host] || host;
+      label = mappedHost;
+      icon = '🌐';
+    }
+
+    return (
+      <a
+        key={url}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center text-sm font-medium bg-gray-100 text-blue-800 px-3 py-1 rounded-full hover:bg-gray-200 transition mr-2 mb-2"
+      >
+        <span className="mr-1">{icon}</span>
+        {label}
+      </a>
+    );
+  } catch {
+    return null;
+  }
+};
+
 const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObjects }) => {
   const [editedContent, setEditedContent] = useState('');
   const [editingNoteId, setEditingNoteId] = useState(null);
@@ -150,20 +199,29 @@ const NotesList = ({ notes, updateNoteCallback, updateTotals, objects, addObject
                   className="w-full border rounded-md p-2 min-h-64"
                 />
               ) : (
-                <pre className="bg-gray-50 p-3 rounded-md border">{processContent(note.content)}</pre>
+                <div className="bg-gray-50 p-3 rounded-md border">
+                  <pre className="whitespace-pre-wrap">
+                    {note.content.split(/(https?:\/\/[^\s]+)/g).map((part, idx) =>
+                      part.match(/https?:\/\/[^\s]+/) ? renderSmartLink(part) : part
+                    )}
+                  </pre>
+                </div>
               )}
             </div>
 
             {/* Layer 2: Tags */}
             <div className="flex flex-wrap gap-2 px-4 pb-2">
-              {note.content.match(/#\w+/g)?.map((tag, index) => (
-                <span
-                  key={index}
-                  className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded"
-                >
-                  {tag}
-                </span>
-              ))}
+              {note.content
+                .match(/#\w+/g)
+                ?.filter((tag) => objects.includes(tag.substring(1)))
+                .map((tag, index) => (
+                  <span
+                    key={index}
+                    className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded"
+                  >
+                    {tag}
+                  </span>
+                ))}
             </div>
 
             {/* Layer 3: Date and Todo Toggle */}

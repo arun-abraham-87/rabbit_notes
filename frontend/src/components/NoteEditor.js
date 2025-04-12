@@ -104,9 +104,129 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
   };
 
   const handleKeyDown = (e, index) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === 'Backspace') {
+    const cursorAtStart = e.target.selectionStart === 0;
+    const prevLine = lines[index - 1];
+
+    if (cursorAtStart && index > 0 && prevLine) {
       e.preventDefault();
-      handleSave();
+      const newLines = [...lines];
+      const prevTextLength = newLines[index - 1].text.length;
+      newLines[index - 1].text += newLines[index].text;
+      newLines.splice(index, 1);
+      setLines(newLines);
+      setTimeout(() => {
+        const prevTextarea = textareasRef.current[index - 1];
+        if (prevTextarea) {
+          prevTextarea.focus();
+          prevTextarea.selectionStart = prevTextarea.selectionEnd = prevTextLength;
+        }
+      }, 0);
+      return;
+    }
+  }
+  
+  if (e.key === 'Tab') {
+      e.preventDefault();
+      const newLines = [...lines];
+      const line = newLines[index];
+      
+      if (e.shiftKey) {
+        const cursorAtStart = e.target.selectionStart === 0;
+        const prevLine = lines[index - 1];
+
+        if (cursorAtStart && index > 0 && prevLine) {
+          e.preventDefault();
+          const current = newLines[index];
+          newLines[index - 1].text += ' ' + current.text;
+          newLines.splice(index, 1);
+          setLines(newLines);
+          setTimeout(() => {
+            const prevTextarea = textareasRef.current[index - 1];
+            if (prevTextarea) {
+              prevTextarea.focus();
+              prevTextarea.selectionStart = prevTextarea.selectionEnd = prevTextarea.value.length;
+            }
+          }, 0);
+          return;
+        }
+
+        // Existing outdent logic
+        if (line.text.startsWith('    ')) {
+          line.text = line.text.slice(4);
+        } else if (line.text.startsWith('- ')) {
+          line.text = line.text.slice(2);
+        }
+      } else {
+        // Indent with bullet or additional space
+        if (!line.text.startsWith('- ')) {
+          line.text = '- ' + line.text;
+        } else {
+          line.text = '    ' + line.text;
+        }
+      }
+
+      setLines(newLines);
+
+      setTimeout(() => {
+        const cursor = textareasRef.current[index];
+        if (cursor) {
+          const offset = e.shiftKey ? -4 : 4;
+          const pos = Math.max(0, e.target.selectionStart + offset);
+          cursor.selectionStart = cursor.selectionEnd = pos;
+        }
+      }, 0);
+
+      return;
+    }
+    
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const cursorPos = e.target.selectionStart;
+      const newLines = [...lines];
+      const currentLine = newLines[index];
+      const before = currentLine.text.slice(0, cursorPos);
+      const after = currentLine.text.slice(cursorPos);
+
+      currentLine.text = before;
+
+      const newLine = {
+        id: `line-${Date.now()}`,
+        text: after,
+        isTitle: false
+      };
+
+      newLines.splice(index + 1, 0, newLine);
+      setLines(newLines);
+
+      setTimeout(() => {
+        const nextTextarea = textareasRef.current[index + 1];
+        if (nextTextarea) {
+          nextTextarea.focus();
+          nextTextarea.selectionStart = nextTextarea.selectionEnd = 0;
+        }
+      }, 0);
+
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      const cursorPosition = e.target.selectionStart;
+      if (cursorPosition === 0 && index > 0) {
+        e.preventDefault();
+        textareasRef.current[index - 1]?.focus();
+        return;
+      }
+    }
+
+    if (e.key === 'ArrowDown') {
+      const cursorPosition = e.target.selectionStart;
+      const textLength = e.target.value.length;
+      if (cursorPosition === textLength && index < lines.length - 1) {
+        e.preventDefault();
+        textareasRef.current[index + 1]?.focus();
+        return;
+      }
     }
 
     if (e.metaKey || e.ctrlKey) {
@@ -238,41 +358,43 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
           }}
         />
       ) : (
-        lines.map((line, index) => (
-          <div
-            key={line.id}
-            draggable
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragOver={(e) => {
-              e.preventDefault();
-              handleDragOver(index);
-            }}
-            onDrop={(e) => handleDrop(e, index)}
-            className={`mb-2 border border-gray-200 rounded bg-gray-50 ${dropTargetIndex === index ? 'border-blue-500' : ''}`}
-          >
-            {dropTargetIndex === index && draggedId !== lines[index].id && (
-              <div className="h-1 bg-blue-500 rounded my-1"></div>
-            )}
-            <div className="relative w-full flex items-center">
-              <span className="absolute left-1 top-1 cursor-move text-gray-400">☰</span>
-              <textarea
-                ref={(el) => (textareasRef.current[index] = el)}
-                value={line.text}
-                onChange={(e) => handleTextChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, index)}
-                onPaste={(e) => handlePaste(e, index)}
-                className={`w-full pl-6 pr-20 p-1 resize-none focus:outline-none ${line.isTitle ? 'font-bold text-xl' : ''}`}
-                rows={1}
-              />
-              <div className="absolute top-1 right-1 flex space-x-2">
-                <button onClick={() => handleDeleteLine(index)} className="text-red-500 text-sm">🗑️</button>
-                {!line.isTitle && (
-                  <button onClick={() => handleMarkAsTitle(index)} className="text-blue-500 text-sm">🏷️</button>
-                )}
+        <div className="border border-gray-300 rounded-md divide-y divide-gray-200">
+          {lines.map((line, index) => (
+            <div
+              key={line.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                handleDragOver(index);
+              }}
+              onDrop={(e) => handleDrop(e, index)}
+              className={`${dropTargetIndex === index ? 'border-t border-blue-500' : ''}`}
+            >
+              {dropTargetIndex === index && draggedId !== lines[index].id && (
+                <div className="h-1 bg-blue-500 rounded my-1"></div>
+              )}
+              <div className="relative w-full flex items-center">
+                <span className="absolute left-1 top-1 cursor-move text-gray-400">☰</span>
+                <textarea
+                  ref={(el) => (textareasRef.current[index] = el)}
+                  value={line.text}
+                  onChange={(e) => handleTextChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, index)}
+                  onPaste={(e) => handlePaste(e, index)}
+                  className={`w-full pl-6 pr-20 py-0 resize-none focus:outline-none border-none bg-transparent ${line.isTitle ? 'font-bold text-xl' : ''}`}
+                  rows={1}
+                />
+                <div className="absolute top-1 right-1 flex space-x-2">
+                  <button onClick={() => handleDeleteLine(index)} className="text-red-500 text-sm">🗑️</button>
+                  {!line.isTitle && (
+                    <button onClick={() => handleMarkAsTitle(index)} className="text-blue-500 text-sm">🏷️</button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
       <div className="text-xs text-gray-400 mt-2 text-center">
         ⌘↑ Move Up | ⌘↓ Move Down | ⌘D Duplicate | ⌘T Title | ⌘⏎ Save

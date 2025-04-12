@@ -8,7 +8,6 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
   }));
 
   const [lines, setLines] = useState(initialLines);
-  const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [mergedContent, setMergedContent] = useState(null);
   const textareasRef = useRef([]);
@@ -19,21 +18,23 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
     }
   }, []);
 
-  const handleDragStart = (index) => {
-    setDraggedIndex(index);
+  const handleDragStart = (e, index) => {
+    e.dataTransfer.setData('text/plain', lines[index].id);
   };
 
   const handleDragOver = (index) => {
     setDropTargetIndex(index);
   };
 
-  const handleDrop = (targetIndex) => {
-    if (draggedIndex === null) return;
+  const handleDrop = (e, targetIndex) => {
+    const draggedId = e.dataTransfer.getData('text/plain');
+    const draggedIndex = lines.findIndex(line => line.id === draggedId);
+    if (draggedIndex === -1 || draggedIndex === targetIndex) return;
+
     const newLines = [...lines];
     const [movedItem] = newLines.splice(draggedIndex, 1);
     newLines.splice(targetIndex, 0, movedItem);
     setLines(newLines);
-    setDraggedIndex(null);
     setDropTargetIndex(null);
   };
 
@@ -63,10 +64,28 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
   };
 
   const handleMarkAsTitle = (index) => {
-    const newLines = lines.map((line, i) => ({
-      ...line,
-      isTitle: i === index ? true : line.isTitle && !line.isTitle
-    }));
+    const newLines = [...lines];
+
+    // Remove title from existing title line if any
+    const existingTitleIndex = newLines.findIndex(line => line.isTitle);
+    if (existingTitleIndex !== -1) {
+      const existingTitle = { ...newLines[existingTitleIndex] };
+      existingTitle.isTitle = false;
+      if (existingTitle.text.startsWith('##') && existingTitle.text.endsWith('##')) {
+        existingTitle.text = existingTitle.text.slice(2, -2);
+      }
+      newLines.splice(existingTitleIndex, 1, existingTitle);
+    }
+
+    // Promote the selected line to title
+    const [selected] = newLines.splice(index, 1);
+    selected.isTitle = true;
+    if (!selected.text.startsWith('##')) {
+      selected.text = `##${selected.text}##`;
+    }
+
+    // Place it at the top
+    newLines.unshift(selected);
     setLines(newLines);
   };
 
@@ -94,11 +113,17 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
         <div
           key={line.id}
           draggable
-          onDragStart={() => handleDragStart(index)}
-          onDragOver={() => handleDragOver(index)}
-          onDrop={() => handleDrop(index)}
+          onDragStart={(e) => handleDragStart(e, index)}
+          onDragOver={(e) => {
+            e.preventDefault();
+            handleDragOver(index);
+          }}
+          onDrop={(e) => handleDrop(e, index)}
           className={`mb-2 border border-gray-200 rounded bg-gray-50 ${dropTargetIndex === index ? 'border-blue-500' : ''}`}
         >
+          {dropTargetIndex === index && (
+            <div className="h-1 bg-blue-500 rounded my-1"></div>
+          )}
           <div className="relative w-full flex items-center">
             <span className="absolute left-1 top-1 cursor-move text-gray-400">☰</span>
             <textarea

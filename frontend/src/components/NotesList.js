@@ -65,7 +65,9 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [isPopupVisible, setPopupVisible] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState([]);
+  const [showCreatedDate, setShowCreatedDate] = useState(false);
   const popupTimeoutRef = useRef(null);
+  const textareaRef = useRef(null);
   const safeNotes = notes || [];
 
   const openModal = () => setModalOpen(true);
@@ -103,6 +105,12 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
     setEditingNoteId(id);
     const noteToEdit = notes.find((note) => note.id === id);
     setEditedContent(noteToEdit ? noteToEdit.content : '');
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = textareaRef.current.value.length;
+      }
+    }, 0);
   };
 
   const handleSave = (noteId) => {
@@ -196,6 +204,19 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
           </button>
         </div>
       )}
+      <div className="flex justify-between items-center px-4 py-2 mb-4 mt-2 bg-white rounded-lg border border-gray-200 shadow-sm">
+        <p className="text-sm text-gray-700">Settings</p>
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="toggleCreatedDate"
+            checked={showCreatedDate}
+            onChange={() => setShowCreatedDate((prev) => !prev)}
+            className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
+          />
+          <label htmlFor="toggleCreatedDate" className="text-sm text-gray-700">Show created date</label>
+        </div>
+      </div>
       {safeNotes.map((note) => (
         <div
           key={note.id}
@@ -203,24 +224,33 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
             note.content.toLowerCase().includes('#todo') ? 'border-purple-500' : 'border-gray-200'
           } bg-white shadow hover:shadow-md transition-shadow duration-200`}
         >
-          <div className="mr-2">
-            <input
-              type="checkbox"
-              checked={selectedNotes.includes(note.id)}
-              onChange={() => toggleNoteSelection(note.id)}
-              className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
-            />
-          </div>
           <div className="flex flex-col flex-auto">
             {/* Layer 1: Content and Edit/Delete */}
             <div className="p-2">
               {editingNoteId === note.id ? (
-                <textarea
-                  value={editedContent}
-                  onChange={(e) => setEditedContent(e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, note.id)}
-                  className="w-full border rounded-md p-2 min-h-64"
-                />
+                <>
+                  <textarea
+                    ref={textareaRef}
+                    value={editedContent}
+                    onChange={(e) => setEditedContent(e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, note.id)}
+                    className="w-full border rounded-md p-2 min-h-64"
+                  />
+                  <div className="mt-2 flex justify-end space-x-2">
+                    <button
+                      onClick={handleCancel}
+                      className="text-sm text-gray-600 hover:text-gray-800 border border-gray-300 px-3 py-1 rounded-md"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleSave(note.id)}
+                      className="text-sm text-white bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-md"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </>
               ) : (
                 <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                   <pre className="whitespace-pre-wrap">
@@ -248,35 +278,54 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
             </div>
 
             {/* Layer 3: Date and Todo Toggle */}
-            <div className="flex text-xs text-gray-700 px-4 pb-2 justify-between items-center">
-              <span>{formatDate(note.created_datetime)}</span>
-              <div className="flex items-center space-x-2">
-                {note.content.toLowerCase().includes('#todo') ? (
-                  <XCircleIcon
-                    title="Unmark as Todo"
-                    className="h-4 w-4 text-purple-600 cursor-pointer hover:text-purple-800"
-                    onClick={() => {
-                      const updatedContent = note.content.replace(/#todo/gi, '').trim();
-                      updateNote(note.id, updatedContent);
-                    }}
+            <div className="flex text-xs text-gray-700 px-4 pb-2 items-center">
+              <div className="flex justify-between w-full items-center">
+                <div className="flex-1">
+                  {showCreatedDate && <span>{formatDate(note.created_datetime)}</span>}
+                </div>
+                <div className="flex items-center space-x-2">
+                  {note.content.toLowerCase().includes('#todo') ? (
+                    <div className="group relative">
+                      <XCircleIcon
+                        title="Unmark as Todo"
+                        className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
+                        onClick={() => {
+                          const updatedContent = note.content.replace(/#todo/gi, '').trim();
+                          updateNote(note.id, updatedContent);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="group relative">
+                      <CheckCircleIcon
+                        title="Mark as Todo"
+                        className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
+                        onClick={() => {
+                          updateNote(note.id, `${note.content.trim()} #todo`);
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="group relative">
+                    <PencilIcon
+                      className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
+                      onClick={() => handleEdit(note.id)}
+                    />
+                  </div>
+                  <div className="group relative">
+                    <TrashIcon
+                      className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
+                      onClick={() => handleDelete(note.id)}
+                    />
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={selectedNotes.includes(note.id)}
+                    onChange={() => toggleNoteSelection(note.id)}
+                    title="Select Note"
+                    className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
                   />
-                ) : (
-                  <CheckCircleIcon
-                    title="Mark as Todo"
-                    className="h-4 w-4 text-purple-600 cursor-pointer hover:text-purple-800"
-                    onClick={() => {
-                      updateNote(note.id, `${note.content.trim()} #todo`);
-                    }}
-                  />
-                )}
-                <PencilIcon
-                  className="h-4 w-4 text-gray-600 cursor-pointer hover:text-gray-800"
-                  onClick={() => handleEdit(note.id)}
-                />
-                <TrashIcon
-                  className="h-4 w-4 text-gray-600 cursor-pointer hover:text-gray-800"
-                  onClick={() => handleDelete(note.id)}
-                />
+                </div>
               </div>
             </div>
           </div>

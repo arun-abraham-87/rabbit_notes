@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Navbar = ({ activePage, setActivePage }) => (
-  <nav className="border-b py-4 px-8 bg-background">
+  <nav className="border-b py-4 px-8 bg-background hover:shadow-sm transition-shadow">
     <div className="max-w-[80%] mx-auto flex justify-between items-center">
       <div className="flex items-center gap-2 cursor-pointer">
         <div>
@@ -10,7 +10,7 @@ const Navbar = ({ activePage, setActivePage }) => (
         <h1 className="text-xl font-bold">Rabbit Notes</h1>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex items-center space-x-4">
         <button
           onClick={() => setActivePage('notes')}
           className={`text-base font-medium hover:text-blue-600 transition ${

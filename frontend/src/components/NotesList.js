@@ -16,18 +16,22 @@ const HOSTNAME_MAP = {
   'github.com': 'GitHub',
 };
 
-const renderSmartLink = (url) => {
+const renderSmartLink = (url, highlightColor = null) => {
   try {
     const parsedUrl = new URL(url);
     const host = parsedUrl.hostname.replace(/^www\./, '');
-    
+
+    const backgroundColor = highlightColor ? `${highlightColor}20` : 'transparent';
+    const borderColor = highlightColor || 'transparent';
+
     return (
       <a
         key={url}
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-blue-600 underline hover:text-blue-800"
+        className="text-blue-600 underline hover:text-blue-800 px-1 rounded border-2"
+        style={{ borderColor, backgroundColor }}
       >
         {host}
       </a>
@@ -176,6 +180,16 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
     });
   });
 
+  const duplicatedUrls = Object.entries(urlToNotesMap)
+    .filter(([, ids]) => ids.length > 1)
+    .map(([url]) => url);
+
+  const duplicatedUrlColors = {};
+  const highlightPalette = ['#fde68a', '#a7f3d0', '#fbcfe8', '#bfdbfe', '#ddd6fe', '#fecaca'];
+  duplicatedUrls.forEach((url, idx) => {
+    duplicatedUrlColors[url] = highlightPalette[idx % highlightPalette.length];
+  });
+
   const duplicateUrlNoteIds = new Set();
   Object.values(urlToNotesMap).forEach((noteIds) => {
     if (noteIds.length > 1) {
@@ -269,7 +283,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                 <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                   <pre className="whitespace-pre-wrap">
                     {note.content.split(/(https?:\/\/[^\s]+)/g).map((part, idx) =>
-                      part.match(/https?:\/\/[^\s]+/) ? renderSmartLink(part) : part
+                      part.match(/https?:\/\/[^\s]+/) ? renderSmartLink(part, duplicatedUrlColors[part]) : part
                     )}
                   </pre>
                 </div>

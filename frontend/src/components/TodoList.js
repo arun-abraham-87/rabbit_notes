@@ -184,7 +184,7 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
           : 'border-l-green-500'
         }`}
       >
-        <div className="flex items-center flex-1">
+        <div className="flex-1">
           <input
             type="checkbox"
             className="mr-2"
@@ -244,28 +244,38 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
               return processedSegments;
             })()}
           </pre>
+          <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
+            <div className="flex space-x-1 items-center">
+              <button
+                title="High Priority"
+                onClick={() => handlePriorityClick(todo.id, 'high')}
+                className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'high' ? 'opacity-80' : ''}`}
+              >🔴</button>
+              <button
+                title="Medium Priority"
+                onClick={() => handlePriorityClick(todo.id, 'medium')}
+                className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'medium' ? 'opacity-80' : ''}`}
+              >🟡</button>
+              <button
+                title="Low Priority"
+                onClick={() => handlePriorityClick(todo.id, 'low')}
+                className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'low' ? 'opacity-80' : ''}`}
+              >🟢</button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handleCheckboxChange(todo.id, true)}
+                className="text-blue-500 hover:underline"
+              >
+                Mark as todo
+              </button>
+              <PencilIcon className="h-4 w-4 cursor-pointer hover:text-blue-500" />
+              <TrashIcon className="h-4 w-4 cursor-pointer hover:text-red-500" />
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col items-end space-y-1 ml-2">
-          <div className="flex space-x-1">
-            <button
-              title="High Priority"
-              onClick={() => handlePriorityClick(todo.id, 'high')}
-              className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'high' ? 'opacity-80' : ''}`}
-            >🔴</button>
-            <button
-              title="Medium Priority"
-              onClick={() => handlePriorityClick(todo.id, 'medium')}
-              className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'medium' ? 'opacity-80' : ''}`}
-            >🟡</button>
-            <button
-              title="Low Priority"
-              onClick={() => handlePriorityClick(todo.id, 'low')}
-              className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'low' ? 'opacity-80' : ''}`}
-            >🟢</button>
-          </div>
-          <div className={`text-xs ${ageColorClass}`}>
-            {formatDate(todo.created_datetime)}
-          </div>
+        <div className={`text-xs ${ageColorClass}`}>
+          {formatDate(todo.created_datetime)}
         </div>
       </div>
     );

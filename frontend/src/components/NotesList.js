@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { PencilIcon } from '@heroicons/react/24/solid';
 import { TrashIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { processContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
 import { formatDate } from '../utils/DateUtils';
-import {updateNoteById,deleteNoteById} from '../utils/ApiUtils';
+import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
 const HOSTNAME_MAP = {
   'mail.google.com': 'Gmail',
@@ -90,7 +91,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
   };
 
   const deleteNote = async (id) => {
-    deleteNoteById(id)
+    deleteNoteById(id);
     updateNoteCallback(
       notes.filter((note) => note.id !== id) // Filter out the deleted note from the list
     );
@@ -164,12 +165,12 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
       .map((id) => notes.find((n) => n.id === id)?.content)
       .filter(Boolean)
       .join('\n-----------------------------------\n') + '\n#merged';
-    console.log('Merged Note')
-    console.log(mergedContent)
+    console.log('Merged Note');
+    console.log(mergedContent);
     for (const id of selectedNotes) {
       await deleteNote(id);
     }
-    addNotes(mergedContent)
+    addNotes(mergedContent);
     setSelectedNotes([]);
   };
 
@@ -182,7 +183,6 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
       }
     };
   }, []);
-
 
   return (
     <div>
@@ -199,7 +199,9 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
       {safeNotes.map((note) => (
         <div
           key={note.id}
-          className="flex p-5 mb-5 rounded-xl border border-gray-200 bg-white shadow hover:shadow-md transition-shadow duration-200 items-start"
+          className={`flex flex-col p-5 mb-5 rounded-xl border ${
+            note.content.toLowerCase().includes('#todo') ? 'border-purple-500' : 'border-gray-200'
+          } bg-white shadow hover:shadow-md transition-shadow duration-200`}
         >
           <div className="mr-2">
             <input
@@ -246,68 +248,37 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
             </div>
 
             {/* Layer 3: Date and Todo Toggle */}
-            <div className="flex text-xs text-gray-700 px-4 pb-2 justify-between">
+            <div className="flex text-xs text-gray-700 px-4 pb-2 justify-between items-center">
               <span>{formatDate(note.created_datetime)}</span>
-              {note.content.toLowerCase().includes('#todo') ? (
-                <button
-                  onClick={() => {
-                    const updatedContent = note.content.replace(/#todo/gi, '').trim();
-                    updateNote(note.id, updatedContent);
-                  }}
-                  className="text-purple-600 text-xs font-medium hover:underline"
-                >
-                  Unmark as Todo
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    updateNote(note.id, `${note.content.trim()} #todo`);
-                  }}
-                  className="text-purple-600 text-xs font-medium hover:underline"
-                >
-                  Mark as Todo
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="flex-none">
-            {editingNoteId === note.id ? (
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleSave(note.id)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-md text-sm"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={handleCancel}
-                  className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <div className="flex">
-                <div
-                  className="p-3 rounded hover:bg-gray-100 transition cursor-pointer"
+              <div className="flex items-center space-x-2">
+                {note.content.toLowerCase().includes('#todo') ? (
+                  <XCircleIcon
+                    title="Unmark as Todo"
+                    className="h-4 w-4 text-purple-600 cursor-pointer hover:text-purple-800"
+                    onClick={() => {
+                      const updatedContent = note.content.replace(/#todo/gi, '').trim();
+                      updateNote(note.id, updatedContent);
+                    }}
+                  />
+                ) : (
+                  <CheckCircleIcon
+                    title="Mark as Todo"
+                    className="h-4 w-4 text-purple-600 cursor-pointer hover:text-purple-800"
+                    onClick={() => {
+                      updateNote(note.id, `${note.content.trim()} #todo`);
+                    }}
+                  />
+                )}
+                <PencilIcon
+                  className="h-4 w-4 text-gray-600 cursor-pointer hover:text-gray-800"
                   onClick={() => handleEdit(note.id)}
-                >
-                  <div className="flex-1">
-                    <h3 className="text-gray-800 font-semibold">{note.title}</h3>
-                    <p className="text-gray-600 text-sm">{note.description}</p>
-                  </div>
-
-                  <PencilIcon className="h-5 w-5 text-gray-600 invisible group-hover:visible" />
-                </div>
-                <div
-                  className="p-3 rounded hover:bg-gray-100 transition cursor-pointer"
+                />
+                <TrashIcon
+                  className="h-4 w-4 text-gray-600 cursor-pointer hover:text-gray-800"
                   onClick={() => handleDelete(note.id)}
-                >
-                  <TrashIcon className="h-5 w-5 text-gray-600 invisible group-hover:visible" />
-                </div>
+                />
               </div>
-            )}
+            </div>
           </div>
         </div>
       ))}

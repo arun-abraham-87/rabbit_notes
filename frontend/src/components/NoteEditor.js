@@ -106,14 +106,49 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
   const handleKeyDown = (e, index) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      handleSave();
+    }
+
+    if (e.metaKey || e.ctrlKey) {
       const newLines = [...lines];
-      newLines.splice(index + 1, 0, { id: `line-${Date.now()}`, text: '', isTitle: false });
-      setLines(newLines);
-      setTimeout(() => {
-        if (textareasRef.current[index + 1]) {
-          textareasRef.current[index + 1].focus();
-        }
-      }, 0);
+
+      // Move up
+      if (e.key === 'ArrowUp' && index > 0) {
+        e.preventDefault();
+        const temp = newLines[index];
+        newLines[index] = newLines[index - 1];
+        newLines[index - 1] = temp;
+        setLines(newLines);
+        setTimeout(() => textareasRef.current[index - 1]?.focus(), 0);
+      }
+
+      // Move down
+      if (e.key === 'ArrowDown' && index < newLines.length - 1) {
+        e.preventDefault();
+        const temp = newLines[index];
+        newLines[index] = newLines[index + 1];
+        newLines[index + 1] = temp;
+        setLines(newLines);
+        setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
+      }
+
+      // Duplicate line
+      if (e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        newLines.splice(index + 1, 0, {
+          id: `line-${Date.now()}`,
+          text: newLines[index].text,
+          isTitle: false,
+        });
+        setLines(newLines);
+        setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
+      }
+
+      // Mark as title
+      if (e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        handleMarkAsTitle(index);
+      }
     }
   };
 
@@ -153,6 +188,19 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
     onSave({ ...note, content: merged });
     setMergedContent(merged);
   };
+
+  useEffect(() => {
+    const handleGlobalKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    document.addEventListener('keydown', handleGlobalKey);
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKey);
+    };
+  }, [lines]);
 
   return (
     <div className="p-4 bg-white border border-gray-300 rounded shadow-md">
@@ -226,6 +274,9 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
           </div>
         ))
       )}
+      <div className="text-xs text-gray-400 mt-2 text-center">
+        ⌘↑ Move Up | ⌘↓ Move Down | ⌘D Duplicate | ⌘T Title | ⌘⏎ Save
+      </div>
       <div className="flex justify-end space-x-2 mt-4">
         <button
           onClick={onCancel}

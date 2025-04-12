@@ -317,6 +317,36 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
     setMergedContent(merged);
   };
 
+  const handleLabelUrl = (index) => {
+    const line = lines[index];
+    const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/;
+    const plainUrlRegex = /(https?:\/\/[^\s]+)/;
+    const markdownMatch = line.text.match(markdownLinkRegex);
+    const plainUrlMatch = line.text.match(plainUrlRegex);
+
+    if (markdownMatch) {
+      const [, currentLabel, url] = markdownMatch;
+      const newLabel = prompt("Edit label for this URL:", currentLabel);
+      if (newLabel !== null) {
+        const newText = line.text.replace(markdownLinkRegex, `[${newLabel}](${url})`);
+        const newLines = [...lines];
+        newLines[index].text = newText;
+        setLines(newLines);
+      }
+    } else if (plainUrlMatch) {
+      const url = plainUrlMatch[0];
+      const label = prompt("Enter custom label for this URL:", "Link");
+      if (label) {
+        const newText = line.text.replace(url, `[${label}](${url})`);
+        const newLines = [...lines];
+        newLines[index].text = newText;
+        setLines(newLines);
+      }
+    } else {
+      alert("No URL found in this line.");
+    }
+  };
+
   useEffect(() => {
     const handleGlobalKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -397,6 +427,15 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                   <button onClick={() => handleDeleteLine(index)} className="text-red-500 text-sm">🗑️</button>
                   {!line.isTitle && (
                     <button onClick={() => handleMarkAsTitle(index)} className="text-blue-500 text-sm">🏷️</button>
+                  )}
+                  {line.text.match(/https?:\/\/[^\s]+/) && (
+                    <button
+                      onClick={() => handleLabelUrl(index)}
+                      className="text-green-500 text-sm"
+                      title="Label this URL"
+                    >
+                      🔗
+                    </button>
                   )}
                 </div>
               </div>

@@ -242,9 +242,27 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                     <>
                       {isTitle && <h2 className="text-lg font-semibold text-purple-700 mb-2">{title}</h2>}
                       <pre className="whitespace-pre-wrap">
-                        {contentToRender.split(/(https?:\/\/[^\s]+)/g).map((part, idx) =>
-                          part.match(/https?:\/\/[^\s]+/) ? renderSmartLink(part, duplicatedUrlColors[part]) : part
-                        )}
+                        {contentToRender.split(/(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s]+)/g).map((part, idx) => {
+                          const markdownMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+                          if (markdownMatch) {
+                            const [, label, url] = markdownMatch;
+                            return (
+                              <a
+                                key={url + idx}
+                                href={url}
+                                title={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline hover:text-blue-800"
+                              >
+                                {label}
+                              </a>
+                            );
+                          } else if (part.match(/https?:\/\/[^\s]+/)) {
+                            return renderSmartLink(part, duplicatedUrlColors[part]);
+                          }
+                          return part;
+                        })}
                       </pre>
                     </>
                   );

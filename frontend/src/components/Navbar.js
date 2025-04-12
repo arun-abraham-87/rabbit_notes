@@ -35,6 +35,14 @@ const Navbar = ({ activePage, setActivePage }) => (
         >
           Todos
         </button>
+        <button
+          onClick={() => setActivePage('editor')}
+          className={`text-base font-medium hover:text-blue-600 transition ${
+            activePage === 'editor' ? 'text-blue-600 underline' : 'text-gray-700'
+          }`}
+        >
+          Editor (Beta)
+        </button>
       </div>
     </div>
   </nav>

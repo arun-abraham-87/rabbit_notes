@@ -29,10 +29,10 @@ const DateSelectorBar = ({ setNoteDate }) => {
   };
 
   return (
-    <div className="flex items-center mb-4">
+    <div className="flex items-center justify-between bg-white border border-gray-300 rounded shadow-sm p-3 mb-4">
       <button
         onClick={(x) => updateDate(false)}
-        className="bg-blue-500 text-white px-2 py-1 rounded flex items-center"
+        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded shadow-sm"
       >
         &#60; {/* Unicode for '<' */}
       </button>
@@ -41,12 +41,12 @@ const DateSelectorBar = ({ setNoteDate }) => {
           type="date"
           value={selectedDate}
           onChange={(e) => handleDateChange(e.target.value)}
-          className="border px-2 py-1 rounded"
+          className="border border-gray-300 rounded px-2 py-1 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
       <button
         onClick={() => updateDate(true)}
-        className="bg-blue-500 text-white px-2 py-1 rounded flex items-center"
+        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded shadow-sm"
       >
         &#62; {/* Unicode for '>' */}
       </button>

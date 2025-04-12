@@ -5,6 +5,7 @@ import AddNoteBar from './components/NoteAddAndSearchBar.js';
 import NotesListing from './components/NotesListing.js';
 import TagListing from './components/TagListing.js';
 import TodoList from './components/TodoList.js';
+import NoteEditor from './components/NoteEditor';
 
 import { addNewNote, addNewTag, loadNotes, loadTags, loadTodos } from './utils/ApiUtils';
 
@@ -77,6 +78,14 @@ const App = () => {
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
             <TodoList todos={todos} notes={notes} updateTodosCallback={setTodos} updateNoteCallBack={setNotes} />
           </div>
+        )}
+
+        {activePage === 'editor' && (
+          <NoteEditor
+            note={{ content: '' }}
+            onSave={(updatedNote) => console.log('Saved note:', updatedNote)}
+            onCancel={() => setActivePage('notes')}
+          />
         )}
       </div>
     </div>

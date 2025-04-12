@@ -28,6 +28,7 @@ const renderSmartLink = (url, highlightColor = null) => {
       <a
         key={url}
         href={url}
+        title={url}
         target="_blank"
         rel="noopener noreferrer"
         className="text-blue-600 underline hover:text-blue-800 px-1 rounded border-2"

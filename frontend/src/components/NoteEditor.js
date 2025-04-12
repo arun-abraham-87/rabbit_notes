@@ -26,11 +26,6 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
 
   const updateNote = (id, updatedContent) => {
     updateNoteById(id, updatedContent);
-    ////updateNoteCallback(
-     // notes.map((note) =>
-     //   note.id === id ? { ...note, content: updatedContent } : note
-     // )
-//);
   };
 
   const handleSelectAll = (e) => {
@@ -275,8 +270,8 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
         setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
       }
 
-      // Mark as title
-      if (e.key.toLowerCase() === 't') {
+      // Mark as title with Cmd+Option+T
+      if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
         e.preventDefault();
         handleMarkAsTitle(index);
       }
@@ -289,9 +284,9 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
   };
 
   const handleMarkAsTitle = (index) => {
-    const newLines = [...lines];
+    let newLines = [...lines];
 
-    // Remove title from existing title line if any
+    // Remove title from any existing title line
     const existingTitleIndex = newLines.findIndex(line => line.isTitle);
     if (existingTitleIndex !== -1) {
       const existingTitle = { ...newLines[existingTitleIndex] };
@@ -303,15 +298,16 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
     }
 
     // Promote the selected line to title
-    const [selected] = newLines.splice(index, 1);
+    const selected = { ...newLines[index] };
     selected.isTitle = true;
-    if (!selected.text.startsWith('##')) {
-      selected.text = `##${selected.text}##`;
-    }
+    selected.text = selected.text.replace(/^##|##$/g, '');
+    selected.text = `##${selected.text}##`;
 
-    // Place it at the top
-    newLines.unshift(selected);
-    setLines(newLines);
+    newLines.splice(index, 1); // Remove selected line
+    newLines = [selected, ...newLines]; // Prepend title
+
+    // Remove any completely blank lines
+    setLines(newLines.filter(line => line.text.trim() !== ''));
   };
 
   const handleSave = () => {

@@ -44,8 +44,6 @@ const renderSmartLink = (url, highlightColor = null) => {
 };
 
 const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm }) => {
-  const [editedContent, setEditedContent] = useState('');
-  const [editingNoteId, setEditingNoteId] = useState(null);
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
   const [selectedText, setSelectedText] = useState('');
@@ -89,33 +87,6 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
     setDeletingNoteId(0);
   };
 
-  const handleEdit = (id) => {
-    setEditingNoteId(id);
-    const noteToEdit = notes.find((note) => note.id === id);
-    setEditedContent(noteToEdit ? noteToEdit.content : '');
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = textareaRef.current.value.length;
-      }
-    }, 0);
-  };
-
-  const handleSave = (noteId) => {
-    updateNote(noteId, editedContent);
-    setEditingNoteId(0);
-  };
-
-  const handleKeyDown = (e, noteId) => {
-    if (e.metaKey && e.key === 'Enter') {
-      handleSave(noteId);
-    }
-  };
-
-  const handleCancel = () => {
-    setEditingNoteId(0);
-    setEditedContent('');
-  };
 
   const handleTextSelection = (e) => {
     const selection = window.getSelection();
@@ -258,53 +229,27 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
           <div className="flex flex-col flex-auto">
             {/* Layer 1: Content and Edit/Delete */}
             <div className="p-2">
-              {editingNoteId === note.id ? (
-                <>
-                  <textarea
-                    ref={textareaRef}
-                    value={editedContent}
-                    onChange={(e) => setEditedContent(e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, note.id)}
-                    className="w-full border rounded-md p-2 min-h-64"
-                  />
-                  <div className="mt-2 flex justify-end space-x-2">
-                    <button
-                      onClick={handleCancel}
-                      className="text-sm text-gray-600 hover:text-gray-800 border border-gray-300 px-3 py-1 rounded-md"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => handleSave(note.id)}
-                      className="text-sm text-white bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-md"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
-                  {(() => {
-                    const lines = note.content.split('\n');
-                    const firstLine = lines[0];
-                    const rest = lines.slice(1).join('\n');
-                    const isTitle = firstLine.startsWith('##') && firstLine.endsWith('##');
-                    const title = isTitle ? firstLine.replace(/^##|##$/g, '') : null;
-                    const contentToRender = isTitle ? rest : note.content;
+              <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
+                {(() => {
+                  const lines = note.content.split('\n');
+                  const firstLine = lines[0];
+                  const rest = lines.slice(1).join('\n');
+                  const isTitle = firstLine.startsWith('##') && firstLine.endsWith('##');
+                  const title = isTitle ? firstLine.replace(/^##|##$/g, '') : null;
+                  const contentToRender = isTitle ? rest : note.content;
  
-                    return (
-                      <>
-                        {isTitle && <h2 className="text-lg font-semibold text-purple-700 mb-2">{title}</h2>}
-                        <pre className="whitespace-pre-wrap">
-                          {contentToRender.split(/(https?:\/\/[^\s]+)/g).map((part, idx) =>
-                            part.match(/https?:\/\/[^\s]+/) ? renderSmartLink(part, duplicatedUrlColors[part]) : part
-                          )}
-                        </pre>
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
+                  return (
+                    <>
+                      {isTitle && <h2 className="text-lg font-semibold text-purple-700 mb-2">{title}</h2>}
+                      <pre className="whitespace-pre-wrap">
+                        {contentToRender.split(/(https?:\/\/[^\s]+)/g).map((part, idx) =>
+                          part.match(/https?:\/\/[^\s]+/) ? renderSmartLink(part, duplicatedUrlColors[part]) : part
+                        )}
+                      </pre>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
 
             {/* Layer 2: Tags */}
@@ -364,7 +309,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                   <div className="group relative">
                     <PencilIcon
                       className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
-                      onClick={() => handleEdit(note.id)}
+                      onClick={() => setPopupNoteText(note.content)}
                     />
                   </div>
                   <div className="group relative">
@@ -372,15 +317,6 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                       className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
                       onClick={() => handleDelete(note.id)}
                     />
-                  </div>
-                  <div className="group relative">
-                    <button
-                      className="text-xs text-blue-600 underline"
-                      onClick={() => setPopupNoteText(note.content)}
-                      title="Open Note Editor"
-                    >
-                      Editor
-                    </button>
                   </div>
                   <input
                     type="checkbox"

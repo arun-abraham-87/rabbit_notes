@@ -163,6 +163,26 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
     setSelectedNotes([]);
   };
 
+  const urlPattern = /https?:\/\/[^\s]+/g;
+  const urlToNotesMap = {};
+
+  safeNotes.forEach((note) => {
+    const urls = note.content.match(urlPattern) || [];
+    urls.forEach((url) => {
+      if (!urlToNotesMap[url]) {
+        urlToNotesMap[url] = [];
+      }
+      urlToNotesMap[url].push(note.id);
+    });
+  });
+
+  const duplicateUrlNoteIds = new Set();
+  Object.values(urlToNotesMap).forEach((noteIds) => {
+    if (noteIds.length > 1) {
+      noteIds.forEach((id) => duplicateUrlNoteIds.add(id));
+    }
+  });
+
   useEffect(() => {
     document.addEventListener('selectionchange', handleTextSelection);
     return () => {
@@ -256,6 +276,11 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                     {tag}
                   </span>
                 ))}
+              {duplicateUrlNoteIds.has(note.id) && (
+                <span className="bg-red-100 text-red-800 text-xs font-semibold px-3 py-1 rounded-full">
+                  Duplicate URL
+                </span>
+              )}
             </div>
 
             {/* Layer 3: Date and Todo Toggle */}

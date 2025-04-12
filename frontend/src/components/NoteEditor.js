@@ -360,6 +360,32 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
     };
   }, [lines]);
 
+  const toCamelCase = (str) =>
+    str
+      .toLowerCase()
+      .replace(/[^a-zA-Z0-9 ]/g, '')
+      .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) =>
+        index === 0 ? word.toLowerCase() : word.toUpperCase()
+      )
+      .replace(/\s+/g, '');
+
+  const handleCamelCase = (index) => {
+    const newLines = [...lines];
+    newLines[index].text = toCamelCase(newLines[index].text);
+    setLines(newLines);
+  };
+  
+  const toSentenceCase = (str) => {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
+  
+  const handleSentenceCase = (index) => {
+    const newLines = [...lines];
+    newLines[index].text = toSentenceCase(newLines[index].text);
+    setLines(newLines);
+  };
+  
   return (
     <div className="p-4 bg-white border border-gray-300 rounded shadow-md">
       {mergedContent && (
@@ -424,6 +450,20 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                   rows={1}
                 />
                 <div className="absolute top-1 right-1 flex space-x-2">
+                  <button
+                    onClick={() => handleCamelCase(index)}
+                    className="text-purple-500 text-sm"
+                    title="Convert to camelCase"
+                  >
+                    🐪
+                  </button>
+                  <button
+                    onClick={() => handleSentenceCase(index)}
+                    className="text-yellow-500 text-sm"
+                    title="Convert to Sentence case"
+                  >
+                    🅢
+                  </button>
                   <button onClick={() => handleDeleteLine(index)} className="text-red-500 text-sm">🗑️</button>
                   {!line.isTitle && (
                     <button onClick={() => handleMarkAsTitle(index)} className="text-blue-500 text-sm">🏷️</button>

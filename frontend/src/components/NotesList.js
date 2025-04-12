@@ -20,35 +20,16 @@ const renderSmartLink = (url) => {
   try {
     const parsedUrl = new URL(url);
     const host = parsedUrl.hostname.replace(/^www\./, '');
-    const path = parsedUrl.pathname.split('/').filter(Boolean);
-    let label = HOSTNAME_MAP[host] || host;
-    let icon = '🔗';
-
-    if (host.includes('slack.com') && path.includes('archives')) {
-      label = 'Slack Thread';
-      icon = '💬';
-    } else if (url.startsWith('mail.google.com')) {
-      label = url.replace('mailto:', '');
-      icon = '✉️';
-    } else if (host.includes('docs.google.com')) {
-      label = 'Google Doc';
-      icon = '📄';
-    } else {
-      const mappedHost = HOSTNAME_MAP[host] || host;
-      label = mappedHost;
-      icon = '🌐';
-    }
-
+    
     return (
       <a
         key={url}
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center text-sm font-medium bg-gray-100 text-blue-800 px-3 py-1 rounded-full hover:bg-gray-200 transition mr-2 mb-2"
+        className="text-blue-600 underline hover:text-blue-800"
       >
-        <span className="mr-1">{icon}</span>
-        {label}
+        {host}
       </a>
     );
   } catch {

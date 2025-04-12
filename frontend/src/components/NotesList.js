@@ -183,6 +183,19 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
     }
   });
 
+  const duplicateWithinNoteIds = new Set();
+  safeNotes.forEach((note) => {
+    const urls = note.content.match(urlPattern) || [];
+    const seen = new Set();
+    for (const url of urls) {
+      if (seen.has(url)) {
+        duplicateWithinNoteIds.add(note.id);
+        break;
+      }
+      seen.add(url);
+    }
+  });
+
   useEffect(() => {
     document.addEventListener('selectionchange', handleTextSelection);
     return () => {
@@ -279,6 +292,11 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
               {duplicateUrlNoteIds.has(note.id) && (
                 <span className="bg-red-100 text-red-800 text-xs font-semibold px-3 py-1 rounded-full">
                   Duplicate URL
+                </span>
+              )}
+              {duplicateWithinNoteIds.has(note.id) && (
+                <span className="bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full">
+                  Duplicate Url In Note
                 </span>
               )}
             </div>

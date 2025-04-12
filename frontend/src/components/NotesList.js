@@ -6,6 +6,7 @@ import { processContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
 import { formatDate } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+import NoteEditor from './NoteEditor';
 
 const HOSTNAME_MAP = {
   'mail.google.com': 'Gmail',
@@ -52,6 +53,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
   const [isPopupVisible, setPopupVisible] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState([]);
   const [showCreatedDate, setShowCreatedDate] = useState(false);
+  const [popupNoteText, setPopupNoteText] = useState(null);
   const popupTimeoutRef = useRef(null);
   const textareaRef = useRef(null);
   const safeNotes = notes || [];
@@ -357,6 +359,15 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                       onClick={() => handleDelete(note.id)}
                     />
                   </div>
+                  <div className="group relative">
+                    <button
+                      className="text-xs text-blue-600 underline"
+                      onClick={() => setPopupNoteText(note.content)}
+                      title="Open Note Editor"
+                    >
+                      Editor
+                    </button>
+                  </div>
                   <input
                     type="checkbox"
                     checked={selectedNotes.includes(note.id)}
@@ -396,6 +407,19 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
           >
             Cancel
           </button>
+        </div>
+      )}
+
+      {popupNoteText && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow max-w-3xl w-full">
+            <NoteEditor
+              text={popupNoteText}
+              note={{ content: popupNoteText }}
+              onCancel={() => setPopupNoteText(null)}
+              onSave={() => setPopupNoteText(null)}
+            />
+          </div>
         </div>
       )}
     </div>

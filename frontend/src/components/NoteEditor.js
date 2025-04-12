@@ -12,6 +12,8 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [mergedContent, setMergedContent] = useState(null);
   const [draggedId, setDraggedId] = useState(null);
+  const [selectAllPressCount, setSelectAllPressCount] = useState(0);
+  const [isTextMode, setIsTextMode] = useState(false);
   const textareasRef = useRef([]);
 
   useEffect(() => {
@@ -19,6 +21,41 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
       textareasRef.current[0].focus();
     }
   }, []);
+  
+  const handleSelectAll = (e) => {
+    const active = document.activeElement;
+    const isTextareaFocused = textareasRef.current.includes(active);
+
+    if ((e.metaKey || e.ctrlKey) && e.key === 'a' && isTextareaFocused) {
+      e.preventDefault();
+
+      if (selectAllPressCount === 0) {
+        active.select();
+        setSelectAllPressCount(1);
+      } else {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        if (textareasRef.current.length > 0) {
+          const first = textareasRef.current[0];
+          const last = textareasRef.current[textareasRef.current.length - 1];
+          range.setStart(first, 0);
+          range.setEnd(last, 1);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        setSelectAllPressCount(0);
+      }
+    } else if (e.key !== 'a') {
+      setSelectAllPressCount(0);
+    }
+  };
+  
+  useEffect(() => {
+    document.addEventListener('keydown', handleSelectAll);
+    return () => {
+      document.removeEventListener('keydown', handleSelectAll);
+    };
+  }, [lines]);
 
   const handleDragStart = (e, index) => {
     const id = lines[index].id;
@@ -49,6 +86,21 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
     const newLines = [...lines];
     newLines[index].text = newText;
     setLines(newLines);
+  };
+
+  const handlePaste = (e, index) => {
+    const pasteText = e.clipboardData.getData('text');
+    if (pasteText.includes('\n')) {
+      e.preventDefault();
+      const newLines = [...lines];
+      const pastedLines = pasteText.split('\n').map((text, i) => ({
+        id: `line-${Date.now()}-${i}`,
+        text,
+        isTitle: false,
+      }));
+      newLines.splice(index + 1, 0, ...pastedLines);
+      setLines(newLines);
+    }
   };
 
   const handleKeyDown = (e, index) => {
@@ -116,40 +168,64 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
           </button>
         </div>
       )}
-      {lines.map((line, index) => (
-        <div
-          key={line.id}
-          draggable
-          onDragStart={(e) => handleDragStart(e, index)}
-          onDragOver={(e) => {
-            e.preventDefault();
-            handleDragOver(index);
-          }}
-          onDrop={(e) => handleDrop(e, index)}
-          className={`mb-2 border border-gray-200 rounded bg-gray-50 ${dropTargetIndex === index ? 'border-blue-500' : ''}`}
+      <div className="mb-4">
+        <button
+          onClick={() => setIsTextMode(!isTextMode)}
+          className="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200 border border-gray-300"
         >
-          {dropTargetIndex === index && draggedId !== lines[index].id && (
-            <div className="h-1 bg-blue-500 rounded my-1"></div>
-          )}
-          <div className="relative w-full flex items-center">
-            <span className="absolute left-1 top-1 cursor-move text-gray-400">☰</span>
-            <textarea
-              ref={(el) => (textareasRef.current[index] = el)}
-              value={line.text}
-              onChange={(e) => handleTextChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(e, index)}
-              className={`w-full pl-6 pr-20 p-1 resize-none focus:outline-none ${line.isTitle ? 'font-bold text-xl' : ''}`}
-              rows={1}
-            />
-            <div className="absolute top-1 right-1 flex space-x-2">
-              <button onClick={() => handleDeleteLine(index)} className="text-red-500 text-sm">🗑️</button>
-              {!line.isTitle && (
-                <button onClick={() => handleMarkAsTitle(index)} className="text-blue-500 text-sm">🏷️</button>
-              )}
+          {isTextMode ? 'Switch to Advanced Mode' : 'Switch to Text Mode'}
+        </button>
+      </div>
+      {isTextMode ? (
+        <textarea
+          className="w-full p-2 border border-gray-300 rounded resize-none min-h-[200px]"
+          value={lines.map(line => line.text).join('\n')}
+          onChange={(e) => {
+            const updatedLines = e.target.value.split('\n').map((text, index) => ({
+              id: `line-${index}-${Date.now()}`,
+              text,
+              isTitle: text.startsWith('##') && text.endsWith('##'),
+            }));
+            setLines(updatedLines);
+          }}
+        />
+      ) : (
+        lines.map((line, index) => (
+          <div
+            key={line.id}
+            draggable
+            onDragStart={(e) => handleDragStart(e, index)}
+            onDragOver={(e) => {
+              e.preventDefault();
+              handleDragOver(index);
+            }}
+            onDrop={(e) => handleDrop(e, index)}
+            className={`mb-2 border border-gray-200 rounded bg-gray-50 ${dropTargetIndex === index ? 'border-blue-500' : ''}`}
+          >
+            {dropTargetIndex === index && draggedId !== lines[index].id && (
+              <div className="h-1 bg-blue-500 rounded my-1"></div>
+            )}
+            <div className="relative w-full flex items-center">
+              <span className="absolute left-1 top-1 cursor-move text-gray-400">☰</span>
+              <textarea
+                ref={(el) => (textareasRef.current[index] = el)}
+                value={line.text}
+                onChange={(e) => handleTextChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, index)}
+                onPaste={(e) => handlePaste(e, index)}
+                className={`w-full pl-6 pr-20 p-1 resize-none focus:outline-none ${line.isTitle ? 'font-bold text-xl' : ''}`}
+                rows={1}
+              />
+              <div className="absolute top-1 right-1 flex space-x-2">
+                <button onClick={() => handleDeleteLine(index)} className="text-red-500 text-sm">🗑️</button>
+                {!line.isTitle && (
+                  <button onClick={() => handleMarkAsTitle(index)} className="text-blue-500 text-sm">🏷️</button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))
+      )}
       <div className="flex justify-end space-x-2 mt-4">
         <button
           onClick={onCancel}

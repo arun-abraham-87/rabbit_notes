@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { updateNoteById} from '../utils/ApiUtils';
 
 const NoteEditor = ({ note, onSave, onCancel, text }) => {
   const contentSource = text || note.content || '##dfgdsfg2##\nsfgsdfgsdfg3\ndfgsdfg1';
@@ -22,6 +23,16 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
     }
   }, []);
   
+
+  const updateNote = (id, updatedContent) => {
+    updateNoteById(id, updatedContent);
+    ////updateNoteCallback(
+     // notes.map((note) =>
+     //   note.id === id ? { ...note, content: updatedContent } : note
+     // )
+//);
+  };
+
   const handleSelectAll = (e) => {
     const active = document.activeElement;
     const isTextareaFocused = textareasRef.current.includes(active);
@@ -305,6 +316,7 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
 
   const handleSave = () => {
     const merged = lines.map(line => line.text).join('\n');
+    updateNote(note.id, merged);
     onSave({ ...note, content: merged });
     setMergedContent(merged);
   };

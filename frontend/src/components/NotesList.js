@@ -284,11 +284,25 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                 </>
               ) : (
                 <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
-                  <pre className="whitespace-pre-wrap">
-                    {note.content.split(/(https?:\/\/[^\s]+)/g).map((part, idx) =>
-                      part.match(/https?:\/\/[^\s]+/) ? renderSmartLink(part, duplicatedUrlColors[part]) : part
-                    )}
-                  </pre>
+                  {(() => {
+                    const lines = note.content.split('\n');
+                    const firstLine = lines[0];
+                    const rest = lines.slice(1).join('\n');
+                    const isTitle = firstLine.startsWith('##') && firstLine.endsWith('##');
+                    const title = isTitle ? firstLine.replace(/^##|##$/g, '') : null;
+                    const contentToRender = isTitle ? rest : note.content;
+ 
+                    return (
+                      <>
+                        {isTitle && <h2 className="text-lg font-semibold text-purple-700 mb-2">{title}</h2>}
+                        <pre className="whitespace-pre-wrap">
+                          {contentToRender.split(/(https?:\/\/[^\s]+)/g).map((part, idx) =>
+                            part.match(/https?:\/\/[^\s]+/) ? renderSmartLink(part, duplicatedUrlColors[part]) : part
+                          )}
+                        </pre>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -415,9 +429,15 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
           <div className="bg-white p-6 rounded shadow max-w-3xl w-full">
             <NoteEditor
               text={popupNoteText}
-              note={{ content: popupNoteText }}
+              note={{
+                content: popupNoteText,
+                id: safeNotes.find(n => n.content === popupNoteText)?.id,
+              }}
               onCancel={() => setPopupNoteText(null)}
-              onSave={() => setPopupNoteText(null)}
+              onSave={(updatedNote) => {
+                updateNote(updatedNote.id, updatedNote.content);
+                setPopupNoteText(null);
+              }}
             />
           </div>
         </div>

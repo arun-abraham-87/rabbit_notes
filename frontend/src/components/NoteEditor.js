@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const NoteEditor = ({ note, onSave, onCancel }) => {
-  const initialLines = (note.content || '').split('\n').map((text, index) => ({
+const NoteEditor = ({ note, onSave, onCancel, text }) => {
+  const contentSource = text || note.content || '##dfgdsfg2##\nsfgsdfgsdfg3\ndfgsdfg1';
+  const initialLines = contentSource.split('\n').map((text, index) => ({
     id: `line-${index}`,
     text,
     isTitle: text.startsWith('##') && text.endsWith('##'),

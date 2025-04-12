@@ -387,7 +387,7 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
   };
   
   return (
-    <div className="p-4 bg-white border border-gray-300 rounded shadow-md">
+    <div className="p-6 bg-white border border-gray-300 rounded-lg shadow-xl max-w-3xl mx-auto">
       {mergedContent && (
         <div className="fixed top-10 left-1/2 transform -translate-x-1/2 bg-white shadow-lg border border-gray-300 rounded p-4 z-50 max-w-xl w-full">
           <h2 className="font-bold mb-2">Merged Note</h2>
@@ -400,17 +400,18 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
           </button>
         </div>
       )}
-      <div className="mb-4">
+      <div className="mb-4 flex justify-between items-center">
+        <h2 className="text-lg font-semibold text-gray-700">Edit Note</h2>
         <button
           onClick={() => setIsTextMode(!isTextMode)}
-          className="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200 border border-gray-300"
+          className="px-4 py-1.5 rounded-md bg-blue-100 text-blue-800 font-medium hover:bg-blue-200 border border-blue-300"
         >
-          {isTextMode ? 'Switch to Advanced Mode' : 'Switch to Text Mode'}
+          {isTextMode ? '🧩 Advanced Mode' : '✍️ Text Mode'}
         </button>
       </div>
       {isTextMode ? (
         <textarea
-          className="w-full p-2 border border-gray-300 rounded resize-none min-h-[200px]"
+          className="w-full p-4 text-sm border border-gray-300 rounded-lg shadow-sm resize-none min-h-[200px] font-mono"
           value={lines.map(line => line.text).join('\n')}
           onChange={(e) => {
             const updatedLines = e.target.value.split('\n').map((text, index) => ({
@@ -422,7 +423,7 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
           }}
         />
       ) : (
-        <div className="border border-gray-300 rounded-md divide-y divide-gray-200">
+        <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 shadow-sm">
           {lines.map((line, index) => (
             <div
               key={line.id}
@@ -433,23 +434,23 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                 handleDragOver(index);
               }}
               onDrop={(e) => handleDrop(e, index)}
-              className={`${dropTargetIndex === index ? 'border-t border-blue-500' : ''}`}
+              className={`relative group bg-gray-50 hover:bg-white transition border-l-4 border-transparent hover:border-blue-400 ${dropTargetIndex === index ? 'border-blue-500' : ''}`}
             >
               {dropTargetIndex === index && draggedId !== lines[index].id && (
                 <div className="h-1 bg-blue-500 rounded my-1"></div>
               )}
-              <div className="relative w-full flex items-center">
-                <span className="absolute left-1 top-1 cursor-move text-gray-400">☰</span>
+              <div className="flex items-start px-3 py-2 relative">
+                <span className="absolute left-1 top-2 text-gray-400 cursor-grab group-hover:opacity-100 opacity-0">☰</span>
                 <textarea
                   ref={(el) => (textareasRef.current[index] = el)}
                   value={line.text}
                   onChange={(e) => handleTextChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   onPaste={(e) => handlePaste(e, index)}
-                  className={`w-full pl-6 pr-20 py-0 resize-none focus:outline-none border-none bg-transparent ${line.isTitle ? 'font-bold text-xl' : ''}`}
+                  className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'}`}
                   rows={1}
                 />
-                <div className="absolute top-1 right-1 flex space-x-2">
+                <div className="absolute right-3 top-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleCamelCase(index)}
                     className="text-purple-500 text-sm"
@@ -483,19 +484,19 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
           ))}
         </div>
       )}
-      <div className="text-xs text-gray-400 mt-2 text-center">
-        ⌘↑ Move Up | ⌘↓ Move Down | ⌘D Duplicate | ⌘T Title | ⌘⏎ Save
+      <div className="text-xs text-gray-400 mt-3 text-center font-mono">
+        ⌘↑ Move | ⌘↓ Move | ⌘D Duplicate | ⌘⌥T Title | ⌘⏎ Save | Tab Indent | Shift+Tab Outdent
       </div>
-      <div className="flex justify-end space-x-2 mt-4">
+      <div className="flex justify-end gap-3 mt-6">
         <button
           onClick={onCancel}
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+          className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
         >
           Cancel
         </button>
         <button
           onClick={handleSave}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
         >
           Save
         </button>

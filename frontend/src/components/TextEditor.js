@@ -341,16 +341,15 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
 
     return (
         <div
-            ref={editorRef}
-            className="w-full mx-auto p-4 border rounded-lg bg-gray-50"
+        ref={editorRef}
+            className="w-full mx-auto p-6 border border-gray-200 rounded-xl bg-white shadow-md"
         >
             {notes.map((note, index) => (
                 <div
                     key={index}
                     contentEditable
                     suppressContentEditableWarning
-                    className={`editable-div p-1 whitespace-pre-wrap ${selectedIndices.includes(index) ? "bg-blue-100" : ""
-                        }`}
+                    className={`editable-div px-4 py-2 mb-3 whitespace-pre-wrap rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${selectedIndices.includes(index) ? "bg-blue-50 border-blue-300" : "bg-gray-50 border-gray-200"}`}
                     onKeyDown={(e) => handleKeyDown(e, index)}
                     onKeyUp={(e) => handleKeyUp(e, index)}
                     onInput={(e) => handleInputChange(e, index)}
@@ -367,7 +366,7 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
                 <div
                     id="tagpop"
                     ref={popupRef}
-                    className="absolute bg-white border border-gray-300 rounded shadow-md p-2 z-10 max-h-36 overflow-y-auto no-scrollbar text-sm"
+                    className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2 z-20 max-h-40 overflow-y-auto no-scrollbar text-sm w-52"
                     style={{
                         left: cursorPosition.x,
                         top: cursorPosition.y,
@@ -392,7 +391,7 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
 
             {showCalendar && (
                 <div
-                    className="absolute z-50"
+                    className="absolute z-50 rounded-lg shadow-lg border bg-white"
                     style={{
                         left: calendarPosition.x,
                         top: calendarPosition.y,

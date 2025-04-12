@@ -190,7 +190,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
         <div className="mb-4">
           <button
             onClick={handleMergeNotes}
-            className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
+            className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:from-purple-600 hover:to-indigo-700"
           >
             Merge Selected Notes
           </button>
@@ -199,13 +199,14 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
       {safeNotes.map((note) => (
         <div
           key={note.id}
-          className="flex justify-content p-4 mb-6 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 items-center"
+          className="flex p-5 mb-5 rounded-xl border border-gray-200 bg-white shadow hover:shadow-md transition-shadow duration-200 items-start"
         >
           <div className="mr-2">
             <input
               type="checkbox"
               checked={selectedNotes.includes(note.id)}
               onChange={() => toggleNoteSelection(note.id)}
+              className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
             />
           </div>
           <div className="flex flex-col flex-auto">
@@ -219,7 +220,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                   className="w-full border rounded-md p-2 min-h-64"
                 />
               ) : (
-                <div className="bg-gray-50 p-3 rounded-md border">
+                <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                   <pre className="whitespace-pre-wrap">
                     {note.content.split(/(https?:\/\/[^\s]+)/g).map((part, idx) =>
                       part.match(/https?:\/\/[^\s]+/) ? renderSmartLink(part) : part
@@ -237,7 +238,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                 .map((tag, index) => (
                   <span
                     key={index}
-                    className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded"
+                    className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full"
                   >
                     {tag}
                   </span>
@@ -253,7 +254,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                     const updatedContent = note.content.replace(/#todo/gi, '').trim();
                     updateNote(note.id, updatedContent);
                   }}
-                  className="text-gray-400 text-xs hover:text-blue-600"
+                  className="text-purple-600 text-xs font-medium hover:underline"
                 >
                   Unmark as Todo
                 </button>
@@ -262,7 +263,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                   onClick={() => {
                     updateNote(note.id, `${note.content.trim()} #todo`);
                   }}
-                  className="text-gray-400 text-xs hover:text-blue-600"
+                  className="text-purple-600 text-xs font-medium hover:underline"
                 >
                   Mark as Todo
                 </button>
@@ -275,13 +276,13 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
               <div className="flex space-x-2">
                 <button
                   onClick={() => handleSave(note.id)}
-                  className="bg-green-500 text-white px-4 py-2 rounded-md"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-md text-sm"
                 >
                   Save
                 </button>
                 <button
                   onClick={handleCancel}
-                  className="bg-gray-500 text-white px-4 py-2 rounded-md"
+                  className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm"
                 >
                   Cancel
                 </button>
@@ -289,7 +290,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
             ) : (
               <div className="flex">
                 <div
-                  className="relative group flex items-center p-4 rounded hover:bg-gray-200 cursor-pointer"
+                  className="p-3 rounded hover:bg-gray-100 transition cursor-pointer"
                   onClick={() => handleEdit(note.id)}
                 >
                   <div className="flex-1">
@@ -300,7 +301,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                   <PencilIcon className="h-5 w-5 text-gray-600 invisible group-hover:visible" />
                 </div>
                 <div
-                  className="relative group flex items-center p-4 rounded hover:bg-gray-200 cursor-pointer"
+                  className="p-3 rounded hover:bg-gray-100 transition cursor-pointer"
                   onClick={() => handleDelete(note.id)}
                 >
                   <TrashIcon className="h-5 w-5 text-gray-600 invisible group-hover:visible" />

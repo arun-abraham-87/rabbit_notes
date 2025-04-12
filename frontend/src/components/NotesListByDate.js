@@ -42,9 +42,9 @@ function NotesListByDate({ notes, searchQuery }) {
       {Object.keys(groupedNotes).map((date, index) => (
         <div
           key={date}
-          className={`flex justify-content p-4 mb-6 rounded-lg border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 items-center `}
+          className="flex p-5 mb-5 rounded-xl border border-gray-200 bg-white shadow hover:shadow-md transition-shadow duration-200 items-start"
         >
-          <div className="p-6 flex flex-col min-w-64 flex-col self-start">
+          <div className="p-6 flex flex-col min-w-64 bg-gray-50 border rounded-lg text-sm text-gray-800">
             <div className="flex self-start">
               <div className="text-sm">{date}</div>
               <div className="text-xs text-gray-700 p-1">
@@ -57,12 +57,11 @@ function NotesListByDate({ notes, searchQuery }) {
             {groupedNotes[date].map((note, noteIndex) => (
               <div
                 key={noteIndex}
-                className={`p-6 flex ${noteIndex % 2 === 0 ? "bg-gray-100" : "bg-white"
-                  }`}
+                className="p-4 flex items-start gap-4 border-b last:border-none bg-gray-50 hover:bg-gray-100 transition"
               >
-                <div className="text-xs text-gray-700 p-1">{note.time}</div>
+                <div className="text-xs text-purple-600 font-medium min-w-[50px]">{note.time}</div>
                 <div className="pl-6">
-                  <pre>{processContent(note.content, searchQuery)}</pre>
+                  <pre className="text-sm text-gray-800 whitespace-pre-wrap">{processContent(note.content, searchQuery)}</pre>
                 </div>
               </div>
             ))}

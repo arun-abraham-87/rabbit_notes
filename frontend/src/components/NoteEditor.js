@@ -1,18 +1,30 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const NoteEditor = ({ note, onSave, onCancel }) => {
   const initialLines = (note.content || '').split('\n').map((text, index) => ({
     id: `line-${index}`,
     text,
+    isTitle: text.startsWith('##') && text.endsWith('##'),
   }));
 
   const [lines, setLines] = useState(initialLines);
   const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [mergedContent, setMergedContent] = useState(null);
   const textareasRef = useRef([]);
 
+  useEffect(() => {
+    if (textareasRef.current[0]) {
+      textareasRef.current[0].focus();
+    }
+  }, []);
+
   const handleDragStart = (index) => {
     setDraggedIndex(index);
+  };
+
+  const handleDragOver = (index) => {
+    setDropTargetIndex(index);
   };
 
   const handleDrop = (targetIndex) => {
@@ -22,6 +34,7 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
     newLines.splice(targetIndex, 0, movedItem);
     setLines(newLines);
     setDraggedIndex(null);
+    setDropTargetIndex(null);
   };
 
   const handleTextChange = (index, newText) => {
@@ -34,7 +47,7 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       const newLines = [...lines];
-      newLines.splice(index + 1, 0, { id: `line-${Date.now()}`, text: '' });
+      newLines.splice(index + 1, 0, { id: `line-${Date.now()}`, text: '', isTitle: false });
       setLines(newLines);
       setTimeout(() => {
         if (textareasRef.current[index + 1]) {
@@ -42,6 +55,19 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
         }
       }, 0);
     }
+  };
+
+  const handleDeleteLine = (index) => {
+    const newLines = lines.filter((_, i) => i !== index);
+    setLines(newLines);
+  };
+
+  const handleMarkAsTitle = (index) => {
+    const newLines = lines.map((line, i) => ({
+      ...line,
+      isTitle: i === index ? true : line.isTitle && !line.isTitle
+    }));
+    setLines(newLines);
   };
 
   const handleSave = () => {
@@ -69,18 +95,27 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
           key={line.id}
           draggable
           onDragStart={() => handleDragStart(index)}
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={() => handleDragOver(index)}
           onDrop={() => handleDrop(index)}
-          className="mb-2 p-2 border border-gray-200 rounded bg-gray-50"
+          className={`mb-2 border border-gray-200 rounded bg-gray-50 ${dropTargetIndex === index ? 'border-blue-500' : ''}`}
         >
-          <textarea
-            ref={el => textareasRef.current[index] = el}
-            value={line.text}
-            onChange={(e) => handleTextChange(index, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(e, index)}
-            className="w-full p-1 border border-gray-300 rounded resize-none"
-            rows={1}
-          />
+          <div className="relative w-full flex items-center">
+            <span className="absolute left-1 top-1 cursor-move text-gray-400">☰</span>
+            <textarea
+              ref={(el) => (textareasRef.current[index] = el)}
+              value={line.text}
+              onChange={(e) => handleTextChange(index, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              className={`w-full pl-6 pr-20 p-1 resize-none focus:outline-none ${line.isTitle ? 'font-bold text-xl' : ''}`}
+              rows={1}
+            />
+            <div className="absolute top-1 right-1 flex space-x-2">
+              <button onClick={() => handleDeleteLine(index)} className="text-red-500 text-sm">🗑️</button>
+              {!line.isTitle && (
+                <button onClick={() => handleMarkAsTitle(index)} className="text-blue-500 text-sm">🏷️</button>
+              )}
+            </div>
+          </div>
         </div>
       ))}
       <div className="flex justify-end space-x-2 mt-4">

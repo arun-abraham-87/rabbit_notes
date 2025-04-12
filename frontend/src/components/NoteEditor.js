@@ -10,6 +10,7 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
   const [lines, setLines] = useState(initialLines);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [mergedContent, setMergedContent] = useState(null);
+  const [draggedId, setDraggedId] = useState(null);
   const textareasRef = useRef([]);
 
   useEffect(() => {
@@ -19,11 +20,15 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
   }, []);
 
   const handleDragStart = (e, index) => {
-    e.dataTransfer.setData('text/plain', lines[index].id);
+    const id = lines[index].id;
+    e.dataTransfer.setData('text/plain', id);
+    setDraggedId(id);
   };
 
   const handleDragOver = (index) => {
-    setDropTargetIndex(index);
+    if (dropTargetIndex !== index) {
+      setDropTargetIndex(index);
+    }
   };
 
   const handleDrop = (e, targetIndex) => {
@@ -36,6 +41,7 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
     newLines.splice(targetIndex, 0, movedItem);
     setLines(newLines);
     setDropTargetIndex(null);
+    setDraggedId(null);
   };
 
   const handleTextChange = (index, newText) => {
@@ -121,7 +127,7 @@ const NoteEditor = ({ note, onSave, onCancel }) => {
           onDrop={(e) => handleDrop(e, index)}
           className={`mb-2 border border-gray-200 rounded bg-gray-50 ${dropTargetIndex === index ? 'border-blue-500' : ''}`}
         >
-          {dropTargetIndex === index && (
+          {dropTargetIndex === index && draggedId !== lines[index].id && (
             <div className="h-1 bg-blue-500 rounded my-1"></div>
           )}
           <div className="relative w-full flex items-center">

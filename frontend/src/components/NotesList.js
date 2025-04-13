@@ -53,6 +53,10 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
   const [showCreatedDate, setShowCreatedDate] = useState(false);
   const [popupNoteText, setPopupNoteText] = useState(null);
   const [imageUrls, setImageUrls] = useState({});
+  const [popupImageUrl, setPopupImageUrl] = useState(null);
+  const [popupImageLoading, setPopupImageLoading] = useState(false);
+  const [popupImageScale, setPopupImageScale] = useState(1);
+  const popupContainerRef = useRef(null);
   const popupTimeoutRef = useRef(null);
   const textareaRef = useRef(null);
   const safeNotes = notes || [];
@@ -269,7 +273,12 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                     <>
                       {isTitle && <h2 className="text-lg font-semibold text-purple-700 mb-2">{title}</h2>}
                       <pre className="whitespace-pre-wrap">
-                        {contentToRender.split(/(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s]+)/g).map((part, idx) => {
+                        {contentToRender
+                          .split('\n')
+                          .filter(line => !line.match(/^!\[pasted image\]\((.*?)\)$/))
+                          .join('\n')
+                          .split(/(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s]+)/g)
+                          .map((part, idx) => {
                           const markdownMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
                           if (markdownMatch) {
                             const [, label, url] = markdownMatch;
@@ -297,11 +306,19 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
               </div>
             </div>
             {imageUrls[note.id] ? (
-              <img
-                src={imageUrls[note.id]}
-                alt="Note thumbnail"
-                className="w-24 h-24 object-cover rounded-md mt-2"
-              />
+              <button
+                className="w-24 h-24 mt-2"
+                onClick={() => {
+                  setPopupImageLoading(true);
+                  setPopupImageUrl(imageUrls[note.id]);
+                }}
+              >
+                <img
+                  src={imageUrls[note.id]}
+                  alt="Note thumbnail"
+                  className="w-full h-full object-cover rounded-md transition-transform duration-200 transform hover:scale-105"
+                />
+              </button>
             ) : note.content.match(/!\[pasted image\]\((.*?)\)/) ? (
               <div className="w-6 h-6 mt-2 animate-spin border-2 border-purple-500 border-t-transparent rounded-full" />
             ) : null}
@@ -429,6 +446,49 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                 setPopupNoteText(null);
               }}
             />
+          </div>
+        </div>
+      )}
+      
+      {popupImageUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+            <div
+              ref={popupContainerRef}
+              className="relative bg-white p-4 rounded shadow-lg resize overflow-auto"
+              style={{ width: 'auto', height: 'auto' }}
+            >
+            {popupImageLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80">
+                <div className="w-10 h-10 animate-spin border-4 border-purple-600 border-t-transparent rounded-full" />
+              </div>
+            )}
+            <div className="flex justify-center gap-2 mb-2">
+              {[0.5, 1, 1.5, 2.5].map((scale) => (
+                <button
+                  key={scale}
+                  onClick={() => setPopupImageScale(scale)}
+                  className="px-3 py-1 text-sm bg-purple-100 text-purple-800 rounded hover:bg-purple-200"
+                >
+                  {Math.round(scale * 100)}%
+                </button>
+              ))}
+            </div>
+            <img
+              src={popupImageUrl}
+              alt="Full"
+              style={{
+                width: popupContainerRef.current ? `${popupContainerRef.current.offsetWidth * popupImageScale}px` : 'auto',
+                height: 'auto'
+              }}
+              className="max-w-screen-md max-h-screen object-contain"
+              onLoad={() => setPopupImageLoading(false)}
+            />
+            <button
+              onClick={() => setPopupImageUrl(null)}
+              className="absolute top-2 right-2 bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-700"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

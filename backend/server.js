@@ -130,6 +130,7 @@ app.get('/api/notes', (req, res) => {
         if (file === 'objects.md') return;
 
         const filePath = path.join(NOTES_DIR, file);
+        if (fs.lstatSync(filePath).isDirectory()) return; // Skip directories
         const fileContent = fs.readFileSync(filePath, 'utf-8');
         const notesInFile = JSON.parse(fileContent);
 
@@ -163,6 +164,17 @@ app.get('/api/notes', (req, res) => {
   }
 });
 
+app.get('/api/images/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const imagePath = path.join(IMAGES_DIR, filename);
+
+  if (!fs.existsSync(imagePath)) {
+    return res.status(404).json({ error: 'Image not found.' });
+  }
+
+  res.sendFile(path.resolve(imagePath));
+});
+
 app.get('/api/todos', (req, res) => {
   try {
     const files = fs.readdirSync(NOTES_DIR);
@@ -174,6 +186,7 @@ app.get('/api/todos', (req, res) => {
         if (file === 'objects.md') return;
 
         const filePath = path.join(NOTES_DIR, file);
+        if (fs.lstatSync(filePath).isDirectory()) return; // Skip directories
         const fileContent = fs.readFileSync(filePath, 'utf-8');
         const notesInFile = JSON.parse(fileContent);
 
@@ -211,6 +224,7 @@ app.put('/api/notes/:id', (req, res) => {
     // Process each file and search for the note with the given ID
     files.forEach((file) => {
       const filePath = path.join(NOTES_DIR, file);
+      if (fs.lstatSync(filePath).isDirectory()) return; // Skip directories
 
       try {
         const fileContent = fs.readFileSync(filePath, 'utf-8'); // Read file content
@@ -343,6 +357,7 @@ app.delete('/api/notes/:id', (req, res) => {
     // Process each file and search for the note with the given ID
     files.forEach((file) => {
       const filePath = path.join(NOTES_DIR, file);
+      if (fs.lstatSync(filePath).isDirectory()) return; // Skip directories
 
       try {
         const fileContent = fs.readFileSync(filePath, 'utf-8'); // Read file content
@@ -460,6 +475,35 @@ app.post('/api/objects', (req, res) => {
 //     res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
 //   }
 // });
+
+const multer = require('multer');
+
+// Create images directory if it doesn't exist
+const IMAGES_DIR = path.join(NOTES_DIR, 'images');
+if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR);
+
+// Setup multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, IMAGES_DIR);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const desiredName = path.parse(file.originalname).name;
+    cb(null, `${desiredName}${ext}`);
+  }
+});
+const upload = multer({ storage });
+
+app.post('/api/images', upload.single('image'), (req, res) => {
+  console.log("IMage Uplaod api called ")
+  if (!req.file) {
+    console.log("IMage File not found")
+    return res.status(400).json({ error: 'No image uploaded.' });
+  }
+  console.log(`Image upload started: ${req.file.originalname}`);
+  res.status(200).json({ message: 'Image uploaded successfully.', filename: req.file.filename });
+});
 
 const PORT = 5001;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

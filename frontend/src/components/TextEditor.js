@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { v4 as uuidv4 } from 'uuid';
 import Calendar from "react-calendar"; // Install via `npm install react-calendar`
 import "react-calendar/dist/Calendar.css";
 
@@ -17,6 +18,8 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
 
     const [showCalendar, setShowCalendar] = useState(false);
     const [calendarPosition, setCalendarPosition] = useState({ x: 0, y: 0 });
+    const [pastedImages, setPastedImages] = useState([]);
+    const [uploadStatus, setUploadStatus] = useState({});
 
     useEffect(() => {
         focusDiv(notes.length - 1, true);
@@ -124,9 +127,35 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
 
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();
-                addNotes(notes.join("\n"), []);
-                setNotes([""])
-                focusDiv(0, true)
+
+                const unuploaded = pastedImages.filter(img => !img.uploaded);
+                const uploadPromises = unuploaded.map(({ id, blob }) => {
+                    const formData = new FormData();
+                    formData.append("image", blob, `${id}.png`);
+                    return fetch("http://localhost:5001/api/images", {
+                        method: "POST",
+                        body: formData,
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        const imageUrl = data.url || `http://localhost:5001/images/${data.filename}`;
+                        const newNotes = [...notes];
+                        newNotes.forEach((line, i) => {
+                            if (line.includes(`(${id})`)) {
+                                newNotes[i] = line.replace(`(${id})`, `(${imageUrl})`);
+                            }
+                        });
+                        setNotes(newNotes);
+                    });
+                });
+
+                Promise.all(uploadPromises).then(() => {
+                    addNotes(notes.join("\n"), []);
+                    setNotes([""]);
+                    setPastedImages([]);
+                    focusDiv(0, true);
+                });
+
                 return;
             }
 
@@ -331,12 +360,58 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
 
     const handlePaste = (e, index) => {
         e.preventDefault();
+ 
+        const items = e.clipboardData.items;
+        const updatedNotes = [...notes];
+ 
+        for (const item of items) {
+        if (item.type.indexOf("image") !== -1) {
+                const blob = item.getAsFile();
+                const id = uuidv4();
+                const imageUrl = URL.createObjectURL(blob);
+ 
+                updatedNotes[index] += `\n![pasted image](${id})`;
+                setNotes(updatedNotes);
+ 
+                setPastedImages(prev => [...prev, { id, blob, url: imageUrl }]);
+                return;
+            }
+        }
+ 
         const text = e.clipboardData.getData("text/plain");
         const lines = text.split("\n");
-        const updatedNotes = [...notes];
         updatedNotes.splice(index, 1, ...lines);
         setNotes(updatedNotes);
         setTimeout(() => focusDiv(index + lines.length - 1, true), 0);
+    };
+    
+    const handleSave = () => {
+    const uploadPromises = pastedImages.map(({ id, blob }) => {
+        const formData = new FormData();
+        formData.append("image", blob, `${id}.png`);
+        return fetch("http://localhost:5001/api/images", {
+            method: "POST",
+            body: formData,
+        })
+        .then(res => res.json())
+        .then(data => {
+            const imageUrl = data.url || `http://localhost:5001/images/${data.filename}`;
+            const newNotes = [...notes];
+            newNotes.forEach((line, i) => {
+                if (line.includes(`(${id})`)) {
+                    newNotes[i] = line.replace(`(${id})`, `(${imageUrl})`);
+                }
+            });
+            setNotes(newNotes);
+        });
+    });
+
+        Promise.all(uploadPromises).then(() => {
+            addNotes(notes.join("\n"), []);
+            setNotes([""]);
+            setPastedImages([]);
+            focusDiv(0, true);
+        });
     };
 
     return (
@@ -407,6 +482,29 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
                     />
                 </div>
             )}
+            {pastedImages.map(({ id, url }) => (
+                <div key={id} className="mt-2 flex items-center gap-2">
+                    <img src={url} alt="Uploaded" className="w-16 h-16 object-cover rounded border" />
+                    {uploadStatus[id] !== "done" ? (
+                        <div className="w-full bg-gray-200 rounded h-2">
+                            <div
+                                className="bg-purple-500 h-2 rounded"
+                                style={{ width: `${uploadStatus[id] || 0}%` }}
+                            ></div>
+                        </div>
+                    ) : (
+                        <span className="text-xs text-green-600">Upload complete</span>
+                    )}
+                </div>
+            ))}
+            <div className="mt-4">
+                <button
+                    className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+                    onClick={handleSave}
+                >
+                    Save Notes
+                </button>
+            </div>
         </div>
     );
 };

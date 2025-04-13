@@ -52,6 +52,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
   const [selectedNotes, setSelectedNotes] = useState([]);
   const [showCreatedDate, setShowCreatedDate] = useState(false);
   const [popupNoteText, setPopupNoteText] = useState(null);
+  const [imageUrls, setImageUrls] = useState({});
   const popupTimeoutRef = useRef(null);
   const textareaRef = useRef(null);
   const safeNotes = notes || [];
@@ -193,6 +194,32 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
       }
     };
   }, []);
+  
+  useEffect(() => {
+    const imagePattern = /!\[pasted image\]\((.*?)\)/g;
+    const fetchImages = async () => {
+      const newImageUrls = {};
+      for (const note of safeNotes) {
+        const matches = [...note.content.matchAll(imagePattern)];
+        for (const match of matches) {
+          const imageId = match[1];
+          if (!imageId.includes("http")) {
+            try {
+              const res = await fetch(`http://localhost:5001/api/images/${imageId}.png`);
+              if (res.ok) {
+                newImageUrls[note.id] = `http://localhost:5001/api/images/${imageId}.png`;
+              }
+            } catch (e) {
+              console.error("Image fetch failed:", imageId);
+            }
+          }
+        }
+      }
+      setImageUrls(newImageUrls);
+    };
+
+    fetchImages();
+  }, [safeNotes]);
 
   return (
     <div>
@@ -269,6 +296,15 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                 })()}
               </div>
             </div>
+            {imageUrls[note.id] ? (
+              <img
+                src={imageUrls[note.id]}
+                alt="Note thumbnail"
+                className="w-24 h-24 object-cover rounded-md mt-2"
+              />
+            ) : note.content.match(/!\[pasted image\]\((.*?)\)/) ? (
+              <div className="w-6 h-6 mt-2 animate-spin border-2 border-purple-500 border-t-transparent rounded-full" />
+            ) : null}
 
             {/* Layer 2: Tags */}
             <div className="flex flex-wrap gap-2 px-4 pb-2">

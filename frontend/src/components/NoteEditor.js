@@ -497,7 +497,7 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                     rows={1}
                   />
                 )}
-                <div className="absolute right-3 top-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute right-8 top-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={async () => {
                       const text = await navigator.clipboard.readText();

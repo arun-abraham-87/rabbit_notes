@@ -538,25 +538,52 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
                 </button>
               </div>
             )}
-            <div className="mt-4">
-                <button
-                    className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-                    onClick={handleSave}
+            <div className="mt-4 flex justify-between items-center">
+              {/* Left section */}
+              <div className="flex items-center gap-4">
+                <span
+                  className="text-purple-600 underline cursor-pointer hover:text-purple-800 text-sm"
+                  onClick={async () => {
+                    const clipboardText = await navigator.clipboard.readText();
+                    const updatedNotes = [...notes];
+                    updatedNotes.splice(1, 0, clipboardText);
+                    setNotes(updatedNotes);
+                    setTimeout(() => focusDiv(1, true), 0);
+                  }}
                 >
-                    Save Notes
-                </button>
-                <button
-                    onClick={async () => {
-                      const clipboardText = await navigator.clipboard.readText();
-                      const updatedNotes = [...notes];
-                      updatedNotes.splice(1, 0, clipboardText);
-                      setNotes(updatedNotes);
-                      setTimeout(() => focusDiv(1, true), 0);
+                  Paste from Clipboard
+                </span>
+                {notes.some(note => note.trim() === "") && (
+                  <button
+                    onClick={() => {
+                      const cleanedNotes = notes.filter(note => note.trim() !== "");
+                      setNotes(cleanedNotes);
                     }}
-                    className="ml-2 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+                    className="text-red-600 text-sm underline hover:text-red-800"
+                  >
+                    Remove Blank Spaces
+                  </button>
+                )}
+              </div>
+            
+              {/* Right section */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setNotes([""]);
+                    setPastedImages([]);
+                  }}
+                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 text-sm"
                 >
-                    Paste from Clipboard
+                  Cancel
                 </button>
+                <button
+                  className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm"
+                  onClick={handleSave}
+                >
+                  Save Notes
+                </button>
+              </div>
             </div>
         </div>
     );

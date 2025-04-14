@@ -148,19 +148,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
     );
   };
 
-  const handleMergeNotes = async () => {
-    const mergedContent = selectedNotes
-      .map((id) => notes.find((n) => n.id === id)?.content)
-      .filter(Boolean)
-      .join('\n-----------------------------------\n') + '\n#merged';
-    console.log('Merged Note');
-    console.log(mergedContent);
-    for (const id of selectedNotes) {
-      await deleteNote(id);
-    }
-    addNotes(mergedContent);
-    setSelectedNotes([]);
-  };
+  const handleMergeNotes = async () => {};
 
   const urlPattern = /https?:\/\/[^\s]+/g;
   const urlToNotesMap = {};
@@ -347,6 +335,20 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                             );
                           } else if (part.match(/https?:\/\/[^\s]+/)) {
                             return renderSmartLink(part, duplicatedUrlColors[part]);
+                          }
+                          if (searchTerm && typeof part === 'string') {
+                            const keywords = searchTerm.trim().split(/\s+/).filter(Boolean);
+                            if (keywords.length) {
+                              const regex = new RegExp(`(${keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+                              const segments = part.split(regex);
+                              return segments.map((seg, i) =>
+                                keywords.some(kw => seg.toLowerCase() === kw.toLowerCase()) ? (
+                                  <mark key={i} className="bg-yellow-200">{seg}</mark>
+                                ) : (
+                                  seg
+                                )
+                              );
+                            }
                           }
                           return part;
                         })}

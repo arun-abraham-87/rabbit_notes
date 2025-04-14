@@ -1,15 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { updateNoteById} from '../utils/ApiUtils';
 
-const NoteEditor = ({ note, onSave, onCancel, text }) => {
-  const contentSource = text || note.content || '##dfgdsfg2##\nsfgsdfgsdfg3\ndfgsdfg1';
-  const initialLines = contentSource.split('\n').map((text, index) => ({
-    id: `line-${index}`,
-    text,
-    isTitle: text.startsWith('##') && text.endsWith('##'),
-  }));
+const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false }) => {
+const contentSource = text || note.content || '';
+const initialLines = contentSource
+  ? contentSource.split('\n').map((text, index) => ({
+      id: `line-${index}`,
+      text,
+      isTitle: text.startsWith('##') && text.endsWith('##'),
+    }))
+  : [{ id: 'line-0', text: '', isTitle: false }];
 
   const [lines, setLines] = useState(initialLines);
+  
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [mergedContent, setMergedContent] = useState(null);
   const [draggedId, setDraggedId] = useState(null);
@@ -352,14 +355,24 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
     const handleGlobalKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        handleSave();
+        const merged = lines.map(line => line.text).join('\n');
+        if (isAddMode) {
+          addNote(merged);
+          setLines([{ id: 'line-0', text: '', isTitle: false }]);
+          setUrlLabelSelection({ urlIndex: null, labelIndex: null });
+          onCancel();
+        } else {
+          updateNote(note.id, merged);
+          onSave({ ...note, content: merged });
+          setMergedContent(merged);
+        }
       }
     };
     document.addEventListener('keydown', handleGlobalKey);
     return () => {
       document.removeEventListener('keydown', handleGlobalKey);
     };
-  }, [lines]);
+  }, [lines, isAddMode, note, addNote, onSave, onCancel]);
 
   const toCamelCase = (str) =>
     str
@@ -402,10 +415,10 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
         </div>
       )}
       <div className="mb-4 flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-700">Edit Note</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{isAddMode ? 'Add Note' : 'Edit Note'}</h2>
         <button
           onClick={() => setIsTextMode(!isTextMode)}
-          className="px-4 py-1.5 rounded-md bg-blue-100 text-blue-800 font-medium hover:bg-blue-200 border border-blue-300"
+          className="text-xs text-gray-500 hover:text-gray-700 underline"
         >
           {isTextMode ? '🧩 Advanced Mode' : '✍️ Text Mode'}
         </button>
@@ -505,10 +518,22 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                     </button>
                   </div>
                 ) : (
-                  <textarea
+                <textarea
                     ref={(el) => (textareasRef.current[index] = el)}
                     value={line.text}
-                    onChange={(e) => handleTextChange(index, e.target.value)}
+                    style={{
+                      backgroundColor:
+                        searchQuery && line.text &&
+                        line.text.toLowerCase().includes(searchQuery.toLowerCase())
+                          ? '#fef3c7'
+                          : 'inherit'
+                    }}
+                    onChange={(e) => {
+                      handleTextChange(index, e.target.value);
+                      if (setSearchQuery) {
+                        setSearchQuery(e.target.value);
+                      }
+                    }}
                     onKeyDown={(e) => handleKeyDown(e, index)}
                     onPaste={(e) => handlePaste(e, index)}
                     className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'}`}
@@ -626,18 +651,34 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
         </div>
       )}
       <div className="flex justify-end gap-3 mt-6">
+        {isAddMode && (
+          <button
+            onClick={() => {
+              const merged = lines.map(line => line.text).join('\n');
+              addNote(merged);
+              setLines([{ id: 'line-0', text: '', isTitle: false }]);
+              setUrlLabelSelection({ urlIndex: null, labelIndex: null });
+              onCancel();
+            }}
+            className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 shadow-sm"
+          >
+            Add Note
+          </button>
+        )}
         <button
           onClick={onCancel}
           className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
         >
           Cancel
         </button>
-        <button
-          onClick={handleSave}
-          className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
-        >
-          Save
-        </button>
+        {!isAddMode && (
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+          >
+            Save
+          </button>
+        )}
       </div>
     </div>
   );

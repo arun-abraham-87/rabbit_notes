@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { PencilIcon } from '@heroicons/react/24/solid';
-import { TrashIcon } from '@heroicons/react/24/solid';
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
+import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
 import { processContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
 import { formatDate } from '../utils/DateUtils';
@@ -453,6 +451,28 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                         className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
                         onClick={() => {
                           updateNote(note.id, `${note.content.trim()} #todo`);
+                        }}
+                      />
+                    </div>
+                  )}
+                  {note.content.toLowerCase().includes('#watch') ? (
+                    <div className="group relative">
+                      <EyeSlashIcon
+                        title="Unmark from Watchlist"
+                        className="h-4 w-4 text-yellow-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-yellow-800"
+                        onClick={() => {
+                          const updatedContent = note.content.replace(/#watch/gi, '').trim();
+                          updateNote(note.id, updatedContent);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="group relative">
+                      <EyeIcon
+                        title="Add to Watchlist"
+                        className="h-4 w-4 text-yellow-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-yellow-800"
+                        onClick={() => {
+                          updateNote(note.id, `${note.content.trim()} #watch`);
                         }}
                       />
                     </div>

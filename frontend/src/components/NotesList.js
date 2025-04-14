@@ -286,13 +286,22 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
           Watch List
         </button>
       </div>
-      {safeNotes
+      {notes
         .filter(note => {
           if (selectedView === 'Todos') return note.content.toLowerCase().includes('#todo');
           if (selectedView === 'Watch') return note.content.toLowerCase().includes('#watch');
           return true;
         })
-        .map((note) => (
+        .map(note => {
+          const urls = note.content.match(urlPattern) || [];
+          urls.forEach((url) => {
+            if (!urlToNotesMap[url]) urlToNotesMap[url] = [];
+            urlToNotesMap[url].push(note.id);
+          });
+          return note;
+        })
+        .filter(note => safeNotes.some(n => n.id === note.id))
+        .map(note => (
         <div
           key={note.id}
           className={`flex flex-col p-5 mb-5 rounded-xl border ${
@@ -309,7 +318,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                   const rest = lines.slice(1).join('\n');
                   const isTitle = firstLine.startsWith('##') && firstLine.endsWith('##');
                   const title = isTitle ? firstLine.replace(/^##|##$/g, '') : null;
-                  const contentToRender = isTitle ? rest : note.content;
+                  const contentToRender = isTitle ? rest.replace(/#\w+/g, '') : note.content.replace(/#\w+/g, '');
  
                   return (
                     <>
@@ -378,44 +387,42 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
               <div className="w-6 h-6 mt-2 animate-spin border-2 border-purple-500 border-t-transparent rounded-full" />
             ) : null}
 
-            {/* Layer 2: Tags */}
             <div className="flex flex-wrap gap-2 px-4 pb-2">
-              {note.content
-                .match(/#\w+/g)
-                ?.filter((tag) => objects.includes(tag.substring(1)))
+              {(note.content.match(/(?:^|\s)#\w+/g) || [])
+                .filter(tag => tag.trim().startsWith('#'))
                 .map((tag, index) => (
-                  <span
+                  <button
                     key={index}
-                    className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full"
+                    className="bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 rounded-full hover:bg-purple-200"
                   >
-                    {tag}
-                  </span>
-                ))}
+                    {tag.trim()}
+                  </button>
+              ))}
               {duplicateUrlNoteIds.has(note.id) && (
                 <span className="bg-red-100 text-red-800 text-xs font-semibold px-3 py-1 rounded-full">
                   Duplicate URL
                 </span>
               )}
               {duplicateWithinNoteIds.has(note.id) && (
-                <span className="bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full">
-                  Duplicate Url In Note
-                </span>
-              )}
-              {duplicateWithinNoteIds.has(note.id) && (
-                <button
-                  onClick={() => {
-                    const seen = new Set();
-                    const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
-                      if (seen.has(url)) return '';
-                      seen.add(url);
-                      return url;
-                    });
-                    updateNote(note.id, cleanedContent);
-                  }}
-                  className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                >
-                  Remove Duplicates
-                </button>
+                <>
+                  <span className="bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full">
+                    Duplicate Url In Note
+                  </span>
+                  <button
+                    onClick={() => {
+                      const seen = new Set();
+                      const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
+                        if (seen.has(url)) return '';
+                        seen.add(url);
+                        return url;
+                      });
+                      updateNote(note.id, cleanedContent);
+                    }}
+                    className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                  >
+                    Remove Duplicates
+                  </button>
+                </>
               )}
             </div>
 

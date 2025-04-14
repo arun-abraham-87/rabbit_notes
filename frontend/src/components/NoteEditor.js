@@ -15,6 +15,7 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
   const [draggedId, setDraggedId] = useState(null);
   const [selectAllPressCount, setSelectAllPressCount] = useState(0);
   const [isTextMode, setIsTextMode] = useState(false);
+  const [urlLabelSelection, setUrlLabelSelection] = useState({ urlIndex: null, labelIndex: null });
   const textareasRef = useRef([]);
 
   useEffect(() => {
@@ -441,15 +442,61 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
               )}
               <div className="flex items-start px-3 py-2 relative">
                 <span className="absolute left-1 top-2 text-gray-400 cursor-grab group-hover:opacity-100 opacity-0">☰</span>
-                <textarea
-                  ref={(el) => (textareasRef.current[index] = el)}
-                  value={line.text}
-                  onChange={(e) => handleTextChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, index)}
-                  onPaste={(e) => handlePaste(e, index)}
-                  className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'}`}
-                  rows={1}
-                />
+                {line.text.match(/https?:\/\/[^\s]+/) && urlLabelSelection.urlIndex === null && (
+                  <input
+                    type="checkbox"
+                    title="Select this URL"
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setUrlLabelSelection({ urlIndex: index, labelIndex: null });
+                      }
+                    }}
+                    className="mr-2 mt-1"
+                  />
+                )}
+                {!line.text.match(/https?:\/\/[^\s]+/) && urlLabelSelection.urlIndex !== null && (
+                  <input
+                    type="checkbox"
+                    title="Use this line as label"
+                    checked={urlLabelSelection.labelIndex === index}
+                    onChange={(e) => {
+                      setUrlLabelSelection((prev) => ({
+                        ...prev,
+                        labelIndex: e.target.checked ? index : null,
+                      }));
+                    }}
+                    className="mr-2 mt-1"
+                  />
+                )}
+                {line.text.match(/^https?:\/\/[^\s]+$/) ? (
+                  <div className="flex items-center pl-6 pr-28 w-full">
+                    <a
+                      href={line.text}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline text-sm mr-2"
+                    >
+                      {new URL(line.text).hostname}
+                    </a>
+                    <button
+                      onClick={() => handleDeleteLine(index)}
+                      className="text-red-500 text-sm ml-2"
+                      title="Remove URL"
+                    >
+                      ❌
+                    </button>
+                  </div>
+                ) : (
+                  <textarea
+                    ref={(el) => (textareasRef.current[index] = el)}
+                    value={line.text}
+                    onChange={(e) => handleTextChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, index)}
+                    onPaste={(e) => handlePaste(e, index)}
+                    className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'}`}
+                    rows={1}
+                  />
+                )}
                 <div className="absolute right-3 top-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={async () => {
@@ -491,6 +538,40 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                     </button>
                   )}
                 </div>
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-col justify-center gap-0.5 h-full">
+                  <button
+                    onClick={() => {
+                      const newLines = [...lines];
+                      newLines.splice(index, 0, {
+                        id: `line-${Date.now()}-above`,
+                        text: '',
+                        isTitle: false
+                      });
+                      setLines(newLines);
+                      setTimeout(() => textareasRef.current[index]?.focus(), 0);
+                    }}
+                    className="text-gray-500 text-xs hover:text-black px-1"
+                    title="Insert line above"
+                  >
+                    ➖
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newLines = [...lines];
+                      newLines.splice(index + 1, 0, {
+                        id: `line-${Date.now()}-below`,
+                        text: '',
+                        isTitle: false
+                      });
+                      setLines(newLines);
+                      setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
+                    }}
+                    className="text-gray-500 text-xs hover:text-black px-1"
+                    title="Insert line below"
+                  >
+                    ➕
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -499,6 +580,28 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
       <div className="text-xs text-gray-400 mt-3 text-center font-mono">
         ⌘↑ Move | ⌘↓ Move | ⌘D Duplicate | ⌘⌥T Title | ⌘⏎ Save | Tab Indent | Shift+Tab Outdent
       </div>
+      {urlLabelSelection.urlIndex !== null && urlLabelSelection.labelIndex !== null && (
+        <div className="flex justify-end mt-4">
+          <button
+            onClick={() => {
+              const newLines = [...lines];
+              const label = newLines[urlLabelSelection.labelIndex].text;
+              const urlLine = newLines[urlLabelSelection.urlIndex];
+              const urlMatch = urlLine.text.match(/https?:\/\/[^\s]+/);
+              if (urlMatch) {
+                const url = urlMatch[0];
+                urlLine.text = urlLine.text.replace(url, `[${label}](${url})`);
+                newLines.splice(urlLabelSelection.labelIndex, 1);
+                setLines(newLines);
+                setUrlLabelSelection({ urlIndex: null, labelIndex: null });
+              }
+            }}
+            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+          >
+            Make URL Text
+          </button>
+        </div>
+      )}
       <div className="flex justify-end gap-3 mt-6">
         <button
           onClick={onCancel}

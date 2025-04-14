@@ -27,6 +27,7 @@ const NotesListing = ({ notes, addNote , setNotes, objects ,searchQuery, setSear
                     console.log("NoteEditor canceled");
                 }}
                 searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
                 isAddMode={true}
             />
             <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />

@@ -148,19 +148,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
     );
   };
 
-  const handleMergeNotes = async () => {
-    const mergedContent = selectedNotes
-      .map((id) => notes.find((n) => n.id === id)?.content)
-      .filter(Boolean)
-      .join('\n-----------------------------------\n') + '\n#merged';
-    console.log('Merged Note');
-    console.log(mergedContent);
-    for (const id of selectedNotes) {
-      await deleteNote(id);
-    }
-    addNotes(mergedContent);
-    setSelectedNotes([]);
-  };
+  const handleMergeNotes = async () => {};
 
   const urlPattern = /https?:\/\/[^\s]+/g;
   const urlToNotesMap = {};

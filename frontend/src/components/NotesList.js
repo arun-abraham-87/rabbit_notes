@@ -86,6 +86,20 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
     );
   };
 
+const handleRemoveDuplicateUrlsWithinNotes = () => {
+  safeNotes.forEach(note => {
+    if (duplicateWithinNoteIds.has(note.id)) {
+      const seen = new Set();
+      const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
+        if (seen.has(url)) return '';
+        seen.add(url);
+        return url;
+      });
+      updateNote(note.id, cleanedContent);
+    }
+  });
+};
+
   const deleteNote = async (id) => {
     deleteNoteById(id);
     updateNoteCallback(
@@ -361,6 +375,22 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                 <span className="bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full">
                   Duplicate Url In Note
                 </span>
+              )}
+              {duplicateWithinNoteIds.has(note.id) && (
+                <button
+                  onClick={() => {
+                    const seen = new Set();
+                    const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
+                      if (seen.has(url)) return '';
+                      seen.add(url);
+                      return url;
+                    });
+                    updateNote(note.id, cleanedContent);
+                  }}
+                  className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  Remove Duplicates
+                </button>
               )}
             </div>
 

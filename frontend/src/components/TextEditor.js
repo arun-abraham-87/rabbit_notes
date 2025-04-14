@@ -504,6 +504,18 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
                 >
                     Save Notes
                 </button>
+                <button
+                    onClick={async () => {
+                      const clipboardText = await navigator.clipboard.readText();
+                      const updatedNotes = [...notes];
+                      updatedNotes.splice(1, 0, clipboardText);
+                      setNotes(updatedNotes);
+                      setTimeout(() => focusDiv(1, true), 0);
+                    }}
+                    className="ml-2 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+                >
+                    Paste from Clipboard
+                </button>
             </div>
         </div>
     );

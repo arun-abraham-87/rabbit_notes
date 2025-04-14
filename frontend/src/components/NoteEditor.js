@@ -518,14 +518,15 @@ const initialLines = contentSource
                     </button>
                   </div>
                 ) : (
-                  <textarea
+                <textarea
                     ref={(el) => (textareasRef.current[index] = el)}
                     value={line.text}
                     style={{
-                      backgroundColor: searchQuery &&
+                      backgroundColor:
+                        searchQuery && line.text &&
                         line.text.toLowerCase().includes(searchQuery.toLowerCase())
-                        ? '#fef3c7'
-                        : 'transparent'
+                          ? '#fef3c7'
+                          : 'inherit'
                     }}
                     onChange={(e) => {
                       handleTextChange(index, e.target.value);

@@ -33,7 +33,7 @@ const NotesListing = ({ notes, addNote , setNotes, objects ,searchQuery, setSear
             {checked ? (
                 <NotesListByDate notes={notes} searchQuery={searchQuery} />
             ) : (
-                <NotesList notes={notes} addNotes={addNote} updateNoteCallback={setNotes} updateTotals={setTotals} objects={objects} addObjects={addTag} />
+                <NotesList notes={notes} addNotes={addNote} updateNoteCallback={setNotes} updateTotals={setTotals} objects={objects} addObjects={addTag} searchTerm={searchQuery} />
             )}
         </div>
     )

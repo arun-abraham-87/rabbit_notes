@@ -336,6 +336,20 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                           } else if (part.match(/https?:\/\/[^\s]+/)) {
                             return renderSmartLink(part, duplicatedUrlColors[part]);
                           }
+                          if (searchTerm && typeof part === 'string') {
+                            const keywords = searchTerm.trim().split(/\s+/).filter(Boolean);
+                            if (keywords.length) {
+                              const regex = new RegExp(`(${keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+                              const segments = part.split(regex);
+                              return segments.map((seg, i) =>
+                                keywords.some(kw => seg.toLowerCase() === kw.toLowerCase()) ? (
+                                  <mark key={i} className="bg-yellow-200">{seg}</mark>
+                                ) : (
+                                  seg
+                                )
+                              );
+                            }
+                          }
                           return part;
                         })}
                       </pre>

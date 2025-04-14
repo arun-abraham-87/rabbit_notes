@@ -452,6 +452,18 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                 />
                 <div className="absolute right-3 top-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
+                    onClick={async () => {
+                      const text = await navigator.clipboard.readText();
+                      const newLines = [...lines];
+                      newLines[index].text = text;
+                      setLines(newLines);
+                    }}
+                    className="text-blue-400 text-sm"
+                    title="Paste from clipboard"
+                  >
+                    📋
+                  </button>
+                  <button
                     onClick={() => handleCamelCase(index)}
                     className="text-purple-500 text-sm"
                     title="Convert to camelCase"

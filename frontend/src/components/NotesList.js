@@ -56,6 +56,9 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
   const [popupImageUrl, setPopupImageUrl] = useState(null);
   const [popupImageLoading, setPopupImageLoading] = useState(false);
   const [popupImageScale, setPopupImageScale] = useState(1);
+  const [linkingNoteId, setLinkingNoteId] = useState(null);
+  const [linkSearchTerm, setLinkSearchTerm] = useState('');
+  const [linkPopupVisible, setLinkPopupVisible] = useState(false);
   const popupContainerRef = useRef(null);
   const popupTimeoutRef = useRef(null);
   const textareaRef = useRef(null);
@@ -300,6 +303,19 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                           return part;
                         })}
                       </pre>
+                      {popupNoteText === note.id && (
+                        <div className="mt-2">
+                          <NoteEditor
+                            text={note.content}
+                            note={note}
+                            onCancel={() => setPopupNoteText(null)}
+                            onSave={(updatedNote) => {
+                              updateNote(updatedNote.id, updatedNote.content);
+                              setPopupNoteText(null);
+                            }}
+                          />
+                        </div>
+                      )}
                     </>
                   );
                 })()}
@@ -380,7 +396,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                   <div className="group relative">
                     <PencilIcon
                       className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
-                      onClick={() => setPopupNoteText(note.content)}
+                      onClick={() => setPopupNoteText(note.id)}
                     />
                   </div>
                   <div className="group relative">
@@ -388,6 +404,19 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
                       className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
                       onClick={() => handleDelete(note.id)}
                     />
+                  </div>
+                  <div className="group relative">
+                    <button
+                      title="Link Note"
+                      onClick={() => {
+                        setLinkingNoteId(note.id);
+                        setLinkSearchTerm('');
+                        setLinkPopupVisible(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      Link Notes
+                    </button>
                   </div>
                   <input
                     type="checkbox"
@@ -431,24 +460,6 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
         </div>
       )}
 
-      {popupNoteText && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow max-w-3xl w-full">
-            <NoteEditor
-              text={popupNoteText}
-              note={{
-                content: popupNoteText,
-                id: safeNotes.find(n => n.content === popupNoteText)?.id,
-              }}
-              onCancel={() => setPopupNoteText(null)}
-              onSave={(updatedNote) => {
-                updateNote(updatedNote.id, updatedNote.content);
-                setPopupNoteText(null);
-              }}
-            />
-          </div>
-        </div>
-      )}
       
       {popupImageUrl && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
@@ -492,6 +503,54 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
           </div>
         </div>
       )}
+    
+    {linkPopupVisible && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-4 rounded shadow max-w-md w-full">
+          <input
+            type="text"
+            placeholder="Search notes to link..."
+            value={linkSearchTerm}
+            onChange={(e) => setLinkSearchTerm(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded mb-3"
+          />
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {safeNotes
+              .filter(n => n.id !== linkingNoteId && n.content.toLowerCase().includes(linkSearchTerm.toLowerCase()))
+              .slice(0, 5)
+              .map(n => (
+                <div key={n.id} className="flex justify-between items-center p-2 border rounded">
+                  <span className="text-sm text-gray-800 line-clamp-1">{n.content.slice(0, 50)}...</span>
+                  <button
+                    onClick={() => {
+                      alert(`Note ${linkingNoteId} linked with Note ${n.id}`);
+                      setLinkPopupVisible(false);
+                      setLinkingNoteId(null);
+                      setLinkSearchTerm('');
+                      updateNoteCallback([...notes]); // Simulate a refresh
+                    }}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    Link
+                  </button>
+                </div>
+              ))}
+          </div>
+          <div className="flex justify-end mt-3">
+            <button
+              onClick={() => {
+                setLinkPopupVisible(false);
+                setLinkingNoteId(null);
+                setLinkSearchTerm('');
+              }}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 };

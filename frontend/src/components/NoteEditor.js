@@ -1,15 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { updateNoteById} from '../utils/ApiUtils';
 
-const NoteEditor = ({ note, onSave, onCancel, text }) => {
-  const contentSource = text || note.content || '##dfgdsfg2##\nsfgsdfgsdfg3\ndfgsdfg1';
-  const initialLines = contentSource.split('\n').map((text, index) => ({
-    id: `line-${index}`,
-    text,
-    isTitle: text.startsWith('##') && text.endsWith('##'),
-  }));
+const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, addNote, isAddMode = false }) => {
+const contentSource = text || note.content || '';
+const initialLines = contentSource
+  ? contentSource.split('\n').map((text, index) => ({
+      id: `line-${index}`,
+      text,
+      isTitle: text.startsWith('##') && text.endsWith('##'),
+    }))
+  : [{ id: 'line-0', text: '', isTitle: false }];
 
   const [lines, setLines] = useState(initialLines);
+  
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [mergedContent, setMergedContent] = useState(null);
   const [draggedId, setDraggedId] = useState(null);
@@ -402,7 +405,7 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
         </div>
       )}
       <div className="mb-4 flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-700">Edit Note</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{isAddMode ? 'Add Note' : 'Edit Note'}</h2>
         <button
           onClick={() => setIsTextMode(!isTextMode)}
           className="px-4 py-1.5 rounded-md bg-blue-100 text-blue-800 font-medium hover:bg-blue-200 border border-blue-300"
@@ -508,6 +511,12 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                   <textarea
                     ref={(el) => (textareasRef.current[index] = el)}
                     value={line.text}
+                    style={{
+                      backgroundColor: searchQuery &&
+                        line.text.toLowerCase().includes(searchQuery.toLowerCase())
+                        ? '#fef3c7'
+                        : 'transparent'
+                    }}
                     onChange={(e) => handleTextChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, index)}
                     onPaste={(e) => handlePaste(e, index)}
@@ -626,18 +635,32 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
         </div>
       )}
       <div className="flex justify-end gap-3 mt-6">
+        {isAddMode && (
+          <button
+            onClick={() => {
+              const merged = lines.map(line => line.text).join('\n');
+              addNote(merged);
+              onCancel();
+            }}
+            className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 shadow-sm"
+          >
+            Add Note
+          </button>
+        )}
         <button
           onClick={onCancel}
           className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
         >
           Cancel
         </button>
-        <button
-          onClick={handleSave}
-          className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
-        >
-          Save
-        </button>
+        {!isAddMode && (
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+          >
+            Save
+          </button>
+        )}
       </div>
     </div>
   );

@@ -497,6 +497,19 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
                     )}
                 </div>
             ))}
+            {notes.some(note => note.trim() === "") && (
+              <div className="mt-2">
+                <button
+                  onClick={() => {
+                    const cleanedNotes = notes.filter(note => note.trim() !== "");
+                    setNotes(cleanedNotes);
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                >
+                  Remove Blank Spaces
+                </button>
+              </div>
+            )}
             <div className="mt-4">
                 <button
                     className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"

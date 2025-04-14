@@ -442,7 +442,7 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
               )}
               <div className="flex items-start px-3 py-2 relative">
                 <span className="absolute left-1 top-2 text-gray-400 cursor-grab group-hover:opacity-100 opacity-0">☰</span>
-                {line.text.match(/https?:\/\/[^\s]+/) && urlLabelSelection.urlIndex === null && (
+                {line.text.match(/^https?:\/\/[^\s]+$/) && urlLabelSelection.urlIndex === null && (
                   <input
                     type="checkbox"
                     title="Select this URL"
@@ -468,7 +468,25 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                     className="mr-2 mt-1"
                   />
                 )}
-                {line.text.match(/^https?:\/\/[^\s]+$/) ? (
+                {line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/) ? (
+                  <div className="flex items-center pl-6 pr-28 w-full">
+                    <a
+                      href={line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/)[2]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline text-sm mr-2"
+                    >
+                      {line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/)[1]}
+                    </a>
+                    <button
+                      onClick={() => handleDeleteLine(index)}
+                      className="text-red-500 text-sm ml-2"
+                      title="Remove URL"
+                    >
+                      ❌
+                    </button>
+                  </div>
+                ) : line.text.match(/^https?:\/\/[^\s]+$/) ? (
                   <div className="flex items-center pl-6 pr-28 w-full">
                     <a
                       href={line.text}
@@ -505,36 +523,41 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                       newLines[index].text = text;
                       setLines(newLines);
                     }}
-                    className="text-blue-400 text-sm"
+                    className="text-gray-500 hover:text-blue-600 text-base transition-colors"
                     title="Paste from clipboard"
                   >
-                    📋
-                  </button>
-                  <button
-                    onClick={() => handleCamelCase(index)}
-                    className="text-purple-500 text-sm"
-                    title="Convert to camelCase"
-                  >
-                    🐪
+                    📥
                   </button>
                   <button
                     onClick={() => handleSentenceCase(index)}
-                    className="text-yellow-500 text-sm"
-                    title="Convert to Sentence case"
+                    className="text-gray-500 hover:text-blue-600 text-base transition-colors"
+                    title="Convert to Sentence Case"
                   >
-                    🅢
+                    Aa
                   </button>
-                  <button onClick={() => handleDeleteLine(index)} className="text-red-500 text-sm">🗑️</button>
+                  <button
+                    onClick={() => handleDeleteLine(index)}
+                    className="text-gray-500 hover:text-red-600 text-base transition-colors"
+                    title="Delete line"
+                  >
+                    🗑
+                  </button>
                   {!line.isTitle && (
-                    <button onClick={() => handleMarkAsTitle(index)} className="text-blue-500 text-sm">🏷️</button>
+                    <button
+                      onClick={() => handleMarkAsTitle(index)}
+                      className="text-gray-500 hover:text-blue-600 text-base transition-colors"
+                      title="Make this line H1"
+                    >
+                      H1
+                    </button>
                   )}
                   {line.text.match(/https?:\/\/[^\s]+/) && (
                     <button
                       onClick={() => handleLabelUrl(index)}
-                      className="text-green-500 text-sm"
+                      className="text-gray-500 hover:text-green-600 text-base transition-colors"
                       title="Label this URL"
                     >
-                      🔗
+                      🔖
                     </button>
                   )}
                 </div>
@@ -550,7 +573,7 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                       setLines(newLines);
                       setTimeout(() => textareasRef.current[index]?.focus(), 0);
                     }}
-                    className="text-gray-500 text-xs hover:text-black px-1"
+                    className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
                     title="Insert line above"
                   >
                     ➖
@@ -566,7 +589,7 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                       setLines(newLines);
                       setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
                     }}
-                    className="text-gray-500 text-xs hover:text-black px-1"
+                    className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
                     title="Insert line below"
                   >
                     ➕

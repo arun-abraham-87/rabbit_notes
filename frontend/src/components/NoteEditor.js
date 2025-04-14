@@ -480,10 +480,10 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                     </a>
                     <button
                       onClick={() => handleDeleteLine(index)}
-                      className="text-red-500 text-sm ml-2"
+                    className="text-red-400 text-xs ml-2 font-mono transition-transform transform hover:scale-150"
                       title="Remove URL"
                     >
-                      ❌
+                      x
                     </button>
                   </div>
                 ) : line.text.match(/^https?:\/\/[^\s]+$/) ? (
@@ -498,10 +498,10 @@ const NoteEditor = ({ note, onSave, onCancel, text }) => {
                     </a>
                     <button
                       onClick={() => handleDeleteLine(index)}
-                      className="text-red-500 text-sm ml-2"
+                    className="text-red-400 text-xs ml-2 font-mono transition-transform transform hover:scale-150"
                       title="Remove URL"
                     >
-                      ❌
+                      x
                     </button>
                   </div>
                 ) : (

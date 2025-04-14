@@ -402,15 +402,49 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   {note.content.toLowerCase().includes('#todo') ? (
-                    <div className="group relative">
-                      <XCircleIcon
-                        title="Unmark as Todo"
-                        className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
-                        onClick={() => {
-                          const updatedContent = note.content.replace(/#todo/gi, '').trim();
-                          updateNote(note.id, updatedContent);
-                        }}
-                      />
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <button
+                          className="bg-green-100 text-green-800 px-2 py-1 text-xs rounded hover:bg-green-200"
+                          onClick={() => {
+                            const updated = note.content.replace(/#(low|medium|high)/gi, '').trim() + ' #low';
+                            updateNote(note.id, updated);
+                          }}
+                        >
+                          Low
+                        </button>
+                        <button
+                          className="bg-yellow-100 text-yellow-800 px-2 py-1 text-xs rounded hover:bg-yellow-200"
+                          onClick={() => {
+                            const updated = note.content.replace(/#(low|medium|high)/gi, '').trim() + ' #medium';
+                            updateNote(note.id, updated);
+                          }}
+                        >
+                          Medium
+                        </button>
+                        <button
+                          className="bg-red-100 text-red-800 px-2 py-1 text-xs rounded hover:bg-red-200"
+                          onClick={() => {
+                            const updated = note.content.replace(/#(low|medium|high)/gi, '').trim() + ' #high';
+                            updateNote(note.id, updated);
+                          }}
+                        >
+                          High
+                        </button>
+                      </div>
+                      <div className="group relative">
+                        <XCircleIcon
+                          title="Unmark as Todo"
+                          className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
+                          onClick={() => {
+                            const updatedContent = note.content
+                              .replace(/#todo/gi, '')
+                              .replace(/#(low|medium|high)/gi, '')
+                              .trim();
+                            updateNote(note.id, updatedContent);
+                          }}
+                        />
+                      </div>
                     </div>
                   ) : (
                     <div className="group relative">

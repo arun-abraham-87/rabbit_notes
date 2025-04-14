@@ -61,6 +61,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
   const popupTimeoutRef = useRef(null);
   const textareaRef = useRef(null);
   const safeNotes = notes || [];
+  const [selectedView, setSelectedView] = useState('All');
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -265,7 +266,33 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
           <label htmlFor="toggleCreatedDate" className="text-sm text-gray-700">Show created date</label>
         </div>
       </div>
-      {safeNotes.map((note) => (
+      <div className="flex justify-start gap-2 mb-4 px-4">
+        <button
+          className={`px-3 py-1 rounded text-sm ${selectedView === 'All' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
+          onClick={() => setSelectedView('All')}
+        >
+          All
+        </button>
+        <button
+          className={`px-3 py-1 rounded text-sm ${selectedView === 'Todos' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
+          onClick={() => setSelectedView('Todos')}
+        >
+          Todos
+        </button>
+        <button
+          className={`px-3 py-1 rounded text-sm ${selectedView === 'Watch' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
+          onClick={() => setSelectedView('Watch')}
+        >
+          Watch List
+        </button>
+      </div>
+      {safeNotes
+        .filter(note => {
+          if (selectedView === 'Todos') return note.content.toLowerCase().includes('#todo');
+          if (selectedView === 'Watch') return note.content.toLowerCase().includes('#watch');
+          return true;
+        })
+        .map((note) => (
         <div
           key={note.id}
           className={`flex flex-col p-5 mb-5 rounded-xl border ${

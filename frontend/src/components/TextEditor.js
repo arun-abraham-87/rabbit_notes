@@ -420,20 +420,48 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
             className="w-full mx-auto p-6 border border-gray-200 rounded-xl bg-white shadow-md"
         >
             {notes.map((note, index) => (
-                <div
-                    key={index}
+                <div key={index} className="relative group">
+                  <div
                     contentEditable
                     suppressContentEditableWarning
-                    className={`editable-div px-4 py-2 mb-3 whitespace-pre-wrap rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${selectedIndices.includes(index) ? "bg-blue-50 border-blue-300" : "bg-gray-50 border-gray-200"}`}
+                    className={`editable-div px-4 py-2 mb-3 whitespace-pre-wrap rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${selectedIndices.includes(index) ? "bg-blue-50 border-blue-300" : "bg-gray-50 border-gray-200"} ${index === 0 && notes[0].startsWith('###') ? 'text-2xl font-bold' : ''}`}
                     onKeyDown={(e) => handleKeyDown(e, index)}
                     onKeyUp={(e) => handleKeyUp(e, index)}
                     onInput={(e) => handleInputChange(e, index)}
                     onPaste={(e) => handlePaste(e, index)}
-                    onFocus={() => setFocusIndex(index)} // Add this line to handle focus
+                    onFocus={() => setFocusIndex(index)}
                     tabIndex={0}
                     data-placeholder="Type your text here..."
-                >
+                  >
                     {note}
+                  </div>
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      title="Convert to Sentence case"
+                      className="text-xs text-gray-500 hover:text-blue-600"
+                      onClick={() => {
+                        const updated = [...notes];
+                        updated[index] = updated[index].charAt(0).toUpperCase() + updated[index].slice(1).toLowerCase();
+                        setNotes(updated);
+                      }}
+                    >
+                      Aa
+                    </button>
+                    <button
+                      title="Make H1"
+                      className="text-xs text-gray-500 hover:text-purple-600"
+                      onClick={() => {
+                        const content = notes[index];
+                        const updated = [...notes];
+                        updated.splice(index, 1);
+                        updated.unshift(`### ${content}`);
+                        setNotes(updated);
+                        setTimeout(() => focusDiv(0, true), 0);
+                      }}
+                    >
+                      H1
+                    </button>
+                  </div>
                 </div>
             ))}
 

@@ -283,7 +283,7 @@ const initialLines = contentSource
   };
 
   const handleDeleteLine = (index) => {
-    const newLines = lines.filter((_, i) => i !== index);
+    const newLines = (lines || []).filter((_, i) => i !== index);
     setLines(newLines);
   };
 
@@ -311,7 +311,7 @@ const initialLines = contentSource
     newLines = [selected, ...newLines]; // Prepend title
 
     // Remove any completely blank lines
-    setLines(newLines.filter(line => line.text.trim() !== ''));
+    setLines((newLines || []).filter(line => line.text.trim() !== ''));
   };
 
   const handleSave = () => {
@@ -423,6 +423,37 @@ const initialLines = contentSource
           {isTextMode ? '🧩 Advanced Mode' : '✍️ Text Mode'}
         </button>
       </div>
+      {isAddMode && (
+        <div className="mb-4 flex gap-2">
+          <button
+            onClick={() => {
+              setLines([{ id: 'line-0', text: '', isTitle: false }]);
+              if (setSearchQuery) setSearchQuery('');
+            }}
+            className="px-3 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 text-gray-800"
+          >
+            All
+          </button>
+          <button
+            onClick={() => {
+              setLines([{ id: 'line-0', text: '#todo', isTitle: false }]);
+              if (setSearchQuery) setSearchQuery('#todo');
+            }}
+            className="px-3 py-1 text-xs rounded bg-purple-100 hover:bg-purple-200 text-purple-800"
+          >
+            Todos
+          </button>
+          <button
+            onClick={() => {
+              setLines([{ id: 'line-0', text: '#watch', isTitle: false }]);
+              if (setSearchQuery) setSearchQuery('#watch');
+            }}
+            className="px-3 py-1 text-xs rounded bg-yellow-100 hover:bg-yellow-200 text-yellow-800"
+          >
+            Watch List
+          </button>
+        </div>
+      )}
       {isTextMode ? (
         <textarea
           className="w-full p-4 text-sm border border-gray-300 rounded-lg shadow-sm resize-none min-h-[200px] font-mono"

@@ -75,22 +75,25 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
 };
 
 function parseDate(dateString) {
-  const [datePart, timePart] = dateString.split(", ");
-  const [day, month, year] = datePart.split("/");
-  const [time, period] = timePart.split(" ");
+  try {
+    if (!dateString || typeof dateString !== 'string' || !dateString.includes(',')) {
+      return new Date(0); // fallback to ensure valid Date object
+    }
 
-  // Convert time into a 24-hour format
-  let [hours, minutes, seconds] = time.split(":").map(Number);
-  if (period === "pm" && hours !== 12) {
-    hours += 12; // Convert PM hours to 24-hour format
-  } else if (period === "am" && hours === 12) {
-    hours = 0; // Convert 12 AM to 00 hours
+    const [datePart, timePart] = dateString.split(", ");
+    const [day, month, year] = datePart.split("/");
+    const [time, period] = timePart.split(" ");
+
+    let [hours, minutes, seconds] = time.split(":").map(Number);
+    if (period === "pm" && hours !== 12) hours += 12;
+    if (period === "am" && hours === 12) hours = 0;
+
+    const formattedDate = `${year}-${month}-${day}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    return new Date(formattedDate);
+  } catch (err) {
+    console.error("Error in parseDate:", err.message);
+    return new Date(0);
   }
-
-  // Build a new date string in a format that JavaScript can understand
-  const formattedDate = `${year}-${month}-${day}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-  return new Date(formattedDate); // Return the Date object
 }
 
 const sortNotes = (notes) => {
@@ -101,8 +104,8 @@ const sortNotes = (notes) => {
       // console.log(a)
       // console.log(b)
       // console.log(b.created_datetime)
-      const dateA = parseDate(a.created_datetime);
-      const dateB = parseDate(b.created_datetime);
+      const dateA = parseDate(a?.created_datetime);
+      const dateB = parseDate(b?.created_datetime);
       //console.log(`Trying to sort ${dateA} and ${dateB}`)
       //console.log(dateA - dateB)
       return dateB - dateA; // Sort by date descending

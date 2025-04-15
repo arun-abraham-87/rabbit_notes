@@ -306,7 +306,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                   const rest = lines.slice(1).join('\n');
                   const isTitle = firstLine.startsWith('##') && firstLine.endsWith('##');
                   const title = isTitle ? firstLine.replace(/^##|##$/g, '') : null;
-                  const contentToRender = isTitle ? rest.replace(/#\w+/g, '') : note.content.replace(/#\w+/g, '');
+                  const contentToRender = isTitle ? rest : note.content;
  
                   return (
                     <>

@@ -297,7 +297,10 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
           return note;
         })
         .filter(note => safeNotes.some(n => n.id === note.id))
-        .map(note => (
+        .map(note => {
+          const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
+          const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
+          return (
         <div
           key={note.id}
           className={`flex flex-col p-5 mb-5 rounded-xl border ${
@@ -309,12 +312,14 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
             <div className="p-2">
               <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                 {(() => {
-                  const lines = note.content.split('\n');
+                  const lines = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'));
                   const firstLine = lines[0];
                   const rest = lines.slice(1).join('\n');
                   const isTitle = firstLine.startsWith('##') && firstLine.endsWith('##');
                   const title = isTitle ? firstLine.replace(/^##|##$/g, '') : null;
                   const contentToRender = isTitle ? rest : note.content;
+                  const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
+                  const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
  
                   return (
                     <>
@@ -433,6 +438,11 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                     Remove Duplicates
                   </button>
                 </>
+              )}
+              {parsedEndDate && (
+                <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">
+                  Ends: {parsedEndDate.toLocaleString()}
+                </span>
               )}
             </div>
 
@@ -569,7 +579,8 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
             </div>
           </div>
         </div>
-      ))}
+      )})}
+
       <ConfirmationModal
         isOpen={isModalOpen}
         onClose={closeModal}

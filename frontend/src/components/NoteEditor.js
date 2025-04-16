@@ -19,6 +19,8 @@ const initialLines = contentSource
   const [selectAllPressCount, setSelectAllPressCount] = useState(0);
   const [isTextMode, setIsTextMode] = useState(false);
   const [urlLabelSelection, setUrlLabelSelection] = useState({ urlIndex: null, labelIndex: null });
+  const [pendingUrlIndex, setPendingUrlIndex] = useState(null);
+  const [customLabel, setCustomLabel] = useState('');
   const textareasRef = useRef([]);
 
   useEffect(() => {
@@ -118,26 +120,15 @@ const initialLines = contentSource
     if (urlPattern.test(pasteText)) {
       e.preventDefault();
       const newLines = [...lines];
-      
-      // Update current line with the URL
       newLines[index].text = pasteText;
-  
-      // Add new line below it
-      const newLine = {
-        id: `line-${Date.now()}-after-url`,
-        text: '',
-        isTitle: false
-      };
-      newLines.splice(index + 1, 0, newLine);
       setLines(newLines);
-  
-      // Focus on new line
+      setPendingUrlIndex(index);
+      setCustomLabel('');
       setTimeout(() => {
-        const nextTextarea = textareasRef.current[index + 1];
-        if (nextTextarea) {
-          nextTextarea.focus();
-        }
+        const input = document.getElementById('custom-label-input');
+        if (input) input.focus();
       }, 0);
+      return;
     }
   };
   
@@ -451,6 +442,35 @@ const initialLines = contentSource
         >
           {isTextMode ? '🧩 Advanced Mode' : '✍️ Text Mode'}
         </button>
+      {pendingUrlIndex !== null && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded shadow-md w-80">
+            <label htmlFor="custom-label-input" className="block text-sm mb-2 text-gray-700">
+              Enter custom label for the URL:
+            </label>
+            <input
+              id="custom-label-input"
+              type="text"
+              value={customLabel}
+              onChange={(e) => setCustomLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const newLines = [...lines];
+                  const url = newLines[pendingUrlIndex].text;
+                  newLines[pendingUrlIndex].text = `[${customLabel}](${url})`;
+                  setLines(newLines);
+                  setPendingUrlIndex(null);
+                  setCustomLabel('');
+                } else if (e.key === 'Escape') {
+                  setPendingUrlIndex(null);
+                  setCustomLabel('');
+                }
+              }}
+              className="w-full border px-2 py-1 rounded text-sm"
+            />
+          </div>
+        </div>
+      )}
       </div>
       {isAddMode && (
         <div className="mb-4 flex gap-2">

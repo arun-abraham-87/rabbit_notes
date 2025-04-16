@@ -55,6 +55,7 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
   const textareaRef = useRef(null);
   const safeNotes = notes || [];
   const [selectedView, setSelectedView] = useState('All');
+  const [showEndDatePickerForNoteId, setShowEndDatePickerForNoteId] = useState(null);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -76,6 +77,19 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
         note.id === id ? { ...note, content: updatedContent } : note
       )
     );
+  };
+
+  const handleEndDateSelect = (noteId, date) => {
+    const updatedNotes = notes.map(note => {
+      if (note.id === noteId) {
+        const newContent = `${note.content.trim()}\nmeta::end_date::${new Date(date).toISOString()}`;
+        updateNoteById(noteId, newContent);
+        return { ...note, content: newContent };
+      }
+      return note;
+    });
+    updateNoteCallback(updatedNotes);
+    setShowEndDatePickerForNoteId(null);
   };
 
 const handleRemoveDuplicateUrlsWithinNotes = () => {
@@ -519,6 +533,17 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                       onClick={() => handleDelete(note.id)}
                     />
                   </div>
+                  {note.content.toLowerCase().includes('#todo') && (
+                    <div className="group relative">
+                      <button
+                        title="Set End Date"
+                        onClick={() => setShowEndDatePickerForNoteId(note.id)}
+                        className="text-gray-600 hover:text-blue-700 text-base"
+                      >
+                        📅
+                      </button>
+                    </div>
+                  )}
                   <div className="group relative">
                     <button
                       title="Link Note"
@@ -662,6 +687,23 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
               Cancel
             </button>
           </div>
+        </div>
+      </div>
+    )}
+    {showEndDatePickerForNoteId && (
+      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div className="bg-white p-4 rounded shadow-md">
+          <input
+            type="datetime-local"
+            onChange={(e) => handleEndDateSelect(showEndDatePickerForNoteId, e.target.value)}
+            className="border border-gray-300 rounded px-3 py-2 text-sm"
+          />
+          <button
+            onClick={() => setShowEndDatePickerForNoteId(null)}
+            className="ml-2 text-sm text-red-500 hover:underline"
+          >
+            Cancel
+          </button>
         </div>
       </div>
     )}

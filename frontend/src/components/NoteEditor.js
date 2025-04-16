@@ -15,6 +15,21 @@ const initialLines = contentSource
   : [{ id: 'line-0', text: '', isTitle: false }];
 
   const [lines, setLines] = useState(initialLines);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDateIndex, setSelectedDateIndex] = useState(null);
+  
+  const handleDateSelect = (date) => {
+    const newLines = [...lines];
+    const endDateLine = `meta::end_date::${new Date(date).toISOString()}`;
+    newLines.splice(selectedDateIndex + 1, 0, {
+      id: `line-${Date.now()}-end-date`,
+      text: endDateLine,
+      isTitle: false
+    });
+    setLines(newLines);
+    setShowDatePicker(false);
+    setSelectedDateIndex(null);
+  };
   
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [mergedContent, setMergedContent] = useState(null);
@@ -671,6 +686,18 @@ const initialLines = contentSource
                   />
                 )}
                 <div className="absolute right-8 top-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {line.text.includes('#todo') && (
+                    <button
+                      onClick={() => {
+                        setShowDatePicker(true);
+                        setSelectedDateIndex(index);
+                      }}
+                      className="text-gray-500 hover:text-blue-600 text-base transition-colors"
+                      title="Set End Date"
+                    >
+                      📅
+                    </button>
+                  )}
                   <button
                     onClick={async () => {
                       const text = await navigator.clipboard.readText();
@@ -769,6 +796,19 @@ const initialLines = contentSource
         >
           ➕ Add new row
         </button>
+      {showDatePicker && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-white p-4 rounded shadow-md">
+            <input
+              type="datetime-local"
+              onChange={(e) => handleDateSelect(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm"
+            />
+            <button onClick={() => setShowDatePicker(false)} className="ml-2 text-sm text-red-500 hover:underline">
+              Cancel
+            </button>
+          </div>
+        </div>)}
       </div>
       <div className="text-xs text-gray-400 mt-3 text-center font-mono">
         ⌘↑ Move | ⌘↓ Move | ⌘D Duplicate | ⌘⌥T Title | ⌘⏎ Save | Tab Indent | Shift+Tab Outdent

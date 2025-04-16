@@ -6,14 +6,7 @@ import { formatDate } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import NoteEditor from './NoteEditor';
 
-const HOSTNAME_MAP = {
-  'mail.google.com': 'Gmail',
-  'docs.google.com': 'Google Docs',
-  'drive.google.com': 'Google Drive',
-  'calendar.google.com': 'Google Calendar',
-  'slack.com': 'Slack',
-  'github.com': 'GitHub',
-};
+
 
 const renderSmartLink = (url, highlightColor = null) => {
   try {
@@ -148,7 +141,33 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
     );
   };
 
-  const handleMergeNotes = async () => {};
+  const handleMergeNotes = async () => {
+    try {
+      // 1. Filter the selected notes
+      const notesToMerge = notes.filter(note => selectedNotes.includes(note.id));
+  
+      if (notesToMerge.length === 0) return;
+  
+      // 2. Merge their content (separated by two newlines)
+      const mergedContent = notesToMerge.map(note => note.content).join('\n\n');
+  
+      // 3. Collect unique tags across all notes (if tags are used)
+      const allTags = notesToMerge.flatMap(note => note.tags || []);
+      const uniqueTags = [...new Set(allTags)];
+  
+      // 4. Delete the original notes
+      for (const note of notesToMerge) {
+        await deleteNoteById(note.id);
+      }
+  
+      // 5. Add the new merged note (assuming today's date)
+      await addNotes(mergedContent, uniqueTags);
+  
+    } catch (error) {
+      console.error("Error while merging notes:", error);
+    }
+  };
+  
 
   const urlPattern = /https?:\/\/[^\s]+/g;
   const urlToNotesMap = {};

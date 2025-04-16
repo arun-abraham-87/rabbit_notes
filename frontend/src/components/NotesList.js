@@ -82,7 +82,12 @@ const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects,
   const handleEndDateSelect = (noteId, date) => {
     const updatedNotes = notes.map(note => {
       if (note.id === noteId) {
-        const newContent = `${note.content.trim()}\nmeta::end_date::${new Date(date).toISOString()}`;
+        const contentWithoutOldEndDate = note.content
+          .split('\n')
+          .filter(line => !line.trim().startsWith('meta::end_date::'))
+          .join('\n')
+          .trim();
+        const newContent = `${contentWithoutOldEndDate}\nmeta::end_date::${new Date(date).toISOString()}`;
         updateNoteById(noteId, newContent);
         return { ...note, content: newContent };
       }

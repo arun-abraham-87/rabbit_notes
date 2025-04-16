@@ -4,11 +4,14 @@ import { updateNoteById} from '../utils/ApiUtils';
 const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false }) => {
 const contentSource = text || note.content || '';
 const initialLines = contentSource
-  ? contentSource.split('\n').map((text, index) => ({
-      id: `line-${index}`,
-      text,
-      isTitle: text.startsWith('##') && text.endsWith('##'),
-    }))
+  ? [
+      ...contentSource.split('\n').map((text, index) => ({
+        id: `line-${index}`,
+        text,
+        isTitle: text.startsWith('##') && text.endsWith('##'),
+      })),
+      { id: `line-${Date.now()}-extra`, text: '', isTitle: false }
+    ]
   : [{ id: 'line-0', text: '', isTitle: false }];
 
   const [lines, setLines] = useState(initialLines);
@@ -24,8 +27,10 @@ const initialLines = contentSource
   const textareasRef = useRef([]);
 
   useEffect(() => {
-    if (textareasRef.current[0]) {
-      textareasRef.current[0].focus();
+    const last = textareasRef.current[textareasRef.current.length - 1];
+    if (last) {
+      last.focus();
+      last.selectionStart = last.selectionEnd = last.value.length;
     }
   }, []);
   
@@ -458,9 +463,25 @@ const initialLines = contentSource
                   const newLines = [...lines];
                   const url = newLines[pendingUrlIndex].text;
                   newLines[pendingUrlIndex].text = `[${customLabel}](${url})`;
+
+                  // Insert new line below
+                  const newLine = {
+                    id: `line-${Date.now()}-after-url`,
+                    text: '',
+                    isTitle: false
+                  };
+                  newLines.splice(pendingUrlIndex + 1, 0, newLine);
                   setLines(newLines);
+
                   setPendingUrlIndex(null);
                   setCustomLabel('');
+
+                  setTimeout(() => {
+                    const target = textareasRef.current[pendingUrlIndex + 1];
+                    if (target) {
+                      target.focus();
+                    }
+                  }, 0);
                 } else if (e.key === 'Escape') {
                   setPendingUrlIndex(null);
                   setCustomLabel('');

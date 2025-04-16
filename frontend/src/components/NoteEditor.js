@@ -437,6 +437,15 @@ const initialLines = contentSource
           >
             Close
           </button>
+          <button
+            onClick={() => {
+              setLines([{ id: 'line-0', text: '#people', isTitle: false }]);
+              if (setSearchQuery) setSearchQuery('#people');
+            }}
+            className="px-3 py-1 text-xs rounded bg-blue-100 hover:bg-blue-200 text-blue-800"
+          >
+            People
+          </button>
         </div>
       )}
       <div className="mb-4 flex justify-between items-center">
@@ -477,10 +486,13 @@ const initialLines = contentSource
                   setCustomLabel('');
 
                   setTimeout(() => {
-                    const target = textareasRef.current[pendingUrlIndex + 1];
-                    if (target) {
-                      target.focus();
-                    }
+                    requestAnimationFrame(() => {
+                      const target = textareasRef.current[pendingUrlIndex + 1];
+                      if (target) {
+                        target.focus();
+                        target.selectionStart = target.selectionEnd = target.value.length;
+                      }
+                    });
                   }, 0);
                 } else if (e.key === 'Escape') {
                   setPendingUrlIndex(null);
@@ -521,6 +533,15 @@ const initialLines = contentSource
             className="px-3 py-1 text-xs rounded bg-yellow-100 hover:bg-yellow-200 text-yellow-800"
           >
             Watch List
+          </button>
+          <button
+            onClick={() => {
+              setLines([{ id: 'line-0', text: '#people', isTitle: false }]);
+              if (setSearchQuery) setSearchQuery('#people');
+            }}
+            className="px-3 py-1 text-xs rounded bg-blue-100 hover:bg-blue-200 text-blue-800"
+          >
+            People
           </button>
         </div>
       )}
@@ -726,6 +747,23 @@ const initialLines = contentSource
           ))}
         </div>
       )}
+         {isAddMode && (
+        <div className="mt-4">
+          <button
+            onClick={() => {
+              const newLines = [...lines, { id: `line-${Date.now()}`, text: '', isTitle: false }];
+              setLines(newLines);
+              setTimeout(() => {
+                const last = textareasRef.current[newLines.length - 1];
+                if (last) last.focus();
+              }, 0);
+            }}
+            className="w-full py-2 px-4 bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100"
+          >
+            ➕ Add new row
+          </button>
+        </div>
+      )}
       <div className="text-xs text-gray-400 mt-3 text-center font-mono">
         ⌘↑ Move | ⌘↓ Move | ⌘D Duplicate | ⌘⌥T Title | ⌘⏎ Save | Tab Indent | Shift+Tab Outdent
       </div>
@@ -781,6 +819,7 @@ const initialLines = contentSource
           </button>
         )}
       </div>
+   
     </div>
   );
 };

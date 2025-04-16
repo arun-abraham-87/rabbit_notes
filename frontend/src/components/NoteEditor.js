@@ -100,6 +100,7 @@ const initialLines = contentSource
 
   const handlePaste = (e, index) => {
     const pasteText = e.clipboardData.getData('text');
+    
     if (pasteText.includes('\n')) {
       e.preventDefault();
       const newLines = [...lines];
@@ -110,8 +111,36 @@ const initialLines = contentSource
       }));
       newLines.splice(index + 1, 0, ...pastedLines);
       setLines(newLines);
+      return;
+    }
+  
+    const urlPattern = /^https?:\/\/[^\s]+$/;
+    if (urlPattern.test(pasteText)) {
+      e.preventDefault();
+      const newLines = [...lines];
+      
+      // Update current line with the URL
+      newLines[index].text = pasteText;
+  
+      // Add new line below it
+      const newLine = {
+        id: `line-${Date.now()}-after-url`,
+        text: '',
+        isTitle: false
+      };
+      newLines.splice(index + 1, 0, newLine);
+      setLines(newLines);
+  
+      // Focus on new line
+      setTimeout(() => {
+        const nextTextarea = textareasRef.current[index + 1];
+        if (nextTextarea) {
+          nextTextarea.focus();
+        }
+      }, 0);
     }
   };
+  
 
   const handleKeyDown = (e, index) => {
   if (e.key === 'Backspace') {

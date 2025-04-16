@@ -340,7 +340,11 @@ const initialLines = contentSource
   };
 
   const handleSave = () => {
-    const merged = lines.map(line => line.text).join('\n');
+    const trimmedLines = lines.map(line => line.text.trim());
+    while (trimmedLines.length && trimmedLines[trimmedLines.length - 1] === '') {
+      trimmedLines.pop();
+    }
+    const merged = trimmedLines.join('\n');
     updateNote(note.id, merged);
     onSave({ ...note, content: merged });
     setMergedContent(merged);
@@ -380,7 +384,11 @@ const initialLines = contentSource
     const handleGlobalKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        const merged = lines.map(line => line.text).join('\n');
+        const trimmedLines = lines.map(line => line.text.trim());
+        while (trimmedLines.length && trimmedLines[trimmedLines.length - 1] === '') {
+          trimmedLines.pop();
+        }
+        const merged = trimmedLines.join('\n');
         if (isAddMode) {
           addNote(merged);
           setLines([{ id: 'line-0', text: '', isTitle: false }]);
@@ -747,23 +755,21 @@ const initialLines = contentSource
           ))}
         </div>
       )}
-         {isAddMode && (
-        <div className="mt-4">
-          <button
-            onClick={() => {
-              const newLines = [...lines, { id: `line-${Date.now()}`, text: '', isTitle: false }];
-              setLines(newLines);
-              setTimeout(() => {
-                const last = textareasRef.current[newLines.length - 1];
-                if (last) last.focus();
-              }, 0);
-            }}
-            className="w-full py-2 px-4 bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100"
-          >
-            ➕ Add new row
-          </button>
-        </div>
-      )}
+      <div className="mt-4">
+        <button
+          onClick={() => {
+            const newLines = [...lines, { id: `line-${Date.now()}`, text: '', isTitle: false }];
+            setLines(newLines);
+            setTimeout(() => {
+              const last = textareasRef.current[newLines.length - 1];
+              if (last) last.focus();
+            }, 0);
+          }}
+          className="w-full py-1.5 px-3 text-sm bg-gray-100 text-gray-600 border border-gray-300 rounded hover:bg-gray-200"
+        >
+          ➕ Add new row
+        </button>
+      </div>
       <div className="text-xs text-gray-400 mt-3 text-center font-mono">
         ⌘↑ Move | ⌘↓ Move | ⌘D Duplicate | ⌘⌥T Title | ⌘⏎ Save | Tab Indent | Shift+Tab Outdent
       </div>

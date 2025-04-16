@@ -300,6 +300,17 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
         .map(note => {
           const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
           const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
+          let endDateNotice = '';
+          if (parsedEndDate) {
+            const now = new Date();
+            const diffMs = parsedEndDate - now;
+            if (diffMs > 0) {
+              const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+              const days = Math.floor(totalHours / 24);
+              const hours = totalHours % 24;
+              endDateNotice = `Deadline in ${days} day${days !== 1 ? 's' : ''}${hours > 0 ? ` and ${hours} hour${hours !== 1 ? 's' : ''}` : ''}`;
+            }
+          }
           return (
         <div
           key={note.id}
@@ -310,6 +321,11 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
           <div className="flex flex-col flex-auto">
             {/* Layer 1: Content and Edit/Delete */}
             <div className="p-2">
+              {endDateNotice && (
+                <div className="text-sm text-red-600 font-semibold mb-2 px-2">
+                  {endDateNotice}
+                </div>
+              )}
               <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                 {(() => {
                   const lines = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'));

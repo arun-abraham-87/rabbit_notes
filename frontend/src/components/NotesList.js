@@ -317,7 +317,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                   const rest = lines.slice(1).join('\n');
                   const isTitle = firstLine.startsWith('##') && firstLine.endsWith('##');
                   const title = isTitle ? firstLine.replace(/^##|##$/g, '') : null;
-                  const contentToRender = isTitle ? rest : note.content;
+                  const contentToRender = isTitle ? rest : lines.join('\n');
                   const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
                   const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
  

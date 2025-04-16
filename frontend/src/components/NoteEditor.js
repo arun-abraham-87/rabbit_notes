@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { updateNoteById} from '../utils/ApiUtils';
+import { updateNoteById } from '../utils/ApiUtils';
 
 const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false }) => {
-const contentSource = text || note.content || '';
-const initialLines = contentSource
-  ? [
+  const contentSource = text || note.content || '';
+  const initialLines = contentSource
+    ? [
       ...contentSource.split('\n').map((text, index) => ({
         id: `line-${index}`,
         text,
@@ -12,12 +12,12 @@ const initialLines = contentSource
       })),
       { id: `line-${Date.now()}-extra`, text: '', isTitle: false }
     ]
-  : [{ id: 'line-0', text: '', isTitle: false }];
+    : [{ id: 'line-0', text: '', isTitle: false }];
 
   const [lines, setLines] = useState(initialLines);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDateIndex, setSelectedDateIndex] = useState(null);
-  
+
   const handleDateSelect = (date) => {
     const newLines = [...lines];
     const endDateLine = `meta::end_date::${new Date(date).toISOString()}`;
@@ -30,7 +30,7 @@ const initialLines = contentSource
     setShowDatePicker(false);
     setSelectedDateIndex(null);
   };
-  
+
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [mergedContent, setMergedContent] = useState(null);
   const [draggedId, setDraggedId] = useState(null);
@@ -48,7 +48,7 @@ const initialLines = contentSource
       last.selectionStart = last.selectionEnd = last.value.length;
     }
   }, []);
-  
+
 
   const updateNote = (id, updatedContent) => {
     updateNoteById(id, updatedContent);
@@ -81,7 +81,7 @@ const initialLines = contentSource
       setSelectAllPressCount(0);
     }
   };
-  
+
   useEffect(() => {
     document.addEventListener('keydown', handleSelectAll);
     return () => {
@@ -122,7 +122,7 @@ const initialLines = contentSource
 
   const handlePaste = (e, index) => {
     const pasteText = e.clipboardData.getData('text');
-    
+
     if (pasteText.includes('\n')) {
       e.preventDefault();
       const newLines = [...lines];
@@ -135,7 +135,7 @@ const initialLines = contentSource
       setLines(newLines);
       return;
     }
-  
+
     const urlPattern = /^https?:\/\/[^\s]+$/;
     if (urlPattern.test(pasteText)) {
       e.preventDefault();
@@ -151,36 +151,36 @@ const initialLines = contentSource
       return;
     }
   };
-  
+
 
   const handleKeyDown = (e, index) => {
-  if (e.key === 'Backspace') {
-    const cursorAtStart = e.target.selectionStart === 0;
-    const prevLine = lines[index - 1];
+    if (e.key === 'Backspace') {
+      const cursorAtStart = e.target.selectionStart === 0;
+      const prevLine = lines[index - 1];
 
-    if (cursorAtStart && index > 0 && prevLine) {
-      e.preventDefault();
-      const newLines = [...lines];
-      const prevTextLength = newLines[index - 1].text.length;
-      newLines[index - 1].text += newLines[index].text;
-      newLines.splice(index, 1);
-      setLines(newLines);
-      setTimeout(() => {
-        const prevTextarea = textareasRef.current[index - 1];
-        if (prevTextarea) {
-          prevTextarea.focus();
-          prevTextarea.selectionStart = prevTextarea.selectionEnd = prevTextLength;
-        }
-      }, 0);
-      return;
+      if (cursorAtStart && index > 0 && prevLine) {
+        e.preventDefault();
+        const newLines = [...lines];
+        const prevTextLength = newLines[index - 1].text.length;
+        newLines[index - 1].text += newLines[index].text;
+        newLines.splice(index, 1);
+        setLines(newLines);
+        setTimeout(() => {
+          const prevTextarea = textareasRef.current[index - 1];
+          if (prevTextarea) {
+            prevTextarea.focus();
+            prevTextarea.selectionStart = prevTextarea.selectionEnd = prevTextLength;
+          }
+        }, 0);
+        return;
+      }
     }
-  }
-  
-  if (e.key === 'Tab') {
+
+    if (e.key === 'Tab') {
       e.preventDefault();
       const newLines = [...lines];
       const line = newLines[index];
-      
+
       if (e.shiftKey) {
         const cursorAtStart = e.target.selectionStart === 0;
         const prevLine = lines[index - 1];
@@ -229,7 +229,7 @@ const initialLines = contentSource
 
       return;
     }
-    
+
     if (e.key === 'Enter') {
       e.preventDefault();
       const cursorPos = e.target.selectionStart;
@@ -436,20 +436,20 @@ const initialLines = contentSource
     newLines[index].text = toCamelCase(newLines[index].text);
     setLines(newLines);
   };
-  
+
   const toSentenceCase = (str) => {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
-  
+
   const handleSentenceCase = (index) => {
     const newLines = [...lines];
     newLines[index].text = toSentenceCase(newLines[index].text);
     setLines(newLines);
   };
-  
+
   return (
-      <div className="p-6 bg-white border border-gray-300 rounded-lg shadow-xl w-full">
+    <div className="p-6 bg-white border border-gray-300 rounded-lg shadow-xl w-full">
       {mergedContent && (
         <div className="fixed top-10 left-1/2 transform -translate-x-1/2 bg-white shadow-lg border border-gray-300 rounded p-4 z-50 max-w-xl w-full">
           <h2 className="font-bold mb-2">Merged Note</h2>
@@ -479,54 +479,54 @@ const initialLines = contentSource
         >
           {isTextMode ? '🧩 Advanced Mode' : '✍️ Text Mode'}
         </button>
-      {pendingUrlIndex !== null && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white p-4 rounded shadow-md w-80">
-            <label htmlFor="custom-label-input" className="block text-sm mb-2 text-gray-700">
-              Enter custom label for the URL:
-            </label>
-            <input
-              id="custom-label-input"
-              type="text"
-              value={customLabel}
-              onChange={(e) => setCustomLabel(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const newLines = [...lines];
-                  const url = newLines[pendingUrlIndex].text;
-                  newLines[pendingUrlIndex].text = `[${customLabel}](${url})`;
+        {pendingUrlIndex !== null && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className="bg-white p-4 rounded shadow-md w-80">
+              <label htmlFor="custom-label-input" className="block text-sm mb-2 text-gray-700">
+                Enter custom label for the URL:
+              </label>
+              <input
+                id="custom-label-input"
+                type="text"
+                value={customLabel}
+                onChange={(e) => setCustomLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const newLines = [...lines];
+                    const url = newLines[pendingUrlIndex].text;
+                    newLines[pendingUrlIndex].text = `[${customLabel}](${url})`;
 
-                  // Insert new line below
-                  const newLine = {
-                    id: `line-${Date.now()}-after-url`,
-                    text: '',
-                    isTitle: false
-                  };
-                  newLines.splice(pendingUrlIndex + 1, 0, newLine);
-                  setLines(newLines);
+                    // Insert new line below
+                    const newLine = {
+                      id: `line-${Date.now()}-after-url`,
+                      text: '',
+                      isTitle: false
+                    };
+                    newLines.splice(pendingUrlIndex + 1, 0, newLine);
+                    setLines(newLines);
 
-                  setPendingUrlIndex(null);
-                  setCustomLabel('');
+                    setPendingUrlIndex(null);
+                    setCustomLabel('');
 
-                  setTimeout(() => {
-                    requestAnimationFrame(() => {
-                      const target = textareasRef.current[pendingUrlIndex + 1];
-                      if (target) {
-                        target.focus();
-                        target.selectionStart = target.selectionEnd = target.value.length;
-                      }
-                    });
-                  }, 0);
-                } else if (e.key === 'Escape') {
-                  setPendingUrlIndex(null);
-                  setCustomLabel('');
-                }
-              }}
-              className="w-full border px-2 py-1 rounded text-sm"
-            />
+                    setTimeout(() => {
+                      requestAnimationFrame(() => {
+                        const target = textareasRef.current[pendingUrlIndex + 1];
+                        if (target) {
+                          target.focus();
+                          target.selectionStart = target.selectionEnd = target.value.length;
+                        }
+                      });
+                    }, 0);
+                  } else if (e.key === 'Escape') {
+                    setPendingUrlIndex(null);
+                    setCustomLabel('');
+                  }
+                }}
+                className="w-full border px-2 py-1 rounded text-sm"
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
       {isAddMode && (
         <div className="mb-4 flex gap-2">
@@ -565,6 +565,15 @@ const initialLines = contentSource
             className="px-3 py-1 text-xs rounded bg-blue-100 hover:bg-blue-200 text-blue-800"
           >
             People
+          </button>
+          <button
+            onClick={() => {
+              setLines([{ id: 'line-0', text: 'meta::end_date::', isTitle: false }]);
+              if (setSearchQuery) setSearchQuery('meta::end_date::');
+            }}
+            className="px-3 py-1 text-xs rounded bg-blue-100 hover:bg-blue-200 text-blue-800"
+          >
+            Has End Date
           </button>
         </div>
       )}
@@ -638,7 +647,7 @@ const initialLines = contentSource
                     </a>
                     <button
                       onClick={() => handleDeleteLine(index)}
-                    className="text-red-400 text-xs ml-2 font-mono transition-transform transform hover:scale-150"
+                      className="text-red-400 text-xs ml-2 font-mono transition-transform transform hover:scale-150"
                       title="Remove URL"
                     >
                       x
@@ -656,20 +665,20 @@ const initialLines = contentSource
                     </a>
                     <button
                       onClick={() => handleDeleteLine(index)}
-                    className="text-red-400 text-xs ml-2 font-mono transition-transform transform hover:scale-150"
+                      className="text-red-400 text-xs ml-2 font-mono transition-transform transform hover:scale-150"
                       title="Remove URL"
                     >
                       x
                     </button>
                   </div>
                 ) : (
-                <textarea
+                  <textarea
                     ref={(el) => (textareasRef.current[index] = el)}
                     value={line.text}
                     style={{
                       backgroundColor:
                         searchQuery && line.text &&
-                        line.text.toLowerCase().includes(searchQuery.toLowerCase())
+                          line.text.toLowerCase().includes(searchQuery.toLowerCase())
                           ? '#fef3c7'
                           : 'inherit'
                     }}
@@ -796,19 +805,19 @@ const initialLines = contentSource
         >
           ➕ Add new row
         </button>
-      {showDatePicker && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-          <div className="bg-white p-4 rounded shadow-md">
-            <input
-              type="datetime-local"
-              onChange={(e) => handleDateSelect(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 text-sm"
-            />
-            <button onClick={() => setShowDatePicker(false)} className="ml-2 text-sm text-red-500 hover:underline">
-              Cancel
-            </button>
-          </div>
-        </div>)}
+        {showDatePicker && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+            <div className="bg-white p-4 rounded shadow-md">
+              <input
+                type="datetime-local"
+                onChange={(e) => handleDateSelect(e.target.value)}
+                className="border border-gray-300 rounded px-3 py-2 text-sm"
+              />
+              <button onClick={() => setShowDatePicker(false)} className="ml-2 text-sm text-red-500 hover:underline">
+                Cancel
+              </button>
+            </div>
+          </div>)}
       </div>
       <div className="text-xs text-gray-400 mt-3 text-center font-mono">
         ⌘↑ Move | ⌘↓ Move | ⌘D Duplicate | ⌘⌥T Title | ⌘⏎ Save | Tab Indent | Shift+Tab Outdent
@@ -865,7 +874,7 @@ const initialLines = contentSource
           </button>
         )}
       </div>
-   
+
     </div>
   );
 };

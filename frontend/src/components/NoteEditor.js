@@ -243,6 +243,12 @@ const handleSelectTag = (tag) => {
       return;
     }
     if (showPopup && filteredTags.length > 0) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const tagToSelect = filteredTags[selectedTagIndex >= 0 ? selectedTagIndex : 0];
+        handleSelectTag(tagToSelect);
+        return;
+      }
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedTagIndex((prev) => (prev + 1) % filteredTags.length);

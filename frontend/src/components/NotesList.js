@@ -8,43 +8,43 @@ import NoteEditor from './NoteEditor';
 
 const formatAndAgeDate = (text) => {
   const dateRegex = /\b(\d{2})\/(\d{2})\/(\d{4})\b|\b(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g;
-    return text.replace(dateRegex, (match, d1, m1, y1, d2, monthStr, y2) => {
-      let date;
-      if (d1 && m1 && y1) {
-        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        date = new Date(`${y1}-${m1}-${d1}`);
-        const formatted = `${d1} ${months[parseInt(m1) - 1]} ${y1}`;
-        const now = new Date();
-        let diff = now - date;
-        let inFuture = diff < 0;
-        diff = Math.abs(diff);
-        const diffDate = new Date(diff);
-        const years = diffDate.getUTCFullYear() - 1970;
-        const monthsDiff = diffDate.getUTCMonth();
-        const days = diffDate.getUTCDate() - 1;
-        let parts = [];
-        if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
-        if (monthsDiff > 0) parts.push(`${monthsDiff} month${monthsDiff > 1 ? 's' : ''}`);
-        if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
-        const ageStr = inFuture ? `(in ${parts.join(' ')})` : `(${parts.join(' ')} ago)`;
-        return `${formatted} ${ageStr}`;
-      } else if (d2 && monthStr && y2) {
-        date = new Date(`${monthStr} ${d2}, ${y2}`);
-        const formatted = `${d2} ${monthStr} ${y2}`;
-        const now = new Date();
-        let diff = now - date;
-        let inFuture = diff < 0;
-        diff = Math.abs(diff);
-        const diffDate = new Date(diff);
-        const years = diffDate.getUTCFullYear() - 1970;
-        const monthsDiff = diffDate.getUTCMonth();
-        const days = diffDate.getUTCDate() - 1;
-        let parts = [];
-        if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
-        if (monthsDiff > 0) parts.push(`${monthsDiff} month${monthsDiff > 1 ? 's' : ''}`);
-        if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
-        const ageStr = inFuture ? `(in ${parts.join(' ')})` : `(${parts.join(' ')} ago)`;
-        return `${formatted} ${ageStr}`;
+  return text.replace(dateRegex, (match, d1, m1, y1, d2, monthStr, y2) => {
+    let date;
+    if (d1 && m1 && y1) {
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      date = new Date(`${y1}-${m1}-${d1}`);
+      const formatted = `${d1} ${months[parseInt(m1) - 1]} ${y1}`;
+      const now = new Date();
+      let diff = now - date;
+      let inFuture = diff < 0;
+      diff = Math.abs(diff);
+      const diffDate = new Date(diff);
+      const years = diffDate.getUTCFullYear() - 1970;
+      const monthsDiff = diffDate.getUTCMonth();
+      const days = diffDate.getUTCDate() - 1;
+      let parts = [];
+      if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
+      if (monthsDiff > 0) parts.push(`${monthsDiff} month${monthsDiff > 1 ? 's' : ''}`);
+      if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+      const ageStr = inFuture ? `(in ${parts.join(' ')})` : `(${parts.join(' ')} ago)`;
+      return `${formatted} ${ageStr}`;
+    } else if (d2 && monthStr && y2) {
+      date = new Date(`${monthStr} ${d2}, ${y2}`);
+      const formatted = `${d2} ${monthStr} ${y2}`;
+      const now = new Date();
+      let diff = now - date;
+      let inFuture = diff < 0;
+      diff = Math.abs(diff);
+      const diffDate = new Date(diff);
+      const years = diffDate.getUTCFullYear() - 1970;
+      const monthsDiff = diffDate.getUTCMonth();
+      const days = diffDate.getUTCDate() - 1;
+      let parts = [];
+      if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
+      if (monthsDiff > 0) parts.push(`${monthsDiff} month${monthsDiff > 1 ? 's' : ''}`);
+      if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+      const ageStr = inFuture ? `(in ${parts.join(' ')})` : `(${parts.join(' ')} ago)`;
+      return `${formatted} ${ageStr}`;
     }
     return match;
   });
@@ -142,19 +142,19 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     setShowEndDatePickerForNoteId(null);
   };
 
-const handleRemoveDuplicateUrlsWithinNotes = () => {
-  safeNotes.forEach(note => {
-    if (duplicateWithinNoteIds.has(note.id)) {
-      const seen = new Set();
-      const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
-        if (seen.has(url)) return '';
-        seen.add(url);
-        return url;
-      });
-      updateNote(note.id, cleanedContent);
-    }
-  });
-};
+  const handleRemoveDuplicateUrlsWithinNotes = () => {
+    safeNotes.forEach(note => {
+      if (duplicateWithinNoteIds.has(note.id)) {
+        const seen = new Set();
+        const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
+          if (seen.has(url)) return '';
+          seen.add(url);
+          return url;
+        });
+        updateNote(note.id, cleanedContent);
+      }
+    });
+  };
 
   const deleteNote = async (id) => {
     deleteNoteById(id);
@@ -209,29 +209,29 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
     try {
       // 1. Filter the selected notes
       const notesToMerge = notes.filter(note => selectedNotes.includes(note.id));
-  
+
       if (notesToMerge.length === 0) return;
-  
+
       // 2. Merge their content (separated by two newlines)
       const mergedContent = notesToMerge.map(note => note.content).join('\n\n');
-  
+
       // 3. Collect unique tags across all notes (if tags are used)
       const allTags = notesToMerge.flatMap(note => note.tags || []);
       const uniqueTags = [...new Set(allTags)];
-  
+
       // 4. Delete the original notes
       for (const note of notesToMerge) {
         await deleteNoteById(note.id);
       }
-  
+
       // 5. Add the new merged note (assuming today's date)
       await addNotes(mergedContent, uniqueTags);
-  
+
     } catch (error) {
       console.error("Error while merging notes:", error);
     }
   };
-  
+
 
   const urlPattern = /https?:\/\/[^\s]+/g;
   const urlToNotesMap = {};
@@ -285,7 +285,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
       }
     };
   }, []);
-  
+
   useEffect(() => {
     const imagePattern = /!\[pasted image\]\((.*?)\)/g;
     const fetchImages = async () => {
@@ -408,36 +408,46 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
             }
           }
           return (
-        <div
-          key={note.id}
-          className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100"
-        >
-          <div className="flex flex-col flex-auto">
-            {/* Layer 1: Content and Edit/Delete */}
-            <div className="p-2">
-              {(note.content.includes('meta::todo') || endDateNotice) && (
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircleIcon className="h-6 w-6 text-green-600" title="Todo" />
-                  {todoAgeNotice && (
-                      <button
-                        className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-                      onClick={() => {
-                        const updatedContent = note.content
-                          .split('\n')
-                          .filter(line => !line.trim().startsWith('meta::todo'))
-                          .join('\n')
-                          .trim();
-                        updateNote(note.id, updatedContent);
-                      }}
-                      title="Remove todo notice"
-                    >
-                      <span>{todoAgeNotice}</span>
-                      <span className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer">×</span>
-                    </button>
-                  )}
+            <div
+              key={note.id}
+              className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100"
+            >
+              <div className="flex flex-col flex-auto">
+                {/* Layer 1: Content and Edit/Delete */}
+                <div className="p-2">
+                  {(note.content.includes('meta::todo') || endDateNotice) && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircleIcon className="h-6 w-6 text-green-600" title="Todo" />
+                      {todoAgeNotice && (
+                        <button
+                          className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
+                          onClick={() => {
+                            const updatedContent = note.content
+                              .split('\n')
+                              .filter(line => !line.trim().startsWith('meta::todo'))
+                              .join('\n')
+                              .trim();
+                            updateNote(note.id, updatedContent);
+                          }}
+                          title="Remove todo notice"
+                        >
+                          <span>{todoAgeNotice}</span>
+                        </button>
+                      )}
+                      {parsedEndDate && (
+                        <>
+                          <span className="text-xs text-gray-700 font-semibold mr-1">Deadline Date:</span>
+                          <span className="text-xs text-gray-500">{parsedEndDate.toLocaleDateString()}</span>
+                          <CalendarIcon
+                            className="h-5 w-5 text-gray-600 cursor-pointer hover:text-gray-800"
+                            onClick={() => setShowEndDatePickerForNoteId(note.id)}
+                            title="Edit end date"
+                          />
+                        </>
+                      )}
                       {endDateNotice && (
-                      <button
-                          className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
+                        <button
+                          className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
                           onClick={() => {
                             const updatedContent = note.content
                               .split('\n')
@@ -457,17 +467,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                           </span>
                         </button>
                       )}
-                      {parsedEndDate && (
-                        <>
-                          <span className="text-xs text-gray-700 font-semibold mr-1">Deadline Date:</span>
-                          <span className="text-xs text-gray-500">{parsedEndDate.toLocaleDateString()}</span>
-                          <CalendarIcon
-                            className="h-5 w-5 text-gray-600 cursor-pointer hover:text-gray-800"
-                            onClick={() => setShowEndDatePickerForNoteId(note.id)}
-                            title="Edit end date"
-                          />
-                        </>
-                      )}
+
                       {!parsedEndDate && (
                         <button
                           className="text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 bg-gray-100 text-gray-800 hover:bg-gray-200"
@@ -478,345 +478,346 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                           <CalendarIcon className="h-4 w-4 text-gray-600 ml-1" title="Pick date" />
                         </button>
                       )}
-                </div>
-              )}
-              <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
-                {(() => {
-                  const rawLines = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'));
-                  let title1 = null, title2 = null;
-                  let contentLines = [...rawLines];
-                  // Check for H1 (###text###) on first line
-                  if (contentLines[0] && contentLines[0].trim().startsWith('###') && contentLines[0].trim().endsWith('###')) {
-                    title1 = contentLines[0].trim().slice(3, -3);
-                    contentLines.shift();
-                  }
-                  // Check for H2 (##text##) on next line
-                  if (contentLines[0] && contentLines[0].trim().startsWith('##') && contentLines[0].trim().endsWith('##')) {
-                    title2 = contentLines[0].trim().slice(2, -2);
-                    contentLines.shift();
-                  }
-                  const contentToRender = contentLines.join('\n');
-                  const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
-                  const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
- 
-                  return (
-                    <>
-                      {title1 && <h1 className="text-2xl font-bold mb-2">{title1}</h1>}
-                      {title2 && <h2 className="text-lg font-semibold text-purple-700 mb-2">{title2}</h2>}
-                      <pre className="whitespace-pre-wrap">
-                        {contentToRender
-                          .split('\n')
-                          .filter(line => !line.match(/^!\[pasted image\]\((.*?)\)$/))
-                          .join('\n')
-                          .split(/(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s]+)/g)
-                          .map((part, idx) => {
-                          const markdownMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
-                          if (markdownMatch) {
-                            const [, label, url] = markdownMatch;
-                            return (
-                              <a
-                                key={url + idx}
-                                href={url}
-                                title={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 underline hover:text-blue-800"
-                              >
-                                {label}
-                              </a>
-                            );
-                          } else if (part.match(/https?:\/\/[^\s]+/)) {
-                            return renderSmartLink(part, duplicatedUrlColors[part]);
-                          }
-                          if (searchTerm && typeof part === 'string') {
-                            const keywords = searchTerm.trim().split(/\s+/).filter(Boolean);
-                            if (keywords.length) {
-                              const regex = new RegExp(`(${keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
-                              const segments = part.split(regex);
-                              return segments.map((seg, i) =>
-                                keywords.some(kw => seg.toLowerCase() === kw.toLowerCase()) ? (
-                                  <mark key={i} className="bg-yellow-200">{seg}</mark>
-                                ) : (
-                                  seg
-                                )
-                              );
-                            }
-                          }
-                          return formatAndAgeDate(part);
-                        })}
-                      </pre>
-                      {popupNoteText === note.id && (
-                        <div className="mt-2">
-                          <NoteEditor
-                          objList={objList}
-                            text={note.content}
-                            note={note}
-                            onCancel={() => setPopupNoteText(null)}
-                            onSave={(updatedNote) => {
-                              updateNote(updatedNote.id, updatedNote.content);
-                              setPopupNoteText(null);
-                            }}
-                          />
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              {imageUrls[note.id] ? (
-                <button
-                  className="w-24 h-24 mt-2"
-                  onClick={() => {
-                    setPopupImageLoading(true);
-                    setPopupImageUrl(imageUrls[note.id]);
-                  }}
-                >
-                  <img
-                    src={imageUrls[note.id]}
-                    alt="Note thumbnail"
-                    className="w-full h-full object-cover rounded-md transition-transform duration-200 transform hover:scale-105"
-                  />
-                </button>
-              ) : note.content.match(/!\[pasted image\]\((.*?)\)/) ? (
-                <div className="w-6 h-6 mt-2 animate-spin border-2 border-purple-500 border-t-transparent rounded-full" />
-              ) : null}
-            </div>
+                    </div>
+                  )}
+                  <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
+                    {(() => {
+                      const rawLines = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'));
+                      let title1 = null, title2 = null;
+                      let contentLines = [...rawLines];
+                      // Check for H1 (###text###) on first line
+                      if (contentLines[0] && contentLines[0].trim().startsWith('###') && contentLines[0].trim().endsWith('###')) {
+                        title1 = contentLines[0].trim().slice(3, -3);
+                        contentLines.shift();
+                      }
+                      // Check for H2 (##text##) on next line
+                      if (contentLines[0] && contentLines[0].trim().startsWith('##') && contentLines[0].trim().endsWith('##')) {
+                        title2 = contentLines[0].trim().slice(2, -2);
+                        contentLines.shift();
+                      }
+                      const contentToRender = contentLines.join('\n');
+                      const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
+                      const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
 
-            <div className="flex flex-wrap gap-2 px-4 pb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              {['meta::low', 'meta::medium', 'meta::high'].map((priority, index) =>
-                note.content.includes(priority) ? (
-                  <button
-                    key={index}
-                    className="bg-gray-300 text-gray-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-                  >
-                    {priority.replace('meta::', '')}
-                    <span
+                      return (
+                        <>
+                          {title1 && <h1 className="text-2xl font-bold mb-2">{title1}</h1>}
+                          {title2 && <h2 className="text-lg font-semibold text-purple-700 mb-2">{title2}</h2>}
+                          <pre className="whitespace-pre-wrap">
+                            {contentToRender
+                              .split('\n')
+                              .filter(line => !line.match(/^!\[pasted image\]\((.*?)\)$/))
+                              .join('\n')
+                              .split(/(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s]+)/g)
+                              .map((part, idx) => {
+                                const markdownMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+                                if (markdownMatch) {
+                                  const [, label, url] = markdownMatch;
+                                  return (
+                                    <a
+                                      key={url + idx}
+                                      href={url}
+                                      title={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 underline hover:text-blue-800"
+                                    >
+                                      {label}
+                                    </a>
+                                  );
+                                } else if (part.match(/https?:\/\/[^\s]+/)) {
+                                  return renderSmartLink(part, duplicatedUrlColors[part]);
+                                }
+                                if (searchTerm && typeof part === 'string') {
+                                  const keywords = searchTerm.trim().split(/\s+/).filter(Boolean);
+                                  if (keywords.length) {
+                                    const regex = new RegExp(`(${keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+                                    const segments = part.split(regex);
+                                    return segments.map((seg, i) =>
+                                      keywords.some(kw => seg.toLowerCase() === kw.toLowerCase()) ? (
+                                        <mark key={i} className="bg-yellow-200">{seg}</mark>
+                                      ) : (
+                                        seg
+                                      )
+                                    );
+                                  }
+                                }
+                                return formatAndAgeDate(part);
+                              })}
+                          </pre>
+                          {popupNoteText === note.id && (
+                            <div className="mt-2">
+                              <NoteEditor
+                                objList={objList}
+                                text={note.content}
+                                note={note}
+                                onCancel={() => setPopupNoteText(null)}
+                                onSave={(updatedNote) => {
+                                  updateNote(updatedNote.id, updatedNote.content);
+                                  setPopupNoteText(null);
+                                }}
+                              />
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  {imageUrls[note.id] ? (
+                    <button
+                      className="w-24 h-24 mt-2"
                       onClick={() => {
-                        const updatedContent = note.content
-                          .split('\n')
-                          .filter(line => !line.trim().startsWith(priority))
-                          .join('\n')
-                          .trim();
-                        updateNote(note.id, updatedContent);
+                        setPopupImageLoading(true);
+                        setPopupImageUrl(imageUrls[note.id]);
                       }}
-                      className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer"
-                      title="Remove tag"
                     >
-                      ×
-                    </span>
-                  </button>
-                ) : null
-              )}
-              {note.content.includes('meta::todo') && (
-                <button
-                  className="bg-gray-300 text-gray-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-                >
-                  todo
-                  <span
-                    onClick={() => {
-                      const updatedContent = note.content
-                        .split('\n')
-                        .filter(line => !line.trim().startsWith('meta::todo'))
-                        .join('\n')
-                        .trim();
-                      updateNote(note.id, updatedContent);
-                    }}
-                    className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer"
-                    title="Remove tag"
-                  >
-                    ×
-                  </span>
-                </button>
-              )}
-              {duplicateUrlNoteIds.has(note.id) && (
-                <span className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-400">
-                  Duplicate URL
-                </span>
-              )}
-              {duplicateWithinNoteIds.has(note.id) && (
-                <>
-                  <span className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-400">
-                    Duplicate Url In Note
-                  </span>
-                  <button
-                    onClick={() => {
-                      const seen = new Set();
-                      const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
-                        if (seen.has(url)) return '';
-                        seen.add(url);
-                        return url;
-                      });
-                      updateNote(note.id, cleanedContent);
-                    }}
-                    className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                  >
-                    Remove Duplicates
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* Layer 3: Date and Todo Toggle */}
-            <div className="flex text-xs text-gray-700 px-4 pb-2 items-center">
-              <div className="flex justify-between w-full items-center">
-                <div className="flex-1">
-                  {showCreatedDate && <span>{formatDate(note.created_datetime)}</span>}
+                      <img
+                        src={imageUrls[note.id]}
+                        alt="Note thumbnail"
+                        className="w-full h-full object-cover rounded-md transition-transform duration-200 transform hover:scale-105"
+                      />
+                    </button>
+                  ) : note.content.match(/!\[pasted image\]\((.*?)\)/) ? (
+                    <div className="w-6 h-6 mt-2 animate-spin border-2 border-purple-500 border-t-transparent rounded-full" />
+                  ) : null}
                 </div>
-                <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200" id="button_bar">
-                  {note.content.toLowerCase().includes('meta::todo') ? (
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1">
-                        <button
-                          className="bg-green-100 text-green-800 px-2 py-1 text-xs rounded hover:bg-green-200"
-                          onClick={() => {
-                            const updated = note.content
-                              .split('\n')
-                              .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
-                              .join('\n')
-                              .trim() + '\nmeta::low';
-                            updateNote(note.id, updated);
-                          }}
-                        >
-                          Low
-                        </button>
-                        <button
-                          className="bg-yellow-100 text-yellow-800 px-2 py-1 text-xs rounded hover:bg-yellow-200"
-                          onClick={() => {
-                            const updated = note.content
-                              .split('\n')
-                              .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
-                              .join('\n')
-                              .trim() + '\nmeta::medium';
-                            updateNote(note.id, updated);
-                          }}
-                        >
-                          Medium
-                        </button>
-                        <button
-                          className="bg-red-100 text-red-800 px-2 py-1 text-xs rounded hover:bg-red-200"
-                          onClick={() => {
-                            const updated = note.content
-                              .split('\n')
-                              .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
-                              .join('\n')
-                              .trim() + '\nmeta::high';
-                            updateNote(note.id, updated);
-                          }}
-                        >
-                          High
-                        </button>
-                      </div>
-                      <div className="group relative">
-                      <XCircleIcon
-                          title="Unmark as Todo"
-                          className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
+
+                <div className="flex flex-wrap gap-2 px-4 pb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  {['meta::low', 'meta::medium', 'meta::high'].map((priority, index) =>
+                    note.content.includes(priority) ? (
+                      <button
+                        key={index}
+                        className="bg-gray-300 text-gray-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
+                      >
+                        {priority.replace('meta::', '')}
+                        <span
                           onClick={() => {
                             const updatedContent = note.content
                               .split('\n')
-                              .filter(line =>
-                                !line.trim().startsWith('meta::todo::') &&
-                                !line.trim().startsWith('meta::low') &&
-                                !line.trim().startsWith('meta::medium') &&
-                                !line.trim().startsWith('meta::high')
-                              )
+                              .filter(line => !line.trim().startsWith(priority))
                               .join('\n')
                               .trim();
                             updateNote(note.id, updatedContent);
                           }}
-                      />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="group relative">
-                      <CheckCircleIcon
-                        title="Mark as Todo"
-                        className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
+                          className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer"
+                          title="Remove tag"
+                        >
+                          ×
+                        </span>
+                      </button>
+                    ) : null
+                  )}
+                  {note.content.includes('meta::todo') && (
+                    <button
+                      className="bg-gray-300 text-gray-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
+                    >
+                      todo
+                      <span
                         onClick={() => {
-                          const timestamp = new Date().toISOString();
-                          const contentWithoutOldTodoMeta = note.content
+                          const updatedContent = note.content
                             .split('\n')
-                            .filter(line => !line.trim().startsWith('meta::todo::'))
+                            .filter(line => !line.trim().startsWith('meta::todo'))
                             .join('\n')
                             .trim();
-                          const newContent = `${contentWithoutOldTodoMeta}\nmeta::todo::${timestamp}`;
-                          updateNote(note.id, newContent);
-                        }}
-                      />
-                    </div>
-                  )}
-                  {note.content.toLowerCase().includes('#watch') ? (
-                    <div className="group relative">
-                      <EyeSlashIcon
-                        title="Unmark from Watchlist"
-                        className="h-4 w-4 text-yellow-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-yellow-800"
-                        onClick={() => {
-                          const updatedContent = note.content.replace(/#watch/gi, '').trim();
                           updateNote(note.id, updatedContent);
                         }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="group relative">
-                      <EyeIcon
-                        title="Add to Watchlist"
-                        className="h-4 w-4 text-yellow-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-yellow-800"
-                        onClick={() => {
-                          updateNote(note.id, `${note.content.trim()} #watch`);
-                        }}
-                      />
-                    </div>
-                  )}
-                  <div className="group relative">
-                    <PencilIcon
-                      className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
-                      onClick={() => setPopupNoteText(note.id)}
-                    />
-                  </div>
-                  <div className="group relative">
-                    <TrashIcon
-                      className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
-                      onClick={() => handleDelete(note.id)}
-                    />
-                  </div>
-                  {note.content.toLowerCase().includes('meta::todo') && (
-                    <div className="group relative">
-                      <button
-                        title="Set End Date"
-                        onClick={() => setShowEndDatePickerForNoteId(note.id)}
-                        className="text-gray-600 hover:text-blue-700 text-base"
+                        className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer"
+                        title="Remove tag"
                       >
-                        📅
-                      </button>
-                    </div>
-                  )}
-                  <div className="group relative">
-                    <button
-                      title="Link Note"
-                      onClick={() => {
-                        setLinkingNoteId(note.id);
-                        setLinkSearchTerm('');
-                        setLinkPopupVisible(true);
-                      }}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      Link Notes
+                        ×
+                      </span>
                     </button>
+                  )}
+                  {duplicateUrlNoteIds.has(note.id) && (
+                    <span className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-400">
+                      Duplicate URL
+                    </span>
+                  )}
+                  {duplicateWithinNoteIds.has(note.id) && (
+                    <>
+                      <span className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-400">
+                        Duplicate Url In Note
+                      </span>
+                      <button
+                        onClick={() => {
+                          const seen = new Set();
+                          const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
+                            if (seen.has(url)) return '';
+                            seen.add(url);
+                            return url;
+                          });
+                          updateNote(note.id, cleanedContent);
+                        }}
+                        className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Remove Duplicates
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Layer 3: Date and Todo Toggle */}
+                <div className="flex text-xs text-gray-700 px-4 pb-2 items-center">
+                  <div className="flex justify-between w-full items-center">
+                    <div className="flex-1">
+                      {showCreatedDate && <span>{formatDate(note.created_datetime)}</span>}
+                    </div>
+                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200" id="button_bar">
+                      {note.content.toLowerCase().includes('meta::todo') ? (
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <button
+                              className="bg-green-100 text-green-800 px-2 py-1 text-xs rounded hover:bg-green-200"
+                              onClick={() => {
+                                const updated = note.content
+                                  .split('\n')
+                                  .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
+                                  .join('\n')
+                                  .trim() + '\nmeta::low';
+                                updateNote(note.id, updated);
+                              }}
+                            >
+                              Low
+                            </button>
+                            <button
+                              className="bg-yellow-100 text-yellow-800 px-2 py-1 text-xs rounded hover:bg-yellow-200"
+                              onClick={() => {
+                                const updated = note.content
+                                  .split('\n')
+                                  .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
+                                  .join('\n')
+                                  .trim() + '\nmeta::medium';
+                                updateNote(note.id, updated);
+                              }}
+                            >
+                              Medium
+                            </button>
+                            <button
+                              className="bg-red-100 text-red-800 px-2 py-1 text-xs rounded hover:bg-red-200"
+                              onClick={() => {
+                                const updated = note.content
+                                  .split('\n')
+                                  .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
+                                  .join('\n')
+                                  .trim() + '\nmeta::high';
+                                updateNote(note.id, updated);
+                              }}
+                            >
+                              High
+                            </button>
+                          </div>
+                          <div className="group relative">
+                            <XCircleIcon
+                              title="Unmark as Todo"
+                              className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
+                              onClick={() => {
+                                const updatedContent = note.content
+                                  .split('\n')
+                                  .filter(line =>
+                                    !line.trim().startsWith('meta::todo::') &&
+                                    !line.trim().startsWith('meta::low') &&
+                                    !line.trim().startsWith('meta::medium') &&
+                                    !line.trim().startsWith('meta::high')
+                                  )
+                                  .join('\n')
+                                  .trim();
+                                updateNote(note.id, updatedContent);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="group relative">
+                          <CheckCircleIcon
+                            title="Mark as Todo"
+                            className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
+                            onClick={() => {
+                              const timestamp = new Date().toISOString();
+                              const contentWithoutOldTodoMeta = note.content
+                                .split('\n')
+                                .filter(line => !line.trim().startsWith('meta::todo::'))
+                                .join('\n')
+                                .trim();
+                              const newContent = `${contentWithoutOldTodoMeta}\nmeta::todo::${timestamp}`;
+                              updateNote(note.id, newContent);
+                            }}
+                          />
+                        </div>
+                      )}
+                      {note.content.toLowerCase().includes('#watch') ? (
+                        <div className="group relative">
+                          <EyeSlashIcon
+                            title="Unmark from Watchlist"
+                            className="h-4 w-4 text-yellow-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-yellow-800"
+                            onClick={() => {
+                              const updatedContent = note.content.replace(/#watch/gi, '').trim();
+                              updateNote(note.id, updatedContent);
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="group relative">
+                          <EyeIcon
+                            title="Add to Watchlist"
+                            className="h-4 w-4 text-yellow-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-yellow-800"
+                            onClick={() => {
+                              updateNote(note.id, `${note.content.trim()} #watch`);
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div className="group relative">
+                        <PencilIcon
+                          className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
+                          onClick={() => setPopupNoteText(note.id)}
+                        />
+                      </div>
+                      <div className="group relative">
+                        <TrashIcon
+                          className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
+                          onClick={() => handleDelete(note.id)}
+                        />
+                      </div>
+                      {note.content.toLowerCase().includes('meta::todo') && (
+                        <div className="group relative">
+                          <button
+                            title="Set End Date"
+                            onClick={() => setShowEndDatePickerForNoteId(note.id)}
+                            className="text-gray-600 hover:text-blue-700 text-base"
+                          >
+                            📅
+                          </button>
+                        </div>
+                      )}
+                      <div className="group relative">
+                        <button
+                          title="Link Note"
+                          onClick={() => {
+                            setLinkingNoteId(note.id);
+                            setLinkSearchTerm('');
+                            setLinkPopupVisible(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          Link Notes
+                        </button>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={selectedNotes.includes(note.id)}
+                        onChange={() => toggleNoteSelection(note.id)}
+                        title="Select Note"
+                        className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
+                      />
+                    </div>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={selectedNotes.includes(note.id)}
-                    onChange={() => toggleNoteSelection(note.id)}
-                    title="Select Note"
-                    className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
-                  />
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )})}
+          )
+        })}
 
       <ConfirmationModal
         isOpen={isModalOpen}
@@ -847,14 +848,14 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
         </div>
       )}
 
-      
+
       {popupImageUrl && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-            <div
-              ref={popupContainerRef}
-              className="relative bg-white p-4 rounded shadow-lg resize overflow-auto"
-              style={{ width: 'auto', height: 'auto' }}
-            >
+          <div
+            ref={popupContainerRef}
+            className="relative bg-white p-4 rounded shadow-lg resize overflow-auto"
+            style={{ width: 'auto', height: 'auto' }}
+          >
             {popupImageLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80">
                 <div className="w-10 h-10 animate-spin border-4 border-purple-600 border-t-transparent rounded-full" />
@@ -890,71 +891,71 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
           </div>
         </div>
       )}
-    
-    {linkPopupVisible && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-4 rounded shadow max-w-md w-full">
-          <input
-            type="text"
-            placeholder="Search notes to link..."
-            value={linkSearchTerm}
-            onChange={(e) => setLinkSearchTerm(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded mb-3"
-          />
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {safeNotes
-              .filter(n => n.id !== linkingNoteId && n.content.toLowerCase().includes(linkSearchTerm.toLowerCase()))
-              .slice(0, 5)
-              .map(n => (
-                <div key={n.id} className="flex justify-between items-center p-2 border rounded">
-                  <span className="text-sm text-gray-800 line-clamp-1">{n.content.slice(0, 50)}...</span>
-                  <button
-                    onClick={() => {
-                      alert(`Note ${linkingNoteId} linked with Note ${n.id}`);
-                      setLinkPopupVisible(false);
-                      setLinkingNoteId(null);
-                      setLinkSearchTerm('');
-                      updateNoteCallback([...notes]); // Simulate a refresh
-                    }}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    Link
-                  </button>
-                </div>
-              ))}
+
+      {linkPopupVisible && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded shadow max-w-md w-full">
+            <input
+              type="text"
+              placeholder="Search notes to link..."
+              value={linkSearchTerm}
+              onChange={(e) => setLinkSearchTerm(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded mb-3"
+            />
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {safeNotes
+                .filter(n => n.id !== linkingNoteId && n.content.toLowerCase().includes(linkSearchTerm.toLowerCase()))
+                .slice(0, 5)
+                .map(n => (
+                  <div key={n.id} className="flex justify-between items-center p-2 border rounded">
+                    <span className="text-sm text-gray-800 line-clamp-1">{n.content.slice(0, 50)}...</span>
+                    <button
+                      onClick={() => {
+                        alert(`Note ${linkingNoteId} linked with Note ${n.id}`);
+                        setLinkPopupVisible(false);
+                        setLinkingNoteId(null);
+                        setLinkSearchTerm('');
+                        updateNoteCallback([...notes]); // Simulate a refresh
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      Link
+                    </button>
+                  </div>
+                ))}
+            </div>
+            <div className="flex justify-end mt-3">
+              <button
+                onClick={() => {
+                  setLinkPopupVisible(false);
+                  setLinkingNoteId(null);
+                  setLinkSearchTerm('');
+                }}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-          <div className="flex justify-end mt-3">
+        </div>
+      )}
+      {showEndDatePickerForNoteId && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-4 rounded shadow-md">
+            <input
+              type="datetime-local"
+              onChange={(e) => handleEndDateSelect(showEndDatePickerForNoteId, e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm"
+            />
             <button
-              onClick={() => {
-                setLinkPopupVisible(false);
-                setLinkingNoteId(null);
-                setLinkSearchTerm('');
-              }}
-              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              onClick={() => setShowEndDatePickerForNoteId(null)}
+              className="ml-2 text-sm text-red-500 hover:underline"
             >
               Cancel
             </button>
           </div>
         </div>
-      </div>
-    )}
-    {showEndDatePickerForNoteId && (
-      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div className="bg-white p-4 rounded shadow-md">
-          <input
-            type="datetime-local"
-            onChange={(e) => handleEndDateSelect(showEndDatePickerForNoteId, e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2 text-sm"
-          />
-          <button
-            onClick={() => setShowEndDatePickerForNoteId(null)}
-            className="ml-2 text-sm text-red-500 hover:underline"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    )}
+      )}
     </div>
   );
 };

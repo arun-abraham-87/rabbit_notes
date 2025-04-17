@@ -1047,6 +1047,38 @@ const handleSelectTag = (tag) => {
                       >
                         H2
                       </button>
+                      <button
+                        onClick={() => {
+                          const newLines = [...lines];
+                          newLines[index].text = newLines[index].text.toUpperCase();
+                          setLines(newLines);
+                        }}
+                        className="text-gray-500 hover:text-blue-600 text-base transition-colors"
+                        title="Make this line ALL CAPS"
+                      >
+                        CAPS
+                      </button>
+                      {(line.text.startsWith('###') && line.text.endsWith('###')) ||
+                       (line.text.startsWith('##') && line.text.endsWith('##')) ? (
+                        <button
+                          onClick={() => {
+                            const newLines = [...lines];
+                            let text = newLines[index].text;
+                            if (text.startsWith('###') && text.endsWith('###')) {
+                              text = text.slice(3, -3);
+                            } else if (text.startsWith('##') && text.endsWith('##')) {
+                              text = text.slice(2, -2);
+                            }
+                            newLines[index].text = text;
+                            newLines[index].isTitle = false;
+                            setLines(newLines);
+                          }}
+                          className="text-gray-500 hover:text-red-600 text-base transition-colors"
+                          title="Remove formatting"
+                        >
+                          ❌
+                        </button>
+                      ) : null}
                     </>
                   )}
                   {line.text.match(/https?:\/\/[^\s]+/) && (

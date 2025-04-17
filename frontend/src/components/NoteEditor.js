@@ -118,6 +118,7 @@ const handleSelectTag = (tag) => {
   const [urlLabelSelection, setUrlLabelSelection] = useState({ urlIndex: null, labelIndex: null });
   const [pendingUrlIndex, setPendingUrlIndex] = useState(null);
   const [customLabel, setCustomLabel] = useState('');
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, index: null });
   const textareasRef = useRef([]);
 
   useEffect(() => {
@@ -233,10 +234,11 @@ const handleSelectTag = (tag) => {
 
 
   const handleKeyDown = (e, index) => {
-    if (showPopup && e.key === 'Escape') {
+    if ((showPopup || contextMenu.visible) && e.key === 'Escape') {
       e.preventDefault();
       setShowPopup(false);
       setSelectedTagIndex(-1);
+      setContextMenu({ visible: false, x: 0, y: 0, index: null });
       if (focusedLineIndex !== null && textareasRef.current[focusedLineIndex]) {
         textareasRef.current[focusedLineIndex].focus();
       }
@@ -532,6 +534,12 @@ const handleSelectTag = (tag) => {
       document.removeEventListener('keydown', handleGlobalKey);
     };
   }, [lines, isAddMode, note, addNote, onSave, onCancel]);
+
+  useEffect(() => {
+    const hideContext = () => setContextMenu({ visible: false, x: 0, y: 0, index: null });
+    window.addEventListener('click', hideContext);
+    return () => window.removeEventListener('click', hideContext);
+  }, []);
 
 
   function getCursorCoordinates(textarea) {
@@ -960,11 +968,15 @@ const handleSelectTag = (tag) => {
                     </button>
                   </div>
                 ) : (
-                  <textarea
+                <textarea
                     ref={(el) => (textareasRef.current[index] = el)}
                     value={line.text}
                     onFocus={() => setFocusedLineIndex(index)}
                    // onBlur={() => setFocusedLineIndex(null)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setContextMenu({ visible: true, x: e.pageX, y: e.pageY, index });
+                    }}
                     style={{
                       backgroundColor:
                         focusedLineIndex === index
@@ -982,7 +994,7 @@ const handleSelectTag = (tag) => {
                     }}
                     onKeyDown={(e) => {
                       handleKeyDown(e, index);
-
+    
                       // Tag suggestion logic (if any)
                       // For example, check if the key pressed is related to tags
                       // and invoke your tag suggestion logic here.
@@ -1240,6 +1252,35 @@ const handleSelectTag = (tag) => {
                     ))}
                 </div>
             )}
+      {contextMenu.visible && (
+        <div
+          className="absolute bg-white border border-gray-300 rounded shadow-md z-50 p-2"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            onClick={() => handleMarkAsTitle(contextMenu.index)}
+          >
+            H1
+          </button>
+          <button
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            onClick={() => handleMarkAsSubtitle(contextMenu.index)}
+          >
+            H2
+          </button>
+          <button
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            onClick={() => {
+              const newLines = [...lines];
+              newLines[contextMenu.index].text = newLines[contextMenu.index].text.toUpperCase();
+              setLines(newLines);
+            }}
+          >
+            CAPS
+          </button>
+        </div>
+      )}
 
     </div>
 

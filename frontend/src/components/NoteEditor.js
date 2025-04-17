@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
 
-const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false }) => {
+const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false }) => {
   const contentSource = text || note.content || '';
   const initialLines = contentSource
     ? [
@@ -21,6 +21,35 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
   const [activePriority, setActivePriority] = useState('');
   const [selectedDateIndex, setSelectedDateIndex] = useState(null);
 
+  const [filteredTags, setFilteredTags] = useState([]);
+  const [selectedTagIndex, setSelectedTagIndex] = useState(-1);
+  const [showPopup, setShowPopup] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const throttleRef = useRef(null);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+  const popupRef = useRef(null);
+   
+  const replaceLastWord = (tag) => {
+    console.log(lines)
+    console.log(focusedLineIndex)
+    console.log(lines[focusedLineIndex])
+    const lastSpaceIndex = lines[focusedLineIndex].text.lastIndexOf(" ");
+    const updatedText =
+        (lastSpaceIndex === -1 ? "" : lines[focusedLineIndex].slice(0, lastSpaceIndex + 1)) +
+        `${tag} `;
+    const updatedLines = [...lines];
+    updatedLines[focusedLineIndex].text=updatedText;
+    setLines(updatedLines);
+    setShowPopup(false);
+   // setShowCalendar(false)
+    setSelectedTagIndex(-1);
+    //moveCursorToEndOfText(focusIndex)
+}
+
+const handleSelectTag = (tag) => {
+    replaceLastWord(tag)
+};
+
   const handleDateSelect = (date) => {
     const newLines = [...lines];
     const endDateLine = `meta::end_date::${new Date(date).toISOString()}`;
@@ -33,7 +62,23 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
     setShowDatePicker(false);
     setSelectedDateIndex(null);
   };
- 
+
+  const filterTags = (text) => {
+  const match = text.trim().match(/(\S+)$/);
+  if (!match) {
+    setShowPopup(false);
+    return;
+  }
+  console.log(objList);
+  const filterText = match[1].toLowerCase();
+  const filtered = objList.filter((tag) =>
+    tag.toLowerCase().startsWith(filterText)
+  );
+  setFilteredTags(filtered);
+  setSearchTerm(filterText);
+  setShowPopup(filtered.length > 0);
+  };
+
   const handleMarkAsSubtitle = (index) => {
     let newLines = [...lines];
     // Remove subtitle from any existing subtitle line
@@ -363,29 +408,29 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
 
   const handleMarkAsTitle = (index) => {
     let newLines = [...lines];
-
-    // Remove title from any existing title line
-    const existingTitleIndex = newLines.findIndex(line => line.isTitle);
-    if (existingTitleIndex !== -1) {
-      const existingTitle = { ...newLines[existingTitleIndex] };
-      existingTitle.isTitle = false;
-      if (existingTitle.text.startsWith('##') && existingTitle.text.endsWith('##')) {
-        existingTitle.text = existingTitle.text.slice(2, -2);
-      }
-      newLines.splice(existingTitleIndex, 1, existingTitle);
+    // Unwrap any existing H1 (###...###)
+    const existingH1 = newLines.findIndex(line =>
+      line.text.trim().startsWith('###') && line.text.trim().endsWith('###')
+    );
+    if (existingH1 !== -1) {
+      const unwrapped = { ...newLines[existingH1] };
+      unwrapped.text = unwrapped.text.trim().slice(3, -3);
+      newLines.splice(existingH1, 1, unwrapped);
+      if (existingH1 < index) index -= 1;
     }
-
-    // Promote the selected line to title
+    // Prepare selected line
     const selected = { ...newLines[index] };
-    selected.isTitle = true;
-    selected.text = selected.text.replace(/^##|##$/g, '');
-    selected.text = `##${selected.text}##`;
-
-    newLines.splice(index, 1); // Remove selected line
-    newLines = [selected, ...newLines]; // Prepend title
-
-    // Remove any completely blank lines
-    setLines((newLines || []).filter(line => line.text.trim() !== ''));
+    let content = selected.text.trim();
+    // Remove any H2 markers
+    if (content.startsWith('##') && content.endsWith('##')) {
+      content = content.slice(2, -2);
+    }
+    // Wrap as H1
+    selected.text = `###${content}###`;
+    // Remove original line and prepend selected
+    newLines.splice(index, 1);
+    newLines.unshift(selected);
+    setLines(newLines);
   };
 
   const handleSave = () => {
@@ -456,6 +501,125 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
     };
   }, [lines, isAddMode, note, addNote, onSave, onCancel]);
 
+
+  function getCursorCoordinates(textarea) {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return null;
+    
+      const range = selection.getRangeAt(0).cloneRange();
+      const rects = range.getClientRects();
+    
+      if (rects.length > 0) {
+        const rect = rects[0];
+        return {
+          x: rect.left + window.scrollX,
+          y: rect.top + window.scrollY
+        };
+      }
+    
+      // If there's no rect (empty line), insert a dummy span to measure
+      const dummy = document.createElement("span");
+      dummy.textContent = "\u200b"; // zero-width space
+      range.insertNode(dummy);
+      const rect = dummy.getBoundingClientRect();
+      const coords = {
+        x: rect.left + window.scrollX,
+        y: rect.top + window.scrollY
+      };
+      dummy.parentNode.removeChild(dummy);
+      return coords;
+    }
+
+  const handleInputChange = (e) => {
+
+
+    const selection = window.getSelection();
+    const range = selection.getRangeAt(0);
+
+    // Get the caret position relative to the current node
+    const caretOffset = range.startOffset;
+
+    //const updatedNotes = [...notes];
+    const inputedText = e.target.value;
+    //    updatedNotes[index] = inputedText
+    //  setNotes(updatedNotes);
+    console.log(`INputed text set as searhcquwery: ${inputedText}`)
+    //searchQuery(!inputedText ? "" : inputedText);
+
+    //Needed to fix issue of popup showing after deleting all text and popup showing up based on last deleted char
+    if (inputedText.trim().length === 0) {
+      setShowPopup(false);
+      //      setShowCalendar(false);
+    }
+
+    const match = inputedText.trim().match(/(\S+)$/); // Match the last word
+    if (match) {
+      const filterText = match[1].toLowerCase();
+      let filtered = [];
+
+      // Throttle logic
+      if (filterText !== "") {
+        clearTimeout(throttleRef.current); // Clear the existing timeout
+        throttleRef.current = setTimeout(() => {
+
+          if (filterText === "cal") {
+           // let { x, y } = getCursorCoordinates();
+           // x = x + 5;
+            // setCalendarPosition({ x, y });
+            // setShowCalendar(true);
+            // setShowPopup(false);
+          } else {
+
+            filtered = objList.filter((tag) =>
+              tag.toLowerCase().startsWith(filterText)
+            );
+
+
+            setFilteredTags(filtered);
+            //console.log(`objlit: ${objList}`)
+            //console.log(`FilteredTags: ${filteredTags}`)
+          }
+          if (filtered.length > 0) {
+            const textarea = textareasRef.current[focusedLineIndex];
+            if (textarea) {
+              const { x, y } = getCursorCoordinates(textarea);
+              setCursorPosition({ x, y:y +20 });
+            }
+            setShowPopup(true);
+            // const popupElement = document.getElementById("tagpop");
+            // if (popupElement) {
+            //   popupElement.style.position = "absolute";
+            //   popupElement.style.left = `${x}px`;
+            //   popupElement.style.top = `${y}px`;
+            // }
+          } else {
+            setShowPopup(false);
+          }
+
+        }, 300); // 300ms delay for throttling
+      }
+    } else {
+      setShowPopup(false);
+      //focusTextareaAtEnd();
+    }
+
+
+    // Restore the caret position after the state update
+    // setTimeout(() => {
+    //   const div = editorRef.current?.children[index];
+    //   if (div) {
+    //     const newRange = document.createRange();
+    //     const newSelection = window.getSelection();
+    //     newRange.setStart(div.firstChild || div, caretOffset); // Restore the offset
+    //     newRange.collapse(true);
+    //     newSelection.removeAllRanges();
+    //     newSelection.addRange(newRange);
+    //   }
+    // }, 0);
+
+  };
+
+
   const toCamelCase = (str) =>
     str
       .toLowerCase()
@@ -524,6 +688,7 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
                 type="text"
                 value={customLabel}
                 onChange={(e) => setCustomLabel(e.target.value)}
+               
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const newLines = [...lines];
@@ -570,9 +735,8 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
               if (setSearchQuery) setSearchQuery('meta::todo');
               setShowTodoSubButtons(true);
             }}
-            className={`px-3 py-1 text-xs rounded transition-all transform ${
-              showTodoSubButtons ? 'opacity-100 scale-105 bg-purple-300 border border-purple-700' : 'opacity-30 hover:opacity-60'
-            }`}
+            className={`px-3 py-1 text-xs rounded transition-all transform ${showTodoSubButtons ? 'opacity-100 scale-105 bg-purple-300 border border-purple-700' : 'opacity-30 hover:opacity-60'
+              }`}
           >
             Todos
           </button>
@@ -585,11 +749,10 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
                   if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
                   setActivePriority('high');
                 }}
-                className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${
-  activePriority === '' || activePriority === 'high'
-    ? 'opacity-100'
-    : 'opacity-30'
-} ${activePriority === 'high' ? 'bg-red-300 border border-red-700' : 'bg-red-100 hover:bg-red-200 text-red-800'}`}
+                className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${activePriority === '' || activePriority === 'high'
+                  ? 'opacity-100'
+                  : 'opacity-30'
+                  } ${activePriority === 'high' ? 'bg-red-300 border border-red-700' : 'bg-red-100 hover:bg-red-200 text-red-800'}`}
               >
                 High
               </button>
@@ -600,11 +763,10 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
                   if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
                   setActivePriority('medium');
                 }}
-                className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${
-  activePriority === '' || activePriority === 'medium'
-    ? 'opacity-100'
-    : 'opacity-30'
-} ${activePriority === 'medium' ? 'bg-yellow-300 border border-yellow-700' : 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800'}`}
+                className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${activePriority === '' || activePriority === 'medium'
+                  ? 'opacity-100'
+                  : 'opacity-30'
+                  } ${activePriority === 'medium' ? 'bg-yellow-300 border border-yellow-700' : 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800'}`}
               >
                 Medium
               </button>
@@ -615,11 +777,10 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
                   if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
                   setActivePriority('low');
                 }}
-                className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${
-  activePriority === '' || activePriority === 'low'
-    ? 'opacity-100'
-    : 'opacity-30'
-} ${activePriority === 'low' ? 'bg-green-300 border border-green-700' : 'bg-green-100 hover:bg-green-200 text-green-800'}`}
+                className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${activePriority === '' || activePriority === 'low'
+                  ? 'opacity-100'
+                  : 'opacity-30'
+                  } ${activePriority === 'low' ? 'bg-green-300 border border-green-700' : 'bg-green-100 hover:bg-green-200 text-green-800'}`}
               >
                 Low
               </button>
@@ -630,9 +791,8 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
               setLines([{ id: 'line-0', text: '#watch', isTitle: false }]);
               if (setSearchQuery) setSearchQuery('#watch');
             }}
-            className={`px-3 py-1 text-xs rounded transition-all transform ${
-              searchQuery?.includes('#watch') ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700' : 'opacity-30 hover:opacity-60'
-            }`}
+            className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('#watch') ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700' : 'opacity-30 hover:opacity-60'
+              }`}
           >
             Watch List
           </button>
@@ -641,9 +801,8 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
               setLines([{ id: 'line-0', text: '#people', isTitle: false }]);
               if (setSearchQuery) setSearchQuery('#people');
             }}
-            className={`px-3 py-1 text-xs rounded transition-all transform ${
-              searchQuery?.includes('#people') ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700' : 'opacity-30 hover:opacity-60'
-            }`}
+            className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('#people') ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700' : 'opacity-30 hover:opacity-60'
+              }`}
           >
             People
           </button>
@@ -652,9 +811,8 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
               setLines([{ id: 'line-0', text: 'meta::end_date::', isTitle: false }]);
               if (setSearchQuery) setSearchQuery('meta::end_date::');
             }}
-            className={`px-3 py-1 text-xs rounded transition-all transform ${
-              searchQuery?.includes('meta::end_date::') ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700' : 'opacity-30 hover:opacity-60'
-            }`}
+            className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('meta::end_date::') ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700' : 'opacity-30 hover:opacity-60'
+              }`}
           >
             Has End Date
           </button>
@@ -691,6 +849,7 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
               key={line.id}
               draggable
               onDragStart={(e) => handleDragStart(e, index)}
+             
               onDragOver={(e) => {
                 e.preventDefault();
                 handleDragOver(index);
@@ -766,11 +925,11 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
                     </button>
                   </div>
                 ) : (
-                <textarea
+                  <textarea
                     ref={(el) => (textareasRef.current[index] = el)}
                     value={line.text}
                     onFocus={() => setFocusedLineIndex(index)}
-                    onBlur={() => setFocusedLineIndex(null)}
+                   // onBlur={() => setFocusedLineIndex(null)}
                     style={{
                       backgroundColor:
                         focusedLineIndex === index
@@ -781,11 +940,18 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
                     }}
                     onChange={(e) => {
                       handleTextChange(index, e.target.value);
+                      handleInputChange(e)
                       if (setSearchQuery) {
                         setSearchQuery(e.target.value);
                       }
                     }}
-                    onKeyDown={(e) => handleKeyDown(e, index)}
+                    onKeyDown={(e) => {
+                      handleKeyDown(e, index);
+
+                      // Tag suggestion logic (if any)
+                      // For example, check if the key pressed is related to tags
+                      // and invoke your tag suggestion logic here.
+                    }}
                     onPaste={(e) => handlePaste(e, index)}
                     className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'}`}
                     rows={1}
@@ -981,7 +1147,35 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
         )}
       </div>
 
+      {showPopup && (
+                <div
+                    id="tagpop"
+                    ref={popupRef}
+                    className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2 z-20 max-h-40 overflow-y-auto no-scrollbar text-sm w-52"
+                    style={{
+                        left: cursorPosition.x,
+                        top: cursorPosition.y,
+                    }}
+                >
+                    {filteredTags.map((tag, index) => (
+                        <div
+                            key={tag}
+                            onClick={() => handleSelectTag(tag)}
+                            style={{
+                                padding: "5px",
+                                cursor: "pointer",
+                                backgroundColor:
+                                    selectedTagIndex === index ? "#e6f7ff" : "white",
+                            }}
+                        >
+                            {tag}
+                        </div>
+                    ))}
+                </div>
+            )}
+
     </div>
+
   );
 };
 

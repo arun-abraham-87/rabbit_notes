@@ -139,7 +139,7 @@ const App = () => {
       )}
       <div className='p-8'>
         {activePage === 'notes' && (
-          <NotesListing notes={notes} addNote={addNote} setNotes={setNotes} objects={objects} searchQuery={searchQuery} setSearchQuery={setSearchQuery} addTag={addTag} setNoteDate={setNoteDate} totals={totals} setTotals={setTotals} />
+          <NotesListing  objList={objectList} notes={notes} addNote={addNote} setNotes={setNotes} objects={objects} searchQuery={searchQuery} setSearchQuery={setSearchQuery} addTag={addTag} setNoteDate={setNoteDate} totals={totals} setTotals={setTotals} />
         )}
 
         {activePage === 'tags' && (
@@ -152,13 +152,6 @@ const App = () => {
           </div>
         )}
 
-        {activePage === 'editor' && (
-          <NoteEditor
-            note={{ content: '' }}
-            onSave={(updatedNote) => console.log('Saved note:', updatedNote)}
-            onCancel={() => setActivePage('notes')}
-          />
-        )}
       </div>
     </div>
 

@@ -5,6 +5,7 @@ import ConfirmationModal from './ConfirmationModal';
 import { formatDate } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import NoteEditor from './NoteEditor';
+
 const formatAndAgeDate = (text) => {
   const dateRegex = /\b(\d{2})\/(\d{2})\/(\d{4})\b|\b(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g;
     return text.replace(dateRegex, (match, d1, m1, y1, d2, monthStr, y2) => {
@@ -77,7 +78,7 @@ const renderSmartLink = (url, highlightColor = null) => {
   }
 };
 
-const NotesList = ({ notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm }) => {
+const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
   const [selectedText, setSelectedText] = useState('');
@@ -472,18 +473,27 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
               )}
               <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                 {(() => {
-                  const lines = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'));
-                  const firstLine = lines[0];
-                  const rest = lines.slice(1).join('\n');
-                  const isTitle = firstLine.startsWith('##') && firstLine.endsWith('##');
-                  const title = isTitle ? firstLine.replace(/^##|##$/g, '') : null;
-                  const contentToRender = isTitle ? rest : lines.join('\n');
+                  const rawLines = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'));
+                  let title1 = null, title2 = null;
+                  let contentLines = [...rawLines];
+                  // Check for H1 (###text###) on first line
+                  if (contentLines[0] && contentLines[0].trim().startsWith('###') && contentLines[0].trim().endsWith('###')) {
+                    title1 = contentLines[0].trim().slice(3, -3);
+                    contentLines.shift();
+                  }
+                  // Check for H2 (##text##) on next line
+                  if (contentLines[0] && contentLines[0].trim().startsWith('##') && contentLines[0].trim().endsWith('##')) {
+                    title2 = contentLines[0].trim().slice(2, -2);
+                    contentLines.shift();
+                  }
+                  const contentToRender = contentLines.join('\n');
                   const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
                   const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
  
                   return (
                     <>
-                      {isTitle && <h2 className="text-lg font-semibold text-purple-700 mb-2">{title}</h2>}
+                      {title1 && <h1 className="text-2xl font-bold mb-2">{title1}</h1>}
+                      {title2 && <h2 className="text-lg font-semibold text-purple-700 mb-2">{title2}</h2>}
                       <pre className="whitespace-pre-wrap">
                         {contentToRender
                           .split('\n')
@@ -529,6 +539,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                       {popupNoteText === note.id && (
                         <div className="mt-2">
                           <NoteEditor
+                          objList={objList}
                             text={note.content}
                             note={note}
                             onCancel={() => setPopupNoteText(null)}

@@ -462,6 +462,16 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                           />
                         </>
                       )}
+                      {!parsedEndDate && (
+                        <button
+                          className="text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 bg-gray-100 text-gray-800 hover:bg-gray-200"
+                          onClick={() => setShowEndDatePickerForNoteId(note.id)}
+                          title="Set end date"
+                        >
+                          No Deadline
+                          <CalendarIcon className="h-4 w-4 text-gray-600 ml-1" title="Pick date" />
+                        </button>
+                      )}
                 </div>
               )}
               <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">

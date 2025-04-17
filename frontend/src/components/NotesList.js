@@ -363,7 +363,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
         <div
           key={note.id}
           className={`flex flex-col p-5 mb-5 rounded-xl border ${
-            note.content.toLowerCase().includes('#todo') ? 'border-purple-500' : 'border-gray-200'
+            note.content.toLowerCase().includes('meta::todo') ? 'border-purple-500' : 'border-gray-200'
           } bg-white shadow hover:shadow-md transition-shadow duration-200`}
         >
           <div className="flex flex-col flex-auto">
@@ -517,7 +517,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                   {showCreatedDate && <span>{formatDate(note.created_datetime)}</span>}
                 </div>
                 <div className="flex items-center space-x-2">
-                  {note.content.toLowerCase().includes('#todo') ? (
+                  {note.content.toLowerCase().includes('meta::todo') ? (
                     <div className="flex items-center gap-2">
                       <div className="flex gap-1">
                         <button
@@ -554,7 +554,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                           className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
                           onClick={() => {
                             const updatedContent = note.content
-                              .replace(/#todo/gi, '')
+                              .replace(/meta::todo::[^\n]*/gi, '')
                               .replace(/#(low|medium|high)/gi, '')
                               .trim();
                             updateNote(note.id, updatedContent);
@@ -568,7 +568,14 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                         title="Mark as Todo"
                         className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
                         onClick={() => {
-                          updateNote(note.id, `${note.content.trim()} #todo`);
+                          const timestamp = new Date().toISOString();
+                          const contentWithoutOldTodoMeta = note.content
+                            .split('\n')
+                            .filter(line => !line.trim().startsWith('meta::todo::'))
+                            .join('\n')
+                            .trim();
+                          const newContent = `${contentWithoutOldTodoMeta}\nmeta::todo::${timestamp}`;
+                          updateNote(note.id, newContent);
                         }}
                       />
                     </div>
@@ -607,7 +614,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                       onClick={() => handleDelete(note.id)}
                     />
                   </div>
-                  {note.content.toLowerCase().includes('#todo') && (
+                  {note.content.toLowerCase().includes('meta::todo') && (
                     <div className="group relative">
                       <button
                         title="Set End Date"

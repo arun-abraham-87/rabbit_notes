@@ -381,15 +381,26 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
         <div
           key={note.id}
           className={`flex flex-col p-5 mb-5 rounded-xl border ${
-            note.content.toLowerCase().includes('meta::todo') ? 'border-purple-500' : 'border-gray-200'
+            note.content.includes('meta::high') ? 'border-red-500' :
+            note.content.toLowerCase().includes('meta::todo') ? 'border-purple-500' :
+            'border-gray-200'
           } bg-white shadow hover:shadow-md transition-shadow duration-200`}
         >
           <div className="flex flex-col flex-auto">
             {/* Layer 1: Content and Edit/Delete */}
             <div className="p-2">
-              {todoAgeNotice && (
-                <div className="text-sm text-green-700 font-semibold mb-2 px-2">
-                  {todoAgeNotice}
+              {note.content.includes('meta::todo') && (
+                <div className={`flex items-center gap-2 mb-2 px-2 py-1 text-purple-800 rounded-lg text-sm font-medium w-fit shadow-sm ${
+                  note.content.includes('meta::high') ? 'bg-red-100 border border-red-400' :
+                  note.content.includes('meta::medium') ? 'bg-yellow-100 border border-yellow-400' :
+                  note.content.includes('meta::low') ? 'bg-green-100 border border-green-400' :
+                  'bg-purple-50 border border-purple-300'
+                }`}>
+                  <span className="text-lg">🗒️</span>
+                  <span>Todo Task</span>
+                  {todoAgeNotice && (
+                    <span className="text-xs font-normal text-gray-600 ml-2">{todoAgeNotice}</span>
+                  )}
                 </div>
               )}
               {endDateNotice && (
@@ -494,11 +505,46 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                 note.content.includes(priority) ? (
                   <button
                     key={index}
-                    className="bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 rounded-full hover:bg-purple-200"
+                    className="bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-purple-200"
                   >
                     {priority.replace('meta::', '')}
+                    <span
+                      onClick={() => {
+                        const updatedContent = note.content
+                          .split('\n')
+                          .filter(line => !line.trim().startsWith(priority))
+                          .join('\n')
+                          .trim();
+                        updateNote(note.id, updatedContent);
+                      }}
+                      className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer"
+                      title="Remove tag"
+                    >
+                      ×
+                    </span>
                   </button>
                 ) : null
+              )}
+              {note.content.includes('meta::todo') && (
+                <button
+                  className="bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-purple-200"
+                >
+                  todo
+                  <span
+                    onClick={() => {
+                      const updatedContent = note.content
+                        .split('\n')
+                        .filter(line => !line.trim().startsWith('meta::todo'))
+                        .join('\n')
+                        .trim();
+                      updateNote(note.id, updatedContent);
+                    }}
+                    className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer"
+                    title="Remove tag"
+                  >
+                    ×
+                  </span>
+                </button>
               )}
               {duplicateUrlNoteIds.has(note.id) && (
                 <span className="bg-red-100 text-red-800 text-xs font-semibold px-3 py-1 rounded-full">

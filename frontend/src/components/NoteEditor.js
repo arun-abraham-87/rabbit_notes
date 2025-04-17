@@ -1279,6 +1279,79 @@ const handleSelectTag = (tag) => {
           >
             CAPS
           </button>
+          <button
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            onClick={() => {
+              const newLines = [...lines];
+              newLines[contextMenu.index].text = toSentenceCase(newLines[contextMenu.index].text);
+              setLines(newLines);
+            }}
+          >
+            Sentence Case
+          </button>
+          <button
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100 text-red-500"
+            onClick={() => {
+              const newLines = lines.filter((_, i) => i !== contextMenu.index);
+              setLines(newLines);
+            }}
+          >
+            🗑 Delete Line
+          </button>
+          {(() => {
+            const text = lines[contextMenu.index]?.text || '';
+            const isH1 = text.startsWith('###') && text.endsWith('###');
+            const isH2 = text.startsWith('##') && text.endsWith('##');
+            if (isH1 || isH2) {
+              return (
+                <button
+                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100 text-red-500"
+                  onClick={() => {
+                    const newLines = [...lines];
+                    let text = newLines[contextMenu.index].text;
+                    if (isH1) text = text.slice(3, -3);
+                    else if (isH2) text = text.slice(2, -2);
+                    newLines[contextMenu.index].text = text;
+                    newLines[contextMenu.index].isTitle = false;
+                    setLines(newLines);
+                  }}
+                >
+                  ❌ Remove Formatting
+                </button>
+              );
+            }
+            return null;
+          })()}
+          <button
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            onClick={() => {
+              const newLines = [...lines];
+              newLines.splice(contextMenu.index, 0, {
+                id: `line-${Date.now()}-above`,
+                text: '',
+                isTitle: false
+              });
+              setLines(newLines);
+              setTimeout(() => textareasRef.current[contextMenu.index]?.focus(), 0);
+            }}
+          >
+            ⬆️ Add Line Above
+          </button>
+          <button
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            onClick={() => {
+              const newLines = [...lines];
+              newLines.splice(contextMenu.index + 1, 0, {
+                id: `line-${Date.now()}-below`,
+                text: '',
+                isTitle: false
+              });
+              setLines(newLines);
+              setTimeout(() => textareasRef.current[contextMenu.index + 1]?.focus(), 0);
+            }}
+          >
+            ⬇️ Add Line Below
+          </button>
         </div>
       )}
 

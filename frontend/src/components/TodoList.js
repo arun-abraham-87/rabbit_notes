@@ -124,31 +124,23 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
 
   const filteredTodos = todos.filter((todo) => {
     const matchesSearch = todo.content.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const tag = todo.content.includes('#high')
-      ? 'high'
-      : todo.content.includes('#medium')
-      ? 'medium'
-      : todo.content.includes('#low')
-      ? 'low'
-      : 'low';
-
+ 
+    const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
+    const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
+ 
     const assignedPriority = priorities[todo.id] || tag;
     const matchesPriority = priorityFilter ? assignedPriority === priorityFilter : true;
-
-    return matchesSearch && matchesPriority;
+ 
+    const isMetaTodo = todo.content.includes('meta::todo');
+ 
+    return matchesSearch && matchesPriority && isMetaTodo;
   });
 
   const computePriorityCounts = () => {
     let high = 0, medium = 0, low = 0;
     filteredTodos.forEach(todo => {
-      const tag = todo.content.includes('#high')
-        ? 'high'
-        : todo.content.includes('#medium')
-        ? 'medium'
-        : todo.content.includes('#low')
-        ? 'low'
-        : 'low';
+      const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
+      const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
       const assigned = priorities[todo.id] || tag;
       if (assigned === 'high') high++;
       else if (assigned === 'medium') medium++;
@@ -197,6 +189,7 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
 
               todo.content
                 .replace(/#?todo/gi, '')
+                .replace(/meta::[^\s]+/gi, '')
                 .trim()
                 .split(/(https?:\/\/[^\s]+)/g)
                 .forEach((segment, i) => {
@@ -365,13 +358,8 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
       {groupByPriority ? (
         ['high', 'medium', 'low'].map(priority => {
           const group = filteredTodos.filter(todo => {
-            const tag = todo.content.includes('#high')
-              ? 'high'
-              : todo.content.includes('#medium')
-              ? 'medium'
-              : todo.content.includes('#low')
-              ? 'low'
-              : 'low';
+            const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
+            const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
             const assignedPriority = priorities[todo.id] || tag;
             return assignedPriority === priority;
           });

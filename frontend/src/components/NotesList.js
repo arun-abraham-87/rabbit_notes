@@ -490,16 +490,16 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
             ) : null}
 
             <div className="flex flex-wrap gap-2 px-4 pb-2">
-              {(note.content.match(/(?:^|\s)#\w+/g) || [])
-                .filter(tag => tag.trim().startsWith('#'))
-                .map((tag, index) => (
+              {['meta::low', 'meta::medium', 'meta::high'].map((priority, index) =>
+                note.content.includes(priority) ? (
                   <button
                     key={index}
                     className="bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 rounded-full hover:bg-purple-200"
                   >
-                    {tag.trim()}
+                    {priority.replace('meta::', '')}
                   </button>
-              ))}
+                ) : null
+              )}
               {duplicateUrlNoteIds.has(note.id) && (
                 <span className="bg-red-100 text-red-800 text-xs font-semibold px-3 py-1 rounded-full">
                   Duplicate URL
@@ -546,7 +546,11 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                         <button
                           className="bg-green-100 text-green-800 px-2 py-1 text-xs rounded hover:bg-green-200"
                           onClick={() => {
-                            const updated = note.content.replace(/#(low|medium|high)/gi, '').trim() + ' #low';
+                            const updated = note.content
+                              .split('\n')
+                              .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
+                              .join('\n')
+                              .trim() + '\nmeta::low';
                             updateNote(note.id, updated);
                           }}
                         >
@@ -555,7 +559,11 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                         <button
                           className="bg-yellow-100 text-yellow-800 px-2 py-1 text-xs rounded hover:bg-yellow-200"
                           onClick={() => {
-                            const updated = note.content.replace(/#(low|medium|high)/gi, '').trim() + ' #medium';
+                            const updated = note.content
+                              .split('\n')
+                              .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
+                              .join('\n')
+                              .trim() + '\nmeta::medium';
                             updateNote(note.id, updated);
                           }}
                         >
@@ -564,7 +572,11 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                         <button
                           className="bg-red-100 text-red-800 px-2 py-1 text-xs rounded hover:bg-red-200"
                           onClick={() => {
-                            const updated = note.content.replace(/#(low|medium|high)/gi, '').trim() + ' #high';
+                            const updated = note.content
+                              .split('\n')
+                              .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
+                              .join('\n')
+                              .trim() + '\nmeta::high';
                             updateNote(note.id, updated);
                           }}
                         >
@@ -572,17 +584,23 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                         </button>
                       </div>
                       <div className="group relative">
-                        <XCircleIcon
+                      <XCircleIcon
                           title="Unmark as Todo"
                           className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
                           onClick={() => {
                             const updatedContent = note.content
-                              .replace(/meta::todo::[^\n]*/gi, '')
-                              .replace(/#(low|medium|high)/gi, '')
+                              .split('\n')
+                              .filter(line =>
+                                !line.trim().startsWith('meta::todo::') &&
+                                !line.trim().startsWith('meta::low') &&
+                                !line.trim().startsWith('meta::medium') &&
+                                !line.trim().startsWith('meta::high')
+                              )
+                              .join('\n')
                               .trim();
                             updateNote(note.id, updatedContent);
                           }}
-                        />
+                      />
                       </div>
                     </div>
                   ) : (

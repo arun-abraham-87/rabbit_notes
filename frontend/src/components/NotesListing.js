@@ -11,6 +11,9 @@ const NotesListing = ({ objList, notes, addNote, setNotes, objects, searchQuery,
 
     const [checked, setChecked] = useState(false);
 
+    const handleTagClick = (tag) => {
+        setSearchQuery(tag);
+    };
 
     return (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
@@ -32,9 +35,9 @@ const NotesListing = ({ objList, notes, addNote, setNotes, objects, searchQuery,
             />
             <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
             {checked ? (
-                <NotesListByDate notes={notes} searchQuery={searchQuery} />
+                <NotesListByDate notes={notes} searchQuery={searchQuery} onWordClick={handleTagClick} />
             ) : (
-                <NotesList objList={objList} notes={notes} addNotes={addNote} updateNoteCallback={setNotes} updateTotals={setTotals} objects={objects} addObjects={addTag} searchTerm={searchQuery} />
+                <NotesList objList={objList} notes={notes} addNotes={addNote} updateNoteCallback={setNotes} updateTotals={setTotals} objects={objects} addObjects={addTag} searchTerm={searchQuery} onWordClick={handleTagClick} />
             )}
         </div>
     )

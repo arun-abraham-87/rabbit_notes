@@ -65,20 +65,22 @@ const DateSelectorBar = ({ setNoteDate }) => {
             const isActive = isoDate === selectedDate;
             const todayIso = getAustralianDate();
             const isToday = isoDate === todayIso;
+            const dayOfWeekLabel = dateObj.toLocaleDateString('en-AU', { weekday: 'short' });
 
             return (
               <div
                 key={offset}
                 onClick={() => handleDateChange(isoDate)}
                 onDoubleClick={() => setShowCalendar(true)}
-                className={`cursor-pointer w-16 h-20 flex flex-col items-center rounded-lg overflow-hidden ${
-                  isActive ? (isToday ? 'border-4 border-green-500' : 'border-4 border-red-500') : 'opacity-25'
+                className={`cursor-pointer w-16 h-20 flex flex-col items-center rounded-lg overflow-hidden shadow-md ${
+                  !isActive ? 'opacity-25' : ''
                 }`}
                 style={{ backgroundColor: '#ffffff' }}
               >
                 <div className="w-full text-center text-xs font-bold text-white bg-red-500 py-1 uppercase">{month}</div>
-                <div className={`flex-1 flex items-center justify-center text-2xl font-bold ${isToday && !isActive ? 'text-green-500' : 'text-black'}`}>
-                  {day}
+                <div className={`flex-1 flex flex-col items-center justify-center text-2xl font-bold ${isToday && !isActive ? 'text-green-500' : 'text-black'}`}>
+                  <div>{day}</div>
+                  <div className="text-[10px] text-gray-500">{dayOfWeekLabel}</div>
                 </div>
               </div>
             );

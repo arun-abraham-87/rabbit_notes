@@ -100,6 +100,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const safeNotes = notes || [];
   const [selectedView, setSelectedView] = useState('All');
   const [showEndDatePickerForNoteId, setShowEndDatePickerForNoteId] = useState(null);
+  const [focussedView, setFocussedView] = useState(false);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -334,6 +335,14 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
             className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
           />
           <label htmlFor="toggleCreatedDate" className="text-sm text-gray-700">Show created date</label>
+          <input
+            type="checkbox"
+            id="toggleFocussedView"
+            checked={focussedView}
+            onChange={() => setFocussedView((prev) => !prev)}
+            className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
+          />
+          <label htmlFor="toggleFocussedView" className="text-sm text-gray-700">Focussed View</label>
         </div>
       </div>
       {notes
@@ -401,7 +410,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
           return (
         <div
           key={note.id}
-          className="flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100"
+          className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100"
         >
           <div className="flex flex-col flex-auto">
             {/* Layer 1: Content and Edit/Delete */}
@@ -555,25 +564,27 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                 })()}
               </div>
             </div>
-            {imageUrls[note.id] ? (
-              <button
-                className="w-24 h-24 mt-2"
-                onClick={() => {
-                  setPopupImageLoading(true);
-                  setPopupImageUrl(imageUrls[note.id]);
-                }}
-              >
-                <img
-                  src={imageUrls[note.id]}
-                  alt="Note thumbnail"
-                  className="w-full h-full object-cover rounded-md transition-transform duration-200 transform hover:scale-105"
-                />
-              </button>
-            ) : note.content.match(/!\[pasted image\]\((.*?)\)/) ? (
-              <div className="w-6 h-6 mt-2 animate-spin border-2 border-purple-500 border-t-transparent rounded-full" />
-            ) : null}
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {imageUrls[note.id] ? (
+                <button
+                  className="w-24 h-24 mt-2"
+                  onClick={() => {
+                    setPopupImageLoading(true);
+                    setPopupImageUrl(imageUrls[note.id]);
+                  }}
+                >
+                  <img
+                    src={imageUrls[note.id]}
+                    alt="Note thumbnail"
+                    className="w-full h-full object-cover rounded-md transition-transform duration-200 transform hover:scale-105"
+                  />
+                </button>
+              ) : note.content.match(/!\[pasted image\]\((.*?)\)/) ? (
+                <div className="w-6 h-6 mt-2 animate-spin border-2 border-purple-500 border-t-transparent rounded-full" />
+              ) : null}
+            </div>
 
-            <div className="flex flex-wrap gap-2 px-4 pb-2">
+            <div className="flex flex-wrap gap-2 px-4 pb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               {['meta::low', 'meta::medium', 'meta::high'].map((priority, index) =>
                 note.content.includes(priority) ? (
                   <button
@@ -653,7 +664,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                 <div className="flex-1">
                   {showCreatedDate && <span>{formatDate(note.created_datetime)}</span>}
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200" id="button_bar">
                   {note.content.toLowerCase().includes('meta::todo') ? (
                     <div className="flex items-center gap-2">
                       <div className="flex gap-1">

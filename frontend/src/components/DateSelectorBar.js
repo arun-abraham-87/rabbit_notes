@@ -75,7 +75,7 @@ const DateSelectorBar = ({ setNoteDate }) => {
             onClick={() => handleDateChange(getAustralianDate())}
             className="text-sm text-green-600 hover:underline"
           >
-            Today
+            Reset To Today
           </button>
         </div>
       )}

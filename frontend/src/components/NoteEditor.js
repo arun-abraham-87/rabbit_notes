@@ -833,7 +833,7 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
                     className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
                     title="Insert line above"
                   >
-                    ➖
+                    ↑
                   </button>
                   <button
                     onClick={() => {
@@ -849,7 +849,7 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
                     className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
                     title="Insert line below"
                   >
-                    ➕
+                    ↓
                   </button>
                 </div>
               </div>

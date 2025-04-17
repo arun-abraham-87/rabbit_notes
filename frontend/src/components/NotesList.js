@@ -453,6 +453,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                       )}
                       {parsedEndDate && (
                         <>
+                          <span className="text-xs text-gray-700 font-semibold mr-1">Deadline Date:</span>
                           <span className="text-xs text-gray-500">{parsedEndDate.toLocaleDateString()}</span>
                           <CalendarIcon
                             className="h-5 w-5 text-gray-600 cursor-pointer hover:text-gray-800"

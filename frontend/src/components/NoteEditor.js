@@ -15,6 +15,7 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
     : [{ id: 'line-0', text: '', isTitle: false }];
 
   const [lines, setLines] = useState(initialLines);
+  const [focusedLineIndex, setFocusedLineIndex] = useState(null);
   const [showTodoSubButtons, setShowTodoSubButtons] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [activePriority, setActivePriority] = useState('');
@@ -734,15 +735,18 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
                     </button>
                   </div>
                 ) : (
-                  <textarea
+                <textarea
                     ref={(el) => (textareasRef.current[index] = el)}
                     value={line.text}
+                    onFocus={() => setFocusedLineIndex(index)}
+                    onBlur={() => setFocusedLineIndex(null)}
                     style={{
                       backgroundColor:
-                        searchQuery && line.text &&
-                          line.text.toLowerCase().includes(searchQuery.toLowerCase())
-                          ? '#fef3c7'
-                          : 'inherit'
+                        focusedLineIndex === index
+                          ? 'inherit'
+                          : searchQuery && line.text && line.text.toLowerCase().includes(searchQuery.toLowerCase())
+                            ? '#fef3c7'
+                            : 'inherit'
                     }}
                     onChange={(e) => {
                       handleTextChange(index, e.target.value);

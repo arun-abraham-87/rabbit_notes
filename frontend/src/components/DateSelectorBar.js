@@ -29,26 +29,41 @@ const DateSelectorBar = ({ setNoteDate }) => {
   };
 
   return (
-    <div className="flex items-center justify-between bg-white border border-gray-300 rounded shadow-sm p-3 mb-4">
+    <div className="flex items-center justify-center space-x-4 mb-4 overflow-hidden">
       <button
-        onClick={(x) => updateDate(false)}
-        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded shadow-sm"
+        onClick={() => updateDate(false)}
+        className="text-white bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
       >
-        &#60; {/* Unicode for '<' */}
+        &lt;
       </button>
-      <div>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => handleDateChange(e.target.value)}
-          className="border border-gray-300 rounded px-2 py-1 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      <div className="flex space-x-4 overflow-hidden">
+        {Array.from({ length: 13 }, (_, i) => i - 6).map((offset) => {
+          const dateObj = new Date(selectedDate);
+          dateObj.setDate(dateObj.getDate() + offset);
+          const day = dateObj.getDate();
+          const month = dateObj.toLocaleString('default', { month: 'short' });
+          const isoDate = dateObj.toISOString().split('T')[0];
+          const isActive = isoDate === selectedDate;
+
+          return (
+            <div
+              key={offset}
+              onClick={() => handleDateChange(isoDate)}
+              className={`cursor-pointer w-16 h-16 flex flex-col justify-center items-center rounded-lg bg-gray-800 text-white ${
+                isActive ? 'border-2 border-red-500' : 'opacity-25'
+              }`}
+            >
+              <div className="text-lg font-bold">{day}</div>
+              <div className="text-xs uppercase">{month}</div>
+            </div>
+          );
+        })}
       </div>
       <button
         onClick={() => updateDate(true)}
-        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded shadow-sm"
+        className="text-white bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
       >
-        &#62; {/* Unicode for '>' */}
+        &gt;
       </button>
     </div>
   );

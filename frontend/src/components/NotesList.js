@@ -349,6 +349,24 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
           const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
           const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
           let endDateNotice = '';
+          const todoDateMatch = note.content.match(/meta::todo::([^\n]+)/);
+          let todoAgeNotice = '';
+          if (todoDateMatch) {
+            const todoDate = new Date(todoDateMatch[1]);
+            const now = new Date();
+            let diff = now - todoDate;
+            if (diff > 0) {
+              const diffDate = new Date(diff);
+              const years = diffDate.getUTCFullYear() - 1970;
+              const months = diffDate.getUTCMonth();
+              const days = diffDate.getUTCDate() - 1;
+              const parts = [];
+              if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
+              if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
+              if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+              todoAgeNotice = `Open for: ${parts.join(' ')}`;
+            }
+          }
           if (parsedEndDate) {
             const now = new Date();
             const diffMs = parsedEndDate - now;
@@ -369,6 +387,11 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
           <div className="flex flex-col flex-auto">
             {/* Layer 1: Content and Edit/Delete */}
             <div className="p-2">
+              {todoAgeNotice && (
+                <div className="text-sm text-green-700 font-semibold mb-2 px-2">
+                  {todoAgeNotice}
+                </div>
+              )}
               {endDateNotice && (
                 <div className="text-sm text-red-600 font-semibold mb-2 px-2">
                   {endDateNotice}

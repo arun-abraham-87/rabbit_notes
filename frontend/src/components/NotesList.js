@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
+import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon, ExclamationCircleIcon, CalendarIcon } from '@heroicons/react/24/solid';
 import { processContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
 import { formatDate } from '../utils/DateUtils';
@@ -372,44 +372,95 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
             const now = new Date();
             const diffMs = parsedEndDate - now;
             if (diffMs > 0) {
-              const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
-              const days = Math.floor(totalHours / 24);
-              const hours = totalHours % 24;
-              endDateNotice = `Deadline in ${days} day${days !== 1 ? 's' : ''}${hours > 0 ? ` and ${hours} hour${hours !== 1 ? 's' : ''}` : ''}`;
+              // compute years, months, days until deadline
+              let diff = Math.abs(diffMs);
+              const diffDate = new Date(diff);
+              const years = diffDate.getUTCFullYear() - 1970;
+              const months = diffDate.getUTCMonth();
+              const days = diffDate.getUTCDate() - 1;
+              const parts = [];
+              if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
+              if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
+              parts.push(`${days} day${days > 1 ? 's' : ''}`);
+              endDateNotice = `Deadline in ${parts.join(', ')}`;
             } else {
-              const totalDaysAgo = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
-              endDateNotice = `Deadline passed ${totalDaysAgo} day${totalDaysAgo !== 1 ? 's' : ''} ago`;
+              // compute years, months, days since deadline passed
+              let diff = Math.abs(diffMs);
+              const diffDate = new Date(diff);
+              const years = diffDate.getUTCFullYear() - 1970;
+              const months = diffDate.getUTCMonth();
+              const days = diffDate.getUTCDate() - 1;
+              const parts = [];
+              if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
+              if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
+              parts.push(`${days} day${days > 1 ? 's' : ''}`);
+              endDateNotice = `Deadline passed ${parts.join(', ')} ago`;
             }
           }
           return (
         <div
           key={note.id}
-          className={`flex flex-col p-5 mb-5 rounded-xl border ${
-            note.content.includes('meta::high') ? 'border-red-500' :
-            note.content.toLowerCase().includes('meta::todo') ? 'border-purple-500' :
-            'border-gray-200'
-          } bg-white shadow hover:shadow-md transition-shadow duration-200`}
+          className="flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100"
         >
           <div className="flex flex-col flex-auto">
             {/* Layer 1: Content and Edit/Delete */}
             <div className="p-2">
-              {note.content.includes('meta::todo') && (
-                <div className={`flex items-center gap-2 mb-2 px-2 py-1 text-purple-800 rounded-lg text-sm font-medium w-fit shadow-sm ${
-                  note.content.includes('meta::high') ? 'bg-red-100 border border-red-400' :
-                  note.content.includes('meta::medium') ? 'bg-yellow-100 border border-yellow-400' :
-                  note.content.includes('meta::low') ? 'bg-green-100 border border-green-400' :
-                  'bg-purple-50 border border-purple-300'
-                } ${isDeadlinePassed ? 'animate-pulse ring-2 ring-red-400' : ''}`}>
-                  <span className="text-lg">🗒️</span>
-                  <span>Todo Task</span>
+              {(note.content.includes('meta::todo') || endDateNotice) && (
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircleIcon className="h-6 w-6 text-green-600" title="Todo" />
                   {todoAgeNotice && (
-                    <span className="text-xs font-normal text-gray-600 ml-2">{todoAgeNotice}</span>
+                    <button
+                      className="bg-purple-100 text-purple-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-purple-200"
+                      onClick={() => {
+                        const updatedContent = note.content
+                          .split('\n')
+                          .filter(line => !line.trim().startsWith('meta::todo'))
+                          .join('\n')
+                          .trim();
+                        updateNote(note.id, updatedContent);
+                      }}
+                      title="Remove todo notice"
+                    >
+                      <span>{todoAgeNotice}</span>
+                      <span className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer">×</span>
+                    </button>
                   )}
-                </div>
-              )}
-              {endDateNotice && (
-                <div className="text-sm text-red-600 font-semibold mb-2 px-2">
-                  {endDateNotice}
+                      {endDateNotice && (
+                        <button
+                          className={`text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 ${
+                            isDeadlinePassed
+                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                              : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                          }`}
+                          onClick={() => {
+                            const updatedContent = note.content
+                              .split('\n')
+                              .filter(line => !line.trim().startsWith('meta::end_date::'))
+                              .join('\n')
+                              .trim();
+                            updateNote(note.id, updatedContent);
+                          }}
+                          title="Remove end date"
+                        >
+                          {isDeadlinePassed && (
+                            <ExclamationCircleIcon className="h-4 w-4 text-red-600" title="Deadline passed" />
+                          )}
+                          <span>{endDateNotice}</span>
+                          <span className={`${isDeadlinePassed ? 'text-red-600 hover:text-red-800' : 'text-blue-600 hover:text-blue-900'} ml-1 cursor-pointer`}>
+                            ×
+                          </span>
+                        </button>
+                      )}
+                      {parsedEndDate && (
+                        <>
+                          <span className="text-xs text-gray-500">{parsedEndDate.toLocaleDateString()}</span>
+                          <CalendarIcon
+                            className="h-5 w-5 text-gray-600 cursor-pointer hover:text-gray-800"
+                            onClick={() => setShowEndDatePickerForNoteId(note.id)}
+                            title="Edit end date"
+                          />
+                        </>
+                      )}
                 </div>
               )}
               <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
@@ -575,11 +626,6 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                     Remove Duplicates
                   </button>
                 </>
-              )}
-              {parsedEndDate && (
-                <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">
-                  Ends: {parsedEndDate.toLocaleString()}
-                </span>
               )}
             </div>
 

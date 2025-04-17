@@ -349,6 +349,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
           const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
           const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
           let endDateNotice = '';
+          const isDeadlinePassed = parsedEndDate && parsedEndDate < new Date();
           const todoDateMatch = note.content.match(/meta::todo::([^\n]+)/);
           let todoAgeNotice = '';
           if (todoDateMatch) {
@@ -375,6 +376,9 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
               const days = Math.floor(totalHours / 24);
               const hours = totalHours % 24;
               endDateNotice = `Deadline in ${days} day${days !== 1 ? 's' : ''}${hours > 0 ? ` and ${hours} hour${hours !== 1 ? 's' : ''}` : ''}`;
+            } else {
+              const totalDaysAgo = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
+              endDateNotice = `Deadline passed ${totalDaysAgo} day${totalDaysAgo !== 1 ? 's' : ''} ago`;
             }
           }
           return (
@@ -395,7 +399,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                   note.content.includes('meta::medium') ? 'bg-yellow-100 border border-yellow-400' :
                   note.content.includes('meta::low') ? 'bg-green-100 border border-green-400' :
                   'bg-purple-50 border border-purple-300'
-                }`}>
+                } ${isDeadlinePassed ? 'animate-pulse ring-2 ring-red-400' : ''}`}>
                   <span className="text-lg">🗒️</span>
                   <span>Todo Task</span>
                   {todoAgeNotice && (

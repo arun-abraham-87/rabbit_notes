@@ -1098,7 +1098,7 @@ const handleSelectTag = (tag) => {
           ))}
         </div>
       )}
-      <div className="mt-4">
+      <div className="mt-1">
         <button
           onClick={() => {
             const newLines = [...lines, { id: `line-${Date.now()}`, text: '', isTitle: false }];
@@ -1108,7 +1108,7 @@ const handleSelectTag = (tag) => {
               if (last) last.focus();
             }, 0);
           }}
-          className="w-full py-1.5 px-3 text-sm bg-gray-100 text-gray-600 border border-gray-300 rounded hover:bg-gray-200"
+          className="w-full py-1 px-2 text-xs bg-gray-50 text-gray-500 border border-gray-200 rounded hover:bg-gray-100"
         >
           ➕ Add new row
         </button>
@@ -1161,14 +1161,14 @@ const handleSelectTag = (tag) => {
               setUrlLabelSelection({ urlIndex: null, labelIndex: null });
               onCancel();
             }}
-            className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 shadow-sm"
+            className="px-3 py-1.5 rounded text-sm bg-gray-800 text-white hover:bg-gray-700 shadow-sm"
           >
             Add Note
           </button>
         )}
         <button
           onClick={onCancel}
-          className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+          className="px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
         >
           Cancel
         </button>

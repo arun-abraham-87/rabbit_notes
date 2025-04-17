@@ -15,7 +15,9 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
     : [{ id: 'line-0', text: '', isTitle: false }];
 
   const [lines, setLines] = useState(initialLines);
+  const [showTodoSubButtons, setShowTodoSubButtons] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [activePriority, setActivePriority] = useState('');
   const [selectedDateIndex, setSelectedDateIndex] = useState(null);
 
   const handleDateSelect = (date) => {
@@ -532,60 +534,73 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
         <div className="mb-4 flex gap-2">
           <button
             onClick={() => {
-              setLines([{ id: 'line-0', text: '', isTitle: false }]);
-              if (setSearchQuery) setSearchQuery('');
-            }}
-            className="px-3 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 text-gray-800"
-          >
-            All
-          </button>
-          <button
-            onClick={() => {
               setLines([{ id: 'line-0', text: 'meta::todo', isTitle: false }]);
               if (setSearchQuery) setSearchQuery('meta::todo');
+              setShowTodoSubButtons(true);
             }}
-            className="px-3 py-1 text-xs rounded bg-purple-100 hover:bg-purple-200 text-purple-800"
+            className={`px-3 py-1 text-xs rounded transition-all transform ${
+              showTodoSubButtons ? 'opacity-100 scale-105 bg-purple-300 border border-purple-700' : 'opacity-30 hover:opacity-60'
+            }`}
           >
             Todos
           </button>
-          <div className="flex gap-1 ml-2">
-            <button
-              onClick={() => {
-                const additional = ' meta::high';
-                setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
-                if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
-              }}
-              className="px-2 py-1 text-xs rounded bg-red-100 hover:bg-red-200 text-red-800"
-            >
-              High
-            </button>
-            <button
-              onClick={() => {
-                const additional = ' meta::medium';
-                setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
-                if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
-              }}
-              className="px-2 py-1 text-xs rounded bg-yellow-100 hover:bg-yellow-200 text-yellow-800"
-            >
-              Medium
-            </button>
-            <button
-              onClick={() => {
-                const additional = ' meta::low';
-                setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
-                if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
-              }}
-              className="px-2 py-1 text-xs rounded bg-green-100 hover:bg-green-200 text-green-800"
-            >
-              Low
-            </button>
-          </div>
+          {showTodoSubButtons && (
+            <div className="flex gap-1 ml-2">
+              <button
+                onClick={() => {
+                  const additional = ' meta::high';
+                  setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
+                  if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
+                  setActivePriority('high');
+                }}
+                className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${
+  activePriority === '' || activePriority === 'high'
+    ? 'opacity-100'
+    : 'opacity-30'
+} ${activePriority === 'high' ? 'bg-red-300 border border-red-700' : 'bg-red-100 hover:bg-red-200 text-red-800'}`}
+              >
+                High
+              </button>
+              <button
+                onClick={() => {
+                  const additional = ' meta::medium';
+                  setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
+                  if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
+                  setActivePriority('medium');
+                }}
+                className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${
+  activePriority === '' || activePriority === 'medium'
+    ? 'opacity-100'
+    : 'opacity-30'
+} ${activePriority === 'medium' ? 'bg-yellow-300 border border-yellow-700' : 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800'}`}
+              >
+                Medium
+              </button>
+              <button
+                onClick={() => {
+                  const additional = ' meta::low';
+                  setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
+                  if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
+                  setActivePriority('low');
+                }}
+                className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${
+  activePriority === '' || activePriority === 'low'
+    ? 'opacity-100'
+    : 'opacity-30'
+} ${activePriority === 'low' ? 'bg-green-300 border border-green-700' : 'bg-green-100 hover:bg-green-200 text-green-800'}`}
+              >
+                Low
+              </button>
+            </div>
+          )}
           <button
             onClick={() => {
               setLines([{ id: 'line-0', text: '#watch', isTitle: false }]);
               if (setSearchQuery) setSearchQuery('#watch');
             }}
-            className="px-3 py-1 text-xs rounded bg-yellow-100 hover:bg-yellow-200 text-yellow-800"
+            className={`px-3 py-1 text-xs rounded transition-all transform ${
+              searchQuery?.includes('#watch') ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700' : 'opacity-30 hover:opacity-60'
+            }`}
           >
             Watch List
           </button>
@@ -594,7 +609,9 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
               setLines([{ id: 'line-0', text: '#people', isTitle: false }]);
               if (setSearchQuery) setSearchQuery('#people');
             }}
-            className="px-3 py-1 text-xs rounded bg-blue-100 hover:bg-blue-200 text-blue-800"
+            className={`px-3 py-1 text-xs rounded transition-all transform ${
+              searchQuery?.includes('#people') ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700' : 'opacity-30 hover:opacity-60'
+            }`}
           >
             People
           </button>
@@ -603,9 +620,22 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
               setLines([{ id: 'line-0', text: 'meta::end_date::', isTitle: false }]);
               if (setSearchQuery) setSearchQuery('meta::end_date::');
             }}
-            className="px-3 py-1 text-xs rounded bg-blue-100 hover:bg-blue-200 text-blue-800"
+            className={`px-3 py-1 text-xs rounded transition-all transform ${
+              searchQuery?.includes('meta::end_date::') ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700' : 'opacity-30 hover:opacity-60'
+            }`}
           >
             Has End Date
+          </button>
+          <button
+            onClick={() => {
+              setLines([{ id: 'line-0', text: '', isTitle: false }]);
+              if (setSearchQuery) setSearchQuery('');
+              setShowTodoSubButtons(false);
+              setActivePriority('');
+            }}
+            className="px-3 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 text-gray-800"
+          >
+            Clear
           </button>
         </div>
       )}

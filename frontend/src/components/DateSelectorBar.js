@@ -65,19 +65,21 @@ const DateSelectorBar = ({ setNoteDate }) => {
             const isActive = isoDate === selectedDate;
             const todayIso = getAustralianDate();
             const isToday = isoDate === todayIso;
-            const activeBorderClass = isActive
-              ? (isoDate === todayIso ? 'border-4 border-green-500' : 'border-4 border-red-500')
-              : 'opacity-25';
 
             return (
               <div
                 key={offset}
                 onClick={() => handleDateChange(isoDate)}
                 onDoubleClick={() => setShowCalendar(true)}
-                className={`cursor-pointer w-16 h-16 flex flex-col justify-center items-center rounded-lg bg-gray-800 text-white ${activeBorderClass}`}
+                className={`cursor-pointer w-16 h-20 flex flex-col items-center rounded-lg overflow-hidden ${
+                  isActive ? (isToday ? 'border-4 border-green-500' : 'border-4 border-red-500') : 'opacity-25'
+                }`}
+                style={{ backgroundColor: '#ffffff' }}
               >
-                <div className={`text-lg font-bold ${isToday && !isActive ? 'text-green-400' : ''}`}>{day}</div>
-                <div className={`text-xs uppercase ${isToday && !isActive ? 'text-green-400' : ''}`}>{month}</div>
+                <div className="w-full text-center text-xs font-bold text-white bg-red-500 py-1 uppercase">{month}</div>
+                <div className={`flex-1 flex items-center justify-center text-2xl font-bold ${isToday && !isActive ? 'text-green-500' : 'text-black'}`}>
+                  {day}
+                </div>
               </div>
             );
           })}

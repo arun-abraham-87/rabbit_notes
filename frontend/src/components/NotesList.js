@@ -7,21 +7,43 @@ import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import NoteEditor from './NoteEditor';
 const formatAndAgeDate = (text) => {
   const dateRegex = /\b(\d{2})\/(\d{2})\/(\d{4})\b|\b(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g;
-  return text.replace(dateRegex, (match, d1, m1, y1, d2, monthStr, y2) => {
-    let date;
-    if (d1 && m1 && y1) {
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      date = new Date(`${y1}-${m1}-${d1}`);
-      const formatted = `${d1} ${months[parseInt(m1) - 1]} ${y1}`;
-      const diff = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
-      const ageStr = diff === 0 ? "(Today)" : diff > 0 ? `(${diff} day${diff !== 1 ? 's' : ''} ago)` : `(in ${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''})`;
-      return `${formatted} ${ageStr}`;
-    } else if (d2 && monthStr && y2) {
-      date = new Date(`${monthStr} ${d2}, ${y2}`);
-      const formatted = `${d2} ${monthStr} ${y2}`;
-      const diff = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
-      const ageStr = diff === 0 ? "(Today)" : diff > 0 ? `(${diff} day${diff !== 1 ? 's' : ''} ago)` : `(in ${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''})`;
-      return `${formatted} ${ageStr}`;
+    return text.replace(dateRegex, (match, d1, m1, y1, d2, monthStr, y2) => {
+      let date;
+      if (d1 && m1 && y1) {
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        date = new Date(`${y1}-${m1}-${d1}`);
+        const formatted = `${d1} ${months[parseInt(m1) - 1]} ${y1}`;
+        const now = new Date();
+        let diff = now - date;
+        let inFuture = diff < 0;
+        diff = Math.abs(diff);
+        const diffDate = new Date(diff);
+        const years = diffDate.getUTCFullYear() - 1970;
+        const monthsDiff = diffDate.getUTCMonth();
+        const days = diffDate.getUTCDate() - 1;
+        let parts = [];
+        if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
+        if (monthsDiff > 0) parts.push(`${monthsDiff} month${monthsDiff > 1 ? 's' : ''}`);
+        if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+        const ageStr = inFuture ? `(in ${parts.join(' ')})` : `(${parts.join(' ')} ago)`;
+        return `${formatted} ${ageStr}`;
+      } else if (d2 && monthStr && y2) {
+        date = new Date(`${monthStr} ${d2}, ${y2}`);
+        const formatted = `${d2} ${monthStr} ${y2}`;
+        const now = new Date();
+        let diff = now - date;
+        let inFuture = diff < 0;
+        diff = Math.abs(diff);
+        const diffDate = new Date(diff);
+        const years = diffDate.getUTCFullYear() - 1970;
+        const monthsDiff = diffDate.getUTCMonth();
+        const days = diffDate.getUTCDate() - 1;
+        let parts = [];
+        if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
+        if (monthsDiff > 0) parts.push(`${monthsDiff} month${monthsDiff > 1 ? 's' : ''}`);
+        if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+        const ageStr = inFuture ? `(in ${parts.join(' ')})` : `(${parts.join(' ')} ago)`;
+        return `${formatted} ${ageStr}`;
     }
     return match;
   });

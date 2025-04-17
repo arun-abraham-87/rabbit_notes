@@ -35,7 +35,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     console.log(lines[focusedLineIndex])
     const lastSpaceIndex = lines[focusedLineIndex].text.lastIndexOf(" ");
     const updatedText =
-        (lastSpaceIndex === -1 ? "" : lines[focusedLineIndex].slice(0, lastSpaceIndex + 1)) +
+        (lastSpaceIndex === -1 ? "" : lines[focusedLineIndex].text.slice(0, lastSpaceIndex + 1)) +
         `${tag} `;
     const updatedLines = [...lines];
     updatedLines[focusedLineIndex].text=updatedText;
@@ -233,6 +233,23 @@ const handleSelectTag = (tag) => {
 
 
   const handleKeyDown = (e, index) => {
+    if (showPopup && filteredTags.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedTagIndex((prev) => (prev + 1) % filteredTags.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedTagIndex((prev) => (prev - 1 + filteredTags.length) % filteredTags.length);
+        return;
+      }
+      if (e.key === 'Enter' && selectedTagIndex >= 0) {
+        e.preventDefault();
+        handleSelectTag(filteredTags[selectedTagIndex]);
+        return;
+      }
+    }
     if (e.key === 'Backspace') {
       const cursorAtStart = e.target.selectionStart === 0;
       const prevLine = lines[index - 1];
@@ -600,6 +617,7 @@ const handleSelectTag = (tag) => {
       }
     } else {
       setShowPopup(false);
+      setSelectedTagIndex(-1);
       //focusTextareaAtEnd();
     }
 

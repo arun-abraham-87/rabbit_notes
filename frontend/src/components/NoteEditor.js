@@ -33,6 +33,37 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
     setShowDatePicker(false);
     setSelectedDateIndex(null);
   };
+ 
+  const handleMarkAsSubtitle = (index) => {
+    let newLines = [...lines];
+    // Remove subtitle from any existing subtitle line
+    const existingSubtitleIndex = newLines.findIndex(line => line.isSubtitle);
+    if (existingSubtitleIndex !== -1) {
+      const existingSubtitle = { ...newLines[existingSubtitleIndex] };
+      existingSubtitle.isSubtitle = false;
+      if (existingSubtitle.text.startsWith('##') && existingSubtitle.text.endsWith('##')) {
+        existingSubtitle.text = existingSubtitle.text.slice(2, -2);
+      }
+      newLines.splice(existingSubtitleIndex, 1, existingSubtitle);
+      // Adjust index if existing subtitle was before current index
+      if (existingSubtitleIndex < index) index -= 1;
+    }
+
+    // Extract and wrap selected line as subtitle
+    const selected = { ...newLines[index] };
+    selected.isSubtitle = true;
+    selected.text = selected.text.replace(/^##|##$/g, '');
+    selected.text = `##${selected.text}##`;
+
+    // Remove the original selected line
+    newLines.splice(index, 1);
+
+    // Insert subtitle just after the first line (below title)
+    newLines.splice(1, 0, selected);
+
+    // Filter out any blank lines and update state
+    setLines(newLines.filter(line => line.text.trim() !== ''));
+  };
 
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [mergedContent, setMergedContent] = useState(null);
@@ -800,13 +831,22 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
                     🗑
                   </button>
                   {!line.isTitle && (
-                    <button
-                      onClick={() => handleMarkAsTitle(index)}
-                      className="text-gray-500 hover:text-blue-600 text-base transition-colors"
-                      title="Make this line H1"
-                    >
-                      H1
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleMarkAsTitle(index)}
+                        className="text-gray-500 hover:text-blue-600 text-base transition-colors"
+                        title="Make this line H1"
+                      >
+                        H1
+                      </button>
+                      <button
+                        onClick={() => handleMarkAsSubtitle(index)}
+                        className="text-gray-500 hover:text-blue-600 text-base transition-colors"
+                        title="Make this line H2"
+                      >
+                        H2
+                      </button>
+                    </>
                   )}
                   {line.text.match(/https?:\/\/[^\s]+/) && (
                     <button

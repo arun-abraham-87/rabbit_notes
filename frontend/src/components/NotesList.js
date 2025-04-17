@@ -409,8 +409,8 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircleIcon className="h-6 w-6 text-green-600" title="Todo" />
                   {todoAgeNotice && (
-                    <button
-                      className="bg-purple-100 text-purple-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-purple-200"
+                      <button
+                        className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
                       onClick={() => {
                         const updatedContent = note.content
                           .split('\n')
@@ -426,12 +426,8 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                     </button>
                   )}
                       {endDateNotice && (
-                        <button
-                          className={`text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 ${
-                            isDeadlinePassed
-                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                              : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                          }`}
+                      <button
+                          className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
                           onClick={() => {
                             const updatedContent = note.content
                               .split('\n')
@@ -571,7 +567,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                 note.content.includes(priority) ? (
                   <button
                     key={index}
-                    className="bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-purple-200"
+                    className="bg-gray-300 text-gray-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
                   >
                     {priority.replace('meta::', '')}
                     <span
@@ -593,7 +589,7 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
               )}
               {note.content.includes('meta::todo') && (
                 <button
-                  className="bg-purple-100 text-purple-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-purple-200"
+                  className="bg-gray-300 text-gray-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
                 >
                   todo
                   <span
@@ -613,13 +609,13 @@ const handleRemoveDuplicateUrlsWithinNotes = () => {
                 </button>
               )}
               {duplicateUrlNoteIds.has(note.id) && (
-                <span className="bg-red-100 text-red-800 text-xs font-semibold px-3 py-1 rounded-full">
+                <span className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-400">
                   Duplicate URL
                 </span>
               )}
               {duplicateWithinNoteIds.has(note.id) && (
                 <>
-                  <span className="bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full">
+                  <span className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-400">
                     Duplicate Url In Note
                   </span>
                   <button

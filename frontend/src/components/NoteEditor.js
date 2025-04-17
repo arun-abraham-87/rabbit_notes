@@ -233,6 +233,15 @@ const handleSelectTag = (tag) => {
 
 
   const handleKeyDown = (e, index) => {
+    if (showPopup && e.key === 'Escape') {
+      e.preventDefault();
+      setShowPopup(false);
+      setSelectedTagIndex(-1);
+      if (focusedLineIndex !== null && textareasRef.current[focusedLineIndex]) {
+        textareasRef.current[focusedLineIndex].focus();
+      }
+      return;
+    }
     if (showPopup && filteredTags.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -528,8 +537,9 @@ const handleSelectTag = (tag) => {
     
       if (rects.length > 0) {
         const rect = rects[0];
+        const caretOffsetX = textarea.selectionStart * 6; // Approximate width per character
         return {
-          x: rect.left + window.scrollX,
+          x: rect.left + window.scrollX + caretOffsetX,
           y: rect.top + window.scrollY
         };
       }
@@ -539,8 +549,9 @@ const handleSelectTag = (tag) => {
       dummy.textContent = "\u200b"; // zero-width space
       range.insertNode(dummy);
       const rect = dummy.getBoundingClientRect();
+      const caretOffsetX = textarea.selectionStart * 6; // Approximate width per character
       const coords = {
-        x: rect.left + window.scrollX,
+        x: rect.left + window.scrollX + caretOffsetX,
         y: rect.top + window.scrollY
       };
       dummy.parentNode.removeChild(dummy);

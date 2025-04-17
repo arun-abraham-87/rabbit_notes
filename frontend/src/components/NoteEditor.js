@@ -541,13 +541,45 @@ const NoteEditor = ({ note, onSave, onCancel, text, searchQuery, setSearchQuery,
           </button>
           <button
             onClick={() => {
-              setLines([{ id: 'line-0', text: '#todo', isTitle: false }]);
-              if (setSearchQuery) setSearchQuery('#todo');
+              setLines([{ id: 'line-0', text: 'meta::todo', isTitle: false }]);
+              if (setSearchQuery) setSearchQuery('meta::todo');
             }}
             className="px-3 py-1 text-xs rounded bg-purple-100 hover:bg-purple-200 text-purple-800"
           >
             Todos
           </button>
+          <div className="flex gap-1 ml-2">
+            <button
+              onClick={() => {
+                const additional = ' meta::high';
+                setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
+                if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
+              }}
+              className="px-2 py-1 text-xs rounded bg-red-100 hover:bg-red-200 text-red-800"
+            >
+              High
+            </button>
+            <button
+              onClick={() => {
+                const additional = ' meta::medium';
+                setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
+                if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
+              }}
+              className="px-2 py-1 text-xs rounded bg-yellow-100 hover:bg-yellow-200 text-yellow-800"
+            >
+              Medium
+            </button>
+            <button
+              onClick={() => {
+                const additional = ' meta::low';
+                setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
+                if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
+              }}
+              className="px-2 py-1 text-xs rounded bg-green-100 hover:bg-green-200 text-green-800"
+            >
+              Low
+            </button>
+          </div>
           <button
             onClick={() => {
               setLines([{ id: 'line-0', text: '#watch', isTitle: false }]);

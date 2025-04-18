@@ -600,7 +600,33 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                     }}
                                     className={`cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
-                                    {line}
+                                  {(() => {
+                                    const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+                                    const elements = [];
+                                    let lastIndex = 0;
+                                    let match;
+                                    while ((match = regex.exec(line)) !== null) {
+                                      if (match.index > lastIndex) {
+                                        elements.push(line.slice(lastIndex, match.index));
+                                      }
+                                      elements.push(
+                                        <a
+                                          key={elements.length}
+                                          href={match[2]}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 underline"
+                                        >
+                                          {match[1]}
+                                        </a>
+                                      );
+                                      lastIndex = regex.lastIndex;
+                                    }
+                                    if (lastIndex < line.length) {
+                                      elements.push(line.slice(lastIndex));
+                                    }
+                                    return elements;
+                                  })()}
                                   </div>
                                 );
                               }

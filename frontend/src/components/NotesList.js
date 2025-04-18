@@ -391,17 +391,13 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           <label htmlFor="toggleFocussedView" className="text-sm text-gray-700">Focussed View</label>
         </div>
       </div>
-      {notes
+      {safeNotes
         .map(note => {
           const urls = note.content.match(urlPattern) || [];
           urls.forEach((url) => {
             if (!urlToNotesMap[url]) urlToNotesMap[url] = [];
             urlToNotesMap[url].push(note.id);
           });
-          return note;
-        })
-        .filter(note => safeNotes.some(n => n.id === note.id))
-        .map(note => {
           const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
           const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
           let endDateNotice = '';
@@ -456,6 +452,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           return (
             <div
               key={note.id}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setRightClickNoteId(note.id);
+                setRightClickPos({ x: e.clientX, y: e.clientY });
+              }}
               className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100"
             >
               <div className="flex flex-col flex-auto">
@@ -539,64 +540,60 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                           <div className="whitespace-pre-wrap space-y-1">
                           {contentLines.map((line, idx) => {
                               if (line.trim() === '') {
-                                return (
+                              return (
                                   <div
-                                    key={idx}
-                                    onContextMenu={(e) => {
-                                      e.preventDefault();
-                                      setRightClickText(line);
-                                      setRightClickPos({ x: e.pageX, y: e.pageY });
-                                      setRightClickIndex(idx);
-                                      setRightClickNoteId(note.id);
-                                    }}
-                                    className={`cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                  key={idx}
+                                  onContextMenu={(e) => {
+                                    e.preventDefault();
+                                    setRightClickNoteId(note.id);
+                                    setRightClickIndex(idx);
+                                    setRightClickPos({ x: e.clientX, y: e.clientY });
+                                  }}
+                                  className={`cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     &nbsp;
                                   </div>
                                 );
                               }
                               if (line.startsWith('<h1>') && line.endsWith('</h1>')) {
-                                return (
-                                  <h1
-                                    key={idx}
-                                    className={`text-2xl font-bold cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
-                                    onContextMenu={(e) => {
-                                      e.preventDefault();
-                                      setRightClickText(line.slice(4, -5));
-                                      setRightClickPos({ x: e.pageX, y: e.pageY });
-                                      setRightClickIndex(idx);
-                                      setRightClickNoteId(note.id);
-                                    }}
-                                  >
-                                    {line.slice(4, -5)}
-                                  </h1>
-                                );
+                              return (
+                                <h1
+                                  key={idx}
+                                  onContextMenu={(e) => {
+                                    e.preventDefault();
+                                    setRightClickNoteId(note.id);
+                                    setRightClickIndex(idx);
+                                    setRightClickPos({ x: e.clientX, y: e.clientY });
+                                  }}
+                                  className={`text-2xl font-bold cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                >
+                                  {line.slice(4, -5)}
+                                </h1>
+                              );
                               } else if (line.startsWith('<h2>') && line.endsWith('</h2>')) {
-                                return (
-                                  <h2
-                                    key={idx}
-                                    className={`text-lg font-semibold text-purple-700 cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
-                                    onContextMenu={(e) => {
-                                      e.preventDefault();
-                                      setRightClickText(line.slice(4, -5));
-                                      setRightClickPos({ x: e.pageX, y: e.pageY });
-                                      setRightClickIndex(idx);
-                                      setRightClickNoteId(note.id);
-                                    }}
-                                  >
-                                    {line.slice(4, -5)}
-                                  </h2>
-                                );
+                              return (
+                                <h2
+                                  key={idx}
+                                  onContextMenu={(e) => {
+                                    e.preventDefault();
+                                    setRightClickNoteId(note.id);
+                                    setRightClickIndex(idx);
+                                    setRightClickPos({ x: e.clientX, y: e.clientY });
+                                  }}
+                                  className={`text-lg font-semibold text-purple-700 cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                >
+                                  {line.slice(4, -5)}
+                                </h2>
+                              );
                               } else {
-                                return (
+                              return (
                                   <div
                                     key={idx}
                                     onContextMenu={(e) => {
                                       e.preventDefault();
-                                      setRightClickText(line);
-                                      setRightClickPos({ x: e.pageX, y: e.pageY });
-                                      setRightClickIndex(idx);
                                       setRightClickNoteId(note.id);
+                                      setRightClickIndex(idx);
+                                      setRightClickPos({ x: e.clientX, y: e.clientY });
                                     }}
                                     className={`cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >

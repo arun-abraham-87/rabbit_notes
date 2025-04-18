@@ -6,6 +6,19 @@ import { formatDate } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import NoteEditor from './NoteEditor';
 
+const parseFormattedContent = (lines) => {
+  return lines.map((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
+      return `<h1>${trimmed.slice(3, -3)}</h1>`;
+    } else if (trimmed.startsWith('##') && trimmed.endsWith('##')) {
+      return `<h2>${trimmed.slice(2, -2)}</h2>`;
+    } else {
+      return line;
+    }
+  });
+};
+
 const formatAndAgeDate = (text) => {
   const dateRegex = /\b(\d{2})\/(\d{2})\/(\d{4})\b|\b(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g;
   return text.replace(dateRegex, (match, d1, m1, y1, d2, monthStr, y2) => {
@@ -483,68 +496,23 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                   <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                     {(() => {
                       const rawLines = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'));
-                      let title1 = null, title2 = null;
-                      let contentLines = [...rawLines];
-                      // Check for H1 (###text###) on first line
-                      if (contentLines[0] && contentLines[0].trim().startsWith('###') && contentLines[0].trim().endsWith('###')) {
-                        title1 = contentLines[0].trim().slice(3, -3);
-                        contentLines.shift();
-                      }
-                      // Check for H2 (##text##) on next line
-                      if (contentLines[0] && contentLines[0].trim().startsWith('##') && contentLines[0].trim().endsWith('##')) {
-                        title2 = contentLines[0].trim().slice(2, -2);
-                        contentLines.shift();
-                      }
-                      const contentToRender = contentLines.join('\n');
+                      const contentLines = parseFormattedContent(rawLines, searchTerm, duplicatedUrlColors);
                       const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
                       const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
 
                       return (
                         <>
-                          {title1 && <h1 className="text-2xl font-bold mb-2">{title1}</h1>}
-                          {title2 && <h2 className="text-lg font-semibold text-purple-700 mb-2">{title2}</h2>}
-                          <pre className="whitespace-pre-wrap">
-                            {contentToRender
-                              .split('\n')
-                              .filter(line => !line.match(/^!\[pasted image\]\((.*?)\)$/))
-                              .join('\n')
-                              .split(/(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s]+)/g)
-                              .map((part, idx) => {
-                                const markdownMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
-                                if (markdownMatch) {
-                                  const [, label, url] = markdownMatch;
-                                  return (
-                                    <a
-                                      key={url + idx}
-                                      href={url}
-                                      title={url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 underline hover:text-blue-800"
-                                    >
-                                      {label}
-                                    </a>
-                                  );
-                                } else if (part.match(/https?:\/\/[^\s]+/)) {
-                                  return renderSmartLink(part, duplicatedUrlColors[part]);
-                                }
-                                if (searchTerm && typeof part === 'string') {
-                                  const keywords = searchTerm.trim().split(/\s+/).filter(Boolean);
-                                  if (keywords.length) {
-                                    const regex = new RegExp(`(${keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
-                                    const segments = part.split(regex);
-                                    return segments.map((seg, i) =>
-                                      keywords.some(kw => seg.toLowerCase() === kw.toLowerCase()) ? (
-                                        <mark key={i} className="bg-yellow-200">{seg}</mark>
-                                      ) : (
-                                        seg
-                                      )
-                                    );
-                                  }
-                                }
-                                return formatAndAgeDate(part);
-                              })}
-                          </pre>
+                          <div className="whitespace-pre-wrap space-y-1">
+                            {contentLines.map((line, idx) => {
+                              if (line.startsWith('<h1>') && line.endsWith('</h1>')) {
+                                return <h1 key={idx} className="text-2xl font-bold">{line.slice(4, -5)}</h1>;
+                              } else if (line.startsWith('<h2>') && line.endsWith('</h2>')) {
+                                return <h2 key={idx} className="text-lg font-semibold text-purple-700">{line.slice(4, -5)}</h2>;
+                              } else {
+                                return <div key={idx}>{line}</div>;
+                              }
+                            })}
+                          </div>
                           {popupNoteText === note.id && (
                             <div className="mt-2">
                               <NoteEditor
@@ -564,7 +532,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     })()}
                   </div>
                 </div>
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div>
                   {imageUrls[note.id] ? (
                     <button
                       className="w-24 h-24 mt-2"
@@ -584,7 +552,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap gap-2 px-4 pb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div className="flex flex-wrap gap-2 px-4 pb-2">
                   {['meta::low', 'meta::medium', 'meta::high'].map((priority, index) =>
                     note.content.includes(priority) ? (
                       <button
@@ -664,7 +632,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     <div className="flex-1">
                       {showCreatedDate && <span>{formatDate(note.created_datetime)}</span>}
                     </div>
-                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200" id="button_bar">
+                    <div className="flex items-center space-x-2" id="button_bar">
                       {note.content.toLowerCase().includes('meta::todo') ? (
                         <div className="flex items-center gap-2">
                           <div className="flex gap-1">

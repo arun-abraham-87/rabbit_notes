@@ -1352,6 +1352,18 @@ const handleSelectTag = (tag) => {
           >
             ⬇️ Add Line Below
           </button>
+          <button
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            onClick={() => {
+              const newLines = [...lines];
+              const [selectedLine] = newLines.splice(contextMenu.index, 1);
+              newLines.unshift(selectedLine);
+              setLines(newLines);
+              setTimeout(() => textareasRef.current[0]?.focus(), 0);
+            }}
+          >
+            ⬆️ Move to Top
+          </button>
         </div>
       )}
 

@@ -334,6 +334,16 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     window.addEventListener('click', handleClickOutside);
     return () => window.removeEventListener('click', handleClickOutside);
   }, []);
+  
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        setRightClickText(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
 
   return (
     <div className="relative">
@@ -983,6 +993,68 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
         className="z-50 bg-white border border-gray-300 rounded shadow-md p-2 text-sm"
       >
         <div className="text-gray-800">{rightClickText}</div>
+        <button
+          onClick={() => {
+            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+            if (noteToUpdate && rightClickIndex != null) {
+              const linesArr = noteToUpdate.content.split('\n');
+              const line = linesArr[rightClickIndex];
+              linesArr[rightClickIndex] = `###${line}###`;
+              updateNote(rightClickNoteId, linesArr.join('\n'));
+            }
+            setRightClickText(null);
+          }}
+          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+        >
+          Make H1
+        </button>
+        <button
+          onClick={() => {
+            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+            if (noteToUpdate && rightClickIndex != null) {
+              const linesArr = noteToUpdate.content.split('\n');
+              const [line] = linesArr.splice(rightClickIndex, 1);
+              linesArr.unshift(line);
+              updateNote(rightClickNoteId, linesArr.join('\n'));
+            }
+            setRightClickText(null);
+          }}
+          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+        >
+          Move to Top
+        </button>
+        <button
+          onClick={() => {
+            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+            if (noteToUpdate && rightClickIndex > 0) {
+              const linesArr = noteToUpdate.content.split('\n');
+              [linesArr[rightClickIndex - 1], linesArr[rightClickIndex]] =
+                [linesArr[rightClickIndex], linesArr[rightClickIndex - 1]];
+              updateNote(rightClickNoteId, linesArr.join('\n'));
+            }
+            setRightClickText(null);
+          }}
+          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+        >
+          Move Up
+        </button>
+        <button
+          onClick={() => {
+            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+            if (noteToUpdate) {
+              const linesArr = noteToUpdate.content.split('\n');
+              if (rightClickIndex != null && rightClickIndex < linesArr.length - 1) {
+                [linesArr[rightClickIndex + 1], linesArr[rightClickIndex]] =
+                  [linesArr[rightClickIndex], linesArr[rightClickIndex + 1]];
+                updateNote(rightClickNoteId, linesArr.join('\n'));
+              }
+            }
+            setRightClickText(null);
+          }}
+          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+        >
+          Move Down
+        </button>
         <button
           onClick={() => {
             const noteToUpdate = notes.find(n => n.id === rightClickNoteId);

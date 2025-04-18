@@ -114,6 +114,8 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const [selectedView, setSelectedView] = useState('All');
   const [showEndDatePickerForNoteId, setShowEndDatePickerForNoteId] = useState(null);
   const [focussedView, setFocussedView] = useState(false);
+  const [rightClickText, setRightClickText] = useState(null);
+  const [rightClickPos, setRightClickPos] = useState({ x: 0, y: 0 });
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -325,8 +327,14 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     fetchImages();
   }, [safeNotes]);
 
+  useEffect(() => {
+    const handleClickOutside = () => setRightClickText(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
+
   return (
-    <div>
+    <div className="relative">
       {selectedNotes.length > 1 && (
         <div className="mb-4">
           <button
@@ -490,8 +498,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                           No Deadline
                           <CalendarIcon className="h-4 w-4 text-gray-600 ml-1" title="Pick date" />
                         </button>
-                      )}
-                    </div>
+    )}
+    
+  </div>
                   )}
                   <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                     {(() => {
@@ -505,11 +514,47 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                           <div className="whitespace-pre-wrap space-y-1">
                             {contentLines.map((line, idx) => {
                               if (line.startsWith('<h1>') && line.endsWith('</h1>')) {
-                                return <h1 key={idx} className="text-2xl font-bold">{line.slice(4, -5)}</h1>;
+                                return (
+                                  <h1
+                                    key={idx}
+                                    className="text-2xl font-bold cursor-text"
+                                    onContextMenu={(e) => {
+                                      e.preventDefault();
+                                      setRightClickText(line.slice(4, -5));
+                                      setRightClickPos({ x: e.pageX, y: e.pageY });
+                                    }}
+                                  >
+                                    {line.slice(4, -5)}
+                                  </h1>
+                                );
                               } else if (line.startsWith('<h2>') && line.endsWith('</h2>')) {
-                                return <h2 key={idx} className="text-lg font-semibold text-purple-700">{line.slice(4, -5)}</h2>;
+                                return (
+                                  <h2
+                                    key={idx}
+                                    className="text-lg font-semibold text-purple-700 cursor-text"
+                                    onContextMenu={(e) => {
+                                      e.preventDefault();
+                                      setRightClickText(line.slice(4, -5));
+                                      setRightClickPos({ x: e.pageX, y: e.pageY });
+                                    }}
+                                  >
+                                    {line.slice(4, -5)}
+                                  </h2>
+                                );
                               } else {
-                                return <div key={idx}>{line}</div>;
+                                return (
+                                  <div
+                                    key={idx}
+                                    onContextMenu={(e) => {
+                                      e.preventDefault();
+                                      setRightClickText(line);
+                                      setRightClickPos({ x: e.pageX, y: e.pageY });
+                                    }}
+                                    className="cursor-text"
+                                  >
+                                    {line}
+                                  </div>
+                                );
                               }
                             })}
                           </div>
@@ -924,6 +969,20 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           </div>
         </div>
       )}
+    {rightClickText && rightClickPos && (
+      <div
+        style={{ position: 'fixed', top: `${rightClickPos.y}px`, left: `${rightClickPos.x}px` }}
+        className="z-50 bg-white border border-gray-300 rounded shadow-md p-2 text-sm"
+      >
+        <div className="text-gray-800">{rightClickText}</div>
+        <button
+          onClick={() => setRightClickText(null)}
+          className="mt-2 text-xs text-blue-600 hover:underline"
+        >
+          Close
+        </button>
+      </div>
+    )}
     </div>
   );
 };

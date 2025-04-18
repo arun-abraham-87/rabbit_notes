@@ -524,13 +524,16 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                       return (
                         <>
                           <div className="whitespace-pre-wrap space-y-1">
-                            {contentLines.map((line, idx) => {
+                          {contentLines.map((line, idx) => {
+                              if (line.trim() === '') {
+                                  return <div key={idx}>&nbsp;</div>;
+                              }
                               if (line.startsWith('<h1>') && line.endsWith('</h1>')) {
                                 return (
                                   <h1
                                     key={idx}
                                     className="text-2xl font-bold cursor-text"
-                              onContextMenu={(e) => {
+                                    onContextMenu={(e) => {
                                       e.preventDefault();
                                       setRightClickText(line.slice(4, -5));
                                       setRightClickPos({ x: e.pageX, y: e.pageY });
@@ -546,7 +549,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                   <h2
                                     key={idx}
                                     className="text-lg font-semibold text-purple-700 cursor-text"
-                              onContextMenu={(e) => {
+                                    onContextMenu={(e) => {
                                       e.preventDefault();
                                       setRightClickText(line.slice(4, -5));
                                       setRightClickPos({ x: e.pageX, y: e.pageY });
@@ -574,7 +577,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                   </div>
                                 );
                               }
-                            })}
+                          })}
                           </div>
                           {popupNoteText === note.id && (
                             <div className="mt-2">
@@ -992,22 +995,79 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
         style={{ position: 'fixed', top: `${rightClickPos.y}px`, left: `${rightClickPos.x}px` }}
         className="z-50 bg-white border border-gray-300 rounded shadow-md p-2 text-sm"
       >
-        <div className="text-gray-800">{rightClickText}</div>
-        <button
-          onClick={() => {
-            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-            if (noteToUpdate && rightClickIndex != null) {
-              const linesArr = noteToUpdate.content.split('\n');
-              const line = linesArr[rightClickIndex];
-              linesArr[rightClickIndex] = `###${line}###`;
-              updateNote(rightClickNoteId, linesArr.join('\n'));
-            }
-            setRightClickText(null);
-          }}
-          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-        >
-          Make H1
-        </button>
+    <div className="text-gray-800">{rightClickText}</div>
+    <button
+      onClick={() => {
+        const note = notes.find(n => n.id === rightClickNoteId);
+        if (note && rightClickIndex != null) {
+          const arr = note.content.split('\n');
+          arr.splice(rightClickIndex, 0, '');
+          updateNote(rightClickNoteId, arr.join('\n'));
+        }
+        setRightClickText(null);
+      }}
+      className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+    >
+      Add Row Above
+    </button>
+    <button
+      onClick={() => {
+        const note = notes.find(n => n.id === rightClickNoteId);
+        if (note && rightClickIndex != null) {
+          const arr = note.content.split('\n');
+          arr.splice(rightClickIndex + 1, 0, '');
+          updateNote(rightClickNoteId, arr.join('\n'));
+        }
+        setRightClickText(null);
+      }}
+      className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+    >
+      Add Row Below
+    </button>
+        {(() => {
+          const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+          const linesArr = noteToUpdate ? noteToUpdate.content.split('\n') : [];
+          const rawLine = linesArr[rightClickIndex] || '';
+          const trimmed = rawLine.trim();
+          const isH1 = trimmed.startsWith('###') && trimmed.endsWith('###');
+          if (!isH1) {
+            return (
+              <button
+                onClick={() => {
+                  const note = notes.find(n => n.id === rightClickNoteId);
+                  if (note && rightClickIndex != null) {
+                    const arr = note.content.split('\n');
+                    arr[rightClickIndex] = `###${arr[rightClickIndex]}###`;
+                    updateNote(rightClickNoteId, arr.join('\n'));
+                  }
+                  setRightClickText(null);
+                }}
+                className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+              >
+                Make H1
+              </button>
+            );
+          } else {
+            return (
+              <button
+                onClick={() => {
+                  const note = notes.find(n => n.id === rightClickNoteId);
+                  if (note && rightClickIndex != null) {
+                    const arr = note.content.split('\n');
+                    let content = arr[rightClickIndex].trim();
+                    content = content.slice(3, -3);
+                    arr[rightClickIndex] = content;
+                    updateNote(rightClickNoteId, arr.join('\n'));
+                  }
+                  setRightClickText(null);
+                }}
+                className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+              >
+                Remove H1
+              </button>
+            );
+          }
+        })()}
         <button
           onClick={() => {
             const noteToUpdate = notes.find(n => n.id === rightClickNoteId);

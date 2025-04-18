@@ -1094,6 +1094,49 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
             );
           }
         })()}
+        {(() => {
+          const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+          const linesArr = noteToUpdate ? noteToUpdate.content.split('\n') : [];
+          const rawLine = linesArr[rightClickIndex] || '';
+          const trimmed = rawLine.trim();
+          const isH2 = trimmed.startsWith('##') && trimmed.endsWith('##');
+          if (!isH2) {
+            return (
+              <button
+                onClick={() => {
+                  const note = notes.find(n => n.id === rightClickNoteId);
+                  if (note && rightClickIndex != null) {
+                    const arr = note.content.split('\n');
+                    arr[rightClickIndex] = `##${arr[rightClickIndex]}##`;
+                    updateNote(rightClickNoteId, arr.join('\n'));
+                  }
+                  setRightClickText(null);
+                }}
+                className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+              >
+                Make H2
+              </button>
+            );
+          } else {
+            return (
+              <button
+                onClick={() => {
+                  const note = notes.find(n => n.id === rightClickNoteId);
+                  if (note && rightClickIndex != null) {
+                    const arr = note.content.split('\n');
+                    const content = arr[rightClickIndex].trim().slice(2, -2);
+                    arr[rightClickIndex] = content;
+                    updateNote(rightClickNoteId, arr.join('\n'));
+                  }
+                  setRightClickText(null);
+                }}
+                className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+              >
+                Remove H2
+              </button>
+            );
+          }
+        })()}
         <button
           onClick={() => {
             const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
@@ -1155,6 +1198,20 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
         >
           Make All CAPS
+        </button>
+        <button
+          onClick={() => {
+            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+            if (noteToUpdate && rightClickIndex != null) {
+              const lines = noteToUpdate.content.split('\n');
+              lines.splice(rightClickIndex, 1);
+              updateNote(rightClickNoteId, lines.join('\n'));
+            }
+            setRightClickText(null);
+          }}
+          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+        >
+          Delete Row
         </button>
         
       </div>

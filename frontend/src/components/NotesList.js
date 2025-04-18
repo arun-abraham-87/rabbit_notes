@@ -304,6 +304,13 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   }, []);
 
   useEffect(() => {
+    if (rightClickText === null) {
+      setRightClickIndex(null);
+      setRightClickNoteId(null);
+    }
+  }, [rightClickText]);
+
+  useEffect(() => {
     const imagePattern = /!\[pasted image\]\((.*?)\)/g;
     const fetchImages = async () => {
       const newImageUrls = {};
@@ -330,7 +337,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   }, [safeNotes]);
 
   useEffect(() => {
-    const handleClickOutside = () => setRightClickText(null);
+    const handleClickOutside = () => {
+      setRightClickText(null);
+      setRightClickIndex(null);
+      setRightClickNoteId(null);
+    };
     window.addEventListener('click', handleClickOutside);
     return () => window.removeEventListener('click', handleClickOutside);
   }, []);
@@ -339,6 +350,8 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
         setRightClickText(null);
+        setRightClickIndex(null);
+        setRightClickNoteId(null);
       }
     };
     window.addEventListener('keydown', handleEsc);
@@ -532,7 +545,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                 return (
                                   <h1
                                     key={idx}
-                                    className="text-2xl font-bold cursor-text"
+                                    className={`text-2xl font-bold cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                     onContextMenu={(e) => {
                                       e.preventDefault();
                                       setRightClickText(line.slice(4, -5));
@@ -548,7 +561,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                 return (
                                   <h2
                                     key={idx}
-                                    className="text-lg font-semibold text-purple-700 cursor-text"
+                                    className={`text-lg font-semibold text-purple-700 cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                     onContextMenu={(e) => {
                                       e.preventDefault();
                                       setRightClickText(line.slice(4, -5));
@@ -571,7 +584,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       setRightClickIndex(idx);
                                       setRightClickNoteId(note.id);
                                     }}
-                                    className="cursor-text"
+                                    className={`cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     {line}
                                   </div>
@@ -990,12 +1003,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           </div>
         </div>
       )}
-    {rightClickText && rightClickPos && (
+      {rightClickText && rightClickPos && (
       <div
         style={{ position: 'fixed', top: `${rightClickPos.y}px`, left: `${rightClickPos.x}px` }}
         className="z-50 bg-white border border-gray-300 rounded shadow-md p-2 text-sm"
       >
-    <div className="text-gray-800">{rightClickText}</div>
     <button
       onClick={() => {
         const note = notes.find(n => n.id === rightClickNoteId);
@@ -1130,12 +1142,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
         >
           Make All CAPS
         </button>
-        <button
-          onClick={() => setRightClickText(null)}
-          className="mt-2 text-xs text-blue-600 hover:underline"
-        >
-          Close
-        </button>
+        
       </div>
     )}
     </div>

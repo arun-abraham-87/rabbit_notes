@@ -116,6 +116,8 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const [focussedView, setFocussedView] = useState(false);
   const [rightClickText, setRightClickText] = useState(null);
   const [rightClickPos, setRightClickPos] = useState({ x: 0, y: 0 });
+  const [rightClickNoteId, setRightClickNoteId] = useState(null);
+  const [rightClickIndex, setRightClickIndex] = useState(null);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -518,10 +520,12 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                   <h1
                                     key={idx}
                                     className="text-2xl font-bold cursor-text"
-                                    onContextMenu={(e) => {
+                              onContextMenu={(e) => {
                                       e.preventDefault();
                                       setRightClickText(line.slice(4, -5));
                                       setRightClickPos({ x: e.pageX, y: e.pageY });
+                                      setRightClickIndex(idx);
+                                      setRightClickNoteId(note.id);
                                     }}
                                   >
                                     {line.slice(4, -5)}
@@ -532,10 +536,12 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                   <h2
                                     key={idx}
                                     className="text-lg font-semibold text-purple-700 cursor-text"
-                                    onContextMenu={(e) => {
+                              onContextMenu={(e) => {
                                       e.preventDefault();
                                       setRightClickText(line.slice(4, -5));
                                       setRightClickPos({ x: e.pageX, y: e.pageY });
+                                      setRightClickIndex(idx);
+                                      setRightClickNoteId(note.id);
                                     }}
                                   >
                                     {line.slice(4, -5)}
@@ -549,6 +555,8 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       e.preventDefault();
                                       setRightClickText(line);
                                       setRightClickPos({ x: e.pageX, y: e.pageY });
+                                      setRightClickIndex(idx);
+                                      setRightClickNoteId(note.id);
                                     }}
                                     className="cursor-text"
                                   >
@@ -975,6 +983,21 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
         className="z-50 bg-white border border-gray-300 rounded shadow-md p-2 text-sm"
       >
         <div className="text-gray-800">{rightClickText}</div>
+        <button
+          onClick={() => {
+            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+            if (noteToUpdate && rightClickIndex != null) {
+              const lines = noteToUpdate.content.split('\n');
+              lines[rightClickIndex] = lines[rightClickIndex].toUpperCase();
+              const newContent = lines.join('\n');
+              updateNote(rightClickNoteId, newContent);
+            }
+            setRightClickText(null);
+          }}
+          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+        >
+          Make All CAPS
+        </button>
         <button
           onClick={() => setRightClickText(null)}
           className="mt-2 text-xs text-blue-600 hover:underline"

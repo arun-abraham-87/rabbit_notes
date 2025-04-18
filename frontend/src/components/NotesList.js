@@ -539,7 +539,21 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                           <div className="whitespace-pre-wrap space-y-1">
                           {contentLines.map((line, idx) => {
                               if (line.trim() === '') {
-                                  return <div key={idx}>&nbsp;</div>;
+                                return (
+                                  <div
+                                    key={idx}
+                                    onContextMenu={(e) => {
+                                      e.preventDefault();
+                                      setRightClickText(line);
+                                      setRightClickPos({ x: e.pageX, y: e.pageY });
+                                      setRightClickIndex(idx);
+                                      setRightClickNoteId(note.id);
+                                    }}
+                                    className={`cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                  >
+                                    &nbsp;
+                                  </div>
+                                );
                               }
                               if (line.startsWith('<h1>') && line.endsWith('</h1>')) {
                                 return (
@@ -1003,7 +1017,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           </div>
         </div>
       )}
-      {rightClickText && rightClickPos && (
+      {rightClickNoteId !== null && rightClickIndex !== null && (
       <div
         style={{ position: 'fixed', top: `${rightClickPos.y}px`, left: `${rightClickPos.x}px` }}
         className="z-50 bg-white border border-gray-300 rounded shadow-md p-2 text-sm"

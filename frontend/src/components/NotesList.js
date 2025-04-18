@@ -1180,6 +1180,44 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
             const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
             if (noteToUpdate && rightClickIndex > 0) {
               const linesArr = noteToUpdate.content.split('\n');
+              // Append current line to the previous line
+              linesArr[rightClickIndex - 1] =
+                linesArr[rightClickIndex - 1] + ' ' + linesArr[rightClickIndex];
+              // Remove the merged line
+              linesArr.splice(rightClickIndex, 1);
+              updateNote(rightClickNoteId, linesArr.join('\n'));
+            }
+            setRightClickText(null);
+          }}
+          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+        >
+          Merge Up
+        </button>
+        <button
+          onClick={() => {
+            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+            if (noteToUpdate) {
+              const linesArr = noteToUpdate.content.split('\n');
+              if (rightClickIndex < linesArr.length - 1) {
+                // Append next line into current line
+                linesArr[rightClickIndex] =
+                  linesArr[rightClickIndex] + ' ' + linesArr[rightClickIndex + 1];
+                // Remove the merged next line
+                linesArr.splice(rightClickIndex + 1, 1);
+                updateNote(rightClickNoteId, linesArr.join('\n'));
+              }
+            }
+            setRightClickText(null);
+          }}
+          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+        >
+          Merge Down
+        </button>
+        <button
+          onClick={() => {
+            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+            if (noteToUpdate && rightClickIndex > 0) {
+              const linesArr = noteToUpdate.content.split('\n');
               [linesArr[rightClickIndex - 1], linesArr[rightClickIndex]] =
                 [linesArr[rightClickIndex], linesArr[rightClickIndex - 1]];
               updateNote(rightClickNoteId, linesArr.join('\n'));

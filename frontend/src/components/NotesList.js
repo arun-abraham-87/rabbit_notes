@@ -118,6 +118,8 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const [rightClickPos, setRightClickPos] = useState({ x: 0, y: 0 });
   const [rightClickNoteId, setRightClickNoteId] = useState(null);
   const [rightClickIndex, setRightClickIndex] = useState(null);
+  const [editingLine, setEditingLine] = useState({ noteId: null, lineIndex: null });
+  const [editedLineContent, setEditedLineContent] = useState('');
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -587,45 +589,84 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                               );
                               } else {
                               return (
-                                  <div
-                                    key={idx}
-                                    onContextMenu={(e) => {
-                                      e.preventDefault();
-                                      setRightClickNoteId(note.id);
-                                      setRightClickIndex(idx);
-                                      setRightClickPos({ x: e.clientX, y: e.clientY });
-                                    }}
-                                    className={`cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
-                                  >
-                                  {(() => {
-                                    const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-                                    const elements = [];
-                                    let lastIndex = 0;
-                                    let match;
-                                    while ((match = regex.exec(line)) !== null) {
-                                      if (match.index > lastIndex) {
-                                        elements.push(line.slice(lastIndex, match.index));
-                                      }
-                                      elements.push(
-                                        <a
-                                          key={elements.length}
-                                          href={match[2]}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-blue-600 underline"
-                                        >
-                                          {match[1]}
-                                        </a>
-                                      );
-                                      lastIndex = regex.lastIndex;
-                                    }
-                                    if (lastIndex < line.length) {
-                                      elements.push(line.slice(lastIndex));
-                                    }
-                                    return elements;
-                                  })()}
-                                  </div>
-                                );
+                                <div
+                                  key={idx}
+                                  onContextMenu={(e) => {
+                                    e.preventDefault();
+                                    setRightClickNoteId(note.id);
+                                    setRightClickIndex(idx);
+                                    setRightClickPos({ x: e.clientX, y: e.clientY });
+                                  }}
+                                  className={`cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                >
+                                  {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
+                                    <>
+                                      <input
+                                        type="text"
+                                        value={editedLineContent}
+                                        onChange={(e) => setEditedLineContent(e.target.value)}
+                                        className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
+                                      />
+                                      <button
+                                        onClick={() => {
+                                          const lines = note.content.split('\n');
+                                          lines[idx] = editedLineContent;
+                                          updateNote(note.id, lines.join('\n'));
+                                          setEditingLine({ noteId: null, lineIndex: null });
+                                        }}
+                                        className="text-green-600 text-xs font-semibold mr-1 hover:underline"
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
+                                        className="text-red-500 text-xs font-semibold hover:underline"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="flex-1">
+                                        {(() => {
+                                          const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+                                          const elements = [];
+                                          let lastIndex = 0;
+                                          let match;
+                                          while ((match = regex.exec(line)) !== null) {
+                                            if (match.index > lastIndex) {
+                                              elements.push(line.slice(lastIndex, match.index));
+                                            }
+                                            elements.push(
+                                              <a
+                                                key={elements.length}
+                                                href={match[2]}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 underline"
+                                              >
+                                                {match[1]}
+                                              </a>
+                                            );
+                                            lastIndex = regex.lastIndex;
+                                          }
+                                          if (lastIndex < line.length) {
+                                            elements.push(line.slice(lastIndex));
+                                          }
+                                          return elements;
+                                        })()}
+                                      </span>
+                                      <PencilIcon
+                                        className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
+                                        onClick={() => {
+                                          setEditedLineContent(line);
+                                          setEditingLine({ noteId: note.id, lineIndex: idx });
+                                        }}
+                                      />
+                                    </>
+                                  )}
+                                </div>
+                              );
                               }
                           })}
                           </div>

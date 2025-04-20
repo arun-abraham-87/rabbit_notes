@@ -6,6 +6,21 @@ import { formatDate } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import NoteEditor from './NoteEditor';
 
+import {
+  ArrowUpIcon,
+  ArrowDownIcon,
+  ArrowUturnUpIcon,
+  ArrowUturnDownIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  ArrowUpOnSquareIcon,
+
+  TextCaseUppercaseIcon,
+  TextCapitalizeIcon,
+  BarsArrowUpIcon,
+  BarsArrowDownIcon
+} from '@heroicons/react/24/solid';
+
 const parseFormattedContent = (lines) => {
   return lines.map((line) => {
     const trimmed = line.trim();
@@ -572,7 +587,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
 
                       return (
                         <>
-                          <div className="whitespace-pre-wrap space-y-1">
+                          <div className="whitespace-pre-wrap break-words break-all space-y-1">
                             {contentLines.map((line, idx) => {
                               if (line.trim() === '') {
                                 return (
@@ -724,7 +739,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       setRightClickIndex(idx);
                                       setRightClickPos({ x: e.clientX, y: e.clientY });
                                     }}
-                                className={`${indentFlags[idx] ? 'pl-8 ' : ''}group cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                    className={`${indentFlags[idx] ? 'pl-8 ' : ''}group cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
                                       <>
@@ -764,7 +779,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       <>
                                         <span className="flex-1">
                                           {(() => {
-                                          const dateRegex = /\b\d{1,2}\/\d{1,2}\/\d{4}\b|\b\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December) \d{4}\b/g;
+                                            const dateRegex = /\b\d{1,2}\/\d{1,2}\/\d{4}\b|\b\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December) \d{4}\b/g;
                                             const parts = [];
                                             let lastIndex = 0;
                                             let match;
@@ -1251,7 +1266,8 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
       {rightClickNoteId !== null && rightClickIndex !== null && (
         <div
           style={{ position: 'fixed', top: `${rightClickPos.y}px`, left: `${rightClickPos.x}px` }}
-          className="z-50 bg-white border border-gray-300 rounded shadow-md p-2 flex space-x-2"
+
+          className="z-50 bg-white border border-gray-300 rounded shadow-md px-2 py-1 flex items-center space-x-1"
         >
           <button
             onClick={() => {
@@ -1263,9 +1279,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               }
               setRightClickText(null);
             }}
-            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            className="p-1 hover:bg-gray-100 rounded"
           >
-            Add Row Above
+            <ArrowUturnUpIcon className="w-4 h-4 text-gray-700" />
           </button>
           <button
             onClick={() => {
@@ -1277,9 +1293,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               }
               setRightClickText(null);
             }}
-            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            className="p-1 hover:bg-gray-100 rounded"
           >
-            Add Row Below
+            <ArrowUturnDownIcon className="w-4 h-4 text-gray-700" />
           </button>
           {(() => {
             const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
@@ -1299,9 +1315,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     }
                     setRightClickText(null);
                   }}
-                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-                >
-                  Make H1
+                  className="p-1 hover:bg-gray-100 rounded"
+          >
+          H1
                 </button>
               );
             } else {
@@ -1318,9 +1334,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     }
                     setRightClickText(null);
                   }}
-                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-                >
-                  Remove H1
+                  className="p-1 hover:bg-gray-100 rounded"
+                  >
+                  H1-X
                 </button>
               );
             }
@@ -1343,9 +1359,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     }
                     setRightClickText(null);
                   }}
-                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-                >
-                  Make H2
+                  className="p-1 hover:bg-gray-100 rounded"
+          >
+          H2
                 </button>
               );
             } else {
@@ -1361,9 +1377,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     }
                     setRightClickText(null);
                   }}
-                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-                >
-                  Remove H2
+                  className="p-1 hover:bg-gray-100 rounded"
+          >
+          H2-X
                 </button>
               );
             }
@@ -1379,9 +1395,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               }
               setRightClickText(null);
             }}
-            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            className="p-1 hover:bg-gray-100 rounded"
           >
-            Move to Top
+            FIRST <ArrowUpIcon className="w-4 h-4 text-gray-700" />
           </button>
           <button
             onClick={() => {
@@ -1397,9 +1413,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               }
               setRightClickText(null);
             }}
-            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            className="p-1 hover:bg-gray-100 rounded"
           >
-            Merge Up
+            Merge <ArrowUturnUpIcon className="w-4 h-4 text-gray-700" />
           </button>
           <button
             onClick={() => {
@@ -1417,9 +1433,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               }
               setRightClickText(null);
             }}
-            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            className="p-1 hover:bg-gray-100 rounded"
           >
-            Merge Down
+            Merge <ArrowUturnDownIcon className="w-4 h-4 text-gray-700" />
           </button>
           <button
             onClick={() => {
@@ -1432,9 +1448,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               }
               setRightClickText(null);
             }}
-            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            className="p-1 hover:bg-gray-100 rounded"
           >
-            Move Up
+            <ChevronUpIcon className="w-4 h-4 text-gray-700" />
           </button>
           <button
             onClick={() => {
@@ -1449,9 +1465,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               }
               setRightClickText(null);
             }}
-            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            className="p-1 hover:bg-gray-100 rounded"
           >
-            Move Down
+            <ChevronDownIcon className="w-4 h-4 text-gray-700" />
           </button>
           <button
             onClick={() => {
@@ -1464,9 +1480,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               }
               setRightClickText(null);
             }}
-            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            className="p-1 hover:bg-gray-100 rounded"
           >
-            Make All CAPS
+            AA
           </button>
           <button
             onClick={() => {
@@ -1484,9 +1500,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               }
               setRightClickText(null);
             }}
-            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+            className="p-1 hover:bg-gray-100 rounded"
           >
-            Capitalize Words
+           Aa
           </button>
           <button
             onClick={() => {
@@ -1498,9 +1514,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               }
               setRightClickText(null);
             }}
-            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-          >
-            Delete Row
+            className="p-1 hover:bg-gray-100 rounded"
+            >
+              <TrashIcon className="w-4 h-4 text-gray-700" />
           </button>
 
         </div>

@@ -347,7 +347,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     window.addEventListener('click', handleClickOutside);
     return () => window.removeEventListener('click', handleClickOutside);
   }, []);
-  
+
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
@@ -526,9 +526,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                           No Deadline
                           <CalendarIcon className="h-4 w-4 text-gray-600 ml-1" title="Pick date" />
                         </button>
-    )}
-    
-  </div>
+                      )}
+
+                    </div>
                   )}
                   <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                     {(() => {
@@ -540,209 +540,215 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                       return (
                         <>
                           <div className="whitespace-pre-wrap space-y-1">
-                          {contentLines.map((line, idx) => {
+                            {contentLines.map((line, idx) => {
                               if (line.trim() === '') {
-                              return (
+                                return (
                                   <div
-                                  key={idx}
-                                  onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    setRightClickNoteId(note.id);
-                                    setRightClickIndex(idx);
-                                    setRightClickPos({ x: e.clientX, y: e.clientY });
-                                  }}
-                                  className={`cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                    key={idx}
+                                    onContextMenu={(e) => {
+                                      e.preventDefault();
+                                      setRightClickNoteId(note.id);
+                                      setRightClickIndex(idx);
+                                      setRightClickPos({ x: e.clientX, y: e.clientY });
+                                    }}
+                                    className={`cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     &nbsp;
                                   </div>
                                 );
                               }
                               if (line.startsWith('<h1>') && line.endsWith('</h1>')) {
-                              return (
-                                <h1
-                                  key={idx}
-                                  onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    setRightClickNoteId(note.id);
-                                    setRightClickIndex(idx);
-                                    setRightClickPos({ x: e.clientX, y: e.clientY });
-                                  }}
-                                  className={`text-2xl font-bold cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
-                                >
-                                  {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
-                                    <>
-                                      <input
-                                        type="text"
-                                        value={editedLineContent}
-                                        onChange={(e) => setEditedLineContent(e.target.value)}
-                                        className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
-                                      />
-                                      <button
-                                        onClick={() => {
-                                          const lines = note.content.split('\n');
-                                          lines[idx] = `###${editedLineContent}###`;
-                                          updateNote(note.id, lines.join('\n'));
-                                          setEditingLine({ noteId: null, lineIndex: null });
-                                        }}
-                                        className="text-green-600 text-xs font-semibold mr-1 hover:underline"
-                                      >
-                                        Save
-                                      </button>
-                                      <button
-                                        onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
-                                        className="text-red-500 text-xs font-semibold hover:underline"
-                                      >
-                                        Cancel
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="flex-1">{line.slice(4, -5)}</span>
-                                      <PencilIcon
-                                        className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
-                                        onClick={() => {
-                                          setEditedLineContent(line.slice(4, -5));
-                                          setEditingLine({ noteId: note.id, lineIndex: idx });
-                                        }}
-                                      />
-                                    </>
-                                  )}
-                                </h1>
-                              );
+                                return (
+                                  <h1
+                                    key={idx}
+                                    onContextMenu={(e) => {
+                                      e.preventDefault();
+                                      setRightClickNoteId(note.id);
+                                      setRightClickIndex(idx);
+                                      setRightClickPos({ x: e.clientX, y: e.clientY });
+                                    }}
+                                    className={`group text-2xl font-bold cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                  >
+                                    {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
+                                      <>
+                                        <input
+                                          type="text"
+                                          value={editedLineContent}
+                                          onChange={(e) => setEditedLineContent(e.target.value)}
+                                          className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
+                                        />
+                                        <button
+                                          onClick={() => {
+                                            const lines = note.content.split('\n');
+                                            lines[idx] = `###${editedLineContent}###`;
+                                            updateNote(note.id, lines.join('\n'));
+                                            setEditingLine({ noteId: null, lineIndex: null });
+                                          }}
+                                          className="text-green-600 text-xs font-semibold mr-1 hover:underline"
+                                        >
+                                          Save
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
+                                          className="text-red-500 text-xs font-semibold hover:underline"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="flex-1">{line.slice(4, -5)}</span>
+                                        <span className="invisible group-hover:visible">
+                                          <PencilIcon
+                                            className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
+                                            onClick={() => {
+                                              setEditedLineContent(line.slice(4, -5));
+                                              setEditingLine({ noteId: note.id, lineIndex: idx });
+                                            }}
+                                          />
+                                        </span>
+                                      </>
+                                    )}
+                                  </h1>
+                                );
                               } else if (line.startsWith('<h2>') && line.endsWith('</h2>')) {
-                              return (
-                                <h2
-                                  key={idx}
-                                  onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    setRightClickNoteId(note.id);
-                                    setRightClickIndex(idx);
-                                    setRightClickPos({ x: e.clientX, y: e.clientY });
-                                  }}
-                                  className={`text-lg font-semibold text-purple-700 cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
-                                >
-                                  {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
-                                    <>
-                                      <input
-                                        type="text"
-                                        value={editedLineContent}
-                                        onChange={(e) => setEditedLineContent(e.target.value)}
-                                        className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
-                                      />
-                                      <button
-                                        onClick={() => {
-                                          const lines = note.content.split('\n');
-                                          lines[idx] = `##${editedLineContent}##`;
-                                          updateNote(note.id, lines.join('\n'));
-                                          setEditingLine({ noteId: null, lineIndex: null });
-                                        }}
-                                        className="text-green-600 text-xs font-semibold mr-1 hover:underline"
-                                      >
-                                        Save
-                                      </button>
-                                      <button
-                                        onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
-                                        className="text-red-500 text-xs font-semibold hover:underline"
-                                      >
-                                        Cancel
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="flex-1">{line.slice(4, -5)}</span>
-                                      <PencilIcon
-                                        className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
-                                        onClick={() => {
-                                          setEditedLineContent(line.slice(4, -5));
-                                          setEditingLine({ noteId: note.id, lineIndex: idx });
-                                        }}
-                                      />
-                                    </>
-                                  )}
-                                </h2>
-                              );
+                                return (
+                                  <h2
+                                    key={idx}
+                                    onContextMenu={(e) => {
+                                      e.preventDefault();
+                                      setRightClickNoteId(note.id);
+                                      setRightClickIndex(idx);
+                                      setRightClickPos({ x: e.clientX, y: e.clientY });
+                                    }}
+                                    className={`group text-lg font-semibold text-purple-700 cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                  >
+                                    {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
+                                      <>
+                                        <input
+                                          type="text"
+                                          value={editedLineContent}
+                                          onChange={(e) => setEditedLineContent(e.target.value)}
+                                          className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
+                                        />
+                                        <button
+                                          onClick={() => {
+                                            const lines = note.content.split('\n');
+                                            lines[idx] = `##${editedLineContent}##`;
+                                            updateNote(note.id, lines.join('\n'));
+                                            setEditingLine({ noteId: null, lineIndex: null });
+                                          }}
+                                          className="text-green-600 text-xs font-semibold mr-1 hover:underline"
+                                        >
+                                          Save
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
+                                          className="text-red-500 text-xs font-semibold hover:underline"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="flex-1">{line.slice(4, -5)}</span>
+                                        <span className="invisible group-hover:visible">
+                                          <PencilIcon
+                                            className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
+                                            onClick={() => {
+                                              setEditedLineContent(line.slice(4, -5));
+                                              setEditingLine({ noteId: note.id, lineIndex: idx });
+                                            }}
+                                          />
+                                        </span>
+                                      </>
+                                    )}
+                                  </h2>
+                                );
                               } else {
-                              return (
-                                <div
-                                  key={idx}
-                                  onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    setRightClickNoteId(note.id);
-                                    setRightClickIndex(idx);
-                                    setRightClickPos({ x: e.clientX, y: e.clientY });
-                                  }}
-                                  className={`cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
-                                >
-                                  {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
-                                    <>
-                                      <input
-                                        type="text"
-                                        value={editedLineContent}
-                                        onChange={(e) => setEditedLineContent(e.target.value)}
-                                        className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
-                                      />
-                                      <button
-                                        onClick={() => {
-                                          const lines = note.content.split('\n');
-                                          lines[idx] = editedLineContent;
-                                          updateNote(note.id, lines.join('\n'));
-                                          setEditingLine({ noteId: null, lineIndex: null });
-                                        }}
-                                        className="text-green-600 text-xs font-semibold mr-1 hover:underline"
-                                      >
-                                        Save
-                                      </button>
-                                      <button
-                                        onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
-                                        className="text-red-500 text-xs font-semibold hover:underline"
-                                      >
-                                        Cancel
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="flex-1">
-                                        {(() => {
-                                          const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-                                          const elements = [];
-                                          let lastIndex = 0;
-                                          let match;
-                                          while ((match = regex.exec(line)) !== null) {
-                                            if (match.index > lastIndex) {
-                                              elements.push(line.slice(lastIndex, match.index));
+                                return (
+                                  <div
+                                    key={idx}
+                                    onContextMenu={(e) => {
+                                      e.preventDefault();
+                                      setRightClickNoteId(note.id);
+                                      setRightClickIndex(idx);
+                                      setRightClickPos({ x: e.clientX, y: e.clientY });
+                                    }}
+                                    className={`group cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                  >
+                                    {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
+                                      <>
+                                        <input
+                                          type="text"
+                                          value={editedLineContent}
+                                          onChange={(e) => setEditedLineContent(e.target.value)}
+                                          className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
+                                        />
+                                        <button
+                                          onClick={() => {
+                                            const lines = note.content.split('\n');
+                                            lines[idx] = editedLineContent;
+                                            updateNote(note.id, lines.join('\n'));
+                                            setEditingLine({ noteId: null, lineIndex: null });
+                                          }}
+                                          className="text-green-600 text-xs font-semibold mr-1 hover:underline"
+                                        >
+                                          Save
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
+                                          className="text-red-500 text-xs font-semibold hover:underline"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="flex-1">
+                                          {(() => {
+                                            const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+                                            const elements = [];
+                                            let lastIndex = 0;
+                                            let match;
+                                            while ((match = regex.exec(line)) !== null) {
+                                              if (match.index > lastIndex) {
+                                                elements.push(line.slice(lastIndex, match.index));
+                                              }
+                                              elements.push(
+                                                <a
+                                                  key={elements.length}
+                                                  href={match[2]}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-blue-600 underline"
+                                                >
+                                                  {match[1]}
+                                                </a>
+                                              );
+                                              lastIndex = regex.lastIndex;
                                             }
-                                            elements.push(
-                                              <a
-                                                key={elements.length}
-                                                href={match[2]}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-blue-600 underline"
-                                              >
-                                                {match[1]}
-                                              </a>
-                                            );
-                                            lastIndex = regex.lastIndex;
-                                          }
-                                          if (lastIndex < line.length) {
-                                            elements.push(line.slice(lastIndex));
-                                          }
-                                          return elements;
-                                        })()}
-                                      </span>
-                                      <PencilIcon
-                                        className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
-                                        onClick={() => {
-                                          setEditedLineContent(line);
-                                          setEditingLine({ noteId: note.id, lineIndex: idx });
-                                        }}
-                                      />
-                                    </>
-                                  )}
-                                </div>
-                              );
+                                            if (lastIndex < line.length) {
+                                              elements.push(line.slice(lastIndex));
+                                            }
+                                            return elements;
+                                          })()}
+                                        </span>
+                                        <span className="invisible group-hover:visible">
+                                          <PencilIcon
+                                            className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
+                                            onClick={() => {
+                                              setEditedLineContent(line);
+                                              setEditingLine({ noteId: note.id, lineIndex: idx });
+                                            }}
+                                          />
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+                                );
                               }
-                          })}
+                            })}
                           </div>
                           {popupNoteText === note.id && (
                             <div className="mt-2">
@@ -1156,262 +1162,262 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
         </div>
       )}
       {rightClickNoteId !== null && rightClickIndex !== null && (
-      <div
-        style={{ position: 'fixed', top: `${rightClickPos.y}px`, left: `${rightClickPos.x}px` }}
-        className="z-50 bg-white border border-gray-300 rounded shadow-md p-2 text-sm"
-      >
-    <button
-      onClick={() => {
-        const note = notes.find(n => n.id === rightClickNoteId);
-        if (note && rightClickIndex != null) {
-          const arr = note.content.split('\n');
-          arr.splice(rightClickIndex, 0, '');
-          updateNote(rightClickNoteId, arr.join('\n'));
-        }
-        setRightClickText(null);
-      }}
-      className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-    >
-      Add Row Above
-    </button>
-    <button
-      onClick={() => {
-        const note = notes.find(n => n.id === rightClickNoteId);
-        if (note && rightClickIndex != null) {
-          const arr = note.content.split('\n');
-          arr.splice(rightClickIndex + 1, 0, '');
-          updateNote(rightClickNoteId, arr.join('\n'));
-        }
-        setRightClickText(null);
-      }}
-      className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-    >
-      Add Row Below
-    </button>
-        {(() => {
-          const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-          const linesArr = noteToUpdate ? noteToUpdate.content.split('\n') : [];
-          const rawLine = linesArr[rightClickIndex] || '';
-          const trimmed = rawLine.trim();
-          const isH1 = trimmed.startsWith('###') && trimmed.endsWith('###');
-          if (!isH1) {
-            return (
-              <button
-                onClick={() => {
-                  const note = notes.find(n => n.id === rightClickNoteId);
-                  if (note && rightClickIndex != null) {
-                    const arr = note.content.split('\n');
-                    arr[rightClickIndex] = `###${arr[rightClickIndex]}###`;
-                    updateNote(rightClickNoteId, arr.join('\n'));
-                  }
-                  setRightClickText(null);
-                }}
-                className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-              >
-                Make H1
-              </button>
-            );
-          } else {
-            return (
-              <button
-                onClick={() => {
-                  const note = notes.find(n => n.id === rightClickNoteId);
-                  if (note && rightClickIndex != null) {
-                    const arr = note.content.split('\n');
-                    let content = arr[rightClickIndex].trim();
-                    content = content.slice(3, -3);
-                    arr[rightClickIndex] = content;
-                    updateNote(rightClickNoteId, arr.join('\n'));
-                  }
-                  setRightClickText(null);
-                }}
-                className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-              >
-                Remove H1
-              </button>
-            );
-          }
-        })()}
-        {(() => {
-          const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-          const linesArr = noteToUpdate ? noteToUpdate.content.split('\n') : [];
-          const rawLine = linesArr[rightClickIndex] || '';
-          const trimmed = rawLine.trim();
-          const isH2 = trimmed.startsWith('##') && trimmed.endsWith('##');
-          if (!isH2) {
-            return (
-              <button
-                onClick={() => {
-                  const note = notes.find(n => n.id === rightClickNoteId);
-                  if (note && rightClickIndex != null) {
-                    const arr = note.content.split('\n');
-                    arr[rightClickIndex] = `##${arr[rightClickIndex]}##`;
-                    updateNote(rightClickNoteId, arr.join('\n'));
-                  }
-                  setRightClickText(null);
-                }}
-                className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-              >
-                Make H2
-              </button>
-            );
-          } else {
-            return (
-              <button
-                onClick={() => {
-                  const note = notes.find(n => n.id === rightClickNoteId);
-                  if (note && rightClickIndex != null) {
-                    const arr = note.content.split('\n');
-                    const content = arr[rightClickIndex].trim().slice(2, -2);
-                    arr[rightClickIndex] = content;
-                    updateNote(rightClickNoteId, arr.join('\n'));
-                  }
-                  setRightClickText(null);
-                }}
-                className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-              >
-                Remove H2
-              </button>
-            );
-          }
-        })()}
-        <button
-          onClick={() => {
-            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-            if (noteToUpdate && rightClickIndex != null) {
-              const linesArr = noteToUpdate.content.split('\n');
-              const [line] = linesArr.splice(rightClickIndex, 1);
-              linesArr.unshift(line);
-              updateNote(rightClickNoteId, linesArr.join('\n'));
-            }
-            setRightClickText(null);
-          }}
-          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+        <div
+          style={{ position: 'fixed', top: `${rightClickPos.y}px`, left: `${rightClickPos.x}px` }}
+          className="z-50 bg-white border border-gray-300 rounded shadow-md p-2 text-sm"
         >
-          Move to Top
-        </button>
-        <button
-          onClick={() => {
+          <button
+            onClick={() => {
+              const note = notes.find(n => n.id === rightClickNoteId);
+              if (note && rightClickIndex != null) {
+                const arr = note.content.split('\n');
+                arr.splice(rightClickIndex, 0, '');
+                updateNote(rightClickNoteId, arr.join('\n'));
+              }
+              setRightClickText(null);
+            }}
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+          >
+            Add Row Above
+          </button>
+          <button
+            onClick={() => {
+              const note = notes.find(n => n.id === rightClickNoteId);
+              if (note && rightClickIndex != null) {
+                const arr = note.content.split('\n');
+                arr.splice(rightClickIndex + 1, 0, '');
+                updateNote(rightClickNoteId, arr.join('\n'));
+              }
+              setRightClickText(null);
+            }}
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+          >
+            Add Row Below
+          </button>
+          {(() => {
             const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-            if (noteToUpdate && rightClickIndex > 0) {
-              const linesArr = noteToUpdate.content.split('\n');
-              // Append current line to the previous line
-              linesArr[rightClickIndex - 1] =
-                linesArr[rightClickIndex - 1] + ' ' + linesArr[rightClickIndex];
-              // Remove the merged line
-              linesArr.splice(rightClickIndex, 1);
-              updateNote(rightClickNoteId, linesArr.join('\n'));
+            const linesArr = noteToUpdate ? noteToUpdate.content.split('\n') : [];
+            const rawLine = linesArr[rightClickIndex] || '';
+            const trimmed = rawLine.trim();
+            const isH1 = trimmed.startsWith('###') && trimmed.endsWith('###');
+            if (!isH1) {
+              return (
+                <button
+                  onClick={() => {
+                    const note = notes.find(n => n.id === rightClickNoteId);
+                    if (note && rightClickIndex != null) {
+                      const arr = note.content.split('\n');
+                      arr[rightClickIndex] = `###${arr[rightClickIndex]}###`;
+                      updateNote(rightClickNoteId, arr.join('\n'));
+                    }
+                    setRightClickText(null);
+                  }}
+                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+                >
+                  Make H1
+                </button>
+              );
+            } else {
+              return (
+                <button
+                  onClick={() => {
+                    const note = notes.find(n => n.id === rightClickNoteId);
+                    if (note && rightClickIndex != null) {
+                      const arr = note.content.split('\n');
+                      let content = arr[rightClickIndex].trim();
+                      content = content.slice(3, -3);
+                      arr[rightClickIndex] = content;
+                      updateNote(rightClickNoteId, arr.join('\n'));
+                    }
+                    setRightClickText(null);
+                  }}
+                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+                >
+                  Remove H1
+                </button>
+              );
             }
-            setRightClickText(null);
-          }}
-          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-        >
-          Merge Up
-        </button>
-        <button
-          onClick={() => {
+          })()}
+          {(() => {
             const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-            if (noteToUpdate) {
-              const linesArr = noteToUpdate.content.split('\n');
-              if (rightClickIndex < linesArr.length - 1) {
-                // Append next line into current line
-                linesArr[rightClickIndex] =
-                  linesArr[rightClickIndex] + ' ' + linesArr[rightClickIndex + 1];
-                // Remove the merged next line
-                linesArr.splice(rightClickIndex + 1, 1);
+            const linesArr = noteToUpdate ? noteToUpdate.content.split('\n') : [];
+            const rawLine = linesArr[rightClickIndex] || '';
+            const trimmed = rawLine.trim();
+            const isH2 = trimmed.startsWith('##') && trimmed.endsWith('##');
+            if (!isH2) {
+              return (
+                <button
+                  onClick={() => {
+                    const note = notes.find(n => n.id === rightClickNoteId);
+                    if (note && rightClickIndex != null) {
+                      const arr = note.content.split('\n');
+                      arr[rightClickIndex] = `##${arr[rightClickIndex]}##`;
+                      updateNote(rightClickNoteId, arr.join('\n'));
+                    }
+                    setRightClickText(null);
+                  }}
+                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+                >
+                  Make H2
+                </button>
+              );
+            } else {
+              return (
+                <button
+                  onClick={() => {
+                    const note = notes.find(n => n.id === rightClickNoteId);
+                    if (note && rightClickIndex != null) {
+                      const arr = note.content.split('\n');
+                      const content = arr[rightClickIndex].trim().slice(2, -2);
+                      arr[rightClickIndex] = content;
+                      updateNote(rightClickNoteId, arr.join('\n'));
+                    }
+                    setRightClickText(null);
+                  }}
+                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+                >
+                  Remove H2
+                </button>
+              );
+            }
+          })()}
+          <button
+            onClick={() => {
+              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+              if (noteToUpdate && rightClickIndex != null) {
+                const linesArr = noteToUpdate.content.split('\n');
+                const [line] = linesArr.splice(rightClickIndex, 1);
+                linesArr.unshift(line);
                 updateNote(rightClickNoteId, linesArr.join('\n'));
               }
-            }
-            setRightClickText(null);
-          }}
-          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-        >
-          Merge Down
-        </button>
-        <button
-          onClick={() => {
-            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-            if (noteToUpdate && rightClickIndex > 0) {
-              const linesArr = noteToUpdate.content.split('\n');
-              [linesArr[rightClickIndex - 1], linesArr[rightClickIndex]] =
-                [linesArr[rightClickIndex], linesArr[rightClickIndex - 1]];
-              updateNote(rightClickNoteId, linesArr.join('\n'));
-            }
-            setRightClickText(null);
-          }}
-          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-        >
-          Move Up
-        </button>
-        <button
-          onClick={() => {
-            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-            if (noteToUpdate) {
-              const linesArr = noteToUpdate.content.split('\n');
-              if (rightClickIndex != null && rightClickIndex < linesArr.length - 1) {
-                [linesArr[rightClickIndex + 1], linesArr[rightClickIndex]] =
-                  [linesArr[rightClickIndex], linesArr[rightClickIndex + 1]];
+              setRightClickText(null);
+            }}
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+          >
+            Move to Top
+          </button>
+          <button
+            onClick={() => {
+              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+              if (noteToUpdate && rightClickIndex > 0) {
+                const linesArr = noteToUpdate.content.split('\n');
+                // Append current line to the previous line
+                linesArr[rightClickIndex - 1] =
+                  linesArr[rightClickIndex - 1] + ' ' + linesArr[rightClickIndex];
+                // Remove the merged line
+                linesArr.splice(rightClickIndex, 1);
                 updateNote(rightClickNoteId, linesArr.join('\n'));
               }
-            }
-            setRightClickText(null);
-          }}
-          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-        >
-          Move Down
-        </button>
-        <button
-          onClick={() => {
-            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-            if (noteToUpdate && rightClickIndex != null) {
-              const lines = noteToUpdate.content.split('\n');
-              lines[rightClickIndex] = lines[rightClickIndex].toUpperCase();
-              const newContent = lines.join('\n');
-              updateNote(rightClickNoteId, newContent);
-            }
-            setRightClickText(null);
-          }}
-          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-        >
-          Make All CAPS
-        </button>
-        <button
-          onClick={() => {
-            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-            if (noteToUpdate && rightClickIndex != null) {
-              console.log('Capitalize Words clicked on index', rightClickIndex, 'original line:', noteToUpdate.content.split('\n')[rightClickIndex]);
-              const linesArr = noteToUpdate.content.split('\n');
-              // Capitalize first letter of each word in the current line
-              linesArr[rightClickIndex] = linesArr[rightClickIndex]
-                .split(' ')
-                .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-                .join(' ');
-              console.log('Transformed line:', linesArr[rightClickIndex]);
-              updateNote(rightClickNoteId, linesArr.join('\n'));
-            }
-            setRightClickText(null);
-          }}
-          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-        >
-          Capitalize Words
-        </button>
-        <button
-          onClick={() => {
-            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-            if (noteToUpdate && rightClickIndex != null) {
-              const lines = noteToUpdate.content.split('\n');
-              lines.splice(rightClickIndex, 1);
-              updateNote(rightClickNoteId, lines.join('\n'));
-            }
-            setRightClickText(null);
-          }}
-          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
-        >
-          Delete Row
-        </button>
-        
-      </div>
-    )}
+              setRightClickText(null);
+            }}
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+          >
+            Merge Up
+          </button>
+          <button
+            onClick={() => {
+              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+              if (noteToUpdate) {
+                const linesArr = noteToUpdate.content.split('\n');
+                if (rightClickIndex < linesArr.length - 1) {
+                  // Append next line into current line
+                  linesArr[rightClickIndex] =
+                    linesArr[rightClickIndex] + ' ' + linesArr[rightClickIndex + 1];
+                  // Remove the merged next line
+                  linesArr.splice(rightClickIndex + 1, 1);
+                  updateNote(rightClickNoteId, linesArr.join('\n'));
+                }
+              }
+              setRightClickText(null);
+            }}
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+          >
+            Merge Down
+          </button>
+          <button
+            onClick={() => {
+              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+              if (noteToUpdate && rightClickIndex > 0) {
+                const linesArr = noteToUpdate.content.split('\n');
+                [linesArr[rightClickIndex - 1], linesArr[rightClickIndex]] =
+                  [linesArr[rightClickIndex], linesArr[rightClickIndex - 1]];
+                updateNote(rightClickNoteId, linesArr.join('\n'));
+              }
+              setRightClickText(null);
+            }}
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+          >
+            Move Up
+          </button>
+          <button
+            onClick={() => {
+              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+              if (noteToUpdate) {
+                const linesArr = noteToUpdate.content.split('\n');
+                if (rightClickIndex != null && rightClickIndex < linesArr.length - 1) {
+                  [linesArr[rightClickIndex + 1], linesArr[rightClickIndex]] =
+                    [linesArr[rightClickIndex], linesArr[rightClickIndex + 1]];
+                  updateNote(rightClickNoteId, linesArr.join('\n'));
+                }
+              }
+              setRightClickText(null);
+            }}
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+          >
+            Move Down
+          </button>
+          <button
+            onClick={() => {
+              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+              if (noteToUpdate && rightClickIndex != null) {
+                const lines = noteToUpdate.content.split('\n');
+                lines[rightClickIndex] = lines[rightClickIndex].toUpperCase();
+                const newContent = lines.join('\n');
+                updateNote(rightClickNoteId, newContent);
+              }
+              setRightClickText(null);
+            }}
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+          >
+            Make All CAPS
+          </button>
+          <button
+            onClick={() => {
+              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+              if (noteToUpdate && rightClickIndex != null) {
+                console.log('Capitalize Words clicked on index', rightClickIndex, 'original line:', noteToUpdate.content.split('\n')[rightClickIndex]);
+                const linesArr = noteToUpdate.content.split('\n');
+                // Capitalize first letter of each word in the current line
+                linesArr[rightClickIndex] = linesArr[rightClickIndex]
+                  .split(' ')
+                  .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                  .join(' ');
+                console.log('Transformed line:', linesArr[rightClickIndex]);
+                updateNote(rightClickNoteId, linesArr.join('\n'));
+              }
+              setRightClickText(null);
+            }}
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+          >
+            Capitalize Words
+          </button>
+          <button
+            onClick={() => {
+              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+              if (noteToUpdate && rightClickIndex != null) {
+                const lines = noteToUpdate.content.split('\n');
+                lines.splice(rightClickIndex, 1);
+                updateNote(rightClickNoteId, lines.join('\n'));
+              }
+              setRightClickText(null);
+            }}
+            className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+          >
+            Delete Row
+          </button>
+
+        </div>
+      )}
     </div>
   );
 };

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon, ExclamationCircleIcon, CalendarIcon } from '@heroicons/react/24/solid';
 // Removed react-beautiful-dnd imports
-import { processContent, parseFormattedContent } from '../utils/TextUtils';
+import { processContent, parseFormattedContent, highlightMatches } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
-import { getDateAgeInYearsMonthsDays,formatAndAgeDate } from '../utils/DateUtils';
+import { getDateAgeInYearsMonthsDays, formatAndAgeDate } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
 import NoteEditor from './NoteEditor';
@@ -12,25 +12,9 @@ import NoteFooter from './NoteFooter';
 import LinkedNotesSection from './LinkedNotesSection';
 import EndDatePickerModal from './EndDatePickerModal';
 import LinkNotesModal from './LinkNotesModal';
+import ImageModal from './ImageModal';
+import TagSelectionPopup from './TagSelectionPopup';
 
-const highlightMatches = (text, searchTerm) => {
-  if (!searchTerm || typeof text !== 'string') return text;
-  try {
-    const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape regex meta
-    const re = new RegExp(`(${escaped})`, 'gi');
-    return text.split(re).map((part, idx) =>
-      re.test(part) ? (
-        <mark key={idx} className="bg-yellow-200">
-          {part}
-        </mark>
-      ) : (
-        part
-      )
-    );
-  } catch {
-    return text;
-  }
-};
 
 const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm }) => {
   const [isModalOpen, setModalOpen] = useState(false);
@@ -369,7 +353,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           let todoAgeNotice = '';
           if (todoDateMatch) {
             const todoDate = new Date(todoDateMatch[1]);
-               todoAgeNotice = `Open for: ${getDateAgeInYearsMonthsDays(todoDate, true)}`;
+            todoAgeNotice = `Open for: ${getDateAgeInYearsMonthsDays(todoDate, true)}`;
           }
           if (parsedEndDate) {
             const now = new Date();
@@ -734,9 +718,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                             let lastIndex = 0;
                                             let match;
                                             while ((match = regex.exec(raw)) !== null) {
-                                            if (match.index > lastIndex) {
-                                              elements.push(...[].concat(highlightMatches(raw.slice(lastIndex, match.index), searchTerm)));
-                                            }
+                                              if (match.index > lastIndex) {
+                                                elements.push(...[].concat(highlightMatches(raw.slice(lastIndex, match.index), searchTerm)));
+                                              }
                                               if (match[1]) {
                                                 elements.push(
                                                   <strong key={`bold-${idx}-${match.index}`}>
@@ -978,107 +962,61 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
       />
 
       {isPopupVisible && (
-        <div
-          className="absolute bg-white border border-gray-300 p-2 rounded-md shadow-lg"
-          style={{
-            top: `${popupPosition.y}px`,
-            left: `${popupPosition.x}px`,
-          }}
-        >
-          <button
-            onClick={handleConvertToTag}
-            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-          >
-            Convert to Tag
-          </button>
-          <button
-            onClick={handleCancelPopup}
-            className="ml-2 bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600"
-          >
-            Cancel
-          </button>
-        </div>
+        <TagSelectionPopup
+        visible={isPopupVisible}
+        position={popupPosition}
+        onConvert={handleConvertToTag}
+        onCancel={handleCancelPopup}
+      />
       )}
 
 
       {popupImageUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <div
-            ref={popupContainerRef}
-            className="relative bg-white p-4 rounded shadow-lg resize overflow-auto"
-            style={{ width: 'auto', height: 'auto' }}
-          >
-            {popupImageLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80">
-                <div className="w-10 h-10 animate-spin border-4 border-purple-600 border-t-transparent rounded-full" />
-              </div>
-            )}
-            <div className="flex justify-center gap-2 mb-2">
-              {[0.5, 1, 1.5, 2.5].map((scale) => (
-                <button
-                  key={scale}
-                  onClick={() => setPopupImageScale(scale)}
-                  className="px-3 py-1 text-sm bg-purple-100 text-purple-800 rounded hover:bg-purple-200"
-                >
-                  {Math.round(scale * 100)}%
-                </button>
-              ))}
-            </div>
-            <img
-              src={popupImageUrl}
-              alt="Full"
-              style={{
-                width: popupContainerRef.current ? `${popupContainerRef.current.offsetWidth * popupImageScale}px` : 'auto',
-                height: 'auto'
-              }}
-              className="max-w-screen-md max-h-screen object-contain"
-              onLoad={() => setPopupImageLoading(false)}
-            />
-            <button
-              onClick={() => setPopupImageUrl(null)}
-              className="absolute top-2 right-2 bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-700"
-            >
-              Close
-            </button>
-          </div>
-        </div>
+        <ImageModal
+          imageUrl={popupImageUrl}
+          isLoading={popupImageLoading}
+          scale={popupImageScale}
+          onScaleChange={setPopupImageScale}
+          onImageLoad={() => setPopupImageLoading(false)}
+          onClose={() => setPopupImageUrl(null)}
+        />
       )}
 
       {linkPopupVisible && (
-             <LinkNotesModal
-             visible={linkPopupVisible}
-             notes={safeNotes}
-             linkingNoteId={linkingNoteId}
-             searchTerm={linkSearchTerm}
-             onSearchTermChange={setLinkSearchTerm}
-             onLink={(fromId, toId) => {
-               const source = safeNotes.find(n => n.id === fromId);
-               const target = safeNotes.find(n => n.id === toId);
-               const addTag = (content, id) => {
-                 const lines = content.split('\n').map(l => l.trimEnd());
-                 const tag = `meta::link::${id}`;
-                 if (!lines.includes(tag)) lines.push(tag);
-                 return lines.join('\n');
-               };
-               updateNote(fromId, addTag(source.content, toId));
-               updateNote(toId, addTag(target.content, fromId));
-               setLinkPopupVisible(false);
-               setLinkingNoteId(null);
-               setLinkSearchTerm('');
-             }}
-             onCancel={() => {
-               setLinkPopupVisible(false);
-               setLinkingNoteId(null);
-               setLinkSearchTerm('');
-             }}
-           /> 
+        <LinkNotesModal
+          visible={linkPopupVisible}
+          notes={safeNotes}
+          linkingNoteId={linkingNoteId}
+          searchTerm={linkSearchTerm}
+          onSearchTermChange={setLinkSearchTerm}
+          onLink={(fromId, toId) => {
+            const source = safeNotes.find(n => n.id === fromId);
+            const target = safeNotes.find(n => n.id === toId);
+            const addTag = (content, id) => {
+              const lines = content.split('\n').map(l => l.trimEnd());
+              const tag = `meta::link::${id}`;
+              if (!lines.includes(tag)) lines.push(tag);
+              return lines.join('\n');
+            };
+            updateNote(fromId, addTag(source.content, toId));
+            updateNote(toId, addTag(target.content, fromId));
+            setLinkPopupVisible(false);
+            setLinkingNoteId(null);
+            setLinkSearchTerm('');
+          }}
+          onCancel={() => {
+            setLinkPopupVisible(false);
+            setLinkingNoteId(null);
+            setLinkSearchTerm('');
+          }}
+        />
       )}
       {showEndDatePickerForNoteId && (
         <EndDatePickerModal
-        noteId={showEndDatePickerForNoteId}
-        onSelect={handleEndDateSelect}
-        onCancel={() => setShowEndDatePickerForNoteId(null)}
-      />
+          noteId={showEndDatePickerForNoteId}
+          onSelect={handleEndDateSelect}
+          onCancel={() => setShowEndDatePickerForNoteId(null)}
+        />
       )}
       {rightClickNoteId !== null && rightClickIndex !== null && (
         <RightClickMenu

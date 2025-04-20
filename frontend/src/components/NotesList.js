@@ -10,7 +10,8 @@ import NoteEditor from './NoteEditor';
 import RightClickMenu from './RighClickMenu';
 import NoteFooter from './NoteFooter';
 import LinkedNotesSection from './LinkedNotesSection';
-
+import EndDatePickerModal from './EndDatePickerModal';
+import LinkNotesModal from './LinkNotesModal';
 
 const highlightMatches = (text, searchTerm) => {
   if (!searchTerm || typeof text !== 'string') return text;
@@ -117,6 +118,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     updateNoteCallback(updatedNotes);
     setShowEndDatePickerForNoteId(null);
   };
+
   const handleInlineDateSelect = (noteId, lineIndex, newDate) => {
     const dateStr = newDate.toLocaleDateString();
     const noteToUpdate = notes.find(n => n.id === noteId);
@@ -350,14 +352,6 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
             className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
           />
           <label htmlFor="toggleCreatedDate" className="text-sm text-gray-700">Show created date</label>
-          <input
-            type="checkbox"
-            id="toggleFocussedView"
-            checked={focussedView}
-            onChange={() => setFocussedView((prev) => !prev)}
-            className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
-          />
-          <label htmlFor="toggleFocussedView" className="text-sm text-gray-700">Focussed View</label>
         </div>
       </div>
       {safeNotes
@@ -375,19 +369,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           let todoAgeNotice = '';
           if (todoDateMatch) {
             const todoDate = new Date(todoDateMatch[1]);
-            const now = new Date();
-            let diff = now - todoDate;
-            if (diff > 0) {
-              const diffDate = new Date(diff);
-              const years = diffDate.getUTCFullYear() - 1970;
-              const months = diffDate.getUTCMonth();
-              const days = diffDate.getUTCDate() - 1;
-              const parts = [];
-              if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
-              if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
-              if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
-              todoAgeNotice = `Open for: ${getDateAgeInYearsMonthsDays(todoDate, true)}`;
-            }
+               todoAgeNotice = `Open for: ${getDateAgeInYearsMonthsDays(todoDate, true)}`;
           }
           if (parsedEndDate) {
             const now = new Date();
@@ -1063,89 +1045,40 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
       )}
 
       {linkPopupVisible && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-4 rounded shadow max-w-md w-full">
-            <input
-              type="text"
-              placeholder="Search notes to link..."
-              value={linkSearchTerm}
-              onChange={(e) => setLinkSearchTerm(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded mb-3"
-            />
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {safeNotes
-                .filter(n => n.id !== linkingNoteId && n.content.toLowerCase().includes(linkSearchTerm.toLowerCase()))
-                .slice(0, 5)
-                .map(n => (
-                  <div key={n.id} className="flex justify-between items-center p-2 border rounded">
-                    <span className="text-sm text-gray-800 line-clamp-1">{n.content.slice(0, 50)}...</span>
-                    <button
-                      onClick={() => {
-                        // Retrieve the notes we are linking
-                        const linkingNote = safeNotes.find(note => note.id === linkingNoteId);
-                        const targetNote = safeNotes.find(note => note.id === n.id);
-
-                        // Helper to append the link tag if it doesn't already exist
-                        const addLinkTag = (content, otherId) => {
-                          const lines = content.split('\n').map(l => l.trimEnd());
-                          const tag = `meta::link::${otherId}`;
-                          if (!lines.some(line => line.trim() === tag)) {
-                            lines.push(tag);
-                          }
-                          return lines.join('\n');
-                        };
-
-                        // Build updated contents
-                        const updatedLinkingContent = addLinkTag(linkingNote.content, n.id);
-                        const updatedTargetContent = addLinkTag(targetNote.content, linkingNoteId);
-
-                        // Persist updates
-                        updateNote(linkingNoteId, updatedLinkingContent);
-                        updateNote(n.id, updatedTargetContent);
-
-                        // Close popup & reset state
-                        setLinkPopupVisible(false);
-                        setLinkingNoteId(null);
-                        setLinkSearchTerm('');
-                      }}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      Link
-                    </button>
-                  </div>
-                ))}
-            </div>
-            <div className="flex justify-end mt-3">
-              <button
-                onClick={() => {
-                  setLinkPopupVisible(false);
-                  setLinkingNoteId(null);
-                  setLinkSearchTerm('');
-                }}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+             <LinkNotesModal
+             visible={linkPopupVisible}
+             notes={safeNotes}
+             linkingNoteId={linkingNoteId}
+             searchTerm={linkSearchTerm}
+             onSearchTermChange={setLinkSearchTerm}
+             onLink={(fromId, toId) => {
+               const source = safeNotes.find(n => n.id === fromId);
+               const target = safeNotes.find(n => n.id === toId);
+               const addTag = (content, id) => {
+                 const lines = content.split('\n').map(l => l.trimEnd());
+                 const tag = `meta::link::${id}`;
+                 if (!lines.includes(tag)) lines.push(tag);
+                 return lines.join('\n');
+               };
+               updateNote(fromId, addTag(source.content, toId));
+               updateNote(toId, addTag(target.content, fromId));
+               setLinkPopupVisible(false);
+               setLinkingNoteId(null);
+               setLinkSearchTerm('');
+             }}
+             onCancel={() => {
+               setLinkPopupVisible(false);
+               setLinkingNoteId(null);
+               setLinkSearchTerm('');
+             }}
+           /> 
       )}
       {showEndDatePickerForNoteId && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-4 rounded shadow-md">
-            <input
-              type="datetime-local"
-              onChange={(e) => handleEndDateSelect(showEndDatePickerForNoteId, e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 text-sm"
-            />
-            <button
-              onClick={() => setShowEndDatePickerForNoteId(null)}
-              className="ml-2 text-sm text-red-500 hover:underline"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <EndDatePickerModal
+        noteId={showEndDatePickerForNoteId}
+        onSelect={handleEndDateSelect}
+        onCancel={() => setShowEndDatePickerForNoteId(null)}
+      />
       )}
       {rightClickNoteId !== null && rightClickIndex !== null && (
         <RightClickMenu

@@ -1251,7 +1251,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
       {rightClickNoteId !== null && rightClickIndex !== null && (
         <div
           style={{ position: 'fixed', top: `${rightClickPos.y}px`, left: `${rightClickPos.x}px` }}
-          className="z-50 bg-white border border-gray-300 rounded shadow-md p-2 text-sm"
+          className="z-50 bg-white border border-gray-300 rounded shadow-md p-2 flex space-x-2"
         >
           <button
             onClick={() => {

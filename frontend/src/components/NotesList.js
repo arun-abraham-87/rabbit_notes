@@ -567,9 +567,46 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                     setRightClickIndex(idx);
                                     setRightClickPos({ x: e.clientX, y: e.clientY });
                                   }}
-                                  className={`text-2xl font-bold cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                  className={`text-2xl font-bold cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                 >
-                                  {line.slice(4, -5)}
+                                  {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
+                                    <>
+                                      <input
+                                        type="text"
+                                        value={editedLineContent}
+                                        onChange={(e) => setEditedLineContent(e.target.value)}
+                                        className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
+                                      />
+                                      <button
+                                        onClick={() => {
+                                          const lines = note.content.split('\n');
+                                          lines[idx] = `###${editedLineContent}###`;
+                                          updateNote(note.id, lines.join('\n'));
+                                          setEditingLine({ noteId: null, lineIndex: null });
+                                        }}
+                                        className="text-green-600 text-xs font-semibold mr-1 hover:underline"
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
+                                        className="text-red-500 text-xs font-semibold hover:underline"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="flex-1">{line.slice(4, -5)}</span>
+                                      <PencilIcon
+                                        className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
+                                        onClick={() => {
+                                          setEditedLineContent(line.slice(4, -5));
+                                          setEditingLine({ noteId: note.id, lineIndex: idx });
+                                        }}
+                                      />
+                                    </>
+                                  )}
                                 </h1>
                               );
                               } else if (line.startsWith('<h2>') && line.endsWith('</h2>')) {
@@ -582,9 +619,46 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                     setRightClickIndex(idx);
                                     setRightClickPos({ x: e.clientX, y: e.clientY });
                                   }}
-                                  className={`text-lg font-semibold text-purple-700 cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                  className={`text-lg font-semibold text-purple-700 cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                 >
-                                  {line.slice(4, -5)}
+                                  {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
+                                    <>
+                                      <input
+                                        type="text"
+                                        value={editedLineContent}
+                                        onChange={(e) => setEditedLineContent(e.target.value)}
+                                        className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
+                                      />
+                                      <button
+                                        onClick={() => {
+                                          const lines = note.content.split('\n');
+                                          lines[idx] = `##${editedLineContent}##`;
+                                          updateNote(note.id, lines.join('\n'));
+                                          setEditingLine({ noteId: null, lineIndex: null });
+                                        }}
+                                        className="text-green-600 text-xs font-semibold mr-1 hover:underline"
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
+                                        className="text-red-500 text-xs font-semibold hover:underline"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="flex-1">{line.slice(4, -5)}</span>
+                                      <PencilIcon
+                                        className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
+                                        onClick={() => {
+                                          setEditedLineContent(line.slice(4, -5));
+                                          setEditingLine({ noteId: note.id, lineIndex: idx });
+                                        }}
+                                      />
+                                    </>
+                                  )}
                                 </h2>
                               );
                               } else {

@@ -59,7 +59,6 @@ const LinkedNotesSection = ({ note, allNotes, onNavigate, initiallyOpen = false 
               key={l.id}
               className="p-3 bg-white border rounded shadow-sm hover:bg-gray-50"
             >
-              <p className="text-xs text-gray-600 mb-1">#{l.id}</p>
               <p className="text-sm text-gray-800 line-clamp-3">
                 {l.content.split('\n')[0] || '—'}
               </p>

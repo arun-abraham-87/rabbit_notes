@@ -1,186 +1,33 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon, ExclamationCircleIcon, CalendarIcon } from '@heroicons/react/24/solid';
-import { processContent } from '../utils/TextUtils';
+// Removed react-beautiful-dnd imports
+import { processContent, parseFormattedContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
-import { formatDate } from '../utils/DateUtils';
+import { getDateAgeInYearsMonthsDays,formatAndAgeDate } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
 import NoteEditor from './NoteEditor';
 import RightClickMenu from './RighClickMenu';
 import NoteFooter from './NoteFooter';
-
-import {
-  ArrowUpIcon,
-  ArrowDownIcon,
-  ArrowUturnUpIcon,
-  ArrowUturnDownIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  ArrowUpOnSquareIcon,
-
-  TextCaseUppercaseIcon,
-  TextCapitalizeIcon,
-  BarsArrowUpIcon,
-  BarsArrowDownIcon
-} from '@heroicons/react/24/solid';
-// ──────────────────────────────────────────────────────────
-// Reusable expandable section that previews linked notes
-const LinkedNotesSection = ({ note, allNotes, onNavigate, initiallyOpen = false }) => {
-  // We still call the hook unconditionally to satisfy rules‑of‑hooks
-  const [open, setOpen] = React.useState(initiallyOpen);
-
-  const linkIds = React.useMemo(
-    () =>
-      [...note.content.matchAll(/meta::link\s*::\s*([^\s]+)/g)].map(m => m[1]),
-    [note.content]
-  );
-  if (linkIds.length === 0) return null; // nothing to render
-
-  const linkedNotes = allNotes.filter(n => linkIds.includes(String(n.id)));
-
-  return (
-    <div className="mt-3">
-      <button
-        onClick={() => setOpen(!open)}
-        className="text-sm text-purple-600 font-medium hover:underline flex items-center gap-1"
-      >
-        Linked Notes ({linkedNotes.length})
-        {open ? (
-          <ChevronUpIcon className="h-4 w-4" />
-        ) : (
-          <ChevronDownIcon className="h-4 w-4" />
-        )}
-      </button>
-
-      {open && (
-        <div className="mt-2 pl-4 border-l border-gray-300 space-y-2">
-          {linkedNotes.map(l => (
-            <div
-              key={l.id}
-              className="p-3 bg-white border rounded shadow-sm hover:bg-gray-50"
-            >
-              <p className="text-sm text-gray-800 line-clamp-3">
-                {l.content.split('\n')[0] || '—'}
-              </p>
-              <button
-                className="mt-1 text-xs text-blue-600 hover:underline"
-                onClick={() => onNavigate(l.id)}
-              >
-                View
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-// ──────────────────────────────────────────────────────────
-
-const parseFormattedContent = (lines) => {
-  return lines.map((line) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
-      return `<h1>${trimmed.slice(3, -3)}</h1>`;
-    } else if (trimmed.startsWith('##') && trimmed.endsWith('##')) {
-      return `<h2>${trimmed.slice(2, -2)}</h2>`;
-    } else {
-      return line;
-    }
-  });
-};
-
-const getDateAgeInYearsMonthsDays = (dateToAge, since) => {
-  const now = new Date();
-  let diff = 0
-  if (since) {
-    diff = now - dateToAge;
-  } else {
-    diff = dateToAge - now;
-  }
-
-  if (diff > 0) {
-    const diffDate = new Date(diff);
-    const years = diffDate.getUTCFullYear() - 1970;
-    const months = diffDate.getUTCMonth();
-    const days = diffDate.getUTCDate() - 1;
-    const parts = [];
-    if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
-    if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
-    if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
-    return parts.join(' ')
-  }
-}
-
-const formatAndAgeDate = (text) => {
-  const dateRegex = /\b(\d{2})\/(\d{2})\/(\d{4})\b|\b(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g;
-  return text.replace(dateRegex, (match, d1, m1, y1, d2, monthStr, y2) => {
-    let date;
-    if (d1 && m1 && y1) {
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      date = new Date(`${y1}-${m1}-${d1}`);
-      const formatted = `${d1} ${months[parseInt(m1) - 1]} ${y1}`;
-      const now = new Date();
-      let diff = now - date;
-      let inFuture = diff < 0;
-      diff = Math.abs(diff);
-      const diffDate = new Date(diff);
-      const years = diffDate.getUTCFullYear() - 1970;
-      const monthsDiff = diffDate.getUTCMonth();
-      const days = diffDate.getUTCDate() - 1;
-      let parts = [];
-      if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
-      if (monthsDiff > 0) parts.push(`${monthsDiff} month${monthsDiff > 1 ? 's' : ''}`);
-      if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
-      const ageStr = inFuture ? `(in ${parts.join(' ')})` : `(${parts.join(' ')} ago)`;
-      return `${formatted} ${ageStr}`;
-    } else if (d2 && monthStr && y2) {
-      date = new Date(`${monthStr} ${d2}, ${y2}`);
-      const formatted = `${d2} ${monthStr} ${y2}`;
-      const now = new Date();
-      let diff = now - date;
-      let inFuture = diff < 0;
-      diff = Math.abs(diff);
-      const diffDate = new Date(diff);
-      const years = diffDate.getUTCFullYear() - 1970;
-      const monthsDiff = diffDate.getUTCMonth();
-      const days = diffDate.getUTCDate() - 1;
-      let parts = [];
-      if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
-      if (monthsDiff > 0) parts.push(`${monthsDiff} month${monthsDiff > 1 ? 's' : ''}`);
-      if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
-      const ageStr = inFuture ? `(in ${parts.join(' ')})` : `(${parts.join(' ')} ago)`;
-      return `${formatted} ${ageStr}`;
-    }
-    return match;
-  });
-};
+import LinkedNotesSection from './LinkedNotesSection';
 
 
-
-const renderSmartLink = (url, highlightColor = null) => {
+const highlightMatches = (text, searchTerm) => {
+  if (!searchTerm || typeof text !== 'string') return text;
   try {
-    const parsedUrl = new URL(url);
-    const host = parsedUrl.hostname.replace(/^www\./, '');
-
-    const backgroundColor = highlightColor ? `${highlightColor}20` : 'transparent';
-    const borderColor = highlightColor || 'transparent';
-
-    return (
-      <a
-        key={url}
-        href={url}
-        title={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-blue-600 underline hover:text-blue-800 px-1 rounded border-2"
-        style={{ borderColor, backgroundColor }}
-      >
-        {host}
-      </a>
+    const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape regex meta
+    const re = new RegExp(`(${escaped})`, 'gi');
+    return text.split(re).map((part, idx) =>
+      re.test(part) ? (
+        <mark key={idx} className="bg-yellow-200">
+          {part}
+        </mark>
+      ) : (
+        part
+      )
     );
   } catch {
-    return null;
+    return text;
   }
 };
 
@@ -223,24 +70,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const [editedLineContent, setEditedLineContent] = useState('');
   // Highlight every case‑insensitive occurrence of `searchTerm` within plain text.
   // Returns a mix of strings and <mark> elements so callers may spread / concat.
-  const highlightMatches = (text) => {
-    if (!searchTerm || typeof text !== 'string') return text;
-    try {
-      const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape regex meta
-      const re = new RegExp(`(${escaped})`, 'gi');
-      return text.split(re).map((part, idx) =>
-        re.test(part) ? (
-          <mark key={idx} className="bg-yellow-200">
-            {part}
-          </mark>
-        ) : (
-          part
-        )
-      );
-    } catch {
-      return text;
-    }
-  };
+
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -923,7 +753,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                             let match;
                                             while ((match = regex.exec(raw)) !== null) {
                                             if (match.index > lastIndex) {
-                                              elements.push(...[].concat(highlightMatches(raw.slice(lastIndex, match.index))));
+                                              elements.push(...[].concat(highlightMatches(raw.slice(lastIndex, match.index), searchTerm)));
                                             }
                                               if (match[1]) {
                                                 elements.push(
@@ -976,7 +806,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                               lastIndex = match.index + match[0].length;
                                             }
                                             if (lastIndex < raw.length) {
-                                              elements.push(...[].concat(highlightMatches(raw.slice(lastIndex))));
+                                              elements.push(...[].concat(highlightMatches(raw.slice(lastIndex)), searchTerm));
                                             }
                                             return elements;
                                           })()}
@@ -1152,6 +982,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                   note={note}
                   allNotes={safeNotes}
                   onNavigate={scrollToNote}
+                  updateNote={updateNote}
                 />
               </div>
             </div>

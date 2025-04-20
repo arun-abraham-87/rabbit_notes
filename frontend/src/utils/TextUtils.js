@@ -55,3 +55,17 @@ export const processContent = (content, searchQuery) => {
     }
   });
 };
+
+
+export const parseFormattedContent = (lines) => {
+  return lines.map((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
+      return `<h1>${trimmed.slice(3, -3)}</h1>`;
+    } else if (trimmed.startsWith('##') && trimmed.endsWith('##')) {
+      return `<h2>${trimmed.slice(2, -2)}</h2>`;
+    } else {
+      return line;
+    }
+  });
+};

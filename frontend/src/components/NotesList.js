@@ -5,6 +5,8 @@ import ConfirmationModal from './ConfirmationModal';
 import { formatDate } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import NoteEditor from './NoteEditor';
+import RightClickMenu from './RighClickMenu';
+import NoteFooter from './NoteFooter';
 
 import {
   ArrowUpIcon,
@@ -33,6 +35,28 @@ const parseFormattedContent = (lines) => {
     }
   });
 };
+
+const getDateAgeInYearsMonthsDays = (dateToAge, since) => {
+  const now = new Date();
+  let diff = 0
+  if (since) {
+    diff = now - dateToAge;
+  } else {
+    diff = dateToAge - now;
+  }
+
+  if (diff > 0) {
+    const diffDate = new Date(diff);
+    const years = diffDate.getUTCFullYear() - 1970;
+    const months = diffDate.getUTCMonth();
+    const days = diffDate.getUTCDate() - 1;
+    const parts = [];
+    if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
+    if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
+    if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+    return parts.join(' ')
+  }
+}
 
 const formatAndAgeDate = (text) => {
   const dateRegex = /\b(\d{2})\/(\d{2})\/(\d{4})\b|\b(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g;
@@ -447,36 +471,16 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
               if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
               if (days > 0 || parts.length === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
-              todoAgeNotice = `Open for: ${parts.join(' ')}`;
+              todoAgeNotice = `Open for: ${getDateAgeInYearsMonthsDays(todoDate, true)}`;
             }
           }
           if (parsedEndDate) {
             const now = new Date();
             const diffMs = parsedEndDate - now;
             if (diffMs > 0) {
-              // compute years, months, days until deadline
-              let diff = Math.abs(diffMs);
-              const diffDate = new Date(diff);
-              const years = diffDate.getUTCFullYear() - 1970;
-              const months = diffDate.getUTCMonth();
-              const days = diffDate.getUTCDate() - 1;
-              const parts = [];
-              if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
-              if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
-              parts.push(`${days} day${days > 1 ? 's' : ''}`);
-              endDateNotice = `Deadline in ${parts.join(', ')}`;
+              endDateNotice = `Deadline in ${getDateAgeInYearsMonthsDays(parsedEndDate, false)}`;
             } else {
-              // compute years, months, days since deadline passed
-              let diff = Math.abs(diffMs);
-              const diffDate = new Date(diff);
-              const years = diffDate.getUTCFullYear() - 1970;
-              const months = diffDate.getUTCMonth();
-              const days = diffDate.getUTCDate() - 1;
-              const parts = [];
-              if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
-              if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
-              parts.push(`${days} day${days > 1 ? 's' : ''}`);
-              endDateNotice = `Deadline passed ${parts.join(', ')} ago`;
+              endDateNotice = `Deadline passed ${getDateAgeInYearsMonthsDays(parsedEndDate, true)} ago`;
             }
           }
           return (
@@ -1028,162 +1032,19 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                   )}
                 </div>
 
-                {/* Layer 3: Date and Todo Toggle */}
-                <div className="flex text-xs text-gray-700 px-4 pb-2 items-center">
-                  <div className="flex justify-between w-full items-center">
-                    <div className="flex-1">
-                      {showCreatedDate && <span>{formatDate(note.created_datetime)}</span>}
-                    </div>
-                    <div className="flex items-center space-x-2" id="button_bar">
-                      {note.content.toLowerCase().includes('meta::todo') ? (
-                        <div className="flex items-center gap-2">
-                          <div className="flex gap-1">
-                            <button
-                              className="bg-green-100 text-green-800 px-2 py-1 text-xs rounded hover:bg-green-200"
-                              onClick={() => {
-                                const updated = note.content
-                                  .split('\n')
-                                  .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
-                                  .join('\n')
-                                  .trim() + '\nmeta::low';
-                                updateNote(note.id, updated);
-                              }}
-                            >
-                              Low
-                            </button>
-                            <button
-                              className="bg-yellow-100 text-yellow-800 px-2 py-1 text-xs rounded hover:bg-yellow-200"
-                              onClick={() => {
-                                const updated = note.content
-                                  .split('\n')
-                                  .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
-                                  .join('\n')
-                                  .trim() + '\nmeta::medium';
-                                updateNote(note.id, updated);
-                              }}
-                            >
-                              Medium
-                            </button>
-                            <button
-                              className="bg-red-100 text-red-800 px-2 py-1 text-xs rounded hover:bg-red-200"
-                              onClick={() => {
-                                const updated = note.content
-                                  .split('\n')
-                                  .filter(line => !line.trim().startsWith('meta::low') && !line.trim().startsWith('meta::medium') && !line.trim().startsWith('meta::high'))
-                                  .join('\n')
-                                  .trim() + '\nmeta::high';
-                                updateNote(note.id, updated);
-                              }}
-                            >
-                              High
-                            </button>
-                          </div>
-                          <div className="group relative">
-                            <XCircleIcon
-                              title="Unmark as Todo"
-                              className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
-                              onClick={() => {
-                                const updatedContent = note.content
-                                  .split('\n')
-                                  .filter(line =>
-                                    !line.trim().startsWith('meta::todo::') &&
-                                    !line.trim().startsWith('meta::low') &&
-                                    !line.trim().startsWith('meta::medium') &&
-                                    !line.trim().startsWith('meta::high')
-                                  )
-                                  .join('\n')
-                                  .trim();
-                                updateNote(note.id, updatedContent);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="group relative">
-                          <CheckCircleIcon
-                            title="Mark as Todo"
-                            className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
-                            onClick={() => {
-                              const timestamp = new Date().toISOString();
-                              const contentWithoutOldTodoMeta = note.content
-                                .split('\n')
-                                .filter(line => !line.trim().startsWith('meta::todo::'))
-                                .join('\n')
-                                .trim();
-                              const newContent = `${contentWithoutOldTodoMeta}\nmeta::todo::${timestamp}`;
-                              updateNote(note.id, newContent);
-                            }}
-                          />
-                        </div>
-                      )}
-                      {note.content.toLowerCase().includes('#watch') ? (
-                        <div className="group relative">
-                          <EyeSlashIcon
-                            title="Unmark from Watchlist"
-                            className="h-4 w-4 text-yellow-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-yellow-800"
-                            onClick={() => {
-                              const updatedContent = note.content.replace(/#watch/gi, '').trim();
-                              updateNote(note.id, updatedContent);
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="group relative">
-                          <EyeIcon
-                            title="Add to Watchlist"
-                            className="h-4 w-4 text-yellow-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-yellow-800"
-                            onClick={() => {
-                              updateNote(note.id, `${note.content.trim()} #watch`);
-                            }}
-                          />
-                        </div>
-                      )}
-                      <div className="group relative">
-                        <PencilIcon
-                          className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
-                          onClick={() => setPopupNoteText(note.id)}
-                        />
-                      </div>
-                      <div className="group relative">
-                        <TrashIcon
-                          className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
-                          onClick={() => handleDelete(note.id)}
-                        />
-                      </div>
-                      {note.content.toLowerCase().includes('meta::todo') && (
-                        <div className="group relative">
-                          <button
-                            title="Set End Date"
-                            onClick={() => setShowEndDatePickerForNoteId(note.id)}
-                            className="text-gray-600 hover:text-blue-700 text-base"
-                          >
-                            📅
-                          </button>
-                        </div>
-                      )}
-                      <div className="group relative">
-                        <button
-                          title="Link Note"
-                          onClick={() => {
-                            setLinkingNoteId(note.id);
-                            setLinkSearchTerm('');
-                            setLinkPopupVisible(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-800 text-sm"
-                        >
-                          Link Notes
-                        </button>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={selectedNotes.includes(note.id)}
-                        onChange={() => toggleNoteSelection(note.id)}
-                        title="Select Note"
-                        className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <NoteFooter
+                  note={note}
+                  showCreatedDate={showCreatedDate}
+                  setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
+                  handleDelete={handleDelete}
+                  setPopupNoteText={setPopupNoteText}
+                  setLinkingNoteId={setLinkingNoteId}
+                  setLinkSearchTerm={setLinkSearchTerm}
+                  setLinkPopupVisible={setLinkPopupVisible}
+                  selectedNotes={selectedNotes}
+                  toggleNoteSelection={toggleNoteSelection}
+                  updateNote={updateNote}
+                />
               </div>
             </div>
           )
@@ -1327,271 +1188,21 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
         </div>
       )}
       {rightClickNoteId !== null && rightClickIndex !== null && (
-        <div
-          style={{ position: 'fixed', top: `${rightClickPos.y}px`, left: `${rightClickPos.x}px` }}
-
-          className="z-50 bg-white border border-gray-300 rounded shadow-md px-2 py-1 flex items-center space-x-1"
-        >
-          <button
-            onClick={() => {
-              const note = notes.find(n => n.id === rightClickNoteId);
-              if (note && rightClickIndex != null) {
-                const arr = note.content.split('\n');
-                arr.splice(rightClickIndex, 0, '');
-                updateNote(rightClickNoteId, arr.join('\n'));
-              }
-              setRightClickText(null);
-            }}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            <ArrowUturnUpIcon className="w-4 h-4 text-gray-700" />
-          </button>
-          <button
-            onClick={() => {
-              const note = notes.find(n => n.id === rightClickNoteId);
-              if (note && rightClickIndex != null) {
-                const arr = note.content.split('\n');
-                arr.splice(rightClickIndex + 1, 0, '');
-                updateNote(rightClickNoteId, arr.join('\n'));
-              }
-              setRightClickText(null);
-            }}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            <ArrowUturnDownIcon className="w-4 h-4 text-gray-700" />
-          </button>
-          {(() => {
-            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-            const linesArr = noteToUpdate ? noteToUpdate.content.split('\n') : [];
-            const rawLine = linesArr[rightClickIndex] || '';
-            const trimmed = rawLine.trim();
-            const isH1 = trimmed.startsWith('###') && trimmed.endsWith('###');
-            const isH2 = trimmed.startsWith('##') && trimmed.endsWith('##');
-            if (isH1 || isH2) {
-              return (
-                <button
-                  onClick={() => {
-                    const note = notes.find(n => n.id === rightClickNoteId);
-                    if (note && rightClickIndex != null) {
-                      const arr = note.content.split('\n');
-                      let content = arr[rightClickIndex].trim();
-                      content = isH1 ? content.slice(3, -3) : content.slice(2, -2);
-                      arr[rightClickIndex] = content;
-                      updateNote(rightClickNoteId, arr.join('\n'));
-                    }
-                    setRightClickText(null);
-                  }}
-                  className="p-1 hover:bg-gray-100 rounded"
-                  title="Remove formatting"
-                >
-                  <XCircleIcon className="w-4 h-4 text-gray-700" />
-                </button>
-              );
-            }
-            return (
-              <>
-                <button
-                  onClick={() => {
-                    const note = notes.find(n => n.id === rightClickNoteId);
-                    if (note && rightClickIndex != null) {
-                      const arr = note.content.split('\n');
-                      arr[rightClickIndex] = `###${arr[rightClickIndex]}###`;
-                      updateNote(rightClickNoteId, arr.join('\n'));
-                    }
-                    setRightClickText(null);
-                  }}
-                  className="p-1 hover:bg-gray-100 rounded"
-                >
-                  H1
-                </button>
-                <button
-                  onClick={() => {
-                    const note = notes.find(n => n.id === rightClickNoteId);
-                    if (note && rightClickIndex != null) {
-                      const arr = note.content.split('\n');
-                      arr[rightClickIndex] = `##${arr[rightClickIndex]}##`;
-                      updateNote(rightClickNoteId, arr.join('\n'));
-                    }
-                    setRightClickText(null);
-                  }}
-                  className="p-1 hover:bg-gray-100 rounded"
-                >
-                  H2
-                </button>
-              </>
-            );
-          })()}
-          <button
-            onClick={() => {
-              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-              if (noteToUpdate && rightClickIndex != null) {
-                const linesArr = noteToUpdate.content.split('\n');
-                const [line] = linesArr.splice(rightClickIndex, 1);
-                linesArr.unshift(line);
-                updateNote(rightClickNoteId, linesArr.join('\n'));
-              }
-              setRightClickText(null);
-            }}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            FIRST <ArrowUpIcon className="w-4 h-4 text-gray-700" />
-          </button>
-          <button
-            onClick={() => {
-              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-              if (noteToUpdate && rightClickIndex > 0) {
-                const linesArr = noteToUpdate.content.split('\n');
-                // Append current line to the previous line
-                linesArr[rightClickIndex - 1] =
-                  linesArr[rightClickIndex - 1] + ' ' + linesArr[rightClickIndex];
-                // Remove the merged line
-                linesArr.splice(rightClickIndex, 1);
-                updateNote(rightClickNoteId, linesArr.join('\n'));
-              }
-              setRightClickText(null);
-            }}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            Merge <ArrowUturnUpIcon className="w-4 h-4 text-gray-700" />
-          </button>
-          <button
-            onClick={() => {
-              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-              if (noteToUpdate) {
-                const linesArr = noteToUpdate.content.split('\n');
-                if (rightClickIndex < linesArr.length - 1) {
-                  // Append next line into current line
-                  linesArr[rightClickIndex] =
-                    linesArr[rightClickIndex] + ' ' + linesArr[rightClickIndex + 1];
-                  // Remove the merged next line
-                  linesArr.splice(rightClickIndex + 1, 1);
-                  updateNote(rightClickNoteId, linesArr.join('\n'));
-                }
-              }
-              setRightClickText(null);
-            }}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            Merge <ArrowUturnDownIcon className="w-4 h-4 text-gray-700" />
-          </button>
-          <button
-            onClick={() => {
-              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-              if (noteToUpdate && rightClickIndex > 0) {
-                const linesArr = noteToUpdate.content.split('\n');
-                [linesArr[rightClickIndex - 1], linesArr[rightClickIndex]] =
-                  [linesArr[rightClickIndex], linesArr[rightClickIndex - 1]];
-                updateNote(rightClickNoteId, linesArr.join('\n'));
-              }
-              setRightClickText(null);
-            }}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            <ChevronUpIcon className="w-4 h-4 text-gray-700" />
-          </button>
-          <button
-            onClick={() => {
-              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-              if (noteToUpdate) {
-                const linesArr = noteToUpdate.content.split('\n');
-                if (rightClickIndex != null && rightClickIndex < linesArr.length - 1) {
-                  [linesArr[rightClickIndex + 1], linesArr[rightClickIndex]] =
-                    [linesArr[rightClickIndex], linesArr[rightClickIndex + 1]];
-                  updateNote(rightClickNoteId, linesArr.join('\n'));
-                }
-              }
-              setRightClickText(null);
-            }}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            <ChevronDownIcon className="w-4 h-4 text-gray-700" />
-          </button>
-          <button
-            onClick={() => {
-              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-              if (noteToUpdate && rightClickIndex != null) {
-                const lines = noteToUpdate.content.split('\n');
-                const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-                let current = lines[rightClickIndex];
-                if (linkRegex.test(current)) {
-                  current = current.replace(linkRegex, (_, text, url) => `[${text.toUpperCase()}](${url})`);
-                } else {
-                  current = current.toUpperCase();
-                }
-                lines[rightClickIndex] = current;
-                updateNote(rightClickNoteId, lines.join('\n'));
-              }
-              setRightClickText(null);
-            }}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            AA
-          </button>
-          <button
-            onClick={() => {
-              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-              if (noteToUpdate && rightClickIndex != null) {
-                const linesArr = noteToUpdate.content.split('\n');
-                const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-                let current = linesArr[rightClickIndex];
-                if (linkRegex.test(current)) {
-                  current = current.replace(linkRegex, (_, text, url) => {
-                    const sentence = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
-                    return `[${sentence}](${url})`;
-                  });
-                } else {
-                  current = current
-                    .split(' ')
-                    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-                    .join(' ');
-                }
-                linesArr[rightClickIndex] = current;
-                updateNote(rightClickNoteId, linesArr.join('\n'));
-              }
-              setRightClickText(null);
-            }}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            Aa
-          </button>
-          <button
-            onClick={() => {
-              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-              if (noteToUpdate && rightClickIndex != null) {
-                const lines = noteToUpdate.content.split('\n');
-                let current = lines[rightClickIndex];
-                // Toggle Markdown bold markers **text**
-                if (current.startsWith('**') && current.endsWith('**')) {
-                  current = current.slice(2, -2);
-                } else {
-                  current = `**${current}**`;
-                }
-                lines[rightClickIndex] = current;
-                updateNote(rightClickNoteId, lines.join('\n'));
-              }
-              setRightClickText(null);
-            }}
-            className="p-1 hover:bg-gray-100 rounded"
-            title="Toggle bold"
-          >
-            <strong>B</strong>
-          </button>
-          <button
-            onClick={() => {
-              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-              if (noteToUpdate && rightClickIndex != null) {
-                const lines = noteToUpdate.content.split('\n');
-                lines.splice(rightClickIndex, 1);
-                updateNote(rightClickNoteId, lines.join('\n'));
-              }
-              setRightClickText(null);
-            }}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            <TrashIcon className="w-4 h-4 text-gray-700" />
-          </button>
-
-        </div>
+        <RightClickMenu
+          noteId={rightClickNoteId}
+          lineIndex={rightClickIndex}
+          pos={rightClickPos}
+          notes={safeNotes}
+          updateNote={updateNote}
+          handleDelete={handleDelete}
+          setPopupNoteText={setPopupNoteText}
+          setLinkingNoteId={setLinkingNoteId}
+          setLinkSearchTerm={setLinkSearchTerm}
+          setLinkPopupVisible={setLinkPopupVisible}
+          selectedNotes={selectedNotes}
+          toggleNoteSelection={toggleNoteSelection}
+          setRightClickText={setRightClickText}
+        />
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import { processContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
 import { formatDate } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+
 import NoteEditor from './NoteEditor';
 import RightClickMenu from './RighClickMenu';
 import NoteFooter from './NoteFooter';
@@ -22,6 +23,60 @@ import {
   BarsArrowUpIcon,
   BarsArrowDownIcon
 } from '@heroicons/react/24/solid';
+// ──────────────────────────────────────────────────────────
+// Reusable expandable section that previews linked notes
+const LinkedNotesSection = ({ note, allNotes, onNavigate, initiallyOpen = false }) => {
+  // We still call the hook unconditionally to satisfy rules‑of‑hooks
+  const [open, setOpen] = React.useState(initiallyOpen);
+
+  const linkIds = React.useMemo(
+    () =>
+      [...note.content.matchAll(/meta::link\s*::\s*([^\s]+)/g)].map(m => m[1]),
+    [note.content]
+  );
+  if (linkIds.length === 0) return null; // nothing to render
+
+  const linkedNotes = allNotes.filter(n => linkIds.includes(String(n.id)));
+
+  return (
+    <div className="mt-3">
+      <button
+        onClick={() => setOpen(!open)}
+        className="text-sm text-purple-600 font-medium hover:underline flex items-center gap-1"
+      >
+        Linked Notes ({linkedNotes.length})
+        {open ? (
+          <ChevronUpIcon className="h-4 w-4" />
+        ) : (
+          <ChevronDownIcon className="h-4 w-4" />
+        )}
+      </button>
+
+      {open && (
+        <div className="mt-2 pl-4 border-l border-gray-300 space-y-2">
+          {linkedNotes.map(l => (
+            <div
+              key={l.id}
+              className="p-3 bg-white border rounded shadow-sm hover:bg-gray-50"
+            >
+              <p className="text-xs text-gray-600 mb-1">#{l.id}</p>
+              <p className="text-sm text-gray-800 line-clamp-3">
+                {l.content.split('\n')[0] || '—'}
+              </p>
+              <button
+                className="mt-1 text-xs text-blue-600 hover:underline"
+                onClick={() => onNavigate(l.id)}
+              >
+                View
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+// ──────────────────────────────────────────────────────────
 
 const parseFormattedContent = (lines) => {
   return lines.map((line) => {
@@ -162,6 +217,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const [rightClickPos, setRightClickPos] = useState({ x: 0, y: 0 });
   const [rightClickNoteId, setRightClickNoteId] = useState(null);
   const [rightClickIndex, setRightClickIndex] = useState(null);
+  const [dragSelecting, setDragSelecting] = useState(false);
+  const [dragStartIndex, setDragStartIndex] = useState(null);
+  const [dragEndIndex, setDragEndIndex] = useState(null);
   const [editingLine, setEditingLine] = useState({ noteId: null, lineIndex: null });
   const [editedLineContent, setEditedLineContent] = useState('');
 
@@ -172,6 +230,12 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     deleteNote(deletingNoteId);
     closeModal();
   };
+
+  // Scroll smoothly to another note card by id
+  const scrollToNote = (id) =>
+    document
+      .querySelector(`#note-${id}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const handleDelete = (noteId) => {
     setDeletingNoteId(noteId);
@@ -297,6 +361,8 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
 
       // 5. Add the new merged note (assuming today's date)
       await addNotes(mergedContent, uniqueTags);
+      // Clear selection so the Merge button disappears
+      setSelectedNotes([]);
 
     } catch (error) {
       console.error("Error while merging notes:", error);
@@ -598,13 +664,22 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                 return (
                                   <div
                                     key={idx}
+                                    onMouseDown={() => {
+                                      setDragSelecting(true);
+                                      setDragStartIndex(idx);
+                                      setDragEndIndex(idx);
+                                    }}
+                                    onMouseEnter={() => {
+                                      if (dragSelecting) setDragEndIndex(idx);
+                                    }}
+                                    onMouseUp={() => setDragSelecting(false)}
                                     onContextMenu={(e) => {
                                       e.preventDefault();
                                       setRightClickNoteId(note.id);
                                       setRightClickIndex(idx);
                                       setRightClickPos({ x: e.clientX, y: e.clientY });
                                     }}
-                                    className={`cursor-text ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                    className={`cursor-text ${(dragStartIndex !== null && idx >= Math.min(dragStartIndex, dragEndIndex) && idx <= Math.max(dragStartIndex, dragEndIndex)) ? 'bg-blue-100' : ''} ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     &nbsp;
                                   </div>
@@ -762,13 +837,22 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                 return (
                                   <div
                                     key={idx}
+                                    onMouseDown={() => {
+                                      setDragSelecting(true);
+                                      setDragStartIndex(idx);
+                                      setDragEndIndex(idx);
+                                    }}
+                                    onMouseEnter={() => {
+                                      if (dragSelecting) setDragEndIndex(idx);
+                                    }}
+                                    onMouseUp={() => setDragSelecting(false)}
                                     onContextMenu={(e) => {
                                       e.preventDefault();
                                       setRightClickNoteId(note.id);
                                       setRightClickIndex(idx);
                                       setRightClickPos({ x: e.clientX, y: e.clientY });
                                     }}
-                                    className={`${(indentFlags[idx] || isListItem) ? 'pl-8 ' : ''}group cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                    className={`${(indentFlags[idx] || isListItem) ? 'pl-8 ' : ''}group cursor-text flex items-center justify-between ${(dragStartIndex !== null && idx >= Math.min(dragStartIndex, dragEndIndex) && idx <= Math.max(dragStartIndex, dragEndIndex)) ? 'bg-blue-100' : ''} ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
                                       <>
@@ -1045,6 +1129,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                   toggleNoteSelection={toggleNoteSelection}
                   updateNote={updateNote}
                 />
+                <LinkedNotesSection
+                  note={note}
+                  allNotes={safeNotes}
+                  onNavigate={scrollToNote}
+                />
               </div>
             </div>
           )
@@ -1142,11 +1231,32 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     <span className="text-sm text-gray-800 line-clamp-1">{n.content.slice(0, 50)}...</span>
                     <button
                       onClick={() => {
-                        alert(`Note ${linkingNoteId} linked with Note ${n.id}`);
+                        // Retrieve the notes we are linking
+                        const linkingNote = safeNotes.find(note => note.id === linkingNoteId);
+                        const targetNote = safeNotes.find(note => note.id === n.id);
+
+                        // Helper to append the link tag if it doesn't already exist
+                        const addLinkTag = (content, otherId) => {
+                          const lines = content.split('\n').map(l => l.trimEnd());
+                          const tag = `meta::link::${otherId}`;
+                          if (!lines.some(line => line.trim() === tag)) {
+                            lines.push(tag);
+                          }
+                          return lines.join('\n');
+                        };
+
+                        // Build updated contents
+                        const updatedLinkingContent = addLinkTag(linkingNote.content, n.id);
+                        const updatedTargetContent = addLinkTag(targetNote.content, linkingNoteId);
+
+                        // Persist updates
+                        updateNote(linkingNoteId, updatedLinkingContent);
+                        updateNote(n.id, updatedTargetContent);
+
+                        // Close popup & reset state
                         setLinkPopupVisible(false);
                         setLinkingNoteId(null);
                         setLinkSearchTerm('');
-                        updateNoteCallback([...notes]); // Simulate a refresh
                       }}
                       className="text-blue-600 hover:text-blue-800"
                     >

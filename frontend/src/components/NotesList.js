@@ -222,6 +222,26 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const [dragEndIndex, setDragEndIndex] = useState(null);
   const [editingLine, setEditingLine] = useState({ noteId: null, lineIndex: null });
   const [editedLineContent, setEditedLineContent] = useState('');
+  // Highlight every case‑insensitive occurrence of `searchTerm` within plain text.
+  // Returns a mix of strings and <mark> elements so callers may spread / concat.
+  const highlightMatches = (text) => {
+    if (!searchTerm || typeof text !== 'string') return text;
+    try {
+      const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape regex meta
+      const re = new RegExp(`(${escaped})`, 'gi');
+      return text.split(re).map((part, idx) =>
+        re.test(part) ? (
+          <mark key={idx} className="bg-yellow-200">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      );
+    } catch {
+      return text;
+    }
+  };
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -903,9 +923,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                             let lastIndex = 0;
                                             let match;
                                             while ((match = regex.exec(raw)) !== null) {
-                                              if (match.index > lastIndex) {
-                                                elements.push(raw.slice(lastIndex, match.index));
-                                              }
+                                            if (match.index > lastIndex) {
+                                              elements.push(...[].concat(highlightMatches(raw.slice(lastIndex, match.index))));
+                                            }
                                               if (match[1]) {
                                                 elements.push(
                                                   <strong key={`bold-${idx}-${match.index}`}>
@@ -957,7 +977,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                               lastIndex = match.index + match[0].length;
                                             }
                                             if (lastIndex < raw.length) {
-                                              elements.push(raw.slice(lastIndex));
+                                              elements.push(...[].concat(highlightMatches(raw.slice(lastIndex))));
                                             }
                                             return elements;
                                           })()}

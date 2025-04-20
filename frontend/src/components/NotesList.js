@@ -795,6 +795,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       </>
                                     ) : (
                                       <>
+                                        {indentFlags[idx] && (
+                                          <span className="mr-2 text-3xl self-start leading-none">
+                                            •
+                                          </span>
+                                        )}
                                         <span className="flex-1">
   {(() => {
     const raw = line;

@@ -653,7 +653,25 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       </>
                                     ) : (
                                       <>
-                                        <span className="flex-1">{line.slice(4, -5)}</span>
+                                        {(() => {
+                                          const content = line.slice(4, -5);
+                                          const mdMatch = content.match(/^\[(.+)\]\((https?:\/\/[^\s)]+)\)$/);
+                                          if (mdMatch) {
+                                            const [, text, url] = mdMatch;
+                                            return (
+                                              <a
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex-1 text-blue-600 underline"
+                                              >
+                                                {text}
+                                              </a>
+                                            );
+                                          } else {
+                                            return <span className="flex-1">{content}</span>;
+                                          }
+                                        })()}
                                         <span className="invisible group-hover:visible">
                                           <PencilIcon
                                             className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
@@ -1474,9 +1492,15 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
               if (noteToUpdate && rightClickIndex != null) {
                 const lines = noteToUpdate.content.split('\n');
-                lines[rightClickIndex] = lines[rightClickIndex].toUpperCase();
-                const newContent = lines.join('\n');
-                updateNote(rightClickNoteId, newContent);
+                const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+                let current = lines[rightClickIndex];
+                if (linkRegex.test(current)) {
+                  current = current.replace(linkRegex, (_, text, url) => `[${text.toUpperCase()}](${url})`);
+                } else {
+                  current = current.toUpperCase();
+                }
+                lines[rightClickIndex] = current;
+                updateNote(rightClickNoteId, lines.join('\n'));
               }
               setRightClickText(null);
             }}
@@ -1488,14 +1512,21 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
             onClick={() => {
               const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
               if (noteToUpdate && rightClickIndex != null) {
-                console.log('Capitalize Words clicked on index', rightClickIndex, 'original line:', noteToUpdate.content.split('\n')[rightClickIndex]);
                 const linesArr = noteToUpdate.content.split('\n');
-                // Capitalize first letter of each word in the current line
-                linesArr[rightClickIndex] = linesArr[rightClickIndex]
-                  .split(' ')
-                  .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-                  .join(' ');
-                console.log('Transformed line:', linesArr[rightClickIndex]);
+                const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+                let current = linesArr[rightClickIndex];
+                if (linkRegex.test(current)) {
+                  current = current.replace(linkRegex, (_, text, url) => {
+                    const sentence = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+                    return `[${sentence}](${url})`;
+                  });
+                } else {
+                  current = current
+                    .split(' ')
+                    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                    .join(' ');
+                }
+                linesArr[rightClickIndex] = current;
                 updateNote(rightClickNoteId, linesArr.join('\n'));
               }
               setRightClickText(null);

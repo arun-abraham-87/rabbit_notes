@@ -552,6 +552,21 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     {(() => {
                       const rawLines = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'));
                       const contentLines = parseFormattedContent(rawLines, searchTerm, duplicatedUrlColors);
+                      // Track which lines should be indented: after an <h2> until next <h2> or blank
+                      const indentFlags = (() => {
+                        let flag = false;
+                        return contentLines.map(line => {
+                          if (line.startsWith('<h2>')) {
+                            flag = true;
+                            return false;
+                          }
+                          if (line.trim() === '') {
+                            flag = false;
+                            return false;
+                          }
+                          return flag;
+                        });
+                      })();
                       const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
                       const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
 
@@ -709,7 +724,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       setRightClickIndex(idx);
                                       setRightClickPos({ x: e.clientX, y: e.clientY });
                                     }}
-                                    className={`group cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                className={`${indentFlags[idx] ? 'pl-8 ' : ''}group cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
                                       <>

@@ -350,26 +350,29 @@ const handleSelectTag = (tag) => {
       const currentLine = newLines[index];
       const before = currentLine.text.slice(0, cursorPos);
       const after = currentLine.text.slice(cursorPos);
-
+ 
+      // Continue list items if prefixed with "- "
+      const listMatch = before.match(/^(-\s+)/);
       currentLine.text = before;
-
+      const newLineText = listMatch ? listMatch[1] + after : after;
+ 
       const newLine = {
         id: `line-${Date.now()}`,
-        text: after,
+        text: newLineText,
         isTitle: false
       };
-
+ 
       newLines.splice(index + 1, 0, newLine);
       setLines(newLines);
-
+ 
       setTimeout(() => {
         const nextTextarea = textareasRef.current[index + 1];
         if (nextTextarea) {
           nextTextarea.focus();
-          nextTextarea.selectionStart = nextTextarea.selectionEnd = 0;
+          nextTextarea.selectionStart = nextTextarea.selectionEnd = newLineText.length;
         }
       }, 0);
-
+ 
       return;
     }
 
@@ -387,6 +390,13 @@ const handleSelectTag = (tag) => {
       const textLength = e.target.value.length;
       if (cursorPosition === textLength && index < lines.length - 1) {
         e.preventDefault();
+        // Auto-prefix next line if current is a list item
+        const newLines = [...lines];
+        const match = newLines[index].text.match(/^(-\s+)/);
+        if (match && !newLines[index + 1].text.startsWith(match[1])) {
+          newLines[index + 1].text = match[1] + newLines[index + 1].text;
+          setLines(newLines);
+        }
         textareasRef.current[index + 1]?.focus();
         return;
       }

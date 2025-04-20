@@ -589,6 +589,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                         <>
                           <div className="whitespace-pre-wrap break-words break-all space-y-1">
                             {contentLines.map((line, idx) => {
+                              const isListItem = line.startsWith('- ');
                               if (line.trim() === '') {
                                 return (
                                   <div
@@ -757,7 +758,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       setRightClickIndex(idx);
                                       setRightClickPos({ x: e.clientX, y: e.clientY });
                                     }}
-                                    className={`${indentFlags[idx] ? 'pl-8 ' : ''}group cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                    className={`${(indentFlags[idx] || isListItem) ? 'pl-8 ' : ''}group cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
                                       <>
@@ -795,71 +796,71 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       </>
                                     ) : (
                                       <>
-                                        {indentFlags[idx] && (
+                                        {(indentFlags[idx] || isListItem) && (
                                           <span className="mr-2 text-3xl self-start leading-none">
                                             •
                                           </span>
                                         )}
                                         <span className="flex-1">
-  {(() => {
-    const raw = line;
-    const elements = [];
-    const regex = /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
-    let lastIndex = 0;
-    let match;
-    while ((match = regex.exec(raw)) !== null) {
-      if (match.index > lastIndex) {
-        elements.push(raw.slice(lastIndex, match.index));
-      }
-      if (match[2] && match[3]) {
-        // Markdown link [text](url)
-        elements.push(
-          <a
-            key={`link-${idx}-${match.index}`}
-            href={match[3]}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline"
-          >
-            {match[2]}
-          </a>
-        );
-      } else if (match[4]) {
-        // Plain URL
-        try {
-          const host = new URL(match[4]).hostname.replace(/^www\./, '');
-          elements.push(
-            <a
-              key={`url-${idx}-${match.index}`}
-              href={match[4]}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline"
-            >
-              {host}
-            </a>
-          );
-        } catch {
-          elements.push(
-            <a
-              key={`url-fallback-${idx}-${match.index}`}
-              href={match[4]}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline"
-            >
-              {match[4]}
-            </a>
-          );
-        }
-      }
-      lastIndex = match.index + match[0].length;
-    }
-    if (lastIndex < raw.length) {
-      elements.push(raw.slice(lastIndex));
-    }
-    return elements;
-  })()}
+                                        {(() => {
+                                          const raw = isListItem ? line.slice(2) : line;
+                                          const elements = [];
+                                          const regex = /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
+                                          let lastIndex = 0;
+                                          let match;
+                                          while ((match = regex.exec(raw)) !== null) {
+                                            if (match.index > lastIndex) {
+                                              elements.push(raw.slice(lastIndex, match.index));
+                                            }
+                                            if (match[2] && match[3]) {
+                                              // Markdown link [text](url)
+                                              elements.push(
+                                                <a
+                                                  key={`link-${idx}-${match.index}`}
+                                                  href={match[3]}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-blue-600 underline"
+                                                >
+                                                  {match[2]}
+                                                </a>
+                                              );
+                                            } else if (match[4]) {
+                                              // Plain URL
+                                              try {
+                                                const host = new URL(match[4]).hostname.replace(/^www\./, '');
+                                                elements.push(
+                                                  <a
+                                                    key={`url-${idx}-${match.index}`}
+                                                    href={match[4]}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 underline"
+                                                  >
+                                                    {host}
+                                                  </a>
+                                                );
+                                              } catch {
+                                                elements.push(
+                                                  <a
+                                                    key={`url-fallback-${idx}-${match.index}`}
+                                                    href={match[4]}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 underline"
+                                                  >
+                                                    {match[4]}
+                                                  </a>
+                                                );
+                                              }
+                                            }
+                                            lastIndex = match.index + match[0].length;
+                                          }
+                                          if (lastIndex < raw.length) {
+                                            elements.push(raw.slice(lastIndex));
+                                          }
+                                          return elements;
+                                        })()}
 </span>
                                         <span className="invisible group-hover:visible">
                                           <PencilIcon

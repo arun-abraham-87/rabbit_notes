@@ -1264,6 +1264,26 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           onClick={() => {
             const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
             if (noteToUpdate && rightClickIndex != null) {
+              console.log('Capitalize Words clicked on index', rightClickIndex, 'original line:', noteToUpdate.content.split('\n')[rightClickIndex]);
+              const linesArr = noteToUpdate.content.split('\n');
+              // Capitalize first letter of each word in the current line
+              linesArr[rightClickIndex] = linesArr[rightClickIndex]
+                .split(' ')
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(' ');
+              console.log('Transformed line:', linesArr[rightClickIndex]);
+              updateNote(rightClickNoteId, linesArr.join('\n'));
+            }
+            setRightClickText(null);
+          }}
+          className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
+        >
+          Capitalize Words
+        </button>
+        <button
+          onClick={() => {
+            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+            if (noteToUpdate && rightClickIndex != null) {
               const lines = noteToUpdate.content.split('\n');
               lines.splice(rightClickIndex, 1);
               updateNote(rightClickNoteId, lines.join('\n'));

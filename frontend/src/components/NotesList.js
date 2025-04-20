@@ -670,7 +670,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                               </a>
                                             );
                                           } else {
-                                            return <span className="flex-1">{content}</span>;
+                                        return (
+                                          <span className="flex-1">
+                                            {processContent(content, searchTerm, duplicatedUrlColors)}
+                                          </span>
+                                        );
                                           }
                                         })()}
                                         <span className="invisible group-hover:visible">
@@ -734,7 +738,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       </>
                                     ) : (
                                       <>
-                                        <span className="flex-1">{line.slice(4, -5)}</span>
+              <span className="flex-1">
+                {processContent(line.slice(4, -5), searchTerm, duplicatedUrlColors)}
+              </span>
                                         <span className="invisible group-hover:visible">
                                           <PencilIcon
                                             className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
@@ -805,34 +811,40 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                         {(() => {
                                           const raw = isListItem ? line.slice(2) : line;
                                           const elements = [];
-                                          const regex = /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
+                                          const regex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
                                           let lastIndex = 0;
                                           let match;
                                           while ((match = regex.exec(raw)) !== null) {
                                             if (match.index > lastIndex) {
                                               elements.push(raw.slice(lastIndex, match.index));
                                             }
-                                            if (match[2] && match[3]) {
+                                            if (match[1]) {
+                                              elements.push(
+                                                <strong key={`bold-${idx}-${match.index}`}>
+                                                  {match[2]}
+                                                </strong>
+                                              );
+                                            } else if (match[3] && match[4]) {
                                               // Markdown link [text](url)
                                               elements.push(
                                                 <a
                                                   key={`link-${idx}-${match.index}`}
-                                                  href={match[3]}
+                                                  href={match[5]}
                                                   target="_blank"
                                                   rel="noopener noreferrer"
                                                   className="text-blue-600 underline"
                                                 >
-                                                  {match[2]}
+                                                  {match[4]}
                                                 </a>
                                               );
-                                            } else if (match[4]) {
+                                            } else if (match[6]) {
                                               // Plain URL
                                               try {
-                                                const host = new URL(match[4]).hostname.replace(/^www\./, '');
+                                                const host = new URL(match[6]).hostname.replace(/^www\./, '');
                                                 elements.push(
                                                   <a
                                                     key={`url-${idx}-${match.index}`}
-                                                    href={match[4]}
+                                                    href={match[6]}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-blue-600 underline"
@@ -844,12 +856,12 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                                 elements.push(
                                                   <a
                                                     key={`url-fallback-${idx}-${match.index}`}
-                                                    href={match[4]}
+                                                    href={match[6]}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-blue-600 underline"
                                                   >
-                                                    {match[4]}
+                                                    {match[6]}
                                                   </a>
                                                 );
                                               }
@@ -1541,6 +1553,28 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
             className="p-1 hover:bg-gray-100 rounded"
           >
            Aa
+          </button>
+          <button
+            onClick={() => {
+              const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
+              if (noteToUpdate && rightClickIndex != null) {
+                const lines = noteToUpdate.content.split('\n');
+                let current = lines[rightClickIndex];
+                // Toggle Markdown bold markers **text**
+                if (current.startsWith('**') && current.endsWith('**')) {
+                  current = current.slice(2, -2);
+                } else {
+                  current = `**${current}**`;
+                }
+                lines[rightClickIndex] = current;
+                updateNote(rightClickNoteId, lines.join('\n'));
+              }
+              setRightClickText(null);
+            }}
+            className="p-1 hover:bg-gray-100 rounded"
+            title="Toggle bold"
+          >
+            <strong>B</strong>
           </button>
           <button
             onClick={() => {

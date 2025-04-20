@@ -483,6 +483,9 @@ const handleSelectTag = (tag) => {
       trimmedLines.pop();
     }
     const merged = trimmedLines.join('\n');
+    if (!merged) {
+      return;
+    }
     updateNote(note.id, merged);
     onSave({ ...note, content: merged });
     setMergedContent(merged);
@@ -527,6 +530,9 @@ const handleSelectTag = (tag) => {
           trimmedLines.pop();
         }
         const merged = trimmedLines.join('\n');
+        if (!merged) {
+          return;
+        }
         if (isAddMode) {
           addNote(merged);
           setLines([{ id: 'line-0', text: '', isTitle: false }]);

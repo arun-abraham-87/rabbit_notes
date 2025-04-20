@@ -796,39 +796,66 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                     ) : (
                                       <>
                                         <span className="flex-1">
-                                          {(() => {
-                                            const dateRegex = /\b\d{1,2}\/\d{1,2}\/\d{4}\b|\b\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December) \d{4}\b/g;
-                                            const parts = [];
-                                            let lastIndex = 0;
-                                            let match;
-                                            while ((match = dateRegex.exec(line)) !== null) {
-                                              if (match.index > lastIndex) {
-                                                parts.push(line.slice(lastIndex, match.index));
-                                              }
-                                              const dateStr = match[0];
-                                              parts.push(
-                                                <span
-                                                  key={`date-${idx}-${match.index}`}
-                                                  className="text-blue-600 underline cursor-pointer"
-                                                  onClick={() =>
-                                                    setEditingInlineDate({
-                                                      noteId: note.id,
-                                                      lineIndex: idx,
-                                                      originalDate: dateStr
-                                                    })
-                                                  }
-                                                >
-                                                  {dateStr}
-                                                </span>
-                                              );
-                                              lastIndex = dateRegex.lastIndex;
-                                            }
-                                            if (lastIndex < line.length) {
-                                              parts.push(line.slice(lastIndex));
-                                            }
-                                            return parts;
-                                          })()}
-                                        </span>
+  {(() => {
+    const raw = line;
+    const elements = [];
+    const regex = /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(raw)) !== null) {
+      if (match.index > lastIndex) {
+        elements.push(raw.slice(lastIndex, match.index));
+      }
+      if (match[2] && match[3]) {
+        // Markdown link [text](url)
+        elements.push(
+          <a
+            key={`link-${idx}-${match.index}`}
+            href={match[3]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+          >
+            {match[2]}
+          </a>
+        );
+      } else if (match[4]) {
+        // Plain URL
+        try {
+          const host = new URL(match[4]).hostname.replace(/^www\./, '');
+          elements.push(
+            <a
+              key={`url-${idx}-${match.index}`}
+              href={match[4]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              {host}
+            </a>
+          );
+        } catch {
+          elements.push(
+            <a
+              key={`url-fallback-${idx}-${match.index}`}
+              href={match[4]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              {match[4]}
+            </a>
+          );
+        }
+      }
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < raw.length) {
+      elements.push(raw.slice(lastIndex));
+    }
+    return elements;
+  })()}
+</span>
                                         <span className="invisible group-hover:visible">
                                           <PencilIcon
                                             className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
@@ -1321,8 +1348,30 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
             const rawLine = linesArr[rightClickIndex] || '';
             const trimmed = rawLine.trim();
             const isH1 = trimmed.startsWith('###') && trimmed.endsWith('###');
-            if (!isH1) {
+            const isH2 = trimmed.startsWith('##') && trimmed.endsWith('##');
+            if (isH1 || isH2) {
               return (
+                <button
+                  onClick={() => {
+                    const note = notes.find(n => n.id === rightClickNoteId);
+                    if (note && rightClickIndex != null) {
+                      const arr = note.content.split('\n');
+                      let content = arr[rightClickIndex].trim();
+                      content = isH1 ? content.slice(3, -3) : content.slice(2, -2);
+                      arr[rightClickIndex] = content;
+                      updateNote(rightClickNoteId, arr.join('\n'));
+                    }
+                    setRightClickText(null);
+                  }}
+                  className="p-1 hover:bg-gray-100 rounded"
+                  title="Remove formatting"
+                >
+                  <XCircleIcon className="w-4 h-4 text-gray-700" />
+                </button>
+              );
+            }
+            return (
+              <>
                 <button
                   onClick={() => {
                     const note = notes.find(n => n.id === rightClickNoteId);
@@ -1334,39 +1383,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     setRightClickText(null);
                   }}
                   className="p-1 hover:bg-gray-100 rounded"
-          >
-          H1
+                >
+                  H1
                 </button>
-              );
-            } else {
-              return (
-                <button
-                  onClick={() => {
-                    const note = notes.find(n => n.id === rightClickNoteId);
-                    if (note && rightClickIndex != null) {
-                      const arr = note.content.split('\n');
-                      let content = arr[rightClickIndex].trim();
-                      content = content.slice(3, -3);
-                      arr[rightClickIndex] = content;
-                      updateNote(rightClickNoteId, arr.join('\n'));
-                    }
-                    setRightClickText(null);
-                  }}
-                  className="p-1 hover:bg-gray-100 rounded"
-                  >
-                  H1-X
-                </button>
-              );
-            }
-          })()}
-          {(() => {
-            const noteToUpdate = notes.find(n => n.id === rightClickNoteId);
-            const linesArr = noteToUpdate ? noteToUpdate.content.split('\n') : [];
-            const rawLine = linesArr[rightClickIndex] || '';
-            const trimmed = rawLine.trim();
-            const isH2 = trimmed.startsWith('##') && trimmed.endsWith('##');
-            if (!isH2) {
-              return (
                 <button
                   onClick={() => {
                     const note = notes.find(n => n.id === rightClickNoteId);
@@ -1378,29 +1397,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     setRightClickText(null);
                   }}
                   className="p-1 hover:bg-gray-100 rounded"
-          >
-          H2
+                >
+                  H2
                 </button>
-              );
-            } else {
-              return (
-                <button
-                  onClick={() => {
-                    const note = notes.find(n => n.id === rightClickNoteId);
-                    if (note && rightClickIndex != null) {
-                      const arr = note.content.split('\n');
-                      const content = arr[rightClickIndex].trim().slice(2, -2);
-                      arr[rightClickIndex] = content;
-                      updateNote(rightClickNoteId, arr.join('\n'));
-                    }
-                    setRightClickText(null);
-                  }}
-                  className="p-1 hover:bg-gray-100 rounded"
-          >
-          H2-X
-                </button>
-              );
-            }
+              </>
+            );
           })()}
           <button
             onClick={() => {

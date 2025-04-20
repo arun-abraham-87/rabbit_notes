@@ -670,11 +670,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                               </a>
                                             );
                                           } else {
-                                        return (
-                                          <span className="flex-1">
-                                            {processContent(content, searchTerm, duplicatedUrlColors)}
-                                          </span>
-                                        );
+                                            return (
+                                              <span className="flex-1">
+                                                {processContent(content, searchTerm, duplicatedUrlColors)}
+                                              </span>
+                                            );
                                           }
                                         })()}
                                         <span className="invisible group-hover:visible">
@@ -738,9 +738,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       </>
                                     ) : (
                                       <>
-              <span className="flex-1">
-                {processContent(line.slice(4, -5), searchTerm, duplicatedUrlColors)}
-              </span>
+                                        <span className="flex-1">
+                                          {processContent(line.slice(4, -5), searchTerm, duplicatedUrlColors)}
+                                        </span>
                                         <span className="invisible group-hover:visible">
                                           <PencilIcon
                                             className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
@@ -808,72 +808,72 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                           </span>
                                         )}
                                         <span className="flex-1">
-                                        {(() => {
-                                          const raw = isListItem ? line.slice(2) : line;
-                                          const elements = [];
-                                          const regex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
-                                          let lastIndex = 0;
-                                          let match;
-                                          while ((match = regex.exec(raw)) !== null) {
-                                            if (match.index > lastIndex) {
-                                              elements.push(raw.slice(lastIndex, match.index));
-                                            }
-                                            if (match[1]) {
-                                              elements.push(
-                                                <strong key={`bold-${idx}-${match.index}`}>
-                                                  {match[2]}
-                                                </strong>
-                                              );
-                                            } else if (match[3] && match[4]) {
-                                              // Markdown link [text](url)
-                                              elements.push(
-                                                <a
-                                                  key={`link-${idx}-${match.index}`}
-                                                  href={match[5]}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="text-blue-600 underline"
-                                                >
-                                                  {match[4]}
-                                                </a>
-                                              );
-                                            } else if (match[6]) {
-                                              // Plain URL
-                                              try {
-                                                const host = new URL(match[6]).hostname.replace(/^www\./, '');
-                                                elements.push(
-                                                  <a
-                                                    key={`url-${idx}-${match.index}`}
-                                                    href={match[6]}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-blue-600 underline"
-                                                  >
-                                                    {host}
-                                                  </a>
-                                                );
-                                              } catch {
-                                                elements.push(
-                                                  <a
-                                                    key={`url-fallback-${idx}-${match.index}`}
-                                                    href={match[6]}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-blue-600 underline"
-                                                  >
-                                                    {match[6]}
-                                                  </a>
-                                                );
+                                          {(() => {
+                                            const raw = isListItem ? line.slice(2) : line;
+                                            const elements = [];
+                                            const regex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
+                                            let lastIndex = 0;
+                                            let match;
+                                            while ((match = regex.exec(raw)) !== null) {
+                                              if (match.index > lastIndex) {
+                                                elements.push(raw.slice(lastIndex, match.index));
                                               }
+                                              if (match[1]) {
+                                                elements.push(
+                                                  <strong key={`bold-${idx}-${match.index}`}>
+                                                    {match[2]}
+                                                  </strong>
+                                                );
+                                              } else if (match[3] && match[4]) {
+                                                // Markdown link [text](url)
+                                                elements.push(
+                                                  <a
+                                                    key={`link-${idx}-${match.index}`}
+                                                    href={match[5]}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 underline"
+                                                  >
+                                                    {match[4]}
+                                                  </a>
+                                                );
+                                              } else if (match[6]) {
+                                                // Plain URL
+                                                try {
+                                                  const host = new URL(match[6]).hostname.replace(/^www\./, '');
+                                                  elements.push(
+                                                    <a
+                                                      key={`url-${idx}-${match.index}`}
+                                                      href={match[6]}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="text-blue-600 underline"
+                                                    >
+                                                      {host}
+                                                    </a>
+                                                  );
+                                                } catch {
+                                                  elements.push(
+                                                    <a
+                                                      key={`url-fallback-${idx}-${match.index}`}
+                                                      href={match[6]}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="text-blue-600 underline"
+                                                    >
+                                                      {match[6]}
+                                                    </a>
+                                                  );
+                                                }
+                                              }
+                                              lastIndex = match.index + match[0].length;
                                             }
-                                            lastIndex = match.index + match[0].length;
-                                          }
-                                          if (lastIndex < raw.length) {
-                                            elements.push(raw.slice(lastIndex));
-                                          }
-                                          return elements;
-                                        })()}
-</span>
+                                            if (lastIndex < raw.length) {
+                                              elements.push(raw.slice(lastIndex));
+                                            }
+                                            return elements;
+                                          })()}
+                                        </span>
                                         <span className="invisible group-hover:visible">
                                           <PencilIcon
                                             className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
@@ -1552,7 +1552,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
             }}
             className="p-1 hover:bg-gray-100 rounded"
           >
-           Aa
+            Aa
           </button>
           <button
             onClick={() => {
@@ -1587,8 +1587,8 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               setRightClickText(null);
             }}
             className="p-1 hover:bg-gray-100 rounded"
-            >
-              <TrashIcon className="w-4 h-4 text-gray-700" />
+          >
+            <TrashIcon className="w-4 h-4 text-gray-700" />
           </button>
 
         </div>

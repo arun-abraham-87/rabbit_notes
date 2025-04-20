@@ -113,6 +113,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const safeNotes = notes || [];
   const [selectedView, setSelectedView] = useState('All');
   const [showEndDatePickerForNoteId, setShowEndDatePickerForNoteId] = useState(null);
+  const [editingInlineDate, setEditingInlineDate] = useState({
+    noteId: null,
+    lineIndex: null,
+    originalDate: ''
+  });
   const [focussedView, setFocussedView] = useState(false);
   const [rightClickText, setRightClickText] = useState(null);
   const [rightClickPos, setRightClickPos] = useState({ x: 0, y: 0 });
@@ -159,6 +164,14 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     });
     updateNoteCallback(updatedNotes);
     setShowEndDatePickerForNoteId(null);
+  };
+  const handleInlineDateSelect = (noteId, lineIndex, newDate) => {
+    const dateStr = newDate.toLocaleDateString();
+    const noteToUpdate = notes.find(n => n.id === noteId);
+    const lines = noteToUpdate.content.split('\n');
+    lines[lineIndex] = lines[lineIndex].replace(editingInlineDate.originalDate, dateStr);
+    updateNote(noteId, lines.join('\n'));
+    setEditingInlineDate({ noteId: null, lineIndex: null, originalDate: '' });
   };
 
   const handleRemoveDuplicateUrlsWithinNotes = () => {
@@ -486,7 +499,12 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                       {parsedEndDate && (
                         <>
                           <span className="text-xs text-gray-700 font-semibold mr-1">Deadline Date:</span>
-                          <span className="text-xs text-gray-500">{parsedEndDate.toLocaleDateString()}</span>
+                          <span
+                            className="text-xs text-gray-500 cursor-pointer"
+                            onClick={() => setShowEndDatePickerForNoteId(note.id)}
+                          >
+                            {parsedEndDate.toLocaleDateString()}
+                          </span>
                           <CalendarIcon
                             className="h-5 w-5 text-gray-600 cursor-pointer hover:text-gray-800"
                             onClick={() => setShowEndDatePickerForNoteId(note.id)}
@@ -575,6 +593,14 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                           type="text"
                                           value={editedLineContent}
                                           onChange={(e) => setEditedLineContent(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              const lines = note.content.split('\n');
+                                              lines[idx] = `###${editedLineContent}###`;
+                                              updateNote(note.id, lines.join('\n'));
+                                              setEditingLine({ noteId: null, lineIndex: null });
+                                            }
+                                          }}
                                           className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
                                         />
                                         <button
@@ -629,6 +655,14 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                           type="text"
                                           value={editedLineContent}
                                           onChange={(e) => setEditedLineContent(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              const lines = note.content.split('\n');
+                                              lines[idx] = `##${editedLineContent}##`;
+                                              updateNote(note.id, lines.join('\n'));
+                                              setEditingLine({ noteId: null, lineIndex: null });
+                                            }
+                                          }}
                                           className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
                                         />
                                         <button
@@ -683,6 +717,14 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                           type="text"
                                           value={editedLineContent}
                                           onChange={(e) => setEditedLineContent(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              const lines = note.content.split('\n');
+                                              lines[idx] = editedLineContent;
+                                              updateNote(note.id, lines.join('\n'));
+                                              setEditingLine({ noteId: null, lineIndex: null });
+                                            }
+                                          }}
                                           className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
                                         />
                                         <button
@@ -707,31 +749,36 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       <>
                                         <span className="flex-1">
                                           {(() => {
-                                            const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-                                            const elements = [];
+                                          const dateRegex = /\b\d{1,2}\/\d{1,2}\/\d{4}\b|\b\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December) \d{4}\b/g;
+                                            const parts = [];
                                             let lastIndex = 0;
                                             let match;
-                                            while ((match = regex.exec(line)) !== null) {
+                                            while ((match = dateRegex.exec(line)) !== null) {
                                               if (match.index > lastIndex) {
-                                                elements.push(line.slice(lastIndex, match.index));
+                                                parts.push(line.slice(lastIndex, match.index));
                                               }
-                                              elements.push(
-                                                <a
-                                                  key={elements.length}
-                                                  href={match[2]}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="text-blue-600 underline"
+                                              const dateStr = match[0];
+                                              parts.push(
+                                                <span
+                                                  key={`date-${idx}-${match.index}`}
+                                                  className="text-blue-600 underline cursor-pointer"
+                                                  onClick={() =>
+                                                    setEditingInlineDate({
+                                                      noteId: note.id,
+                                                      lineIndex: idx,
+                                                      originalDate: dateStr
+                                                    })
+                                                  }
                                                 >
-                                                  {match[1]}
-                                                </a>
+                                                  {dateStr}
+                                                </span>
                                               );
-                                              lastIndex = regex.lastIndex;
+                                              lastIndex = dateRegex.lastIndex;
                                             }
                                             if (lastIndex < line.length) {
-                                              elements.push(line.slice(lastIndex));
+                                              parts.push(line.slice(lastIndex));
                                             }
-                                            return elements;
+                                            return parts;
                                           })()}
                                         </span>
                                         <span className="invisible group-hover:visible">
@@ -743,6 +790,31 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                             }}
                                           />
                                         </span>
+                                        {editingInlineDate.noteId === note.id && editingInlineDate.lineIndex === idx && (
+                                          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                                            <div className="bg-white p-4 rounded shadow-md">
+                                              <input
+                                                type="date"
+                                                onChange={e =>
+                                                  handleInlineDateSelect(
+                                                    editingInlineDate.noteId,
+                                                    editingInlineDate.lineIndex,
+                                                    new Date(e.target.value)
+                                                  )
+                                                }
+                                                className="border border-gray-300 rounded px-3 py-2 text-sm"
+                                              />
+                                              <button
+                                                onClick={() =>
+                                                  setEditingInlineDate({ noteId: null, lineIndex: null, originalDate: '' })
+                                                }
+                                                className="ml-2 text-sm text-red-500 hover:underline"
+                                              >
+                                                Cancel
+                                              </button>
+                                            </div>
+                                          </div>
+                                        )}
                                       </>
                                     )}
                                   </div>

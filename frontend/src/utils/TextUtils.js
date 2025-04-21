@@ -71,21 +71,3 @@ export const parseFormattedContent = (lines) => {
 };
 
 
-export const highlightMatches = (text, searchTerm) => {
-  if (!searchTerm || typeof text !== 'string') return text;
-  try {
-    const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape regex meta
-    const re = new RegExp(`(${escaped})`, 'gi');
-    return text.split(re).map((part, idx) =>
-      re.test(part) ? (
-        <mark key={idx} className="bg-yellow-200">
-          {part}
-        </mark>
-      ) : (
-        part
-      )
-    );
-  } catch {
-    return text;
-  }
-};

@@ -1,3 +1,25 @@
+
+
+export const highlightMatches = (text, searchTerm) => {
+    if (!searchTerm || typeof text !== 'string') return text;
+    try {
+      const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape regex meta
+      const re = new RegExp(`(${escaped})`, 'gi');
+      return text.split(re).map((part, idx) =>
+        re.test(part) ? (
+          <mark key={idx} className="bg-yellow-200">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      );
+    } catch {
+      return text;
+    }
+  };
+
+
 export const findDuplicatedUrls = (safeNotes) => {
     const urlPattern = /https?:\/\/[^\s]+/g;
 
@@ -47,3 +69,84 @@ export const findDuplicatedUrls = (safeNotes) => {
 
     return { duplicateUrlNoteIds, duplicateWithinNoteIds, urlToNotesMap, duplicatedUrlColors };
 }
+
+
+export  const buildLineElements = (line, idx, isListItem, searchTerm) => {
+  const raw = isListItem ? line.slice(2) : line; // strip "- " bullet
+  const elements = [];
+  const regex =
+    /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
+  let lastIndex = 0;
+  let match;
+
+  // Walk through every markdown / URL match
+  while ((match = regex.exec(raw)) !== null) {
+    // Add text between previous match and current match (with highlights)
+    if (match.index > lastIndex) {
+      elements.push(
+        ...[].concat(
+          highlightMatches(raw.slice(lastIndex, match.index), searchTerm)
+        )
+      );
+    }
+
+    if (match[1]) {
+      // **bold**
+      elements.push(
+        <strong key={`bold-${idx}-${match.index}`}>{match[2]}</strong>
+      );
+    } else if (match[3] && match[4]) {
+      // [text](url)
+      elements.push(
+        <a
+          key={`link-${idx}-${match.index}`}
+          href={match[5]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline"
+        >
+          {match[4]}
+        </a>
+      );
+    } else if (match[6]) {
+      // bare URL
+      try {
+        const host = new URL(match[6]).hostname.replace(/^www\./, '');
+        elements.push(
+          <a
+            key={`url-${idx}-${match.index}`}
+            href={match[6]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+          >
+            {host}
+          </a>
+        );
+      } catch {
+        elements.push(
+          <a
+            key={`url-fallback-${idx}-${match.index}`}
+            href={match[6]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+          >
+            {match[6]}
+          </a>
+        );
+      }
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Append any remaining text after the final match
+  if (lastIndex < raw.length) {
+    elements.push(
+      ...[].concat(highlightMatches(raw.slice(lastIndex), searchTerm))
+    );
+  }
+
+  return elements;
+};

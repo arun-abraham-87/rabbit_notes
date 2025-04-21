@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon, ExclamationCircleIcon, CalendarIcon } from '@heroicons/react/24/solid';
 // Removed react-beautiful-dnd imports
-import { processContent, parseFormattedContent, highlightMatches } from '../utils/TextUtils';
+import { processContent, parseFormattedContent} from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
 import { getDateAgeInYearsMonthsDays, formatAndAgeDate } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
-import { findDuplicatedUrls } from '../utils/genUtils';
+import { findDuplicatedUrls, buildLineElements } from '../utils/genUtils';
 
 import NoteEditor from './NoteEditor';
 import RightClickMenu from './RighClickMenu';
@@ -18,6 +18,31 @@ import NoteMetaInfo from './NoteMetaInfo';
 import TagSelectionPopup from './TagSelectionPopup';
 
 
+// ─── end line‑rendering helper ──────────────────────────────────────
+
+/**
+ * Returns an array of booleans indicating whether each line should be
+ * indented. Indentation starts on the line *after* an <h2> and continues
+ * until the next <h2> or a blank line.
+ */
+const getIndentFlags = (contentLines) => {
+  let flag = false;
+  return contentLines.map((line) => {
+    if (line.startsWith('<h2>')) {
+      flag = true;
+      return false;
+    }
+    if (line.trim() === '') {
+      flag = false;
+      return false;
+    }
+    return flag;
+  });
+};
+
+
+const getRawLines = (content) =>
+  content.split('\n').filter((line) => !line.trim().startsWith('meta::'));
 
 
 const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm }) => {
@@ -360,23 +385,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                   )}
                   <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                     {(() => {
-                      const rawLines = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'));
-                      const contentLines = parseFormattedContent(rawLines, searchTerm, duplicatedUrlColors);
-                      // Track which lines should be indented: after an <h2> until next <h2> or blank
-                      const indentFlags = (() => {
-                        let flag = false;
-                        return contentLines.map(line => {
-                          if (line.startsWith('<h2>')) {
-                            flag = true;
-                            return false;
-                          }
-                          if (line.trim() === '') {
-                            flag = false;
-                            return false;
-                          }
-                          return flag;
-                        });
-                      })();
+                      const rawLines = getRawLines(note.content);
+                      const contentLines = parseFormattedContent(rawLines, searchTerm, duplicatedUrlColors)
+                      const indentFlags = getIndentFlags(contentLines);
                       const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
                       const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
 
@@ -621,71 +632,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                           </span>
                                         )}
                                         <span className="flex-1">
-                                          {(() => {
-                                            const raw = isListItem ? line.slice(2) : line;
-                                            const elements = [];
-                                            const regex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
-                                            let lastIndex = 0;
-                                            let match;
-                                            while ((match = regex.exec(raw)) !== null) {
-                                              if (match.index > lastIndex) {
-                                                elements.push(...[].concat(highlightMatches(raw.slice(lastIndex, match.index), searchTerm)));
-                                              }
-                                              if (match[1]) {
-                                                elements.push(
-                                                  <strong key={`bold-${idx}-${match.index}`}>
-                                                    {match[2]}
-                                                  </strong>
-                                                );
-                                              } else if (match[3] && match[4]) {
-                                                // Markdown link [text](url)
-                                                elements.push(
-                                                  <a
-                                                    key={`link-${idx}-${match.index}`}
-                                                    href={match[5]}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-blue-600 underline"
-                                                  >
-                                                    {match[4]}
-                                                  </a>
-                                                );
-                                              } else if (match[6]) {
-                                                // Plain URL
-                                                try {
-                                                  const host = new URL(match[6]).hostname.replace(/^www\./, '');
-                                                  elements.push(
-                                                    <a
-                                                      key={`url-${idx}-${match.index}`}
-                                                      href={match[6]}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="text-blue-600 underline"
-                                                    >
-                                                      {host}
-                                                    </a>
-                                                  );
-                                                } catch {
-                                                  elements.push(
-                                                    <a
-                                                      key={`url-fallback-${idx}-${match.index}`}
-                                                      href={match[6]}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="text-blue-600 underline"
-                                                    >
-                                                      {match[6]}
-                                                    </a>
-                                                  );
-                                                }
-                                              }
-                                              lastIndex = match.index + match[0].length;
-                                            }
-                                            if (lastIndex < raw.length) {
-                                              elements.push(...[].concat(highlightMatches(raw.slice(lastIndex)), searchTerm));
-                                            }
-                                            return elements;
-                                          })()}
+                                          {buildLineElements(line, idx, isListItem, searchTerm)}
                                         </span>
                                         <span className="invisible group-hover:visible">
                                           <PencilIcon

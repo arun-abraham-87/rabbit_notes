@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon, ExclamationCircleIcon, CalendarIcon } from '@heroicons/react/24/solid';
 // Removed react-beautiful-dnd imports
-import { processContent, parseFormattedContent} from '../utils/TextUtils';
+import { processContent, parseFormattedContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
 import { getDateAgeInYearsMonthsDays, formatAndAgeDate } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
@@ -16,7 +16,7 @@ import LinkNotesModal from './LinkNotesModal';
 import ImageModal from './ImageModal';
 import NoteMetaInfo from './NoteMetaInfo';
 import TagSelectionPopup from './TagSelectionPopup';
-
+import InlineEditor from './InlineEditor';
 
 // ─── end line‑rendering helper ──────────────────────────────────────
 
@@ -434,39 +434,17 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                     className={`group text-2xl font-bold cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
-                                      <>
-                                        <input
-                                          type="text"
-                                          value={editedLineContent}
-                                          onChange={(e) => setEditedLineContent(e.target.value)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                              const lines = note.content.split('\n');
-                                              lines[idx] = `###${editedLineContent}###`;
-                                              updateNote(note.id, lines.join('\n'));
-                                              setEditingLine({ noteId: null, lineIndex: null });
-                                            }
-                                          }}
-                                          className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
-                                        />
-                                        <button
-                                          onClick={() => {
-                                            const lines = note.content.split('\n');
-                                            lines[idx] = `###${editedLineContent}###`;
-                                            updateNote(note.id, lines.join('\n'));
-                                            setEditingLine({ noteId: null, lineIndex: null });
-                                          }}
-                                          className="text-green-600 text-xs font-semibold mr-1 hover:underline"
-                                        >
-                                          Save
-                                        </button>
-                                        <button
-                                          onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
-                                          className="text-red-500 text-xs font-semibold hover:underline"
-                                        >
-                                          Cancel
-                                        </button>
-                                      </>
+                                      <InlineEditor
+                                        text={editedLineContent}
+                                        setText={setEditedLineContent}
+                                        onSave={(newText) => {
+                                          const lines = note.content.split('\n');
+                                          lines[idx] = `###${newText}###`;      // h1 wrapper
+                                          updateNote(note.id, lines.join('\n'));
+                                          setEditingLine({ noteId: null, lineIndex: null });
+                                        }}
+                                        onCancel={() => setEditingLine({ noteId: null, lineIndex: null })}
+                                      />
                                     ) : (
                                       <>
                                         {(() => {
@@ -518,39 +496,17 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                     className={`group text-lg font-semibold text-purple-700 cursor-text flex items-center justify-between ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
-                                      <>
-                                        <input
-                                          type="text"
-                                          value={editedLineContent}
-                                          onChange={(e) => setEditedLineContent(e.target.value)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                              const lines = note.content.split('\n');
-                                              lines[idx] = `##${editedLineContent}##`;
-                                              updateNote(note.id, lines.join('\n'));
-                                              setEditingLine({ noteId: null, lineIndex: null });
-                                            }
-                                          }}
-                                          className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
-                                        />
-                                        <button
-                                          onClick={() => {
-                                            const lines = note.content.split('\n');
-                                            lines[idx] = `##${editedLineContent}##`;
-                                            updateNote(note.id, lines.join('\n'));
-                                            setEditingLine({ noteId: null, lineIndex: null });
-                                          }}
-                                          className="text-green-600 text-xs font-semibold mr-1 hover:underline"
-                                        >
-                                          Save
-                                        </button>
-                                        <button
-                                          onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
-                                          className="text-red-500 text-xs font-semibold hover:underline"
-                                        >
-                                          Cancel
-                                        </button>
-                                      </>
+                                      <InlineEditor
+                                      text={editedLineContent}
+                                      setText={setEditedLineContent}
+                                      onSave={(newText) => {
+                                        const lines = note.content.split('\n');
+                                        lines[idx] = `##${newText}##`;          // h2 wrapper
+                                        updateNote(note.id, lines.join('\n'));
+                                        setEditingLine({ noteId: null, lineIndex: null });
+                                      }}
+                                      onCancel={() => setEditingLine({ noteId: null, lineIndex: null })}
+                                    />
                                     ) : (
                                       <>
                                         <span className="flex-1">
@@ -591,39 +547,17 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                     className={`${(indentFlags[idx] || isListItem) ? 'pl-8 ' : ''}group cursor-text flex items-center justify-between ${(dragStartIndex !== null && idx >= Math.min(dragStartIndex, dragEndIndex) && idx <= Math.max(dragStartIndex, dragEndIndex)) ? 'bg-blue-100' : ''} ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
-                                      <>
-                                        <input
-                                          type="text"
-                                          value={editedLineContent}
-                                          onChange={(e) => setEditedLineContent(e.target.value)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                              const lines = note.content.split('\n');
-                                              lines[idx] = editedLineContent;
-                                              updateNote(note.id, lines.join('\n'));
-                                              setEditingLine({ noteId: null, lineIndex: null });
-                                            }
-                                          }}
-                                          className="flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm"
-                                        />
-                                        <button
-                                          onClick={() => {
-                                            const lines = note.content.split('\n');
-                                            lines[idx] = editedLineContent;
-                                            updateNote(note.id, lines.join('\n'));
-                                            setEditingLine({ noteId: null, lineIndex: null });
-                                          }}
-                                          className="text-green-600 text-xs font-semibold mr-1 hover:underline"
-                                        >
-                                          Save
-                                        </button>
-                                        <button
-                                          onClick={() => setEditingLine({ noteId: null, lineIndex: null })}
-                                          className="text-red-500 text-xs font-semibold hover:underline"
-                                        >
-                                          Cancel
-                                        </button>
-                                      </>
+                                      <InlineEditor
+                                      text={editedLineContent}
+                                      setText={setEditedLineContent}
+                                      onSave={(newText) => {
+                                        const lines = note.content.split('\n');
+                                        lines[idx] = newText;
+                                        updateNote(note.id, lines.join('\n'));
+                                        setEditingLine({ noteId: null, lineIndex: null });
+                                      }}
+                                      onCancel={() => setEditingLine({ noteId: null, lineIndex: null })}
+                                    />
                                     ) : (
                                       <>
                                         {(indentFlags[idx] || isListItem) && (

@@ -14,6 +14,7 @@ import LinkedNotesSection from './LinkedNotesSection';
 import EndDatePickerModal from './EndDatePickerModal';
 import LinkNotesModal from './LinkNotesModal';
 import ImageModal from './ImageModal';
+import NoteMetaInfo from './NoteMetaInfo';
 import TagSelectionPopup from './TagSelectionPopup';
 
 
@@ -347,75 +348,15 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                 {/* Layer 1: Content and Edit/Delete */}
                 <div className="p-2">
                   {(note.content.includes('meta::todo') || endDateNotice) && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircleIcon className="h-6 w-6 text-green-600" title="Todo" />
-                      {todoAgeNotice && (
-                        <button
-                          className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-                          onClick={() => {
-                            const updatedContent = note.content
-                              .split('\n')
-                              .filter(line => !line.trim().startsWith('meta::todo'))
-                              .join('\n')
-                              .trim();
-                            updateNote(note.id, updatedContent);
-                          }}
-                          title="Remove todo notice"
-                        >
-                          <span>{todoAgeNotice}</span>
-                        </button>
-                      )}
-                      {parsedEndDate && (
-                        <>
-                          <span className="text-xs text-gray-700 font-semibold mr-1">Deadline Date:</span>
-                          <span
-                            className="text-xs text-gray-500 cursor-pointer"
-                            onClick={() => setShowEndDatePickerForNoteId(note.id)}
-                          >
-                            {parsedEndDate.toLocaleDateString()}
-                          </span>
-                          <CalendarIcon
-                            className="h-5 w-5 text-gray-600 cursor-pointer hover:text-gray-800"
-                            onClick={() => setShowEndDatePickerForNoteId(note.id)}
-                            title="Edit end date"
-                          />
-                        </>
-                      )}
-                      {endDateNotice && (
-                        <button
-                          className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-                          onClick={() => {
-                            const updatedContent = note.content
-                              .split('\n')
-                              .filter(line => !line.trim().startsWith('meta::end_date::'))
-                              .join('\n')
-                              .trim();
-                            updateNote(note.id, updatedContent);
-                          }}
-                          title="Remove end date"
-                        >
-                          {isDeadlinePassed && (
-                            <ExclamationCircleIcon className="h-4 w-4 text-red-600" title="Deadline passed" />
-                          )}
-                          <span>{endDateNotice}</span>
-                          <span className={`${isDeadlinePassed ? 'text-red-600 hover:text-red-800' : 'text-blue-600 hover:text-blue-900'} ml-1 cursor-pointer`}>
-                            ×
-                          </span>
-                        </button>
-                      )}
-
-                      {!parsedEndDate && (
-                        <button
-                          className="text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 bg-gray-100 text-gray-800 hover:bg-gray-200"
-                          onClick={() => setShowEndDatePickerForNoteId(note.id)}
-                          title="Set end date"
-                        >
-                          No Deadline
-                          <CalendarIcon className="h-4 w-4 text-gray-600 ml-1" title="Pick date" />
-                        </button>
-                      )}
-
-                    </div>
+                    < NoteMetaInfo
+                      note={note}
+                      todoAgeNotice={todoAgeNotice}
+                      parsedEndDate={parsedEndDate}
+                      endDateNotice={endDateNotice}
+                      isDeadlinePassed={isDeadlinePassed}
+                      updateNote={updateNote}
+                      setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
+                    />
                   )}
                   <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                     {(() => {

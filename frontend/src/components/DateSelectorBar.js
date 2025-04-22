@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getAustralianDate, getNextOrPrevDate, getAge } from '../utils/DateUtils.js'
+import { ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 
 
 const DateSelectorBar = ({ setNoteDate }) => {
@@ -46,12 +47,23 @@ const DateSelectorBar = ({ setNoteDate }) => {
 
   return (
     <div>
-      <button
+      <div
+        role="button"
         onClick={() => setCollapsed(prev => !prev)}
-        className="mb-2 px-3 py-1 text-sm font-medium bg-gray-200 rounded hover:bg-gray-300"
+        className="mb-2 inline-flex items-center space-x-1 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900"
       >
-        Date Selection
-      </button>
+        {collapsed ? (
+          <>
+            <ChevronRightIcon className="h-4 w-4 text-gray-700" />
+            <span className="italic">Date Selection</span>
+          </>
+        ) : (
+          <>
+            <ChevronDownIcon className="h-4 w-4 text-gray-700" />
+            <span className="italic">Date Selection</span>
+          </>
+        )}
+      </div>
       {!collapsed && (
         <div>
           {/* Begin original DateSelectorBar content */}

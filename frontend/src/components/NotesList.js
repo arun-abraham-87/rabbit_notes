@@ -77,9 +77,6 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const [rightClickPos, setRightClickPos] = useState({ x: 0, y: 0 });
   const [rightClickNoteId, setRightClickNoteId] = useState(null);
   const [rightClickIndex, setRightClickIndex] = useState(null);
-  const [dragSelecting, setDragSelecting] = useState(false);
-  const [dragStartIndex, setDragStartIndex] = useState(null);
-  const [dragEndIndex, setDragEndIndex] = useState(null);
   const [editingLine, setEditingLine] = useState({ noteId: null, lineIndex: null });
   const [editedLineContent, setEditedLineContent] = useState('');
   // Highlight every case‑insensitive occurrence of `searchTerm` within plain text.
@@ -400,22 +397,13 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                 return (
                                   <div
                                     key={idx}
-                                    onMouseDown={() => {
-                                      setDragSelecting(true);
-                                      setDragStartIndex(idx);
-                                      setDragEndIndex(idx);
-                                    }}
-                                    onMouseEnter={() => {
-                                      if (dragSelecting) setDragEndIndex(idx);
-                                    }}
-                                    onMouseUp={() => setDragSelecting(false)}
                                     onContextMenu={(e) => {
                                       e.preventDefault();
                                       setRightClickNoteId(note.id);
                                       setRightClickIndex(idx);
                                       setRightClickPos({ x: e.clientX, y: e.clientY });
                                     }}
-                                    className={`cursor-text ${(dragStartIndex !== null && idx >= Math.min(dragStartIndex, dragEndIndex) && idx <= Math.max(dragStartIndex, dragEndIndex)) ? 'bg-blue-100' : ''} ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                    className={`cursor-text  ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
                                   >
                                     &nbsp;
                                   </div>
@@ -529,22 +517,14 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                 return (
                                   <div
                                     key={idx}
-                                    onMouseDown={() => {
-                                      setDragSelecting(true);
-                                      setDragStartIndex(idx);
-                                      setDragEndIndex(idx);
-                                    }}
-                                    onMouseEnter={() => {
-                                      if (dragSelecting) setDragEndIndex(idx);
-                                    }}
-                                    onMouseUp={() => setDragSelecting(false)}
+                               
                                     onContextMenu={(e) => {
                                       e.preventDefault();
                                       setRightClickNoteId(note.id);
                                       setRightClickIndex(idx);
                                       setRightClickPos({ x: e.clientX, y: e.clientY });
                                     }}
-                                    className={`${(indentFlags[idx] || isListItem) ? 'pl-8 ' : ''}group cursor-text flex items-center justify-between ${(dragStartIndex !== null && idx >= Math.min(dragStartIndex, dragEndIndex) && idx <= Math.max(dragStartIndex, dragEndIndex)) ? 'bg-blue-100' : ''} ${rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''}`}
+                                    className={`${(indentFlags[idx] || isListItem) ? 'pl-8 ' : ''}group cursor-text flex items-center justify-between `}
                                   >
                                     {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
                                       <InlineEditor

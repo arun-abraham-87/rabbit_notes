@@ -16,7 +16,7 @@ const NotesListing = ({ objList, notes, addNote, setNotes, objects, searchQuery,
     };
 
     return (
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
             <DateSelectorBar setNoteDate={setNoteDate} defaultCollapsed={true} />
             <NoteEditor
                 objList={objList}

@@ -62,26 +62,52 @@ const App = () => {
   }, [searchQuery, noteDate]);
 
   return (
-    <div className="App">
+    <div className="App flex flex-col h-screen">
       <Navbar activePage={activePage} setActivePage={setActivePage} />
-      <div className='p-8'>
-        {activePage === 'notes' && (
-          <NotesListing  objList={objectList} notes={notes} addNote={addNote} setNotes={setNotes} objects={objects} searchQuery={searchQuery} setSearchQuery={setSearchQuery} addTag={addTag} setNoteDate={setNoteDate} totals={totals} setTotals={setTotals} />
-        )}
+      <div className="flex flex-1 overflow-auto">
+        {/* Left panel */}
+        <div className="w-1/4 bg-gray-100 p-4">
+          <a
+            href="https://mail.google.com/mail/u/0/#search/storypark/WhctKLbVlkFgTwcZrrNPpVVGQZcRRfWlpZLSpMRLKXRBJzMtpLXPzbjQSBkqrqCJTXSMGPQ"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            mail
+          </a>
+        </div>
 
-        {activePage === 'tags' && (
-          <TagListing objectList={objects}/>
-        )}
-
-        {activePage === 'todos' && (
-          <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
-            <TodoList todos={todos} notes={notes} updateTodosCallback={setTodos} updateNoteCallBack={setNotes} />
-          </div>
-        )}
-
+        {/* Right panel: main content */}
+        <div className="flex-1 p-8 overflow-auto">
+          {activePage === 'notes' && (
+            <NotesListing
+              objList={objectList}
+              notes={notes}
+              addNote={addNote}
+              setNotes={setNotes}
+              objects={objects}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              addTag={addTag}
+              setNoteDate={setNoteDate}
+              totals={totals}
+              setTotals={setTotals}
+            />
+          )}
+          {activePage === 'tags' && <TagListing objectList={objects} />}
+          {activePage === 'todos' && (
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
+              <TodoList
+                todos={todos}
+                notes={notes}
+                updateTodosCallback={setTodos}
+                updateNoteCallBack={setNotes}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
-
   );
 };
 

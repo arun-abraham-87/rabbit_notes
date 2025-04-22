@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon, ExclamationCircleIcon, CalendarIcon } from '@heroicons/react/24/solid';
+import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon, ExclamationCircleIcon, CalendarIcon, PlusIcon } from '@heroicons/react/24/solid';
 // Removed react-beautiful-dnd imports
 import { processContent, parseFormattedContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
@@ -79,6 +79,10 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const [rightClickIndex, setRightClickIndex] = useState(null);
   const [editingLine, setEditingLine] = useState({ noteId: null, lineIndex: null });
   const [editedLineContent, setEditedLineContent] = useState('');
+  // For adding a new line to a note
+  const [addingLineNoteId, setAddingLineNoteId] = useState(null);
+  const [newLineText, setNewLineText] = useState('');
+  const newLineInputRef = useRef(null);
   // Highlight every case‑insensitive occurrence of `searchTerm` within plain text.
   // Returns a mix of strings and <mark> elements so callers may spread / concat.
 
@@ -736,6 +740,54 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                   toggleNoteSelection={toggleNoteSelection}
                   updateNote={updateNote}
                 />
+                {/* Add new line button */}
+                <div className="px-4 py-2">
+                  <button
+                    title="Add line"
+                    onClick={() => {
+                      setAddingLineNoteId(note.id);
+                      setNewLineText('');
+                      setTimeout(() => newLineInputRef.current?.focus(), 0);
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <PlusIcon className="h-5 w-5" />
+                  </button>
+                </div>
+                {/* New line editor */}
+                {addingLineNoteId === note.id && (
+                  <div className="px-4 py-2 bg-gray-50">
+                    <textarea
+                      ref={newLineInputRef}
+                      className="w-full border rounded p-2"
+                      rows={2}
+                      value={newLineText}
+                      onChange={e => setNewLineText(e.target.value)}
+                    />
+                    <div className="mt-2 flex space-x-2">
+                      <button
+                        onClick={() => {
+                          const updated = note.content.trimEnd() + '\n' + newLineText;
+                          updateNote(note.id, updated);
+                          setAddingLineNoteId(null);
+                          setNewLineText('');
+                        }}
+                        className="px-3 py-1 bg-blue-500 text-white rounded"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => {
+                          setAddingLineNoteId(null);
+                          setNewLineText('');
+                        }}
+                        className="px-3 py-1 bg-gray-300 rounded"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <LinkedNotesSection
                   note={note}
                   allNotes={safeNotes}

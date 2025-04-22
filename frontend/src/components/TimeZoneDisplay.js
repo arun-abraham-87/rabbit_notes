@@ -49,6 +49,11 @@ const ZoneCard = ({ label, timeZone }) => {
   const icon      = isDay ? '☀️' : '🌙';
   const animation = isDay ? 'animate-bounce' : 'animate-pulse';
 
+  // Conditional background: gradient at night
+  const cardBgClasses = isDay
+    ? 'bg-white border border-gray-200 text-gray-700'
+    : 'bg-gradient-to-br from-blue-900 via-black to-blue-800 text-white';
+
   // Format HH:MM AM/PM
   const [timeStr, ampm] = zoneDate
     .toLocaleString('en-US', {
@@ -66,7 +71,7 @@ const ZoneCard = ({ label, timeZone }) => {
   const diff = label === 'AEST' ? null : getTimeDiffFromAEST(timeZone);
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-8 border border-gray-200 w-auto">
+    <div className={`${cardBgClasses} shadow-md rounded-lg p-8 w-auto`}>
       <div className="flex justify-between text-sm text-gray-500 mb-1">
         <span className="font-bold">{label}</span>
         <span className={animation}>{icon}</span>

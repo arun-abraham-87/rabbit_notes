@@ -66,13 +66,13 @@ const ZoneCard = ({ label, timeZone }) => {
   const diff = label === 'AEST' ? null : getTimeDiffFromAEST(timeZone);
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-16 border border-gray-200 w-auto">
+    <div className="bg-white shadow-md rounded-lg p-8 border border-gray-200 w-auto">
       <div className="flex justify-between text-sm text-gray-500 mb-1">
-        <span>{label}</span>
+        <span className="font-bold">{label}</span>
         <span className={animation}>{icon}</span>
       </div>
 
-      <div className={`text-3xl font-semibold ${color} whitespace-nowrap`}>
+      <div className={`text-xl font-semibold ${color} whitespace-nowrap`}>
         {timeStr} {ampm}
       </div>
 
@@ -83,7 +83,7 @@ const ZoneCard = ({ label, timeZone }) => {
           day: 'numeric',
         })}
         {diff && (
-          <span className="block mt-1 text-[10px] text-gray-400">
+          <span className="block mt-1 text-2xl text-gray-400">
             {diff}
           </span>
         )}
@@ -102,7 +102,7 @@ const TimeZoneDisplay = () => {
     .sort((a, b) => a.diffHrs - b.diffHrs);
 
   return (
-    <div className="bg-gray-100 p-16 rounded-lg">
+    <div className="bg-gray-100 p-8 rounded-lg">
       <div className="flex flex-col space-y-4">
         {sortedZones.map(({ label, timeZone }) => (
           <ZoneCard key={label} label={label} timeZone={timeZone} />

@@ -68,7 +68,7 @@ const App = () => {
       <div className="flex flex-1 overflow-auto">
         {/* Left panel */}
         <div className="w-1/4 min-w-[16rem] border-r overflow-y-auto">
-          <LeftPanel notes={notes} />
+          <LeftPanel notes={notes} setNotes={setNotes} />
         </div>
 
         {/* Right panel: main content */}

@@ -96,7 +96,7 @@ const NoteFooter = ({
             <div className="group relative">
               <XCircleIcon
                 title="Unmark as Todo"
-                className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
+                className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
                 onClick={() => {
                   const updatedContent = note.content
                     .split('\n')
@@ -118,7 +118,7 @@ const NoteFooter = ({
           <div className="group relative">
             <CheckCircleIcon
               title="Mark as Todo"
-              className="h-4 w-4 text-purple-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-purple-800"
+              className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
               onClick={() => {
                 const timestamp = new Date().toISOString();
                 const contentWithoutOldTodoMeta = note.content
@@ -136,7 +136,7 @@ const NoteFooter = ({
         <div className="group relative">
           <SunIcon
             title="Mark as Today"
-            className="h-4 w-4 text-yellow-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-yellow-700"
+            className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
             onClick={() => {
               const timestamp = new Date().toISOString();
               const contentWithoutOldTodayMeta = note.content
@@ -154,7 +154,7 @@ const NoteFooter = ({
         <div className="group relative">
           <EyeIcon
             title={note.content.toLowerCase().includes('#watch') ? 'Unmark from Watchlist' : 'Add to Watchlist'}
-            className="h-4 w-4 text-yellow-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-yellow-800"
+            className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
             onClick={() => {
               if (note.content.toLowerCase().includes('#watch')) {
                 const updated = note.content.replace(/#watch/gi, '').trim();
@@ -169,7 +169,7 @@ const NoteFooter = ({
         {/* Edit */}
         <div className="group relative">
           <PencilIcon
-            className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
+            className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
             onClick={() => setPopupNoteText(note.id)}
           />
         </div>
@@ -177,7 +177,7 @@ const NoteFooter = ({
         {/* Delete */}
         <div className="group relative">
           <TrashIcon
-            className="h-4 w-4 text-gray-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-800"
+            className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
             onClick={() => handleDelete(note.id)}
           />
         </div>
@@ -199,7 +199,7 @@ const NoteFooter = ({
         <div className="group relative">
           <LinkIcon
             title="Link Note"
-            className="h-4 w-4 text-blue-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-blue-800"
+            className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
             onClick={() => {
               setLinkingNoteId(note.id);
               setLinkSearchTerm('');
@@ -212,7 +212,7 @@ const NoteFooter = ({
         <div className="group relative">
           <BookmarkIcon
             title="Bookmark"
-            className="h-4 w-4 text-blue-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-blue-800"
+            className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
             onClick={() => {
               const timestamp = new Date().toISOString();
               const contentWithoutOldBookmarkMeta = note.content
@@ -230,7 +230,7 @@ const NoteFooter = ({
         <div className="group relative">
           <HashtagIcon
             title="Add Abbreviation"
-            className="h-4 w-4 text-indigo-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-indigo-800"
+            className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
             onClick={() => {
               const timestamp = new Date().toISOString();
               const contentWithoutOldAbbreviationMeta = note.content

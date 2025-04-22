@@ -6,6 +6,7 @@ import NotesListing from './components/NotesListing.js';
 import TagListing from './components/TagListing.js';
 import TodoList from './components/TodoList.js';
 import NoteEditor from './components/NoteEditor';
+import LeftPanel from './components/LeftPanel';
 
 import { addNewNote, addNewTag, loadNotes, loadTags, loadTodos } from './utils/ApiUtils';
 
@@ -66,16 +67,7 @@ const App = () => {
       <Navbar activePage={activePage} setActivePage={setActivePage} />
       <div className="flex flex-1 overflow-auto">
         {/* Left panel */}
-        <div className="w-1/4 bg-gray-100 p-4">
-          <a
-            href="https://mail.google.com/mail/u/0/#search/storypark/WhctKLbVlkFgTwcZrrNPpVVGQZcRRfWlpZLSpMRLKXRBJzMtpLXPzbjQSBkqrqCJTXSMGPQ"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:underline"
-          >
-            mail
-          </a>
-        </div>
+        <LeftPanel notes={notes} />
 
         {/* Right panel: main content */}
         <div className="flex-1 p-8 overflow-auto">

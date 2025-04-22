@@ -1041,14 +1041,6 @@ const handleSelectTag = (tag) => {
                       e.preventDefault();
                       setContextMenu({ visible: true, x: e.pageX, y: e.pageY, index });
                     }}
-                    style={{
-                      backgroundColor:
-                        focusedLineIndex === index
-                          ? 'inherit'
-                          : searchQuery && line.text && line.text.toLowerCase().includes(searchQuery.toLowerCase())
-                            ? '#fef3c7'
-                            : 'inherit'
-                    }}
                     onChange={(e) => {
                       handleTextChange(index, e.target.value);
                       handleInputChange(e)

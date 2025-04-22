@@ -67,10 +67,12 @@ const App = () => {
       <Navbar activePage={activePage} setActivePage={setActivePage} />
       <div className="flex flex-1 overflow-auto">
         {/* Left panel */}
-        <LeftPanel notes={notes} />
+        <div className="w-1/4 min-w-[16rem] border-r overflow-y-auto">
+          <LeftPanel notes={notes} />
+        </div>
 
         {/* Right panel: main content */}
-        <div className="flex-1 p-8 overflow-auto">
+        <div className="w-3/4 p-8 overflow-auto">
           {activePage === 'notes' && (
             <NotesListing
               objList={objectList}

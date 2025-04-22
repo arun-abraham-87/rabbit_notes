@@ -13,6 +13,16 @@ const timeZones = [
   { label: 'Bristol', timeZone: 'Etc/GMT-1' },
 ];
 
+// Map zone labels to flag emojis
+const flagMap = {
+  AEST: '🇦🇺',
+  IST: '🇮🇳',
+  EST: '🇺🇸',
+  EDT: '🇺🇸',
+  PST: '🇺🇸',
+  Bristol: '🇬🇧',
+};
+
 /**
  * Helper to format a date as YYYY-MM-DD in a given timezone.
  */
@@ -100,7 +110,9 @@ const ZoneCard = ({ label, timeZone }) => {
   return (
     <div className={`${cardBgClasses} shadow-md rounded-lg p-8 w-auto`}>
       <div className="flex justify-between text-sm text-gray-500 mb-1">
-        <span className="font-bold">{label}</span>
+        <span className="font-bold">
+          {label} {flagMap[label] || ''}
+        </span>
         <span className={animation}>{icon}</span>
       </div>
 
@@ -112,7 +124,7 @@ const ZoneCard = ({ label, timeZone }) => {
         <span className="block italic mb-1">{dayLabel}</span>
         {formattedDate}
         {diff && (
-          <span className="block mt-1 text-2xl text-gray-400">
+          <span className="inline-block mt-0 text-xl text-gray-400 whitespace-nowrap">
             {diff}
           </span>
         )}
@@ -125,17 +137,48 @@ const ZoneCard = ({ label, timeZone }) => {
  * Renders the full grid of ZoneCards.
  */
 const TimeZoneDisplay = () => {
-  // Enrich with numeric diff and sort by diffHrs ascending (least behind first)
+  // Enrich with numeric diff, dayLabel, and sort by diffHrs ascending (least behind first)
   const sortedZones = timeZones
-    .map(z => ({ ...z, diffHrs: getTimeDiffHours(z.timeZone) }))
+    .map(z => {
+      const diffHrs = getTimeDiffHours(z.timeZone);
+      const now = new Date();
+      const zoneYMD = formatYMD(now, z.timeZone);
+      const aestYMD = formatYMD(now, 'Australia/Sydney');
+      const dayLabel =
+        zoneYMD < aestYMD
+          ? 'Previous Day'
+          : zoneYMD > aestYMD
+            ? 'Next Day'
+            : 'Same Day';
+      return { ...z, diffHrs, dayLabel };
+    })
     .sort((a, b) => a.diffHrs - b.diffHrs);
+
+  // Find where Same Day ends and Previous/Next Day begins
+  const splitIndex = sortedZones.findIndex(z => z.dayLabel !== 'Same Day');
 
   return (
     <div className="bg-gray-100 p-8 rounded-lg">
       <div className="flex flex-col space-y-4">
-        {sortedZones.map(({ label, timeZone }) => (
-          <ZoneCard key={label} label={label} timeZone={timeZone} />
-        ))}
+        {/* Same Day zones */}
+        {splitIndex > 0
+          ? sortedZones.slice(0, splitIndex).map(({ label, timeZone }) => (
+              <ZoneCard key={label} label={label} timeZone={timeZone} />
+            ))
+          : sortedZones.map(({ label, timeZone }) => (
+              <ZoneCard key={label} label={label} timeZone={timeZone} />
+            ))}
+
+        {/* Separator */}
+        {splitIndex > 0 && (
+          <div className="h-1 bg-black w-full my-2" />
+        )}
+
+        {/* Previous/Next Day zones */}
+        {splitIndex > 0 &&
+          sortedZones.slice(splitIndex).map(({ label, timeZone }) => (
+            <ZoneCard key={label} label={label} timeZone={timeZone} />
+          ))}
       </div>
     </div>
   );

@@ -791,7 +791,7 @@ const handleSelectTag = (tag) => {
           <button
             onClick={() => {
               setLines([{ id: 'line-0', text: 'meta::todo', isTitle: false }]);
-              if (setSearchQuery) setSearchQuery('meta::todo');
+              if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::todo');
               setShowTodoSubButtons(true);
             }}
             className={`px-3 py-1 text-xs rounded transition-all transform ${showTodoSubButtons ? 'opacity-100 scale-105 bg-purple-300 border border-purple-700' : 'opacity-30 hover:opacity-60'
@@ -848,7 +848,7 @@ const handleSelectTag = (tag) => {
           <button
             onClick={() => {
               setLines([{ id: 'line-0', text: '#watch', isTitle: false }]);
-              if (setSearchQuery) setSearchQuery('#watch');
+              if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + '#watch');
             }}
             className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('#watch') ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700' : 'opacity-30 hover:opacity-60'
               }`}
@@ -858,7 +858,7 @@ const handleSelectTag = (tag) => {
           <button
             onClick={() => {
               setLines([{ id: 'line-0', text: '#people', isTitle: false }]);
-              if (setSearchQuery) setSearchQuery('#people');
+              if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + '#people');
             }}
             className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('#people') ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700' : 'opacity-30 hover:opacity-60'
               }`}
@@ -868,12 +868,26 @@ const handleSelectTag = (tag) => {
           <button
             onClick={() => {
               setLines([{ id: 'line-0', text: 'meta::end_date::', isTitle: false }]);
-              if (setSearchQuery) setSearchQuery('meta::end_date::');
+              if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::end_date::');
             }}
             className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('meta::end_date::') ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700' : 'opacity-30 hover:opacity-60'
               }`}
           >
             Has End Date
+          </button>
+          {/* Abbreviation filter */}
+          <button
+            onClick={() => {
+              setLines([{ id: `line-${Date.now()}`, text: 'meta::Abbreviation::', isTitle: false }]);
+              if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::Abbreviation::');
+            }}
+            className={`px-3 py-1 text-xs rounded transition-all transform ${
+              searchQuery?.includes('meta::Abbreviation::')
+                ? 'opacity-100 scale-105 bg-indigo-300 border border-indigo-700'
+                : 'opacity-30 hover:opacity-60'
+            }`}
+          >
+            Abbreviation
           </button>
           <button
             onClick={() => {

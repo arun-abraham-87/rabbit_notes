@@ -694,6 +694,27 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                       </span>
                     </button>
                   )}
+                  {note.content.includes('meta::abbreviation') && (
+                    <button
+                      className="bg-gray-300 text-gray-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
+                    >
+                      Abbreviation
+                      <span
+                        onClick={() => {
+                          const updatedContent = note.content
+                            .split('\n')
+                            .filter(line => !line.trim().startsWith('meta::abbreviation'))
+                            .join('\n')
+                            .trim();
+                          updateNote(note.id, updatedContent);
+                        }}
+                        className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer"
+                        title="Remove tag"
+                      >
+                        ×
+                      </span>
+                    </button>
+                  )}
                   {duplicateUrlNoteIds.has(note.id) && (
                     <span className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-400">
                       Duplicate URL

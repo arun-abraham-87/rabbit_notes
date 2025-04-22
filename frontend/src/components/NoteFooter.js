@@ -6,6 +6,8 @@ import {
   PencilIcon,
   TrashIcon,
   EyeIcon,
+  LinkIcon,
+  HashtagIcon,
 } from '@heroicons/react/24/solid';
 import { formatDate } from '../utils/DateUtils';
 
@@ -176,17 +178,33 @@ const NoteFooter = ({
 
         {/* Link Notes */}
         <div className="group relative">
-          <button
+          <LinkIcon
             title="Link Note"
+            className="h-4 w-4 text-blue-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-blue-800"
             onClick={() => {
               setLinkingNoteId(note.id);
               setLinkSearchTerm('');
               setLinkPopupVisible(true);
             }}
-            className="text-blue-600 hover:text-blue-800 text-sm"
-          >
-            Link Notes
-          </button>
+          />
+        </div>
+
+        {/* Add Abbreviation */}
+        <div className="group relative">
+          <HashtagIcon
+            title="Add Abbreviation"
+            className="h-4 w-4 text-indigo-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-indigo-800"
+            onClick={() => {
+              const timestamp = new Date().toISOString();
+              const contentWithoutOldAbbreviationMeta = note.content
+                .split('\n')
+                .filter(line => !line.trim().startsWith('meta::abbreviation::'))
+                .join('\n')
+                .trim();
+              const newContent = `${contentWithoutOldAbbreviationMeta}\nmeta::abbreviation::${timestamp}`;
+              updateNote(note.id, newContent);
+            }}
+          />
         </div>
 
         {/* Select Checkbox */}

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import TimeZoneDisplay from './TimeZoneDisplay';
 
 const Navbar = ({ activePage, setActivePage }) => {
   const [time, setTime] = useState(new Date());
+  const [showTimezones, setShowTimezones] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -27,8 +29,17 @@ const Navbar = ({ activePage, setActivePage }) => {
         </div>
 
         {/* Center: Clock */}
-        <div className="text-base font-medium">
+        <div
+          className="relative text-base font-medium"
+          onMouseEnter={() => setShowTimezones(true)}
+          onMouseLeave={() => setShowTimezones(false)}
+        >
           {formattedTime}
+          {showTimezones && (
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
+              <TimeZoneDisplay />
+            </div>
+          )}
         </div>
 
         {/* Right: Navigation Buttons */}

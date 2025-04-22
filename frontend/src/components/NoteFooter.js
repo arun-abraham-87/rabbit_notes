@@ -8,6 +8,7 @@ import {
   TrashIcon,
   EyeIcon,
   LinkIcon,
+  BookmarkIcon,
   HashtagIcon,
 } from '@heroicons/react/24/solid';
 import { formatDate } from '../utils/DateUtils';
@@ -203,6 +204,24 @@ const NoteFooter = ({
               setLinkingNoteId(note.id);
               setLinkSearchTerm('');
               setLinkPopupVisible(true);
+            }}
+          />
+        </div>
+
+        {/* Bookmark */}
+        <div className="group relative">
+          <BookmarkIcon
+            title="Bookmark"
+            className="h-4 w-4 text-blue-600 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-blue-800"
+            onClick={() => {
+              const timestamp = new Date().toISOString();
+              const contentWithoutOldBookmarkMeta = note.content
+                .split('\n')
+                .filter(line => !line.trim().startsWith('meta::bookmark::'))
+                .join('\n')
+                .trim();
+              const newContent = `${contentWithoutOldBookmarkMeta}\nmeta::bookmark::${timestamp}`;
+              updateNote(note.id, newContent);
             }}
           />
         </div>

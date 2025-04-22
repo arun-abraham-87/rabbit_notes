@@ -3,6 +3,7 @@ import React from 'react';
 import {
   XCircleIcon,
   CheckCircleIcon,
+  SunIcon,
   PencilIcon,
   TrashIcon,
   EyeIcon,
@@ -130,6 +131,23 @@ const NoteFooter = ({
             />
           </div>
         )}
+
+        <div className="group relative">
+          <SunIcon
+            title="Mark as Today"
+            className="h-4 w-4 text-yellow-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-yellow-700"
+            onClick={() => {
+              const timestamp = new Date().toISOString();
+              const contentWithoutOldTodayMeta = note.content
+                .split('\n')
+                .filter(line => !line.trim().startsWith('meta::today::'))
+                .join('\n')
+                .trim();
+              const newContent = `${contentWithoutOldTodayMeta}\nmeta::today::${timestamp}`;
+              updateNote(note.id, newContent);
+            }}
+          />
+        </div>
 
         {/* Toggle Watchlist */}
         <div className="group relative">

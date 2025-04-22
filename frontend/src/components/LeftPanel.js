@@ -31,35 +31,29 @@ const removeBookmarkFromNotes = (url, notes, setNotes) => {
 
 const LeftPanel = ({ notes, setNotes }) => {
   const uniqueUrls = useMemo(() => {
-    // Map to store url → custom label (if any)
-    const urlMap = new Map();
-
-    // Regexes for markdown links and bare URLs
-    const mdLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-    const urlRegex = /https?:\/\/[^\s)]+/g;
+    const seen = new Set();
+    const list = [];
+    // Combined regex to match markdown links or bare URLs
+    const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
 
     notes.forEach(note => {
+      // Only consider bookmarked notes
       if (note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark'))) {
-        // First extract markdown links
+        linkRegex.lastIndex = 0;
         let match;
-        while ((match = mdLinkRegex.exec(note.content)) !== null) {
-          const [, text, url] = match;
-          if (!urlMap.has(url)) {
-            urlMap.set(url, text);
+        while ((match = linkRegex.exec(note.content)) !== null) {
+          const url = match[2] || match[3];
+          const label = match[1] || null;
+          const key = `${url}|${label}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            list.push({ url, label });
           }
         }
-        // Then extract any bare URLs
-        const bareMatches = note.content.match(urlRegex) || [];
-        bareMatches.forEach(url => {
-          if (!urlMap.has(url)) {
-            urlMap.set(url, null);
-          }
-        });
       }
     });
 
-    // Convert map entries to array of objects
-    return Array.from(urlMap.entries()).map(([url, label]) => ({ url, label }));
+    return list;
   }, [notes]);
 
   return (

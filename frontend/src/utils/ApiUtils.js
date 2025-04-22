@@ -54,6 +54,16 @@ export const addNewTag = async (tagText) => {
     }
 };
 
+export const loadAllNotes = async (searchText,noteDate) => {
+    const encodedQuery = encodeURIComponent(searchText);
+    let url = `http://localhost:5001/api/notes?search=${encodedQuery}`;
+    url += `&currentDate=false`;
+    url += `&noteDate=${noteDate}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    return data
+  };
+
 
 export const loadNotes = async (searchText,noteDate) => {
     const encodedQuery = encodeURIComponent(searchText);

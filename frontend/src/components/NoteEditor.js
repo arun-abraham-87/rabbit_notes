@@ -39,8 +39,12 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
         (lastSpaceIndex === -1 ? "" : lines[focusedLineIndex].text.slice(0, lastSpaceIndex + 1)) +
         `${tag} `;
     const updatedLines = [...lines];
-    updatedLines[focusedLineIndex].text=updatedText;
+    updatedLines[focusedLineIndex].text = updatedText;
     setLines(updatedLines);
+    // Keep the search bar in sync
+    if (typeof setSearchQuery === 'function') {
+      setSearchQuery(updatedText.trim());
+    }
     setShowPopup(false);
    // setShowCalendar(false)
     setSelectedTagIndex(-1);

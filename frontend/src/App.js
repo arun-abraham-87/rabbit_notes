@@ -8,9 +8,10 @@ import TodoList from './components/TodoList.js';
 import NoteEditor from './components/NoteEditor';
 import LeftPanel from './components/LeftPanel';
 
-import { addNewNote, addNewTag, loadNotes, loadTags, loadTodos } from './utils/ApiUtils';
+import { addNewNote, addNewTag, loadNotes, loadAllNotes,loadTags, loadTodos } from './utils/ApiUtils';
 
 const App = () => {
+  const [allNotes, setAllNotes] = useState([]);
   const [notes, setNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -25,6 +26,14 @@ const App = () => {
     const data = await loadNotes(searchText, noteDate)
     setNotes(data.notes);
     setTotals(data.totals);
+  };
+
+  const fetchAllNotes = async () => {
+    const data = await loadAllNotes('', null)
+    setAllNotes(data.notes);
+    console.log('allNotes')
+    console.log(allNotes)
+
   };
 
   const fetchTodos = async () => {
@@ -42,6 +51,7 @@ const App = () => {
     addNewNote(content, tags, noteDate)
     setSearchQuery('')
     fetchNotes(searchQuery)
+    fetchAllNotes()
   };
 
   const addTag = async (objText) => {
@@ -51,6 +61,7 @@ const App = () => {
 
   useEffect(() => {
     fetchTags()
+    fetchAllNotes()
   }, []);
 
   useEffect(() => {
@@ -67,12 +78,12 @@ const App = () => {
       <Navbar activePage={activePage} setActivePage={setActivePage} />
       <div className="flex flex-1 overflow-auto">
         {/* Left panel */}
-        <div className="w-1/4 min-w-[16rem] border-r overflow-y-auto">
-          <LeftPanel notes={notes} setNotes={setNotes} />
+        <div className="w-[15%] min-w-[12rem] border-r overflow-y-auto">
+          <LeftPanel notes={allNotes} setNotes={setAllNotes} />
         </div>
 
         {/* Right panel: main content */}
-        <div className="w-3/4 p-8 overflow-auto">
+        <div className="w-[85%] p-8 overflow-auto">
           {activePage === 'notes' && (
             <NotesListing
               objList={objectList}

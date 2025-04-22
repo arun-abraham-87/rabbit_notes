@@ -108,23 +108,23 @@ const ZoneCard = ({ label, timeZone }) => {
   const color = ampm === 'AM' ? 'text-green-500' : 'text-orange-500';
 
   return (
-    <div className={`${cardBgClasses} shadow-md rounded-lg p-8 w-auto`}>
-      <div className="flex justify-between text-sm text-gray-500 mb-1">
+    <div className={`${cardBgClasses} shadow-md rounded-lg p-4 w-auto`}>
+      <div className="flex justify-between text-xs text-gray-500 mb-1">
         <span className="font-bold">
           {label} {flagMap[label] || ''}
         </span>
         <span className={animation}>{icon}</span>
       </div>
 
-      <div className={`text-xl font-semibold ${color} whitespace-nowrap`}>
+      <div className={`text-lg font-semibold ${color} whitespace-nowrap`}>
         {timeStr} {ampm}
       </div>
 
-      <div className="text-sm text-gray-500">
+      <div className="text-xs text-gray-500">
         <span className="block italic mb-1">{dayLabel}</span>
         {formattedDate}
         {diff && (
-          <span className="inline-block mt-0 text-xl text-gray-400 whitespace-nowrap">
+          <span className="inline-block mt-0 text-sm text-gray-400 whitespace-nowrap">
             {diff}
           </span>
         )}
@@ -158,7 +158,7 @@ const TimeZoneDisplay = () => {
   const splitIndex = sortedZones.findIndex(z => z.dayLabel !== 'Same Day');
 
   return (
-    <div className="bg-gray-100 p-8 rounded-lg">
+    <div className="bg-gray-100 p-4 rounded-lg">
       <div className="flex flex-col space-y-4">
         {/* Same Day zones */}
         {splitIndex > 0

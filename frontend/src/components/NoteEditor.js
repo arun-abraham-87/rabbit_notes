@@ -1058,105 +1058,6 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                     rows={1}
                   />
                 )}
-                <div className="absolute right-8 top-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {line.text.includes('#todo') && (
-                    <button
-                      onClick={() => {
-                        setShowDatePicker(true);
-                        setSelectedDateIndex(index);
-                      }}
-                      className="text-gray-500 hover:text-blue-600 text-base transition-colors"
-                      title="Set End Date"
-                    >
-                      📅
-                    </button>
-                  )}
-                  <button
-                    onClick={async () => {
-                      const text = await navigator.clipboard.readText();
-                      const newLines = [...lines];
-                      newLines[index].text = text;
-                      setLines(newLines);
-                    }}
-                    className="text-gray-500 hover:text-blue-600 text-base transition-colors"
-                    title="Paste from clipboard"
-                  >
-                    📥
-                  </button>
-                  <button
-                    onClick={() => handleSentenceCase(index)}
-                    className="text-gray-500 hover:text-blue-600 text-base transition-colors"
-                    title="Convert to Sentence Case"
-                  >
-                    Aa
-                  </button>
-                  <button
-                    onClick={() => handleDeleteLine(index)}
-                    className="text-gray-500 hover:text-red-600 text-base transition-colors"
-                    title="Delete line"
-                  >
-                    🗑
-                  </button>
-                  {!line.isTitle && (
-                    <>
-                      <button
-                        onClick={() => handleMarkAsTitle(index)}
-                        className="text-gray-500 hover:text-blue-600 text-base transition-colors"
-                        title="Make this line H1"
-                      >
-                        H1
-                      </button>
-                      <button
-                        onClick={() => handleMarkAsSubtitle(index)}
-                        className="text-gray-500 hover:text-blue-600 text-base transition-colors"
-                        title="Make this line H2"
-                      >
-                        H2
-                      </button>
-                      <button
-                        onClick={() => {
-                          const newLines = [...lines];
-                          newLines[index].text = newLines[index].text.toUpperCase();
-                          setLines(newLines);
-                        }}
-                        className="text-gray-500 hover:text-blue-600 text-base transition-colors"
-                        title="Make this line ALL CAPS"
-                      >
-                        CAPS
-                      </button>
-                      {(line.text.startsWith('###') && line.text.endsWith('###')) ||
-                        (line.text.startsWith('##') && line.text.endsWith('##')) ? (
-                        <button
-                          onClick={() => {
-                            const newLines = [...lines];
-                            let text = newLines[index].text;
-                            if (text.startsWith('###') && text.endsWith('###')) {
-                              text = text.slice(3, -3);
-                            } else if (text.startsWith('##') && text.endsWith('##')) {
-                              text = text.slice(2, -2);
-                            }
-                            newLines[index].text = text;
-                            newLines[index].isTitle = false;
-                            setLines(newLines);
-                          }}
-                          className="text-gray-500 hover:text-red-600 text-base transition-colors"
-                          title="Remove formatting"
-                        >
-                          ❌
-                        </button>
-                      ) : null}
-                    </>
-                  )}
-                  {line.text.match(/https?:\/\/[^\s]+/) && (
-                    <button
-                      onClick={() => handleLabelUrl(index)}
-                      className="text-gray-500 hover:text-green-600 text-base transition-colors"
-                      title="Label this URL"
-                    >
-                      🔖
-                    </button>
-                  )}
-                </div>
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-col justify-center gap-0.5 h-full">
                   <button
                     onClick={() => {
@@ -1308,8 +1209,11 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
       )}
       {contextMenu.visible && (
         <div
-          className="absolute bg-white border border-gray-300 rounded shadow-md z-50 p-2"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          className="fixed bg-white border border-gray-300 rounded shadow-md z-50 p-2"
+          style={{
+            left: Math.min(contextMenu.x, window.innerWidth - 200),
+            top: Math.min(contextMenu.y, window.innerHeight - 250),
+          }}
         >
           <button
             className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100"
@@ -1346,8 +1250,14 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           <button
             className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100 text-red-500"
             onClick={() => {
-              const newLines = lines.filter((_, i) => i !== contextMenu.index);
-              setLines(newLines);
+              if (lines.length === 1) {
+                const newLines = [...lines];
+                newLines[0].text = '';
+                setLines(newLines);
+              } else {
+                const newLines = lines.filter((_, i) => i !== contextMenu.index);
+                setLines(newLines);
+              }
             }}
           >
             🗑 Delete Line

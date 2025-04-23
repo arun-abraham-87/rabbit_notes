@@ -5,6 +5,9 @@ import {
   CheckCircleIcon,
   CalendarIcon,
   ExclamationCircleIcon,
+  AdjustmentsVerticalIcon,
+  BookmarkIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/solid';
 
 /**
@@ -50,12 +53,25 @@ export default function NoteTitle({
   // Detect meeting or event meta
   const isMeeting = lines.some((l) => l.trim().startsWith('meta::meeting'));
   const isEvent = lines.some((l) => l.trim().startsWith('meta::event'));
+  const isPinned = lines.some((l) => l.trim().startsWith('meta::pin'));
+  const isAbbreviation = lines.some((l) => l.trim().startsWith('meta::abbreviation'));
+  const isBookmark = lines.some((l) => l.trim().startsWith('meta::bookmark'));
 
   return (
-    <>
-      {/* Todo and Deadline Info */}
+    <div className="flex items-center flex-wrap gap-2 mb-2">
+      <div className="flex items-center gap-2">
+        {isAbbreviation && (
+          <AdjustmentsVerticalIcon className="h-5 w-5 text-purple-600" title="Abbreviation" />
+        )}
+        {isBookmark && (
+          <BookmarkIcon className="h-5 w-5 text-indigo-600" title="Bookmark" />
+        )}
+        {isEvent && !isMeeting && (
+          <CalendarDaysIcon className="h-5 w-5 text-pink-600" title="Event" />
+        )}
+      </div>
       {(note.content.includes('meta::todo') || endDateNotice) && (
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2">
           <CheckCircleIcon className="h-6 w-6 text-green-600" title="Todo" />
 
           {todoAgeNotice && (
@@ -136,10 +152,13 @@ export default function NoteTitle({
           )}
         </div>
       )}
-
-      {/* Meeting Time Picker */}
       {isMeeting && (
-        <div className="px-4 py-2 flex items-center space-x-2">
+        <div className="flex items-center gap-2">
+          <CalendarIcon className="h-5 w-5 text-blue-600" title="Meeting" />
+        </div>
+      )}
+      {isMeeting && (
+        <div className="flex items-center gap-2 px-4 py-2">
           <label className="text-sm font-medium">Meeting Time:</label>
           <input
             type="datetime-local"
@@ -156,10 +175,8 @@ export default function NoteTitle({
           />
         </div>
       )}
-
-      {/* Event Date Picker */}
       {isEvent && (
-        <div className="px-4 py-2 flex items-center space-x-2">
+        <div className="flex items-center gap-2 px-4 py-2">
           <label className="text-sm font-medium">Event Date:</label>
           <input
             type="date"
@@ -172,6 +189,6 @@ export default function NoteTitle({
           />
         </div>
       )}
-    </>
+    </div>
   );
 }

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 
-import NotesListByDate from '../components/NotesListByDate.js';
-import DateSelectorBar from '../components/DateSelectorBar.js';
-import TextEditor from '../components/TextEditor.js'
-import InfoPanel from '../components/InfoPanel.js';
-import NotesList from '../components/NotesList.js';
-import NoteEditor from '../components/NoteEditor';
+import NotesListByDate from './NotesListByDate.js';
+import DateSelectorBar from './DateSelectorBar.js';
+import TextEditor from './TextEditor.js'
+import InfoPanel from './InfoPanel.js';
+import NotesList from './NotesList.js';
+import NoteEditor from './NoteEditor.js';
 
-const NotesListing = ({ objList, notes, addNote, setNotes, objects, searchQuery, setSearchQuery, addTag, setNoteDate, totals, setTotals }) => {
+const NotesMainContainer = ({ objList, notes, addNote, setNotes, objects, searchQuery, setSearchQuery, addTag, setNoteDate, totals, setTotals }) => {
 
     const [checked, setChecked] = useState(false);
 
@@ -43,4 +43,4 @@ const NotesListing = ({ objList, notes, addNote, setNotes, objects, searchQuery,
     )
 };
 
-export default NotesListing;
+export default NotesMainContainer;

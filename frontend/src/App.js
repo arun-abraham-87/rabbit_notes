@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 import Navbar from './components/Navbar';
 import AddNoteBar from './components/NoteAddAndSearchBar.js';
-import NotesListing from './components/NotesListing.js';
+import NotesMainContainer from './components/NotesMainContainer.js';
 import TagListing from './components/TagListing.js';
 import TodoList from './components/TodoList.js';
 import NoteEditor from './components/NoteEditor';
@@ -172,7 +172,7 @@ const App = () => {
         >
           <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
           {activePage === 'notes' && (
-            <NotesListing
+            <NotesMainContainer
               objList={objectList}
               notes={notes}
               addNote={addNote}

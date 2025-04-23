@@ -33,289 +33,111 @@ export default function RightClickMenu({
   const note = notes.find((n) => n.id === noteId);
   if (!note) return null;
 
-  const baseClass = "p-1 hover:bg-gray-100 rounded";
-
   return (
     <div
       style={{ position: 'fixed', top: `${pos.y}px`, left: `${pos.x}px` }}
-      className="z-50 bg-white border border-gray-300 rounded shadow-md px-2 py-1 flex items-center space-x-1"
+      className="z-50 bg-white border border-gray-300 rounded shadow-md px-2 py-1 grid grid-cols-2 gap-1"
     >
-      {/* Insert Above */}
-      <button
-        onClick={() => {
-          const arr = note.content.split('\n');
-          arr.splice(lineIndex, 0, '');
-          updateNote(noteId, arr.join('\n'));
-          setRightClickText(null);
-        }}
-        className={baseClass}
-        title="Insert Above"
-      >
-        <ArrowUturnUpIcon className="w-4 h-4 text-gray-700" />
-      </button>
-
-      {/* Insert Below */}
-      <button
-        onClick={() => {
-          const arr = note.content.split('\n');
-          arr.splice(lineIndex + 1, 0, '');
-          updateNote(noteId, arr.join('\n'));
-          setRightClickText(null);
-        }}
-        className={baseClass}
-        title="Insert Below"
-      >
-        <ArrowUturnDownIcon className="w-4 h-4 text-gray-700" />
-      </button>
-
-      {/* Remove / Add Heading Formatting */}
-      {(() => {
-        const lines = note.content.split('\n');
-        const rawLine = lines[lineIndex] || '';
-        const trimmed = rawLine.trim();
-        const isH1 = trimmed.startsWith('###') && trimmed.endsWith('###');
-        const isH2 = trimmed.startsWith('##') && trimmed.endsWith('##');
-        if (isH1 || isH2) {
-          return (
-            <button
-              onClick={() => {
-                const arr = note.content.split('\n');
-                let content = arr[lineIndex].trim();
-                content = isH1
-                  ? content.slice(3, -3)
-                  : content.slice(2, -2);
-                arr[lineIndex] = content;
-                updateNote(noteId, arr.join('\n'));
-                setRightClickText(null);
-              }}
-              className={baseClass}
-              title="Remove formatting"
-            >
-              <XCircleIcon className="w-4 h-4 text-gray-700" />
-            </button>
-          );
-        } else {
-          return (
-            <>
-              <button
-                onClick={() => {
-                  const arr = note.content.split('\n');
+      {[
+        { label: 'H1', value: 'makeH1' },
+        { label: 'H2', value: 'makeH2' },
+        { label: 'AA', value: 'uppercase' },
+        { label: 'Aa', value: 'sentenceCase' },
+        { label: 'Bold', value: 'toggleBold' },
+        { label: 'Italics', value: 'toggleItalics' },
+        { separator: true }, // After Bold row
+        { label: 'Insert ↑', value: 'insertAbove' },
+        { label: 'Insert ↓', value: 'insertBelow' },
+        { label: 'Merge ↑', value: 'mergeUp' },
+        { label: 'Merge ↓', value: 'mergeDown' },
+        { label: 'Move ↑', value: 'moveUp' },
+        { label: 'Move ↓', value: 'moveDown' },
+        { separator: true }, // After Move row
+        { label: 'Remove Fmt', value: 'removeFormatting' },
+        { label: 'Delete', value: 'deleteLine' },
+      ].map((opt, idx) =>
+        opt.separator ? (
+          <div key={`sep-${idx}`} className="col-span-2 border-t-2 my-1"></div>
+        ) : (
+          <button
+            key={opt.value}
+            className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
+            onClick={() => {
+              const arr = note.content.split('\n');
+              switch (opt.value) {
+                case 'insertAbove':
+                  arr.splice(lineIndex, 0, '');
+                  break;
+                case 'insertBelow':
+                  arr.splice(lineIndex + 1, 0, '');
+                  break;
+                case 'removeFormatting':
+                  const trimmed = arr[lineIndex].trim();
+                  const isH1 = trimmed.startsWith('###') && trimmed.endsWith('###');
+                  const isH2 = trimmed.startsWith('##') && trimmed.endsWith('##');
+                  if (isH1 || isH2) arr[lineIndex] = isH1 ? trimmed.slice(3, -3) : trimmed.slice(2, -2);
+                  break;
+                case 'makeH1':
                   arr[lineIndex] = `###${arr[lineIndex]}###`;
-                  updateNote(noteId, arr.join('\n'));
-                  setRightClickText(null);
-                }}
-                className={baseClass}
-                title="Make H1"
-              >
-                H1
-              </button>
-              <button
-                onClick={() => {
-                  const arr = note.content.split('\n');
+                  break;
+                case 'makeH2':
                   arr[lineIndex] = `##${arr[lineIndex]}##`;
-                  updateNote(noteId, arr.join('\n'));
-                  setRightClickText(null);
-                }}
-                className={baseClass}
-                title="Make H2"
-              >
-                H2
-              </button>
-            </>
-          );
-        }
-      })()}
-
-      {/* Move to First */}
-      <button
-        onClick={() => {
-          const arr = note.content.split('\n');
-          const line = arr.splice(lineIndex, 1)[0];
-          arr.unshift(line);
-          updateNote(noteId, arr.join('\n'));
-          setRightClickText(null);
-        }}
-        className={baseClass}
-        title="Move to top"
-      >
-        FIRST <ArrowUpIcon className="w-4 h-4 text-gray-700 inline" />
-      </button>
-
-      {/* Merge Up */}
-      <button
-        onClick={() => {
-          const arr = note.content.split('\n');
-          if (lineIndex > 0) {
-            arr[lineIndex - 1] =
-              arr[lineIndex - 1] + ' ' + arr[lineIndex];
-            arr.splice(lineIndex, 1);
-            updateNote(noteId, arr.join('\n'));
-          }
-          setRightClickText(null);
-        }}
-        className={baseClass}
-        title="Merge Up"
-      >
-        Merge <ArrowUturnUpIcon className="w-4 h-4 text-gray-700 inline" />
-      </button>
-
-      {/* Merge Down */}
-      <button
-        onClick={() => {
-          const arr = note.content.split('\n');
-          if (lineIndex < arr.length - 1) {
-            arr[lineIndex] =
-              arr[lineIndex] + ' ' + arr[lineIndex + 1];
-            arr.splice(lineIndex + 1, 1);
-            updateNote(noteId, arr.join('\n'));
-          }
-          setRightClickText(null);
-        }}
-        className={baseClass}
-        title="Merge Down"
-      >
-        Merge <ArrowUturnDownIcon className="w-4 h-4 text-gray-700 inline" />
-      </button>
-
-      {/* Swap Up */}
-      <button
-        onClick={() => {
-          const arr = note.content.split('\n');
-          if (lineIndex > 0) {
-            [arr[lineIndex - 1], arr[lineIndex]] = [
-              arr[lineIndex],
-              arr[lineIndex - 1],
-            ];
-            updateNote(noteId, arr.join('\n'));
-          }
-          setRightClickText(null);
-        }}
-        className={baseClass}
-        title="Move Up"
-      >
-        <ChevronUpIcon className="w-4 h-4 text-gray-700" />
-      </button>
-
-      {/* Swap Down */}
-      <button
-        onClick={() => {
-          const arr = note.content.split('\n');
-          if (lineIndex < arr.length - 1) {
-            [arr[lineIndex + 1], arr[lineIndex]] = [
-              arr[lineIndex],
-              arr[lineIndex + 1],
-            ];
-            updateNote(noteId, arr.join('\n'));
-          }
-          setRightClickText(null);
-        }}
-        className={baseClass}
-        title="Move Down"
-      >
-        <ChevronDownIcon className="w-4 h-4 text-gray-700" />
-      </button>
-
-      {/* Uppercase */}
-      <button
-        onClick={() => {
-          const arr = note.content.split('\n');
-          let current = arr[lineIndex];
-          const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-          if (linkRegex.test(current)) {
-            current = current.replace(
-              linkRegex,
-              (_, text, url) => `[${text.toUpperCase()}](${url})`
-            );
-          } else {
-            current = current.toUpperCase();
-          }
-          arr[lineIndex] = current;
-          updateNote(noteId, arr.join('\n'));
-          setRightClickText(null);
-        }}
-        className={baseClass}
-        title="Uppercase"
-      >
-        AA
-      </button>
-
-      {/* Sentence case */}
-      <button
-        onClick={() => {
-          const arr = note.content.split('\n');
-          let current = arr[lineIndex];
-          const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-          if (linkRegex.test(current)) {
-            current = current.replace(
-              linkRegex,
-              (_, text, url) => {
-                const sent = text.charAt(0).toUpperCase() +
-                  text.slice(1).toLowerCase();
-                return `[${sent}](${url})`;
+                  break;
+                case 'moveTop':
+                  const topLine = arr.splice(lineIndex, 1)[0];
+                  arr.unshift(topLine);
+                  break;
+                case 'mergeUp':
+                  if (lineIndex > 0) {
+                    arr[lineIndex - 1] += ' ' + arr[lineIndex];
+                    arr.splice(lineIndex, 1);
+                  }
+                  break;
+                case 'mergeDown':
+                  if (lineIndex < arr.length - 1) {
+                    arr[lineIndex] += ' ' + arr[lineIndex + 1];
+                    arr.splice(lineIndex + 1, 1);
+                  }
+                  break;
+                case 'moveUp':
+                  if (lineIndex > 0) [arr[lineIndex - 1], arr[lineIndex]] = [arr[lineIndex], arr[lineIndex - 1]];
+                  break;
+                case 'moveDown':
+                  if (lineIndex < arr.length - 1) [arr[lineIndex + 1], arr[lineIndex]] = [arr[lineIndex], arr[lineIndex + 1]];
+                  break;
+                case 'uppercase':
+                  const upperLine = arr[lineIndex].replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => `[${text.toUpperCase()}](${url})`);
+                  arr[lineIndex] = upperLine.toUpperCase();
+                  break;
+                case 'sentenceCase':
+                  const sentLine = arr[lineIndex].replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => {
+                    const sent = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+                    return `[${sent}](${url})`;
+                  }).split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+                  arr[lineIndex] = sentLine;
+                  break;
+                case 'toggleBold':
+                  let boldLine = arr[lineIndex];
+                  arr[lineIndex] = boldLine.startsWith('**') && boldLine.endsWith('**') ? boldLine.slice(2, -2) : `**${boldLine}**`;
+                  break;
+                case 'toggleItalics':
+                  let italLine = arr[lineIndex];
+                  arr[lineIndex] = italLine.startsWith('*') && italLine.endsWith('*') && !italLine.startsWith('**') ? italLine.slice(1, -1) : `*${italLine}*`;
+                  break;
+                case 'deleteLine':
+                  arr.splice(lineIndex, 1);
+                  break;
+                default:
+                  break;
               }
-            );
-          } else {
-            current = current
-              .split(' ')
-              .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-              .join(' ');
-          }
-          arr[lineIndex] = current;
-          updateNote(noteId, arr.join('\n'));
-          setRightClickText(null);
-        }}
-        className={baseClass}
-        title="Sentence case"
-      >
-        Aa
-      </button>
-
-      {/* Toggle Bold */}
-      <button
-        onClick={() => {
-          const arr = note.content.split('\n');
-          let current = arr[lineIndex];
-          if (current.startsWith('**') && current.endsWith('**')) {
-            current = current.slice(2, -2);
-          } else {
-            current = `**${current}**`;
-          }
-          arr[lineIndex] = current;
-          updateNote(noteId, arr.join('\n'));
-          setRightClickText(null);
-        }}
-        className={baseClass}
-        title="Toggle Bold"
-      >
-        <strong>B</strong>
-      </button>
-
-      {/* Delete Line */}
-      <button
-        onClick={() => {
-          const arr = note.content.split('\n');
-          arr.splice(lineIndex, 1);
-          updateNote(noteId, arr.join('\n'));
-          setRightClickText(null);
-        }}
-        className={baseClass}
-        title="Delete Line"
-      >
-        <TrashIcon className="w-4 h-4 text-gray-700" />
-      </button>
-
-      {/* Select Checkbox */}
-      <label className={baseClass}>
-        <input
-          type="checkbox"
-          checked={selectedNotes.includes(noteId)}
-          onChange={() => {
-            toggleNoteSelection(noteId);
-            setRightClickText(null);
-          }}
-          className="accent-purple-500 w-4 h-4"
-        />
-      </label>
+              updateNote(noteId, arr.join('\n'));
+              setRightClickText(null);
+            }}
+          >
+            {opt.label}
+          </button>
+        )
+      )}
     </div>
   );
 }

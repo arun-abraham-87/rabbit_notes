@@ -212,6 +212,15 @@ const NoteFooter = ({
                   updateNote(note.id, `${without}\nmeta::event::${ts}`);
                   break;
                 }
+                case 'removeAllTags': {
+                  const withoutMeta = note.content
+                    .split('\n')
+                    .filter(l => !l.trim().startsWith('meta::'))
+                    .join('\n')
+                    .trim();
+                  updateNote(note.id, withoutMeta);
+                  break;
+                }
                 default:
                   break;
               }
@@ -231,6 +240,7 @@ const NoteFooter = ({
             <option value="abbreviation">Add Abbreviation</option>
             <option value="meeting">Mark as Meeting</option>
             <option value="event">Mark as Event</option>
+            <option value="removeAllTags">Remove All Tags</option>
           </select>
         </div>
 

@@ -7,6 +7,7 @@ import TagListing from './components/TagListing.js';
 import TodoList from './components/TodoList.js';
 import NoteEditor from './components/NoteEditor';
 import LeftPanel from './components/LeftPanel';
+import { XMarkIcon } from '@heroicons/react/24/solid';
 
 import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote } from './utils/ApiUtils';
 
@@ -28,16 +29,9 @@ const PinnedSection = ({ notes, onUnpin }) => {
           // Gather the pinned lines (1-based indices)
           const pinnedLines = indices.map(i => contentLines[i - 1] || '');
           return (
-            <div key={note.id} className="border rounded-lg p-4 shadow">
-              {pinnedLines.map((text, i) => (
-                <div
-                  key={i}
-                  className={i === 0 ? 'font-medium truncate' : 'text-sm text-gray-500 truncate'}
-                >
-                  {text}
-                </div>
-              ))}
-              <button
+            <div key={note.id} className="relative border rounded-lg p-4 shadow">
+              <XMarkIcon
+                className="absolute top-2 right-2 h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer"
                 onClick={() => {
                   if (window.confirm('Unpin this note?')) {
                     const newContent = note.content
@@ -50,10 +44,16 @@ const PinnedSection = ({ notes, onUnpin }) => {
                     });
                   }
                 }}
-                className="mt-2 text-red-600 text-xs underline"
-              >
-                Unpin
-              </button>
+                title="Unpin note"
+              />
+              {pinnedLines.map((text, i) => (
+                <div
+                  key={i}
+                  className={i === 0 ? 'font-medium truncate' : 'text-sm text-gray-500 truncate'}
+                >
+                  {text}
+                </div>
+              ))}
             </div>
           );
         })}

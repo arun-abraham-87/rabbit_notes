@@ -46,25 +46,25 @@ const Navbar = ({ activePage, setActivePage }) => {
         <div className="flex items-center space-x-4">
           <button
             onClick={() => setActivePage('notes')}
-            className={`text-base font-medium hover:text-blue-600 transition ${
-              activePage === 'notes' ? 'text-blue-600 underline' : 'text-gray-700'
-            }`}
+            className={`px-3 py-1 rounded-full border ${
+              activePage === 'notes' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+            } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
           >
             Notes
           </button>
           <button
             onClick={() => setActivePage('tags')}
-            className={`text-base font-medium hover:text-blue-600 transition ${
-              activePage === 'tags' ? 'text-blue-600 underline' : 'text-gray-700'
-            }`}
+            className={`px-3 py-1 rounded-full border ${
+              activePage === 'tags' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+            } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
           >
             Tags
           </button>
           <button
             onClick={() => setActivePage('todos')}
-            className={`text-base font-medium hover:text-blue-600 transition ${
-              activePage === 'todos' ? 'text-blue-600 underline' : 'text-gray-700'
-            }`}
+            className={`px-3 py-1 rounded-full border ${
+              activePage === 'todos' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+            } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
           >
             Todos
           </button>

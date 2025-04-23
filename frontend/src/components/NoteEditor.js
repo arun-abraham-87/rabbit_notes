@@ -451,8 +451,14 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
   };
 
   const handleDeleteLine = (index) => {
-    const newLines = (lines || []).filter((_, i) => i !== index);
-    setLines(newLines);
+    if (lines.length === 1) {
+      const newLines = [...lines];
+      newLines[0].text = '';
+      setLines(newLines);
+    } else {
+      const newLines = lines.filter((_, i) => i !== index);
+      setLines(newLines);
+    }
   };
 
   const handleMarkAsTitle = (index) => {

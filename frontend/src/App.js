@@ -10,6 +10,41 @@ import LeftPanel from './components/LeftPanel';
 
 import { addNewNote, addNewTag, loadNotes, loadAllNotes,loadTags, loadTodos } from './utils/ApiUtils';
 
+// Helper to render first four pinned notes
+const PinnedSection = ({ notes }) => {
+  const pinned = (notes || []).filter(n => n.content.includes('meta::pin')).slice(0, 4);
+  if (pinned.length === 0) return null;
+  return (
+    <div className="mb-6 p-4 bg-white rounded shadow-sm">
+      <div className="grid grid-cols-4 gap-4">
+        {pinned.map(note => {
+          // Extract non-meta content lines
+          const contentLines = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'));
+          // Find the pin tag and parse indices
+          const pinTagLine = note.content.split('\n').find(line => line.startsWith('meta::pin::'));
+          const indices = pinTagLine
+            ? pinTagLine.split('::')[2].split(',').map(n => parseInt(n, 10))
+            : [];
+          // Gather the pinned lines (1-based indices)
+          const pinnedLines = indices.map(i => contentLines[i - 1] || '');
+          return (
+            <div key={note.id} className="border rounded p-2 shadow">
+              {pinnedLines.map((text, i) => (
+                <div
+                  key={i}
+                  className={i === 0 ? 'font-medium truncate' : 'text-sm text-gray-500 truncate'}
+                >
+                  {text}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   const [allNotes, setAllNotes] = useState([]);
   const [notes, setNotes] = useState([]);
@@ -118,6 +153,7 @@ const App = () => {
             isLeftPanelCollapsed ? 'w-full' : 'w-[80%]'
           } p-8 overflow-auto`}
         >
+          <PinnedSection notes={allNotes} />
           {activePage === 'notes' && (
             <NotesListing
               objList={objectList}

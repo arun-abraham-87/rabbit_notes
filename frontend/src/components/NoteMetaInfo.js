@@ -1,5 +1,6 @@
 import React from 'react';
 import { updateNoteById as updateNote } from '../utils/ApiUtils';
+import { getDateAgeInYearsMonthsDays } from '../utils/DateUtils';
 import {
   CheckCircleIcon,
   CalendarIcon,
@@ -11,13 +12,36 @@ import {
  */
 export default function NoteTitle({
   note,
-  todoAgeNotice,
-  parsedEndDate,
-  endDateNotice,
-  isDeadlinePassed,
   setShowEndDatePickerForNoteId,
+  urlToNotesMap
 }) {
   const lines = note.content.split('\n');
+
+  const urlPattern = /https?:\/\/[^\s]+/g;
+  const urls = note.content.match(urlPattern) || [];
+  urls.forEach((url) => {
+    if (!urlToNotesMap[url]) urlToNotesMap[url] = [];
+    urlToNotesMap[url].push(note.id);
+  });
+  const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
+  const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
+  let endDateNotice = '';
+  const isDeadlinePassed = parsedEndDate && parsedEndDate < new Date();
+  const todoDateMatch = note.content.match(/meta::todo::([^\n]+)/);
+  let todoAgeNotice = '';
+  if (todoDateMatch) {
+    const todoDate = new Date(todoDateMatch[1]);
+    todoAgeNotice = `Open for: ${getDateAgeInYearsMonthsDays(todoDate, true)}`;
+  }
+  if (parsedEndDate) {
+    const now = new Date();
+    const diffMs = parsedEndDate - now;
+    if (diffMs > 0) {
+      endDateNotice = `Deadline in ${getDateAgeInYearsMonthsDays(parsedEndDate, false)}`;
+    } else {
+      endDateNotice = `Deadline passed ${getDateAgeInYearsMonthsDays(parsedEndDate, true)} ago`;
+    }
+  }
 
   // Helper to strip metadata lines matching predicate
   const stripLines = (predicate) =>
@@ -87,11 +111,10 @@ export default function NoteTitle({
               )}
               <span>{endDateNotice}</span>
               <span
-                className={`${
-                  isDeadlinePassed
+                className={`${isDeadlinePassed
                     ? 'text-red-600 hover:text-red-800'
                     : 'text-blue-600 hover:text-blue-900'
-                } ml-1 cursor-pointer`}
+                  } ml-1 cursor-pointer`}
               >
                 ×
               </span>

@@ -6,7 +6,6 @@ import {
 // Removed react-beautiful-dnd imports
 import { processContent, parseFormattedContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
-import { getDateAgeInYearsMonthsDays } from '../utils/DateUtils';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import { findDuplicatedUrls, buildLineElements, renderLineWithClickableDates, getIndentFlags, getRawLines } from '../utils/genUtils';
 
@@ -196,7 +195,6 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   };
 
 
-  const urlPattern = /https?:\/\/[^\s]+/g;
 
   const {
     duplicateUrlNoteIds,
@@ -294,32 +292,10 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           <label htmlFor="toggleCreatedDate" className="text-sm text-gray-700">Show created date</label>
         </div>
       </div>
+
       {safeNotes
         .map(note => {
-          const urls = note.content.match(urlPattern) || [];
-          urls.forEach((url) => {
-            if (!urlToNotesMap[url]) urlToNotesMap[url] = [];
-            urlToNotesMap[url].push(note.id);
-          });
-          const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
-          const parsedEndDate = endDateMatch ? new Date(endDateMatch[1]) : null;
-          let endDateNotice = '';
-          const isDeadlinePassed = parsedEndDate && parsedEndDate < new Date();
-          const todoDateMatch = note.content.match(/meta::todo::([^\n]+)/);
-          let todoAgeNotice = '';
-          if (todoDateMatch) {
-            const todoDate = new Date(todoDateMatch[1]);
-            todoAgeNotice = `Open for: ${getDateAgeInYearsMonthsDays(todoDate, true)}`;
-          }
-          if (parsedEndDate) {
-            const now = new Date();
-            const diffMs = parsedEndDate - now;
-            if (diffMs > 0) {
-              endDateNotice = `Deadline in ${getDateAgeInYearsMonthsDays(parsedEndDate, false)}`;
-            } else {
-              endDateNotice = `Deadline passed ${getDateAgeInYearsMonthsDays(parsedEndDate, true)} ago`;
-            }
-          }
+         
           return (
             <div
               key={note.id}
@@ -335,12 +311,8 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                 <div className="p-2">
                   < NoteMetaInfo
                     note={note}
-                    todoAgeNotice={todoAgeNotice}
-                    parsedEndDate={parsedEndDate}
-                    endDateNotice={endDateNotice}
-                    isDeadlinePassed={isDeadlinePassed}
-                    updateNote={updateNote}
                     setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
+                    urlToNotesMap={urlToNotesMap}
                   />
                   <NoteContent
                     note={note}
@@ -473,6 +445,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           }}
         />
       )}
+
       {showEndDatePickerForNoteId && (
         <EndDatePickerModal
           noteId={showEndDatePickerForNoteId}
@@ -480,6 +453,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           onCancel={() => setShowEndDatePickerForNoteId(null)}
         />
       )}
+
       {rightClickNoteId !== null && rightClickIndex !== null && (
         <RightClickMenu
           noteId={rightClickNoteId}

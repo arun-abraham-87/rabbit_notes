@@ -208,7 +208,7 @@ const LeftPanel = ({ notes, setNotes }) => {
           uniqueUrls.length === 0 ? (
             <p className="text-gray-500">No Quick Links</p>
           ) : (
-            uniqueUrls.map(({ url, label }) => {
+            uniqueUrls.map(({ url, label }, idx) => {
               // derive hostname if no custom label
               let displayText = label;
               if (!displayText) {
@@ -219,7 +219,10 @@ const LeftPanel = ({ notes, setNotes }) => {
                 }
               }
               return (
-                <div key={url} className="flex items-center mb-2 pl-4">
+                <div
+                  key={url}
+                  className={`flex items-center mb-2 pl-4 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                >
                   <a
                     href={url}
                     target="_blank"
@@ -257,65 +260,65 @@ const LeftPanel = ({ notes, setNotes }) => {
             )}
           </h2>
           {showMeetingsSection && (
-            visibleMeetings.map(m => {
+            visibleMeetings.map((m, idx) => {
               const eventTime = new Date(m.time).getTime();
               const diff = eventTime - now;
               const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
               return (
                 <div
                   key={m.id}
-                  className={`mb-2 pl-4 ${isFlashing ? 'animate-pulse bg-yellow-200' : ''}`}
+                  className={`mb-2 pl-4 p-2 rounded ${idx % 2 === 0 ? 'bg-yellow-100' : 'bg-yellow-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
                 >
-                <div className="text-sm font-medium">{m.context}</div>
+                  <div className="text-sm font-medium">{m.context}</div>
 
-                {/* Display date */}
-                <div className="text-xs text-gray-500">
-                  {(() => {
-                    const eventDate = new Date(m.time);
-                    const todayDate = new Date(now);
-                    // If same day, show "Today"
-                    if (eventDate.toDateString() === todayDate.toDateString()) {
-                      return 'Today';
-                    }
-                    // Otherwise format as "MMM D, YYYY"
-                    return eventDate.toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    });
-                  })()}
-                </div>
+                  {/* Display date */}
+                  <div className="text-xs text-gray-500">
+                    {(() => {
+                      const eventDate = new Date(m.time);
+                      const todayDate = new Date(now);
+                      // If same day, show "Today"
+                      if (eventDate.toDateString() === todayDate.toDateString()) {
+                        return 'Today';
+                      }
+                      // Otherwise format as "MMM D, YYYY"
+                      return eventDate.toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      });
+                    })()}
+                  </div>
 
-                {/* Display time in 12-hour format */}
-                <div className="text-xs text-gray-500">
-                  {(() => {
-                    const eventDate = new Date(m.time);
-                    let hours = eventDate.getHours();
-                    const minutes = eventDate.getMinutes();
-                    const ampm = hours >= 12 ? 'PM' : 'AM';
-                    hours = hours % 12 || 12;
-                    return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-                  })()}
-                </div>
+                  {/* Display time in 12-hour format */}
+                  <div className="text-xs text-gray-500">
+                    {(() => {
+                      const eventDate = new Date(m.time);
+                      let hours = eventDate.getHours();
+                      const minutes = eventDate.getMinutes();
+                      const ampm = hours >= 12 ? 'PM' : 'AM';
+                      hours = hours % 12 || 12;
+                      return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+                    })()}
+                  </div>
 
-                {/* Countdown */}
-                <div className="text-xs text-blue-600">
-                  {(() => {
-                    const target = new Date(m.time);
-                    const diff = target.getTime() - now;
-                    const days = Math.floor(diff / 86400000);
-                    const hoursLeft = Math.floor((diff % 86400000) / 3600000);
-                    const minutesLeft = Math.floor((diff % 3600000) / 60000);
-                    const secondsLeft = Math.floor((diff % 60000) / 1000);
-                    const parts = [];
-                    if (days) parts.push(`${days}d`);
-                    if (hoursLeft) parts.push(`${hoursLeft}h`);
-                    if (minutesLeft) parts.push(`${minutesLeft}m`);
-                    if (!parts.length) parts.push(`${secondsLeft}s`);
-                    return `in ${parts.join(' ')}`;
-                  })()}
+                  {/* Countdown */}
+                  <div className="text-xs text-blue-600">
+                    {(() => {
+                      const target = new Date(m.time);
+                      const diff = target.getTime() - now;
+                      const days = Math.floor(diff / 86400000);
+                      const hoursLeft = Math.floor((diff % 86400000) / 3600000);
+                      const minutesLeft = Math.floor((diff % 3600000) / 60000);
+                      const secondsLeft = Math.floor((diff % 60000) / 1000);
+                      const parts = [];
+                      if (days) parts.push(`${days}d`);
+                      if (hoursLeft) parts.push(`${hoursLeft}h`);
+                      if (minutesLeft) parts.push(`${minutesLeft}m`);
+                      if (!parts.length) parts.push(`${secondsLeft}s`);
+                      return `in ${parts.join(' ')}`;
+                    })()}
+                  </div>
                 </div>
-              </div>
               );
             })
           )}
@@ -337,14 +340,14 @@ const LeftPanel = ({ notes, setNotes }) => {
             )}
           </h2>
           {showEventsSection && (
-            visibleEvents.map(e => {
+            visibleEvents.map((e, idx) => {
               const eventTime = new Date(e.time).getTime();
               const diff = eventTime - now;
               const isFlashing = diff > 0 && diff <= 10 * 60 * 1000; // flash if within 10 min
               return (
                 <div
                   key={e.id}
-                  className={`mb-2 pl-4 ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
+                  className={`mb-2 pl-4 p-2 rounded ${idx % 2 === 0 ? 'bg-green-100' : 'bg-green-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
                 >
                   {/* Event context */}
                   <div className="text-sm font-medium">{e.context}</div>

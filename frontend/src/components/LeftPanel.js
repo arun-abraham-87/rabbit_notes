@@ -193,7 +193,7 @@ const LeftPanel = ({ notes, setNotes }) => {
         );
       })()}
 
-      <div className="w-full h-full bg-gray-100 p-4 space-y-2 overflow-y-auto">
+      <div className="w-full h-full bg-gray-100 p-2 space-y-1 overflow-y-auto text-xs">
         {/* Collapse / Open controls */}
         <div className="flex justify-end space-x-2 mb-3">
           <button
@@ -229,9 +229,9 @@ const LeftPanel = ({ notes, setNotes }) => {
         )}
 
         {/* Quick Links Section */}
-        <div className="bg-white p-3 rounded-md shadow-sm mb-4">
+        <div className="bg-white p-2 rounded-md shadow-sm mb-3">
           <h2
-            className="font-semibold text-gray-700 mb-2 flex justify-between items-center cursor-pointer p-2 hover:bg-gray-200 rounded"
+            className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
             onClick={() => setShowQuickLinks(prev => !prev)}
           >
             <span>Quick Links</span>
@@ -250,7 +250,7 @@ const LeftPanel = ({ notes, setNotes }) => {
                   <div
                     key={url}
                     onContextMenu={e => handleLinkContextMenu(e, url)}
-                    className={`flex items-center mb-2 pl-4 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                    className={`flex items-center mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
                   >
                     <a
                       href={url}
@@ -274,9 +274,9 @@ const LeftPanel = ({ notes, setNotes }) => {
         </div>
 
         {/* Bookmarks Section */}
-        <div className="bg-white p-3 rounded-md shadow-sm mb-4">
+        <div className="bg-white p-2 rounded-md shadow-sm mb-3">
           <h2
-            className="font-semibold text-gray-700 mb-2 flex justify-between items-center cursor-pointer p-2 hover:bg-gray-200 rounded"
+            className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
             onClick={() => setShowQuickLinks(prev => !prev)}
           >
             <span>Bookmarks</span>
@@ -295,7 +295,7 @@ const LeftPanel = ({ notes, setNotes }) => {
                   <div
                     key={url}
                     onContextMenu={e => handleLinkContextMenu(e, url)}
-                    className={`flex items-center mb-2 pl-4 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                    className={`flex items-center mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
                   >
                     <a
                       href={url}
@@ -314,9 +314,9 @@ const LeftPanel = ({ notes, setNotes }) => {
 
         {/* Meetings Section */}
         {visibleMeetings.length > 0 && (
-          <div className="bg-yellow-50 p-3 rounded-md shadow-sm mb-4">
+          <div className="bg-yellow-50 p-2 rounded-md shadow-sm mb-3">
             <h2
-              className="font-semibold text-gray-700 mt-4 mb-2 flex justify-between items-center cursor-pointer p-2 hover:bg-gray-200 rounded"
+              className="font-semibold text-gray-700 mt-4 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
               onClick={() => setShowMeetingsSection(prev => !prev)}
             >
               <span>Meetings</span>
@@ -329,10 +329,10 @@ const LeftPanel = ({ notes, setNotes }) => {
               return (
                 <div
                   key={m.id}
-                  className={`mb-2 pl-4 p-2 rounded ${idx % 2 === 0 ? 'bg-yellow-100' : 'bg-yellow-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
+                  className={`mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-yellow-100' : 'bg-yellow-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
                 >
                   <div className="text-sm font-medium">{m.context}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-[10px] text-gray-500">
                     {(() => {
                       const d = new Date(m.time);
                       const today = new Date(now);
@@ -340,7 +340,7 @@ const LeftPanel = ({ notes, setNotes }) => {
                         d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
                     })()}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-[10px] text-gray-500">
                     {(() => {
                       const d = new Date(m.time);
                       let h = d.getHours(), mnt = d.getMinutes();
@@ -372,9 +372,9 @@ const LeftPanel = ({ notes, setNotes }) => {
 
         {/* Events Section */}
         {visibleEvents.length > 0 && (
-          <div className="bg-green-50 p-3 rounded-md shadow-sm mb-4">
+          <div className="bg-green-50 p-2 rounded-md shadow-sm mb-3">
             <h2
-              className="font-semibold text-gray-700 mt-4 mb-2 flex justify-between items-center cursor-pointer p-2 hover:bg-gray-200 rounded"
+              className="font-semibold text-gray-700 mt-4 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
               onClick={() => setShowEventsSection(prev => !prev)}
             >
               <span>Events</span>
@@ -387,10 +387,10 @@ const LeftPanel = ({ notes, setNotes }) => {
               return (
                 <div
                   key={e.id}
-                  className={`mb-2 pl-4 p-2 rounded ${idx % 2 === 0 ? 'bg-green-100' : 'bg-green-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
+                  className={`mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-green-100' : 'bg-green-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
                 >
                   <div className="text-sm font-medium">{e.context}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-[10px] text-gray-500">
                     {(() => {
                       const d = new Date(e.time);
                       const today = new Date(now);
@@ -398,7 +398,7 @@ const LeftPanel = ({ notes, setNotes }) => {
                         d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
                     })()}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-[10px] text-gray-500">
                     {(() => {
                       const d = new Date(e.time);
                       let h = d.getHours(), mnt = d.getMinutes();

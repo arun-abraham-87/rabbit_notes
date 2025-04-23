@@ -195,7 +195,7 @@ const LeftPanel = ({ notes, setNotes }) => {
 
       <div className="w-full h-full bg-gray-100 p-2 space-y-1 overflow-y-auto text-xs">
         {/* Collapse / Open controls */}
-        <div className="flex justify-end space-x-2 mb-3">
+        <div className="flex justify-start space-x-2 mb-3">
           <button
             onClick={handleCollapseAll}
             className="text-xs bg-gray-200 hover:bg-gray-300 rounded px-2 py-1"

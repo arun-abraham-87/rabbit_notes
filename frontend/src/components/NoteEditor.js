@@ -733,14 +733,15 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           </button>
         </div>
       )}
-      <div className="mb-4 flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-700">{isAddMode ? 'Add Note' : 'Edit Note'}</h2>
-        <button
-          onClick={() => setIsTextMode(!isTextMode)}
-          className="text-xs text-gray-500 hover:text-gray-700 underline"
-        >
-          {isTextMode ? '🧩 Advanced Mode' : '✍️ Text Mode'}
-        </button>
+      <div className="mb-4 flex justify-end items-center">
+        {!isAddMode && (
+          <button
+            onClick={() => setIsTextMode(!isTextMode)}
+            className="text-xs text-gray-500 hover:text-gray-700 underline"
+          >
+            {isTextMode ? '🧩 Advanced Mode' : '✍️ Text Mode'}
+          </button>
+        )}
         {pendingUrlIndex !== null && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
             <div className="bg-white p-4 rounded shadow-md w-80">
@@ -920,18 +921,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           >
             Today
           </button>
-          <button
-            onClick={() => {
-              setLines([{ id: 'line-0', text: '', isTitle: false }]);
-              if (setSearchQuery) setSearchQuery('');
-              setShowTodoSubButtons(false);
-              setActivePriority('');
-              setShowEndDateFilterSubButtons(false);
-            }}
-            className="px-3 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 text-gray-800"
-          >
-            Clear
-          </button>
+   
         </div>
       )}
       {isTextMode ? (
@@ -1097,37 +1087,19 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           ))}
         </div>
       )}
-      <div className="mt-1">
-        <button
-          onClick={() => {
-            const newLines = [...lines, { id: `line-${Date.now()}`, text: '', isTitle: false }];
-            setLines(newLines);
-            setTimeout(() => {
-              const last = textareasRef.current[newLines.length - 1];
-              if (last) last.focus();
-            }, 0);
-          }}
-          className="w-full py-1 px-2 text-xs bg-gray-50 text-gray-500 border border-gray-200 rounded hover:bg-gray-100"
-        >
-          ➕ Add new row
-        </button>
-        {showDatePicker && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-            <div className="bg-white p-4 rounded shadow-md">
-              <input
-                type="datetime-local"
-                onChange={(e) => handleDateSelect(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 text-sm"
-              />
-              <button onClick={() => setShowDatePicker(false)} className="ml-2 text-sm text-red-500 hover:underline">
-                Cancel
-              </button>
-            </div>
-          </div>)}
-      </div>
-      <div className="text-xs text-gray-400 mt-3 text-center font-mono">
-        ⌘↑ Move | ⌘↓ Move | ⌘D Duplicate | ⌘⌥T Title | ⌘⏎ Save | Tab Indent | Shift+Tab Outdent
-      </div>
+      {showDatePicker && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-white p-4 rounded shadow-md">
+            <input
+              type="datetime-local"
+              onChange={(e) => handleDateSelect(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm"
+            />
+            <button onClick={() => setShowDatePicker(false)} className="ml-2 text-sm text-red-500 hover:underline">
+              Cancel
+            </button>
+          </div>
+        </div>)}
       {urlLabelSelection.urlIndex !== null && urlLabelSelection.labelIndex !== null && (
         <div className="flex justify-end mt-4">
           <button
@@ -1165,12 +1137,32 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
             Add Note
           </button>
         )}
-        <button
-          onClick={onCancel}
-          className="px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
-        >
-          Cancel
-        </button>
+        {isAddMode ? (
+          <button
+            onClick={() => {
+              setLines([{ id: 'line-0', text: '', isTitle: false }]);
+              setSearchQuery && setSearchQuery('');
+              setShowTodoSubButtons(false);
+              setActivePriority('');
+              setShowEndDateFilterSubButtons(false);
+              setTimeout(() => {
+                if (textareasRef.current[0]) {
+                  textareasRef.current[0].focus();
+                }
+              }, 0);
+            }}
+            className="px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+          >
+            Cancel
+          </button>
+        ) : (
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+          >
+            Cancel
+          </button>
+        )}
         {!isAddMode && (
           <button
             onClick={handleSave}

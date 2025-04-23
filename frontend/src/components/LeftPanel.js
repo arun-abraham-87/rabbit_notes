@@ -1,5 +1,6 @@
 // src/components/LeftPanel.js
 import React, { useMemo, useState, useEffect } from 'react';
+import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { updateNoteById } from '../utils/ApiUtils';
 
 const removeBookmarkFromNotes = (url, notes, setNotes) => {
@@ -36,6 +37,9 @@ const LeftPanel = ({ notes, setNotes }) => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const [showQuickLinks, setShowQuickLinks] = useState(true);
+  const [showMeetingsSection, setShowMeetingsSection] = useState(true);
 
   const uniqueUrls = useMemo(() => {
     const seen = new Set();
@@ -139,109 +143,135 @@ const LeftPanel = ({ notes, setNotes }) => {
         );
       })()}
       <div className="w-full h-full bg-gray-100 p-4 space-y-2 overflow-y-auto">
-      {uniqueUrls.length === 0 ? (
-        <p className="text-gray-500">No Quick Links</p>
-      ) : (
-        <>
-          <h2 className="font-semibold text-gray-700 mb-2">Quick links</h2>
-          {uniqueUrls.map(({ url, label }) => {
-            // derive hostname if no custom label
-            let displayText = label;
-            if (!displayText) {
-              try {
-                displayText = new URL(url).hostname.replace(/^www\./, '');
-              } catch {
-                displayText = url;
-              }
-            }
-            return (
-              <div key={url} className="flex items-center mb-2 pl-4">
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 text-black hover:underline truncate"
-                >
-                  {displayText}
-                </a>
-                <button
-                  onClick={() => removeBookmarkFromNotes(url, notes, setNotes)}
-                  className="ml-2 text-gray-400 hover:text-red-600 focus:outline-none"
-                  title="Remove from Quick links"
-                >
-                  &times;
-                </button>
-              </div>
-            );
-          })}
-
-          {visibleMeetings.length > 0 && (
-            <>
-              <h2 className="font-semibold text-gray-700 mt-4 mb-2">Meetings</h2>
-              {visibleMeetings.map(m => {
-                const eventTime = new Date(m.time).getTime();
-                const diff = eventTime - now;
-                const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
-                return (
-                  <div
-                    key={m.id}
-                    className={`mb-2 pl-4 ${isFlashing ? 'animate-pulse bg-yellow-200' : ''}`}
-                  >
-                  <div className="text-sm font-medium">{m.context}</div>
-
-                  {/* Display date */}
-                  <div className="text-xs text-gray-500">
-                    {(() => {
-                      const eventDate = new Date(m.time);
-                      const todayDate = new Date(now);
-                      // If same day, show "Today"
-                      if (eventDate.toDateString() === todayDate.toDateString()) {
-                        return 'Today';
-                      }
-                      // Otherwise format as "MMM D, YYYY"
-                      return eventDate.toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      });
-                    })()}
-                  </div>
-
-                  {/* Display time in 12-hour format */}
-                  <div className="text-xs text-gray-500">
-                    {(() => {
-                      const eventDate = new Date(m.time);
-                      let hours = eventDate.getHours();
-                      const minutes = eventDate.getMinutes();
-                      const ampm = hours >= 12 ? 'PM' : 'AM';
-                      hours = hours % 12 || 12;
-                      return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-                    })()}
-                  </div>
-
-                  {/* Countdown */}
-                  <div className="text-xs text-blue-600">
-                    {(() => {
-                      const target = new Date(m.time);
-                      const diff = target.getTime() - now;
-                      const days = Math.floor(diff / 86400000);
-                      const hoursLeft = Math.floor((diff % 86400000) / 3600000);
-                      const minutesLeft = Math.floor((diff % 3600000) / 60000);
-                      const secondsLeft = Math.floor((diff % 60000) / 1000);
-                      const parts = [];
-                      if (days) parts.push(`${days}d`);
-                      if (hoursLeft) parts.push(`${hoursLeft}h`);
-                      if (minutesLeft) parts.push(`${minutesLeft}m`);
-                      if (!parts.length) parts.push(`${secondsLeft}s`);
-                      return `in ${parts.join(' ')}`;
-                    })()}
-                  </div>
-                </div>
-                );
-              })}
-            </>
+      {/* Quick Links Section */}
+      <div>
+        <h2
+          className="font-semibold text-gray-700 mb-2 flex justify-between items-center cursor-pointer p-2 hover:bg-gray-200 rounded"
+          onClick={() => setShowQuickLinks(prev => !prev)}
+        >
+          <span>Quick links</span>
+          {showQuickLinks ? (
+            <ChevronDownIcon className="h-6 w-6 text-gray-700" />
+          ) : (
+            <ChevronRightIcon className="h-6 w-6 text-gray-700" />
           )}
-        </>
+        </h2>
+        {showQuickLinks && (
+          uniqueUrls.length === 0 ? (
+            <p className="text-gray-500">No Quick Links</p>
+          ) : (
+            uniqueUrls.map(({ url, label }) => {
+              // derive hostname if no custom label
+              let displayText = label;
+              if (!displayText) {
+                try {
+                  displayText = new URL(url).hostname.replace(/^www\./, '');
+                } catch {
+                  displayText = url;
+                }
+              }
+              return (
+                <div key={url} className="flex items-center mb-2 pl-4">
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 text-black hover:underline truncate"
+                  >
+                    {displayText}
+                  </a>
+                  <button
+                    onClick={() => removeBookmarkFromNotes(url, notes, setNotes)}
+                    className="ml-2 text-gray-400 hover:text-red-600 focus:outline-none"
+                    title="Remove from Quick links"
+                  >
+                    &times;
+                  </button>
+                </div>
+              );
+            })
+          )
+        )}
+      </div>
+
+      {/* Meetings Section */}
+      {visibleMeetings.length > 0 && (
+        <div>
+          <h2
+            className="font-semibold text-gray-700 mt-4 mb-2 flex justify-between items-center cursor-pointer p-2 hover:bg-gray-200 rounded"
+            onClick={() => setShowMeetingsSection(prev => !prev)}
+          >
+            <span>Meetings</span>
+            {showMeetingsSection ? (
+              <ChevronDownIcon className="h-6 w-6 text-gray-700" />
+            ) : (
+              <ChevronRightIcon className="h-6 w-6 text-gray-700" />
+            )}
+          </h2>
+          {showMeetingsSection && (
+            visibleMeetings.map(m => {
+              const eventTime = new Date(m.time).getTime();
+              const diff = eventTime - now;
+              const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
+              return (
+                <div
+                  key={m.id}
+                  className={`mb-2 pl-4 ${isFlashing ? 'animate-pulse bg-yellow-200' : ''}`}
+                >
+                <div className="text-sm font-medium">{m.context}</div>
+
+                {/* Display date */}
+                <div className="text-xs text-gray-500">
+                  {(() => {
+                    const eventDate = new Date(m.time);
+                    const todayDate = new Date(now);
+                    // If same day, show "Today"
+                    if (eventDate.toDateString() === todayDate.toDateString()) {
+                      return 'Today';
+                    }
+                    // Otherwise format as "MMM D, YYYY"
+                    return eventDate.toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    });
+                  })()}
+                </div>
+
+                {/* Display time in 12-hour format */}
+                <div className="text-xs text-gray-500">
+                  {(() => {
+                    const eventDate = new Date(m.time);
+                    let hours = eventDate.getHours();
+                    const minutes = eventDate.getMinutes();
+                    const ampm = hours >= 12 ? 'PM' : 'AM';
+                    hours = hours % 12 || 12;
+                    return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+                  })()}
+                </div>
+
+                {/* Countdown */}
+                <div className="text-xs text-blue-600">
+                  {(() => {
+                    const target = new Date(m.time);
+                    const diff = target.getTime() - now;
+                    const days = Math.floor(diff / 86400000);
+                    const hoursLeft = Math.floor((diff % 86400000) / 3600000);
+                    const minutesLeft = Math.floor((diff % 3600000) / 60000);
+                    const secondsLeft = Math.floor((diff % 60000) / 1000);
+                    const parts = [];
+                    if (days) parts.push(`${days}d`);
+                    if (hoursLeft) parts.push(`${hoursLeft}h`);
+                    if (minutesLeft) parts.push(`${minutesLeft}m`);
+                    if (!parts.length) parts.push(`${secondsLeft}s`);
+                    return `in ${parts.join(' ')}`;
+                  })()}
+                </div>
+              </div>
+              );
+            })
+          )}
+        </div>
       )}
     </div>
     </>

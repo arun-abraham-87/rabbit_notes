@@ -793,7 +793,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
         )}
       </div>
       {isAddMode && (
-        <div className="mb-4 flex flex-wrap gap-2">
+        <div className="mb-4 flex flex-wrap gap-2 group relative">
           <div className="flex flex-col">
             <button
               onClick={() => {
@@ -864,48 +864,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           >
             Watch List
           </button>
-          <button
-            onClick={() => {
-              setLines([{ id: 'line-0', text: '#people', isTitle: false }]);
-              if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + '#people');
-              setShowTodoSubButtons(false);
-              setShowEndDateFilterSubButtons(false);
-              setActivePriority('');
-            }}
-            className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('#people') ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700' : 'opacity-30 hover:opacity-60'
-              }`}
-          >
-            People
-          </button>
-          <button
-            onClick={() => {
-              setShowTodoSubButtons(false);
-              setActivePriority('');
-              setLines([{ id: 'line-0', text: 'meta::end_date::', isTitle: false }]);
-              if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::end_date::');
-            }}
-            className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('meta::end_date::') ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700' : 'opacity-30 hover:opacity-60'
-              }`}
-          >
-            Has End Date
-          </button>
-          {/* Abbreviation filter */}
-          <button
-            onClick={() => {
-              setLines([{ id: `line-${Date.now()}`, text: 'meta::Abbreviation::', isTitle: false }]);
-              if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::Abbreviation::');
-              setShowTodoSubButtons(false);
-              setShowEndDateFilterSubButtons(false);
-              setActivePriority('');
-            }}
-            className={`px-3 py-1 text-xs rounded transition-all transform ${searchQuery?.includes('meta::Abbreviation::')
-                ? 'opacity-100 scale-105 bg-indigo-300 border border-indigo-700'
-                : 'opacity-30 hover:opacity-60'
-              }`}
-          >
-            Abbreviation
-          </button>
-          {/* Today filter button */}
+          {/* Today filter button - moved here before dropdown */}
           <button
             onClick={() => {
               setLines([{ id: `line-${Date.now()}`, text: 'meta::today::', isTitle: false }]);
@@ -921,7 +880,48 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           >
             Today
           </button>
-   
+          <div className="relative">
+            <button className="px-3 py-1 text-xs rounded transition-all transform opacity-30 hover:opacity-60 border">
+              More Filters ▾
+            </button>
+            <div className="absolute left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 hidden group-hover:block min-w-[140px]">
+              <button
+                onClick={() => {
+                  setShowTodoSubButtons(false);
+                  setActivePriority('');
+                  setLines([{ id: 'line-0', text: 'meta::end_date::', isTitle: false }]);
+                  if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::end_date::');
+                }}
+                className="block w-full text-left px-3 py-1 text-xs hover:bg-gray-100"
+              >
+                Has End Date
+              </button>
+              <button
+                onClick={() => {
+                  setLines([{ id: `line-${Date.now()}`, text: 'meta::Abbreviation::', isTitle: false }]);
+                  if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::Abbreviation::');
+                  setShowTodoSubButtons(false);
+                  setShowEndDateFilterSubButtons(false);
+                  setActivePriority('');
+                }}
+                className="block w-full text-left px-3 py-1 text-xs hover:bg-gray-100"
+              >
+                Abbreviation
+              </button>
+              <button
+                onClick={() => {
+                  setLines([{ id: 'line-0', text: '#people', isTitle: false }]);
+                  if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + '#people');
+                  setShowTodoSubButtons(false);
+                  setShowEndDateFilterSubButtons(false);
+                  setActivePriority('');
+                }}
+                className="block w-full text-left px-3 py-1 text-xs hover:bg-gray-100"
+              >
+                People
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {isTextMode ? (

@@ -1,18 +1,6 @@
 // frontend/src/components/RightClickMenu.js
 import React from 'react';
-import {
-  ArrowUturnUpIcon,
-  ArrowUturnDownIcon,
-  ArrowUpIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  CheckCircleIcon,
-  EyeIcon,
-  PencilIcon,
-  TrashIcon,
-  LinkIcon,
-  XCircleIcon,
-} from '@heroicons/react/24/solid';
+
 
 export default function RightClickMenu({
   noteId,
@@ -20,18 +8,34 @@ export default function RightClickMenu({
   pos,
   notes,
   updateNote,
-  handleDelete,
-  setPopupNoteText,
-  setLinkingNoteId,
-  setLinkSearchTerm,
-  setLinkPopupVisible,
-  selectedNotes,
-  toggleNoteSelection,
   setRightClickText,
   setEditedLineContent,
   setEditingLine,
-  handleCopyLine,
+  setShowCopyToast
 }) {
+
+
+  const handleCopyLine = (text) => {
+    let copyText = text;
+    // If markdown link, extract URL only
+    const linkMatch = text.match(/\[.*?\]\((.*?)\)/);
+    if (linkMatch) {
+      copyText = linkMatch[1];
+    } else {
+      // Otherwise, extract first URL in text
+      const urlMatch = text.match(/https?:\/\/[^\s)]+/);
+      if (urlMatch) {
+        copyText = urlMatch[0];
+      }
+    }
+    navigator.clipboard.writeText(copyText).then(() => {
+      setShowCopyToast(true);
+      setRightClickText('copied');
+      setTimeout(() => setShowCopyToast(false), 1500);
+    });
+  };
+
+
   if (noteId == null || lineIndex == null) return null;
   const note = notes.find((n) => n.id === noteId);
   if (!note) return null;
@@ -146,7 +150,6 @@ export default function RightClickMenu({
                   break;
               }
               updateNote(noteId, arr.join('\n'));
-              //setRightClickText(null);
             }}
           >
             {opt.label}

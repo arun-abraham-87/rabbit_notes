@@ -76,8 +76,25 @@ export const processContent = (content, searchQuery) => {
 };
 
 
-export const parseFormattedContent = (lines) => {
-  return lines.map((line) => {
+export const parseFormattedContent = (formatted_lines) => {
+  // If no lines array or it’s empty, return an empty string (or array, if that makes more sense)
+  if (!Array.isArray(formatted_lines) || formatted_lines.length === 0) {
+    console.log(typeof formatted_lines)
+    console.log(" --Not array", formatted_lines)
+    return '';
+  }
+
+  console.log("=================================");
+  console.log(formatted_lines);
+  console.log("=================================");
+  console.log(
+    'DEBUG – lines:',
+    formatted_lines,
+    'typeof lines =', typeof formatted_lines,
+    'Array.isArray =', Array.isArray(formatted_lines)
+  );
+
+  return formatted_lines.map((line) => {
     const trimmed = line.trim();
     if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
       return `<h1>${trimmed.slice(3, -3)}</h1>`;

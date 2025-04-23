@@ -1,5 +1,5 @@
-// src/components/NoteMetaInfo.js
 import React from 'react';
+import { updateNoteById as updateNote } from '../utils/ApiUtils';
 import {
   CheckCircleIcon,
   CalendarIcon,
@@ -7,126 +7,148 @@ import {
 } from '@heroicons/react/24/solid';
 
 /**
- * Displays todo / deadline information for a note card.
- *
- * Props
- * -----
- * note                          – the full note object (must include `id` and `content`)
- * todoAgeNotice                 – string like “Open for: 2 d 3 h”   ('' if none)
- * parsedEndDate                 – Date | null  (explicit meta::end_date::…)
- * endDateNotice                 – string like “Deadline in 5 days” or “Deadline passed 3 d ago”
- * isDeadlinePassed              – boolean  (true if Date < now)
- * updateNote                    – (noteId, newContent) ⇒ void
- * setShowEndDatePickerForNoteId – (noteId) ⇒ void
+ * NoteTitle - renders todo/deadline info plus meeting/event inputs based on note metadata
  */
-const NoteMetaInfo = ({
+export default function NoteTitle({
   note,
   todoAgeNotice,
   parsedEndDate,
   endDateNotice,
   isDeadlinePassed,
-  updateNote,
   setShowEndDatePickerForNoteId,
-}) => {
-  // Nothing to show? bail out early
-  if (!(note.content.includes('meta::todo') || endDateNotice)) return null;
+}) {
+  const lines = note.content.split('\n');
 
-  /* helpers to strip metadata lines */
+  // Helper to strip metadata lines matching predicate
   const stripLines = (predicate) =>
-    note.content
-      .split('\n')
-      .filter((line) => !predicate(line.trim()))
-      .join('\n')
-      .trim();
+    lines.filter((l) => !predicate(l.trim())).join('\n').trim();
+
+  // Detect meeting or event meta
+  const isMeeting = lines.some((l) => l.trim().startsWith('meta::meeting'));
+  const isEvent = lines.some((l) => l.trim().startsWith('meta::event'));
 
   return (
-    <div className="flex items-center gap-2 mb-2">
-      {/* todo badge */}
-      <CheckCircleIcon className="h-6 w-6 text-green-600" title="Todo" />
+    <>
+      {/* Todo and Deadline Info */}
+      {(note.content.includes('meta::todo') || endDateNotice) && (
+        <div className="flex items-center gap-2 mb-2">
+          <CheckCircleIcon className="h-6 w-6 text-green-600" title="Todo" />
 
-      {/* “open for …” label */}
-      {todoAgeNotice && (
-        <button
-          className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-          onClick={() =>
-            updateNote(
-              note.id,
-              stripLines((l) => l.startsWith('meta::todo'))
-            )
-          }
-          title="Remove todo notice"
-        >
-          {todoAgeNotice}
-        </button>
-      )}
-
-      {/* explicit deadline date string */}
-      {parsedEndDate && (
-        <>
-          <span className="text-xs text-gray-700 font-semibold mr-1">
-            Deadline&nbsp;Date:
-          </span>
-          <span
-            className="text-xs text-gray-500 cursor-pointer"
-            onClick={() => setShowEndDatePickerForNoteId(note.id)}
-          >
-            {parsedEndDate.toLocaleDateString()}
-          </span>
-          <CalendarIcon
-            className="h-5 w-5 text-gray-600 cursor-pointer hover:text-gray-800"
-            onClick={() => setShowEndDatePickerForNoteId(note.id)}
-            title="Edit end date"
-          />
-        </>
-      )}
-
-      {/* relative deadline notice (in / passed) */}
-      {endDateNotice && (
-        <button
-          className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-          onClick={() =>
-            updateNote(
-              note.id,
-              stripLines((l) => l.startsWith('meta::end_date::'))
-            )
-          }
-          title="Remove end date"
-        >
-          {isDeadlinePassed && (
-            <ExclamationCircleIcon
-              className="h-4 w-4 text-red-600"
-              title="Deadline passed"
-            />
+          {todoAgeNotice && (
+            <button
+              className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
+              onClick={() =>
+                updateNote(
+                  note.id,
+                  stripLines((l) => l.startsWith('meta::todo'))
+                )
+              }
+              title="Remove todo notice"
+            >
+              {todoAgeNotice}
+            </button>
           )}
-          <span>{endDateNotice}</span>
-          <span
-            className={`${
-              isDeadlinePassed
-                ? 'text-red-600 hover:text-red-800'
-                : 'text-blue-600 hover:text-blue-900'
-            } ml-1 cursor-pointer`}
-          >
-            ×
-          </span>
-        </button>
+
+          {parsedEndDate && (
+            <>
+              <span className="text-xs text-gray-700 font-semibold mr-1">
+                Deadline Date:
+              </span>
+              <span
+                className="text-xs text-gray-500 cursor-pointer"
+                onClick={() => setShowEndDatePickerForNoteId(note.id)}
+              >
+                {parsedEndDate.toLocaleDateString()}
+              </span>
+              <CalendarIcon
+                className="h-5 w-5 text-gray-600 cursor-pointer hover:text-gray-800"
+                onClick={() => setShowEndDatePickerForNoteId(note.id)}
+                title="Edit end date"
+              />
+            </>
+          )}
+
+          {endDateNotice && (
+            <button
+              className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
+              onClick={() =>
+                updateNote(
+                  note.id,
+                  stripLines((l) => l.startsWith('meta::end_date::'))
+                )
+              }
+              title="Remove end date"
+            >
+              {isDeadlinePassed && (
+                <ExclamationCircleIcon
+                  className="h-4 w-4 text-red-600"
+                  title="Deadline passed"
+                />
+              )}
+              <span>{endDateNotice}</span>
+              <span
+                className={`${
+                  isDeadlinePassed
+                    ? 'text-red-600 hover:text-red-800'
+                    : 'text-blue-600 hover:text-blue-900'
+                } ml-1 cursor-pointer`}
+              >
+                ×
+              </span>
+            </button>
+          )}
+
+          {!parsedEndDate && (
+            <button
+              className="text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 bg-gray-100 text-gray-800 hover:bg-gray-200"
+              onClick={() => setShowEndDatePickerForNoteId(note.id)}
+              title="Set end date"
+            >
+              No Deadline
+              <CalendarIcon
+                className="h-4 w-4 text-gray-600 ml-1"
+                title="Pick date"
+              />
+            </button>
+          )}
+        </div>
       )}
 
-      {/* shortcut when no explicit deadline exists */}
-      {!parsedEndDate && (
-        <button
-          className="text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 bg-gray-100 text-gray-800 hover:bg-gray-200"
-          onClick={() => setShowEndDatePickerForNoteId(note.id)}
-          title="Set end date"
-        >
-          No&nbsp;Deadline
-          <CalendarIcon
-            className="h-4 w-4 text-gray-600 ml-1"
-            title="Pick date"
+      {/* Meeting Time Picker */}
+      {isMeeting && (
+        <div className="px-4 py-2 flex items-center space-x-2">
+          <label className="text-sm font-medium">Meeting Time:</label>
+          <input
+            type="datetime-local"
+            value={(() => {
+              const rawTime = lines[1] || '';
+              const [datePart, timePart] = rawTime.split('T');
+              return rawTime ? `${datePart}T${timePart?.slice(0, 5)}` : '';
+            })()}
+            onChange={(e) => {
+              lines[1] = e.target.value;
+              updateNote(note.id, lines.join("\n"));
+            }}
+            className="border border-gray-300 rounded p-1 text-sm"
           />
-        </button>
+        </div>
       )}
-    </div>
-  );
-};
 
-export default NoteMetaInfo;
+      {/* Event Date Picker */}
+      {isEvent && (
+        <div className="px-4 py-2 flex items-center space-x-2">
+          <label className="text-sm font-medium">Event Date:</label>
+          <input
+            type="date"
+            value={(() => lines[1]?.split('T')[0] || '')()}
+            onChange={(e) => {
+              lines[1] = `${e.target.value}T12:00`;
+              updateNote(note.id, lines.join("\n"));
+            }}
+            className="border border-gray-300 rounded p-1 text-sm"
+          />
+        </div>
+      )}
+    </>
+  );
+}

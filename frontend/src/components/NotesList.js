@@ -88,7 +88,19 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const [showCopyToast, setShowCopyToast] = useState(false);
 
   const handleCopyLine = (text) => {
-    navigator.clipboard.writeText(text).then(() => {
+    let copyText = text;
+    // If markdown link, extract URL only
+    const linkMatch = text.match(/\[.*?\]\((.*?)\)/);
+    if (linkMatch) {
+      copyText = linkMatch[1];
+    } else {
+      // Otherwise, extract first URL in text
+      const urlMatch = text.match(/https?:\/\/[^\s)]+/);
+      if (urlMatch) {
+        copyText = urlMatch[0];
+      }
+    }
+    navigator.clipboard.writeText(copyText).then(() => {
       setShowCopyToast(true);
       setTimeout(() => setShowCopyToast(false), 1500);
     });

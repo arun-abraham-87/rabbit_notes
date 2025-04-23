@@ -28,12 +28,22 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
     }
 
     // Split the search query into parts (words) and normalize to lowercase
-    const searchQueryParts = searchQuery
-      ? searchQuery
-        .split(' ')
-        .map((part) => part.trim().toLowerCase())
-        .filter((part) => part !== '') // Remove empty strings
-      : [];
+    let searchQueryParts = [];
+    let useOrLogic = false;
+    if (searchQuery) {
+      if (searchQuery.includes('||')) {
+        searchQueryParts = searchQuery
+          .split('||')
+          .map((part) => part.trim().toLowerCase())
+          .filter((part) => part && part !== '||');
+        useOrLogic = true;
+      } else {
+        searchQueryParts = searchQuery
+          .split(/\s+/)  // Split on any whitespace
+          .map((part) => part.replace(/^\s+|\s+$/g, '').toLowerCase())
+          .filter((part) => part !== '');
+      }
+    }
 
     // Get today's date in 'DD/MM/YYYY' format
     //const today = new Date().toLocaleDateString('en-AU');
@@ -52,10 +62,10 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
         ? note.tags.map((tag) => (tag || "").toLowerCase())
         : [];
 
-      // Check if all words in the search query are present
-      const matchesSearchQuery = searchQueryParts.every((part) =>
-        noteContent.includes(part) || noteTags.some((tag) => tag.includes(part))
-      );
+      // Check if all words in the search query are present, or use OR logic if specified
+      const matchesSearchQuery = useOrLogic
+        ? searchQueryParts.some((part) => noteContent.includes(part) || noteTags.some((tag) => tag.includes(part)))
+        : searchQueryParts.every((part) => noteContent.includes(part) || noteTags.some((tag) => tag.includes(part)));
 
       // Check if the note is from today (if required)
       if (isCurrentDaySearch) {

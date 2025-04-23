@@ -84,14 +84,8 @@ const LeftPanel = ({ notes, setNotes }) => {
       // skip if already acknowledged
       const note = notes.find(n => n.id === m.id);
       if (note?.content.includes('meta::meeting_acknowledge')) return false;
-      const [timePart, ampm] = m.time.split(' ');
-      const [h, min] = timePart.split('.').map(Number);
-      let hour = h;
-      if (ampm.toUpperCase() === 'PM' && hour < 12) hour += 12;
-      if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
-      const target = new Date(now);
-      target.setHours(hour, min, 0, 0);
-      if (target.getTime() < now) target.setDate(target.getDate() + 1);
+      // Parse ISO datetime directly
+      const target = new Date(m.time);
       const diff = target.getTime() - now;
       return diff > 0 && diff < 120_000;
     });

@@ -22,6 +22,8 @@ const App = () => {
   const [noteDate, setNoteDate] = useState(null);
   const [totals, setTotals] = useState(0);
 
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
+
   const fetchNotes = async (searchText) => {
     const data = await loadNotes(searchText, noteDate)
     setNotes(data.notes);
@@ -78,12 +80,44 @@ const App = () => {
       <Navbar activePage={activePage} setActivePage={setActivePage} />
       <div className="flex flex-1 overflow-auto">
         {/* Left panel */}
-        <div className="w-[20%] min-w-[12rem] border-r overflow-y-auto">
+        <div
+          className={`border-r overflow-y-auto transition-all duration-300 ease-in-out ${
+            isLeftPanelCollapsed ? 'w-0 min-w-0' : 'w-[20%] min-w-[12rem]'
+          } relative`}
+        >
+          <button
+            onClick={() => setIsLeftPanelCollapsed(prev => !prev)}
+            className="absolute top-2 right-[-12px] w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500"
+          >
+            {isLeftPanelCollapsed ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            )}
+          </button>
           <LeftPanel notes={allNotes} setNotes={setAllNotes} />
         </div>
+        {isLeftPanelCollapsed && (
+          <button
+            onClick={() => setIsLeftPanelCollapsed(false)}
+            className="absolute top-2 left-2 w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500 z-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
 
         {/* Right panel: main content */}
-        <div className="w-[80%] p-8 overflow-auto">
+        <div
+          className={`transition-all duration-300 ease-in-out ${
+            isLeftPanelCollapsed ? 'w-full' : 'w-[80%]'
+          } p-8 overflow-auto`}
+        >
           {activePage === 'notes' && (
             <NotesListing
               objList={objectList}

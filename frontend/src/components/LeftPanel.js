@@ -234,7 +234,7 @@ const LeftPanel = ({ notes, setNotes }) => {
             className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
             onClick={() => setShowQuickLinks(prev => !prev)}
           >
-            <span>Quick Links</span>
+            <span>{'Quick Links'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
             {showQuickLinks ? <ChevronDownIcon className="h-6 w-6 text-gray-700" /> : <ChevronRightIcon className="h-6 w-6 text-gray-700" />}
           </h2>
           {showQuickLinks && (
@@ -279,7 +279,7 @@ const LeftPanel = ({ notes, setNotes }) => {
             className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
             onClick={() => setShowQuickLinks(prev => !prev)}
           >
-            <span>Bookmarks</span>
+            <span>{'Bookmarks'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
             {showQuickLinks ? <ChevronDownIcon className="h-6 w-6 text-gray-700" /> : <ChevronRightIcon className="h-6 w-6 text-gray-700" />}
           </h2>
           {showQuickLinks && (
@@ -319,7 +319,7 @@ const LeftPanel = ({ notes, setNotes }) => {
               className="font-semibold text-gray-700 mt-4 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
               onClick={() => setShowMeetingsSection(prev => !prev)}
             >
-              <span>Meetings</span>
+              <span>{'Meetings'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
               {showMeetingsSection ? <ChevronDownIcon className="h-6 w-6 text-gray-700" /> : <ChevronRightIcon className="h-6 w-6 text-gray-700" />}
             </h2>
             {showMeetingsSection && visibleMeetings.map((m, idx) => {
@@ -377,7 +377,7 @@ const LeftPanel = ({ notes, setNotes }) => {
               className="font-semibold text-gray-700 mt-4 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
               onClick={() => setShowEventsSection(prev => !prev)}
             >
-              <span>Events</span>
+              <span>{'Events'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
               {showEventsSection ? <ChevronDownIcon className="h-6 w-6 text-gray-700" /> : <ChevronRightIcon className="h-6 w-6 text-gray-700" />}
             </h2>
             {showEventsSection && visibleEvents.map((e, idx) => {

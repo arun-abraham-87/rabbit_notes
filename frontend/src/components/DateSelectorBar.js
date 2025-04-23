@@ -55,7 +55,19 @@ const DateSelectorBar = ({ setNoteDate }) => {
         {collapsed ? (
           <>
             <ChevronRightIcon className="h-4 w-4 text-gray-700" />
-            <span className="italic">Date Selection</span>
+            <button
+              onClick={() => updateDate(false)}
+              className="text-[8px] w-4 h-4 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-100"
+            >
+              &lt;
+            </button>
+            <span className="italic">{selectedDate}</span>
+            <button
+              onClick={() => updateDate(true)}
+              className="text-[8px] w-4 h-4 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-100"
+            >
+              &gt;
+            </button>
           </>
         ) : (
           <>
@@ -73,7 +85,7 @@ const DateSelectorBar = ({ setNoteDate }) => {
           <div className="flex items-center justify-center space-x-4 mb-2">
             <button
               onClick={() => updateDate(false)}
-              className="text-white bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
+              className="text-white bg-gray-700 hover:bg-gray-600 w-6 h-6 flex items-center justify-center rounded"
             >
               &lt;
             </button>
@@ -110,7 +122,7 @@ const DateSelectorBar = ({ setNoteDate }) => {
             </div>
             <button
               onClick={() => updateDate(true)}
-              className="text-white bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
+              className="text-white bg-gray-700 hover:bg-gray-600 w-6 h-6 flex items-center justify-center rounded"
             >
               &gt;
             </button>

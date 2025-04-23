@@ -1048,7 +1048,14 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                     rows={1}
                   />
                 )}
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-col justify-center gap-0.5 h-full">
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-row justify-center gap-0.5 h-full items-center">
+                  <button
+                    onClick={() => handleDeleteLine(index)}
+                    className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
+                    title="Delete line"
+                  >
+                    🗑
+                  </button>
                   <button
                     onClick={() => {
                       const newLines = [...lines];

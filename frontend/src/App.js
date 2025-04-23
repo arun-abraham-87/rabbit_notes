@@ -90,11 +90,11 @@ const App = () => {
             className="absolute top-2 right-[-12px] w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500"
           >
             {isLeftPanelCollapsed ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             )}
@@ -106,7 +106,7 @@ const App = () => {
             onClick={() => setIsLeftPanelCollapsed(false)}
             className="absolute top-2 left-2 w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500 z-50"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>

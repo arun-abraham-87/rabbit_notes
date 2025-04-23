@@ -10,7 +10,8 @@ import {
   LinkIcon,
   BookmarkIcon,
   HashtagIcon,
-  CalendarIcon,
+  PhoneIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/solid';
 import { formatDate } from '../utils/DateUtils';
 
@@ -247,7 +248,7 @@ const NoteFooter = ({
 
         {/* Mark as Meeting */}
         <div className="group relative">
-          <CalendarIcon
+          <PhoneIcon
             title="Mark as Meeting"
             className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
             onClick={() => {
@@ -258,6 +259,24 @@ const NoteFooter = ({
                 .join('\n')
                 .trim();
               const newContent = `${contentWithoutOldMeetingMeta}\nmeta::meeting::${timestamp}`;
+              updateNote(note.id, newContent);
+            }}
+          />
+        </div>
+
+        {/* Mark as Event */}
+        <div className="group relative">
+          <CalendarDaysIcon
+            title="Mark as Event"
+            className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
+            onClick={() => {
+              const timestamp = new Date().toISOString();
+              const contentWithoutOldEventMeta = note.content
+                .split('\n')
+                .filter(line => !line.trim().startsWith('meta::event::'))
+                .join('\n')
+                .trim();
+              const newContent = `${contentWithoutOldEventMeta}\nmeta::event::${timestamp}`;
               updateNote(note.id, newContent);
             }}
           />

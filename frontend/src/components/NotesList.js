@@ -395,6 +395,28 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     </div>
                   );
                 })()}
+                {note.content.split('\n').some(line => line.trim().startsWith('meta::event')) && (() => {
+                  // Treat first line as event title, second as event time
+                  const lines = note.content.split('\n');
+                  const rawEventTime = lines[1] || '';
+                  const [datePart, timePart] = rawEventTime.split('T');
+                  const inputValue = rawEventTime ? `${datePart}T${timePart?.slice(0,5)}` : '';
+                  return (
+                    <div className="px-4 py-2 flex items-center space-x-2">
+                      <label className="text-sm font-medium">Event Time:</label>
+                      <input
+                        type="datetime-local"
+                        value={inputValue}
+                        onChange={e => {
+                          const newValue = e.target.value; // e.g. "2025-04-23T14:30"
+                          lines[1] = newValue;
+                          updateNote(note.id, lines.join('\n'));
+                        }}
+                        className="border border-gray-300 rounded p-1 text-sm"
+                      />
+                    </div>
+                  );
+                })()}
                 {/* Layer 1: Content and Edit/Delete */}
                 <div className="p-2">
                   {(note.content.includes('meta::todo') || endDateNotice) && (

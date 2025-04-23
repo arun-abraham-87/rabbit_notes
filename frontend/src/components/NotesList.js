@@ -1,28 +1,19 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import {
-  PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon,
-  ExclamationCircleIcon, CalendarIcon, PlusIcon, ClipboardDocumentIcon
-} from '@heroicons/react/24/solid';
-// Removed react-beautiful-dnd imports
-import { processContent, parseFormattedContent } from '../utils/TextUtils';
+
 import ConfirmationModal from './ConfirmationModal';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
-import { findDuplicatedUrls, buildLineElements, renderLineWithClickableDates, getIndentFlags, getRawLines } from '../utils/genUtils';
+import { findDuplicatedUrls} from '../utils/genUtils';
 
-import NoteEditor from './NoteEditor';
 import RightClickMenu from './RighClickMenu';
 import NoteFooter from './NoteFooter';
 import LinkedNotesSection from './LinkedNotesSection';
 import EndDatePickerModal from './EndDatePickerModal';
 import LinkNotesModal from './LinkNotesModal';
-import ImageModal from './ImageModal';
 import NoteMetaInfo from './NoteMetaInfo';
 import TagSelectionPopup from './TagSelectionPopup';
 import InlineEditor from './InlineEditor';
 import NoteTagBar from './NoteTagBar';
 import NoteContent from './NoteContent';
-import H1 from './H1';
-import H2 from './H2';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -115,19 +106,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     setEditingInlineDate({ noteId: null, lineIndex: null, originalDate: '' });
   };
 
-  const handleRemoveDuplicateUrlsWithinNotes = () => {
-    safeNotes.forEach(note => {
-      if (duplicateWithinNoteIds.has(note.id)) {
-        const seen = new Set();
-        const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
-          if (seen.has(url)) return '';
-          seen.add(url);
-          return url;
-        });
-        updateNote(note.id, cleanedContent);
-      }
-    });
-  };
+
 
   const deleteNote = async (id) => {
     deleteNoteById(id);

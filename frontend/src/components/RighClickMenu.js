@@ -42,8 +42,12 @@ export default function RightClickMenu({
       className="z-50 bg-white border border-gray-300 rounded shadow-md px-2 py-1 grid grid-cols-2 gap-1"
     >
       {[
-        { label: 'Copy', value: 'copyLine' },
         { label: 'Edit', value: 'editLine' },
+        { label: 'Delete', value: 'deleteLine' },
+        { separator: true },
+        { label: 'Copy', value: 'copyLine' },
+        { label: 'Remove Fmt', value: 'removeFormatting' },
+        { separator: true },
         { label: 'H1', value: 'makeH1' },
         { label: 'H2', value: 'makeH2' },
         { label: 'AA', value: 'uppercase' },
@@ -58,8 +62,6 @@ export default function RightClickMenu({
         { label: 'Move ↑', value: 'moveUp' },
         { label: 'Move ↓', value: 'moveDown' },
         { separator: true }, // After Move row
-        { label: 'Remove Fmt', value: 'removeFormatting' },
-        { label: 'Delete', value: 'deleteLine' },
       ].map((opt, idx) =>
         opt.separator ? (
           <div key={`sep-${idx}`} className="col-span-2 border-t-2 my-1"></div>

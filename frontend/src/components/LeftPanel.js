@@ -81,8 +81,11 @@ const LeftPanel = ({ notes, setNotes }) => {
   // Alert for imminent meetings
   const [alertMeetingId, setAlertMeetingId] = useState(null);
   useEffect(() => {
-    // Find a meeting starting within the next 2 minutes
+    // Find a meeting starting within the next 2 minutes, skipping acknowledged
     const soon = meetings.find(m => {
+      // skip if already acknowledged
+      const note = notes.find(n => n.id === m.id);
+      if (note?.content.includes('meta::meeting_acknowledge')) return false;
       const [timePart, ampm] = m.time.split(' ');
       const [h, min] = timePart.split('.').map(Number);
       let hour = h;
@@ -103,12 +106,22 @@ const LeftPanel = ({ notes, setNotes }) => {
         const m = meetings.find(x => x.id === alertMeetingId);
         return (
           <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-lg shadow-xl transform animate-pulse max-w-sm text-center">
+            <div className="p-8 rounded-lg shadow-xl transform bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 animate-pulse max-w-sm text-center">
               <h3 className="text-lg font-bold mb-2">Meeting Soon!</h3>
               <p className="mb-4">{m.context}</p>
               <p className="mb-6">Starts at {m.time}</p>
               <button
-                onClick={() => setAlertMeetingId(null)}
+                onClick={() => {
+                  const note = notes.find(n => n.id === alertMeetingId);
+                  if (note) {
+                    const ackLine = `meta::meeting_acknowledge::${new Date().toISOString()}`;
+                    const updatedContent = (note.content + '\n' + ackLine).trim();
+                    updateNoteById(note.id, updatedContent);
+                    // update local state
+                    setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+                  }
+                  setAlertMeetingId(null);
+                }}
                 className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
               >
                 Close

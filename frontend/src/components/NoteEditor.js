@@ -799,7 +799,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
               onClick={() => {
                 setShowEndDateFilterSubButtons(false);
                 setActivePriority('');
-                setLines([{ id: 'line-0', text: 'meta::todo', isTitle: false }]);
+                setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::todo', isTitle: false }]);
                 if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::todo');
                 setShowTodoSubButtons(true);
               }}
@@ -815,7 +815,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                 <button
                   onClick={() => {
                     const additional = ' meta::high';
-                    setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
+                    setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::todo' + additional, isTitle: false }]);
                     if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
                     setActivePriority('high');
                   }}
@@ -827,7 +827,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                 <button
                   onClick={() => {
                     const additional = ' meta::medium';
-                    setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
+                    setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::todo' + additional, isTitle: false }]);
                     if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
                     setActivePriority('medium');
                   }}
@@ -839,7 +839,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                 <button
                   onClick={() => {
                     const additional = ' meta::low';
-                    setLines([{ id: 'line-0', text: 'meta::todo' + additional, isTitle: false }]);
+                    setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::todo' + additional, isTitle: false }]);
                     if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
                     setActivePriority('low');
                   }}
@@ -853,7 +853,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           </div>
           <button
             onClick={() => {
-              setLines([{ id: 'line-0', text: '#watch', isTitle: false }]);
+              setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: '#watch', isTitle: false }]);
               if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + '#watch');
               setShowTodoSubButtons(false);
               setShowEndDateFilterSubButtons(false);
@@ -867,7 +867,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           {/* Today filter button - moved here before dropdown */}
           <button
             onClick={() => {
-              setLines([{ id: `line-${Date.now()}`, text: 'meta::today::', isTitle: false }]);
+              setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::today::', isTitle: false }]);
               if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::today::');
               setShowTodoSubButtons(false);
               setShowEndDateFilterSubButtons(false);
@@ -889,7 +889,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                 onClick={() => {
                   setShowTodoSubButtons(false);
                   setActivePriority('');
-                  setLines([{ id: 'line-0', text: 'meta::end_date::', isTitle: false }]);
+                  setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::end_date::', isTitle: false }]);
                   if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::end_date::');
                 }}
                 className="block w-full text-left px-3 py-1 text-xs hover:bg-gray-100"
@@ -898,7 +898,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
               </button>
               <button
                 onClick={() => {
-                  setLines([{ id: `line-${Date.now()}`, text: 'meta::Abbreviation::', isTitle: false }]);
+                  setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::Abbreviation::', isTitle: false }]);
                   if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::Abbreviation::');
                   setShowTodoSubButtons(false);
                   setShowEndDateFilterSubButtons(false);
@@ -910,7 +910,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
               </button>
               <button
                 onClick={() => {
-                  setLines([{ id: 'line-0', text: '#people', isTitle: false }]);
+                  setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: '#people', isTitle: false }]);
                   if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + '#people');
                   setShowTodoSubButtons(false);
                   setShowEndDateFilterSubButtons(false);
@@ -1153,7 +1153,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
             }}
             className="px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
           >
-            Cancel
+            Clear
           </button>
         ) : (
           <button

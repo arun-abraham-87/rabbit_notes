@@ -42,6 +42,19 @@ const LeftPanel = ({ notes, setNotes }) => {
   const [showMeetingsSection, setShowMeetingsSection] = useState(true);
   const [showEventsSection, setShowEventsSection] = useState(true);
 
+  // Collapse / Expand helpers
+  const handleCollapseAll = () => {
+    setShowQuickLinks(false);
+    setShowMeetingsSection(false);
+    setShowEventsSection(false);
+  };
+
+  const handleOpenAll = () => {
+    setShowQuickLinks(true);
+    setShowMeetingsSection(true);
+    setShowEventsSection(true);
+  };
+
   const uniqueUrls = useMemo(() => {
     const seen = new Set();
     const list = [];
@@ -163,8 +176,23 @@ const LeftPanel = ({ notes, setNotes }) => {
         );
       })()}
       <div className="w-full h-full bg-gray-100 p-4 space-y-2 overflow-y-auto">
+        {/* Collapse / Open controls */}
+        <div className="flex justify-end space-x-2 mb-3">
+          <button
+            onClick={handleCollapseAll}
+            className="text-xs bg-gray-200 hover:bg-gray-300 rounded px-2 py-1"
+          >
+            Collapse All
+          </button>
+          <button
+            onClick={handleOpenAll}
+            className="text-xs bg-gray-200 hover:bg-gray-300 rounded px-2 py-1"
+          >
+            Open All
+          </button>
+        </div>
       {/* Quick Links Section */}
-      <div>
+      <div className="bg-white p-3 rounded-md shadow-sm mb-4">
         <h2
           className="font-semibold text-gray-700 mb-2 flex justify-between items-center cursor-pointer p-2 hover:bg-gray-200 rounded"
           onClick={() => setShowQuickLinks(prev => !prev)}
@@ -216,7 +244,7 @@ const LeftPanel = ({ notes, setNotes }) => {
 
       {/* Meetings Section */}
       {visibleMeetings.length > 0 && (
-        <div>
+        <div className="bg-yellow-50 p-3 rounded-md shadow-sm mb-4">
           <h2
             className="font-semibold text-gray-700 mt-4 mb-2 flex justify-between items-center cursor-pointer p-2 hover:bg-gray-200 rounded"
             onClick={() => setShowMeetingsSection(prev => !prev)}
@@ -296,7 +324,7 @@ const LeftPanel = ({ notes, setNotes }) => {
 
       {/* Events Section */}
       {visibleEvents.length > 0 && (
-        <div>
+        <div className="bg-green-50 p-3 rounded-md shadow-sm mb-4">
           <h2
             className="font-semibold text-gray-700 mt-4 mb-2 flex justify-between items-center cursor-pointer p-2 hover:bg-gray-200 rounded"
             onClick={() => setShowEventsSection(prev => !prev)}

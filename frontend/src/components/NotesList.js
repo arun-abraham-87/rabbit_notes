@@ -611,7 +611,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                           </span>
                                         )}
                                         <span className="flex-1">
-                                          {buildLineElements(line, idx, isListItem, searchTerm)}
+                                          {buildLineElements(formatAndAgeDate(line), idx, isListItem, searchTerm)}
                                         </span>
                                         {/* Hover icons for copy/edit removed; right-click menu handles these actions */}
                                         {editingInlineDate.noteId === note.id && editingInlineDate.lineIndex === idx && (

@@ -20,6 +20,9 @@ import TagSelectionPopup from './TagSelectionPopup';
 import InlineEditor from './InlineEditor';
 import NoteTagBar from './NoteTagBar';
 
+// Regex to match dates in DD/MM/YYYY or DD Month YYYY format
+const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
+
 // ─── end line‑rendering helper ──────────────────────────────────────
 
 /**
@@ -156,8 +159,9 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     setShowEndDatePickerForNoteId(null);
   };
 
-  const handleInlineDateSelect = (noteId, lineIndex, newDate) => {
-    const dateStr = newDate.toLocaleDateString();
+  const handleInlineDateSelect = (noteId, lineIndex, dateValue) => {
+    const [year, month, day] = dateValue.split('-');
+    const dateStr = `${day}/${month}/${year}`;
     const noteToUpdate = notes.find(n => n.id === noteId);
     const lines = noteToUpdate.content.split('\n');
     lines[lineIndex] = lines[lineIndex].replace(editingInlineDate.originalDate, dateStr);
@@ -611,7 +615,31 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                           </span>
                                         )}
                                         <span className="flex-1">
-                                          {buildLineElements(formatAndAgeDate(line), idx, isListItem, searchTerm)}
+                                          {(() => {
+                                            const textWithAges = formatAndAgeDate(line);
+                                            const segments = textWithAges.split(clickableDateRegex);
+                                            return segments.map((seg, i) => {
+                                              if (clickableDateRegex.test(seg)) {
+                                                return (
+                                                  <span
+                                                    key={i}
+                                                    className="underline cursor-pointer"
+                                                    onClick={() => {
+                                                      const rawLines = note.content.split('\n');
+                                                      const rawLine = rawLines[idx] || '';
+                                                      const rawMatch = rawLine.match(/(\d{2}\/\d{2}\/\d{4})|\b\d{2} [A-Za-z]+ \d{4}\b/);
+                                                      const rawDate = rawMatch ? rawMatch[0] : seg;
+                                                      setEditingInlineDate({ noteId: note.id, lineIndex: idx, originalDate: rawDate });
+                                                    }}
+                                                  >
+                                                    {seg}
+                                                  </span>
+                                                );
+                                              }
+                                              // Non-date segments: render markdown and links
+                                              return buildLineElements(seg, idx, isListItem, searchTerm);
+                                            });
+                                          })()}
                                         </span>
                                         {/* Hover icons for copy/edit removed; right-click menu handles these actions */}
                                         {editingInlineDate.noteId === note.id && editingInlineDate.lineIndex === idx && (
@@ -619,11 +647,26 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                             <div className="bg-white p-4 rounded shadow-md">
                                               <input
                                                 type="date"
+                                                value={(() => {
+                                                  const orig = editingInlineDate.originalDate;
+                                                  // Slash-separated format (DD/MM/YYYY)
+                                                  if (orig.includes('/')) {
+                                                    const [day, month, year] = orig.split('/');
+                                                    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                                  }
+                                                  // Month-name format (DD Mon YYYY)
+                                                  const [day, mon, year] = orig.split(' ');
+                                                  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                                                  const monthIndex = months.indexOf(mon) + 1;
+                                                  const mm = monthIndex.toString().padStart(2, '0');
+                                                  const dd = day.padStart(2, '0');
+                                                  return `${year}-${mm}-${dd}`;
+                                                })()}
                                                 onChange={e =>
                                                   handleInlineDateSelect(
                                                     editingInlineDate.noteId,
                                                     editingInlineDate.lineIndex,
-                                                    new Date(e.target.value)
+                                                    e.target.value
                                                   )
                                                 }
                                                 className="border border-gray-300 rounded px-3 py-2 text-sm"

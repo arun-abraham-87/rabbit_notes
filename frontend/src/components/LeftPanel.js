@@ -76,6 +76,28 @@ const LeftPanel = ({ notes, setNotes }) => {
     const list = [];
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
     notes.forEach(note => {
+      if (note.content.split('\n').some(line => line.trim().startsWith('meta::quick_links'))) {
+        linkRegex.lastIndex = 0;
+        let match;
+        while ((match = linkRegex.exec(note.content)) !== null) {
+          const url = match[2] || match[3];
+          const label = match[1] || null;
+          const key = `${url}|${label}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            list.push({ url, label });
+          }
+        }
+      }
+    });
+    return list;
+  }, [notes]);
+
+  const bookmarkedUrls = useMemo(() => {
+    const seen = new Set();
+    const list = [];
+    const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
+    notes.forEach(note => {
       if (note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark'))) {
         linkRegex.lastIndex = 0;
         let match;
@@ -244,6 +266,45 @@ const LeftPanel = ({ notes, setNotes }) => {
                     >
                       &times;
                     </button>
+                  </div>
+                );
+              })
+            )
+          )}
+        </div>
+
+        {/* Bookmarks Section */}
+        <div className="bg-white p-3 rounded-md shadow-sm mb-4">
+          <h2
+            className="font-semibold text-gray-700 mb-2 flex justify-between items-center cursor-pointer p-2 hover:bg-gray-200 rounded"
+            onClick={() => setShowQuickLinks(prev => !prev)}
+          >
+            <span>Bookmarks</span>
+            {showQuickLinks ? <ChevronDownIcon className="h-6 w-6 text-gray-700" /> : <ChevronRightIcon className="h-6 w-6 text-gray-700" />}
+          </h2>
+          {showQuickLinks && (
+            bookmarkedUrls.length === 0 ? (
+              <p className="text-gray-500">No Bookmarks</p>
+            ) : (
+              bookmarkedUrls.map(({ url, label }, idx) => {
+                let displayText = label || (() => {
+                  try { return new URL(url).hostname.replace(/^www\./, ''); }
+                  catch { return url; }
+                })();
+                return (
+                  <div
+                    key={url}
+                    onContextMenu={e => handleLinkContextMenu(e, url)}
+                    className={`flex items-center mb-2 pl-4 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                  >
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-black hover:underline truncate"
+                    >
+                      {displayText}
+                    </a>
                   </div>
                 );
               })

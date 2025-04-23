@@ -30,6 +30,13 @@ const removeBookmarkFromNotes = (url, notes, setNotes) => {
 };
 
 const LeftPanel = ({ notes, setNotes }) => {
+  // State for current time to drive countdowns
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const uniqueUrls = useMemo(() => {
     const seen = new Set();
     const list = [];
@@ -56,9 +63,10 @@ const LeftPanel = ({ notes, setNotes }) => {
     return list;
   }, [notes]);
 
-  // Extract meetings: context and time from notes tagged meta::meeting
+  // Extract meetings: context and time from notes tagged meta::meeting, sorted by datetime ascending
   const meetings = useMemo(() => {
-    return notes.flatMap(note => {
+    // Build array of meeting objects
+    const result = notes.flatMap(note => {
       if (note.content.split('\n').some(line => line.trim().startsWith('meta::meeting'))) {
         const lines = note.content.split('\n');
         const context = lines[0] || '';
@@ -67,14 +75,22 @@ const LeftPanel = ({ notes, setNotes }) => {
       }
       return [];
     });
+    // Sort by time ascending
+    return result.sort((a, b) => new Date(a.time) - new Date(b.time));
   }, [notes]);
 
-  // State for current time to drive countdowns
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  // Only show meetings that are upcoming or not yet acknowledged when past
+  const visibleMeetings = useMemo(() => {
+    return meetings.filter(m => {
+      const note = notes.find(n => n.id === m.id);
+      const eventTime = new Date(m.time).getTime();
+      // If passed and acknowledged, hide it
+      if (eventTime < now && note?.content.includes('meta::meeting_acknowledge')) {
+        return false;
+      }
+      return true;
+    });
+  }, [meetings, notes, now]);
 
   // Alert for imminent meetings
   const [alertMeetingId, setAlertMeetingId] = useState(null);
@@ -159,11 +175,18 @@ const LeftPanel = ({ notes, setNotes }) => {
             );
           })}
 
-          {meetings.length > 0 && (
+          {visibleMeetings.length > 0 && (
             <>
               <h2 className="font-semibold text-gray-700 mt-4 mb-2">Meetings</h2>
-              {meetings.map(m => (
-                <div key={m.id} className="mb-2 pl-4">
+              {visibleMeetings.map(m => {
+                const eventTime = new Date(m.time).getTime();
+                const diff = eventTime - now;
+                const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
+                return (
+                  <div
+                    key={m.id}
+                    className={`mb-2 pl-4 ${isFlashing ? 'animate-pulse bg-yellow-200' : ''}`}
+                  >
                   <div className="text-sm font-medium">{m.context}</div>
 
                   {/* Display date */}
@@ -214,7 +237,8 @@ const LeftPanel = ({ notes, setNotes }) => {
                     })()}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </>
           )}
         </>

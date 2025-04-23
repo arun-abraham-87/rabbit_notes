@@ -17,6 +17,7 @@ import ImageModal from './ImageModal';
 import NoteMetaInfo from './NoteMetaInfo';
 import TagSelectionPopup from './TagSelectionPopup';
 import InlineEditor from './InlineEditor';
+import NoteTagBar from './NoteTagBar';
 
 // ─── end line‑rendering helper ──────────────────────────────────────
 
@@ -441,26 +442,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                       <>
                                         {(() => {
                                           const content = line.slice(4, -5);
-                                          const mdMatch = content.match(/^\[(.+)\]\((https?:\/\/[^\s)]+)\)$/);
-                                          if (mdMatch) {
-                                            const [, text, url] = mdMatch;
-                                            return (
-                                              <a
-                                                href={url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex-1 text-blue-600 underline"
-                                              >
-                                                {text}
-                                              </a>
-                                            );
-                                          } else {
-                                            return (
-                                              <span className="flex-1">
-                                                {processContent(content, searchTerm, duplicatedUrlColors)}
-                                              </span>
-                                            );
-                                          }
+                                          return (
+                                            <span className="flex-1">
+                                              {processContent(content, searchTerm, duplicatedUrlColors)}
+                                            </span>
+                                          );
                                         })()}
                                         <span className="invisible group-hover:visible">
                                           <PencilIcon
@@ -489,16 +475,16 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                   >
                                     {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
                                       <InlineEditor
-                                      text={editedLineContent}
-                                      setText={setEditedLineContent}
-                                      onSave={(newText) => {
-                                        const lines = note.content.split('\n');
-                                        lines[idx] = `##${newText}##`;          // h2 wrapper
-                                        updateNote(note.id, lines.join('\n'));
-                                        setEditingLine({ noteId: null, lineIndex: null });
-                                      }}
-                                      onCancel={() => setEditingLine({ noteId: null, lineIndex: null })}
-                                    />
+                                        text={editedLineContent}
+                                        setText={setEditedLineContent}
+                                        onSave={(newText) => {
+                                          const lines = note.content.split('\n');
+                                          lines[idx] = `##${newText}##`;          // h2 wrapper
+                                          updateNote(note.id, lines.join('\n'));
+                                          setEditingLine({ noteId: null, lineIndex: null });
+                                        }}
+                                        onCancel={() => setEditingLine({ noteId: null, lineIndex: null })}
+                                      />
                                     ) : (
                                       <>
                                         <span className="flex-1">
@@ -521,7 +507,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                 return (
                                   <div
                                     key={idx}
-                               
+
                                     onContextMenu={(e) => {
                                       e.preventDefault();
                                       setRightClickNoteId(note.id);
@@ -532,16 +518,16 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                   >
                                     {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
                                       <InlineEditor
-                                      text={editedLineContent}
-                                      setText={setEditedLineContent}
-                                      onSave={(newText) => {
-                                        const lines = note.content.split('\n');
-                                        lines[idx] = newText;
-                                        updateNote(note.id, lines.join('\n'));
-                                        setEditingLine({ noteId: null, lineIndex: null });
-                                      }}
-                                      onCancel={() => setEditingLine({ noteId: null, lineIndex: null })}
-                                    />
+                                        text={editedLineContent}
+                                        setText={setEditedLineContent}
+                                        onSave={(newText) => {
+                                          const lines = note.content.split('\n');
+                                          lines[idx] = newText;
+                                          updateNote(note.id, lines.join('\n'));
+                                          setEditingLine({ noteId: null, lineIndex: null });
+                                        }}
+                                        onCancel={() => setEditingLine({ noteId: null, lineIndex: null })}
+                                      />
                                     ) : (
                                       <>
                                         {(indentFlags[idx] || isListItem) && (
@@ -632,100 +618,47 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap gap-2 px-4 pb-2">
-                  {['meta::low', 'meta::medium', 'meta::high'].map((priority, index) =>
-                    note.content.includes(priority) ? (
-                      <button
-                        key={index}
-                        className="bg-gray-300 text-gray-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-                      >
-                        {priority.replace('meta::', '')}
-                        <span
-                          onClick={() => {
-                            const updatedContent = note.content
-                              .split('\n')
-                              .filter(line => !line.trim().startsWith(priority))
-                              .join('\n')
-                              .trim();
-                            updateNote(note.id, updatedContent);
-                          }}
-                          className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer"
-                          title="Remove tag"
-                        >
-                          ×
-                        </span>
-                      </button>
-                    ) : null
-                  )}
-                  {note.content.includes('meta::todo') && (
-                    <button
-                      className="bg-gray-300 text-gray-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-                    >
-                      todo
-                      <span
-                        onClick={() => {
-                          const updatedContent = note.content
-                            .split('\n')
-                            .filter(line => !line.trim().startsWith('meta::todo'))
-                            .join('\n')
-                            .trim();
-                          updateNote(note.id, updatedContent);
-                        }}
-                        className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer"
-                        title="Remove tag"
-                      >
-                        ×
-                      </span>
-                    </button>
-                  )}
-                  {note.content.includes('meta::abbreviation') && (
-                    <button
-                      className="bg-gray-300 text-gray-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-                    >
-                      Abbreviation
-                      <span
-                        onClick={() => {
-                          const updatedContent = note.content
-                            .split('\n')
-                            .filter(line => !line.trim().startsWith('meta::abbreviation'))
-                            .join('\n')
-                            .trim();
-                          updateNote(note.id, updatedContent);
-                        }}
-                        className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer"
-                        title="Remove tag"
-                      >
-                        ×
-                      </span>
-                    </button>
-                  )}
-                  {duplicateUrlNoteIds.has(note.id) && (
-                    <span className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-400">
-                      Duplicate URL
-                    </span>
-                  )}
-                  {duplicateWithinNoteIds.has(note.id) && (
-                    <>
-                      <span className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-400">
-                        Duplicate Url In Note
-                      </span>
-                      <button
-                        onClick={() => {
-                          const seen = new Set();
-                          const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
-                            if (seen.has(url)) return '';
-                            seen.add(url);
-                            return url;
-                          });
-                          updateNote(note.id, cleanedContent);
-                        }}
-                        className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                      >
-                        Remove Duplicates
-                      </button>
-                    </>
-                  )}
+                {addingLineNoteId === note.id && (
+                  <div className="w-full px-4 py-2">
+                    <InlineEditor
+                      text={newLineText}
+                      setText={setNewLineText}
+                      onSave={(text) => {
+                        const updated = note.content.trimEnd() + '\n' + text;
+                        updateNote(note.id, updated);
+                        setAddingLineNoteId(null);
+                        setNewLineText('');
+                      }}
+                      onCancel={() => {
+                        setAddingLineNoteId(null);
+                        setNewLineText('');
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-4 px-4 py-2">
+                  {/* Add new line button */}
+                  <button
+                    title="Add line"
+                    onClick={() => {
+                      setAddingLineNoteId(note.id);
+                      setNewLineText('');
+                      setTimeout(() => newLineInputRef.current?.focus(), 0);
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <PlusIcon className="h-5 w-5" />
+                  </button>
+                  {/* Tag bar */}
+                  <NoteTagBar
+                    note={note}
+                    updateNote={updateNote}
+                    duplicateUrlNoteIds={duplicateUrlNoteIds}
+                    duplicateWithinNoteIds={duplicateWithinNoteIds}
+                  />
                 </div>
+
 
                 <NoteFooter
                   note={note}
@@ -740,54 +673,8 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                   toggleNoteSelection={toggleNoteSelection}
                   updateNote={updateNote}
                 />
-                {/* Add new line button */}
-                <div className="px-4 py-2">
-                  <button
-                    title="Add line"
-                    onClick={() => {
-                      setAddingLineNoteId(note.id);
-                      setNewLineText('');
-                      setTimeout(() => newLineInputRef.current?.focus(), 0);
-                    }}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <PlusIcon className="h-5 w-5" />
-                  </button>
-                </div>
-                {/* New line editor */}
-                {addingLineNoteId === note.id && (
-                  <div className="px-4 py-2 bg-gray-50">
-                    <textarea
-                      ref={newLineInputRef}
-                      className="w-full border rounded p-2"
-                      rows={2}
-                      value={newLineText}
-                      onChange={e => setNewLineText(e.target.value)}
-                    />
-                    <div className="mt-2 flex space-x-2">
-                      <button
-                        onClick={() => {
-                          const updated = note.content.trimEnd() + '\n' + newLineText;
-                          updateNote(note.id, updated);
-                          setAddingLineNoteId(null);
-                          setNewLineText('');
-                        }}
-                        className="px-3 py-1 bg-blue-500 text-white rounded"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => {
-                          setAddingLineNoteId(null);
-                          setNewLineText('');
-                        }}
-                        className="px-3 py-1 bg-gray-300 rounded"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
+
+
                 <LinkedNotesSection
                   note={note}
                   allNotes={safeNotes}

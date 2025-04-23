@@ -1,59 +1,78 @@
+import React from 'react';
+
 // Function to process the content with links, capitalization, and search query highlighting
 export const processContent = (content, searchQuery) => {
-  if (typeof content !== 'string') {
-    return content; // Return content as is if it's not a string
-  }
+  if (typeof content !== 'string') return content;
 
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
   const searchTerms = searchQuery ? searchQuery.split(' ') : [];
   let isFirstTextSegment = true;
 
-  return content.trim().split(urlRegex).map((part, index) => {
-    if (urlRegex.test(part)) {
-      // If the part is a URL
-      try {
-        const url = new URL(part);
-        return (
-          <a
-            key={index}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline hover:text-blue-800"
-          >
-            {url.hostname}
-          </a>
-        );
-      } catch {
-        return part; // If URL parsing fails, return the original part
-      }
-    } else {
-      // If the part is text
-      let processedText = part;
+  // Regex to match [text](url) or bare URLs
+  const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
+  const elements = [];
+  let lastIndex = 0;
+  let match;
 
-      if (isFirstTextSegment && typeof part === 'string') {
-        // Capitalize the first text segment
-        processedText = part.charAt(0).toUpperCase() + part.slice(1);
+  while ((match = linkRegex.exec(content)) !== null) {
+    // Text before link
+    if (match.index > lastIndex) {
+      let textSegment = content.slice(lastIndex, match.index);
+      // Capitalize first text segment
+      if (isFirstTextSegment) {
+        textSegment = textSegment.charAt(0).toUpperCase() + textSegment.slice(1);
         isFirstTextSegment = false;
       }
-
-      // Highlight matching search terms
-      if (searchTerms.length > 0) {
+      // Highlight search terms
+      if (searchTerms.length) {
         const regex = new RegExp(`(${searchTerms.join('|')})`, 'gi');
-        processedText = processedText.replace(regex, (match) => 
-          `<span class="bg-yellow-300">${match}</span>`
-        );
+        textSegment = textSegment.replace(regex, '<span class="bg-yellow-300">$1</span>');
       }
-
-      // Return the processed text as React elements
-      return (
+      elements.push(
         <span
-          key={index}
-          dangerouslySetInnerHTML={{ __html: processedText }}
-        ></span>
+          key={`text-${lastIndex}`}
+          dangerouslySetInnerHTML={{ __html: textSegment }}
+        />
       );
     }
-  });
+    // Determine URL and display text
+    const url = match[2] || match[3];
+    const display = match[1] || (() => {
+      try { return new URL(url).hostname.replace(/^www\./, ''); }
+      catch { return url; }
+    })();
+    elements.push(
+      <a
+        key={`link-${match.index}`}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 underline hover:text-blue-800"
+      >
+        {display}
+      </a>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Remaining text after last match
+  if (lastIndex < content.length) {
+    let textSegment = content.slice(lastIndex);
+    if (isFirstTextSegment) {
+      textSegment = textSegment.charAt(0).toUpperCase() + textSegment.slice(1);
+    }
+    if (searchTerms.length) {
+      const regex = new RegExp(`(${searchTerms.join('|')})`, 'gi');
+      textSegment = textSegment.replace(regex, '<span class="bg-yellow-300">$1</span>');
+    }
+    elements.push(
+      <span
+        key={`text-end`}
+        dangerouslySetInnerHTML={{ __html: textSegment }}
+      />
+    );
+  }
+
+  return elements;
 };
 
 
@@ -69,5 +88,4 @@ export const parseFormattedContent = (lines) => {
     }
   });
 };
-
 

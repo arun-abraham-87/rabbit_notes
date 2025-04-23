@@ -40,6 +40,7 @@ const LeftPanel = ({ notes, setNotes }) => {
 
   const [showQuickLinks, setShowQuickLinks] = useState(true);
   const [showMeetingsSection, setShowMeetingsSection] = useState(true);
+  const [showEventsSection, setShowEventsSection] = useState(true);
 
   const uniqueUrls = useMemo(() => {
     const seen = new Set();
@@ -95,6 +96,25 @@ const LeftPanel = ({ notes, setNotes }) => {
       return true;
     });
   }, [meetings, notes, now]);
+
+  // Extract events tagged meta::event, sorted chronologically
+  const events = useMemo(() => {
+    const result = notes.flatMap(note => {
+      if (note.content.split('\n').some(line => line.trim().startsWith('meta::event'))) {
+        const lines = note.content.split('\n');
+        const context = lines[0] || '';
+        const time = lines[1] || '';
+        return [{ id: note.id, context: context.trim(), time: time.trim() }];
+      }
+      return [];
+    });
+    return result.sort((a, b) => new Date(a.time) - new Date(b.time));
+  }, [notes]);
+
+  // Only show events that are today or in the future
+  const visibleEvents = useMemo(() => {
+    return events.filter(e => new Date(e.time).getTime() >= now);
+  }, [events, now]);
 
   // Alert for imminent meetings
   const [alertMeetingId, setAlertMeetingId] = useState(null);
@@ -268,6 +288,84 @@ const LeftPanel = ({ notes, setNotes }) => {
                   })()}
                 </div>
               </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Events Section */}
+      {visibleEvents.length > 0 && (
+        <div>
+          <h2
+            className="font-semibold text-gray-700 mt-4 mb-2 flex justify-between items-center cursor-pointer p-2 hover:bg-gray-200 rounded"
+            onClick={() => setShowEventsSection(prev => !prev)}
+          >
+            <span>Events</span>
+            {showEventsSection ? (
+              <ChevronDownIcon className="h-6 w-6 text-gray-700" />
+            ) : (
+              <ChevronRightIcon className="h-6 w-6 text-gray-700" />
+            )}
+          </h2>
+          {showEventsSection && (
+            visibleEvents.map(e => {
+              const eventTime = new Date(e.time).getTime();
+              const diff = eventTime - now;
+              const isFlashing = diff > 0 && diff <= 10 * 60 * 1000; // flash if within 10 min
+              return (
+                <div
+                  key={e.id}
+                  className={`mb-2 pl-4 ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
+                >
+                  {/* Event context */}
+                  <div className="text-sm font-medium">{e.context}</div>
+
+                  {/* Event date */}
+                  <div className="text-xs text-gray-500">
+                    {(() => {
+                      const eventDate = new Date(e.time);
+                      const today = new Date(now);
+                      return eventDate.toDateString() === today.toDateString()
+                        ? 'Today'
+                        : eventDate.toLocaleDateString(undefined, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          });
+                    })()}
+                  </div>
+
+                  {/* Event time */}
+                  <div className="text-xs text-gray-500">
+                    {(() => {
+                      const d = new Date(e.time);
+                      let h = d.getHours();
+                      const m = d.getMinutes();
+                      const ampm = h >= 12 ? 'PM' : 'AM';
+                      h = h % 12 || 12;
+                      return `${h}:${m.toString().padStart(2, '0')} ${ampm}`;
+                    })()}
+                  </div>
+
+                  {/* Countdown */}
+                  <div className="text-xs text-blue-600">
+                    {(() => {
+                      const target = new Date(e.time).getTime();
+                      const delta = target - now;
+                      const days = Math.floor(delta / 86400000);
+                      const hours = Math.floor((delta % 86400000) / 3600000);
+                      const minutes = Math.floor((delta % 3600000) / 60000);
+                      const seconds = Math.floor((delta % 60000) / 1000);
+                      const parts = [];
+                      if (days) parts.push(`${days}d`);
+                      if (hours) parts.push(`${hours}h`);
+                      if (minutes) parts.push(`${minutes}m`);
+                      if (!parts.length) parts.push(`${seconds}s`);
+                      return `in ${parts.join(' ')}`;
+                    })()}
+                  </div>
+                </div>
               );
             })
           )}

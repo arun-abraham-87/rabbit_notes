@@ -102,6 +102,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     }
     navigator.clipboard.writeText(copyText).then(() => {
       setShowCopyToast(true);
+      setRightClickText('copied');
       setTimeout(() => setShowCopyToast(false), 1500);
     });
   };
@@ -283,6 +284,25 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     }
   }, [rightClickText]);
 
+  // Show ephemeral popup when copying from right-click menu
+  useEffect(() => {
+    if (rightClickText === 'copied') {
+      setShowCopyToast(true);
+      const timer = setTimeout(() => {
+        setShowCopyToast(false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    } else {
+      setShowCopyToast(false);
+    }
+  }, [rightClickText]);
+
+  useEffect(() => {
+    if (!showCopyToast) {
+      setRightClickText(null);
+    }
+  }, [showCopyToast]);
+
   useEffect(() => {
     const imagePattern = /!\[pasted image\]\((.*?)\)/g;
     const fetchImages = async () => {
@@ -334,7 +354,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   return (
     <div className="relative">
       {showCopyToast && (
-        <div className="fixed bottom-4 right-4 bg-black text-white text-sm px-3 py-1 rounded shadow-lg">
+        <div className="fixed bottom-4 right-4 bg-black text-white text-sm px-3 py-1 rounded shadow-lg z-50">
           Copied to clipboard
         </div>
       )}
@@ -395,7 +415,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                 setRightClickNoteId(note.id);
                 setRightClickPos({ x: e.clientX, y: e.clientY });
               }}
-              className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100"
+              className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative"
             >
               <div className="flex flex-col flex-auto">
                 {note.content.split('\n').some(line => line.trim().startsWith('meta::meeting')) && (() => {
@@ -456,7 +476,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                       setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
                     />
                   )}
-                  <div className="bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
+                  <div className="relative bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
                     {(() => {
                       const rawLines = getRawLines(note.content);
                       const contentLines = parseFormattedContent(rawLines, searchTerm, duplicatedUrlColors)
@@ -519,19 +539,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                             </span>
                                           );
                                         })()}
-                                        <span className="invisible group-hover:visible flex items-center space-x-1">
-                                          <ClipboardDocumentIcon
-                                            className="h-4 w-4 text-gray-500 cursor-pointer hover:text-gray-700"
-                                            onClick={() => handleCopyLine(line)}
-                                          />
-                                          <PencilIcon
-                                            className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
-                                            onClick={() => {
-                                              setEditedLineContent(line.slice(4, -5));
-                                              setEditingLine({ noteId: note.id, lineIndex: idx });
-                                            }}
-                                          />
-                                        </span>
+                                        {/* Hover icons for copy/edit removed; right-click menu handles these actions */}
                                       </>
                                     )}
                                   </h1>
@@ -565,19 +573,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                         <span className="flex-1">
                                           {processContent(line.slice(4, -5), searchTerm, duplicatedUrlColors)}
                                         </span>
-                                        <span className="invisible group-hover:visible flex items-center space-x-1">
-                                          <ClipboardDocumentIcon
-                                            className="h-4 w-4 text-gray-500 cursor-pointer hover:text-gray-700"
-                                            onClick={() => handleCopyLine(line)}
-                                          />
-                                          <PencilIcon
-                                            className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
-                                            onClick={() => {
-                                              setEditedLineContent(line.slice(4, -5));
-                                              setEditingLine({ noteId: note.id, lineIndex: idx });
-                                            }}
-                                          />
-                                        </span>
+                                        {/* Hover icons for copy/edit removed; right-click menu handles these actions */}
                                       </>
                                     )}
                                   </h2>
@@ -617,19 +613,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                         <span className="flex-1">
                                           {buildLineElements(line, idx, isListItem, searchTerm)}
                                         </span>
-                                        <span className="invisible group-hover:visible flex items-center space-x-1">
-                                          <ClipboardDocumentIcon
-                                            className="h-4 w-4 text-gray-500 cursor-pointer hover:text-gray-700"
-                                            onClick={() => handleCopyLine(line)}
-                                          />
-                                          <PencilIcon
-                                            className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
-                                            onClick={() => {
-                                              setEditedLineContent(line);
-                                              setEditingLine({ noteId: note.id, lineIndex: idx });
-                                            }}
-                                          />
-                                        </span>
+                                        {/* Hover icons for copy/edit removed; right-click menu handles these actions */}
                                         {editingInlineDate.noteId === note.id && editingInlineDate.lineIndex === idx && (
                                           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
                                             <div className="bg-white p-4 rounded shadow-md">
@@ -676,6 +660,20 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                               />
                             </div>
                           )}
+                          {/* Add new line button at bottom-right of content area */}
+                          <div className="absolute bottom-2 right-2">
+                            <button
+                              title="Add line"
+                              onClick={() => {
+                                setAddingLineNoteId(note.id);
+                                setNewLineText('');
+                                setTimeout(() => newLineInputRef.current?.focus(), 0);
+                              }}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              <PlusIcon className="h-5 w-5" />
+                            </button>
+                          </div>
                         </>
                       );
                     })()}
@@ -721,18 +719,6 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                 )}
 
                 <div className="flex items-center space-x-4 px-4 py-2">
-                  {/* Add new line button */}
-                  <button
-                    title="Add line"
-                    onClick={() => {
-                      setAddingLineNoteId(note.id);
-                      setNewLineText('');
-                      setTimeout(() => newLineInputRef.current?.focus(), 0);
-                    }}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <PlusIcon className="h-5 w-5" />
-                  </button>
                   {/* Tag bar */}
                   <NoteTagBar
                     note={note}
@@ -847,8 +833,21 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           selectedNotes={selectedNotes}
           toggleNoteSelection={toggleNoteSelection}
           setRightClickText={setRightClickText}
+          setEditedLineContent={setEditedLineContent}  
+          setEditingLine={setEditingLine}             
+          handleCopyLine={handleCopyLine}
         />
       )}
+
+      {/** Ephemeral popup for right-click copy */}
+      {/*
+        Listen for rightClickText === 'copied' and show ephemeral popup.
+      */}
+      {/*
+        Insert useEffect below for rightClickText.
+      */}
+      {/* Ephemeral copy toast for right-click menu */}
+      {/* (no visible element here; handled by showCopyToast above) */}
     </div>
   );
 };

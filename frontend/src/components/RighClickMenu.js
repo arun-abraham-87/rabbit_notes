@@ -28,6 +28,9 @@ export default function RightClickMenu({
   selectedNotes,
   toggleNoteSelection,
   setRightClickText,
+  setEditedLineContent,
+  setEditingLine,
+  handleCopyLine,
 }) {
   if (noteId == null || lineIndex == null) return null;
   const note = notes.find((n) => n.id === noteId);
@@ -39,6 +42,8 @@ export default function RightClickMenu({
       className="z-50 bg-white border border-gray-300 rounded shadow-md px-2 py-1 grid grid-cols-2 gap-1"
     >
       {[
+        { label: 'Copy', value: 'copyLine' },
+        { label: 'Edit', value: 'editLine' },
         { label: 'H1', value: 'makeH1' },
         { label: 'H2', value: 'makeH2' },
         { label: 'AA', value: 'uppercase' },
@@ -65,6 +70,14 @@ export default function RightClickMenu({
             onClick={() => {
               const arr = note.content.split('\n');
               switch (opt.value) {
+                case 'copyLine':
+                  handleCopyLine(arr[lineIndex]);
+                  //setRightClickText('copied')
+                  break;
+                case 'editLine':
+                  setEditedLineContent(arr[lineIndex]);
+                  setEditingLine({ noteId, lineIndex });
+                  break;
                 case 'insertAbove':
                   arr.splice(lineIndex, 0, '');
                   break;
@@ -131,7 +144,7 @@ export default function RightClickMenu({
                   break;
               }
               updateNote(noteId, arr.join('\n'));
-              setRightClickText(null);
+              //setRightClickText(null);
             }}
           >
             {opt.label}

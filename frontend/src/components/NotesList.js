@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon, ExclamationCircleIcon, CalendarIcon, PlusIcon } from '@heroicons/react/24/solid';
+import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CheckCircleIcon,
+  ExclamationCircleIcon, CalendarIcon, PlusIcon, ClipboardDocumentIcon } from '@heroicons/react/24/solid';
 // Removed react-beautiful-dnd imports
 import { processContent, parseFormattedContent } from '../utils/TextUtils';
 import ConfirmationModal from './ConfirmationModal';
@@ -84,6 +85,14 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const [addingLineNoteId, setAddingLineNoteId] = useState(null);
   const [newLineText, setNewLineText] = useState('');
   const newLineInputRef = useRef(null);
+  const [showCopyToast, setShowCopyToast] = useState(false);
+
+  const handleCopyLine = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setShowCopyToast(true);
+      setTimeout(() => setShowCopyToast(false), 1500);
+    });
+  };
   // Highlight every case‑insensitive occurrence of `searchTerm` within plain text.
   // Returns a mix of strings and <mark> elements so callers may spread / concat.
 
@@ -312,6 +321,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
 
   return (
     <div className="relative">
+      {showCopyToast && (
+        <div className="fixed bottom-4 right-4 bg-black text-white text-sm px-3 py-1 rounded shadow-lg">
+          Copied to clipboard
+        </div>
+      )}
       {selectedNotes.length > 1 && (
         <div className="mb-4">
           <button
@@ -493,7 +507,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                             </span>
                                           );
                                         })()}
-                                        <span className="invisible group-hover:visible">
+                                        <span className="invisible group-hover:visible flex items-center space-x-1">
+                                          <ClipboardDocumentIcon
+                                            className="h-4 w-4 text-gray-500 cursor-pointer hover:text-gray-700"
+                                            onClick={() => handleCopyLine(line)}
+                                          />
                                           <PencilIcon
                                             className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
                                             onClick={() => {
@@ -535,7 +553,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                         <span className="flex-1">
                                           {processContent(line.slice(4, -5), searchTerm, duplicatedUrlColors)}
                                         </span>
-                                        <span className="invisible group-hover:visible">
+                                        <span className="invisible group-hover:visible flex items-center space-x-1">
+                                          <ClipboardDocumentIcon
+                                            className="h-4 w-4 text-gray-500 cursor-pointer hover:text-gray-700"
+                                            onClick={() => handleCopyLine(line)}
+                                          />
                                           <PencilIcon
                                             className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
                                             onClick={() => {
@@ -583,7 +605,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                                         <span className="flex-1">
                                           {buildLineElements(line, idx, isListItem, searchTerm)}
                                         </span>
-                                        <span className="invisible group-hover:visible">
+                                        <span className="invisible group-hover:visible flex items-center space-x-1">
+                                          <ClipboardDocumentIcon
+                                            className="h-4 w-4 text-gray-500 cursor-pointer hover:text-gray-700"
+                                            onClick={() => handleCopyLine(line)}
+                                          />
                                           <PencilIcon
                                             className="h-4 w-4 text-gray-500 ml-2 cursor-pointer hover:text-gray-700"
                                             onClick={() => {

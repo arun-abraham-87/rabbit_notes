@@ -8,10 +8,10 @@ import TodoList from './components/TodoList.js';
 import NoteEditor from './components/NoteEditor';
 import LeftPanel from './components/LeftPanel';
 
-import { addNewNote, addNewTag, loadNotes, loadAllNotes,loadTags, loadTodos } from './utils/ApiUtils';
+import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote } from './utils/ApiUtils';
 
 // Helper to render first four pinned notes
-const PinnedSection = ({ notes }) => {
+const PinnedSection = ({ notes, onUnpin }) => {
   const pinned = (notes || []).filter(n => n.content.includes('meta::pin')).slice(0, 4);
   if (pinned.length === 0) return null;
   return (
@@ -28,7 +28,7 @@ const PinnedSection = ({ notes }) => {
           // Gather the pinned lines (1-based indices)
           const pinnedLines = indices.map(i => contentLines[i - 1] || '');
           return (
-            <div key={note.id} className="border rounded p-2 shadow">
+            <div key={note.id} className="border rounded-lg p-4 shadow">
               {pinnedLines.map((text, i) => (
                 <div
                   key={i}
@@ -37,6 +37,23 @@ const PinnedSection = ({ notes }) => {
                   {text}
                 </div>
               ))}
+              <button
+                onClick={() => {
+                  if (window.confirm('Unpin this note?')) {
+                    const newContent = note.content
+                      .split('\n')
+                      .filter(l => !l.trim().startsWith('meta::pin::'))
+                      .join('\n')
+                      .trim();
+                    updateNote(note.id, newContent).then(() => {
+                      if (onUnpin) onUnpin();
+                    });
+                  }
+                }}
+                className="mt-2 text-red-600 text-xs underline"
+              >
+                Unpin
+              </button>
             </div>
           );
         })}
@@ -153,7 +170,7 @@ const App = () => {
             isLeftPanelCollapsed ? 'w-full' : 'w-[80%]'
           } p-8 overflow-auto`}
         >
-          <PinnedSection notes={allNotes} />
+          <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
           {activePage === 'notes' && (
             <NotesListing
               objList={objectList}

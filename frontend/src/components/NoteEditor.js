@@ -805,7 +805,11 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
               onClick={() => {
                 setShowEndDateFilterSubButtons(false);
                 setActivePriority('');
-                setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::todo', isTitle: false }]);
+                setLines((prev) => {
+                  const exists = prev.some(line => line.text.includes('meta::todo'));
+                  if (exists) return prev;
+                  return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::todo', isTitle: false }];
+                });
                 if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::todo');
                 setShowTodoSubButtons(true);
               }}
@@ -820,9 +824,13 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
               <div className="flex gap-1 mt-1">
                 <button
                   onClick={() => {
-                    const additional = ' meta::high';
-                    setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::todo' + additional, isTitle: false }]);
-                    if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
+                    const priority = 'meta::high';
+                    setLines((prev) => {
+                      const exists = prev.some(line => line.text.includes(priority));
+                      if (exists) return prev;
+                      return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: priority, isTitle: false }];
+                    });
+                    if (setSearchQuery) setSearchQuery(prev => (prev || '') + ' meta::high');
                     setActivePriority('high');
                   }}
                   className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${activePriority === '' || activePriority === 'high' ? 'opacity-100' : 'opacity-30'
@@ -832,9 +840,13 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                 </button>
                 <button
                   onClick={() => {
-                    const additional = ' meta::medium';
-                    setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::todo' + additional, isTitle: false }]);
-                    if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
+                    const priority = 'meta::medium';
+                    setLines((prev) => {
+                      const exists = prev.some(line => line.text.includes(priority));
+                      if (exists) return prev;
+                      return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: priority, isTitle: false }];
+                    });
+                    if (setSearchQuery) setSearchQuery(prev => (prev || '') + ' meta::medium');
                     setActivePriority('medium');
                   }}
                   className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${activePriority === '' || activePriority === 'medium' ? 'opacity-100' : 'opacity-30'
@@ -844,9 +856,13 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                 </button>
                 <button
                   onClick={() => {
-                    const additional = ' meta::low';
-                    setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::todo' + additional, isTitle: false }]);
-                    if (setSearchQuery) setSearchQuery(prev => (prev || '') + additional);
+                    const priority = 'meta::low';
+                    setLines((prev) => {
+                      const exists = prev.some(line => line.text.includes(priority));
+                      if (exists) return prev;
+                      return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: priority, isTitle: false }];
+                    });
+                    if (setSearchQuery) setSearchQuery(prev => (prev || '') + ' meta::low');
                     setActivePriority('low');
                   }}
                   className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 ${activePriority === '' || activePriority === 'low' ? 'opacity-100' : 'opacity-30'
@@ -859,7 +875,11 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           </div>
           <button
             onClick={() => {
-              setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: '#watch', isTitle: false }]);
+              setLines((prev) => {
+                const exists = prev.some(line => line.text.includes('#watch'));
+                if (exists) return prev;
+                return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: '#watch', isTitle: false }];
+              });
               if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + '#watch');
               setShowTodoSubButtons(false);
               setShowEndDateFilterSubButtons(false);
@@ -873,7 +893,11 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           {/* Today filter button - moved here before dropdown */}
           <button
             onClick={() => {
-              setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::today::', isTitle: false }]);
+              setLines((prev) => {
+                const exists = prev.some(line => line.text.includes('meta::today::'));
+                if (exists) return prev;
+                return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::today::', isTitle: false }];
+              });
               if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::today::');
               setShowTodoSubButtons(false);
               setShowEndDateFilterSubButtons(false);
@@ -895,7 +919,11 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                 onClick={() => {
                   setShowTodoSubButtons(false);
                   setActivePriority('');
-                  setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::end_date::', isTitle: false }]);
+                  setLines((prev) => {
+                    const exists = prev.some(line => line.text.includes('meta::end_date::'));
+                    if (exists) return prev;
+                    return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::end_date::', isTitle: false }];
+                  });
                   if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::end_date::');
                 }}
                 className="block w-full text-left px-3 py-1 text-xs hover:bg-gray-100"
@@ -904,7 +932,11 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
               </button>
               <button
                 onClick={() => {
-                  setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::Abbreviation::', isTitle: false }]);
+                  setLines((prev) => {
+                    const exists = prev.some(line => line.text.includes('meta::Abbreviation::'));
+                    if (exists) return prev;
+                    return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::Abbreviation::', isTitle: false }];
+                  });
                   if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + 'meta::Abbreviation::');
                   setShowTodoSubButtons(false);
                   setShowEndDateFilterSubButtons(false);
@@ -916,7 +948,11 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
               </button>
               <button
                 onClick={() => {
-                  setLines((prev) => [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: '#people', isTitle: false }]);
+                  setLines((prev) => {
+                    const exists = prev.some(line => line.text.includes('#people'));
+                    if (exists) return prev;
+                    return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: '#people', isTitle: false }];
+                  });
                   if (setSearchQuery) setSearchQuery(prev => (prev ? prev + ' ' : '') + '#people');
                   setShowTodoSubButtons(false);
                   setShowEndDateFilterSubButtons(false);

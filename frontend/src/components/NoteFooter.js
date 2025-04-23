@@ -121,7 +121,7 @@ const NoteFooter = ({
                   .filter(line => !line.trim().startsWith('meta::todo::'))
                   .join('\n')
                   .trim();
-                const newContent = `${contentWithoutOldTodoMeta}\nmeta::todo::${timestamp}`;
+                const newContent = `${contentWithoutOldTodoMeta}\nmeta::todo::${timestamp}\nmeta::low`;
                 updateNote(note.id, newContent);
               }}
             />

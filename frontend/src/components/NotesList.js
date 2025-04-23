@@ -372,6 +372,29 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
               className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100"
             >
               <div className="flex flex-col flex-auto">
+                {note.content.split('\n').some(line => line.trim().startsWith('meta::meeting')) && (() => {
+                  // Treat first line as topic, second as time
+                  const lines = note.content.split('\n');
+                  const rawTime = lines[1] || '';
+                  // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+                  const [datePart, timePart] = rawTime.split('T');
+                  const inputValue = rawTime ? `${datePart}T${timePart?.slice(0,5)}` : '';
+                  return (
+                    <div className="px-4 py-2 flex items-center space-x-2">
+                      <label className="text-sm font-medium">Meeting Time:</label>
+                      <input
+                        type="datetime-local"
+                        value={inputValue}
+                        onChange={e => {
+                          const newValue = e.target.value; // e.g. "2025-04-23T14:30"
+                          lines[1] = newValue;
+                          updateNote(note.id, lines.join('\n'));
+                        }}
+                        className="border border-gray-300 rounded p-1 text-sm"
+                      />
+                    </div>
+                  );
+                })()}
                 {/* Layer 1: Content and Edit/Delete */}
                 <div className="p-2">
                   {(note.content.includes('meta::todo') || endDateNotice) && (

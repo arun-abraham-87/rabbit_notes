@@ -59,12 +59,10 @@ const LeftPanel = ({ notes, setNotes }) => {
   // Extract meetings: context and time from notes tagged meta::meeting
   const meetings = useMemo(() => {
     return notes.flatMap(note => {
-      const lines = note.content.split('\n');
-      // Find the line index containing the meeting tag
-      const tagIndex = lines.findIndex(line => line.trim().startsWith('meta::meeting'));
-      if (tagIndex !== -1) {
-        const context = lines[tagIndex + 1] || '';
-        const time = lines[tagIndex + 2] || '';
+      if (note.content.split('\n').some(line => line.trim().startsWith('meta::meeting'))) {
+        const lines = note.content.split('\n');
+        const context = lines[0] || '';
+        const time = lines[1] || '';
         return [{ id: note.id, context: context.trim(), time: time.trim() }];
       }
       return [];
@@ -173,24 +171,41 @@ const LeftPanel = ({ notes, setNotes }) => {
               {meetings.map(m => (
                 <div key={m.id} className="mb-2 pl-4">
                   <div className="text-sm font-medium">{m.context}</div>
-                  <div className="text-xs text-gray-500">{m.time}</div>
+
+                  {/* Display date */}
+                  <div className="text-xs text-gray-500">
+                    {(() => {
+                      const eventDate = new Date(m.time);
+                      const todayDate = new Date(now);
+                      // If same day, show "Today"
+                      if (eventDate.toDateString() === todayDate.toDateString()) {
+                        return 'Today';
+                      }
+                      // Otherwise format as "MMM D, YYYY"
+                      return eventDate.toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      });
+                    })()}
+                  </div>
+
+                  {/* Display time in 12-hour format */}
+                  <div className="text-xs text-gray-500">
+                    {(() => {
+                      const eventDate = new Date(m.time);
+                      let hours = eventDate.getHours();
+                      const minutes = eventDate.getMinutes();
+                      const ampm = hours >= 12 ? 'PM' : 'AM';
+                      hours = hours % 12 || 12;
+                      return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+                    })()}
+                  </div>
+
+                  {/* Countdown */}
                   <div className="text-xs text-blue-600">
                     {(() => {
-                      // Parse "2.30 PM" format
-                      const [timePart, ampm] = m.time.split(' ');
-                      const [hourStr, minuteStr] = timePart.split('.');
-                      let hours = parseInt(hourStr, 10);
-                      const minutes = parseInt(minuteStr, 10);
-                      const isPM = ampm.toUpperCase() === 'PM';
-                      if (isPM && hours < 12) hours += 12;
-                      if (!isPM && hours === 12) hours = 0;
-                      // Build target Date for today at that time
-                      const target = new Date(now);
-                      target.setHours(hours, minutes, 0, 0);
-                      // If that time has already passed today, schedule for tomorrow
-                      if (target.getTime() < now) {
-                        target.setDate(target.getDate() + 1);
-                      }
+                      const target = new Date(m.time);
                       const diff = target.getTime() - now;
                       const days = Math.floor(diff / 86400000);
                       const hoursLeft = Math.floor((diff % 86400000) / 3600000);

@@ -10,6 +10,7 @@ import {
   LinkIcon,
   BookmarkIcon,
   HashtagIcon,
+  CalendarIcon,
 } from '@heroicons/react/24/solid';
 import { formatDate } from '../utils/DateUtils';
 
@@ -239,6 +240,24 @@ const NoteFooter = ({
                 .join('\n')
                 .trim();
               const newContent = `${contentWithoutOldAbbreviationMeta}\nmeta::abbreviation::${timestamp}`;
+              updateNote(note.id, newContent);
+            }}
+          />
+        </div>
+
+        {/* Mark as Meeting */}
+        <div className="group relative">
+          <CalendarIcon
+            title="Mark as Meeting"
+            className="h-4 w-4 text-gray-500 cursor-pointer group-hover:scale-150 transition-transform duration-200 ease-in-out hover:text-gray-700"
+            onClick={() => {
+              const timestamp = new Date().toISOString();
+              const contentWithoutOldMeetingMeta = note.content
+                .split('\n')
+                .filter(line => !line.trim().startsWith('meta::meeting::'))
+                .join('\n')
+                .trim();
+              const newContent = `${contentWithoutOldMeetingMeta}\nmeta::meeting::${timestamp}`;
               updateNote(note.id, newContent);
             }}
           />

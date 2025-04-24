@@ -1,6 +1,11 @@
 // src/components/LeftPanel.js
 import React, { useMemo, useState, useEffect } from 'react';
-import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { 
+  ChevronDownIcon, 
+  ChevronRightIcon,
+  ChevronDoubleUpIcon,
+  ChevronDoubleDownIcon
+} from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
 import { updateNoteById } from '../utils/ApiUtils';
 
@@ -198,15 +203,17 @@ const LeftPanel = ({ notes, setNotes }) => {
         <div className="flex justify-start space-x-2 mb-3">
           <button
             onClick={handleCollapseAll}
-            className="text-xs bg-gray-200 hover:bg-gray-300 rounded px-2 py-1"
+            className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
+            title="Collapse All Sections"
           >
-            Collapse All
+            <ChevronDoubleUpIcon className="h-4 w-4" />
           </button>
           <button
             onClick={handleOpenAll}
-            className="text-xs bg-gray-200 hover:bg-gray-300 rounded px-2 py-1"
+            className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
+            title="Expand All Sections"
           >
-            Open All
+            <ChevronDoubleDownIcon className="h-4 w-4" />
           </button>
         </div>
 
@@ -235,7 +242,10 @@ const LeftPanel = ({ notes, setNotes }) => {
             onClick={() => setShowQuickLinks(prev => !prev)}
           >
             <span>{'Quick Links'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
-            {showQuickLinks ? <ChevronDownIcon className="h-6 w-6 text-gray-700" /> : <ChevronRightIcon className="h-6 w-6 text-gray-700" />}
+            {showQuickLinks ? 
+              <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
+              <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+            }
           </h2>
           {showQuickLinks && (
             uniqueUrls.length === 0 ? (
@@ -280,7 +290,10 @@ const LeftPanel = ({ notes, setNotes }) => {
             onClick={() => setShowQuickLinks(prev => !prev)}
           >
             <span>{'Bookmarks'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
-            {showQuickLinks ? <ChevronDownIcon className="h-6 w-6 text-gray-700" /> : <ChevronRightIcon className="h-6 w-6 text-gray-700" />}
+            {showQuickLinks ? 
+              <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
+              <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+            }
           </h2>
           {showQuickLinks && (
             bookmarkedUrls.length === 0 ? (
@@ -314,13 +327,19 @@ const LeftPanel = ({ notes, setNotes }) => {
 
         {/* Meetings Section */}
         {visibleMeetings.length > 0 && (
-          <div className="bg-yellow-50 p-2 rounded-md shadow-sm mb-3">
+          <div className="bg-yellow-50 pb-2 px-2 rounded-md shadow-sm mb-3">
             <h2
-              className="font-semibold text-gray-700 mt-4 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
+              className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
               onClick={() => setShowMeetingsSection(prev => !prev)}
             >
-              <span>{'Meetings'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
-              {showMeetingsSection ? <ChevronDownIcon className="h-6 w-6 text-gray-700" /> : <ChevronRightIcon className="h-6 w-6 text-gray-700" />}
+              <span>
+                {'Meetings'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}
+                <span className="text-gray-500 ml-1">({visibleMeetings.length})</span>
+              </span>
+              {showMeetingsSection ? 
+                <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
+                <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+              }
             </h2>
             {showMeetingsSection && visibleMeetings.map((m, idx) => {
               const eventTime = new Date(m.time).getTime();
@@ -372,13 +391,19 @@ const LeftPanel = ({ notes, setNotes }) => {
 
         {/* Events Section */}
         {visibleEvents.length > 0 && (
-          <div className="bg-green-50 p-2 rounded-md shadow-sm mb-3">
+          <div className="bg-green-50 pb-2 px-2 rounded-md shadow-sm mb-3">
             <h2
-              className="font-semibold text-gray-700 mt-4 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
+              className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
               onClick={() => setShowEventsSection(prev => !prev)}
             >
-              <span>{'Events'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
-              {showEventsSection ? <ChevronDownIcon className="h-6 w-6 text-gray-700" /> : <ChevronRightIcon className="h-6 w-6 text-gray-700" />}
+              <span>
+                {'Events'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}
+                <span className="text-gray-500 ml-1">({visibleEvents.length})</span>
+              </span>
+              {showEventsSection ? 
+                <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
+                <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+              }
             </h2>
             {showEventsSection && visibleEvents.map((e, idx) => {
               const eventTime = new Date(e.time).getTime();

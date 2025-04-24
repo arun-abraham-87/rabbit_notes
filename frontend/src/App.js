@@ -7,7 +7,7 @@ import TagListing from './components/TagListing.js';
 import TodoList from './components/TodoList.js';
 import NoteEditor from './components/NoteEditor';
 import LeftPanel from './components/LeftPanel';
-import { XMarkIcon } from '@heroicons/react/24/solid';
+import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 
 import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote } from './utils/ApiUtils';
 
@@ -158,16 +158,13 @@ const App = () => {
         >
           <button
             onClick={() => setIsLeftPanelCollapsed(prev => !prev)}
-            className="absolute top-2 right-[-12px] w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500"
+            className="absolute top-2 right-[-12px] w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500 z-50"
+            title={isLeftPanelCollapsed ? "Expand Panel" : "Collapse Panel"}
           >
             {isLeftPanelCollapsed ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              <ChevronDoubleRightIcon className="h-4 w-4" />
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              <ChevronDoubleLeftIcon className="h-4 w-4" />
             )}
           </button>
           <LeftPanel notes={allNotes} setNotes={setAllNotes} />
@@ -176,10 +173,9 @@ const App = () => {
           <button
             onClick={() => setIsLeftPanelCollapsed(false)}
             className="absolute top-2 left-2 w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500 z-50"
+            title="Expand Panel"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <ChevronDoubleRightIcon className="h-4 w-4" />
           </button>
         )}
 

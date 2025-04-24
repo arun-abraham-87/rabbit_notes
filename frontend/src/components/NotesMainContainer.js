@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 import NotesListByDate from './NotesListByDate.js';
 import DateSelectorBar from './DateSelectorBar.js';
@@ -7,6 +7,7 @@ import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
 import NoteEditor from './NoteEditor.js';
 import OngoingMeetingBanner from './OngoingMeetingBanner.js';
+import NextMeetingBanner from './NextMeetingBanner.js';
 import { updateNoteById } from '../utils/ApiUtils';
 
 const checkForOngoingMeeting = (notes) => {
@@ -114,6 +115,25 @@ const NotesMainContainer = ({
     const [ongoingMeeting, setOngoingMeeting] = useState(null);
     const [currentDate, setCurrentDate] = useState(null);
 
+    // Extract meetings from notes
+    const meetings = useMemo(() => {
+        return notes.flatMap(note => {
+            if (note.content.split('\n').some(line => line.trim().startsWith('meta::meeting'))) {
+                const lines = note.content.split('\n');
+                // Extract duration from meta tag
+                const durationMatch = note.content.match(/meta::meeting_duration::(\d+)/);
+                const duration = durationMatch ? parseInt(durationMatch[1]) : null;
+                return [{ 
+                    id: note.id, 
+                    context: lines[0].trim(), 
+                    time: lines[1].trim(),
+                    duration: duration
+                }];
+            }
+            return [];
+        }).sort((a, b) => new Date(a.time) - new Date(b.time));
+    }, [notes]);
+
     // Filter notes for display based on selected date, but only if there's no search query
     const filteredNotes = notes.filter(note => {
         if (!currentDate || searchQuery) return true;  // Don't filter by date if there's a search query
@@ -208,6 +228,7 @@ const NotesMainContainer = ({
                     onDismiss={handleDismissMeeting}
                 />
             )}
+            <NextMeetingBanner meetings={meetings} notes={notes} />
             <DateSelectorBar 
                 setNoteDate={handleDateChange} 
                 defaultCollapsed={true} 

@@ -260,12 +260,9 @@ export default function NoteTitle({
         removeTag(type);
       }}
       className="group relative rounded-lg p-1.5 transition-all duration-200 hover:bg-gray-100/80 hover:shadow-sm active:scale-95"
-      title={`Remove ${title}`}
+      title={title}
     >
       <Icon className={`h-4.5 w-4.5 ${color} transition-all duration-200 group-hover:scale-105`} />
-      <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 transform opacity-0 transition-opacity group-hover:opacity-100">
-        <span className="text-[10px] font-medium text-gray-500">{title}</span>
-      </span>
     </button>
   );
 

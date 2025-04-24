@@ -1,169 +1,199 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getAustralianDate, getNextOrPrevDate, getAge } from '../utils/DateUtils.js'
-import { ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+import { ChevronRightIcon, ChevronLeftIcon, CalendarIcon } from '@heroicons/react/24/solid';
 
-
-const DateSelectorBar = ({ setNoteDate }) => {
-  //STATE
-  const [selectedDate, setSelectedDate] = useState(getAustralianDate()); // Default to today's date in Australia
+const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
+  const [selectedDate, setSelectedDate] = useState(getAustralianDate());
   const [showCalendar, setShowCalendar] = useState(false);
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const calendarRef = useRef(null);
 
-  //EFFECTS
   useEffect(() => {
     setSelectedDate(getAustralianDate());
-    setNoteDate(getAustralianDate())
+    setNoteDate(getAustralianDate());
   }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        calendarRef.current &&
-        !calendarRef.current.contains(event.target)
-      ) {
+      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
         setShowCalendar(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  //HELPERS
   const updateDate = (nextDay) => {
-    const nextDateStr = getNextOrPrevDate(selectedDate, nextDay)
-    console.log(`Next / Prev Date: ${nextDateStr}`)
+    const nextDateStr = getNextOrPrevDate(selectedDate, nextDay);
     setSelectedDate(nextDateStr);
-    setNoteDate(nextDateStr)
-  }
+    setNoteDate(nextDateStr);
+  };
 
-  // HANDLERS
   const handleDateChange = (dateStr) => {
     setSelectedDate(dateStr);
     setNoteDate(dateStr);
   };
 
+  const getDateCardStyle = (offset) => {
+    const dateObj = new Date(selectedDate);
+    dateObj.setDate(dateObj.getDate() + offset);
+    const isoDate = dateObj.toISOString().split('T')[0];
+    const isActive = isoDate === selectedDate;
+    const isToday = isoDate === getAustralianDate();
+
+    return {
+      container: `
+        relative cursor-pointer rounded-xl overflow-hidden shadow-sm transition-all duration-300
+        ${isActive ? 'bg-gradient-to-br from-blue-500 to-purple-600 scale-105 shadow-lg' : 'bg-white hover:shadow-md'}
+        ${!isActive && isToday ? 'border-2 border-green-500' : 'border border-gray-200'}
+      `,
+      month: `text-xs font-semibold py-1 text-center ${isActive ? 'text-white/90' : 'text-gray-600'} bg-opacity-10`,
+      day: `text-xl font-bold ${isActive ? 'text-white' : 'text-gray-800'}`,
+      weekday: `text-[10px] ${isActive ? 'text-white/80' : 'text-gray-500'}`
+    };
+  };
+
   return (
-    <div>
-      <div
-        role="button"
-        onClick={() => setCollapsed(prev => !prev)}
-        className="mb-2 inline-flex items-center space-x-1 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900"
-      >
-        {collapsed ? (
-          <>
-            <ChevronRightIcon className="h-4 w-4 text-gray-700" />
+    <div className="mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCollapsed(prev => !prev)}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <ChevronRightIcon 
+              className={`h-5 w-5 text-gray-600 transition-transform duration-200 ${!collapsed ? 'rotate-90' : ''}`}
+            />
+          </button>
+          <h2 className="text-lg font-semibold text-gray-800">
+            {collapsed ? selectedDate : 'Date Selection'}
+          </h2>
+        </div>
+        
+        {collapsed && (
+          <div className="flex items-center gap-2">
             <button
               onClick={() => updateDate(false)}
-              className="text-[8px] w-4 h-4 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-100"
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Previous day"
             >
-              &lt;
+              <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
             </button>
-            <span className="italic">{selectedDate}</span>
+            <button
+              onClick={() => setShowCalendar(true)}
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Choose date"
+            >
+              <CalendarIcon className="h-5 w-5 text-gray-600" />
+            </button>
             <button
               onClick={() => updateDate(true)}
-              className="text-[8px] w-4 h-4 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-100"
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Next day"
             >
-              &gt;
+              <ChevronRightIcon className="h-5 w-5 text-gray-600" />
             </button>
-          </>
-        ) : (
-          <>
-            <ChevronDownIcon className="h-4 w-4 text-gray-700" />
-            <span className="italic">Date Selection</span>
-          </>
+          </div>
         )}
       </div>
+
       {!collapsed && (
-        <div>
-          {/* Begin original DateSelectorBar content */}
-          <div className="flex justify-center mb-1 text-xs text-gray-400">
+        <div className="space-y-4">
+          <div className="flex justify-center text-sm text-gray-500">
             {selectedDate === getAustralianDate() ? 'Today' : getAge(new Date(selectedDate))}
           </div>
-          <div className="flex items-center justify-center space-x-4 mb-2">
+          
+          <div className="flex items-center justify-center gap-2">
             <button
               onClick={() => updateDate(false)}
-              className="text-white bg-gray-700 hover:bg-gray-600 w-6 h-6 flex items-center justify-center rounded"
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Previous day"
             >
-              &lt;
+              <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
             </button>
-            <div className="flex space-x-4 overflow-hidden">
-              {Array.from({ length: 13 }, (_, i) => i - 6).map((offset) => {
+            
+            <div className="flex gap-2 overflow-x-auto py-2 px-1 max-w-[calc(100vw-200px)]">
+              {Array.from({ length: 7 }, (_, i) => i - 3).map((offset) => {
                 const dateObj = new Date(selectedDate);
                 dateObj.setDate(dateObj.getDate() + offset);
                 const day = dateObj.getDate();
                 const month = dateObj.toLocaleString('default', { month: 'short' });
                 const isoDate = dateObj.toISOString().split('T')[0];
-                const isActive = isoDate === selectedDate;
-                const todayIso = getAustralianDate();
-                const isToday = isoDate === todayIso;
                 const dayOfWeekLabel = dateObj.toLocaleDateString('en-AU', { weekday: 'short' });
+                const styles = getDateCardStyle(offset);
 
                 return (
                   <div
                     key={offset}
                     onClick={() => handleDateChange(isoDate)}
-                    onDoubleClick={() => setShowCalendar(true)}
-                    className={`cursor-pointer w-16 h-20 flex flex-col items-center rounded-lg overflow-hidden shadow-md ${
-                      !isActive ? 'opacity-25' : ''
-                    }`}
-                    style={{ backgroundColor: '#ffffff' }}
+                    className={styles.container}
                   >
-                    <div className="w-full text-center text-xs font-bold text-white bg-red-500 py-1 uppercase">{month}</div>
-                    <div className={`flex-1 flex flex-col items-center justify-center text-2xl font-bold ${isToday && !isActive ? 'text-green-500' : 'text-black'}`}>
-                      <div>{day}</div>
-                      <div className="text-[10px] text-gray-500">{dayOfWeekLabel}</div>
+                    <div className="w-20 h-24 flex flex-col items-center justify-between p-2">
+                      <div className={styles.month}>{month}</div>
+                      <div className={styles.day}>{day}</div>
+                      <div className={styles.weekday}>{dayOfWeekLabel}</div>
                     </div>
                   </div>
                 );
               })}
             </div>
+            
             <button
               onClick={() => updateDate(true)}
-              className="text-white bg-gray-700 hover:bg-gray-600 w-6 h-6 flex items-center justify-center rounded"
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Next day"
             >
-              &gt;
+              <ChevronRightIcon className="h-5 w-5 text-gray-600" />
             </button>
           </div>
-          <div className="flex justify-center mb-1">
+
+          <div className="flex justify-center gap-4">
             <button
-              onClick={() => setShowCalendar(!showCalendar)}
-              className="text-xs text-gray-400 hover:underline"
+              onClick={() => setShowCalendar(true)}
+              className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
             >
               Choose Date
             </button>
-          </div>
-          {showCalendar && (
-            <div ref={calendarRef} className="flex justify-center mt-1">
-              <input
-                type="date"
-                className="border px-2 py-1 rounded bg-white text-black"
-                value={selectedDate}
-                onChange={(e) => {
-                  handleDateChange(e.target.value);
-                  setShowCalendar(false);
-                }}
-              />
-            </div>
-          )}
-          {selectedDate !== getAustralianDate() && (
-            <div className="flex justify-center">
+            {selectedDate !== getAustralianDate() && (
               <button
                 onClick={() => handleDateChange(getAustralianDate())}
-                className="text-xs text-gray-400 hover:underline"
+                className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
               >
                 Reset To Today
               </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showCalendar && (
+        <div 
+          ref={calendarRef} 
+          className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
+        >
+          <div className="bg-white p-4 rounded-xl shadow-xl">
+            <input
+              type="date"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+              value={selectedDate}
+              onChange={(e) => {
+                handleDateChange(e.target.value);
+                setShowCalendar(false);
+              }}
+            />
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setShowCalendar(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
             </div>
-          )}
-          {/* End original DateSelectorBar content */}
+          </div>
         </div>
       )}
     </div>
   );
-
 };
 
 export default DateSelectorBar;

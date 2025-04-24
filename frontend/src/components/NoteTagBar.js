@@ -40,25 +40,25 @@ export default function NoteTagBar({
     const baseType = type.split('::')[1] || type;
     switch (baseType) {
       case 'todo':
-        return <CheckCircleIcon className="h-3.5 w-3.5" />;
+        return <CheckCircleIcon className="h-3 w-3" />;
       case 'event':
-        return <CalendarIcon className="h-3.5 w-3.5" />;
+        return <CalendarIcon className="h-3 w-3" />;
       case 'meeting':
-        return <BriefcaseIcon className="h-3.5 w-3.5" />;
+        return <BriefcaseIcon className="h-3 w-3" />;
       case 'bookmark':
-        return <BookmarkIcon className="h-3.5 w-3.5" />;
+        return <BookmarkIcon className="h-3 w-3" />;
       case 'high':
-        return <ExclamationCircleIcon className="h-3.5 w-3.5 text-red-500" />;
+        return <ExclamationCircleIcon className="h-3 w-3 text-red-500" />;
       case 'medium':
-        return <ExclamationCircleIcon className="h-3.5 w-3.5 text-yellow-500" />;
+        return <ExclamationCircleIcon className="h-3 w-3 text-yellow-500" />;
       case 'low':
-        return <ExclamationCircleIcon className="h-3.5 w-3.5 text-green-500" />;
+        return <ExclamationCircleIcon className="h-3 w-3 text-green-500" />;
       default:
-        // Don't show hashtag icon for meeting-related tags
-        if (type.includes('meeting')) {
+        // Don't show hashtag icon for meeting-related tags or abbreviation
+        if (type.includes('meeting') || type === 'abbreviation') {
           return null;
         }
-        return <HashtagIcon className="h-3.5 w-3.5" />;
+        return <HashtagIcon className="h-3 w-3" />;
     }
   };
 
@@ -84,31 +84,32 @@ export default function NoteTagBar({
   };
 
   const TagPill = ({ type, details = '', onRemove }) => {
-    // Extract the display text from the type (show only the last part after ::)
+    // Extract the display text from the type and capitalize it
     const displayText = type.includes('::') ? type.split('::').pop() : type;
+    const capitalizedText = displayText.charAt(0).toUpperCase() + displayText.slice(1).toLowerCase();
     const icon = getTagIcon(type);
     
     return (
       <div 
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${getTagColor(type)}`}
+        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full border text-[10px] font-normal transition-colors ${getTagColor(type)}`}
         title={details ? `${type}: ${details}` : type}
       >
         {icon && (
           <button
             onClick={onRemove}
             className="p-0.5 rounded-full hover:bg-gray-200/50 transition-colors"
-            title={`Remove ${displayText} tag`}
+            title={`Remove ${capitalizedText} tag`}
           >
             {icon}
           </button>
         )}
-        <span>{displayText}</span>
+        <span>{capitalizedText}</span>
         <button
           onClick={onRemove}
-          className="ml-1 p-0.5 rounded-full hover:bg-gray-200/50 transition-colors"
+          className="ml-0.5 p-0.5 rounded-full hover:bg-gray-200/50 transition-colors"
           title="Remove tag"
         >
-          <XMarkIcon className="h-3 w-3" />
+          <XMarkIcon className="h-2 w-2" />
         </button>
       </div>
     );

@@ -262,6 +262,14 @@ const NoteFooter = ({
                   </button>
                   
                   <button
+                    onClick={() => handleAction('abbreviation')}
+                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
+                  >
+                    <TagIcon className="h-3.5 w-3.5 mr-2 text-purple-500" />
+                    <span>Mark as Abbreviation</span>
+                  </button>
+                  
+                  <button
                     onClick={() => {
                       setLinkingNoteId(note.id);
                       setLinkSearchTerm('');

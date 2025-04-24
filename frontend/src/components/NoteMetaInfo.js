@@ -290,6 +290,14 @@ export default function NoteTitle({
   // Don't render anything if no tags are present
   if (!hasAnyTags) return null;
 
+  // Helper functions to check note type
+  const isMeetingNote = (note) => note.content.includes('meta::meeting::');
+  const isEventNote = (note) => note.content.includes('meta::event::');
+  const isRegularNote = (note) => !isMeetingNote(note) && !isEventNote(note);
+
+  // Only show date editing options for regular notes
+  const showDateOptions = isRegularNote(note);
+
   return (
     <div className="flex flex-col gap-3 mb-3">
       {/* Meta Icons Section */}
@@ -411,7 +419,7 @@ export default function NoteTitle({
       </div>
 
       {/* Todo and Deadline Info */}
-      {(todoAgeNotice || endDateNotice) && (
+      {(todoAgeNotice || endDateNotice) && !isMeeting && !isEvent && (
         <div className="flex items-center gap-3 flex-wrap">
           {todoAgeNotice && (
             <button
@@ -433,72 +441,19 @@ export default function NoteTitle({
                 className="text-xs tracking-wide text-gray-700 font-medium cursor-pointer hover:text-gray-900 transition-colors duration-200"
                 onClick={() => setShowEndDatePickerForNoteId(note.id)}
               >
-                {parsedEndDate.toLocaleDateString()}
+                {endDateNotice}
               </span>
-              <CalendarIcon
-                className="h-4 w-4 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors duration-200"
-                onClick={() => setShowEndDatePickerForNoteId(note.id)}
-                title="Edit end date"
-              />
             </div>
           )}
 
-          {endDateNotice && (
+          {!parsedEndDate && !isMeeting && !isEvent && (
             <button
-              className={`text-xs tracking-wide font-medium px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors duration-200 border ${
-                isDeadlinePassed
-                  ? 'bg-red-50/80 text-red-700 border-red-200/80 hover:bg-red-100/80'
-                  : 'bg-blue-50/80 text-blue-700 border-blue-200/80 hover:bg-blue-100/80'
-              }`}
-              onClick={() => removeTag('todo')}
-              title="Remove todo and deadline"
-            >
-              {isDeadlinePassed ? (
-                <ExclamationCircleIcon className="h-4 w-4 text-red-500" />
-              ) : (
-                <CalendarIcon className="h-4 w-4 text-blue-500" />
-              )}
-              <span>{endDateNotice}</span>
-            </button>
-          )}
-
-          {!parsedEndDate && isTodo && (
-            <button
-              className="text-xs tracking-wide font-medium px-3 py-1.5 rounded-lg flex items-center gap-2 bg-emerald-50/80 text-emerald-700 hover:bg-emerald-100/80 transition-colors duration-200 border border-emerald-200/80"
               onClick={() => setShowEndDatePickerForNoteId(note.id)}
-              title="Set deadline"
+              className="text-gray-700 text-xs tracking-wide font-medium px-3 py-1.5 rounded-lg flex items-center gap-2 bg-gray-50/80 hover:bg-gray-100/80 transition-colors duration-200 border border-gray-200/80"
             >
               Set Deadline
               <CalendarIcon className="h-4 w-4 text-emerald-500" />
             </button>
-          )}
-        </div>
-      )}
-
-      {/* Meeting and Event Inputs */}
-      {(isMeeting || isEvent) && (
-        <div className="flex items-center gap-4 flex-wrap">
-          {isMeeting && (
-            <div className="flex items-center gap-3 bg-sky-50/80 px-4 py-2 rounded-xl border border-sky-200/80">
-              <label className="text-sm font-medium text-sky-700">Meeting Time:</label>
-              <input
-                type="datetime-local"
-                value={formatDateForInput(getSecondLineDate())}
-                onChange={(e) => updateMeetingDate(e.target.value)}
-                className="border border-sky-200 rounded-lg p-1.5 text-sm bg-white/80 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-              />
-            </div>
-          )}
-          {isEvent && (
-            <div className="flex items-center gap-3 bg-pink-50/80 px-4 py-2 rounded-xl border border-pink-200/80">
-              <label className="text-sm font-medium text-pink-700">Event Date:</label>
-              <input
-                type="date"
-                value={formatDateOnly(getSecondLineDate())}
-                onChange={(e) => updateEventDate(e.target.value)}
-                className="border border-pink-200 rounded-lg p-1.5 text-sm bg-white/80 focus:outline-none focus:ring-2 focus:ring-pink-500/20"
-              />
-            </div>
           )}
         </div>
       )}

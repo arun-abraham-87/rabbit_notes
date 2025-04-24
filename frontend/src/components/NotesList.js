@@ -15,8 +15,11 @@ import InlineEditor from './InlineEditor';
 import NoteTagBar from './NoteTagBar';
 import NoteContent from './NoteContent';
 import AddMeetingModal from './AddMeetingModal';
+import EditMeetingModal from './EditMeetingModal';
+import AddEventModal from './AddEventModal';
+import EditEventModal from './EditEventModal';
 import OngoingMeetingBanner from './OngoingMeetingBanner';
-import { CalendarIcon } from '@heroicons/react/24/solid';
+import { CalendarIcon, ClockIcon } from '@heroicons/react/24/solid';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -88,7 +91,10 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const newLineInputRef = useRef(null);
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(false);
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [ongoingMeeting, setOngoingMeeting] = useState(null);
+  const [editingMeetingNote, setEditingMeetingNote] = useState(null);
+  const [editingEventNote, setEditingEventNote] = useState(null);
 
   // Check for ongoing meetings periodically
   useEffect(() => {
@@ -290,9 +296,26 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
+  // Helper function to check if a note is a meeting note
+  const isMeetingNote = (note) => {
+    return note.content.includes('meta::meeting::');
+  };
+
+  // Helper function to check if a note is an event note
+  const isEventNote = (note) => {
+    return note.content.includes('meta::event::');
+  };
+
   return (
     <div className="relative">
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex justify-end gap-3">
+        <button
+          onClick={() => setShowAddEventModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
+        >
+          <ClockIcon className="h-5 w-5" />
+          <span>Quick Add Event</span>
+        </button>
         <button
           onClick={() => setShowAddMeetingModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
@@ -404,7 +427,15 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                   showCreatedDate={settings.showCreatedDate || false}
                   setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
                   handleDelete={handleDelete}
-                  setPopupNoteText={setPopupNoteText}
+                  setPopupNoteText={(noteId) => {
+                    if (isMeetingNote(note)) {
+                      setEditingMeetingNote(note);
+                    } else if (isEventNote(note)) {
+                      setEditingEventNote(note);
+                    } else {
+                      setPopupNoteText(noteId);
+                    }
+                  }}
                   setLinkingNoteId={setLinkingNoteId}
                   setLinkSearchTerm={setLinkSearchTerm}
                   setLinkPopupVisible={setLinkPopupVisible}
@@ -502,6 +533,37 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           setShowAddMeetingModal(false);
         }}
       />
+
+      <AddEventModal
+        isOpen={showAddEventModal}
+        onClose={() => setShowAddEventModal(false)}
+        onAdd={(content) => {
+          addNotes(content);
+          setShowAddEventModal(false);
+        }}
+      />
+
+      {editingMeetingNote && (
+        <EditMeetingModal
+          note={editingMeetingNote}
+          onSave={(updatedNote) => {
+            updateNote(updatedNote.id, updatedNote.content);
+            setEditingMeetingNote(null);
+          }}
+          onCancel={() => setEditingMeetingNote(null)}
+        />
+      )}
+
+      {editingEventNote && (
+        <EditEventModal
+          note={editingEventNote}
+          onSave={(updatedNote) => {
+            updateNote(updatedNote.id, updatedNote.content);
+            setEditingEventNote(null);
+          }}
+          onCancel={() => setEditingEventNote(null)}
+        />
+      )}
 
     </div>
   );

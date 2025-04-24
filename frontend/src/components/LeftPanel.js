@@ -9,7 +9,8 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
-import { updateNoteById } from '../utils/ApiUtils';
+import { updateNoteById, getSettings, updateSettings } from '../utils/ApiUtils';
+import { toast } from 'react-toastify';
 
 const removeBookmarkFromNotes = (url, notes, setNotes) => {
   if (!window.confirm('Remove this bookmark from Quick links?')) return;
@@ -48,6 +49,30 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [showMeetingsSection, setShowMeetingsSection] = useState(true);
   const [showEventsSection, setShowEventsSection] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState({
+    theme: 'light',
+    sortBy: 'date',
+    autoCollapse: false,
+    showDates: true
+  });
+
+  const [unsavedSettings, setUnsavedSettings] = useState(settings);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedSettings = await getSettings();
+        setSettings(savedSettings);
+        setUnsavedSettings(savedSettings);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+        toast.error('Failed to load settings');
+      }
+    };
+    loadSettings();
+  }, []);
 
   // Collapse / Expand helpers
   const handleCollapseAll = () => {
@@ -174,6 +199,28 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     if (soon) setAlertMeetingId(soon.id);
   }, [meetings, now, notes]);
 
+  const handleSettingChange = (key, value) => {
+    setUnsavedSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleSaveSettings = async () => {
+    setIsSaving(true);
+    try {
+      await updateSettings(unsavedSettings);
+      setSettings(unsavedSettings);
+      setShowSettings(false);
+      toast.success('Settings saved successfully');
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      toast.error('Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <>
       {alertMeetingId && (() => {
@@ -204,269 +251,276 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         );
       })()}
 
-      <div className="w-full h-full bg-gray-100 p-2 space-y-1 overflow-y-auto text-xs">
-        {/* Collapse / Open controls */}
-        <div className="flex justify-between items-center mb-3">
-          <div className="flex space-x-2">
-            <button
-              onClick={handleCollapseAll}
-              className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
-              title="Collapse All Sections"
-            >
-              <ChevronDoubleUpIcon className="h-4 w-4" />
-            </button>
-            <button
-              onClick={handleOpenAll}
-              className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
-              title="Expand All Sections"
-            >
-              <ChevronDoubleDownIcon className="h-4 w-4" />
-            </button>
+      <div className="w-full h-full bg-gray-100 p-2 flex flex-col">
+        <div className="flex-1 space-y-1 overflow-y-auto text-xs">
+          {/* Collapse / Open controls */}
+          <div className="flex justify-between items-center mb-3">
+            <div className="flex space-x-2">
+              <button
+                onClick={handleCollapseAll}
+                className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
+                title="Collapse All Sections"
+              >
+                <ChevronDoubleUpIcon className="h-4 w-4" />
+              </button>
+              <button
+                onClick={handleOpenAll}
+                className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
+                title="Expand All Sections"
+              >
+                <ChevronDoubleDownIcon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
+
+          {/* custom right‑click menu */}
+          {showLinkMenu && (
+            <ul
+              className="absolute bg-white border rounded shadow"
+              style={{ top: linkMenuPos.y, left: linkMenuPos.x, zIndex: 1000 }}
+            >
+              <li
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                onClick={() => {
+                  setShowNoteModal(true);
+                  setShowLinkMenu(false);
+                }}
+              >
+                View Original Note
+              </li>
+            </ul>
+          )}
+
+          {/* Quick Links Section */}
+          <div className="bg-white p-2 rounded-md shadow-sm mb-3">
+            <h2
+              className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
+              onClick={() => setShowQuickLinks(prev => !prev)}
+            >
+              <span>{'Quick Links'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
+              {showQuickLinks ? 
+                <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
+                <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+              }
+            </h2>
+            {showQuickLinks && (
+              uniqueUrls.length === 0 ? (
+                <p className="text-gray-500">No Quick Links</p>
+              ) : (
+                uniqueUrls.map(({ url, label }, idx) => {
+                  let displayText = label || (() => {
+                    try { return new URL(url).hostname.replace(/^www\./, ''); }
+                    catch { return url; }
+                  })();
+                  return (
+                    <div
+                      key={url}
+                      onContextMenu={e => handleLinkContextMenu(e, url)}
+                      className={`flex items-center mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                    >
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 text-black hover:underline truncate"
+                      >
+                        {displayText}
+                      </a>
+                      <button
+                        onClick={() => removeBookmarkFromNotes(url, notes, setNotes)}
+                        className="ml-2 text-gray-400 hover:text-red-600 focus:outline-none"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  );
+                })
+              )
+            )}
+          </div>
+
+          {/* Bookmarks Section */}
+          <div className="bg-white p-2 rounded-md shadow-sm mb-3">
+            <h2
+              className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
+              onClick={() => setShowQuickLinks(prev => !prev)}
+            >
+              <span>{'Bookmarks'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
+              {showQuickLinks ? 
+                <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
+                <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+              }
+            </h2>
+            {showQuickLinks && (
+              bookmarkedUrls.length === 0 ? (
+                <p className="text-gray-500">No Bookmarks</p>
+              ) : (
+                bookmarkedUrls.map(({ url, label }, idx) => {
+                  let displayText = label || (() => {
+                    try { return new URL(url).hostname.replace(/^www\./, ''); }
+                    catch { return url; }
+                  })();
+                  return (
+                    <div
+                      key={url}
+                      onContextMenu={e => handleLinkContextMenu(e, url)}
+                      className={`flex items-center mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                    >
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 text-black hover:underline truncate"
+                      >
+                        {displayText}
+                      </a>
+                    </div>
+                  );
+                })
+              )
+            )}
+          </div>
+
+          {/* Meetings Section */}
+          {visibleMeetings.length > 0 && (
+            <div className="bg-yellow-50 pb-2 px-2 rounded-md shadow-sm mb-3">
+              <h2
+                className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
+                onClick={() => setShowMeetingsSection(prev => !prev)}
+              >
+                <span>
+                  {'Meetings'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}
+                  <span className="text-gray-500 ml-1">({visibleMeetings.length})</span>
+                </span>
+                {showMeetingsSection ? 
+                  <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
+                  <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+                }
+              </h2>
+              {showMeetingsSection && visibleMeetings.map((m, idx) => {
+                const eventTime = new Date(m.time).getTime();
+                const diff = eventTime - now;
+                const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
+                return (
+                  <div
+                    key={m.id}
+                    className={`mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-yellow-100' : 'bg-yellow-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
+                  >
+                    <div className="text-sm font-medium">{m.context}</div>
+                    <div className="text-[10px] text-gray-500">
+                      {(() => {
+                        const d = new Date(m.time);
+                        const today = new Date(now);
+                        return d.toDateString() === today.toDateString() ? 'Today' :
+                          d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                      })()}
+                    </div>
+                    <div className="text-[10px] text-gray-500">
+                      {(() => {
+                        const d = new Date(m.time);
+                        let h = d.getHours(), mnt = d.getMinutes();
+                        const ampm = h >= 12 ? 'PM' : 'AM';
+                        h = h % 12 || 12;
+                        return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
+                      })()}
+                    </div>
+                    <div className="text-xs text-blue-600">
+                      {(() => {
+                        const delta = new Date(m.time).getTime() - now;
+                        const days = Math.floor(delta / 86400000);
+                        const hrs = Math.floor((delta % 86400000) / 3600000);
+                        const mins = Math.floor((delta % 3600000) / 60000);
+                        const secs = Math.floor((delta % 60000) / 1000);
+                        const parts = [];
+                        if (days) parts.push(`${days}d`);
+                        if (hrs) parts.push(`${hrs}h`);
+                        if (mins) parts.push(`${mins}m`);
+                        if (!parts.length) parts.push(`${secs}s`);
+                        return `in ${parts.join(' ')}`;
+                      })()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Events Section */}
+          {visibleEvents.length > 0 && (
+            <div className="bg-green-50 pb-2 px-2 rounded-md shadow-sm mb-3">
+              <h2
+                className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
+                onClick={() => setShowEventsSection(prev => !prev)}
+              >
+                <span>
+                  {'Events'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}
+                  <span className="text-gray-500 ml-1">({visibleEvents.length})</span>
+                </span>
+                {showEventsSection ? 
+                  <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
+                  <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+                }
+              </h2>
+              {showEventsSection && visibleEvents.map((e, idx) => {
+                const eventTime = new Date(e.time).getTime();
+                const diff = eventTime - now;
+                const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
+                return (
+                  <div
+                    key={e.id}
+                    className={`mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-green-100' : 'bg-green-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
+                  >
+                    <div className="text-sm font-medium">{e.context}</div>
+                    <div className="text-[10px] text-gray-500">
+                      {(() => {
+                        const d = new Date(e.time);
+                        const today = new Date(now);
+                        return d.toDateString() === today.toDateString() ? 'Today' :
+                          d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                      })()}
+                    </div>
+                    <div className="text-[10px] text-gray-500">
+                      {(() => {
+                        const d = new Date(e.time);
+                        let h = d.getHours(), mnt = d.getMinutes();
+                        const ampm = h >= 12 ? 'PM' : 'AM';
+                        h = h % 12 || 12;
+                        return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
+                      })()}
+                    </div>
+                    <div className="text-xs text-blue-600">
+                      {(() => {
+                        const delta = new Date(e.time).getTime() - now;
+                        const days = Math.floor(delta / 86400000);
+                        const hrs = Math.floor((delta % 86400000) / 3600000);
+                        const mins = Math.floor((delta % 3600000) / 60000);
+                        const secs = Math.floor((delta % 60000) / 1000);
+                        const parts = [];
+                        if (days) parts.push(`${days}d`);
+                        if (hrs) parts.push(`${hrs}h`);
+                        if (mins) parts.push(`${mins}m`);
+                        if (!parts.length) parts.push(`${secs}s`);
+                        return `in ${parts.join(' ')}`;
+                      })()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Settings button at bottom */}
+        <div className="mt-2 pt-2 border-t border-gray-200">
           <button
             onClick={() => setShowSettings(true)}
-            className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
+            className="w-full flex items-center justify-center p-2 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
             title="Settings"
           >
-            <Cog6ToothIcon className="h-4 w-4" />
+            <Cog6ToothIcon className="h-4 w-4 mr-2" />
+            <span className="text-sm">Settings</span>
           </button>
         </div>
-
-        {/* custom right‑click menu */}
-        {showLinkMenu && (
-          <ul
-            className="absolute bg-white border rounded shadow"
-            style={{ top: linkMenuPos.y, left: linkMenuPos.x, zIndex: 1000 }}
-          >
-            <li
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-              onClick={() => {
-                setShowNoteModal(true);
-                setShowLinkMenu(false);
-              }}
-            >
-              View Original Note
-            </li>
-          </ul>
-        )}
-
-        {/* Quick Links Section */}
-        <div className="bg-white p-2 rounded-md shadow-sm mb-3">
-          <h2
-            className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
-            onClick={() => setShowQuickLinks(prev => !prev)}
-          >
-            <span>{'Quick Links'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
-            {showQuickLinks ? 
-              <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
-              <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
-            }
-          </h2>
-          {showQuickLinks && (
-            uniqueUrls.length === 0 ? (
-              <p className="text-gray-500">No Quick Links</p>
-            ) : (
-              uniqueUrls.map(({ url, label }, idx) => {
-                let displayText = label || (() => {
-                  try { return new URL(url).hostname.replace(/^www\./, ''); }
-                  catch { return url; }
-                })();
-                return (
-                  <div
-                    key={url}
-                    onContextMenu={e => handleLinkContextMenu(e, url)}
-                    className={`flex items-center mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                  >
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 text-black hover:underline truncate"
-                    >
-                      {displayText}
-                    </a>
-                    <button
-                      onClick={() => removeBookmarkFromNotes(url, notes, setNotes)}
-                      className="ml-2 text-gray-400 hover:text-red-600 focus:outline-none"
-                    >
-                      &times;
-                    </button>
-                  </div>
-                );
-              })
-            )
-          )}
-        </div>
-
-        {/* Bookmarks Section */}
-        <div className="bg-white p-2 rounded-md shadow-sm mb-3">
-          <h2
-            className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
-            onClick={() => setShowQuickLinks(prev => !prev)}
-          >
-            <span>{'Bookmarks'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
-            {showQuickLinks ? 
-              <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
-              <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
-            }
-          </h2>
-          {showQuickLinks && (
-            bookmarkedUrls.length === 0 ? (
-              <p className="text-gray-500">No Bookmarks</p>
-            ) : (
-              bookmarkedUrls.map(({ url, label }, idx) => {
-                let displayText = label || (() => {
-                  try { return new URL(url).hostname.replace(/^www\./, ''); }
-                  catch { return url; }
-                })();
-                return (
-                  <div
-                    key={url}
-                    onContextMenu={e => handleLinkContextMenu(e, url)}
-                    className={`flex items-center mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                  >
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 text-black hover:underline truncate"
-                    >
-                      {displayText}
-                    </a>
-                  </div>
-                );
-              })
-            )
-          )}
-        </div>
-
-        {/* Meetings Section */}
-        {visibleMeetings.length > 0 && (
-          <div className="bg-yellow-50 pb-2 px-2 rounded-md shadow-sm mb-3">
-            <h2
-              className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
-              onClick={() => setShowMeetingsSection(prev => !prev)}
-            >
-              <span>
-                {'Meetings'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}
-                <span className="text-gray-500 ml-1">({visibleMeetings.length})</span>
-              </span>
-              {showMeetingsSection ? 
-                <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
-                <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
-              }
-            </h2>
-            {showMeetingsSection && visibleMeetings.map((m, idx) => {
-              const eventTime = new Date(m.time).getTime();
-              const diff = eventTime - now;
-              const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
-              return (
-                <div
-                  key={m.id}
-                  className={`mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-yellow-100' : 'bg-yellow-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
-                >
-                  <div className="text-sm font-medium">{m.context}</div>
-                  <div className="text-[10px] text-gray-500">
-                    {(() => {
-                      const d = new Date(m.time);
-                      const today = new Date(now);
-                      return d.toDateString() === today.toDateString() ? 'Today' :
-                        d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-                    })()}
-                  </div>
-                  <div className="text-[10px] text-gray-500">
-                    {(() => {
-                      const d = new Date(m.time);
-                      let h = d.getHours(), mnt = d.getMinutes();
-                      const ampm = h >= 12 ? 'PM' : 'AM';
-                      h = h % 12 || 12;
-                      return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
-                    })()}
-                  </div>
-                  <div className="text-xs text-blue-600">
-                    {(() => {
-                      const delta = new Date(m.time).getTime() - now;
-                      const days = Math.floor(delta / 86400000);
-                      const hrs = Math.floor((delta % 86400000) / 3600000);
-                      const mins = Math.floor((delta % 3600000) / 60000);
-                      const secs = Math.floor((delta % 60000) / 1000);
-                      const parts = [];
-                      if (days) parts.push(`${days}d`);
-                      if (hrs) parts.push(`${hrs}h`);
-                      if (mins) parts.push(`${mins}m`);
-                      if (!parts.length) parts.push(`${secs}s`);
-                      return `in ${parts.join(' ')}`;
-                    })()}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Events Section */}
-        {visibleEvents.length > 0 && (
-          <div className="bg-green-50 pb-2 px-2 rounded-md shadow-sm mb-3">
-            <h2
-              className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
-              onClick={() => setShowEventsSection(prev => !prev)}
-            >
-              <span>
-                {'Events'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}
-                <span className="text-gray-500 ml-1">({visibleEvents.length})</span>
-              </span>
-              {showEventsSection ? 
-                <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
-                <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
-              }
-            </h2>
-            {showEventsSection && visibleEvents.map((e, idx) => {
-              const eventTime = new Date(e.time).getTime();
-              const diff = eventTime - now;
-              const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
-              return (
-                <div
-                  key={e.id}
-                  className={`mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-green-100' : 'bg-green-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
-                >
-                  <div className="text-sm font-medium">{e.context}</div>
-                  <div className="text-[10px] text-gray-500">
-                    {(() => {
-                      const d = new Date(e.time);
-                      const today = new Date(now);
-                      return d.toDateString() === today.toDateString() ? 'Today' :
-                        d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-                    })()}
-                  </div>
-                  <div className="text-[10px] text-gray-500">
-                    {(() => {
-                      const d = new Date(e.time);
-                      let h = d.getHours(), mnt = d.getMinutes();
-                      const ampm = h >= 12 ? 'PM' : 'AM';
-                      h = h % 12 || 12;
-                      return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
-                    })()}
-                  </div>
-                  <div className="text-xs text-blue-600">
-                    {(() => {
-                      const delta = new Date(e.time).getTime() - now;
-                      const days = Math.floor(delta / 86400000);
-                      const hrs = Math.floor((delta % 86400000) / 3600000);
-                      const mins = Math.floor((delta % 3600000) / 60000);
-                      const secs = Math.floor((delta % 60000) / 1000);
-                      const parts = [];
-                      if (days) parts.push(`${days}d`);
-                      if (hrs) parts.push(`${hrs}h`);
-                      if (mins) parts.push(`${mins}m`);
-                      if (!parts.length) parts.push(`${secs}s`);
-                      return `in ${parts.join(' ')}`;
-                    })()}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* NoteEditor modal */}
@@ -504,15 +558,96 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               </button>
             </div>
             <div className="space-y-4">
-              {/* Add settings options here */}
-              <p className="text-gray-600">Settings options will be added here.</p>
+              {/* Theme Setting */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">Theme</label>
+                <select
+                  value={unsavedSettings.theme}
+                  onChange={(e) => handleSettingChange('theme', e.target.value)}
+                  className="ml-2 px-3 py-1 border rounded-md text-sm"
+                >
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </div>
+
+              {/* Sort By Setting */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">Sort Notes By</label>
+                <select
+                  value={unsavedSettings.sortBy}
+                  onChange={(e) => handleSettingChange('sortBy', e.target.value)}
+                  className="ml-2 px-3 py-1 border rounded-md text-sm"
+                >
+                  <option value="date">Date</option>
+                  <option value="title">Title</option>
+                  <option value="priority">Priority</option>
+                </select>
+              </div>
+
+              {/* Auto Collapse Setting */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">Auto-collapse Sections</label>
+                <div className="relative inline-block w-10 mr-2 align-middle select-none">
+                  <input
+                    type="checkbox"
+                    checked={unsavedSettings.autoCollapse}
+                    onChange={(e) => handleSettingChange('autoCollapse', e.target.checked)}
+                    className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                  />
+                  <label className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                </div>
+              </div>
+
+              {/* Show Dates Setting */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">Show Dates</label>
+                <div className="relative inline-block w-10 mr-2 align-middle select-none">
+                  <input
+                    type="checkbox"
+                    checked={unsavedSettings.showDates}
+                    onChange={(e) => handleSettingChange('showDates', e.target.checked)}
+                    className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                  />
+                  <label className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                </div>
+              </div>
             </div>
-            <div className="mt-6 flex justify-end">
+
+            <style jsx>{`
+              .toggle-checkbox:checked {
+                right: 0;
+                border-color: #68D391;
+              }
+              .toggle-checkbox:checked + .toggle-label {
+                background-color: #68D391;
+              }
+            `}</style>
+
+            <div className="mt-6 flex justify-end space-x-2">
               <button
                 onClick={() => setShowSettings(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-gray-100 rounded hover:bg-gray-200"
+                disabled={isSaving}
               >
-                Close
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSettings}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
               </button>
             </div>
           </div>

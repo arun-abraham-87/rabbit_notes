@@ -1,5 +1,8 @@
+// API Base URL
+const API_BASE_URL = 'http://localhost:5001/api';
+
 export const addNewNote = async (content, tags, noteDate) => {
-    const response = await fetch('http://localhost:5001/api/notes', {
+    const response = await fetch(`${API_BASE_URL}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content, tags, noteDate }),
@@ -7,7 +10,7 @@ export const addNewNote = async (content, tags, noteDate) => {
 };
 
 export const updateNoteById = async (id, updatedContent) => {
-    const response = await fetch(`http://localhost:5001/api/notes/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: updatedContent }),
@@ -22,7 +25,7 @@ export const updateNoteById = async (id, updatedContent) => {
 };
 
 export const deleteNoteById = async (id) => {
-    const response = await fetch(`http://localhost:5001/api/notes/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
     });
@@ -35,7 +38,7 @@ export const deleteNoteById = async (id) => {
 };
 
 export const addNewTag = async (tagText) => {
-    const response = await fetch('http://localhost:5001/api/objects', {
+    const response = await fetch(`${API_BASE_URL}/objects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: tagText }),
@@ -47,44 +50,102 @@ export const addNewTag = async (tagText) => {
     }
 };
 
-export const loadAllNotes = async (searchText,noteDate) => {
+export const loadAllNotes = async (searchText, noteDate) => {
     const encodedQuery = encodeURIComponent(searchText);
-    let url = `http://localhost:5001/api/notes?search=${encodedQuery}`;
+    let url = `${API_BASE_URL}/notes?search=${encodedQuery}`;
     url += `&currentDate=false`;
     url += `&noteDate=${noteDate}`;
     const response = await fetch(url);
     const data = await response.json();
-    return data
-  };
+    return data;
+};
 
-export const loadNotes = async (searchText,noteDate) => {
+export const loadNotes = async (searchText, noteDate) => {
     const encodedQuery = encodeURIComponent(searchText);
-    let url = `http://localhost:5001/api/notes?search=${encodedQuery}`;
+    let url = `${API_BASE_URL}/notes?search=${encodedQuery}`;
     url += `&currentDate=${searchText.trim().length === 0}`;
     url += `&noteDate=${noteDate}`;
     const response = await fetch(url);
     const data = await response.json();
-    return data
-  };
+    return data;
+};
 
 export const loadTags = async () => {
     try {
-      const response = await fetch("http://localhost:5001/api/objects");
-      const data = await response.json();
-      const tagsList = data.map((obj) => obj.text);
-      console.log(tagsList)
-      return tagsList
+        const response = await fetch(`${API_BASE_URL}/objects`);
+        const data = await response.json();
+        const tagsList = data.map((obj) => obj.text);
+        console.log(tagsList);
+        return tagsList;
     } catch (error) {
-      console.error("Error fetching objects:", error.message);
+        console.error("Error fetching objects:", error.message);
     }
-  };
+};
 
 export const loadTodos = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/todos');
-      const data = await response.json();
-      return (data.todos || []);
+        const response = await fetch(`${API_BASE_URL}/todos`);
+        const data = await response.json();
+        return (data.todos || []);
     } catch (error) {
-      console.error("Error fetching todos:", error.message);
+        console.error("Error fetching todos:", error.message);
     }
-  };
+};
+
+// Settings API functions
+export const getSettings = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/settings`);
+        const contentType = response.headers.get("content-type");
+        
+        if (!response.ok) {
+            if (contentType && contentType.includes("application/json")) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to fetch settings');
+            } else {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+        }
+        
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Received non-JSON response from server");
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching settings:', error);
+        throw error;
+    }
+};
+
+export const updateSettings = async (settings) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/settings`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings),
+        });
+        
+        const contentType = response.headers.get("content-type");
+        
+        if (!response.ok) {
+            if (contentType && contentType.includes("application/json")) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to update settings');
+            } else {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+        }
+        
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Received non-JSON response from server");
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error updating settings:', error);
+        throw error;
+    }
+};

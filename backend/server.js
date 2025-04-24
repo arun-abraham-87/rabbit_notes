@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const settingsRouter = require('./routes/settings');
 
 const app = express();
 app.use(express.json());
@@ -12,6 +13,8 @@ app.use(cors({
   origin: 'http://localhost:3000', // Allow requests only from this origin
 }));
 
+// Mount settings router
+app.use('/api/settings', settingsRouter);
 
 const NOTES_DIR = './notes';
 if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);
@@ -518,5 +521,36 @@ app.post('/api/images', upload.single('image'), (req, res) => {
   res.status(200).json({ message: 'Image uploaded successfully.', filename: req.file.filename });
 });
 
-const PORT = 5001;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+const PORT = process.env.PORT || 5001;
+const server = app.listen(PORT, '0.0.0.0', (err) => {
+  if (err) {
+    console.error('Error starting server:', err);
+    process.exit(1);
+  }
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
+  console.log('Available routes:');
+  console.log('- GET /api/settings');
+  console.log('- POST /api/settings');
+  console.log('- GET /api/settings/test');
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  console.error('Server error:', error);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Please try a different port or kill the process using this port.`);
+    process.exit(1);
+  }
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+module.exports = app;

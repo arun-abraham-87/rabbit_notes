@@ -14,6 +14,8 @@ import TagSelectionPopup from './TagSelectionPopup';
 import InlineEditor from './InlineEditor';
 import NoteTagBar from './NoteTagBar';
 import NoteContent from './NoteContent';
+import AddMeetingModal from './AddMeetingModal';
+import { CalendarIcon } from '@heroicons/react/24/solid';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -47,6 +49,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const [newLineText, setNewLineText] = useState('');
   const newLineInputRef = useRef(null);
   const [showCopyToast, setShowCopyToast] = useState(false);
+  const [showAddMeetingModal, setShowAddMeetingModal] = useState(false);
 
 
   const openModal = () => setModalOpen(true);
@@ -241,6 +244,15 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
 
   return (
     <div className="relative">
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={() => setShowAddMeetingModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+        >
+          <CalendarIcon className="h-5 w-5" />
+          <span>Quick Add Meeting</span>
+        </button>
+      </div>
       {showCopyToast && (
         <div className="fixed bottom-4 right-4 bg-black text-white text-sm px-3 py-1 rounded shadow-lg z-50">
           Copied to clipboard
@@ -433,6 +445,15 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           setShowCopyToast={setShowCopyToast}
         />
       )}
+
+      <AddMeetingModal
+        isOpen={showAddMeetingModal}
+        onClose={() => setShowAddMeetingModal(false)}
+        onAdd={(content) => {
+          addNotes(content);
+          setShowAddMeetingModal(false);
+        }}
+      />
 
     </div>
   );

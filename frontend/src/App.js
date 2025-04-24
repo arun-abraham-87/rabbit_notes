@@ -150,8 +150,13 @@ const App = () => {
   };
 
   const addTag = async (objText) => {
-    addNewTag(objText)
-    setObjects((prevObjects) => [...prevObjects, objText]);
+    try {
+      await addNewTag(objText);
+      // Fetch updated tags after adding new one
+      await fetchTags();
+    } catch (error) {
+      console.error('Error adding tag:', error);
+    }
   };
 
   useEffect(() => {

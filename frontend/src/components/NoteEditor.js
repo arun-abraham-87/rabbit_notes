@@ -79,9 +79,9 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     console.log(objList);
     const filterText = match[1].toLowerCase();
     const filtered = objList.filter((tag) =>
-      tag.toLowerCase().startsWith(filterText)
+      tag.text.toLowerCase().startsWith(filterText)
     );
-    setFilteredTags(filtered);
+    setFilteredTags(filtered.map(tag => tag.text));
     setSearchTerm(filterText);
     setShowPopup(filtered.length > 0);
   };
@@ -210,6 +210,9 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
   };
 
   const handleTextChange = (index, value) => {
+    console.log("Text changed:", value);
+    console.log("objList:", objList);
+    
     const updatedLines = [...lines];
     updatedLines[index].text = value;
     setLines(updatedLines);
@@ -217,6 +220,45 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     // Update search query if this is the first line and in add mode
     if (isAddMode && index === 0 && setSearchQuery) {
       setSearchQuery(value);
+    }
+
+    // Handle tag suggestions
+    if (value.trim().length === 0) {
+      setShowPopup(false);
+      return;
+    }
+
+    const match = value.trim().match(/(\S+)$/);
+    if (match) {
+      const filterText = match[1].toLowerCase();
+      console.log("Filter text:", filterText);
+
+      clearTimeout(throttleRef.current);
+      throttleRef.current = setTimeout(() => {
+        const filtered = objList.filter((tag) =>
+          tag.text.toLowerCase().startsWith(filterText)
+        );
+        console.log("Filtered tags:", filtered);
+
+        if (filtered.length > 0) {
+          const textarea = textareasRef.current[index];
+          if (textarea) {
+            const rect = textarea.getBoundingClientRect();
+            const coords = {
+              x: rect.left + window.scrollX + (textarea.selectionStart * 8), // Approximate character width
+              y: rect.bottom + window.scrollY
+            };
+            console.log("Setting popup position:", coords);
+            setCursorPosition(coords);
+            setFilteredTags(filtered.map(tag => tag.text));
+            setShowPopup(true);
+          }
+        } else {
+          setShowPopup(false);
+        }
+      }, 150);
+    } else {
+      setShowPopup(false);
     }
   };
 
@@ -631,11 +673,11 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           } else {
 
             filtered = objList.filter((tag) =>
-              tag.toLowerCase().startsWith(filterText)
+              tag.text.toLowerCase().startsWith(filterText)
             );
 
 
-            setFilteredTags(filtered);
+            setFilteredTags(filtered.map(tag => tag.text));
             //console.log(`objlit: ${objList}`)
             //console.log(`FilteredTags: ${filteredTags}`)
           }
@@ -1047,26 +1089,28 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
         <div
           id="tagpop"
           ref={popupRef}
-          className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2 z-20 max-h-40 overflow-y-auto no-scrollbar text-sm w-52"
+          className="fixed bg-white border-2 border-purple-500 rounded-lg shadow-lg p-2 z-[9999] max-h-40 overflow-y-auto no-scrollbar text-sm w-52"
           style={{
             left: cursorPosition.x,
-            top: cursorPosition.y,
+            top: cursorPosition.y + 5,
+            minHeight: '40px'
           }}
         >
-          {filteredTags.map((tag, index) => (
-            <div
-              key={tag}
-              onClick={() => handleSelectTag(tag)}
-              style={{
-                padding: "5px",
-                cursor: "pointer",
-                backgroundColor:
-                  selectedTagIndex === index ? "#e6f7ff" : "white",
-              }}
-            >
-              {tag}
-            </div>
-          ))}
+          {filteredTags.length === 0 ? (
+            <div className="p-2 text-gray-500">No matching tags</div>
+          ) : (
+            filteredTags.map((tag, index) => (
+              <div
+                key={tag}
+                onClick={() => handleSelectTag(tag)}
+                className={`p-2 cursor-pointer hover:bg-purple-100 ${
+                  selectedTagIndex === index ? "bg-purple-200" : ""
+                }`}
+              >
+                {tag}
+              </div>
+            ))
+          )}
         </div>
       )}
       {contextMenu.visible && (

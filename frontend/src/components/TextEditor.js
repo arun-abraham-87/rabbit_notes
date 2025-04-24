@@ -31,9 +31,12 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
 
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
-        const x = rect.left;
-        const y = rect.top;
+        
+        // Add window scroll position to get absolute coordinates
+        const x = rect.left + window.scrollX;
+        const y = rect.bottom + window.scrollY;
 
+        console.log("Cursor coordinates:", { x, y });
         return { x, y };
     }
 
@@ -276,7 +279,7 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
 
 
     const handleInputChange = (e, index) => {
-
+        console.log("Input changed, objList:", objList);
 
         const selection = window.getSelection();
         const range = selection.getRangeAt(0);
@@ -288,25 +291,26 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
         const inputedText = e.currentTarget.innerText;
         updatedNotes[index] = inputedText
         setNotes(updatedNotes);
-        console.log(`INputed text set as searhcquwery: ${inputedText}`)
-        searchQuery(!inputedText ? "" : inputedText);
+        console.log(`Input text: ${inputedText}`);
 
         //Needed to fix issue of popup showing after deleting all text and popup showing up based on last deleted char
         if (inputedText.trim().length === 0) {
             setShowPopup(false);
             setShowCalendar(false);
+            return;
         }
 
         const match = inputedText.trim().match(/(\S+)$/); // Match the last word
         if (match) {
             const filterText = match[1].toLowerCase();
+            console.log("Filter text:", filterText);
             let filtered = [];
 
             // Throttle logic
             if (filterText !== "") {
                 clearTimeout(throttleRef.current); // Clear the existing timeout
                 throttleRef.current = setTimeout(() => {
-
+                    console.log("Filtering tags for:", filterText);
                     if (filterText === "cal") {
                         let { x, y } = getCursorCoordinates();
                         x = x + 5;
@@ -314,30 +318,27 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
                         setShowCalendar(true);
                         setShowPopup(false);
                     } else {
-
                         filtered = objList.filter((tag) =>
-                            tag.toLowerCase().startsWith(filterText)
+                            tag.text.toLowerCase().startsWith(filterText)
                         );
+                        console.log("Filtered tags:", filtered);
 
-
-                        setFilteredTags(filtered);
-                        //console.log(`objlit: ${objList}`)
-                        //console.log(`FilteredTags: ${filteredTags}`)
+                        setFilteredTags(filtered.map(tag => tag.text));
                     }
                     if (filtered.length > 0) {
                         let { x, y } = getCursorCoordinates();
                         x = x + 5;
                         setCursorPosition({ x, y });
                         setShowPopup(true);
+                        console.log("Setting popup position:", { x, y });
+                        console.log("Setting showPopup to true");
                     } else {
                         setShowPopup(false);
                     }
-
-                }, 300); // 300ms delay for throttling
+                }, 150);
             }
         } else {
             setShowPopup(false);
-            //focusTextareaAtEnd();
         }
 
 
@@ -469,26 +470,28 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
                 <div
                     id="tagpop"
                     ref={popupRef}
-                    className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2 z-20 max-h-40 overflow-y-auto no-scrollbar text-sm w-52"
+                    className="absolute bg-white border-2 border-purple-500 rounded-lg shadow-lg p-2 z-50 max-h-40 overflow-y-auto no-scrollbar text-sm w-52"
                     style={{
                         left: cursorPosition.x,
                         top: cursorPosition.y,
+                        minHeight: '40px'
                     }}
                 >
-                    {filteredTags.map((tag, index) => (
-                        <div
-                            key={tag}
-                            onClick={() => handleSelectTag(tag)}
-                            style={{
-                                padding: "5px",
-                                cursor: "pointer",
-                                backgroundColor:
-                                    selectedTagIndex === index ? "#e6f7ff" : "white",
-                            }}
-                        >
-                            {tag}
-                        </div>
-                    ))}
+                    {filteredTags.length === 0 ? (
+                        <div className="p-2 text-gray-500">No matching tags</div>
+                    ) : (
+                        filteredTags.map((tag, index) => (
+                            <div
+                                key={tag}
+                                onClick={() => handleSelectTag(tag)}
+                                className={`p-2 cursor-pointer hover:bg-purple-100 ${
+                                    selectedTagIndex === index ? "bg-purple-200" : ""
+                                }`}
+                            >
+                                {tag}
+                            </div>
+                        ))
+                    )}
                 </div>
             )}
 

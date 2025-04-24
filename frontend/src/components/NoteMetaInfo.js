@@ -114,6 +114,7 @@ export default function NoteTitle({
   const isAbbreviation = lines.some((l) => l.trim().startsWith('meta::abbreviation'));
   const isBookmark = lines.some((l) => l.trim().startsWith('meta::bookmark'));
   const isQuickLinks = lines.some((l) => l.trim().startsWith('meta::quick_links'));
+  const isTodo = lines.some((l) => l.trim().startsWith('meta::todo'));
   const isWatch = lines.some((l) => l.trim().toLowerCase().includes('#watch'));
   const isWork = lines.some((l) => l.trim().toLowerCase().includes('#work'));
   const isStudy = lines.some((l) => l.trim().toLowerCase().includes('#study'));
@@ -210,6 +211,9 @@ export default function NoteTitle({
       case 'meeting':
         updatedContent = stripLines(l => l.startsWith('meta::meeting'));
         break;
+      case 'todo':
+        updatedContent = stripLines(l => l.startsWith('meta::todo') || l.startsWith('meta::end_date::'));
+        break;
       case 'watch':
         updatedContent = note.content.replace(/#watch\b/gi, '').trim();
         break;
@@ -277,6 +281,7 @@ export default function NoteTitle({
     isIdea || 
     isImportant || 
     isDocument ||
+    isTodo ||
     endDateNotice;
 
   // Don't render anything if no tags are present
@@ -331,6 +336,14 @@ export default function NoteTitle({
             title="Meeting"
             type="meeting"
             color="text-blue-600"
+          />
+        )}
+        {isTodo && (
+          <MetaIcon
+            icon={CheckCircleIcon}
+            title="Todo"
+            type="todo"
+            color="text-green-600"
           />
         )}
         {isWatch && (
@@ -390,19 +403,14 @@ export default function NoteTitle({
           />
         )}
       </div>
-      {(note.content.includes('meta::todo') || endDateNotice) && (
-        <div className="flex items-center gap-2">
-          <CheckCircleIcon className="h-6 w-6 text-green-600" title="Todo" />
 
+      {/* Todo and Deadline Info */}
+      {(todoAgeNotice || endDateNotice) && (
+        <div className="flex items-center gap-2">
           {todoAgeNotice && (
             <button
               className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-              onClick={() =>
-                updateNote(
-                  note.id,
-                  stripLines((l) => l.startsWith('meta::todo'))
-                )
-              }
+              onClick={() => removeTag('todo')}
               title="Remove todo notice"
             >
               {todoAgeNotice}
@@ -412,7 +420,7 @@ export default function NoteTitle({
           {parsedEndDate && (
             <>
               <span className="text-xs text-gray-700 font-semibold mr-1">
-                Deadline Date:
+                Deadline:
               </span>
               <span
                 className="text-xs text-gray-500 cursor-pointer"
@@ -431,13 +439,8 @@ export default function NoteTitle({
           {endDateNotice && (
             <button
               className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-              onClick={() =>
-                updateNote(
-                  note.id,
-                  stripLines((l) => l.startsWith('meta::end_date::'))
-                )
-              }
-              title="Remove end date"
+              onClick={() => removeTag('todo')}
+              title="Remove todo and deadline"
             >
               {isDeadlinePassed && (
                 <ExclamationCircleIcon
@@ -446,24 +449,16 @@ export default function NoteTitle({
                 />
               )}
               <span>{endDateNotice}</span>
-              <span
-                className={`${isDeadlinePassed
-                    ? 'text-red-600 hover:text-red-800'
-                    : 'text-blue-600 hover:text-blue-900'
-                  } ml-1 cursor-pointer`}
-              >
-                ×
-              </span>
             </button>
           )}
 
-          {!parsedEndDate && (
+          {!parsedEndDate && isTodo && (
             <button
               className="text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 bg-gray-100 text-gray-800 hover:bg-gray-200"
               onClick={() => setShowEndDatePickerForNoteId(note.id)}
-              title="Set end date"
+              title="Set deadline"
             >
-              No Deadline
+              Set Deadline
               <CalendarIcon
                 className="h-4 w-4 text-gray-600 ml-1"
                 title="Pick date"
@@ -472,6 +467,7 @@ export default function NoteTitle({
           )}
         </div>
       )}
+
       {isMeeting && (
         <div className="flex items-center gap-2 px-4 py-2">
           <label className="text-sm font-medium">Meeting Time:</label>

@@ -225,10 +225,10 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         const m = meetings.find(x => x.id === alertMeetingId);
         return (
           <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-            <div className="p-8 rounded-lg shadow-xl bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 animate-pulse max-w-sm text-center">
-              <h3 className="text-lg font-bold mb-2">Meeting Soon!</h3>
-              <p className="mb-4">{m.context}</p>
-              <p className="mb-6">Starts at {m.time}</p>
+            <div className="p-8 rounded-lg shadow-xl bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 animate-pulse max-w-sm text-center">
+              <h3 className="text-xl font-bold mb-2 text-white">Meeting Soon!</h3>
+              <p className="mb-4 text-white text-lg">{m.context}</p>
+              <p className="mb-6 text-white text-base">{m.time}</p>
               <button
                 onClick={() => {
                   const note = notes.find(n => n.id === alertMeetingId);
@@ -240,7 +240,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                   }
                   setAlertMeetingId(null);
                 }}
-                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                className="px-6 py-2.5 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 font-medium transition-colors"
               >
                 Close
               </button>
@@ -249,24 +249,24 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         );
       })()}
 
-      <div className="w-full h-full bg-gray-100 p-2 flex flex-col">
-        <div className="flex-1 space-y-1 overflow-y-auto text-xs">
+      <div className="w-full h-full bg-slate-50 p-3 flex flex-col">
+        <div className="flex-1 space-y-2 overflow-y-auto text-sm">
           {/* Collapse / Open controls */}
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-between items-center mb-4">
             <div className="flex space-x-2">
               <button
                 onClick={handleCollapseAll}
-                className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
+                className="p-2 bg-white hover:bg-indigo-50 rounded-lg text-indigo-600 hover:text-indigo-700 transition-colors duration-150 shadow-sm"
                 title="Collapse All Sections"
               >
-                <ChevronDoubleUpIcon className="h-4 w-4" />
+                <ChevronDoubleUpIcon className="h-5 w-5" />
               </button>
               <button
                 onClick={handleOpenAll}
-                className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
+                className="p-2 bg-white hover:bg-indigo-50 rounded-lg text-indigo-600 hover:text-indigo-700 transition-colors duration-150 shadow-sm"
                 title="Expand All Sections"
               >
-                <ChevronDoubleDownIcon className="h-4 w-4" />
+                <ChevronDoubleDownIcon className="h-5 w-5" />
               </button>
             </div>
           </div>
@@ -290,20 +290,20 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           )}
 
           {/* Quick Links Section */}
-          <div className="bg-white p-2 rounded-md shadow-sm mb-3">
+          <div className="bg-white p-3 rounded-lg shadow-sm mb-3">
             <h2
-              className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
+              className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base"
               onClick={() => setShowQuickLinks(prev => !prev)}
             >
-              <span>{'Quick Links'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
+              <span>Quick Links</span>
               {showQuickLinks ? 
-                <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
-                <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+                <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> : 
+                <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
               }
             </h2>
             {showQuickLinks && (
               uniqueUrls.length === 0 ? (
-                <p className="text-gray-500">No Quick Links</p>
+                <p className="text-gray-500 text-sm">No Quick Links</p>
               ) : (
                 uniqueUrls.map(({ url, label }, idx) => {
                   let displayText = label || (() => {
@@ -314,19 +314,19 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                     <div
                       key={url}
                       onContextMenu={e => handleLinkContextMenu(e, url)}
-                      className={`flex items-center mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                      className={`flex items-center mb-1.5 pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors`}
                     >
                       <a
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 text-black hover:underline truncate"
+                        className="flex-1 text-gray-700 hover:text-indigo-600 truncate text-sm"
                       >
                         {displayText}
                       </a>
                       <button
                         onClick={() => removeBookmarkFromNotes(url, notes, setNotes)}
-                        className="ml-2 text-gray-400 hover:text-red-600 focus:outline-none"
+                        className="ml-2 text-gray-400 hover:text-red-500 focus:outline-none"
                       >
                         &times;
                       </button>
@@ -381,18 +381,18 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
           {/* Meetings Section */}
           {visibleMeetings.length > 0 && (
-            <div className="bg-yellow-50 pb-2 px-2 rounded-md shadow-sm mb-3">
+            <div className="bg-indigo-50 pb-3 px-3 rounded-lg shadow-sm mb-3">
               <h2
-                className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
+                className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-100 rounded-lg text-base"
                 onClick={() => setShowMeetingsSection(prev => !prev)}
               >
                 <span>
-                  {'Meetings'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}
-                  <span className="text-gray-500 ml-1">({visibleMeetings.length})</span>
+                  Meetings
+                  <span className="text-indigo-600 ml-2 text-sm">({visibleMeetings.length})</span>
                 </span>
                 {showMeetingsSection ? 
-                  <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
-                  <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> : 
+                  <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
                 }
               </h2>
               {showMeetingsSection && visibleMeetings.map((m, idx) => {
@@ -402,10 +402,10 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                 return (
                   <div
                     key={m.id}
-                    className={`mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-yellow-100' : 'bg-yellow-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
+                    className={`mb-2 p-3 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} ${isFlashing ? 'animate-pulse bg-purple-100' : ''} hover:bg-indigo-100 transition-colors`}
                   >
-                    <div className="text-sm font-medium">{m.context}</div>
-                    <div className="text-[10px] text-gray-500">
+                    <div className="text-base font-medium text-gray-800">{m.context}</div>
+                    <div className="text-sm text-gray-600 mt-1">
                       {(() => {
                         const d = new Date(m.time);
                         const today = new Date(now);
@@ -413,7 +413,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                           d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
                       })()}
                     </div>
-                    <div className="text-[10px] text-gray-500">
+                    <div className="text-sm text-gray-600">
                       {(() => {
                         const d = new Date(m.time);
                         let h = d.getHours(), mnt = d.getMinutes();
@@ -422,7 +422,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                         return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
                       })()}
                     </div>
-                    <div className="text-xs text-blue-600">
+                    <div className="text-sm font-medium text-indigo-600 mt-1">
                       {(() => {
                         const delta = new Date(m.time).getTime() - now;
                         const days = Math.floor(delta / 86400000);
@@ -445,18 +445,18 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
           {/* Events Section */}
           {visibleEvents.length > 0 && (
-            <div className="bg-green-50 pb-2 px-2 rounded-md shadow-sm mb-3">
+            <div className="bg-purple-50 pb-3 px-3 rounded-lg shadow-sm mb-3">
               <h2
-                className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
+                className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-purple-100 rounded-lg text-base"
                 onClick={() => setShowEventsSection(prev => !prev)}
               >
                 <span>
-                  {'Events'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}
-                  <span className="text-gray-500 ml-1">({visibleEvents.length})</span>
+                  Events
+                  <span className="text-purple-600 ml-2 text-sm">({visibleEvents.length})</span>
                 </span>
                 {showEventsSection ? 
-                  <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
-                  <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+                  <ChevronDoubleUpIcon className="h-4 w-4 text-purple-600" /> : 
+                  <ChevronDoubleDownIcon className="h-4 w-4 text-purple-600" />
                 }
               </h2>
               {showEventsSection && visibleEvents.map((e, idx) => {
@@ -466,39 +466,40 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                 return (
                   <div
                     key={e.id}
-                    className={`mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-green-100' : 'bg-green-200'} ${isFlashing ? 'animate-pulse bg-green-200' : ''}`}
+                    className={`mb-2 p-3 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} ${isFlashing ? 'animate-pulse bg-purple-200' : ''} hover:bg-purple-100 transition-colors`}
                   >
-                    <div className="text-sm font-medium">{e.context}</div>
-                    <div className="text-[10px] text-gray-500">
+                    <div className="text-base font-medium text-gray-800">{e.context}</div>
+                    <div className="text-sm text-gray-600 mt-1">
                       {(() => {
                         const d = new Date(e.time);
-                        const today = new Date(now);
-                        return d.toDateString() === today.toDateString() ? 'Today' :
-                          d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                        return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
                       })()}
                     </div>
-                    <div className="text-[10px] text-gray-500">
-                      {(() => {
-                        const d = new Date(e.time);
-                        let h = d.getHours(), mnt = d.getMinutes();
-                        const ampm = h >= 12 ? 'PM' : 'AM';
-                        h = h % 12 || 12;
-                        return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
-                      })()}
-                    </div>
-                    <div className="text-xs text-blue-600">
+                    <div className="text-sm font-medium text-purple-600 mt-1">
                       {(() => {
                         const delta = new Date(e.time).getTime() - now;
-                        const days = Math.floor(delta / 86400000);
-                        const hrs = Math.floor((delta % 86400000) / 3600000);
-                        const mins = Math.floor((delta % 3600000) / 60000);
-                        const secs = Math.floor((delta % 60000) / 1000);
+                        if (delta <= 0) return 'Today';
+                        
+                        // Calculate years, months, and days
+                        const millisecondsPerDay = 86400000;
+                        const millisecondsPerMonth = millisecondsPerDay * 30.44; // Average month length
+                        const millisecondsPerYear = millisecondsPerDay * 365.25; // Account for leap years
+                        
+                        const years = Math.floor(delta / millisecondsPerYear);
+                        const remainingAfterYears = delta % millisecondsPerYear;
+                        
+                        const months = Math.floor(remainingAfterYears / millisecondsPerMonth);
+                        const remainingAfterMonths = remainingAfterYears % millisecondsPerMonth;
+                        
+                        const days = Math.ceil(remainingAfterMonths / millisecondsPerDay);
+                        
+                        // Build the display string
                         const parts = [];
-                        if (days) parts.push(`${days}d`);
-                        if (hrs) parts.push(`${hrs}h`);
-                        if (mins) parts.push(`${mins}m`);
-                        if (!parts.length) parts.push(`${secs}s`);
-                        return `in ${parts.join(' ')}`;
+                        if (years > 0) parts.push(`${years} ${years === 1 ? 'year' : 'years'}`);
+                        if (months > 0) parts.push(`${months} ${months === 1 ? 'month' : 'months'}`);
+                        if (days > 0 || parts.length === 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+                        
+                        return `in ${parts.join(', ')}`;
                       })()}
                     </div>
                   </div>
@@ -509,14 +510,14 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         </div>
 
         {/* Settings button at bottom */}
-        <div className="mt-2 pt-2 border-t border-gray-200">
+        <div className="mt-3 pt-3 border-t border-gray-200">
           <button
             onClick={() => setShowSettings(true)}
-            className="w-full flex items-center justify-center p-2 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
+            className="w-full flex items-center justify-center p-2.5 bg-white hover:bg-indigo-50 rounded-lg text-gray-700 hover:text-indigo-600 transition-colors duration-150 shadow-sm"
             title="Settings"
           >
-            <Cog6ToothIcon className="h-4 w-4 mr-2" />
-            <span className="text-sm">Settings</span>
+            <Cog6ToothIcon className="h-5 w-5 mr-2" />
+            <span className="text-sm font-medium">Settings</span>
           </button>
         </div>
       </div>
@@ -545,12 +546,12 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
+          <div className="bg-white rounded-xl p-6 w-96 shadow-xl">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Settings</h2>
+              <h2 className="text-xl font-bold text-gray-800">Settings</h2>
               <button
                 onClick={() => setShowSettings(false)}
-                className="p-1 hover:bg-gray-100 rounded-full"
+                className="p-1.5 hover:bg-indigo-50 rounded-full text-gray-500 hover:text-indigo-600 transition-colors"
               >
                 <XMarkIcon className="h-6 w-6" />
               </button>
@@ -562,7 +563,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                 <select
                   value={unsavedSettings.theme}
                   onChange={(e) => handleSettingChange('theme', e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  className="mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
                 >
                   <option value="light">Light</option>
                   <option value="dark">Dark</option>
@@ -575,7 +576,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                 <select
                   value={unsavedSettings.sortBy}
                   onChange={(e) => handleSettingChange('sortBy', e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  className="mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
                 >
                   <option value="date">Date</option>
                   <option value="priority">Priority</option>
@@ -589,9 +590,9 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                   id="autoCollapse"
                   checked={unsavedSettings.autoCollapse}
                   onChange={(e) => handleSettingChange('autoCollapse', e.target.checked)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
                 />
-                <label htmlFor="autoCollapse" className="ml-2 block text-sm text-gray-900">
+                <label htmlFor="autoCollapse" className="ml-3 block text-base text-gray-700">
                   Auto-collapse sections
                 </label>
               </div>
@@ -603,9 +604,9 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                   id="showDates"
                   checked={unsavedSettings.showDates}
                   onChange={(e) => handleSettingChange('showDates', e.target.checked)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
                 />
-                <label htmlFor="showDates" className="ml-2 block text-sm text-gray-900">
+                <label htmlFor="showDates" className="ml-3 block text-base text-gray-700">
                   Show dates in note list
                 </label>
               </div>
@@ -617,34 +618,34 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                   id="showCreatedDate"
                   checked={unsavedSettings.showCreatedDate}
                   onChange={(e) => handleSettingChange('showCreatedDate', e.target.checked)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
                 />
-                <label htmlFor="showCreatedDate" className="ml-2 block text-sm text-gray-900">
+                <label htmlFor="showCreatedDate" className="ml-3 block text-base text-gray-700">
                   Show created date in notes
                 </label>
               </div>
             </div>
 
             {/* Save and Cancel buttons */}
-            <div className="mt-6 flex justify-end space-x-2">
+            <div className="mt-6 flex justify-end space-x-3">
               <button
                 onClick={() => {
                   setUnsavedSettings(settings);
                   setShowSettings(false);
                 }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-gray-100 rounded hover:bg-gray-200"
+                className="px-4 py-2 text-base font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 disabled={isSaving}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveSettings}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-base font-medium transition-colors"
                 disabled={isSaving}
               >
                 {isSaving ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { XMarkIcon } from '@heroicons/react/24/solid';
 
-const OngoingMeetingBanner = ({ meeting }) => {
+const OngoingMeetingBanner = ({ meeting, onDismiss }) => {
   const { description, startTime, duration } = meeting;
   const [timeInfo, setTimeInfo] = useState({ minsElapsed: 0, minsRemaining: 0, progress: 0 });
   
@@ -31,7 +32,7 @@ const OngoingMeetingBanner = ({ meeting }) => {
   };
 
   return (
-    <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg mb-6">
+    <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg mb-6 relative">
       <div className="flex items-center justify-between mb-3">
         <div className="flex-1">
           <h3 className="text-lg font-semibold mb-1">
@@ -41,7 +42,16 @@ const OngoingMeetingBanner = ({ meeting }) => {
             Started {timeInfo.minsElapsed} mins ago • Finishes in {timeInfo.minsRemaining} mins
           </div>
         </div>
-        <div className="text-3xl font-bold opacity-25">🗣️</div>
+        <div className="flex items-center gap-4">
+          <div className="text-3xl font-bold opacity-25">🗣️</div>
+          <button
+            onClick={onDismiss}
+            className="p-1 hover:bg-white/20 rounded-full transition-colors"
+            title="Dismiss meeting banner"
+          >
+            <XMarkIcon className="h-5 w-5 text-white" />
+          </button>
+        </div>
       </div>
       
       {/* Progress bar container */}

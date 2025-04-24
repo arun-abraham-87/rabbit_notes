@@ -259,10 +259,13 @@ export default function NoteTitle({
         e.stopPropagation();
         removeTag(type);
       }}
-      className="group relative rounded-full p-1 transition-colors hover:bg-gray-200/70"
+      className="group relative rounded-lg p-1.5 transition-all duration-200 hover:bg-gray-100/80 hover:shadow-sm active:scale-95"
       title={`Remove ${title}`}
     >
-      <Icon className={`h-5 w-5 ${color} transition-all group-hover:scale-90 group-active:scale-95`} />
+      <Icon className={`h-4.5 w-4.5 ${color} transition-all duration-200 group-hover:scale-105`} />
+      <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 transform opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="text-[10px] font-medium text-gray-500">{title}</span>
+      </span>
     </button>
   );
 
@@ -288,165 +291,172 @@ export default function NoteTitle({
   if (!hasAnyTags) return null;
 
   return (
-    <div className="flex items-center flex-wrap gap-2 mb-2">
-      <div className="flex items-center gap-2">
-        {isAbbreviation && (
-          <MetaIcon
-            icon={AdjustmentsVerticalIcon}
-            title="Abbreviation"
-            type="abbreviation"
-            color="text-purple-600"
-          />
-        )}
-        {isBookmark && (
-          <MetaIcon
-            icon={BookmarkIcon}
-            title="Bookmark"
-            type="bookmark"
-            color="text-indigo-600"
-          />
-        )}
-        {isQuickLinks && (
-          <MetaIcon
-            icon={LinkIcon}
-            title="Quick Links"
-            type="quick_links"
-            color="text-blue-600"
-          />
-        )}
-        {isPinned && (
-          <MetaIcon
-            icon={MapPinIcon}
-            title="Pinned"
-            type="pin"
-            color="text-yellow-600"
-          />
-        )}
-        {isEvent && !isMeeting && (
-          <MetaIcon
-            icon={CalendarDaysIcon}
-            title="Event"
-            type="event"
-            color="text-pink-600"
-          />
-        )}
-        {isMeeting && (
-          <MetaIcon
-            icon={ClockIcon}
-            title="Meeting"
-            type="meeting"
-            color="text-blue-600"
-          />
-        )}
-        {isTodo && (
-          <MetaIcon
-            icon={CheckCircleIcon}
-            title="Todo"
-            type="todo"
-            color="text-green-600"
-          />
-        )}
-        {isWatch && (
-          <MetaIcon
-            icon={EyeIcon}
-            title="Watch"
-            type="watch"
-            color="text-teal-600"
-          />
-        )}
-        {isWork && (
-          <MetaIcon
-            icon={BriefcaseIcon}
-            title="Work"
-            type="work"
-            color="text-gray-600"
-          />
-        )}
-        {isStudy && (
-          <MetaIcon
-            icon={AcademicCapIcon}
-            title="Study"
-            type="study"
-            color="text-green-600"
-          />
-        )}
-        {isResearch && (
-          <MetaIcon
-            icon={BeakerIcon}
-            title="Research"
-            type="research"
-            color="text-violet-600"
-          />
-        )}
-        {isIdea && (
-          <MetaIcon
-            icon={LightBulbIcon}
-            title="Idea"
-            type="idea"
-            color="text-amber-600"
-          />
-        )}
-        {isImportant && (
-          <MetaIcon
-            icon={StarIcon}
-            title="Important"
-            type="important"
-            color="text-red-600"
-          />
-        )}
-        {isDocument && (
-          <MetaIcon
-            icon={DocumentTextIcon}
-            title="Document"
-            type="document"
-            color="text-slate-600"
-          />
-        )}
+    <div className="flex flex-col gap-3 mb-3">
+      {/* Meta Icons Section */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 p-1 bg-gray-50/50 rounded-xl border border-gray-100/80">
+          {isAbbreviation && (
+            <MetaIcon
+              icon={AdjustmentsVerticalIcon}
+              title="Abbreviation"
+              type="abbreviation"
+              color="text-purple-500"
+            />
+          )}
+          {isBookmark && (
+            <MetaIcon
+              icon={BookmarkIcon}
+              title="Bookmark"
+              type="bookmark"
+              color="text-indigo-500"
+            />
+          )}
+          {isQuickLinks && (
+            <MetaIcon
+              icon={LinkIcon}
+              title="Quick Links"
+              type="quick_links"
+              color="text-blue-500"
+            />
+          )}
+          {isPinned && (
+            <MetaIcon
+              icon={MapPinIcon}
+              title="Pinned"
+              type="pin"
+              color="text-amber-500"
+            />
+          )}
+          {isEvent && !isMeeting && (
+            <MetaIcon
+              icon={CalendarDaysIcon}
+              title="Event"
+              type="event"
+              color="text-pink-500"
+            />
+          )}
+          {isMeeting && (
+            <MetaIcon
+              icon={ClockIcon}
+              title="Meeting"
+              type="meeting"
+              color="text-sky-500"
+            />
+          )}
+          {isTodo && (
+            <MetaIcon
+              icon={CheckCircleIcon}
+              title="Todo"
+              type="todo"
+              color="text-emerald-500"
+            />
+          )}
+          {isWatch && (
+            <MetaIcon
+              icon={EyeIcon}
+              title="Watch"
+              type="watch"
+              color="text-teal-500"
+            />
+          )}
+          {isWork && (
+            <MetaIcon
+              icon={BriefcaseIcon}
+              title="Work"
+              type="work"
+              color="text-slate-600"
+            />
+          )}
+          {isStudy && (
+            <MetaIcon
+              icon={AcademicCapIcon}
+              title="Study"
+              type="study"
+              color="text-green-500"
+            />
+          )}
+          {isResearch && (
+            <MetaIcon
+              icon={BeakerIcon}
+              title="Research"
+              type="research"
+              color="text-violet-500"
+            />
+          )}
+          {isIdea && (
+            <MetaIcon
+              icon={LightBulbIcon}
+              title="Idea"
+              type="idea"
+              color="text-amber-500"
+            />
+          )}
+          {isImportant && (
+            <MetaIcon
+              icon={StarIcon}
+              title="Important"
+              type="important"
+              color="text-rose-500"
+            />
+          )}
+          {isDocument && (
+            <MetaIcon
+              icon={DocumentTextIcon}
+              title="Document"
+              type="document"
+              color="text-slate-600"
+            />
+          )}
+        </div>
       </div>
 
       {/* Todo and Deadline Info */}
       {(todoAgeNotice || endDateNotice) && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
           {todoAgeNotice && (
             <button
-              className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
+              className="text-gray-700 text-xs tracking-wide font-medium px-3 py-1.5 rounded-lg flex items-center gap-2 bg-gray-50/80 hover:bg-gray-100/80 transition-colors duration-200 border border-gray-200/80"
               onClick={() => removeTag('todo')}
               title="Remove todo notice"
             >
+              <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
               {todoAgeNotice}
             </button>
           )}
 
           {parsedEndDate && (
-            <>
-              <span className="text-xs text-gray-700 font-semibold mr-1">
+            <div className="flex items-center gap-2 bg-gray-50/80 px-3 py-1.5 rounded-lg border border-gray-200/80">
+              <span className="text-xs tracking-wide text-gray-600 font-medium">
                 Deadline:
               </span>
               <span
-                className="text-xs text-gray-500 cursor-pointer"
+                className="text-xs tracking-wide text-gray-700 font-medium cursor-pointer hover:text-gray-900 transition-colors duration-200"
                 onClick={() => setShowEndDatePickerForNoteId(note.id)}
               >
                 {parsedEndDate.toLocaleDateString()}
               </span>
               <CalendarIcon
-                className="h-5 w-5 text-gray-600 cursor-pointer hover:text-gray-800"
+                className="h-4 w-4 text-gray-500 cursor-pointer hover:text-gray-700 transition-colors duration-200"
                 onClick={() => setShowEndDatePickerForNoteId(note.id)}
                 title="Edit end date"
               />
-            </>
+            </div>
           )}
 
           {endDateNotice && (
             <button
-              className="text-gray-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
+              className={`text-xs tracking-wide font-medium px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors duration-200 border ${
+                isDeadlinePassed
+                  ? 'bg-red-50/80 text-red-700 border-red-200/80 hover:bg-red-100/80'
+                  : 'bg-blue-50/80 text-blue-700 border-blue-200/80 hover:bg-blue-100/80'
+              }`}
               onClick={() => removeTag('todo')}
               title="Remove todo and deadline"
             >
-              {isDeadlinePassed && (
-                <ExclamationCircleIcon
-                  className="h-4 w-4 text-red-600"
-                  title="Deadline passed"
-                />
+              {isDeadlinePassed ? (
+                <ExclamationCircleIcon className="h-4 w-4 text-red-500" />
+              ) : (
+                <CalendarIcon className="h-4 w-4 text-blue-500" />
               )}
               <span>{endDateNotice}</span>
             </button>
@@ -454,40 +464,42 @@ export default function NoteTitle({
 
           {!parsedEndDate && isTodo && (
             <button
-              className="text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 bg-gray-100 text-gray-800 hover:bg-gray-200"
+              className="text-xs tracking-wide font-medium px-3 py-1.5 rounded-lg flex items-center gap-2 bg-emerald-50/80 text-emerald-700 hover:bg-emerald-100/80 transition-colors duration-200 border border-emerald-200/80"
               onClick={() => setShowEndDatePickerForNoteId(note.id)}
               title="Set deadline"
             >
               Set Deadline
-              <CalendarIcon
-                className="h-4 w-4 text-gray-600 ml-1"
-                title="Pick date"
-              />
+              <CalendarIcon className="h-4 w-4 text-emerald-500" />
             </button>
           )}
         </div>
       )}
 
-      {isMeeting && (
-        <div className="flex items-center gap-2 px-4 py-2">
-          <label className="text-sm font-medium">Meeting Time:</label>
-          <input
-            type="datetime-local"
-            value={formatDateForInput(getSecondLineDate())}
-            onChange={(e) => updateMeetingDate(e.target.value)}
-            className="border border-gray-300 rounded p-1 text-sm"
-          />
-        </div>
-      )}
-      {isEvent && (
-        <div className="flex items-center gap-2 px-4 py-2">
-          <label className="text-sm font-medium">Event Date:</label>
-          <input
-            type="date"
-            value={formatDateOnly(getSecondLineDate())}
-            onChange={(e) => updateEventDate(e.target.value)}
-            className="border border-gray-300 rounded p-1 text-sm"
-          />
+      {/* Meeting and Event Inputs */}
+      {(isMeeting || isEvent) && (
+        <div className="flex items-center gap-4 flex-wrap">
+          {isMeeting && (
+            <div className="flex items-center gap-3 bg-sky-50/80 px-4 py-2 rounded-xl border border-sky-200/80">
+              <label className="text-sm font-medium text-sky-700">Meeting Time:</label>
+              <input
+                type="datetime-local"
+                value={formatDateForInput(getSecondLineDate())}
+                onChange={(e) => updateMeetingDate(e.target.value)}
+                className="border border-sky-200 rounded-lg p-1.5 text-sm bg-white/80 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+              />
+            </div>
+          )}
+          {isEvent && (
+            <div className="flex items-center gap-3 bg-pink-50/80 px-4 py-2 rounded-xl border border-pink-200/80">
+              <label className="text-sm font-medium text-pink-700">Event Date:</label>
+              <input
+                type="date"
+                value={formatDateOnly(getSecondLineDate())}
+                onChange={(e) => updateEventDate(e.target.value)}
+                className="border border-pink-200 rounded-lg p-1.5 text-sm bg-white/80 focus:outline-none focus:ring-2 focus:ring-pink-500/20"
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

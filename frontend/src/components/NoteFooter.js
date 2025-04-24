@@ -12,7 +12,8 @@ import {
   EyeIcon,
   ClockIcon,
   FlagIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/solid';
 import { formatDate } from '../utils/DateUtils';
 
@@ -32,8 +33,10 @@ const NoteFooter = ({
   const [showPinPopup, setShowPinPopup] = useState(false);
   const [selectedPinLines, setSelectedPinLines] = useState([]);
   const [showMoreActions, setShowMoreActions] = useState(false);
+  const [showRawNote, setShowRawNote] = useState(false);
   const moreActionsRef = useRef(null);
   const pinPopupRef = useRef(null);
+  const rawNotePopupRef = useRef(null);
   const lines = note.content.split('\n');
 
   useEffect(() => {
@@ -46,12 +49,17 @@ const NoteFooter = ({
       if (pinPopupRef.current && !pinPopupRef.current.contains(event.target)) {
         setShowPinPopup(false);
       }
+      // Handle Raw Note popup
+      if (rawNotePopupRef.current && !rawNotePopupRef.current.contains(event.target)) {
+        setShowRawNote(false);
+      }
     };
 
     const handleEscapeKey = (event) => {
       if (event.key === 'Escape') {
         setShowMoreActions(false);
         setShowPinPopup(false);
+        setShowRawNote(false);
       }
     };
 
@@ -283,6 +291,17 @@ const NoteFooter = ({
                     <span>Pin Note</span>
                   </button>
 
+                  <button
+                    onClick={() => {
+                      setShowRawNote(true);
+                      setShowMoreActions(false);
+                    }}
+                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
+                  >
+                    <DocumentTextIcon className="h-3.5 w-3.5 mr-2 text-gray-500" />
+                    <span>View Raw Note</span>
+                  </button>
+
                   <div className="border-t my-1" />
 
                   {/* Danger zone */}
@@ -365,6 +384,36 @@ const NoteFooter = ({
                 className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Raw Note Popup */}
+      {showRawNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div ref={rawNotePopupRef} className="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Raw Note Content</h3>
+              <button
+                onClick={() => setShowRawNote(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XCircleIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg overflow-auto max-h-[60vh]">
+              <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">
+                {note.content}
+              </pre>
+            </div>
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setShowRawNote(false)}
+                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Close
               </button>
             </div>
           </div>

@@ -37,7 +37,8 @@ export default function NoteTagBar({
   };
 
   const getTagIcon = (type) => {
-    switch (type) {
+    const baseType = type.split('::')[1] || type;
+    switch (baseType) {
       case 'todo':
         return <CheckCircleIcon className="h-3.5 w-3.5" />;
       case 'event':
@@ -53,6 +54,10 @@ export default function NoteTagBar({
       case 'low':
         return <ExclamationCircleIcon className="h-3.5 w-3.5 text-green-500" />;
       default:
+        // Don't show hashtag icon for meeting-related tags
+        if (type.includes('meeting')) {
+          return null;
+        }
         return <HashtagIcon className="h-3.5 w-3.5" />;
     }
   };
@@ -78,34 +83,36 @@ export default function NoteTagBar({
     }
   };
 
-  const TagPill = ({ type, details = '', onRemove }) => (
-    <div 
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${getTagColor(type)}`}
-      title={details ? `${type}: ${details}` : type}
-    >
-      <button
-        onClick={onRemove}
-        className="p-0.5 rounded-full hover:bg-gray-200/50 transition-colors"
-        title={`Remove ${type} tag`}
+  const TagPill = ({ type, details = '', onRemove }) => {
+    // Extract the display text from the type (show only the last part after ::)
+    const displayText = type.includes('::') ? type.split('::').pop() : type;
+    const icon = getTagIcon(type);
+    
+    return (
+      <div 
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${getTagColor(type)}`}
+        title={details ? `${type}: ${details}` : type}
       >
-        {getTagIcon(type)}
-      </button>
-      <span>{type}</span>
-      {details && (
-        <span className="text-gray-500 text-xs">
-          <ClockIcon className="inline h-3 w-3 mr-0.5" />
-          {new Date(details).toLocaleDateString()}
-        </span>
-      )}
-      <button
-        onClick={onRemove}
-        className="ml-1 p-0.5 rounded-full hover:bg-gray-200/50 transition-colors"
-        title="Remove tag"
-      >
-        <XMarkIcon className="h-3 w-3" />
-      </button>
-    </div>
-  );
+        {icon && (
+          <button
+            onClick={onRemove}
+            className="p-0.5 rounded-full hover:bg-gray-200/50 transition-colors"
+            title={`Remove ${displayText} tag`}
+          >
+            {icon}
+          </button>
+        )}
+        <span>{displayText}</span>
+        <button
+          onClick={onRemove}
+          className="ml-1 p-0.5 rounded-full hover:bg-gray-200/50 transition-colors"
+          title="Remove tag"
+        >
+          <XMarkIcon className="h-3 w-3" />
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-wrap gap-2 px-4 pb-2">

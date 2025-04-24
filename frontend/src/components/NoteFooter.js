@@ -38,6 +38,7 @@ const NoteFooter = ({
   const pinPopupRef = useRef(null);
   const rawNotePopupRef = useRef(null);
   const lines = note.content.split('\n');
+  const isMergeMode = selectedNotes.length > 0;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -284,6 +285,17 @@ const NoteFooter = ({
 
                   <button
                     onClick={() => {
+                      toggleNoteSelection(note.id);
+                      setShowMoreActions(false);
+                    }}
+                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
+                  >
+                    <DocumentTextIcon className="h-3.5 w-3.5 mr-2 text-indigo-500" />
+                    <span>{selectedNotes.length === 0 ? 'Start Merge' : 'Select for Merge'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
                       updateNote(
                         note.id,
                         note.content.toLowerCase().includes('#watch')
@@ -332,14 +344,16 @@ const NoteFooter = ({
               )}
             </div>
 
-            {/* Selection checkbox */}
-            <input
-              type="checkbox"
-              checked={selectedNotes.includes(note.id)}
-              onChange={() => toggleNoteSelection(note.id)}
-              title="Select Note"
-              className="ml-2 accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
-            />
+            {/* Selection checkbox - only show when in merge mode */}
+            {isMergeMode && (
+              <input
+                type="checkbox"
+                checked={selectedNotes.includes(note.id)}
+                onChange={() => toggleNoteSelection(note.id)}
+                title="Select Note for Merge"
+                className="ml-2 accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
+              />
+            )}
           </div>
         </div>
       </div>

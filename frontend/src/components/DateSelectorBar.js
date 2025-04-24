@@ -49,8 +49,21 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
       `,
       month: `text-xs font-semibold py-1 text-center ${isActive ? 'text-white/90' : 'text-gray-600'} bg-opacity-10`,
       day: `text-xl font-bold ${isActive ? 'text-white' : 'text-gray-800'}`,
-      weekday: `text-[10px] ${isActive ? 'text-white/80' : 'text-gray-500'}`
+      weekday: `text-[10px] font-light ${isActive ? 'text-white/80' : 'text-gray-500'}`,
+      topLabel: `text-[10px] font-light ${isActive ? 'text-white/80' : 'text-gray-500'}`
     };
+  };
+
+  const getDateLabel = (dateObj) => {
+    const isoDate = dateObj.toISOString().split('T')[0];
+    if (isoDate === getAustralianDate()) {
+      return '(Today)';
+    }
+    const diffTime = dateObj.getTime() - new Date(getAustralianDate()).getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 
+      ? `(${diffDays} ${diffDays === 1 ? 'day' : 'days'} from now)`
+      : `(${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'day' : 'days'} ago)`;
   };
 
   return (
@@ -65,9 +78,33 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
               className={`h-5 w-5 text-gray-600 transition-transform duration-200 ${!collapsed ? 'rotate-90' : ''}`}
             />
           </button>
-          <h2 className="text-lg font-semibold text-gray-800">
-            {collapsed ? selectedDate : 'Date Selection'}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className={`text-lg font-semibold ${selectedDate === getAustralianDate() ? 'text-gray-800' : 'text-red-600'}`}>
+              {collapsed ? selectedDate : 'Date Selection'}
+            </h2>
+            {collapsed && (
+              <span className="text-sm font-light text-gray-500">
+                {selectedDate === getAustralianDate() 
+                  ? '(Today)' 
+                  : (() => {
+                      const diffTime = new Date(selectedDate).getTime() - new Date(getAustralianDate()).getTime();
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      return diffDays > 0 
+                        ? `(${diffDays} ${diffDays === 1 ? 'day' : 'days'} from now)`
+                        : `(${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'day' : 'days'} ago)`;
+                    })()
+                }
+              </span>
+            )}
+          </div>
+          {collapsed && selectedDate !== getAustralianDate() && (
+            <button
+              onClick={() => handleDateChange(getAustralianDate())}
+              className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              Reset to Today
+            </button>
+          )}
         </div>
         
         {collapsed && (
@@ -129,6 +166,7 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
                     className={styles.container}
                   >
                     <div className="w-20 h-24 flex flex-col items-center justify-between p-2">
+                      <div className={styles.topLabel}>{getDateLabel(dateObj)}</div>
                       <div className={styles.month}>{month}</div>
                       <div className={styles.day}>{day}</div>
                       <div className={styles.weekday}>{dayOfWeekLabel}</div>

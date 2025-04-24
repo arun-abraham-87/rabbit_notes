@@ -153,16 +153,22 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       return 0;
     });
 
-  const { total, high, medium, low } = filteredTodos.reduce(
+  // Calculate total todos (only filtered by search)
+  const totalTodos = todos.filter(todo => 
+    todo.content.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    todo.content.includes('meta::todo')
+  ).length;
+
+  // Calculate priority counts (filtered by search and priority)
+  const { high, medium, low } = filteredTodos.reduce(
     (acc, todo) => {
       const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
       const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
       const priority = priorities[todo.id] || tag;
       acc[priority]++;
-      acc.total++;
       return acc;
     },
-    { total: 0, high: 0, medium: 0, low: 0 }
+    { high: 0, medium: 0, low: 0 }
   );
 
   const renderTodoCard = (todo) => {
@@ -182,12 +188,12 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         key={todo.id}
         className={`group relative ${
           viewMode === 'grid' ? 'h-[200px]' : 'min-h-[80px]'
-        } flex flex-col rounded-lg border-l-4 shadow-sm hover:shadow-md transition-all duration-200 ${
+        } flex flex-col rounded-lg border-l-4 border-0 shadow-sm hover:shadow-md transition-all duration-200 ${
           priorityColors[currentPriority]
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b bg-white bg-opacity-50">
+        <div className="flex items-center justify-between p-3 border-b bg-white/50">
           <div className="flex items-center gap-2">
             <span className={`text-xs font-medium ${ageColorClass}`}>
               {getAgeLabel(todo.created_datetime)}
@@ -340,7 +346,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                   }`}
                 >
                   <div className="text-xs font-medium text-gray-500">Total</div>
-                  <div className="text-2xl font-bold text-gray-900">{total}</div>
+                  <div className="text-2xl font-bold text-gray-900">{totalTodos}</div>
                 </button>
                 <button
                   onClick={() => setPriorityFilter('high')}

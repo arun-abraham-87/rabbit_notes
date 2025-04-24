@@ -509,7 +509,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
       trimmedLines.pop();
     }
     const merged = trimmedLines.join('\n');
-    if (!merged) {
+    if (!merged.trim()) {
       return;
     }
     if (isAddMode) {
@@ -564,7 +564,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           trimmedLines.pop();
         }
         const merged = trimmedLines.join('\n');
-        if (!merged) {
+        if (!merged.trim()) {
           return;
         }
         if (isAddMode) {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { toast } from 'react-toastify';
 
 import ConfirmationModal from './ConfirmationModal';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
@@ -162,6 +163,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const handleConvertToTag = () => {
     addObjects(selectedText);
     setPopupVisible(false);
+    toast.success('Tag created successfully');
   };
 
   const handleSearch = () => {

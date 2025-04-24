@@ -122,9 +122,6 @@ const App = () => {
   const fetchAllNotes = async () => {
     const data = await loadAllNotes('', null)
     setAllNotes(data.notes);
-    console.log('allNotes')
-    console.log(allNotes)
-
   };
 
   const fetchTodos = async () => {
@@ -229,6 +226,7 @@ const App = () => {
             <NotesMainContainer
               objList={objectList}
               notes={notes}
+              allNotes={allNotes}
               addNote={addNote}
               setNotes={updateBothNotesLists}
               objects={objects}

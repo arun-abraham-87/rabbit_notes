@@ -99,7 +99,8 @@ const findNextMeeting = (notes) => {
 
 const NotesMainContainer = ({ 
     objList, 
-    notes, 
+    notes,
+    allNotes, 
     addNote, 
     setNotes, 
     objects, 
@@ -117,7 +118,7 @@ const NotesMainContainer = ({
 
     // Extract meetings from notes
     const meetings = useMemo(() => {
-        return notes.flatMap(note => {
+        return allNotes.flatMap(note => {
             if (note.content.split('\n').some(line => line.trim().startsWith('meta::meeting'))) {
                 const lines = note.content.split('\n');
                 // Extract duration from meta tag
@@ -132,7 +133,7 @@ const NotesMainContainer = ({
             }
             return [];
         }).sort((a, b) => new Date(a.time) - new Date(b.time));
-    }, [notes]);
+    }, [allNotes]);
 
     // Filter notes for display based on selected date, but only if there's no search query
     const filteredNotes = notes.filter(note => {
@@ -177,13 +178,13 @@ const NotesMainContainer = ({
         let upcomingMeetingTimeout;
 
         const checkMeetings = () => {
-            // Use all notes for meeting checks, not filtered notes
-            const meeting = checkForOngoingMeeting(notes);
+            // Use allNotes for meeting checks, not filtered notes
+            const meeting = checkForOngoingMeeting(allNotes);
             setOngoingMeeting(meeting);
 
             // If no ongoing meeting, check for upcoming meetings
             if (!meeting) {
-                const nextMeeting = findNextMeeting(notes);
+                const nextMeeting = findNextMeeting(allNotes);
                 if (nextMeeting) {
                     const timeUntilStart = nextMeeting.startTime - new Date();
                     if (timeUntilStart > 0) {
@@ -212,7 +213,7 @@ const NotesMainContainer = ({
                 clearTimeout(upcomingMeetingTimeout);
             }
         };
-    }, [notes]); // Keep dependency on all notes
+    }, [allNotes]); // Keep dependency on allNotes instead of filtered notes
 
     const handleTagClick = (tag) => {
         setSearchQuery(tag);
@@ -250,7 +251,7 @@ const NotesMainContainer = ({
                     onDismiss={handleDismissMeeting}
                 />
             )}
-            <NextMeetingBanner meetings={meetings} notes={notes} />
+            <NextMeetingBanner meetings={meetings} notes={allNotes} />
             <DateSelectorBar 
                 setNoteDate={handleDateChange} 
                 defaultCollapsed={true} 

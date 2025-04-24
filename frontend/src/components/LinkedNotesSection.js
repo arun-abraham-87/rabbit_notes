@@ -13,6 +13,7 @@ export default function LinkedNotesSection({
   initiallyOpen = false,
 }) {
   const [open, setOpen] = useState(initiallyOpen);
+  const [showRawNote, setShowRawNote] = useState(null);
 
   // Extract linked IDs in order
   const orderedIds = useMemo(() => {
@@ -35,23 +36,19 @@ export default function LinkedNotesSection({
         {open ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
       </button>
       {open && (
-        <div className="mt-2 pl-4 border-l border-gray-300 space-y-2">
+        <div className="mt-2 pl-4 border-l border-gray-300 space-y-4">
           {orderedIds.map(id => {
             const ln = allNotes.find(n => String(n.id) === id);
+            if (!ln) return null;
+            
             return (
               <div
                 key={id}
-                className="p-3 bg-white border rounded shadow-sm hover:bg-gray-50"
+                className="bg-white border rounded-lg shadow-sm overflow-hidden"
               >
-                <p className="text-sm text-gray-800 line-clamp-3">
-                  {ln?.content.split('\n')[0] || '—'}
-                </p>
-                <button
-                  className="mt-1 text-xs text-blue-600 hover:underline"
-                  onClick={() => onNavigate(ln.id)}
-                >
-                  View
-                </button>
+                <pre className="whitespace-pre-wrap font-mono text-sm p-4 bg-white text-gray-800 overflow-x-auto">
+                  {ln.content}
+                </pre>
               </div>
             );
           })}

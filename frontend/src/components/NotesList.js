@@ -25,7 +25,7 @@ import NoteEditor from './NoteEditor';
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
 
-const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchQuery, setSearchQuery, settings = {} }) => {
+const NotesList = ({ objList, notes, allNotes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchQuery, setSearchQuery, settings = {} }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
   const [selectedText, setSelectedText] = useState('');
@@ -451,13 +451,13 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
       {linkPopupVisible && (
         <LinkNotesModal
           visible={linkPopupVisible}
-          notes={safeNotes}
+          notes={allNotes || notes}
           linkingNoteId={linkingNoteId}
           searchTerm={linkSearchTerm}
           onSearchTermChange={setLinkSearchTerm}
           onLink={(fromId, toId) => {
-            const source = safeNotes.find(n => n.id === fromId);
-            const target = safeNotes.find(n => n.id === toId);
+            const source = allNotes.find(n => n.id === fromId) || notes.find(n => n.id === fromId);
+            const target = allNotes.find(n => n.id === toId) || notes.find(n => n.id === toId);
             const addTag = (content, id) => {
               const lines = content.split('\n').map(l => l.trimEnd());
               const tag = `meta::link::${id}`;

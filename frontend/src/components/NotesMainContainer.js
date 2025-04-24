@@ -294,6 +294,7 @@ const NotesMainContainer = ({
                     <NotesList
                         objList={objList}
                         notes={filteredNotes}
+                        allNotes={allNotes}
                         addNotes={addNote}
                         updateNoteCallback={updateNoteCallback}
                         updateTotals={setTotals}

@@ -57,7 +57,13 @@ export const loadAllNotes = async (searchText, noteDate) => {
     url += `&noteDate=${noteDate}`;
     const response = await fetch(url);
     const data = await response.json();
-    return data;
+    return {
+        notes: data.notes.map(note => ({
+            ...note,
+            content: typeof note.content === 'object' ? note.content.content : note.content
+        })),
+        totals: data.totals
+    };
 };
 
 export const loadNotes = async (searchText, noteDate) => {
@@ -67,7 +73,13 @@ export const loadNotes = async (searchText, noteDate) => {
     url += `&noteDate=${noteDate}`;
     const response = await fetch(url);
     const data = await response.json();
-    return data;
+    return {
+        notes: data.notes.map(note => ({
+            ...note,
+            content: typeof note.content === 'object' ? note.content.content : note.content
+        })),
+        totals: data.totals
+    };
 };
 
 export const loadTags = async () => {

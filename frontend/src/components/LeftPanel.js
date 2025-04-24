@@ -184,25 +184,39 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
   const events = useMemo(() => {
     const result = notes.flatMap(note => {
-      if (note.content.split('\n').some(line => line.trim().startsWith('meta::event'))) {
-        const lines = note.content.split('\n');
-        // Extract location if it exists
-        const locationLine = lines.find(line => line.trim().startsWith('Location:'));
-        const location = locationLine ? locationLine.replace('Location:', '').trim() : null;
-        return [{ 
-          id: note.id, 
-          context: lines[0].trim(), 
-          time: lines[1].trim(),
-          location: location
-        }];
-      }
-      return [];
+        // Skip if no content
+        if (!note?.content) return [];
+
+        // Ensure content is a string
+        const content = typeof note.content === 'object' ? note.content.content : note.content;
+        const lines = content.split('\n');
+        
+        if (lines.some(line => line.trim().startsWith('meta::event'))) {
+            // Extract location if it exists
+            const locationLine = lines.find(line => line.trim().startsWith('Location:'));
+            const location = locationLine ? locationLine.replace('Location:', '').trim() : null;
+            return [{ 
+                id: note.id, 
+                context: lines[0].trim(), 
+                time: lines[1].trim(),
+                location: location
+            }];
+        }
+        return [];
     });
     return result.sort((a, b) => new Date(a.time) - new Date(b.time));
   }, [notes]);
 
   const visibleEvents = useMemo(() => {
-    return events.filter(e => new Date(e.time).getTime() >= now);
+    return events.filter(e => {
+        try {
+            const eventTime = new Date(e.time).getTime();
+            return eventTime >= now;
+        } catch (error) {
+            console.error('Error filtering event:', error);
+            return false;
+        }
+    });
   }, [events, now]);
 
   const [alertMeetingId, setAlertMeetingId] = useState(null);

@@ -181,11 +181,11 @@ const App = () => {
   return (
     <div className="App flex flex-col h-screen">
       <Navbar activePage={activePage} setActivePage={setActivePage} />
-      <div className="flex flex-1 overflow-auto">
+      <div className="flex flex-1 overflow-hidden">
         {/* Left panel */}
         <div
-          className={`border-r overflow-y-auto transition-all duration-300 ease-in-out ${
-            isLeftPanelCollapsed ? 'w-0 min-w-0' : 'w-[20%] min-w-[12rem]'
+          className={`border-r flex-shrink-0 transition-all duration-300 ease-in-out ${
+            isLeftPanelCollapsed ? 'w-0' : 'w-[300px]'
           } relative`}
         >
           <button
@@ -199,14 +199,17 @@ const App = () => {
               <ChevronDoubleLeftIcon className="h-4 w-4" />
             )}
           </button>
-          <LeftPanel
-            notes={allNotes}
-            setNotes={setAllNotes}
-            searchQuery={searchQuery}
-            settings={settings}
-            setSettings={setSettings}
-          />
+          <div className="h-full overflow-hidden">
+            <LeftPanel
+              notes={allNotes}
+              setNotes={setAllNotes}
+              searchQuery={searchQuery}
+              settings={settings}
+              setSettings={setSettings}
+            />
+          </div>
         </div>
+
         {isLeftPanelCollapsed && (
           <button
             onClick={() => setIsLeftPanelCollapsed(false)}
@@ -219,9 +222,7 @@ const App = () => {
 
         {/* Right panel: main content */}
         <div
-          className={`transition-all duration-300 ease-in-out ${
-            isLeftPanelCollapsed ? 'w-full' : 'w-[80%]'
-          } p-8 overflow-auto`}
+          className={`flex-1 p-8 overflow-auto`}
         >
           <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
           {activePage === 'notes' && (

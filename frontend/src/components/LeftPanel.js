@@ -253,7 +253,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg shadow-xl bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 animate-pulse max-w-sm text-center">
               <h3 className="text-xl font-bold mb-2 text-white">Meeting Soon!</h3>
-              <p className="mb-4 text-white text-lg">{m.context}</p>
+              <p className="mb-4 text-white text-lg break-words">{m.context}</p>
               <p className="mb-6 text-white text-base">{m.time}</p>
               <button
                 onClick={() => {
@@ -275,8 +275,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         );
       })()}
 
-      <div className="w-full h-full bg-slate-50 p-3 flex flex-col">
-        <div className="flex-1 space-y-2 overflow-y-auto text-sm">
+      <div className="w-full h-full bg-slate-50 p-3 flex flex-col overflow-hidden">
+        <div className="flex-1 space-y-2 overflow-y-auto overflow-x-hidden">
           {/* Collapse / Open controls */}
           <div className="flex justify-between items-center mb-4">
             <div className="flex space-x-2">
@@ -316,50 +316,52 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           )}
 
           {/* Quick Links Section */}
-          <div className="bg-white p-3 rounded-lg shadow-sm mb-3">
+          <div className="bg-white p-3 rounded-lg shadow-sm mb-3 max-w-full">
             <h2
               className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base"
               onClick={() => setShowQuickLinks(prev => !prev)}
             >
-              <span>Quick Links</span>
+              <span className="truncate flex-1">Quick Links</span>
               {showQuickLinks ? 
-                <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> : 
-                <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
+                <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> : 
+                <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" />
               }
             </h2>
             {showQuickLinks && (
-              uniqueUrls.length === 0 ? (
-                <p className="text-gray-500 text-sm">No Quick Links</p>
-              ) : (
-                uniqueUrls.map(({ url, label }, idx) => {
-                  let displayText = label || (() => {
-                    try { return new URL(url).hostname.replace(/^www\./, ''); }
-                    catch { return url; }
-                  })();
-                  return (
-                    <div
-                      key={url}
-                      onContextMenu={e => handleLinkContextMenu(e, url)}
-                      className={`flex items-center mb-1.5 pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors`}
-                    >
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 text-gray-700 hover:text-indigo-600 truncate text-sm"
+              <div className="space-y-1.5 w-full">
+                {uniqueUrls.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No Quick Links</p>
+                ) : (
+                  uniqueUrls.map(({ url, label }, idx) => {
+                    let displayText = label || (() => {
+                      try { return new URL(url).hostname.replace(/^www\./, ''); }
+                      catch { return url; }
+                    })();
+                    return (
+                      <div
+                        key={url}
+                        onContextMenu={e => handleLinkContextMenu(e, url)}
+                        className={`flex items-center pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors w-full`}
                       >
-                        {displayText}
-                      </a>
-                      <button
-                        onClick={() => removeBookmarkFromNotes(url, notes, setNotes)}
-                        className="ml-2 text-gray-400 hover:text-red-500 focus:outline-none"
-                      >
-                        &times;
-                      </button>
-                    </div>
-                  );
-                })
-              )
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 text-gray-700 hover:text-indigo-600 truncate text-sm min-w-0"
+                        >
+                          {displayText}
+                        </a>
+                        <button
+                          onClick={() => removeBookmarkFromNotes(url, notes, setNotes)}
+                          className="ml-2 text-gray-400 hover:text-red-500 focus:outline-none flex-shrink-0"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             )}
           </div>
 
@@ -407,22 +409,22 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
           {/* Meetings Section */}
           {visibleMeetings.length > 0 && (
-            <div className="bg-indigo-50 pb-3 px-3 rounded-lg shadow-sm mb-3">
+            <div className="bg-indigo-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full">
               <h2
                 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-100 rounded-lg text-base"
                 onClick={() => setShowMeetingsSection(prev => !prev)}
               >
-                <span>
+                <span className="truncate flex-1">
                   Meetings
                   <span className="text-indigo-600 ml-2 text-sm">({visibleMeetings.length})</span>
                 </span>
                 {showMeetingsSection ? 
-                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> : 
-                  <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
+                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> : 
+                  <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" />
                 }
               </h2>
               {showMeetingsSection && (
-                <>
+                <div className="space-y-2 w-full">
                   {(expandedMeetings ? visibleMeetings : visibleMeetings.slice(0, 3)).map((m, idx) => {
                     const eventTime = new Date(m.time).getTime();
                     const diff = eventTime - now;
@@ -433,7 +435,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                         className="group relative mb-2 rounded-lg hover:bg-indigo-100 transition-colors"
                       >
                         <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} ${isFlashing ? 'animate-pulse bg-purple-100' : ''} rounded-lg`}>
-                          <div className="text-base font-medium text-gray-800">{m.context}</div>
+                          <div className="text-base font-medium text-gray-800 break-words">{m.context}</div>
                           <div className="text-sm text-gray-600 mt-1">
                             {(() => {
                               const d = new Date(m.time);
@@ -442,16 +444,18 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                                 d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
                             })()}
                           </div>
-                          <div className="text-sm text-gray-600">
-                            {(() => {
-                              const d = new Date(m.time);
-                              let h = d.getHours(), mnt = d.getMinutes();
-                              const ampm = h >= 12 ? 'PM' : 'AM';
-                              h = h % 12 || 12;
-                              return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
-                            })()}
+                          <div className="text-sm text-gray-600 flex items-center gap-2 flex-wrap">
+                            <span>
+                              {(() => {
+                                const d = new Date(m.time);
+                                let h = d.getHours(), mnt = d.getMinutes();
+                                const ampm = h >= 12 ? 'PM' : 'AM';
+                                h = h % 12 || 12;
+                                return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
+                              })()}
+                            </span>
                             {m.duration && (
-                              <span className="ml-2 text-indigo-500">
+                              <span className="text-indigo-500">
                                 • {m.duration} mins
                               </span>
                             )}
@@ -493,29 +497,29 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                       )}
                     </button>
                   )}
-                </>
+                </div>
               )}
             </div>
           )}
 
           {/* Events Section */}
           {visibleEvents.length > 0 && (
-            <div className="bg-purple-50 pb-3 px-3 rounded-lg shadow-sm mb-3">
+            <div className="bg-purple-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full">
               <h2
                 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-purple-100 rounded-lg text-base"
                 onClick={() => setShowEventsSection(prev => !prev)}
               >
-                <span>
+                <span className="truncate flex-1">
                   Events
                   <span className="text-purple-600 ml-2 text-sm">({visibleEvents.length})</span>
                 </span>
                 {showEventsSection ? 
-                  <ChevronDoubleUpIcon className="h-4 w-4 text-purple-600" /> : 
-                  <ChevronDoubleDownIcon className="h-4 w-4 text-purple-600" />
+                  <ChevronDoubleUpIcon className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" /> : 
+                  <ChevronDoubleDownIcon className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" />
                 }
               </h2>
               {showEventsSection && (
-                <>
+                <div className="space-y-2 w-full">
                   {(expandedEvents ? visibleEvents : visibleEvents.slice(0, 3)).map((e, idx) => {
                     const eventTime = new Date(e.time).getTime();
                     const diff = eventTime - now;
@@ -526,13 +530,13 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                         className="group relative mb-2 rounded-lg hover:bg-purple-100 transition-colors"
                       >
                         <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} ${isFlashing ? 'animate-pulse bg-purple-200' : ''} rounded-lg`}>
-                          <div className="text-base font-medium text-gray-800">{e.context}</div>
+                          <div className="text-base font-medium text-gray-800 break-words">{e.context}</div>
                           {e.location && (
                             <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0">
                                 <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                               </svg>
-                              {e.location}
+                              <span className="truncate">{e.location}</span>
                             </div>
                           )}
                           <div className="text-sm text-gray-600 mt-1">
@@ -588,21 +592,21 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                       )}
                     </button>
                   )}
-                </>
+                </div>
               )}
             </div>
           )}
         </div>
 
         {/* Settings button at bottom */}
-        <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="mt-3 pt-3 border-t border-gray-200 w-full">
           <button
             onClick={() => setShowSettings(true)}
             className="w-full flex items-center justify-center p-2.5 bg-white hover:bg-indigo-50 rounded-lg text-gray-700 hover:text-indigo-600 transition-colors duration-150 shadow-sm"
             title="Settings"
           >
-            <Cog6ToothIcon className="h-5 w-5 mr-2" />
-            <span className="text-sm font-medium">Settings</span>
+            <Cog6ToothIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+            <span className="text-sm font-medium truncate">Settings</span>
           </button>
         </div>
       </div>

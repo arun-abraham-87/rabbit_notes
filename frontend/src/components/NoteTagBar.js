@@ -83,7 +83,13 @@ export default function NoteTagBar({
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${getTagColor(type)}`}
       title={details ? `${type}: ${details}` : type}
     >
-      {getTagIcon(type)}
+      <button
+        onClick={onRemove}
+        className="p-0.5 rounded-full hover:bg-gray-200/50 transition-colors"
+        title={`Remove ${type} tag`}
+      >
+        {getTagIcon(type)}
+      </button>
       <span>{type}</span>
       {details && (
         <span className="text-gray-500 text-xs">

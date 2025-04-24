@@ -189,47 +189,205 @@ export default function NoteTitle({
     }
   };
 
+  const removeTag = async (tag) => {
+    let updatedContent;
+    switch (tag) {
+      case 'abbreviation':
+        updatedContent = stripLines(l => l.startsWith('meta::abbreviation'));
+        break;
+      case 'bookmark':
+        updatedContent = stripLines(l => l.startsWith('meta::bookmark'));
+        break;
+      case 'quick_links':
+        updatedContent = stripLines(l => l.startsWith('meta::quick_links'));
+        break;
+      case 'pin':
+        updatedContent = stripLines(l => l.startsWith('meta::pin'));
+        break;
+      case 'event':
+        updatedContent = stripLines(l => l.startsWith('meta::event'));
+        break;
+      case 'meeting':
+        updatedContent = stripLines(l => l.startsWith('meta::meeting'));
+        break;
+      case 'watch':
+        updatedContent = note.content.replace(/#watch\b/gi, '').trim();
+        break;
+      case 'work':
+        updatedContent = note.content.replace(/#work\b/gi, '').trim();
+        break;
+      case 'study':
+        updatedContent = note.content.replace(/#study\b/gi, '').trim();
+        break;
+      case 'research':
+        updatedContent = note.content.replace(/#research\b/gi, '').trim();
+        break;
+      case 'idea':
+        updatedContent = note.content.replace(/#idea\b/gi, '').trim();
+        break;
+      case 'important':
+        updatedContent = note.content.replace(/#important\b/gi, '').trim();
+        break;
+      case 'document':
+        updatedContent = note.content.replace(/#document\b/gi, '').trim();
+        break;
+      default:
+        return;
+    }
+
+    try {
+      // First update the note in the database
+      await updateNote(note.id, updatedContent);
+      
+      // Then update the UI by calling the callback with the updated content
+      if (updateNoteCallback) {
+        await updateNoteCallback(note.id, updatedContent);
+      }
+    } catch (error) {
+      console.error('Error updating note:', error);
+    }
+  };
+
+  const MetaIcon = ({ icon: Icon, title, type, color }) => (
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        removeTag(type);
+      }}
+      className="group relative rounded-full p-1 transition-colors hover:bg-gray-200/70"
+      title={`Remove ${title}`}
+    >
+      <Icon className={`h-5 w-5 ${color} transition-all group-hover:scale-90 group-active:scale-95`} />
+    </button>
+  );
+
+  // Check if any tags or metadata are present
+  const hasAnyTags = 
+    isAbbreviation || 
+    isBookmark || 
+    isQuickLinks || 
+    isPinned || 
+    isEvent || 
+    isMeeting || 
+    isWatch || 
+    isWork || 
+    isStudy || 
+    isResearch || 
+    isIdea || 
+    isImportant || 
+    isDocument ||
+    endDateNotice;
+
+  // Don't render anything if no tags are present
+  if (!hasAnyTags) return null;
+
   return (
     <div className="flex items-center flex-wrap gap-2 mb-2">
       <div className="flex items-center gap-2">
         {isAbbreviation && (
-          <AdjustmentsVerticalIcon className="h-5 w-5 text-purple-600" title="Abbreviation" />
+          <MetaIcon
+            icon={AdjustmentsVerticalIcon}
+            title="Abbreviation"
+            type="abbreviation"
+            color="text-purple-600"
+          />
         )}
         {isBookmark && (
-          <BookmarkIcon className="h-5 w-5 text-indigo-600" title="Bookmark" />
+          <MetaIcon
+            icon={BookmarkIcon}
+            title="Bookmark"
+            type="bookmark"
+            color="text-indigo-600"
+          />
         )}
         {isQuickLinks && (
-          <LinkIcon className="h-5 w-5 text-blue-600" title="Quick Links" />
+          <MetaIcon
+            icon={LinkIcon}
+            title="Quick Links"
+            type="quick_links"
+            color="text-blue-600"
+          />
         )}
         {isPinned && (
-          <MapPinIcon className="h-5 w-5 text-yellow-600" title="Pinned" />
+          <MetaIcon
+            icon={MapPinIcon}
+            title="Pinned"
+            type="pin"
+            color="text-yellow-600"
+          />
         )}
         {isEvent && !isMeeting && (
-          <CalendarDaysIcon className="h-5 w-5 text-pink-600" title="Event" />
+          <MetaIcon
+            icon={CalendarDaysIcon}
+            title="Event"
+            type="event"
+            color="text-pink-600"
+          />
         )}
         {isMeeting && (
-          <ClockIcon className="h-5 w-5 text-blue-600" title="Meeting" />
+          <MetaIcon
+            icon={ClockIcon}
+            title="Meeting"
+            type="meeting"
+            color="text-blue-600"
+          />
         )}
         {isWatch && (
-          <EyeIcon className="h-5 w-5 text-teal-600" title="Watch" />
+          <MetaIcon
+            icon={EyeIcon}
+            title="Watch"
+            type="watch"
+            color="text-teal-600"
+          />
         )}
         {isWork && (
-          <BriefcaseIcon className="h-5 w-5 text-gray-600" title="Work" />
+          <MetaIcon
+            icon={BriefcaseIcon}
+            title="Work"
+            type="work"
+            color="text-gray-600"
+          />
         )}
         {isStudy && (
-          <AcademicCapIcon className="h-5 w-5 text-green-600" title="Study" />
+          <MetaIcon
+            icon={AcademicCapIcon}
+            title="Study"
+            type="study"
+            color="text-green-600"
+          />
         )}
         {isResearch && (
-          <BeakerIcon className="h-5 w-5 text-violet-600" title="Research" />
+          <MetaIcon
+            icon={BeakerIcon}
+            title="Research"
+            type="research"
+            color="text-violet-600"
+          />
         )}
         {isIdea && (
-          <LightBulbIcon className="h-5 w-5 text-amber-600" title="Idea" />
+          <MetaIcon
+            icon={LightBulbIcon}
+            title="Idea"
+            type="idea"
+            color="text-amber-600"
+          />
         )}
         {isImportant && (
-          <StarIcon className="h-5 w-5 text-red-600" title="Important" />
+          <MetaIcon
+            icon={StarIcon}
+            title="Important"
+            type="important"
+            color="text-red-600"
+          />
         )}
         {isDocument && (
-          <DocumentTextIcon className="h-5 w-5 text-slate-600" title="Document" />
+          <MetaIcon
+            icon={DocumentTextIcon}
+            title="Document"
+            type="document"
+            color="text-slate-600"
+          />
         )}
       </div>
       {(note.content.includes('meta::todo') || endDateNotice) && (
@@ -312,11 +470,6 @@ export default function NoteTitle({
               />
             </button>
           )}
-        </div>
-      )}
-      {isMeeting && (
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="h-5 w-5 text-blue-600" title="Meeting" />
         </div>
       )}
       {isMeeting && (

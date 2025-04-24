@@ -8,6 +8,16 @@ import {
   AdjustmentsVerticalIcon,
   BookmarkIcon,
   CalendarDaysIcon,
+  ClockIcon,
+  LinkIcon,
+  MapPinIcon,
+  EyeIcon,
+  BriefcaseIcon,
+  AcademicCapIcon,
+  BeakerIcon,
+  LightBulbIcon,
+  StarIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/solid';
 
 /**
@@ -103,6 +113,14 @@ export default function NoteTitle({
   const isPinned = lines.some((l) => l.trim().startsWith('meta::pin'));
   const isAbbreviation = lines.some((l) => l.trim().startsWith('meta::abbreviation'));
   const isBookmark = lines.some((l) => l.trim().startsWith('meta::bookmark'));
+  const isQuickLinks = lines.some((l) => l.trim().startsWith('meta::quick_links'));
+  const isWatch = lines.some((l) => l.trim().toLowerCase().includes('#watch'));
+  const isWork = lines.some((l) => l.trim().toLowerCase().includes('#work'));
+  const isStudy = lines.some((l) => l.trim().toLowerCase().includes('#study'));
+  const isResearch = lines.some((l) => l.trim().toLowerCase().includes('#research'));
+  const isIdea = lines.some((l) => l.trim().toLowerCase().includes('#idea'));
+  const isImportant = lines.some((l) => l.trim().toLowerCase().includes('#important'));
+  const isDocument = lines.some((l) => l.trim().toLowerCase().includes('#document'));
 
   // Update meeting date in note
   const updateMeetingDate = (dateTimeStr) => {
@@ -180,8 +198,38 @@ export default function NoteTitle({
         {isBookmark && (
           <BookmarkIcon className="h-5 w-5 text-indigo-600" title="Bookmark" />
         )}
+        {isQuickLinks && (
+          <LinkIcon className="h-5 w-5 text-blue-600" title="Quick Links" />
+        )}
+        {isPinned && (
+          <MapPinIcon className="h-5 w-5 text-yellow-600" title="Pinned" />
+        )}
         {isEvent && !isMeeting && (
           <CalendarDaysIcon className="h-5 w-5 text-pink-600" title="Event" />
+        )}
+        {isMeeting && (
+          <ClockIcon className="h-5 w-5 text-blue-600" title="Meeting" />
+        )}
+        {isWatch && (
+          <EyeIcon className="h-5 w-5 text-teal-600" title="Watch" />
+        )}
+        {isWork && (
+          <BriefcaseIcon className="h-5 w-5 text-gray-600" title="Work" />
+        )}
+        {isStudy && (
+          <AcademicCapIcon className="h-5 w-5 text-green-600" title="Study" />
+        )}
+        {isResearch && (
+          <BeakerIcon className="h-5 w-5 text-violet-600" title="Research" />
+        )}
+        {isIdea && (
+          <LightBulbIcon className="h-5 w-5 text-amber-600" title="Idea" />
+        )}
+        {isImportant && (
+          <StarIcon className="h-5 w-5 text-red-600" title="Important" />
+        )}
+        {isDocument && (
+          <DocumentTextIcon className="h-5 w-5 text-slate-600" title="Document" />
         )}
       </div>
       {(note.content.includes('meta::todo') || endDateNotice) && (

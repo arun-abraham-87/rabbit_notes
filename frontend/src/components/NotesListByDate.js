@@ -39,77 +39,130 @@ function NotesListByDate({ notes, searchQuery }) {
   const groupedNotes = groupNotesByDate(notes);
 
   return (
-    <div>
+    <div className="space-y-6">
       {Object.keys(groupedNotes).map((date, index) => (
         <div
           key={date}
-          className="flex p-5 mb-5 rounded-xl border border-gray-200 bg-white shadow hover:shadow-md transition-shadow duration-200 items-start"
+          className="flex flex-col md:flex-row gap-6 p-6 rounded-2xl border border-gray-200/80 bg-white shadow-sm hover:shadow-md transition-all duration-300"
         >
-          <div className="p-6 flex flex-col min-w-64 bg-gray-50 border rounded-lg text-sm text-gray-800 items-center text-center justify-center">
+          {/* Date Card */}
+          <div className="flex md:flex-col items-center md:items-stretch gap-4 md:gap-2 p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-100/80 shadow-sm min-w-[200px]">
             <div className="flex flex-col items-center text-center">
-            <div className="text-sm font-semibold">{new Date(date).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-            <div className="text-xs text-gray-700">
-              {getDayOfWeek(new Date(date))}
+              <div className="text-lg font-medium text-gray-900">
+                {new Date(date).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
+              </div>
+              <div className="text-sm font-medium text-gray-900">
+                {new Date(date).toLocaleDateString('en-AU', { year: 'numeric' })}
+              </div>
+              <div className="text-sm font-medium text-indigo-600 mt-1">
+                {getDayOfWeek(new Date(date))}
+              </div>
+            </div>
+            <div className="text-sm text-gray-600 bg-white/50 px-3 py-1.5 rounded-lg border border-gray-100/80">
+              {getAge(new Date(date))}
             </div>
           </div>
-            <div className="text-xs text-gray-700 p-1">{getAge(new Date(date))}</div>
-          </div>
-          <div className="flex-1 OneDayNoteContainer">
+
+          {/* Notes Container */}
+          <div className="flex-1 space-y-4">
             {groupedNotes[date].map((note, noteIndex) => {
               const contentLines = note.content.split('\n');
+              const nonMetaLines = contentLines.filter(line => !line.startsWith('meta::'));
+              
               return (
                 <div
                   key={noteIndex}
-                  className="p-4 flex items-start gap-4 border-b last:border-none bg-gray-50 hover:bg-gray-100 transition"
+                  className="group flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-gray-50/50 to-white border border-gray-100/80 hover:shadow-sm transition-all duration-200"
                 >
-                  <div className="text-xs text-purple-600 font-medium min-w-[50px]">{note.time}</div>
-                  <div className="pl-6">
-                    <div className="text-sm text-gray-800 whitespace-pre-wrap space-y-1">
-                      {contentLines
-                        .filter(line => !line.startsWith('meta::'))
-                        .map((line, idx) => {
-                          if (line.startsWith('###')) {
-                            return <h1 key={idx} className="text-lg font-bold text-gray-900">{line.replace(/^###/, '').replace(/#+$/, '').trim()}</h1>;
-                          } else if (line.startsWith('##')) {
-                            return <h2 key={idx} className="text-base font-semibold text-gray-800">{line.replace(/^##(?!#)/, '').replace(/#+$/, '').trim()}</h2>;
-                          } else if (line.startsWith('#') && !line.startsWith('##')) {
-                            return null;
-                          }
-                          const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s]+)\)/);
-                          if (markdownMatch) {
-                            const [_, label, url] = markdownMatch;
-                            return (
-                              <div key={idx}>
-                                <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                  {label}
-                                </a>
-                              </div>
-                            );
-                          }
-                          const urlMatch = line.match(/(.*)\s(https?:\/\/[^\s]+)/);
-                          if (urlMatch) {
-                            const [_, label, url] = urlMatch;
-                            return (
-                              <div key={idx}>
-                                <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                  {label || url}
-                                </a>
-                              </div>
-                            );
-                          }
-                          return <div key={idx}>{processContent(line, searchQuery)}</div>;
-                        })}
+                  {/* Time */}
+                  <div className="flex flex-col items-center">
+                    <div className="text-xs font-medium text-indigo-600 bg-indigo-50/80 px-3 py-1.5 rounded-lg border border-indigo-100/80">
+                      {note.time}
                     </div>
-                    <div className="flex flex-wrap gap-1 mb-1">
-                      {contentLines.filter(line => line.startsWith('meta::')).map((tag, idx) => (
-                        <span key={idx} className="text-sm bg-gray-200 text-gray-800 px-2 py-0.5 rounded-full">{tag.split('::')[1]}</span>
-                      ))}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1">
+                    <div className="text-sm text-gray-800 whitespace-pre-wrap space-y-2">
+                      {nonMetaLines.map((line, idx) => {
+                        if (line.startsWith('###')) {
+                          return (
+                            <h1 key={idx} className="text-lg font-bold text-gray-900 pb-1">
+                              {line.replace(/^###/, '').replace(/#+$/, '').trim()}
+                            </h1>
+                          );
+                        } else if (line.startsWith('##')) {
+                          return (
+                            <h2 key={idx} className="text-base font-semibold text-gray-800 pb-1">
+                              {line.replace(/^##(?!#)/, '').replace(/#+$/, '').trim()}
+                            </h2>
+                          );
+                        } else if (line.startsWith('#') && !line.startsWith('##')) {
+                          return null;
+                        }
+
+                        const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s]+)\)/);
+                        if (markdownMatch) {
+                          const [_, label, url] = markdownMatch;
+                          return (
+                            <div key={idx} className="py-0.5">
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-indigo-600 hover:text-indigo-700 hover:underline transition-colors duration-200"
+                              >
+                                {label}
+                              </a>
+                            </div>
+                          );
+                        }
+
+                        const urlMatch = line.match(/(.*)\s(https?:\/\/[^\s]+)/);
+                        if (urlMatch) {
+                          const [_, label, url] = urlMatch;
+                          return (
+                            <div key={idx} className="py-0.5">
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-indigo-600 hover:text-indigo-700 hover:underline transition-colors duration-200"
+                              >
+                                {label || url}
+                              </a>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={idx} className="py-0.5 leading-relaxed">
+                            {processContent(line, searchQuery)}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Meta Tags */}
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {contentLines
+                        .filter(line => line.startsWith('meta::'))
+                        .map((tag, idx) => {
+                          const [_, type, value] = tag.split('::');
+                          return (
+                            <span
+                              key={idx}
+                              className="text-xs font-medium px-2.5 py-1 rounded-lg bg-gray-100/80 text-gray-700 border border-gray-200/80"
+                            >
+                              {type}
+                            </span>
+                          );
+                        })}
                     </div>
                   </div>
                 </div>
               );
             })}
-
           </div>
         </div>
       ))}

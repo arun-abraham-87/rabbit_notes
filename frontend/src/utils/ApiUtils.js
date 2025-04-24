@@ -43,15 +43,20 @@ export const deleteNoteById = async (id) => {
 };
 
 export const addNewTag = async (tagText) => {
-    const response = await fetch(`${API_BASE_URL}/objects`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: tagText }),
-    });
-    if (response.ok) {
-        console.log('Tag Added');
-    } else {
-        console.error('Err: Failed to add tag.');
+    try {
+        const response = await fetch(`${API_BASE_URL}/objects`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: tagText }),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to add tag');
+        }
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error adding tag:", error.message);
+        throw error;
     }
 };
 
@@ -90,12 +95,14 @@ export const loadNotes = async (searchText, noteDate) => {
 export const loadTags = async () => {
     try {
         const response = await fetch(`${API_BASE_URL}/objects`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch tags');
+        }
         const data = await response.json();
-        const tagsList = data.map((obj) => obj.text);
-        console.log(tagsList);
-        return tagsList;
+        return data; // Return full objects to have access to IDs
     } catch (error) {
         console.error("Error fetching objects:", error.message);
+        throw error;
     }
 };
 
@@ -163,6 +170,72 @@ export const updateSettings = async (settings) => {
         return await response.json();
     } catch (error) {
         console.error('Error updating settings:', error);
+        throw error;
+    }
+};
+
+// Tag Operations
+export const getAllTags = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/tags`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to fetch tags');
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error in getAllTags:', error);
+    throw error;
+  }
+};
+
+export const updateTags = async (tags) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/tags`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to update tags');
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error in updateTags:', error);
+    throw error;
+  }
+};
+
+export const deleteTag = async (tagId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/objects/${tagId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) {
+            throw new Error('Failed to delete tag');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("Error deleting tag:", error.message);
+        throw error;
+    }
+};
+
+export const editTag = async (tagId, newText) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/objects/${tagId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: newText }),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to edit tag');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("Error editing tag:", error.message);
         throw error;
     }
 };

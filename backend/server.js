@@ -466,30 +466,62 @@ app.post('/api/objects', (req, res) => {
 });
 
 // DELETE: Delete an object by UUID
-// app.delete('/api/objects/:id', (req, res) => {
-//   try {
-//     const id = req.params.id;
+app.delete('/api/objects/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    const fileName = `objects.md`;
+    const filePath = path.join(NOTES_DIR, fileName);
 
-//     if (!fs.existsSync(NOTES_FILE)) {
-//       return res.status(404).json({ error: 'Objects not found' });
-//     }
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Objects not found' });
+    }
 
-//     const fileContent = fs.readFileSync(NOTES_FILE, 'utf-8');
-//     let objects = JSON.parse(fileContent || '[]');
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    let objects = JSON.parse(fileContent || '[]');
 
-//     const filteredObjects = objects.filter(obj => obj.id !== id);
+    const filteredObjects = objects.filter(obj => obj.id !== id);
 
-//     if (filteredObjects.length === objects.length) {
-//       return res.status(404).json({ error: 'Object not found' });
-//     }
+    if (filteredObjects.length === objects.length) {
+      return res.status(404).json({ error: 'Object not found' });
+    }
 
-//     fs.writeFileSync(NOTES_FILE, JSON.stringify(filteredObjects, null, 2));
-//     res.json({ message: 'Object deleted successfully' });
-//   } catch (err) {
-//     console.error('Error processing the request:', err.message);
-//     res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
-//   }
-// });
+    fs.writeFileSync(filePath, JSON.stringify(filteredObjects, null, 2));
+    res.json({ message: 'Object deleted successfully' });
+  } catch (err) {
+    console.error('Error processing the request:', err.message);
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
+  }
+});
+
+// PUT: Update an object by UUID
+app.put('/api/objects/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    const { text } = req.body;
+    const fileName = `objects.md`;
+    const filePath = path.join(NOTES_DIR, fileName);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Objects not found' });
+    }
+
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    let objects = JSON.parse(fileContent || '[]');
+
+    const objectIndex = objects.findIndex(obj => obj.id === id);
+    if (objectIndex === -1) {
+      return res.status(404).json({ error: 'Object not found' });
+    }
+
+    objects[objectIndex].text = text;
+
+    fs.writeFileSync(filePath, JSON.stringify(objects, null, 2));
+    res.json({ message: 'Object updated successfully', object: objects[objectIndex] });
+  } catch (err) {
+    console.error('Error processing the request:', err.message);
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
+  }
+});
 
 const multer = require('multer');
 

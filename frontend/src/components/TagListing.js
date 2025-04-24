@@ -1,30 +1,238 @@
 import React, { useState, useEffect } from 'react';
+import {
+  MagnifyingGlassIcon,
+  XMarkIcon,
+  PencilIcon,
+  TrashIcon,
+  CheckIcon,
+  ExclamationCircleIcon
+} from '@heroicons/react/24/solid';
+import { loadTags, addNewTag, deleteTag, editTag } from '../utils/ApiUtils';
 
-const TagListing = ({objectList}) => {
+const TagListing = () => {
+  const [tagSearch, setTagSearch] = useState('');
+  const [editingTag, setEditingTag] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [tags, setTags] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    const [tagSearch, setTagSearch] = useState('');
+  // Load tags on component mount
+  useEffect(() => {
+    loadTagsList();
+  }, []);
 
+  const loadTagsList = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const fetchedTags = await loadTags();
+      if (Array.isArray(fetchedTags)) {
+        setTags(fetchedTags);
+      } else {
+        console.error('Unexpected tags format:', fetchedTags);
+        setTags([]);
+      }
+    } catch (err) {
+      setError('Failed to load tags. Please try again.');
+      console.error('Error loading tags:', err);
+      setTags([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateTag = async () => {
+    const newTag = tagSearch.trim();
+    if (newTag && !tags.some(tag => tag.text === newTag)) {
+      try {
+        setError(null);
+        await addNewTag(newTag);
+        await loadTagsList();
+        setTagSearch('');
+      } catch (err) {
+        setError('Failed to create tag. Please try again.');
+        console.error('Error creating tag:', err);
+      }
+    }
+  };
+
+  const handleDeleteTag = async (tag) => {
+    try {
+      setError(null);
+      await deleteTag(tag.id);
+      await loadTagsList();
+    } catch (err) {
+      setError('Failed to delete tag. Please try again.');
+      console.error('Error deleting tag:', err);
+    }
+  };
+
+  const handleEditTag = (tag) => {
+    setEditingTag(tag);
+    setEditValue(tag.text);
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editValue.trim() && editValue !== editingTag.text) {
+      try {
+        setError(null);
+        await editTag(editingTag.id, editValue.trim());
+        await loadTagsList();
+        setIsEditing(false);
+        setEditingTag(null);
+        setEditValue('');
+      } catch (err) {
+        setError('Failed to update tag. Please try again.');
+        console.error('Error updating tag:', err);
+      }
+    }
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleCreateTag();
+    }
+  };
+
+  const handleEditKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+      setEditingTag(null);
+      setEditValue('');
+    }
+  };
+
+  if (isLoading) {
     return (
-
-        <div className="max-w-[80%] mx-auto rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-            <h2 className="text-xl font-bold mb-4">Tags Page</h2>
-            <input
-                type="text"
-                placeholder="Search tags..."
-                value={tagSearch}
-                onChange={(e) => setTagSearch(e.target.value)}
-                className="w-full mb-4 px-3 py-2 border rounded-md"
-            />
-            <ul className="list-disc pl-6">
-                {objectList
-                    .filter(obj => obj.toLowerCase().includes(tagSearch.toLowerCase()))
-                    .map((obj) => (
-                        <li key={obj.id}>{obj}</li>
-                    ))}
-            </ul>
+      <div className="max-w-[80%] mx-auto rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
         </div>
-
+      </div>
     );
+  }
+
+  return (
+    <div className="max-w-[80%] mx-auto rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+      <h2 className="text-xl font-bold mb-4">Tags Page</h2>
+      
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">
+          <ExclamationCircleIcon className="h-5 w-5 text-red-400" />
+          <span>{error}</span>
+        </div>
+      )}
+      
+      {/* Search/Create Input */}
+      <div className="relative mb-6">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="Search tags or press Cmd+Enter to create new tag..."
+          value={tagSearch}
+          onChange={(e) => setTagSearch(e.target.value)}
+          onKeyDown={handleSearchKeyDown}
+          className="w-full pl-10 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
+        />
+        {tagSearch && (
+          <button
+            onClick={() => setTagSearch('')}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+          >
+            <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+          </button>
+        )}
+      </div>
+
+      {/* Tags List */}
+      <div className="space-y-2">
+        {tags
+          .filter(tag => tag.text.toLowerCase().includes(tagSearch.toLowerCase()))
+          .map((tag) => (
+            <div
+              key={tag.id}
+              className="group flex items-center justify-between p-3 rounded-lg border bg-white hover:shadow-sm transition-all duration-200"
+            >
+              {editingTag && editingTag.id === tag.id ? (
+                <input
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={handleEditKeyDown}
+                  className="flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  autoFocus
+                />
+              ) : (
+                <span className="text-gray-700">{tag.text}</span>
+              )}
+              
+              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                {editingTag && editingTag.id === tag.id ? (
+                  <>
+                    <button
+                      onClick={handleSaveEdit}
+                      className="p-1 rounded hover:bg-green-50 text-green-600"
+                      title="Save changes"
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditingTag(null);
+                        setEditValue('');
+                      }}
+                      className="p-1 rounded hover:bg-gray-100 text-gray-600"
+                      title="Cancel"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleEditTag(tag)}
+                      className="p-1 rounded hover:bg-blue-50 text-blue-600"
+                      title="Edit tag"
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTag(tag)}
+                      className="p-1 rounded hover:bg-red-50 text-red-600"
+                      title="Delete tag"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+
+        {/* Empty State */}
+        {tags.filter(tag => tag.text.toLowerCase().includes(tagSearch.toLowerCase())).length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            {tagSearch ? (
+              <p>No tags match your search</p>
+            ) : (
+              <p>No tags yet. Create one by typing and pressing Cmd+Enter</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default TagListing;

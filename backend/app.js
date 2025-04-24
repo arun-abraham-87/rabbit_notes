@@ -1,13 +1,21 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs').promises;
+
+// Import routers
+console.log('\nImporting routers...');
+
 const notesRouter = require('./routes/notes');
+console.log('✓ Notes router imported');
+
 const { router: settingsRouter } = require('./routes/settings');
+console.log('✓ Settings router imported');
+
+const tagsRouter = require('./routes/tags');
+console.log('✓ Tags router imported');
 
 const app = express();
-
-// Debug route registration
-console.log('Setting up Express app...');
 
 // Middleware
 app.use(cors());
@@ -54,11 +62,16 @@ app.get('/', (req, res) => {
 console.log('Registering routes...');
 
 // Mount routers
-app.use('/api/notes', notesRouter);
-app.use('/api/settings', settingsRouter);
+console.log('\nRegistering API routes...');
 
-console.log('Notes router registered at /api/notes');
-console.log('Settings router registered at /api/settings');
+app.use('/api/notes', notesRouter);
+console.log('✓ Notes router registered at /api/notes');
+
+app.use('/api/settings', settingsRouter);
+console.log('✓ Settings router registered at /api/settings');
+
+app.use('/api/tags', tagsRouter);
+console.log('✓ Tags router registered at /api/tags');
 
 // Test endpoint
 app.get('/api/test', (req, res) => {
@@ -74,18 +87,18 @@ app.get('/api/test', (req, res) => {
 });
 
 // List all registered routes
-console.log('\nRegistered Routes:');
+console.log('\nAvailable routes:');
 app._router.stack.forEach(middleware => {
   if (middleware.route) {
     // Routes registered directly on the app
-    console.log(`${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+    console.log(`- ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
   } else if (middleware.name === 'router') {
     // Router middleware
     middleware.handle.stack.forEach(handler => {
       if (handler.route) {
         const path = handler.route.path;
         const methods = Object.keys(handler.route.methods).join(', ').toUpperCase();
-        console.log(`${methods} /api${path}`);
+        console.log(`- ${methods} /api${path}`);
       }
     });
   }
@@ -97,35 +110,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
-// 404 handler - must be last
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({ 
     error: 'Route not found',
     path: req.path,
-    method: req.method,
-    availableRoutes: {
-      settings: [
-        { method: 'GET', path: '/api/settings' },
-        { method: 'POST', path: '/api/settings' }
-      ]
-    }
+    method: req.method
   });
 });
 
 const PORT = process.env.PORT || 5001;
 const server = app.listen(PORT, () => {
-  console.log(`\nServer running on port ${PORT}`);
-  console.log('Available routes:');
-  console.log('- GET /api/settings');
-  console.log('- POST /api/settings');
-  console.log('- GET /debug/routes');
+  console.log(`\nServer running on http://0.0.0.0:${PORT}`);
 });
 
 // Handle server errors
 server.on('error', (error) => {
   console.error('Server error:', error);
   if (error.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Please try a different port or kill the process using this port.`);
+    console.error(`Port ${PORT} is already in use`);
   }
 });
 

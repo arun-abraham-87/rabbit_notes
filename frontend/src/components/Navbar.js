@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import TimeZoneDisplay from './TimeZoneDisplay';
+import { ChevronDownIcon } from '@heroicons/react/24/solid';
 
 const Navbar = ({ activePage, setActivePage }) => {
   const [time, setTime] = useState(new Date());
@@ -17,6 +18,14 @@ const Navbar = ({ activePage, setActivePage }) => {
     second: '2-digit',
   });
 
+  // Get AEST timezone details
+  const aestTime = time.toLocaleTimeString('en-US', {
+    timeZone: 'Australia/Sydney',
+    hour12: true,
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
   return (
     <nav className="border-b py-4 px-8 bg-background hover:shadow-sm transition-shadow">
       <div className="max-w-[80%] mx-auto flex justify-between items-center">
@@ -30,11 +39,18 @@ const Navbar = ({ activePage, setActivePage }) => {
 
         {/* Center: Clock */}
         <div
-          className="relative text-base font-medium"
+          className="relative group"
           onMouseEnter={() => setShowTimezones(true)}
           onMouseLeave={() => setShowTimezones(false)}
         >
-          {formattedTime}
+          <div className="flex items-center gap-2 cursor-pointer">
+            <div className="text-base font-medium">{formattedTime}</div>
+            <div className="flex items-center gap-1 text-sm text-gray-500">
+              <span>🇦🇺</span>
+              <span>AEST</span>
+              <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+            </div>
+          </div>
           {showTimezones && (
             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
               <TimeZoneDisplay />

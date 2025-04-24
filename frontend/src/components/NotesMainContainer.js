@@ -13,13 +13,18 @@ const checkForOngoingMeeting = (notes) => {
   if (!notes) return null;
   
   const now = new Date();
+  let closestOngoingMeeting = null;
+  let earliestEndTime = null;
   
   for (const note of notes) {
     // Skip if the note has been dismissed
     if (note.content.includes('meta_detail::dismissed')) continue;
     
+    // Skip if not a meeting note
+    if (!note.content.includes('meta::meeting::')) continue;
+    
     const lines = note.content.split('\n');
-    const meetingTimeStr = lines[1]; // Second line has the meeting time
+    const meetingTimeStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
     if (!meetingTimeStr) continue;
     
     try {
@@ -34,12 +39,16 @@ const checkForOngoingMeeting = (notes) => {
       
       // Check if meeting is ongoing
       if (now >= meetingTime && now <= meetingEndTime) {
-        return {
-          id: note.id,
-          description: lines[0], // First line has the description
-          startTime: meetingTimeStr,
-          duration: durationMins
-        };
+        // If we haven't found a meeting yet, or if this one ends sooner
+        if (!earliestEndTime || meetingEndTime < earliestEndTime) {
+          earliestEndTime = meetingEndTime;
+          closestOngoingMeeting = {
+            id: note.id,
+            description: lines[0], // First line has the description
+            startTime: meetingTimeStr,
+            duration: durationMins
+          };
+        }
       }
     } catch (error) {
       console.error('Error parsing meeting time:', error);
@@ -47,7 +56,7 @@ const checkForOngoingMeeting = (notes) => {
     }
   }
   
-  return null;
+  return closestOngoingMeeting;
 };
 
 // Helper function to find the next upcoming meeting
@@ -60,9 +69,10 @@ const findNextMeeting = (notes) => {
   
   for (const note of notes) {
     if (note.content.includes('meta_detail::dismissed')) continue;
+    if (!note.content.includes('meta::meeting::')) continue;
     
     const lines = note.content.split('\n');
-    const meetingTimeStr = lines[1];
+    const meetingTimeStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
     if (!meetingTimeStr) continue;
     
     try {
@@ -102,6 +112,22 @@ const NotesMainContainer = ({
 }) => {
     const [checked, setChecked] = useState(false);
     const [ongoingMeeting, setOngoingMeeting] = useState(null);
+    const [currentDate, setCurrentDate] = useState(null);
+
+    // Filter notes for display based on selected date
+    const filteredNotes = notes.filter(note => {
+        if (!currentDate) return true;
+        const lines = note.content.split('\n');
+        const dateStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
+        if (!dateStr) return false;
+        return dateStr.startsWith(currentDate);
+    });
+
+    // Handle date selection
+    const handleDateChange = (date) => {
+        setCurrentDate(date);
+        setNoteDate(date);
+    };
 
     // Check for ongoing meetings periodically and schedule checks for upcoming meetings
     useEffect(() => {
@@ -109,6 +135,7 @@ const NotesMainContainer = ({
         let upcomingMeetingTimeout;
 
         const checkMeetings = () => {
+            // Use all notes for meeting checks, not filtered notes
             const meeting = checkForOngoingMeeting(notes);
             setOngoingMeeting(meeting);
 
@@ -143,7 +170,7 @@ const NotesMainContainer = ({
                 clearTimeout(upcomingMeetingTimeout);
             }
         };
-    }, [notes]);
+    }, [notes]); // Keep dependency on all notes
 
     const handleTagClick = (tag) => {
         setSearchQuery(tag);
@@ -163,11 +190,10 @@ const NotesMainContainer = ({
         const updatedContent = `${note.content}\nmeta_detail::dismissed`;
         
         try {
-            // First update the note in the backend
             await updateNoteById(note.id, updatedContent);
-            // Then update the notes state and wait for it to complete
-            await setNotes(note.id, updatedContent);
-            // Only clear the ongoing meeting state after both updates are complete
+            // Update the notes state to reflect the change
+            setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+            // Clear the ongoing meeting state
             setOngoingMeeting(null);
         } catch (error) {
             console.error('Error dismissing meeting:', error);
@@ -182,7 +208,10 @@ const NotesMainContainer = ({
                     onDismiss={handleDismissMeeting}
                 />
             )}
-            <DateSelectorBar setNoteDate={setNoteDate} defaultCollapsed={true} />
+            <DateSelectorBar 
+                setNoteDate={handleDateChange} 
+                defaultCollapsed={true} 
+            />
             <NoteEditor
                 objList={objList}
                 note={{ id: '', content: '' }}
@@ -201,7 +230,7 @@ const NotesMainContainer = ({
             <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
             {checked ? (
                 <NotesListByDate 
-                    notes={notes} 
+                    notes={filteredNotes}
                     searchQuery={searchQuery} 
                     onWordClick={handleTagClick}
                     settings={settings}
@@ -209,7 +238,7 @@ const NotesMainContainer = ({
             ) : (
                 <NotesList 
                     objList={objList} 
-                    notes={notes} 
+                    notes={filteredNotes}
                     addNotes={addNote} 
                     updateNoteCallback={updateNoteCallback}
                     updateTotals={setTotals} 
@@ -221,7 +250,7 @@ const NotesMainContainer = ({
                 />
             )}
         </div>
-    )
+    );
 };
 
 export default NotesMainContainer;

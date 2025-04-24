@@ -1,5 +1,16 @@
 import React from 'react';
 import { extractMetaTags } from '../utils/DateUtils';
+import {
+  XMarkIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  CalendarIcon,
+  BookmarkIcon,
+  FlagIcon,
+  BriefcaseIcon,
+  ExclamationCircleIcon,
+  HashtagIcon
+} from '@heroicons/react/24/solid';
 
 export default function NoteTagBar({
   note,
@@ -25,38 +36,87 @@ export default function NoteTagBar({
     updateNote(note.id, updatedContent);
   };
 
-  const TagButton = ({ label, details = '', onRemove }) => (
-    <button 
-      className="bg-gray-300 text-gray-800 text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
-      title={details ? `${label}: ${details}` : label}
+  const getTagIcon = (type) => {
+    switch (type) {
+      case 'todo':
+        return <CheckCircleIcon className="h-3.5 w-3.5" />;
+      case 'event':
+        return <CalendarIcon className="h-3.5 w-3.5" />;
+      case 'meeting':
+        return <BriefcaseIcon className="h-3.5 w-3.5" />;
+      case 'bookmark':
+        return <BookmarkIcon className="h-3.5 w-3.5" />;
+      case 'high':
+        return <ExclamationCircleIcon className="h-3.5 w-3.5 text-red-500" />;
+      case 'medium':
+        return <ExclamationCircleIcon className="h-3.5 w-3.5 text-yellow-500" />;
+      case 'low':
+        return <ExclamationCircleIcon className="h-3.5 w-3.5 text-green-500" />;
+      default:
+        return <HashtagIcon className="h-3.5 w-3.5" />;
+    }
+  };
+
+  const getTagColor = (type) => {
+    switch (type) {
+      case 'todo':
+        return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100';
+      case 'event':
+        return 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100';
+      case 'meeting':
+        return 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100';
+      case 'bookmark':
+        return 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100';
+      case 'high':
+        return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100';
+      case 'medium':
+        return 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100';
+      case 'low':
+        return 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100';
+      default:
+        return 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100';
+    }
+  };
+
+  const TagPill = ({ type, details = '', onRemove }) => (
+    <div 
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${getTagColor(type)}`}
+      title={details ? `${type}: ${details}` : type}
     >
-      {label}
-      <span
+      {getTagIcon(type)}
+      <span>{type}</span>
+      {details && (
+        <span className="text-gray-500 text-xs">
+          <ClockIcon className="inline h-3 w-3 mr-0.5" />
+          {new Date(details).toLocaleDateString()}
+        </span>
+      )}
+      <button
         onClick={onRemove}
-        className="ml-1 text-purple-600 hover:text-purple-900 cursor-pointer"
+        className="ml-1 p-0.5 rounded-full hover:bg-gray-200/50 transition-colors"
         title="Remove tag"
       >
-        ×
-      </span>
-    </button>
+        <XMarkIcon className="h-3 w-3" />
+      </button>
+    </div>
   );
 
   return (
     <div className="flex flex-wrap gap-2 px-4 pb-2">
       {/* Priority Tags */}
       {metaTags.priority.map((priority) => (
-        <TagButton
+        <TagPill
           key={priority}
-          label={priority}
+          type={priority}
           onRemove={() => removeTag(priority)}
         />
       ))}
 
       {/* Todo Tags */}
       {metaTags.todo.map((todoDate, index) => (
-        <TagButton
+        <TagPill
           key={`todo-${index}`}
-          label="todo"
+          type="todo"
           details={todoDate}
           onRemove={() => removeTag('todo', todoDate)}
         />
@@ -64,25 +124,25 @@ export default function NoteTagBar({
 
       {/* Abbreviation Tag */}
       {metaTags.abbreviations.length > 0 && (
-        <TagButton
-          label="abbreviation"
+        <TagPill
+          type="abbreviation"
           onRemove={() => removeTag('abbreviation')}
         />
       )}
 
       {/* Bookmark Tag */}
       {metaTags.bookmarks.length > 0 && (
-        <TagButton
-          label="bookmark"
+        <TagPill
+          type="bookmark"
           onRemove={() => removeTag('bookmark')}
         />
       )}
 
       {/* Event Tags */}
       {metaTags.events.map((eventDate, index) => (
-        <TagButton
+        <TagPill
           key={`event-${index}`}
-          label="event"
+          type="event"
           details={eventDate}
           onRemove={() => removeTag('event', eventDate)}
         />
@@ -90,9 +150,9 @@ export default function NoteTagBar({
 
       {/* Meeting Tags */}
       {metaTags.meetings.map((meetingDate, index) => (
-        <TagButton
+        <TagPill
           key={`meeting-${index}`}
-          label="meeting"
+          type="meeting"
           details={meetingDate}
           onRemove={() => removeTag('meeting', meetingDate)}
         />
@@ -100,9 +160,9 @@ export default function NoteTagBar({
 
       {/* Date Tags */}
       {metaTags.dates.map((date, index) => (
-        <TagButton
+        <TagPill
           key={`date-${index}`}
-          label="due"
+          type="due"
           details={date}
           onRemove={() => removeTag('end_date', date)}
         />
@@ -112,9 +172,9 @@ export default function NoteTagBar({
       {metaTags.other.map((tag, index) => {
         const parts = tag.split('::');
         return (
-          <TagButton
+          <TagPill
             key={`other-${index}`}
-            label={parts[1]}
+            type={parts[1]}
             details={parts.slice(2).join('::')}
             onRemove={() => removeTag(parts[1], parts.slice(2).join(':'))}
           />
@@ -123,17 +183,17 @@ export default function NoteTagBar({
 
       {/* Duplicate URL Indicators */}
       {duplicateUrlNoteIds.has(note.id) && (
-        <span className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-400">
+        <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium">
           Duplicate URL
-        </span>
+        </div>
       )}
 
       {/* Duplicate Within Note Indicators */}
       {duplicateWithinNoteIds.has(note.id) && (
         <>
-          <span className="bg-gray-300 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full hover:bg-gray-400">
-            Duplicate Url In Note
-          </span>
+          <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-medium">
+            Duplicate URL In Note
+          </div>
           <button
             onClick={() => {
               const seen = new Set();
@@ -144,7 +204,7 @@ export default function NoteTagBar({
               });
               updateNote(note.id, cleanedContent);
             }}
-            className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+            className="inline-flex items-center px-2.5 py-1 rounded-full bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
           >
             Remove Duplicates
           </button>

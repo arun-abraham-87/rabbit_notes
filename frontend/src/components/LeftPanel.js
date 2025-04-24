@@ -53,7 +53,7 @@ const defaultSettings = {
   }
 };
 
-const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery }) => {
+const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery, settings, setSettings }) => {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -64,25 +64,13 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [showMeetingsSection, setShowMeetingsSection] = useState(true);
   const [showEventsSection, setShowEventsSection] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState(defaultSettings);
-  const [unsavedSettings, setUnsavedSettings] = useState(defaultSettings);
+  const [unsavedSettings, setUnsavedSettings] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load settings on component mount
+  // Update unsavedSettings when settings prop changes
   useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const savedSettings = await getSettings();
-        const mergedSettings = { ...defaultSettings, ...savedSettings };
-        setSettings(mergedSettings);
-        setUnsavedSettings(mergedSettings);
-      } catch (error) {
-        console.error('Failed to load settings:', error);
-        toast.error('Failed to load settings');
-      }
-    };
-    loadSettings();
-  }, []);
+    setUnsavedSettings(settings);
+  }, [settings]);
 
   // Collapse / Expand helpers
   const handleCollapseAll = () => {

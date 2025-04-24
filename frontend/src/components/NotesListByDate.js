@@ -58,7 +58,7 @@ function NotesListByDate({ notes, searchQuery }) {
                 {getDayOfWeek(new Date(date))}
               </div>
             </div>
-            <div className="text-sm text-gray-600 bg-white/50 px-3 py-1.5 rounded-lg border border-gray-100/80">
+            <div className="text-sm text-gray-600 bg-white/50 px-3 py-1.5 rounded-lg border border-gray-100/80 text-center w-full">
               {getAge(new Date(date))}
             </div>
           </div>

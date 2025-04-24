@@ -38,6 +38,21 @@ const updateNote = (id, updatedContent) => {
   updateNoteById(id, updatedContent);
 };
 
+const defaultSettings = {
+  theme: 'light',
+  sortBy: 'date',
+  autoCollapse: false,
+  showDates: true,
+  showCreatedDate: false,
+  searchQuery: '',
+  totals: {
+    total: 0,
+    todos: 0,
+    meetings: 0,
+    events: 0
+  }
+};
+
 const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery }) => {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -49,14 +64,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [showMeetingsSection, setShowMeetingsSection] = useState(true);
   const [showEventsSection, setShowEventsSection] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState({
-    theme: 'light',
-    sortBy: 'date',
-    autoCollapse: false,
-    showDates: true
-  });
-
-  const [unsavedSettings, setUnsavedSettings] = useState(settings);
+  const [settings, setSettings] = useState(defaultSettings);
+  const [unsavedSettings, setUnsavedSettings] = useState(defaultSettings);
   const [isSaving, setIsSaving] = useState(false);
 
   // Load settings on component mount
@@ -64,8 +73,9 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     const loadSettings = async () => {
       try {
         const savedSettings = await getSettings();
-        setSettings(savedSettings);
-        setUnsavedSettings(savedSettings);
+        const mergedSettings = { ...defaultSettings, ...savedSettings };
+        setSettings(mergedSettings);
+        setUnsavedSettings(mergedSettings);
       } catch (error) {
         console.error('Failed to load settings:', error);
         toast.error('Failed to load settings');
@@ -547,24 +557,24 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-lg">
+          <div className="bg-white rounded-lg p-6 w-96">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Settings</h2>
+              <h2 className="text-xl font-bold">Settings</h2>
               <button
                 onClick={() => setShowSettings(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="p-1 hover:bg-gray-100 rounded-full"
               >
-                <XMarkIcon className="h-5 w-5" />
+                <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
             <div className="space-y-4">
               {/* Theme Setting */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-gray-700">Theme</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Theme</label>
                 <select
                   value={unsavedSettings.theme}
                   onChange={(e) => handleSettingChange('theme', e.target.value)}
-                  className="ml-2 px-3 py-1 border rounded-md text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 >
                   <option value="light">Light</option>
                   <option value="dark">Dark</option>
@@ -572,61 +582,68 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               </div>
 
               {/* Sort By Setting */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-gray-700">Sort Notes By</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Sort Notes By</label>
                 <select
                   value={unsavedSettings.sortBy}
                   onChange={(e) => handleSettingChange('sortBy', e.target.value)}
-                  className="ml-2 px-3 py-1 border rounded-md text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 >
                   <option value="date">Date</option>
-                  <option value="title">Title</option>
                   <option value="priority">Priority</option>
                 </select>
               </div>
 
               {/* Auto Collapse Setting */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-gray-700">Auto-collapse Sections</label>
-                <div className="relative inline-block w-10 mr-2 align-middle select-none">
-                  <input
-                    type="checkbox"
-                    checked={unsavedSettings.autoCollapse}
-                    onChange={(e) => handleSettingChange('autoCollapse', e.target.checked)}
-                    className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
-                  />
-                  <label className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
-                </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="autoCollapse"
+                  checked={unsavedSettings.autoCollapse}
+                  onChange={(e) => handleSettingChange('autoCollapse', e.target.checked)}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+                <label htmlFor="autoCollapse" className="ml-2 block text-sm text-gray-900">
+                  Auto-collapse sections
+                </label>
               </div>
 
               {/* Show Dates Setting */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-gray-700">Show Dates</label>
-                <div className="relative inline-block w-10 mr-2 align-middle select-none">
-                  <input
-                    type="checkbox"
-                    checked={unsavedSettings.showDates}
-                    onChange={(e) => handleSettingChange('showDates', e.target.checked)}
-                    className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
-                  />
-                  <label className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
-                </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="showDates"
+                  checked={unsavedSettings.showDates}
+                  onChange={(e) => handleSettingChange('showDates', e.target.checked)}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+                <label htmlFor="showDates" className="ml-2 block text-sm text-gray-900">
+                  Show dates in note list
+                </label>
+              </div>
+
+              {/* Show Created Date Setting */}
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="showCreatedDate"
+                  checked={unsavedSettings.showCreatedDate}
+                  onChange={(e) => handleSettingChange('showCreatedDate', e.target.checked)}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+                <label htmlFor="showCreatedDate" className="ml-2 block text-sm text-gray-900">
+                  Show created date in notes
+                </label>
               </div>
             </div>
 
-            <style jsx>{`
-              .toggle-checkbox:checked {
-                right: 0;
-                border-color: #68D391;
-              }
-              .toggle-checkbox:checked + .toggle-label {
-                background-color: #68D391;
-              }
-            `}</style>
-
+            {/* Save and Cancel buttons */}
             <div className="mt-6 flex justify-end space-x-2">
               <button
-                onClick={() => setShowSettings(false)}
+                onClick={() => {
+                  setUnsavedSettings(settings);
+                  setShowSettings(false);
+                }}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-gray-100 rounded hover:bg-gray-200"
                 disabled={isSaving}
               >

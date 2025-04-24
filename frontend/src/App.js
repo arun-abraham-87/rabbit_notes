@@ -11,7 +11,22 @@ import NoteEditor from './components/NoteEditor';
 import LeftPanel from './components/LeftPanel';
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 
-import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote } from './utils/ApiUtils';
+import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings } from './utils/ApiUtils';
+
+const defaultSettings = {
+  theme: 'light',
+  sortBy: 'date',
+  autoCollapse: false,
+  showDates: true,
+  showCreatedDate: false,
+  searchQuery: '',
+  totals: {
+    total: 0,
+    todos: 0,
+    meetings: 0,
+    events: 0
+  }
+};
 
 // Helper to render first four pinned notes
 const PinnedSection = ({ notes, onUnpin }) => {
@@ -68,6 +83,7 @@ const App = () => {
   const [allNotes, setAllNotes] = useState([]);
   const [notes, setNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [settings, setSettings] = useState(defaultSettings);
 
   const [objects, setObjects] = useState([]);
   const [objectList, setObjectList] = useState([]);
@@ -148,6 +164,20 @@ const App = () => {
     return () => clearTimeout(debounceFetch);
   }, [searchQuery, noteDate]);
 
+  // Load settings on app mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedSettings = await getSettings();
+        const mergedSettings = { ...defaultSettings, ...savedSettings };
+        setSettings(mergedSettings);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    };
+    loadSettings();
+  }, []);
+
   return (
     <div className="App flex flex-col h-screen">
       <Navbar activePage={activePage} setActivePage={setActivePage} />
@@ -169,7 +199,13 @@ const App = () => {
               <ChevronDoubleLeftIcon className="h-4 w-4" />
             )}
           </button>
-          <LeftPanel notes={allNotes} setNotes={setAllNotes} />
+          <LeftPanel
+            notes={allNotes}
+            setNotes={setAllNotes}
+            searchQuery={searchQuery}
+            settings={settings}
+            setSettings={setSettings}
+          />
         </div>
         {isLeftPanelCollapsed && (
           <button
@@ -201,6 +237,7 @@ const App = () => {
               setNoteDate={setNoteDate}
               totals={totals}
               setTotals={setTotals}
+              settings={settings}
             />
           )}
           {activePage === 'tags' && <TagListing objectList={objects} />}

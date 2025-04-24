@@ -18,14 +18,13 @@ import NoteContent from './NoteContent';
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
 
-const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm }) => {
+const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm, settings = {} }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
   const [selectedText, setSelectedText] = useState('');
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [isPopupVisible, setPopupVisible] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState([]);
-  const [showCreatedDate, setShowCreatedDate] = useState(false);
   const [popupNoteText, setPopupNoteText] = useState(null);
   const [linkingNoteId, setLinkingNoteId] = useState(null);
   const [linkSearchTerm, setLinkSearchTerm] = useState('');
@@ -257,19 +256,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           </button>
         </div>
       )}
-      <div className="flex justify-between items-center px-4 py-2 mb-4 mt-2 bg-white rounded-lg border border-gray-200 shadow-sm">
-        <p className="text-sm text-gray-700">Settings</p>
-        <div className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            id="toggleCreatedDate"
-            checked={showCreatedDate}
-            onChange={() => setShowCreatedDate((prev) => !prev)}
-            className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
-          />
-          <label htmlFor="toggleCreatedDate" className="text-sm text-gray-700">Show created date</label>
-        </div>
-      </div>
+    
 
       {safeNotes
         .map(note => {
@@ -354,7 +341,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
 
                 <NoteFooter
                   note={note}
-                  showCreatedDate={showCreatedDate}
+                  showCreatedDate={settings.showCreatedDate || false}
                   setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
                   handleDelete={handleDelete}
                   setPopupNoteText={setPopupNoteText}

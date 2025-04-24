@@ -7,8 +7,20 @@ import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
 import NoteEditor from './NoteEditor.js';
 
-const NotesMainContainer = ({ objList, notes, addNote, setNotes, objects, searchQuery, setSearchQuery, addTag, setNoteDate, totals, setTotals }) => {
-
+const NotesMainContainer = ({ 
+    objList, 
+    notes, 
+    addNote, 
+    setNotes, 
+    objects, 
+    searchQuery, 
+    setSearchQuery, 
+    addTag, 
+    setNoteDate, 
+    totals, 
+    setTotals,
+    settings
+}) => {
     const [checked, setChecked] = useState(false);
 
     const handleTagClick = (tag) => {
@@ -39,7 +51,12 @@ const NotesMainContainer = ({ objList, notes, addNote, setNotes, objects, search
             />
             <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
             {checked ? (
-                <NotesListByDate notes={notes} searchQuery={searchQuery} onWordClick={handleTagClick} />
+                <NotesListByDate 
+                    notes={notes} 
+                    searchQuery={searchQuery} 
+                    onWordClick={handleTagClick}
+                    settings={settings}
+                />
             ) : (
                 <NotesList 
                     objList={objList} 
@@ -50,7 +67,8 @@ const NotesMainContainer = ({ objList, notes, addNote, setNotes, objects, search
                     objects={objects} 
                     addObjects={addTag} 
                     searchTerm={searchQuery} 
-                    onWordClick={handleTagClick} 
+                    onWordClick={handleTagClick}
+                    settings={settings}
                 />
             )}
         </div>

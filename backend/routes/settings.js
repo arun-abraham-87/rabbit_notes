@@ -21,7 +21,15 @@ const initializeSettingsFile = async () => {
       theme: 'light',
       sortBy: 'date',
       autoCollapse: false,
-      showDates: true
+      showDates: true,
+      showCreatedDate: false,
+      searchQuery: '',
+      totals: {
+        total: 0,
+        todos: 0,
+        meetings: 0,
+        events: 0
+      }
     };
     
     try {

@@ -127,6 +127,26 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     setRemovedTodo(null);
   };
 
+  // Calculate total todos and priority counts (only filtered by search)
+  const { total, high, medium, low } = todos.reduce(
+    (acc, todo) => {
+      // Only count if it matches search and is a todo
+      if (todo.content.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          todo.content.includes('meta::todo')) {
+        // Increment total
+        acc.total++;
+        
+        // Count priorities independently of priority filter
+        const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
+        const priority = tagMatch ? tagMatch[1].toLowerCase() : 'low';
+        acc[priority]++;
+      }
+      return acc;
+    },
+    { total: 0, high: 0, medium: 0, low: 0 }
+  );
+
+  // Filter todos for display based on all filters
   const filteredTodos = todos
     .filter((todo) => {
       const matchesSearch = todo.content.toLowerCase().includes(searchQuery.toLowerCase());
@@ -152,24 +172,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       }
       return 0;
     });
-
-  // Calculate total todos (only filtered by search)
-  const totalTodos = todos.filter(todo => 
-    todo.content.toLowerCase().includes(searchQuery.toLowerCase()) &&
-    todo.content.includes('meta::todo')
-  ).length;
-
-  // Calculate priority counts (filtered by search and priority)
-  const { high, medium, low } = filteredTodos.reduce(
-    (acc, todo) => {
-      const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
-      const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
-      const priority = priorities[todo.id] || tag;
-      acc[priority]++;
-      return acc;
-    },
-    { high: 0, medium: 0, low: 0 }
-  );
 
   const renderTodoCard = (todo) => {
     const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
@@ -346,7 +348,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                   }`}
                 >
                   <div className="text-xs font-medium text-gray-500">Total</div>
-                  <div className="text-2xl font-bold text-gray-900">{totalTodos}</div>
+                  <div className="text-2xl font-bold text-gray-900">{total}</div>
                 </button>
                 <button
                   onClick={() => setPriorityFilter('high')}

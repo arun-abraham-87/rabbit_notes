@@ -136,10 +136,17 @@ const App = () => {
   };
 
   const addNote = async (content, tags) => {
-    addNewNote(content, tags, noteDate)
-    setSearchQuery('')
-    fetchNotes(searchQuery)
-    fetchAllNotes()
+    try {
+      await addNewNote(content, tags, noteDate);
+      setSearchQuery('');
+      // Use empty search query to fetch all notes after adding
+      await Promise.all([
+        fetchNotes(''),
+        fetchAllNotes()
+      ]);
+    } catch (error) {
+      console.error('Error adding note:', error);
+    }
   };
 
   const addTag = async (objText) => {

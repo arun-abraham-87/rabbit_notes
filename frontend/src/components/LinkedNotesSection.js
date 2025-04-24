@@ -58,6 +58,73 @@ export default function LinkedNotesSection({
     updateNote(note.id, newContent);
   };
 
+  // Function to render URLs in content
+  const renderContent = (content) => {
+    const lines = content.split('\n');
+    return lines.map((line, idx) => {
+      // Handle markdown links [text](url)
+      const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s]+)\)/);
+      if (markdownMatch) {
+        const [_, label, url] = markdownMatch;
+        return (
+          <div key={idx} className="py-0.5">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-600 hover:text-indigo-700 hover:underline transition-colors duration-200"
+            >
+              {label}
+            </a>
+          </div>
+        );
+      }
+
+      // Handle bare URLs with optional label
+      const urlMatch = line.match(/(.*)\s(https?:\/\/[^\s]+)/);
+      if (urlMatch) {
+        const [_, label, url] = urlMatch;
+        return (
+          <div key={idx} className="py-0.5">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-600 hover:text-indigo-700 hover:underline transition-colors duration-200"
+            >
+              {label || url}
+            </a>
+          </div>
+        );
+      }
+
+      // Handle bare URLs without label
+      const bareUrlMatch = line.match(/^(https?:\/\/[^\s]+)$/);
+      if (bareUrlMatch) {
+        const url = bareUrlMatch[1];
+        try {
+          const hostname = new URL(url).hostname.replace(/^www\./, '');
+          return (
+            <div key={idx} className="py-0.5">
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-600 hover:text-indigo-700 hover:underline transition-colors duration-200"
+              >
+                {hostname}
+              </a>
+            </div>
+          );
+        } catch {
+          return <div key={idx} className="py-0.5">{line}</div>;
+        }
+      }
+
+      return <div key={idx} className="py-0.5">{line}</div>;
+    });
+  };
+
   // No links → no section
   if (orderedIds.length === 0) return null;
 
@@ -82,9 +149,9 @@ export default function LinkedNotesSection({
                 className="bg-white border rounded-lg shadow-sm overflow-hidden"
               >
                 <div className="relative group">
-                  <pre className="whitespace-pre-wrap font-mono text-sm p-4 bg-white text-gray-800 overflow-x-auto">
-                    {getFilteredContent(ln.content, showMetaTags[id])}
-                  </pre>
+                  <div className="whitespace-pre-wrap font-mono text-sm p-4 bg-white text-gray-800 overflow-x-auto">
+                    {renderContent(getFilteredContent(ln.content, showMetaTags[id]))}
+                  </div>
                   <div 
                     className="absolute right-0 top-0 bottom-0 w-24 opacity-0 group-hover:opacity-100 transition-opacity"
                     onMouseEnter={() => setHoveredNote(id)}

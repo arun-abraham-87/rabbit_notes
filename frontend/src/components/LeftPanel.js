@@ -6,9 +6,12 @@ import {
   ChevronDoubleUpIcon,
   ChevronDoubleDownIcon,
   Cog6ToothIcon,
-  XMarkIcon
+  XMarkIcon,
+  PencilSquareIcon
 } from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
+import EditMeetingModal from './EditMeetingModal';
+import EditEventModal from './EditEventModal';
 import { updateNoteById, getSettings, updateSettings } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
 
@@ -153,7 +156,15 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     const result = notes.flatMap(note => {
       if (note.content.split('\n').some(line => line.trim().startsWith('meta::meeting'))) {
         const lines = note.content.split('\n');
-        return [{ id: note.id, context: lines[0].trim(), time: lines[1].trim() }];
+        // Extract duration from meta tag
+        const durationMatch = note.content.match(/meta::meeting_duration::(\d+)/);
+        const duration = durationMatch ? parseInt(durationMatch[1]) : null;
+        return [{ 
+          id: note.id, 
+          context: lines[0].trim(), 
+          time: lines[1].trim(),
+          duration: duration
+        }];
       }
       return [];
     });
@@ -196,6 +207,9 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     });
     if (soon) setAlertMeetingId(soon.id);
   }, [meetings, now, notes]);
+
+  const [editingMeetingId, setEditingMeetingId] = useState(null);
+  const [editingEventId, setEditingEventId] = useState(null);
 
   const handleSettingChange = (key, value) => {
     setUnsavedSettings(prev => ({
@@ -338,20 +352,20 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           </div>
 
           {/* Bookmarks Section */}
-          <div className="bg-white p-2 rounded-md shadow-sm mb-3">
+          <div className="bg-white p-3 rounded-lg shadow-sm mb-3">
             <h2
-              className="font-semibold text-gray-700 mb-1 flex justify-between items-center cursor-pointer p-1 hover:bg-gray-200 rounded text-sm"
+              className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base"
               onClick={() => setShowQuickLinks(prev => !prev)}
             >
-              <span>{'Bookmarks'.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())}</span>
+              <span>Bookmarks</span>
               {showQuickLinks ? 
-                <ChevronDoubleUpIcon className="h-3.5 w-3.5 text-gray-700" /> : 
-                <ChevronDoubleDownIcon className="h-3.5 w-3.5 text-gray-700" />
+                <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> : 
+                <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
               }
             </h2>
             {showQuickLinks && (
               bookmarkedUrls.length === 0 ? (
-                <p className="text-gray-500">No Bookmarks</p>
+                <p className="text-gray-500 text-sm">No Bookmarks</p>
               ) : (
                 bookmarkedUrls.map(({ url, label }, idx) => {
                   let displayText = label || (() => {
@@ -362,13 +376,13 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                     <div
                       key={url}
                       onContextMenu={e => handleLinkContextMenu(e, url)}
-                      className={`flex items-center mb-1 pl-3 p-1 rounded ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                      className={`flex items-center mb-1.5 pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors`}
                     >
                       <a
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 text-black hover:underline truncate"
+                        className="flex-1 text-gray-700 hover:text-indigo-600 truncate text-sm"
                       >
                         {displayText}
                       </a>
@@ -402,41 +416,54 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                 return (
                   <div
                     key={m.id}
-                    className={`mb-2 p-3 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} ${isFlashing ? 'animate-pulse bg-purple-100' : ''} hover:bg-indigo-100 transition-colors`}
+                    className="group relative mb-2 rounded-lg hover:bg-indigo-100 transition-colors"
                   >
-                    <div className="text-base font-medium text-gray-800">{m.context}</div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      {(() => {
-                        const d = new Date(m.time);
-                        const today = new Date(now);
-                        return d.toDateString() === today.toDateString() ? 'Today' :
-                          d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-                      })()}
+                    <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} ${isFlashing ? 'animate-pulse bg-purple-100' : ''} rounded-lg`}>
+                      <div className="text-base font-medium text-gray-800">{m.context}</div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        {(() => {
+                          const d = new Date(m.time);
+                          const today = new Date(now);
+                          return d.toDateString() === today.toDateString() ? 'Today' :
+                            d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                        })()}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {(() => {
+                          const d = new Date(m.time);
+                          let h = d.getHours(), mnt = d.getMinutes();
+                          const ampm = h >= 12 ? 'PM' : 'AM';
+                          h = h % 12 || 12;
+                          return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
+                        })()}
+                        {m.duration && (
+                          <span className="ml-2 text-indigo-500">
+                            • {m.duration} mins
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm font-medium text-indigo-600 mt-1">
+                        {(() => {
+                          const delta = new Date(m.time).getTime() - now;
+                          const days = Math.floor(delta / 86400000);
+                          const hrs = Math.floor((delta % 86400000) / 3600000);
+                          const mins = Math.floor((delta % 3600000) / 60000);
+                          const secs = Math.floor((delta % 60000) / 1000);
+                          const parts = [];
+                          if (days) parts.push(`${days}d`);
+                          if (hrs) parts.push(`${hrs}h`);
+                          if (mins) parts.push(`${mins}m`);
+                          if (!parts.length) parts.push(`${secs}s`);
+                          return `in ${parts.join(' ')}`;
+                        })()}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      {(() => {
-                        const d = new Date(m.time);
-                        let h = d.getHours(), mnt = d.getMinutes();
-                        const ampm = h >= 12 ? 'PM' : 'AM';
-                        h = h % 12 || 12;
-                        return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
-                      })()}
-                    </div>
-                    <div className="text-sm font-medium text-indigo-600 mt-1">
-                      {(() => {
-                        const delta = new Date(m.time).getTime() - now;
-                        const days = Math.floor(delta / 86400000);
-                        const hrs = Math.floor((delta % 86400000) / 3600000);
-                        const mins = Math.floor((delta % 3600000) / 60000);
-                        const secs = Math.floor((delta % 60000) / 1000);
-                        const parts = [];
-                        if (days) parts.push(`${days}d`);
-                        if (hrs) parts.push(`${hrs}h`);
-                        if (mins) parts.push(`${mins}m`);
-                        if (!parts.length) parts.push(`${secs}s`);
-                        return `in ${parts.join(' ')}`;
-                      })()}
-                    </div>
+                    <button
+                      onClick={() => setEditingMeetingId(m.id)}
+                      className="absolute top-3 right-3 p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-50"
+                    >
+                      <PencilSquareIcon className="h-4 w-4 text-indigo-600" />
+                    </button>
                   </div>
                 );
               })}
@@ -466,42 +493,48 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                 return (
                   <div
                     key={e.id}
-                    className={`mb-2 p-3 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} ${isFlashing ? 'animate-pulse bg-purple-200' : ''} hover:bg-purple-100 transition-colors`}
+                    className="group relative mb-2 rounded-lg hover:bg-purple-100 transition-colors"
                   >
-                    <div className="text-base font-medium text-gray-800">{e.context}</div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      {(() => {
-                        const d = new Date(e.time);
-                        return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-                      })()}
+                    <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} ${isFlashing ? 'animate-pulse bg-purple-200' : ''} rounded-lg`}>
+                      <div className="text-base font-medium text-gray-800">{e.context}</div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        {(() => {
+                          const d = new Date(e.time);
+                          return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+                        })()}
+                      </div>
+                      <div className="text-sm font-medium text-purple-600 mt-1">
+                        {(() => {
+                          const delta = new Date(e.time).getTime() - now;
+                          if (delta <= 0) return 'Today';
+                          
+                          const millisecondsPerDay = 86400000;
+                          const millisecondsPerMonth = millisecondsPerDay * 30.44;
+                          const millisecondsPerYear = millisecondsPerDay * 365.25;
+                          
+                          const years = Math.floor(delta / millisecondsPerYear);
+                          const remainingAfterYears = delta % millisecondsPerYear;
+                          
+                          const months = Math.floor(remainingAfterYears / millisecondsPerMonth);
+                          const remainingAfterMonths = remainingAfterYears % millisecondsPerMonth;
+                          
+                          const days = Math.ceil(remainingAfterMonths / millisecondsPerDay);
+                          
+                          const parts = [];
+                          if (years > 0) parts.push(`${years} ${years === 1 ? 'year' : 'years'}`);
+                          if (months > 0) parts.push(`${months} ${months === 1 ? 'month' : 'months'}`);
+                          if (days > 0 || parts.length === 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+                          
+                          return `in ${parts.join(', ')}`;
+                        })()}
+                      </div>
                     </div>
-                    <div className="text-sm font-medium text-purple-600 mt-1">
-                      {(() => {
-                        const delta = new Date(e.time).getTime() - now;
-                        if (delta <= 0) return 'Today';
-                        
-                        // Calculate years, months, and days
-                        const millisecondsPerDay = 86400000;
-                        const millisecondsPerMonth = millisecondsPerDay * 30.44; // Average month length
-                        const millisecondsPerYear = millisecondsPerDay * 365.25; // Account for leap years
-                        
-                        const years = Math.floor(delta / millisecondsPerYear);
-                        const remainingAfterYears = delta % millisecondsPerYear;
-                        
-                        const months = Math.floor(remainingAfterYears / millisecondsPerMonth);
-                        const remainingAfterMonths = remainingAfterYears % millisecondsPerMonth;
-                        
-                        const days = Math.ceil(remainingAfterMonths / millisecondsPerDay);
-                        
-                        // Build the display string
-                        const parts = [];
-                        if (years > 0) parts.push(`${years} ${years === 1 ? 'year' : 'years'}`);
-                        if (months > 0) parts.push(`${months} ${months === 1 ? 'month' : 'months'}`);
-                        if (days > 0 || parts.length === 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
-                        
-                        return `in ${parts.join(', ')}`;
-                      })()}
-                    </div>
+                    <button
+                      onClick={() => setEditingEventId(e.id)}
+                      className="absolute top-3 right-3 p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
+                    >
+                      <PencilSquareIcon className="h-4 w-4 text-purple-600" />
+                    </button>
                   </div>
                 );
               })}
@@ -675,6 +708,48 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           </div>
         </div>
       )}
+
+      {/* Edit Meeting Modal */}
+      {editingMeetingId && (() => {
+        const meeting = notes.find(n => n.id === editingMeetingId);
+        return (
+          <EditMeetingModal
+            note={meeting}
+            onSave={(updatedNote) => {
+              updateNoteById(updatedNote.id, updatedNote.content);
+              // Update the notes state immediately
+              setNotes(prevNotes => 
+                prevNotes.map(n => 
+                  n.id === updatedNote.id ? { ...n, content: updatedNote.content } : n
+                )
+              );
+              setEditingMeetingId(null);
+            }}
+            onCancel={() => setEditingMeetingId(null)}
+          />
+        );
+      })()}
+
+      {/* Edit Event Modal */}
+      {editingEventId && (() => {
+        const event = notes.find(n => n.id === editingEventId);
+        return (
+          <EditEventModal
+            note={event}
+            onSave={(updatedNote) => {
+              updateNoteById(updatedNote.id, updatedNote.content);
+              // Update the notes state immediately
+              setNotes(prevNotes => 
+                prevNotes.map(n => 
+                  n.id === updatedNote.id ? { ...n, content: updatedNote.content } : n
+                )
+              );
+              setEditingEventId(null);
+            }}
+            onCancel={() => setEditingEventId(null)}
+          />
+        );
+      })()}
     </>
   );
 };

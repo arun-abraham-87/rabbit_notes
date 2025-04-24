@@ -1,3 +1,5 @@
+import { reorderMetaTags } from './TextUtils';
+
 // API Base URL
 const API_BASE_URL = 'http://localhost:5001/api';
 
@@ -10,10 +12,13 @@ export const addNewNote = async (content, tags, noteDate) => {
 };
 
 export const updateNoteById = async (id, updatedContent) => {
+    // Reorder meta tags before sending the update
+    const reorderedContent = reorderMetaTags(updatedContent);
+    
     const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: updatedContent }),
+        body: JSON.stringify({ content: reorderedContent }),
     });
 
     if (!response.ok) {

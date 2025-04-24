@@ -233,6 +233,10 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     }
   };
 
+  // Add these state variables after other useState declarations
+  const [expandedMeetings, setExpandedMeetings] = useState(false);
+  const [expandedEvents, setExpandedEvents] = useState(false);
+
   return (
     <>
       {alertMeetingId && (() => {
@@ -409,64 +413,80 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                   <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
                 }
               </h2>
-              {showMeetingsSection && visibleMeetings.map((m, idx) => {
-                const eventTime = new Date(m.time).getTime();
-                const diff = eventTime - now;
-                const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
-                return (
-                  <div
-                    key={m.id}
-                    className="group relative mb-2 rounded-lg hover:bg-indigo-100 transition-colors"
-                  >
-                    <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} ${isFlashing ? 'animate-pulse bg-purple-100' : ''} rounded-lg`}>
-                      <div className="text-base font-medium text-gray-800">{m.context}</div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        {(() => {
-                          const d = new Date(m.time);
-                          const today = new Date(now);
-                          return d.toDateString() === today.toDateString() ? 'Today' :
-                            d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-                        })()}
+              {showMeetingsSection && (
+                <>
+                  {(expandedMeetings ? visibleMeetings : visibleMeetings.slice(0, 3)).map((m, idx) => {
+                    const eventTime = new Date(m.time).getTime();
+                    const diff = eventTime - now;
+                    const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
+                    return (
+                      <div
+                        key={m.id}
+                        className="group relative mb-2 rounded-lg hover:bg-indigo-100 transition-colors"
+                      >
+                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} ${isFlashing ? 'animate-pulse bg-purple-100' : ''} rounded-lg`}>
+                          <div className="text-base font-medium text-gray-800">{m.context}</div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            {(() => {
+                              const d = new Date(m.time);
+                              const today = new Date(now);
+                              return d.toDateString() === today.toDateString() ? 'Today' :
+                                d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                            })()}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {(() => {
+                              const d = new Date(m.time);
+                              let h = d.getHours(), mnt = d.getMinutes();
+                              const ampm = h >= 12 ? 'PM' : 'AM';
+                              h = h % 12 || 12;
+                              return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
+                            })()}
+                            {m.duration && (
+                              <span className="ml-2 text-indigo-500">
+                                • {m.duration} mins
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm font-medium text-indigo-600 mt-1">
+                            {(() => {
+                              const delta = new Date(m.time).getTime() - now;
+                              const days = Math.floor(delta / 86400000);
+                              const hrs = Math.floor((delta % 86400000) / 3600000);
+                              const mins = Math.floor((delta % 3600000) / 60000);
+                              const secs = Math.floor((delta % 60000) / 1000);
+                              const parts = [];
+                              if (days) parts.push(`${days}d`);
+                              if (hrs) parts.push(`${hrs}h`);
+                              if (mins) parts.push(`${mins}m`);
+                              if (!parts.length) parts.push(`${secs}s`);
+                              return `in ${parts.join(' ')}`;
+                            })()}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setEditingMeetingId(m.id)}
+                          className="absolute top-3 right-3 p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-50"
+                        >
+                          <PencilSquareIcon className="h-4 w-4 text-indigo-600" />
+                        </button>
                       </div>
-                      <div className="text-sm text-gray-600">
-                        {(() => {
-                          const d = new Date(m.time);
-                          let h = d.getHours(), mnt = d.getMinutes();
-                          const ampm = h >= 12 ? 'PM' : 'AM';
-                          h = h % 12 || 12;
-                          return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
-                        })()}
-                        {m.duration && (
-                          <span className="ml-2 text-indigo-500">
-                            • {m.duration} mins
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm font-medium text-indigo-600 mt-1">
-                        {(() => {
-                          const delta = new Date(m.time).getTime() - now;
-                          const days = Math.floor(delta / 86400000);
-                          const hrs = Math.floor((delta % 86400000) / 3600000);
-                          const mins = Math.floor((delta % 3600000) / 60000);
-                          const secs = Math.floor((delta % 60000) / 1000);
-                          const parts = [];
-                          if (days) parts.push(`${days}d`);
-                          if (hrs) parts.push(`${hrs}h`);
-                          if (mins) parts.push(`${mins}m`);
-                          if (!parts.length) parts.push(`${secs}s`);
-                          return `in ${parts.join(' ')}`;
-                        })()}
-                      </div>
-                    </div>
+                    );
+                  })}
+                  {visibleMeetings.length > 3 && (
                     <button
-                      onClick={() => setEditingMeetingId(m.id)}
-                      className="absolute top-3 right-3 p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-50"
+                      onClick={() => setExpandedMeetings(prev => !prev)}
+                      className="w-full mt-2 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors flex items-center justify-center"
                     >
-                      <PencilSquareIcon className="h-4 w-4 text-indigo-600" />
+                      {expandedMeetings ? (
+                        <>Show Less <ChevronDoubleUpIcon className="h-4 w-4 ml-1" /></>
+                      ) : (
+                        <>Show {visibleMeetings.length - 3} More <ChevronDoubleDownIcon className="h-4 w-4 ml-1" /></>
+                      )}
                     </button>
-                  </div>
-                );
-              })}
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -486,58 +506,74 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                   <ChevronDoubleDownIcon className="h-4 w-4 text-purple-600" />
                 }
               </h2>
-              {showEventsSection && visibleEvents.map((e, idx) => {
-                const eventTime = new Date(e.time).getTime();
-                const diff = eventTime - now;
-                const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
-                return (
-                  <div
-                    key={e.id}
-                    className="group relative mb-2 rounded-lg hover:bg-purple-100 transition-colors"
-                  >
-                    <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} ${isFlashing ? 'animate-pulse bg-purple-200' : ''} rounded-lg`}>
-                      <div className="text-base font-medium text-gray-800">{e.context}</div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        {(() => {
-                          const d = new Date(e.time);
-                          return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-                        })()}
+              {showEventsSection && (
+                <>
+                  {(expandedEvents ? visibleEvents : visibleEvents.slice(0, 3)).map((e, idx) => {
+                    const eventTime = new Date(e.time).getTime();
+                    const diff = eventTime - now;
+                    const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
+                    return (
+                      <div
+                        key={e.id}
+                        className="group relative mb-2 rounded-lg hover:bg-purple-100 transition-colors"
+                      >
+                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} ${isFlashing ? 'animate-pulse bg-purple-200' : ''} rounded-lg`}>
+                          <div className="text-base font-medium text-gray-800">{e.context}</div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            {(() => {
+                              const d = new Date(e.time);
+                              return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+                            })()}
+                          </div>
+                          <div className="text-sm font-medium text-purple-600 mt-1">
+                            {(() => {
+                              const delta = new Date(e.time).getTime() - now;
+                              if (delta <= 0) return 'Today';
+                              
+                              const millisecondsPerDay = 86400000;
+                              const millisecondsPerMonth = millisecondsPerDay * 30.44;
+                              const millisecondsPerYear = millisecondsPerDay * 365.25;
+                              
+                              const years = Math.floor(delta / millisecondsPerYear);
+                              const remainingAfterYears = delta % millisecondsPerYear;
+                              
+                              const months = Math.floor(remainingAfterYears / millisecondsPerMonth);
+                              const remainingAfterMonths = remainingAfterYears % millisecondsPerMonth;
+                              
+                              const days = Math.ceil(remainingAfterMonths / millisecondsPerDay);
+                              
+                              const parts = [];
+                              if (years > 0) parts.push(`${years} ${years === 1 ? 'year' : 'years'}`);
+                              if (months > 0) parts.push(`${months} ${months === 1 ? 'month' : 'months'}`);
+                              if (days > 0 || parts.length === 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+                              
+                              return `in ${parts.join(', ')}`;
+                            })()}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setEditingEventId(e.id)}
+                          className="absolute top-3 right-3 p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
+                        >
+                          <PencilSquareIcon className="h-4 w-4 text-purple-600" />
+                        </button>
                       </div>
-                      <div className="text-sm font-medium text-purple-600 mt-1">
-                        {(() => {
-                          const delta = new Date(e.time).getTime() - now;
-                          if (delta <= 0) return 'Today';
-                          
-                          const millisecondsPerDay = 86400000;
-                          const millisecondsPerMonth = millisecondsPerDay * 30.44;
-                          const millisecondsPerYear = millisecondsPerDay * 365.25;
-                          
-                          const years = Math.floor(delta / millisecondsPerYear);
-                          const remainingAfterYears = delta % millisecondsPerYear;
-                          
-                          const months = Math.floor(remainingAfterYears / millisecondsPerMonth);
-                          const remainingAfterMonths = remainingAfterYears % millisecondsPerMonth;
-                          
-                          const days = Math.ceil(remainingAfterMonths / millisecondsPerDay);
-                          
-                          const parts = [];
-                          if (years > 0) parts.push(`${years} ${years === 1 ? 'year' : 'years'}`);
-                          if (months > 0) parts.push(`${months} ${months === 1 ? 'month' : 'months'}`);
-                          if (days > 0 || parts.length === 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
-                          
-                          return `in ${parts.join(', ')}`;
-                        })()}
-                      </div>
-                    </div>
+                    );
+                  })}
+                  {visibleEvents.length > 3 && (
                     <button
-                      onClick={() => setEditingEventId(e.id)}
-                      className="absolute top-3 right-3 p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
+                      onClick={() => setExpandedEvents(prev => !prev)}
+                      className="w-full mt-2 px-3 py-1.5 text-sm font-medium text-purple-600 hover:text-purple-700 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center"
                     >
-                      <PencilSquareIcon className="h-4 w-4 text-purple-600" />
+                      {expandedEvents ? (
+                        <>Show Less <ChevronDoubleUpIcon className="h-4 w-4 ml-1" /></>
+                      ) : (
+                        <>Show {visibleEvents.length - 3} More <ChevronDoubleDownIcon className="h-4 w-4 ml-1" /></>
+                      )}
                     </button>
-                  </div>
-                );
-              })}
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>

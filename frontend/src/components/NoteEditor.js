@@ -11,7 +11,8 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
         text,
         isTitle: text.startsWith('##') && text.endsWith('##'),
       })),
-      { id: `line-${Date.now()}-extra`, text: '', isTitle: false }
+      // Only add extra line if not in add mode
+      ...(!isAddMode ? [{ id: `line-${Date.now()}-extra`, text: '', isTitle: false }] : [])
     ]
     : [{ id: 'line-0', text: '', isTitle: false }];
 
@@ -139,8 +140,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
   useEffect(() => {
     if (isAddMode && searchQuery !== undefined) {
       setLines([
-        { id: 'line-0', text: searchQuery, isTitle: false },
-        { id: `line-${Date.now()}-extra`, text: '', isTitle: false }
+        { id: 'line-0', text: searchQuery || '', isTitle: false }
       ]);
     }
   }, [searchQuery, isAddMode]);

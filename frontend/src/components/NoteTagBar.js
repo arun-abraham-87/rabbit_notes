@@ -116,23 +116,23 @@ export default function NoteTagBar({
 
   return (
     <div className="flex flex-wrap gap-2 px-4 pb-2">
-      {/* Priority Tags */}
-      {metaTags.priority.map((priority) => (
-        <TagPill
-          key={priority}
-          type={priority}
-          onRemove={() => removeTag(priority)}
-        />
-      ))}
-
-      {/* Todo Tags */}
+      {/* Todo Tags with Priority */}
       {metaTags.todo.map((todoDate, index) => (
-        <TagPill
-          key={`todo-${index}`}
-          type="todo"
-          details={todoDate}
-          onRemove={() => removeTag('todo', todoDate)}
-        />
+        <React.Fragment key={`todo-group-${index}`}>
+          <TagPill
+            key={`todo-${index}`}
+            type="todo"
+            details={todoDate}
+            onRemove={() => removeTag('todo', todoDate)}
+          />
+          {metaTags.priority.map((priority) => (
+            <TagPill
+              key={`${priority}-${index}`}
+              type={priority}
+              onRemove={() => removeTag(priority)}
+            />
+          ))}
+        </React.Fragment>
       ))}
 
       {/* Abbreviation Tag */}

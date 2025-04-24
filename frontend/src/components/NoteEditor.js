@@ -503,15 +503,19 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     setLines(newLines);
   };
 
-  const handleSave = () => {
-    const trimmedLines = lines.map(line => line.text.trim());
-    while (trimmedLines.length && trimmedLines[trimmedLines.length - 1] === '') {
-      trimmedLines.pop();
-    }
+  const saveNote = () => {
+    // Remove empty lines from the end and trim all lines
+    const trimmedLines = lines
+      .map(line => line.text.trim()) // Trim each line
+      .filter(text => text !== ''); // Remove empty lines
+
     const merged = trimmedLines.join('\n');
-    if (!merged.trim()) {
+    
+    // Check if note is empty or only contains whitespace
+    if (!merged || !merged.trim()) {
       return;
     }
+    
     if (isAddMode) {
       addNote(merged);
       setLines([{ id: 'line-0', text: '', isTitle: false }]);
@@ -525,59 +529,22 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     }
   };
 
-  const handleLabelUrl = (index) => {
-    const line = lines[index];
-    const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/;
-    const plainUrlRegex = /(https?:\/\/[^\s]+)/;
-    const markdownMatch = line.text.match(markdownLinkRegex);
-    const plainUrlMatch = line.text.match(plainUrlRegex);
-
-    if (markdownMatch) {
-      const [, currentLabel, url] = markdownMatch;
-      const newLabel = prompt("Edit label for this URL:", currentLabel);
-      if (newLabel !== null) {
-        const newText = line.text.replace(markdownLinkRegex, `[${newLabel}](${url})`);
-        const newLines = [...lines];
-        newLines[index].text = newText;
-        setLines(newLines);
-      }
-    } else if (plainUrlMatch) {
-      const url = plainUrlMatch[0];
-      const label = prompt("Enter custom label for this URL:", "Link");
-      if (label) {
-        const newText = line.text.replace(url, `[${label}](${url})`);
-        const newLines = [...lines];
-        newLines[index].text = newText;
-        setLines(newLines);
-      }
-    } else {
-      alert("No URL found in this line.");
-    }
+  const handleSave = () => {
+    saveNote();
   };
 
   useEffect(() => {
     const handleGlobalKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        const trimmedLines = lines.map(line => line.text.trim());
-        while (trimmedLines.length && trimmedLines[trimmedLines.length - 1] === '') {
-          trimmedLines.pop();
+        
+        // Check if all lines are empty
+        const hasContent = lines.some(line => line.text.trim() !== '');
+        if (!hasContent) {
+          return; // Don't do anything if all lines are empty
         }
-        const merged = trimmedLines.join('\n');
-        if (!merged.trim()) {
-          return;
-        }
-        if (isAddMode) {
-          addNote(merged);
-          setLines([{ id: 'line-0', text: '', isTitle: false }]);
-          setUrlLabelSelection({ urlIndex: null, labelIndex: null });
-          onCancel();
-        } else {
-          // Update the note and trigger the callback
-          updateNoteById(note.id, merged).then(() => {
-            onSave({ ...note, content: merged });
-          });
-        }
+        
+        saveNote();
       }
     };
     document.addEventListener('keydown', handleGlobalKey);

@@ -4,7 +4,9 @@ import {
   ChevronDownIcon, 
   ChevronRightIcon,
   ChevronDoubleUpIcon,
-  ChevronDoubleDownIcon
+  ChevronDoubleDownIcon,
+  Cog6ToothIcon,
+  XMarkIcon
 } from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
 import { updateNoteById } from '../utils/ApiUtils';
@@ -35,7 +37,7 @@ const updateNote = (id, updatedContent) => {
   updateNoteById(id, updatedContent);
 };
 
-const LeftPanel = ({ notes, setNotes }) => {
+const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery }) => {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -45,6 +47,7 @@ const LeftPanel = ({ notes, setNotes }) => {
   const [showQuickLinks, setShowQuickLinks] = useState(true);
   const [showMeetingsSection, setShowMeetingsSection] = useState(true);
   const [showEventsSection, setShowEventsSection] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
 
   // Collapse / Expand helpers
   const handleCollapseAll = () => {
@@ -63,6 +66,9 @@ const LeftPanel = ({ notes, setNotes }) => {
   const [linkMenuPos, setLinkMenuPos] = useState({ x: 0, y: 0 });
   const [linkMenuUrl, setLinkMenuUrl] = useState(null);
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [contextMenuNote, setContextMenuNote] = useState(null);
 
   const handleLinkContextMenu = (e, url) => {
     e.preventDefault();
@@ -200,20 +206,29 @@ const LeftPanel = ({ notes, setNotes }) => {
 
       <div className="w-full h-full bg-gray-100 p-2 space-y-1 overflow-y-auto text-xs">
         {/* Collapse / Open controls */}
-        <div className="flex justify-start space-x-2 mb-3">
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex space-x-2">
+            <button
+              onClick={handleCollapseAll}
+              className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
+              title="Collapse All Sections"
+            >
+              <ChevronDoubleUpIcon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={handleOpenAll}
+              className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
+              title="Expand All Sections"
+            >
+              <ChevronDoubleDownIcon className="h-4 w-4" />
+            </button>
+          </div>
           <button
-            onClick={handleCollapseAll}
+            onClick={() => setShowSettings(true)}
             className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
-            title="Collapse All Sections"
+            title="Settings"
           >
-            <ChevronDoubleUpIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleOpenAll}
-            className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 hover:text-gray-900 transition-colors duration-150"
-            title="Expand All Sections"
-          >
-            <ChevronDoubleDownIcon className="h-4 w-4" />
+            <Cog6ToothIcon className="h-4 w-4" />
           </button>
         </div>
 
@@ -474,6 +489,51 @@ const LeftPanel = ({ notes, setNotes }) => {
           </div>
         );
       })()}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Settings</h2>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              {/* Add settings options here */}
+              <p className="text-gray-600">Settings options will be added here.</p>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isContextMenuOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-4 overflow-auto w-auto h-auto max-w-[90vw] max-h-[90vh]">
+            <button
+              onClick={() => setIsContextMenuOpen(false)}
+              className="mb-4 text-sm text-gray-600 hover:text-gray-900"
+            >
+              Close
+            </button>
+            {contextMenuNote && <NoteEditor note={contextMenuNote} onSave={(updatedNote) => {
+              updateNote(updatedNote.id, updatedNote.content);
+            }} />}
+          </div>
+        </div>
+      )}
     </>
   );
 };

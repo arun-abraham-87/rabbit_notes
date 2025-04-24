@@ -63,7 +63,7 @@ export const loadAllNotes = async (searchText, noteDate) => {
 export const loadNotes = async (searchText, noteDate) => {
     const encodedQuery = encodeURIComponent(searchText);
     let url = `${API_BASE_URL}/notes?search=${encodedQuery}`;
-    url += `&currentDate=${searchText.trim().length === 0}`;
+    url += `&currentDate=${!searchText || searchText.trim().length === 0}`;
     url += `&noteDate=${noteDate}`;
     const response = await fetch(url);
     const data = await response.json();

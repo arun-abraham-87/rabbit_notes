@@ -49,9 +49,9 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
     }
 
     // Get today's date in 'DD/MM/YYYY' format
-    //const today = new Date().toLocaleDateString('en-AU');
-    const noteDate=moment(new Date(noteDateStr)).format('DD/MM/YYYY');
-    console.log(noteDate)
+    const today = new Date();
+    const noteDate = moment(today).format('DD/MM/YYYY');
+    console.log(`Filtering for date: ${noteDate}`);
 
     // Filter notes
     return notes.filter((note) => {
@@ -73,10 +73,9 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
       // Check if the note is from today (if required)
       if (isCurrentDaySearch) {
         const noteRecordedDate = (note.created_datetime || "").split(',')[0].trim();
-        //console.log(`NoteRecorded Date: ${noteRecordedDate}`)
-        //console.log(`Note Filter Date: ${noteDate}`)
+        console.log(`Note date: ${noteRecordedDate}, Today: ${noteDate}`);
         const isNoteFromToday = noteRecordedDate === noteDate;
-        return matchesSearchQuery && isNoteFromToday;
+        return !searchQuery || (matchesSearchQuery && isNoteFromToday);
       }
 
       return matchesSearchQuery;

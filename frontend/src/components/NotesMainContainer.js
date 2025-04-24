@@ -114,9 +114,9 @@ const NotesMainContainer = ({
     const [ongoingMeeting, setOngoingMeeting] = useState(null);
     const [currentDate, setCurrentDate] = useState(null);
 
-    // Filter notes for display based on selected date
+    // Filter notes for display based on selected date, but only if there's no search query
     const filteredNotes = notes.filter(note => {
-        if (!currentDate) return true;
+        if (!currentDate || searchQuery) return true;  // Don't filter by date if there's a search query
         const lines = note.content.split('\n');
         const dateStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
         if (!dateStr) return false;

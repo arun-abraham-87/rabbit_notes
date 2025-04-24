@@ -186,7 +186,15 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     const result = notes.flatMap(note => {
       if (note.content.split('\n').some(line => line.trim().startsWith('meta::event'))) {
         const lines = note.content.split('\n');
-        return [{ id: note.id, context: lines[0].trim(), time: lines[1].trim() }];
+        // Extract location if it exists
+        const locationLine = lines.find(line => line.trim().startsWith('Location:'));
+        const location = locationLine ? locationLine.replace('Location:', '').trim() : null;
+        return [{ 
+          id: note.id, 
+          context: lines[0].trim(), 
+          time: lines[1].trim(),
+          location: location
+        }];
       }
       return [];
     });
@@ -519,6 +527,14 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                       >
                         <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} ${isFlashing ? 'animate-pulse bg-purple-200' : ''} rounded-lg`}>
                           <div className="text-base font-medium text-gray-800">{e.context}</div>
+                          {e.location && (
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                              </svg>
+                              {e.location}
+                            </div>
+                          )}
                           <div className="text-sm text-gray-600 mt-1">
                             {(() => {
                               const d = new Date(e.time);

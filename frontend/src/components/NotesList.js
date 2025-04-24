@@ -127,18 +127,27 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       setSelectedText(selection.toString().trim());
+      
+      // Calculate position relative to the viewport
+      const viewportX = rect.left;
+      const viewportY = rect.top;
+      
+      // Add scroll offset to get the absolute position
+      const x = viewportX + window.scrollX;
+      const y = viewportY + window.scrollY;
+      
+      // Position the popup above the selected text with some offset
       setPopupPosition({
-        x: rect.left + window.scrollX,
-        y: rect.top + window.scrollY - 60, // Position the popup above the selected text
+        x: x,
+        y: y - 40, // Position slightly above the text
       });
 
       if (popupTimeoutRef.current) {
         clearTimeout(popupTimeoutRef.current);
       }
 
-      popupTimeoutRef.current = setTimeout(() => {
-        setPopupVisible(true);
-      }, 500);
+      // Show popup immediately on selection
+      setPopupVisible(true);
     } else {
       setPopupVisible(false);
     }

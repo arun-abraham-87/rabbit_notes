@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 /**
  * TextSelectionPopup
@@ -13,25 +13,63 @@ import React from 'react';
  * - onCancel: () => void   — callback when "Cancel" is clicked
  */
 export default function TagSelectionPopup({ visible, position, onConvert, onCancel }) {
+  const popupRef = useRef(null);
+
+  useEffect(() => {
+    if (visible && popupRef.current) {
+      const popup = popupRef.current;
+      const rect = popup.getBoundingClientRect();
+      
+      // Get viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Calculate adjusted position to keep popup in viewport
+      let adjustedX = position.x;
+      let adjustedY = position.y;
+      
+      // Adjust horizontal position if needed
+      if (adjustedX + rect.width > viewportWidth) {
+        adjustedX = viewportWidth - rect.width - 10;
+      }
+      if (adjustedX < 0) {
+        adjustedX = 10;
+      }
+      
+      // Adjust vertical position if needed
+      if (adjustedY + rect.height > viewportHeight) {
+        adjustedY = position.y - rect.height - 20; // Show above selection
+      }
+      if (adjustedY < 0) {
+        adjustedY = 10;
+      }
+      
+      // Apply adjusted position
+      popup.style.left = `${adjustedX}px`;
+      popup.style.top = `${adjustedY}px`;
+    }
+  }, [visible, position]);
+
   if (!visible) return null;
 
   return (
     <div
-      className="absolute bg-white border border-gray-300 p-2 rounded-md shadow-lg"
+      ref={popupRef}
+      className="fixed bg-white border border-gray-200 p-3 rounded-lg shadow-lg z-50 flex gap-2"
       style={{
-        top: `${position.y}px`,
         left: `${position.x}px`,
+        top: `${position.y}px`,
       }}
     >
       <button
         onClick={onConvert}
-        className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+        className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
       >
         Convert to Tag
       </button>
       <button
         onClick={onCancel}
-        className="ml-2 bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600"
+        className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
       >
         Cancel
       </button>

@@ -97,10 +97,18 @@ export default function RightClickMenu({
                   if (isH1 || isH2) arr[lineIndex] = isH1 ? trimmed.slice(3, -3) : trimmed.slice(2, -2);
                   break;
                 case 'makeH1':
-                  arr[lineIndex] = `###${arr[lineIndex]}###`;
+                  const h1Text = arr[lineIndex].trim()
+                    .replace(/^###|###$/g, '') // Remove H1 markers
+                    .replace(/^##|##$/g, '') // Remove H2 markers
+                    .trim();
+                  arr[lineIndex] = `###${h1Text}###`;
                   break;
                 case 'makeH2':
-                  arr[lineIndex] = `##${arr[lineIndex]}##`;
+                  const h2Text = arr[lineIndex].trim()
+                    .replace(/^###|###$/g, '') // Remove H1 markers
+                    .replace(/^##|##$/g, '') // Remove H2 markers
+                    .trim();
+                  arr[lineIndex] = `##${h2Text}##`;
                   break;
                 case 'moveTop':
                   const topLine = arr.splice(lineIndex, 1)[0];

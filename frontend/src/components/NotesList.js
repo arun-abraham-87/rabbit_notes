@@ -69,13 +69,12 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     openModal();
   };
 
-  const updateNote = (id, updatedContent) => {
-    updateNoteById(id, updatedContent);
-    updateNoteCallback(
-      notes.map((note) =>
-        note.id === id ? { ...note, content: updatedContent } : note
-      )
-    );
+  const updateNote = async (id, updatedContent) => {
+    try {
+      await updateNoteCallback(id, updatedContent);
+    } catch (error) {
+      console.error('Error updating note:', error);
+    }
   };
 
   const handleEndDateSelect = (noteId, date) => {
@@ -292,6 +291,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     note={note}
                     setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
                     urlToNotesMap={urlToNotesMap}
+                    updateNoteCallback={updateNoteCallback}
                   />
                   <NoteContent
                     note={note}

@@ -76,6 +76,25 @@ const App = () => {
 
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
 
+  const updateBothNotesLists = async (noteId, updatedContent) => {
+    try {
+      // First update the note in the backend
+      await updateNote(noteId, updatedContent);
+      
+      // Then fetch fresh data to update both lists
+      const [notesData, allNotesData] = await Promise.all([
+        loadNotes(searchQuery, noteDate),
+        loadAllNotes('', null)
+      ]);
+      
+      setNotes(notesData.notes);
+      setAllNotes(allNotesData.notes);
+      setTotals(notesData.totals);
+    } catch (error) {
+      console.error('Error updating notes:', error);
+    }
+  };
+
   const fetchNotes = async (searchText) => {
     const data = await loadNotes(searchText, noteDate)
     setNotes(data.notes);
@@ -176,7 +195,7 @@ const App = () => {
               objList={objectList}
               notes={notes}
               addNote={addNote}
-              setNotes={setNotes}
+              setNotes={updateBothNotesLists}
               objects={objects}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}

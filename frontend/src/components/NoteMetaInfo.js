@@ -16,7 +16,8 @@ import {
 export default function NoteTitle({
   note,
   setShowEndDatePickerForNoteId,
-  urlToNotesMap
+  urlToNotesMap,
+  updateNoteCallback
 }) {
   const lines = note.content.split('\n');
 
@@ -50,12 +51,125 @@ export default function NoteTitle({
   const stripLines = (predicate) =>
     lines.filter((l) => !predicate(l.trim())).join('\n').trim();
 
-  // Detect meeting or event meta
+  // Extract meeting and event dates
+  const meetingMatch = note.content.match(/meta::meeting::([^\n]+)/);
+  const eventMatch = note.content.match(/meta::event::([^\n]+)/);
+  
+  // Get the date from the second line if it exists, otherwise use current date
+  const getSecondLineDate = () => {
+    const secondLine = lines[1]?.trim();
+    if (!secondLine) return new Date();
+    
+    try {
+      const date = new Date(secondLine);
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        return new Date();
+      }
+      return date;
+    } catch (e) {
+      return new Date();
+    }
+  };
+
+  // Format dates for input fields
+  const formatDateForInput = (date) => {
+    try {
+      if (!date || isNaN(date.getTime())) {
+        date = new Date();
+      }
+      return date.toISOString().split('.')[0]; // Format: YYYY-MM-DDTHH:mm
+    } catch (e) {
+      const now = new Date();
+      return now.toISOString().split('.')[0];
+    }
+  };
+
+  const formatDateOnly = (date) => {
+    try {
+      if (!date || isNaN(date.getTime())) {
+        date = new Date();
+      }
+      return date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    } catch (e) {
+      const now = new Date();
+      return now.toISOString().split('T')[0];
+    }
+  };
+
+  // Detect meta tags
   const isMeeting = lines.some((l) => l.trim().startsWith('meta::meeting'));
   const isEvent = lines.some((l) => l.trim().startsWith('meta::event'));
   const isPinned = lines.some((l) => l.trim().startsWith('meta::pin'));
   const isAbbreviation = lines.some((l) => l.trim().startsWith('meta::abbreviation'));
   const isBookmark = lines.some((l) => l.trim().startsWith('meta::bookmark'));
+
+  // Update meeting date in note
+  const updateMeetingDate = (dateTimeStr) => {
+    const newDate = new Date(dateTimeStr);
+    const dateISOString = newDate.toISOString();
+    let updatedContent;
+
+    // Split content into lines and handle the update
+    const contentLines = note.content.split('\n');
+    
+    // If first line doesn't have meta::meeting tag, add it
+    if (!contentLines[0]?.trim().startsWith('meta::meeting')) {
+      contentLines.unshift('meta::meeting::');
+    }
+    
+    // Update or insert the date as second line
+    if (contentLines.length === 1) {
+      contentLines.push(dateISOString);
+    } else {
+      contentLines[1] = dateISOString;
+    }
+    
+    // Keep any remaining content after the date line
+    updatedContent = contentLines.join('\n');
+    
+    // Update the note and refresh the UI
+    updateNote(note.id, updatedContent);
+    if (updateNoteCallback) {
+      updateNoteCallback(notes => 
+        notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n)
+      );
+    }
+  };
+
+  // Update event date in note
+  const updateEventDate = (dateStr) => {
+    const newDate = new Date(dateStr);
+    newDate.setHours(12, 0, 0, 0); // Set to noon
+    const dateISOString = newDate.toISOString();
+    let updatedContent;
+
+    // Split content into lines and handle the update
+    const contentLines = note.content.split('\n');
+    
+    // If first line doesn't have meta::event tag, add it
+    if (!contentLines[0]?.trim().startsWith('meta::event')) {
+      contentLines.unshift('meta::event::');
+    }
+    
+    // Update or insert the date as second line
+    if (contentLines.length === 1) {
+      contentLines.push(dateISOString);
+    } else {
+      contentLines[1] = dateISOString;
+    }
+    
+    // Keep any remaining content after the date line
+    updatedContent = contentLines.join('\n');
+    
+    // Update the note and refresh the UI
+    updateNote(note.id, updatedContent);
+    if (updateNoteCallback) {
+      updateNoteCallback(notes => 
+        notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n)
+      );
+    }
+  };
 
   return (
     <div className="flex items-center flex-wrap gap-2 mb-2">
@@ -162,15 +276,8 @@ export default function NoteTitle({
           <label className="text-sm font-medium">Meeting Time:</label>
           <input
             type="datetime-local"
-            value={(() => {
-              const rawTime = lines[1] || '';
-              const [datePart, timePart] = rawTime.split('T');
-              return rawTime ? `${datePart}T${timePart?.slice(0, 5)}` : '';
-            })()}
-            onChange={(e) => {
-              lines[1] = e.target.value;
-              updateNote(note.id, lines.join("\n"));
-            }}
+            value={formatDateForInput(getSecondLineDate())}
+            onChange={(e) => updateMeetingDate(e.target.value)}
             className="border border-gray-300 rounded p-1 text-sm"
           />
         </div>
@@ -180,11 +287,8 @@ export default function NoteTitle({
           <label className="text-sm font-medium">Event Date:</label>
           <input
             type="date"
-            value={(() => lines[1]?.split('T')[0] || '')()}
-            onChange={(e) => {
-              lines[1] = `${e.target.value}T12:00`;
-              updateNote(note.id, lines.join("\n"));
-            }}
+            value={formatDateOnly(getSecondLineDate())}
+            onChange={(e) => updateEventDate(e.target.value)}
             className="border border-gray-300 rounded p-1 text-sm"
           />
         </div>

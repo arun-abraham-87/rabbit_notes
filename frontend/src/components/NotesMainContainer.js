@@ -15,6 +15,10 @@ const NotesMainContainer = ({ objList, notes, addNote, setNotes, objects, search
         setSearchQuery(tag);
     };
 
+    const updateNoteCallback = async (noteId, updatedContent) => {
+        await setNotes(noteId, updatedContent);
+    };
+
     return (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
             <DateSelectorBar setNoteDate={setNoteDate} defaultCollapsed={true} />
@@ -37,7 +41,17 @@ const NotesMainContainer = ({ objList, notes, addNote, setNotes, objects, search
             {checked ? (
                 <NotesListByDate notes={notes} searchQuery={searchQuery} onWordClick={handleTagClick} />
             ) : (
-                <NotesList objList={objList} notes={notes} addNotes={addNote} updateNoteCallback={setNotes} updateTotals={setTotals} objects={objects} addObjects={addTag} searchTerm={searchQuery} onWordClick={handleTagClick} />
+                <NotesList 
+                    objList={objList} 
+                    notes={notes} 
+                    addNotes={addNote} 
+                    updateNoteCallback={updateNoteCallback}
+                    updateTotals={setTotals} 
+                    objects={objects} 
+                    addObjects={addTag} 
+                    searchTerm={searchQuery} 
+                    onWordClick={handleTagClick} 
+                />
             )}
         </div>
     )

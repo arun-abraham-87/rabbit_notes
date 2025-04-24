@@ -1,4 +1,3 @@
-
 export const addNewNote = async (content, tags, noteDate) => {
     const response = await fetch('http://localhost:5001/api/notes', {
         method: 'POST',
@@ -7,8 +6,6 @@ export const addNewNote = async (content, tags, noteDate) => {
     });
 };
 
-
-
 export const updateNoteById = async (id, updatedContent) => {
     const response = await fetch(`http://localhost:5001/api/notes/${id}`, {
         method: 'PUT',
@@ -16,14 +13,13 @@ export const updateNoteById = async (id, updatedContent) => {
         body: JSON.stringify({ content: updatedContent }),
     });
 
-    if (response.ok) {
-        console.log('Note Updated Sucessfully:', id);
-    } else {
-        console.error('Err: Failed to update note');
+    if (!response.ok) {
+        throw new Error('Failed to update note');
     }
+
+    const result = await response.json();
+    return result;
 };
-
-
 
 export const deleteNoteById = async (id) => {
     const response = await fetch(`http://localhost:5001/api/notes/${id}`, {
@@ -38,10 +34,7 @@ export const deleteNoteById = async (id) => {
     }
 };
 
-
-
 export const addNewTag = async (tagText) => {
-
     const response = await fetch('http://localhost:5001/api/objects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -64,7 +57,6 @@ export const loadAllNotes = async (searchText,noteDate) => {
     return data
   };
 
-
 export const loadNotes = async (searchText,noteDate) => {
     const encodedQuery = encodeURIComponent(searchText);
     let url = `http://localhost:5001/api/notes?search=${encodedQuery}`;
@@ -75,8 +67,7 @@ export const loadNotes = async (searchText,noteDate) => {
     return data
   };
 
-
-  export const loadTags = async () => {
+export const loadTags = async () => {
     try {
       const response = await fetch("http://localhost:5001/api/objects");
       const data = await response.json();
@@ -88,8 +79,7 @@ export const loadNotes = async (searchText,noteDate) => {
     }
   };
 
-
-  export const loadTodos = async () => {
+export const loadTodos = async () => {
     try {
       const response = await fetch('http://localhost:5001/api/todos');
       const data = await response.json();

@@ -189,11 +189,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b bg-white bg-opacity-50">
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
-            />
             <span className={`text-xs font-medium ${ageColorClass}`}>
               {getAgeLabel(todo.created_datetime)}
             </span>
@@ -234,68 +229,45 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
 
         {/* Content */}
         <div className="flex-1 p-3 overflow-auto">
-          <div className="text-sm text-gray-800">
+          <div className="text-sm text-gray-800 whitespace-pre-wrap">
             {(() => {
+              // Remove all meta tags from content
               const content = todo.content
-                .replace(/meta::todo/gi, '')
-                .replace(/meta::[^\s]+/gi, '')
+                .split('\n')
+                .filter(line => !line.trim().startsWith('meta::'))
+                .join('\n')
                 .trim();
 
-              return content.split(/(https?:\/\/[^\s]+)/g).map((segment, i) => {
-                if (segment.match(/^https?:\/\//)) {
-                  try {
-                    const url = new URL(segment);
-                    return (
-                      <a
-                        key={`link-${i}`}
-                        href={segment}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-indigo-600 hover:text-indigo-700 hover:underline transition-colors duration-200"
-                      >
-                        {url.hostname.replace(/^www\./, '')}
-                      </a>
-                    );
-                  } catch {
-                    return segment;
-                  }
+              // Split content into lines to handle headings
+              return content.split('\n').map((line, lineIndex) => {
+                // Check for headings first
+                const h1Match = line.match(/^###(.+)###$/);
+                const h2Match = line.match(/^##(.+)##$/);
+
+                if (h1Match) {
+                  return (
+                    <h1 key={`line-${lineIndex}`} className="text-xl font-bold mb-2 text-gray-900">
+                      {processContent(h1Match[1].trim(), searchQuery)}
+                    </h1>
+                  );
                 }
 
-                if (!searchQuery) return segment;
-
-                return segment.split(new RegExp(`(${searchQuery})`, 'gi'))
-                  .map((part, index) =>
-                    part.toLowerCase() === searchQuery.toLowerCase() ? (
-                      <mark 
-                        key={`highlight-${i}-${index}`} 
-                        className="bg-yellow-100 text-gray-900 rounded-sm px-0.5"
-                      >
-                        {part}
-                      </mark>
-                    ) : part
+                if (h2Match) {
+                  return (
+                    <h2 key={`line-${lineIndex}`} className="text-lg font-semibold mb-2 text-gray-800">
+                      {processContent(h2Match[1].trim(), searchQuery)}
+                    </h2>
                   );
+                }
+
+                // Process regular lines with URLs and search highlighting
+                return (
+                  <div key={`line-${lineIndex}`} className="mb-1">
+                    {processContent(line, searchQuery)}
+                  </div>
+                );
               });
             })()}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-3 border-t bg-white bg-opacity-50">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => handleCheckboxChange(todo.id, true)}
-              className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors duration-200"
-            >
-              Complete
-            </button>
-            <div className="flex items-center gap-2">
-              <button className="p-1 rounded hover:bg-gray-100 transition-all duration-200">
-                <PencilIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
-              </button>
-              <button className="p-1 rounded hover:bg-gray-100 transition-all duration-200">
-                <TrashIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
-              </button>
-            </div>
           </div>
         </div>
       </div>

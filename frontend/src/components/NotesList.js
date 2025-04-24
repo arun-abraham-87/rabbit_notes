@@ -423,7 +423,7 @@ const NotesList = ({ objList, notes, allNotes, addNotes, updateNoteCallback, upd
 
                 <LinkedNotesSection
                   note={note}
-                  allNotes={safeNotes}
+                  allNotes={allNotes}
                   onNavigate={scrollToNote}
                   updateNote={updateNote}
                 />

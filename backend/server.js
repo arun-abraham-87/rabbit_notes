@@ -413,22 +413,62 @@ app.delete('/api/notes/:id', (req, res) => {
 app.get('/api/objects', (req, res) => {
   try {
     const fileName = `objects.md`;
-
     const filePath = path.join(NOTES_DIR, fileName);
 
-    // Read the existing notes from the file (if any)
+    // Read the existing tags from objects.md
     let objectsArray = [];
     if (fs.existsSync(filePath)) {
       try {
         const fileContent = fs.readFileSync(filePath, 'utf-8');
-        //console.log("Object File contents", fileContent)
-        objectsArray = JSON.parse(fileContent); // Parse existing notes from the file
+        objectsArray = JSON.parse(fileContent);
       } catch (err) {
         console.error(`Error parsing existing file content: ${err.message}`);
-        return res.status(500).json({ error: "Failed to read existing notes." });
+        return res.status(500).json({ error: "Failed to read existing tags." });
       }
     }
-    res.json(objectsArray);
+
+    // Get all notes to count tag occurrences
+    const files = fs.readdirSync(NOTES_DIR);
+    let allNotes = [];
+
+    files.forEach((file) => {
+      try {
+        if (file === 'objects.md' || file === 'images') return;
+
+        const notesFilePath = path.join(NOTES_DIR, file);
+        if (fs.lstatSync(notesFilePath).isDirectory()) return;
+
+        const fileContent = fs.readFileSync(notesFilePath, 'utf-8');
+        const notesInFile = JSON.parse(fileContent);
+
+        if (Array.isArray(notesInFile)) {
+          allNotes = allNotes.concat(notesInFile);
+        }
+      } catch (err) {
+        console.error(`Failed to process file: ${file}`, err.message);
+      }
+    });
+
+    // Count occurrences for each tag
+    const tagCounts = {};
+    allNotes.forEach(note => {
+      if (Array.isArray(note.tags)) {
+        note.tags.forEach(tag => {
+          if (tag) {
+            const trimmedTag = tag.trim();
+            tagCounts[trimmedTag] = (tagCounts[trimmedTag] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    // Add counts to the objects array
+    const objectsWithCounts = objectsArray.map(obj => ({
+      ...obj,
+      count: tagCounts[obj.text.trim()] || 0
+    }));
+
+    res.json(objectsWithCounts);
   } catch (err) {
     console.error('Error processing the request:', err.message);
     res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });

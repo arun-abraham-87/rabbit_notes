@@ -3,18 +3,26 @@ import React, { useState } from 'react';
 const AddMeetingModal = ({ isOpen, onClose, onAdd }) => {
   const [description, setDescription] = useState('');
   const [dateTime, setDateTime] = useState('');
+  const [duration, setDuration] = useState('30'); // Default 30 minutes
+
+  // Generate duration options: 15 min increments from 15 mins to 2 hours
+  const durationOptions = Array.from({ length: 8 }, (_, i) => ({
+    value: String((i + 1) * 15),
+    label: `${(i + 1) * 15} minutes`
+  }));
 
   if (!isOpen) return null;
 
   const handleSubmit = () => {
     if (!description.trim() || !dateTime) return;
     
-    const content = `${description.trim()}\n${dateTime}\nmeta::meeting::${new Date().toISOString()}`;
+    const content = `${description.trim()}\n${dateTime}\nmeta::meeting::${new Date().toISOString()}\nmeta::meeting_duration::${duration}`;
     onAdd(content);
     
     // Reset form
     setDescription('');
     setDateTime('');
+    setDuration('30'); // Reset to default
     onClose();
   };
 
@@ -48,16 +56,35 @@ const AddMeetingModal = ({ isOpen, onClose, onAdd }) => {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date & Time
-            </label>
-            <input
-              type="datetime-local"
-              value={dateTime}
-              onChange={(e) => setDateTime(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date & Time
+              </label>
+              <input
+                type="datetime-local"
+                value={dateTime}
+                onChange={(e) => setDateTime(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Duration
+              </label>
+              <select
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                {durationOptions.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 

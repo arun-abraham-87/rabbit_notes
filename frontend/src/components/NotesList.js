@@ -15,10 +15,48 @@ import InlineEditor from './InlineEditor';
 import NoteTagBar from './NoteTagBar';
 import NoteContent from './NoteContent';
 import AddMeetingModal from './AddMeetingModal';
+import OngoingMeetingBanner from './OngoingMeetingBanner';
 import { CalendarIcon } from '@heroicons/react/24/solid';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
+
+const checkForOngoingMeeting = (notes) => {
+  if (!notes) return null;
+  
+  const now = new Date();
+  
+  for (const note of notes) {
+    const lines = note.content.split('\n');
+    const meetingTimeStr = lines[1]; // Second line has the meeting time
+    if (!meetingTimeStr) continue;
+    
+    try {
+      const meetingTime = new Date(meetingTimeStr);
+      
+      // Find meeting duration from meta tag
+      const durationMatch = note.content.match(/meta::meeting_duration::(\d+)/);
+      if (!durationMatch) continue;
+      
+      const durationMins = parseInt(durationMatch[1], 10);
+      const meetingEndTime = new Date(meetingTime.getTime() + durationMins * 60000);
+      
+      // Check if meeting is ongoing
+      if (now >= meetingTime && now <= meetingEndTime) {
+        return {
+          description: lines[0], // First line has the description
+          startTime: meetingTimeStr,
+          duration: durationMins
+        };
+      }
+    } catch (error) {
+      console.error('Error parsing meeting time:', error);
+      continue;
+    }
+  }
+  
+  return null;
+};
 
 const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm, settings = {} }) => {
   const [isModalOpen, setModalOpen] = useState(false);
@@ -50,7 +88,23 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   const newLineInputRef = useRef(null);
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(false);
+  const [ongoingMeeting, setOngoingMeeting] = useState(null);
 
+  // Check for ongoing meetings periodically
+  useEffect(() => {
+    const checkMeetings = () => {
+      const meeting = checkForOngoingMeeting(notes);
+      setOngoingMeeting(meeting);
+    };
+
+    // Initial check
+    checkMeetings();
+
+    // Check every minute
+    const interval = setInterval(checkMeetings, 60000);
+
+    return () => clearInterval(interval);
+  }, [notes]);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -107,8 +161,6 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     setEditingInlineDate({ noteId: null, lineIndex: null, originalDate: '' });
   };
 
-
-
   const deleteNote = async (id) => {
     deleteNoteById(id);
     updateNoteCallback(
@@ -117,7 +169,6 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     updateTotals(notes.length);
     setDeletingNoteId(0);
   };
-
 
   const handleTextSelection = (e) => {
     const selection = window.getSelection();
@@ -174,8 +225,6 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     }
   };
 
-
-
   const {
     duplicateUrlNoteIds,
     duplicateWithinNoteIds,
@@ -219,7 +268,6 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
     }
   }, [showCopyToast]);
 
-
   useEffect(() => {
     const handleClickOutside = () => {
       setRightClickText(null);
@@ -253,6 +301,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           <span>Quick Add Meeting</span>
         </button>
       </div>
+      {ongoingMeeting && <OngoingMeetingBanner meeting={ongoingMeeting} />}
       {showCopyToast && (
         <div className="fixed bottom-4 right-4 bg-black text-white text-sm px-3 py-1 rounded shadow-lg z-50">
           Copied to clipboard
@@ -269,7 +318,6 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
         </div>
       )}
     
-
       {safeNotes
         .map(note => {
          

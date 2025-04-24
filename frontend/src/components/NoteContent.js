@@ -16,7 +16,7 @@ import { updateNoteById as updateNote } from '../utils/ApiUtils';
  */
 export default function NoteContent({
     note,
-    searchTerm,
+    searchQuery,
     duplicatedUrlColors,
     editingLine,
     setEditingLine,
@@ -88,7 +88,7 @@ export default function NoteContent({
                                 note={note}
                                 line={line}
                                 idx={idx}
-                                searchTerm={searchTerm}
+                                searchQuery={searchQuery}
                                 duplicatedUrlColors={duplicatedUrlColors}
                                 editingLine={editingLine}
                                 setEditingLine={setEditingLine}
@@ -109,7 +109,7 @@ export default function NoteContent({
                                 note={note}
                                 line={line}
                                 idx={idx}
-                                searchTerm={searchTerm}
+                                searchQuery={searchQuery}
                                 duplicatedUrlColors={duplicatedUrlColors}
                                 editingLine={editingLine}
                                 setEditingLine={setEditingLine}
@@ -163,7 +163,7 @@ export default function NoteContent({
                                             note,
                                             idx,
                                             isListItem,
-                                            searchTerm,
+                                            searchQuery,
                                             parseFormattedContent,
                                             setEditingInlineDate,
                                             handleInlineDateSelect

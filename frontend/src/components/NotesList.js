@@ -19,11 +19,12 @@ import EditMeetingModal from './EditMeetingModal';
 import AddEventModal from './AddEventModal';
 import EditEventModal from './EditEventModal';
 import { CalendarIcon, ClockIcon } from '@heroicons/react/24/solid';
+import NoteEditor from './NoteEditor';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
 
-const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm, setSearchTerm, settings = {} }) => {
+const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchQuery, setSearchQuery, settings = {} }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
   const [selectedText, setSelectedText] = useState('');
@@ -78,7 +79,12 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
 
   const updateNote = async (id, updatedContent) => {
     try {
-      await updateNoteCallback(id, updatedContent);
+      await updateNoteById(id, updatedContent);
+      // Update the notes list immediately after successful update
+      const updatedNotes = notes.map(note => 
+        note.id === id ? { ...note, content: updatedContent } : note
+      );
+      updateNoteCallback(updatedNotes);
     } catch (error) {
       console.error('Error updating note:', error);
     }
@@ -159,8 +165,16 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
   };
 
   const handleSearch = () => {
-    setSearchTerm(selectedText);
-    setPopupVisible(false);
+    if (setSearchQuery) {
+      setSearchQuery(selectedText);
+      setPopupVisible(false);
+      // Find and focus the search input
+      const searchInput = document.querySelector('input[type="search"]');
+      if (searchInput) {
+        searchInput.value = selectedText;
+        searchInput.focus();
+      }
+    }
   };
 
   const handleCancelPopup = () => {
@@ -324,7 +338,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                   />
                   <NoteContent
                     note={note}
-                    searchTerm={searchTerm}
+                    searchQuery={searchQuery}
                     duplicatedUrlColors={duplicatedUrlColors}
                     editingLine={editingLine}
                     setEditingLine={setEditingLine}
@@ -346,6 +360,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
                     newLineText={newLineText}
                     setNewLineText={setNewLineText}
                     newLineInputRef={newLineInputRef}
+                    updateNote={updateNote}
                   />
                 </div>
                 <div>
@@ -504,23 +519,42 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
       {editingMeetingNote && (
         <EditMeetingModal
           note={editingMeetingNote}
-          onSave={(updatedNote) => {
-            updateNote(updatedNote.id, updatedNote.content);
+          onClose={() => setEditingMeetingNote(null)}
+          onSave={(updatedContent) => {
+            updateNote(editingMeetingNote.id, updatedContent);
             setEditingMeetingNote(null);
           }}
-          onCancel={() => setEditingMeetingNote(null)}
         />
       )}
 
       {editingEventNote && (
         <EditEventModal
           note={editingEventNote}
-          onSave={(updatedNote) => {
-            updateNote(updatedNote.id, updatedNote.content);
+          onClose={() => setEditingEventNote(null)}
+          onSave={(updatedContent) => {
+            updateNote(editingEventNote.id, updatedContent);
             setEditingEventNote(null);
           }}
-          onCancel={() => setEditingEventNote(null)}
         />
+      )}
+
+      {popupNoteText && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
+            </div>
+            <NoteEditor
+              note={notes.find(n => n.id === popupNoteText)}
+              onSave={(updatedNote) => {
+                updateNote(updatedNote.id, updatedNote.content);
+                setPopupNoteText(null);
+              }}
+              onCancel={() => setPopupNoteText(null)}
+              objList={objList}
+            />
+          </div>
+        </div>
       )}
 
     </div>

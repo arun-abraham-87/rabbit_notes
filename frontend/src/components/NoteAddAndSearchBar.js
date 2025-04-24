@@ -2,8 +2,8 @@ import React, { useState, useRef ,useEffect} from "react";
 import Calendar from "react-calendar"; // Install via `npm install react-calendar`
 import "react-calendar/dist/Calendar.css";
 
-const AddNoteBar = ({ addNote, searchQuery, objList }) => {
-  const [content, setContent] = useState("");
+const AddNoteBar = ({ addNote, searchQuery, setSearchQuery, objList }) => {
+  const [content, setContent] = useState(searchQuery || "");
   const [tags, setTags] = useState("");
   const [text, setText] = useState("");
   const [showPopup, setShowPopup] = useState(false);
@@ -30,6 +30,10 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
     }
   }, []);
 
+  useEffect(() => {
+    setContent(searchQuery || "");
+    setText(searchQuery || "");
+  }, [searchQuery]);
 
   const isValidDate = (dateString) => {
     const dateRegex = /^\d{2}[-/]\d{2}[-/]\d{4}$/;
@@ -93,7 +97,7 @@ const AddNoteBar = ({ addNote, searchQuery, objList }) => {
     const text = event.target.value;
     setText(text);
     setContent(text);
-    searchQuery(text);
+    setSearchQuery(text);
   
     const match = text.match(/(\S+)$/); // Match the last word
     if (match) {

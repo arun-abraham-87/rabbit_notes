@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
 
 const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false }) => {
-  const contentSource = text || note.content || '';
+  const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
   const initialLines = contentSource
     ? [
       ...contentSource.split('\n').map((text, index) => ({
@@ -134,6 +134,15 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     }
   }, []);
 
+  // Update lines when search query changes
+  useEffect(() => {
+    if (isAddMode && searchQuery !== undefined) {
+      setLines([
+        { id: 'line-0', text: searchQuery, isTitle: false },
+        { id: `line-${Date.now()}-extra`, text: '', isTitle: false }
+      ]);
+    }
+  }, [searchQuery, isAddMode]);
 
   const updateNote = (id, updatedContent) => {
     updateNoteById(id, updatedContent);
@@ -199,10 +208,15 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     setDraggedId(null);
   };
 
-  const handleTextChange = (index, newText) => {
-    const newLines = [...lines];
-    newLines[index].text = newText;
-    setLines(newLines);
+  const handleTextChange = (index, value) => {
+    const updatedLines = [...lines];
+    updatedLines[index].text = value;
+    setLines(updatedLines);
+    
+    // Update search query if this is the first line and in add mode
+    if (isAddMode && index === 0 && setSearchQuery) {
+      setSearchQuery(value);
+    }
   };
 
   const handlePaste = (e, index) => {
@@ -497,9 +511,17 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     if (!merged) {
       return;
     }
-    updateNote(note.id, merged);
-    onSave({ ...note, content: merged });
-    //setMergedContent(merged);
+    if (isAddMode) {
+      addNote(merged);
+      setLines([{ id: 'line-0', text: '', isTitle: false }]);
+      setUrlLabelSelection({ urlIndex: null, labelIndex: null });
+      onCancel();
+    } else {
+      // Update the note and trigger the callback
+      updateNoteById(note.id, merged).then(() => {
+        onSave({ ...note, content: merged });
+      });
+    }
   };
 
   const handleLabelUrl = (index) => {
@@ -550,9 +572,10 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           setUrlLabelSelection({ urlIndex: null, labelIndex: null });
           onCancel();
         } else {
-          updateNote(note.id, merged);
-          onSave({ ...note, content: merged });
-          setMergedContent(merged);
+          // Update the note and trigger the callback
+          updateNoteById(note.id, merged).then(() => {
+            onSave({ ...note, content: merged });
+          });
         }
       }
     };
@@ -1066,27 +1089,14 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                     ref={(el) => (textareasRef.current[index] = el)}
                     value={line.text}
                     onFocus={() => setFocusedLineIndex(index)}
-                    // onBlur={() => setFocusedLineIndex(null)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setContextMenu({ visible: true, x: e.pageX, y: e.pageY, index });
-                    }}
                     onChange={(e) => {
                       handleTextChange(index, e.target.value);
-                      handleInputChange(e)
-                      if (setSearchQuery) {
-                        setSearchQuery(e.target.value);
-                      }
                     }}
-                    onKeyDown={(e) => {
-                      handleKeyDown(e, index);
-
-                      // Tag suggestion logic (if any)
-                      // For example, check if the key pressed is related to tags
-                      // and invoke your tag suggestion logic here.
-                    }}
+                    onKeyDown={(e) => handleKeyDown(e, index)}
                     onPaste={(e) => handlePaste(e, index)}
-                    className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'}`}
+                    className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${
+                      line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
+                    }`}
                     rows={1}
                   />
                 )}

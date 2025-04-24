@@ -94,10 +94,10 @@ const App = () => {
 
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
 
-  const updateBothNotesLists = async (noteId, updatedContent) => {
+  const updateBothNotesLists = async (updatedNotes) => {
     try {
-      // First update the note in the backend
-      await updateNote(noteId, updatedContent);
+      // First update the notes list
+      setNotes(updatedNotes);
       
       // Then fetch fresh data to update both lists
       const [notesData, allNotesData] = await Promise.all([
@@ -157,9 +157,21 @@ const App = () => {
   }, [activePage]);
 
   useEffect(() => {
-    const debounceFetch = setTimeout(() => fetchNotes(searchQuery), 300);
+    const debounceFetch = setTimeout(() => {
+      // Only fetch filtered notes when search changes
+      fetchNotes(searchQuery);
+    }, 300);
     return () => clearTimeout(debounceFetch);
   }, [searchQuery, noteDate]);
+
+  // Separate effect for allNotes to keep it unfiltered
+  useEffect(() => {
+    const fetchUnfilteredNotes = async () => {
+      const data = await loadAllNotes('', null);
+      setAllNotes(data.notes);
+    };
+    fetchUnfilteredNotes();
+  }, [noteDate]); // Only re-fetch when date changes, not on search
 
   // Load settings on app mount
   useEffect(() => {

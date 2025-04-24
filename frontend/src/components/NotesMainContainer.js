@@ -8,7 +8,7 @@ import NotesList from './NotesList.js';
 import NoteEditor from './NoteEditor.js';
 import OngoingMeetingBanner from './OngoingMeetingBanner.js';
 import NextMeetingBanner from './NextMeetingBanner.js';
-import { updateNoteById } from '../utils/ApiUtils';
+import { updateNoteById, loadNotes } from '../utils/ApiUtils';
 
 const checkForOngoingMeeting = (notes) => {
   if (!notes) return null;
@@ -219,8 +219,16 @@ const NotesMainContainer = ({
         setSearchQuery(tag);
     };
 
-    const updateNoteCallback = async (noteId, updatedContent) => {
-        await setNotes(noteId, updatedContent);
+    const updateNoteCallback = async (updatedNotes) => {
+        try {
+            await setNotes(updatedNotes);
+            // Fetch fresh notes to ensure we have the latest data
+            const data = await loadNotes(searchQuery, currentDate);
+            setNotes(data.notes);
+            setTotals(data.totals);
+        } catch (error) {
+            console.error('Error updating notes:', error);
+        }
     };
 
     const handleDismissMeeting = async () => {

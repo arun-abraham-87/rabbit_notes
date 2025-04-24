@@ -40,8 +40,8 @@ export default function TagSelectionPopup({ visible, position, onConvert, onSear
       let adjustedX = position.x;
       let adjustedY = position.y;
       
-      // Always position the popup higher above the selection
-      adjustedY -= (rect.height + 40); // Increased offset from 20 to 40 pixels
+      // Position the popup just slightly above the selection
+      adjustedY -= (rect.height + 10); // Only 10px offset
       
       // Adjust horizontal position if needed
       if (adjustedX + rect.width > viewportWidth) {

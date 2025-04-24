@@ -137,10 +137,32 @@ const NotesMainContainer = ({
     // Filter notes for display based on selected date, but only if there's no search query
     const filteredNotes = notes.filter(note => {
         if (!currentDate || searchQuery) return true;  // Don't filter by date if there's a search query
+        
         const lines = note.content.split('\n');
-        const dateStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
-        if (!dateStr) return false;
-        return dateStr.startsWith(currentDate);
+        
+        // Try to find a date in either format
+        const isoDateStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
+        if (isoDateStr && isoDateStr.startsWith(currentDate)) return true;
+        
+        // Check for DD/MM/YYYY format
+        const ddmmyyyyStr = lines.find(line => /^\d{2}\/\d{2}\/\d{4}/.test(line));
+        if (ddmmyyyyStr) {
+            const [day, month, year] = ddmmyyyyStr.split('/');
+            const isoDate = `${year}-${month}-${day}`;
+            return isoDate.startsWith(currentDate);
+        }
+        
+        // Also check created_datetime which is in DD/MM/YYYY format
+        if (note.created_datetime) {
+            const [datePart] = note.created_datetime.split(',');
+            if (datePart) {
+                const [day, month, year] = datePart.split('/');
+                const isoDate = `${year}-${month}-${day}`;
+                return isoDate.startsWith(currentDate);
+            }
+        }
+        
+        return false;
     });
 
     // Handle date selection

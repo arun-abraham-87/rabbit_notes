@@ -190,6 +190,17 @@ const NoteFooter = ({
             </button>
             
             <button
+              onClick={() => {
+                setShowRawNote(true);
+                setShowMoreActions(false);
+              }}
+              title="Show Raw"
+              className="p-1 hover:bg-gray-100 rounded"
+            >
+              <DocumentTextIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+            </button>
+
+            <button
               onClick={() => handleDelete(note.id)}
               title="Delete Note"
               className="p-1 hover:bg-gray-100 rounded"
@@ -289,17 +300,6 @@ const NoteFooter = ({
                   >
                     <TagIcon className="h-3.5 w-3.5 mr-2 text-orange-500" />
                     <span>Pin Note</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowRawNote(true);
-                      setShowMoreActions(false);
-                    }}
-                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-                  >
-                    <DocumentTextIcon className="h-3.5 w-3.5 mr-2 text-gray-500" />
-                    <span>View Raw Note</span>
                   </button>
 
                   <div className="border-t my-1" />

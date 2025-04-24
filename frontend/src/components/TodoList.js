@@ -1,15 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PencilIcon } from '@heroicons/react/24/solid';
-import { TrashIcon } from '@heroicons/react/24/solid';
+import {
+  PencilIcon,
+  TrashIcon,
+  XMarkIcon,
+  MagnifyingGlassIcon,
+  CheckCircleIcon,
+  ChevronUpIcon,
+  ChevronDownIcon
+} from '@heroicons/react/24/solid';
 import { processContent } from '../utils/TextUtils';
 import { formatDate } from '../utils/DateUtils';
 
-const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => {
+const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [priorities, setPriorities] = useState({});
   const [priorityFilter, setPriorityFilter] = useState(null);
-  const [snackbar, setSnackbar] = useState(null); // { id, content, timeoutId }
-  const [removedTodo, setRemovedTodo] = useState(null); // { id, content }
+  const [snackbar, setSnackbar] = useState(null);
+  const [removedTodo, setRemovedTodo] = useState(null);
   const [groupByPriority, setGroupByPriority] = useState(true);
 
   const parseAusDate = (str) => {
@@ -154,8 +161,6 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
     };
   };
 
-  const { total, high, medium, low } = computePriorityCounts();
-
   const renderTodoCard = (todo) => {
     const ageColorClass = getAgeClass(todo.created_datetime);
     const tagPriority = todo.content.includes('#high')
@@ -170,222 +175,286 @@ const TodoList = ({ todos, notes , updateTodosCallback, updateNoteCallBack}) => 
     return (
       <div
         key={todo.id}
-        className={`flex justify-between items-start p-2 mb-3 rounded-lg border-l-4 border bg-card text-card-foreground shadow-sm relative group transition-shadow duration-200 ${
-          currentPriority === 'high' ? 'border-l-red-500'
-          : currentPriority === 'medium' ? 'border-l-yellow-500'
-          : 'border-l-green-500'
+        className={`group flex flex-col gap-3 p-4 rounded-xl border bg-white shadow-sm hover:shadow-md transition-all duration-200 ${
+          currentPriority === 'high'
+            ? 'border-l-4 border-l-rose-500 border-t border-r border-b border-rose-100'
+            : currentPriority === 'medium'
+            ? 'border-l-4 border-l-amber-500 border-t border-r border-b border-amber-100'
+            : 'border-l-4 border-l-emerald-500 border-t border-r border-b border-emerald-100'
         }`}
       >
-        <div className="flex-1">
-          <input
-            type="checkbox"
-            className="mr-2"
-            onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
-          />
-          <pre className="whitespace-pre-wrap">
-            {(() => {
-              const processedSegments = [];
-              let started = false;
+        <div className="flex items-start gap-4">
+          {/* Checkbox and Content */}
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
+              />
+              <div className="flex-1 text-sm text-gray-800">
+                {(() => {
+                  const content = todo.content
+                    .replace(/#?todo/gi, '')
+                    .replace(/meta::[^\s]+/gi, '')
+                    .trim();
 
-              todo.content
-                .replace(/#?todo/gi, '')
-                .replace(/meta::[^\s]+/gi, '')
-                .trim()
-                .split(/(https?:\/\/[^\s]+)/g)
-                .forEach((segment, i) => {
-                  if (segment.match(/^https?:\/\//)) {
-                    try {
-                      const url = new URL(segment);
-                      processedSegments.push(
-                        <a
-                          key={`link-${i}`}
-                          href={segment}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-700 underline"
-                        >
-                          {url.hostname.replace(/^www\./, '')}
-                        </a>
-                      );
-                    } catch {
-                      processedSegments.push(segment);
-                    }
-                  } else {
-                    const words = segment.split(/(\s+)/);
-                    const processed = words.map((word, j) => {
-                      if (!started && word.trim() && !word.match(/^\s+$/)) {
-                        started = true;
-                        return word.charAt(0).toUpperCase() + word.slice(1);
+                  // Split content into segments (text and links)
+                  return content.split(/(https?:\/\/[^\s]+)/g).map((segment, i) => {
+                    if (segment.match(/^https?:\/\//)) {
+                      // Handle links
+                      try {
+                        const url = new URL(segment);
+                        return (
+                          <a
+                            key={`link-${i}`}
+                            href={segment}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-600 hover:text-indigo-700 hover:underline transition-colors duration-200"
+                          >
+                            {url.hostname.replace(/^www\./, '')}
+                          </a>
+                        );
+                      } catch {
+                        return segment;
                       }
-                      return word;
-                    }).join('');
+                    } else {
+                      // Handle text with search highlighting
+                      const words = segment.split(/(\s+)/);
+                      const processed = words
+                        .map((word, j) => {
+                          if (j === 0 && !word.match(/^\s+$/)) {
+                            return word.charAt(0).toUpperCase() + word.slice(1);
+                          }
+                          return word;
+                        })
+                        .join('');
 
-                    processedSegments.push(
-                      processed
-                        .split(new RegExp(`(${searchQuery})`, 'gi'))
+                      if (!searchQuery) return processed;
+
+                      return processed.split(new RegExp(`(${searchQuery})`, 'gi'))
                         .map((part, index) =>
                           part.toLowerCase() === searchQuery.toLowerCase() ? (
-                            <mark key={`highlight-${i}-${index}`} className="bg-yellow-300">{part}</mark>
-                          ) : (
-                            part
-                          )
-                        )
-                    );
-                  }
-                });
-
-              return processedSegments;
-            })()}
-          </pre>
-          <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
-            <div className="flex space-x-1 items-center">
-              <button
-                title="High Priority"
-                onClick={() => handlePriorityClick(todo.id, 'high')}
-                className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'high' ? 'opacity-80' : ''}`}
-              >🔴</button>
-              <button
-                title="Medium Priority"
-                onClick={() => handlePriorityClick(todo.id, 'medium')}
-                className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'medium' ? 'opacity-80' : ''}`}
-              >🟡</button>
-              <button
-                title="Low Priority"
-                onClick={() => handlePriorityClick(todo.id, 'low')}
-                className={`text-[10px] transition-transform opacity-30 hover:opacity-90 hover:scale-150 ${currentPriority === 'low' ? 'opacity-80' : ''}`}
-              >🟢</button>
+                            <mark 
+                              key={`highlight-${i}-${index}`} 
+                              className="bg-yellow-100/75 text-gray-900 rounded-sm"
+                            >
+                              {part}
+                            </mark>
+                          ) : part
+                        );
+                    }
+                  });
+                })()}
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handleCheckboxChange(todo.id, true)}
-                className="text-blue-500 hover:underline"
-              >
-                Mark as todo
-              </button>
-              <PencilIcon className="h-4 w-4 cursor-pointer hover:text-blue-500" />
-              <TrashIcon className="h-4 w-4 cursor-pointer hover:text-red-500" />
+
+            {/* Priority and Actions */}
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <button
+                  title="High Priority"
+                  onClick={() => handlePriorityClick(todo.id, 'high')}
+                  className={`p-1.5 rounded-lg transition-all duration-200 ${
+                    currentPriority === 'high'
+                      ? 'bg-rose-100 text-rose-700'
+                      : 'hover:bg-rose-50 text-gray-400 hover:text-rose-600'
+                  }`}
+                >
+                  <div className="w-2 h-2 rounded-full bg-current" />
+                </button>
+                <button
+                  title="Medium Priority"
+                  onClick={() => handlePriorityClick(todo.id, 'medium')}
+                  className={`p-1.5 rounded-lg transition-all duration-200 ${
+                    currentPriority === 'medium'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'hover:bg-amber-50 text-gray-400 hover:text-amber-600'
+                  }`}
+                >
+                  <div className="w-2 h-2 rounded-full bg-current" />
+                </button>
+                <button
+                  title="Low Priority"
+                  onClick={() => handlePriorityClick(todo.id, 'low')}
+                  className={`p-1.5 rounded-lg transition-all duration-200 ${
+                    currentPriority === 'low'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'hover:bg-emerald-50 text-gray-400 hover:text-emerald-600'
+                  }`}
+                >
+                  <div className="w-2 h-2 rounded-full bg-current" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleCheckboxChange(todo.id, true)}
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors duration-200"
+                >
+                  Complete
+                </button>
+                <div className="h-4 w-px bg-gray-200" />
+                <button className="p-1 rounded-lg hover:bg-gray-100 transition-all duration-200">
+                  <PencilIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+                </button>
+                <button className="p-1 rounded-lg hover:bg-gray-100 transition-all duration-200">
+                  <TrashIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-        <div className={`text-xs ${ageColorClass}`}>
-          {formatDate(todo.created_datetime)}
+
+          {/* Date */}
+          <div className={`text-xs font-medium ${ageColorClass} bg-opacity-10 px-2.5 py-1 rounded-lg`}>
+            {formatDate(todo.created_datetime)}
+          </div>
         </div>
       </div>
     );
   };
 
+  const { total, high, medium, low } = computePriorityCounts();
+
   return (
-    <div>
-      <div className="my-2">
-        <div className="relative w-full">
+    <div className="space-y-6">
+      {/* Search and Group Controls */}
+      <div className="flex flex-col gap-4">
+        {/* Search Bar */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+          </div>
           <input
             type="text"
             placeholder="Search todos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="border px-2 py-1 rounded w-full pr-8"
+            className="block w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
-              title="Clear"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
             >
-              ✕
+              <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
             </button>
           )}
         </div>
+
+        {/* Group Toggle */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setGroupByPriority(!groupByPriority)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors duration-200"
+          >
+            {groupByPriority ? (
+              <ChevronUpIcon className="h-4 w-4" />
+            ) : (
+              <ChevronDownIcon className="h-4 w-4" />
+            )}
+            Group by Priority
+          </button>
+        </div>
       </div>
-      <div className="my-2 flex items-center space-x-2">
-        <input
-          type="checkbox"
-          checked={groupByPriority}
-          onChange={(e) => setGroupByPriority(e.target.checked)}
-          id="groupPriority"
-        />
-        <label htmlFor="groupPriority" className="text-sm">Group by Priority</label>
-      </div>
-      <div className="flex space-x-4 mb-4 text-sm">
-        <div
+
+      {/* Priority Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <button
           onClick={() => setPriorityFilter(null)}
-          className={`flex-1 border rounded p-3 bg-white shadow text-center cursor-pointer ${
-            priorityFilter === null ? '' : 'opacity-50 hover:opacity-100'
+          className={`flex flex-col items-center p-4 rounded-xl border bg-white transition-all duration-200 ${
+            priorityFilter === null
+              ? 'ring-2 ring-indigo-500 ring-offset-2'
+              : 'hover:border-indigo-200 hover:shadow-sm'
           }`}
         >
-          <div className="text-gray-500 text-xs">Total</div>
-          <div className="text-lg font-bold">{total}</div>
-        </div>
-        <div
+          <div className="text-xs font-medium text-gray-500 mb-1">Total</div>
+          <div className="text-2xl font-bold text-gray-900">{total}</div>
+        </button>
+        <button
           onClick={() => setPriorityFilter('high')}
-          className={`flex-1 border rounded p-3 bg-white shadow text-center cursor-pointer ${
-            priorityFilter === null
-              ? ''
-              : priorityFilter === 'high'
-              ? 'ring-2 ring-red-500'
-              : 'opacity-50 hover:opacity-100'
+          className={`flex flex-col items-center p-4 rounded-xl border transition-all duration-200 ${
+            priorityFilter === 'high'
+              ? 'bg-rose-50 border-rose-200 ring-2 ring-rose-500 ring-offset-2'
+              : 'bg-white hover:bg-rose-50/50 hover:border-rose-200 hover:shadow-sm'
           }`}
         >
-          <div className="text-red-500 text-xs">High</div>
-          <div className="text-lg font-bold">{high}</div>
-        </div>
-        <div
+          <div className="text-xs font-medium text-rose-600 mb-1">High</div>
+          <div className="text-2xl font-bold text-rose-700">{high}</div>
+        </button>
+        <button
           onClick={() => setPriorityFilter('medium')}
-          className={`flex-1 border rounded p-3 bg-white shadow text-center cursor-pointer ${
-            priorityFilter === null
-              ? ''
-              : priorityFilter === 'medium'
-              ? 'ring-2 ring-yellow-500'
-              : 'opacity-50 hover:opacity-100'
+          className={`flex flex-col items-center p-4 rounded-xl border transition-all duration-200 ${
+            priorityFilter === 'medium'
+              ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-500 ring-offset-2'
+              : 'bg-white hover:bg-amber-50/50 hover:border-amber-200 hover:shadow-sm'
           }`}
         >
-          <div className="text-yellow-500 text-xs">Medium</div>
-          <div className="text-lg font-bold">{medium}</div>
-        </div>
-        <div
+          <div className="text-xs font-medium text-amber-600 mb-1">Medium</div>
+          <div className="text-2xl font-bold text-amber-700">{medium}</div>
+        </button>
+        <button
           onClick={() => setPriorityFilter('low')}
-          className={`flex-1 border rounded p-3 bg-white shadow text-center cursor-pointer ${
-            priorityFilter === null
-              ? ''
-              : priorityFilter === 'low'
-              ? 'ring-2 ring-green-500'
-              : 'opacity-50 hover:opacity-100'
+          className={`flex flex-col items-center p-4 rounded-xl border transition-all duration-200 ${
+            priorityFilter === 'low'
+              ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-500 ring-offset-2'
+              : 'bg-white hover:bg-emerald-50/50 hover:border-emerald-200 hover:shadow-sm'
           }`}
         >
-          <div className="text-green-500 text-xs">Low</div>
-          <div className="text-lg font-bold">{low}</div>
-        </div>
+          <div className="text-xs font-medium text-emerald-600 mb-1">Low</div>
+          <div className="text-2xl font-bold text-emerald-700">{low}</div>
+        </button>
       </div>
-      {groupByPriority ? (
-        ['high', 'medium', 'low'].map(priority => {
-          const group = filteredTodos.filter(todo => {
-            const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
-            const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
-            const assignedPriority = priorities[todo.id] || tag;
-            return assignedPriority === priority;
-          });
-          if (!group.length) return null;
-          return (
-            <div key={priority}>
-              <h3 className={`text-md font-semibold capitalize my-2 ${
-                priority === 'high' ? 'text-red-500'
-                : priority === 'medium' ? 'text-yellow-500'
-                : 'text-green-500'
-              }`}>
-                {priority} Priority
-              </h3>
-              <div className="pl-8">
-                {group.map(renderTodoCard)}
+
+      {/* Todo List */}
+      <div className="space-y-6">
+        {groupByPriority ? (
+          ['high', 'medium', 'low'].map((priority) => {
+            const group = filteredTodos.filter((todo) => {
+              const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
+              const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
+              const assignedPriority = priorities[todo.id] || tag;
+              return assignedPriority === priority;
+            });
+            if (!group.length) return null;
+            return (
+              <div key={priority} className="space-y-4">
+                <h3
+                  className={`text-sm font-semibold capitalize ${
+                    priority === 'high'
+                      ? 'text-rose-600'
+                      : priority === 'medium'
+                      ? 'text-amber-600'
+                      : 'text-emerald-600'
+                  }`}
+                >
+                  {priority} Priority • {group.length}
+                </h3>
+                <div className="space-y-3">
+                  {group.map(renderTodoCard)}
+                </div>
               </div>
-            </div>
-          );
-        })
-      ) : (
-        filteredTodos.map(renderTodoCard)
-      )}
+            );
+          })
+        ) : (
+          <div className="space-y-3">
+            {filteredTodos.map(renderTodoCard)}
+          </div>
+        )}
+      </div>
+
+      {/* Snackbar */}
       {snackbar && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50 transition-opacity duration-300">
-          Todo marked complete
-          <button onClick={handleUndo} className="ml-4 underline">Undo</button>
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300">
+          <CheckCircleIcon className="h-4 w-4 text-emerald-400" />
+          <span className="text-sm">Todo completed</span>
+          <button
+            onClick={handleUndo}
+            className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors duration-200"
+          >
+            Undo
+          </button>
         </div>
       )}
     </div>

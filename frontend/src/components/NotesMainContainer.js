@@ -245,54 +245,59 @@ const NotesMainContainer = ({
 
     return (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
-            {ongoingMeeting && (
-                <OngoingMeetingBanner 
-                    meeting={ongoingMeeting} 
-                    onDismiss={handleDismissMeeting}
+            <div className="sticky top-0 z-50 bg-white -mx-6 px-6 pb-4 border-b">
+                {ongoingMeeting && (
+                    <OngoingMeetingBanner
+                        meeting={ongoingMeeting}
+                        onDismiss={handleDismissMeeting}
+                    />
+                )}
+                <NextMeetingBanner meetings={meetings} notes={allNotes} />
+            </div>
+            <div className="mt-4">
+                <DateSelectorBar
+                    setNoteDate={handleDateChange}
+                    defaultCollapsed={true}
                 />
-            )}
-            <NextMeetingBanner meetings={meetings} notes={allNotes} />
-            <DateSelectorBar 
-                setNoteDate={handleDateChange} 
-                defaultCollapsed={true} 
-            />
-            <NoteEditor
-                objList={objList}
-                note={{ id: '', content: '' }}
-                text=""
-                addNote={addNote}
-                onSave={(note) => {
-                    addNote(note.content);
-                }}
-                onCancel={() => {
-                    console.log("NoteEditor canceled");
-                }}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                isAddMode={true}
-            />
-            <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
-            {checked ? (
-                <NotesListByDate 
-                    notes={filteredNotes}
-                    searchQuery={searchQuery} 
-                    onWordClick={handleTagClick}
-                    settings={settings}
+                <NoteEditor
+                    objList={objList}
+                    note={{ id: '', content: '' }}
+                    text=""
+                    addNote={addNote}
+                    onSave={(note) => {
+                        addNote(note.content);
+                    }}
+                    onCancel={() => {
+                        console.log("NoteEditor canceled");
+                    }}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    isAddMode={true}
                 />
-            ) : (
-                <NotesList 
-                    objList={objList} 
-                    notes={filteredNotes}
-                    addNotes={addNote} 
-                    updateNoteCallback={updateNoteCallback}
-                    updateTotals={setTotals} 
-                    objects={objects} 
-                    addObjects={addTag} 
-                    searchTerm={searchQuery} 
-                    onWordClick={handleTagClick}
-                    settings={settings}
-                />
-            )}
+                <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
+                {checked ? (
+                    <NotesListByDate
+                        notes={filteredNotes}
+                        searchQuery={searchQuery}
+                        onWordClick={handleTagClick}
+                        settings={settings}
+                    />
+                ) : (
+                    <NotesList
+                        objList={objList}
+                        notes={filteredNotes}
+                        addNotes={addNote}
+                        updateNoteCallback={updateNoteCallback}
+                        updateTotals={setTotals}
+                        objects={objects}
+                        addObjects={addTag}
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                        onWordClick={handleTagClick}
+                        settings={settings}
+                    />
+                )}
+            </div>
         </div>
     );
 };

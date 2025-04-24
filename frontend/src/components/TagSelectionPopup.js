@@ -10,9 +10,10 @@ import React, { useEffect, useRef } from 'react';
  * - visible: boolean       — whether the popup should be shown
  * - position: { x, y }     — viewport coordinates for placing the popup
  * - onConvert: () => void  — callback when "Convert to Tag" is clicked
+ * - onSearch: () => void   — callback when "Search" is clicked
  * - onCancel: () => void   — callback when "Cancel" is clicked
  */
-export default function TagSelectionPopup({ visible, position, onConvert, onCancel }) {
+export default function TagSelectionPopup({ visible, position, onConvert, onSearch, onCancel }) {
   const popupRef = useRef(null);
 
   useEffect(() => {
@@ -39,6 +40,9 @@ export default function TagSelectionPopup({ visible, position, onConvert, onCanc
       let adjustedX = position.x;
       let adjustedY = position.y;
       
+      // Always position the popup higher above the selection
+      adjustedY -= (rect.height + 40); // Increased offset from 20 to 40 pixels
+      
       // Adjust horizontal position if needed
       if (adjustedX + rect.width > viewportWidth) {
         adjustedX = viewportWidth - rect.width - 10;
@@ -47,11 +51,8 @@ export default function TagSelectionPopup({ visible, position, onConvert, onCanc
         adjustedX = 10;
       }
       
-      // Adjust vertical position if needed
-      if (adjustedY + rect.height > viewportHeight) {
-        adjustedY = position.y - rect.height - 20; // Show above selection
-      }
-      if (adjustedY < 0) {
+      // Ensure popup doesn't go above viewport
+      if (adjustedY < 10) {
         adjustedY = 10;
       }
       
@@ -77,6 +78,12 @@ export default function TagSelectionPopup({ visible, position, onConvert, onCanc
         className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
       >
         Convert to Tag
+      </button>
+      <button
+        onClick={onSearch}
+        className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+      >
+        Search
       </button>
       <button
         onClick={onCancel}

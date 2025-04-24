@@ -23,7 +23,7 @@ import { CalendarIcon, ClockIcon } from '@heroicons/react/24/solid';
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
 
-const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm, settings = {} }) => {
+const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals, objects, addObjects, searchTerm, setSearchTerm, settings = {} }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
   const [selectedText, setSelectedText] = useState('');
@@ -155,6 +155,11 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
 
   const handleConvertToTag = () => {
     addObjects(selectedText);
+    setPopupVisible(false);
+  };
+
+  const handleSearch = () => {
+    setSearchTerm(selectedText);
     setPopupVisible(false);
   };
 
@@ -421,6 +426,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
           visible={isPopupVisible}
           position={popupPosition}
           onConvert={handleConvertToTag}
+          onSearch={handleSearch}
           onCancel={handleCancelPopup}
         />
       )}

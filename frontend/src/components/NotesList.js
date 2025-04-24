@@ -256,17 +256,17 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
       <div className="mb-4 flex justify-end gap-3">
         <button
           onClick={() => setShowAddEventModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
         >
           <ClockIcon className="h-5 w-5" />
-          <span>Quick Add Event</span>
+          <span>Add Event</span>
         </button>
         <button
           onClick={() => setShowAddMeetingModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
         >
           <CalendarIcon className="h-5 w-5" />
-          <span>Quick Add Meeting</span>
+          <span>Add Meeting</span>
         </button>
       </div>
       {showCopyToast && (

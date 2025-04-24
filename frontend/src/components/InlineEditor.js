@@ -8,7 +8,7 @@ import React, { useRef, useEffect, useState } from 'react';
  * -----
  * text            – current text (string)
  * setText         – setter for the text in the parent state
- * onSave          – fn(newText)  called on Save or “Enter”
+ * onSave          – fn(newText)  called on Save or "Enter"
  * onCancel        – fn()         called on Cancel click
  * inputClass      – extra Tailwind classes for the <input> (optional)
  */
@@ -33,6 +33,31 @@ const InlineEditor = ({ text, setText, onSave, onCancel, inputClass = '' }) => {
     }
   };
 
+  const handleKeyDown = (e) => {
+    // Handle Cmd+Enter (or Ctrl+Enter) to save
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault(); // Prevent the event from bubbling up
+      e.stopPropagation(); // Stop propagation to prevent global handler
+      onSave(text);
+      return;
+    }
+
+    // Handle regular Enter
+    if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      onSave(text);
+    }
+  };
+
+  const closeUrlPopup = (newText) => {
+    setText(newText);
+    setPendingUrl(null);
+    // Return focus to the main input after a short delay to ensure the DOM has updated
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  };
+
   return (
     <div className="w-full flex items-center">
       {pendingUrl && (
@@ -54,12 +79,10 @@ const InlineEditor = ({ text, setText, onSave, onCancel, inputClass = '' }) => {
                       label = pendingUrl;
                     }
                   }
-                  setText(`[${label}](${pendingUrl})`);
-                  setPendingUrl(null);
+                  closeUrlPopup(`[${label}](${pendingUrl})`);
                 } else if (e.key === 'Escape') {
                   // confirm bare URL
-                  setText(pendingUrl);
-                  setPendingUrl(null);
+                  closeUrlPopup(pendingUrl);
                 }
               }}
               autoFocus
@@ -72,18 +95,14 @@ const InlineEditor = ({ text, setText, onSave, onCancel, inputClass = '' }) => {
                     try { return new URL(pendingUrl).hostname.replace(/^www\./,''); }
                     catch { return pendingUrl; }
                   })();
-                  setText(`[${label}](${pendingUrl})`);
-                  setPendingUrl(null);
+                  closeUrlPopup(`[${label}](${pendingUrl})`);
                 }}
                 className="px-3 py-1 bg-blue-500 text-white rounded text-sm"
               >
                 OK
               </button>
               <button
-                onClick={() => {
-                  setText(pendingUrl);
-                  setPendingUrl(null);
-                }}
+                onClick={() => closeUrlPopup(pendingUrl)}
                 className="px-3 py-1 bg-gray-300 rounded text-sm"
               >
                 Cancel
@@ -98,9 +117,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, inputClass = '' }) => {
         ref={inputRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') onSave(text);
-        }}
+        onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         className={`flex-1 border border-gray-300 px-2 py-1 rounded mr-2 text-sm ${inputClass}`}
       />

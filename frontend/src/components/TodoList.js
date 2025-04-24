@@ -23,9 +23,9 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [priorityFilter, setPriorityFilter] = useState(null);
   const [snackbar, setSnackbar] = useState(null);
   const [removedTodo, setRemovedTodo] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('list'); // Changed from 'grid' to 'list'
   const [sortBy, setSortBy] = useState('priority'); // 'priority', 'date', 'age'
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true); // Changed from false to true
 
   const parseAusDate = (str) => {
     const [datePart, timePart, ampmRaw] = str.split(/[\s,]+/);
@@ -59,6 +59,26 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     return `${diffHours}h ${diffMinutes}m ago`;
   };
 
+  const getPriorityAge = (content) => {
+    const match = content.match(/meta::priority_age::(.+)/);
+    if (!match) return null;
+    
+    const priorityDate = new Date(match[1]);
+    const now = new Date();
+    const diffMs = now - priorityDate;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      if (diffHours === 0) {
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        return diffMinutes === 0 ? 'just now' : `${diffMinutes}m`;
+      }
+      return `${diffHours}h`;
+    }
+    return `${diffDays}d`;
+  };
+
   const updateTodo = async (id, updatedContent, removeNote = false) => {
     const response = await fetch(`http://localhost:5001/api/notes/${id}`, {
       method: 'PUT',
@@ -87,8 +107,18 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const onPriorityChange = (id, level) => {
     const note = todos.find((todo) => todo.id === id);
     if (note) {
-      const cleanedContent = note.content.replace(/meta::(high|medium|low)/gi, '').trim();
-      const updatedContent = `${cleanedContent}\nmeta::${level}`;
+      const currentDate = new Date().toISOString();
+      const cleanedContent = note.content
+        .split('\n')
+        .filter(line => 
+          !line.trim().startsWith('meta::high') && 
+          !line.trim().startsWith('meta::medium') && 
+          !line.trim().startsWith('meta::low') &&
+          !line.trim().startsWith('meta::priority_age::')
+        )
+        .join('\n')
+        .trim();
+      const updatedContent = `${cleanedContent}\nmeta::${level}\nmeta::priority_age::${currentDate}`;
       updateTodo(id, updatedContent);
     }
   };
@@ -178,11 +208,12 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
     const currentPriority = priorities[todo.id] || tag;
     const ageColorClass = getAgeClass(todo.created_datetime);
+    const priorityAge = getPriorityAge(todo.content);
 
     const priorityColors = {
-      high: 'border-l-rose-500 bg-rose-50',
-      medium: 'border-l-amber-500 bg-amber-50',
-      low: 'border-l-emerald-500 bg-emerald-50'
+      high: 'bg-rose-50',
+      medium: 'bg-amber-50',
+      low: 'bg-emerald-50'
     };
 
     return (
@@ -190,16 +221,29 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         key={todo.id}
         className={`group relative ${
           viewMode === 'grid' ? 'h-[200px]' : 'min-h-[80px]'
-        } flex flex-col rounded-lg border-l-4 border-0 shadow-sm hover:shadow-md transition-all duration-200 ${
+        } flex flex-col rounded-lg border shadow-sm hover:shadow-md transition-all duration-200 ${
           priorityColors[currentPriority]
         }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b bg-white/50">
           <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
+            />
             <span className={`text-xs font-medium ${ageColorClass}`}>
               {getAgeLabel(todo.created_datetime)}
             </span>
+            {priorityAge && (
+              <>
+                <span className="text-gray-300">•</span>
+                <span className="text-xs font-medium text-gray-500">
+                  {currentPriority} for {priorityAge}
+                </span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -209,8 +253,9 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                   ? 'bg-rose-200 text-rose-700'
                   : 'hover:bg-rose-100 text-gray-400 hover:text-rose-600'
               }`}
+              title="High priority"
             >
-              <div className="w-2 h-2 rounded-full bg-current" />
+              <ChevronUpIcon className="h-4 w-4" />
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'medium')}
@@ -219,8 +264,9 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                   ? 'bg-amber-200 text-amber-700'
                   : 'hover:bg-amber-100 text-gray-400 hover:text-amber-600'
               }`}
+              title="Medium priority"
             >
-              <div className="w-2 h-2 rounded-full bg-current" />
+              <EllipsisHorizontalIcon className="h-4 w-4" />
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'low')}
@@ -229,8 +275,9 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                   ? 'bg-emerald-200 text-emerald-700'
                   : 'hover:bg-emerald-100 text-gray-400 hover:text-emerald-600'
               }`}
+              title="Low priority"
             >
-              <div className="w-2 h-2 rounded-full bg-current" />
+              <ChevronDownIcon className="h-4 w-4" />
             </button>
           </div>
         </div>

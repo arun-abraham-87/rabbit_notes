@@ -16,6 +16,17 @@ export default function TagSelectionPopup({ visible, position, onConvert, onCanc
   const popupRef = useRef(null);
 
   useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && visible) {
+        onCancel();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [visible, onCancel]);
+
+  useEffect(() => {
     if (visible && popupRef.current) {
       const popup = popupRef.current;
       const rect = popup.getBoundingClientRect();

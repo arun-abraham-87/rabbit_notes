@@ -244,6 +244,7 @@ const NotesList = ({ objList, notes, addNotes, updateNoteCallback, updateTotals,
         setRightClickText(null);
         setRightClickIndex(null);
         setRightClickNoteId(null);
+        setPopupVisible(false); // Also dismiss the tag selection popup
       }
     };
     window.addEventListener('keydown', handleEsc);

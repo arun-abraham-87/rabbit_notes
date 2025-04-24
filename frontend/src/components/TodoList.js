@@ -28,6 +28,12 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [showFilters, setShowFilters] = useState(true); // Changed from false to true
 
   const parseAusDate = (str) => {
+    // For ISO format dates (e.g., 2025-04-24T14:16:35.161Z)
+    if (str.includes('T') && str.endsWith('Z')) {
+      return new Date(str);
+    }
+
+    // For Australian format dates
     const [datePart, timePart, ampmRaw] = str.split(/[\s,]+/);
     const [day, month, year] = datePart?.split('/')?.map(Number) || [];
     let [hour, minute, second] = timePart?.split(':')?.map(Number) || [];
@@ -40,7 +46,8 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   };
 
   const getAgeClass = (createdDate) => {
-    const ageInDays = (Date.now() - parseAusDate(createdDate)) / (1000 * 60 * 60 * 24);
+    const created = new Date(createdDate); // Use direct Date constructor for ISO strings
+    const ageInDays = (Date.now() - created) / (1000 * 60 * 60 * 24);
     if (ageInDays > 2) return 'text-red-500';
     if (ageInDays > 1) return 'text-yellow-500';
     return 'text-green-500';
@@ -48,7 +55,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
 
   const getAgeLabel = (createdDate) => {
     const now = new Date();
-    const created = parseAusDate(createdDate);
+    const created = new Date(createdDate); // Use direct Date constructor for ISO strings
     const diffMs = now - created;
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
@@ -203,11 +210,47 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       return 0;
     });
 
+  // Add new function to create todo
+  const createTodo = async (content) => {
+    const now = new Date();
+    const timestamp = now.toISOString(); // This gives us format like 2025-04-24T14:16:35.161Z
+    const todoContent = `${content}\nmeta::todo::${timestamp}\nmeta::low\nmeta::priority_age::${timestamp}`;
+    
+    try {
+      const response = await fetch('http://localhost:5001/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: todoContent }),
+      });
+
+      if (response.ok) {
+        const newTodo = await response.json();
+        updateTodosCallback([newTodo, ...todos]);
+        updateNoteCallBack([newTodo, ...notes]);
+        setSearchQuery(''); // Clear the search bar after creating todo
+      }
+    } catch (error) {
+      console.error('Failed to create todo:', error);
+    }
+  };
+
+  // Add handler for Cmd+Enter
+  const handleSearchKeyDown = (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && searchQuery.trim()) {
+      e.preventDefault();
+      createTodo(searchQuery.trim());
+    }
+  };
+
   const renderTodoCard = (todo) => {
     const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
     const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
     const currentPriority = priorities[todo.id] || tag;
-    const ageColorClass = getAgeClass(todo.created_datetime);
+    
+    // Extract creation date from meta::todo tag
+    const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
+    const createdDate = todoDateMatch ? todoDateMatch[1] : todo.created_datetime;
+    const ageColorClass = getAgeClass(createdDate);
     const priorityAge = getPriorityAge(todo.content);
 
     const priorityColors = {
@@ -234,7 +277,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
               onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
             />
             <span className={`text-xs font-medium ${ageColorClass}`}>
-              {getAgeLabel(todo.created_datetime)}
+              {getAgeLabel(createdDate)}
             </span>
             {priorityAge && (
               <>
@@ -367,9 +410,10 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
             </div>
             <input
               type="text"
-              placeholder="Search todos..."
+              placeholder="Search todos or press Cmd+Enter to create new todo..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
               className="block w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
             />
             {searchQuery && (

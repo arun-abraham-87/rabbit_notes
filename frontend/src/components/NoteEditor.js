@@ -750,7 +750,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
   };
 
   return (
-    <div className="p-6 bg-white border border-gray-300 rounded-lg shadow-xl w-full">
+    <div className="p-6 bg-white border border-gray-300 rounded-lg shadow-xl w-full note-editor-container">
       {mergedContent && (
         <div className="fixed top-10 left-1/2 transform -translate-x-1/2 bg-white shadow-lg border border-gray-300 rounded p-4 z-50 max-w-xl w-full">
           <h2 className="font-bold mb-2">Merged Note</h2>

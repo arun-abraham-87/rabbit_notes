@@ -59,6 +59,7 @@ const NotesList = ({ objList, notes, allNotes, addNotes, updateNoteCallback, upd
   const [editingMeetingNote, setEditingMeetingNote] = useState(null);
   const [editingEventNote, setEditingEventNote] = useState(null);
   const [showingNormalEventEditor, setShowingNormalEventEditor] = useState(false);
+  const notesListRef = useRef(null);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -133,6 +134,13 @@ const NotesList = ({ objList, notes, allNotes, addNotes, updateNoteCallback, upd
     const selection = window.getSelection();
     if (selection && selection.toString().trim()) {
       const range = selection.getRangeAt(0);
+      const container = range.commonAncestorContainer;
+      
+      // Check if the selection is within our component
+      if (!notesListRef.current?.contains(container)) {
+        return;
+      }
+
       const rect = range.getBoundingClientRect();
       setSelectedText(selection.toString().trim());
       
@@ -215,13 +223,16 @@ const NotesList = ({ objList, notes, allNotes, addNotes, updateNoteCallback, upd
   } = findDuplicatedUrls(safeNotes);
 
   useEffect(() => {
-    document.addEventListener('selectionchange', handleTextSelection);
-    return () => {
-      document.removeEventListener('selectionchange', handleTextSelection);
-      if (popupTimeoutRef.current) {
-        clearTimeout(popupTimeoutRef.current);
-      }
-    };
+    const notesListElement = notesListRef.current;
+    if (notesListElement) {
+      notesListElement.addEventListener('mouseup', handleTextSelection);
+      return () => {
+        notesListElement.removeEventListener('mouseup', handleTextSelection);
+        if (popupTimeoutRef.current) {
+          clearTimeout(popupTimeoutRef.current);
+        }
+      };
+    }
   }, []);
 
   useEffect(() => {
@@ -284,7 +295,7 @@ const NotesList = ({ objList, notes, allNotes, addNotes, updateNoteCallback, upd
   };
 
   return (
-    <div className="relative">
+    <div ref={notesListRef} className="relative">
       <div className="mb-4 flex justify-end gap-3">
         <button
           onClick={() => setShowAddEventModal(true)}

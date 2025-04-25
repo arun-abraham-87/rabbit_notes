@@ -58,6 +58,7 @@ const NotesList = ({ objList, notes, allNotes, addNotes, updateNoteCallback, upd
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [editingMeetingNote, setEditingMeetingNote] = useState(null);
   const [editingEventNote, setEditingEventNote] = useState(null);
+  const [showingNormalEventEditor, setShowingNormalEventEditor] = useState(false);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -530,14 +531,38 @@ const NotesList = ({ objList, notes, allNotes, addNotes, updateNoteCallback, upd
       )}
 
       {editingEventNote && (
-        <EditEventModal
-          note={editingEventNote}
-          onClose={() => setEditingEventNote(null)}
-          onSave={(updatedContent) => {
-            updateNote(editingEventNote.id, updatedContent);
-            setEditingEventNote(null);
-          }}
-        />
+        showingNormalEventEditor ? (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
+              </div>
+              <NoteEditor
+                note={editingEventNote}
+                onSave={(updatedNote) => {
+                  updateNote(updatedNote.id, updatedNote.content);
+                  setEditingEventNote(null);
+                  setShowingNormalEventEditor(false);
+                }}
+                onCancel={() => {
+                  setEditingEventNote(null);
+                  setShowingNormalEventEditor(false);
+                }}
+                objList={objList}
+              />
+            </div>
+          </div>
+        ) : (
+          <EditEventModal
+            note={editingEventNote}
+            onClose={() => setEditingEventNote(null)}
+            onSave={(updatedContent) => {
+              updateNote(editingEventNote.id, updatedContent);
+              setEditingEventNote(null);
+            }}
+            onSwitchToNormalEdit={() => setShowingNormalEventEditor(true)}
+          />
+        )
       )}
 
       {popupNoteText && (

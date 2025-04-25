@@ -272,20 +272,25 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       const lines = content.split('\n');
       
       if (lines.some(line => line.trim().startsWith('meta::event'))) {
-        // Extract location if it exists
-        const locationLine = lines.find(line => line.trim().startsWith('Location:'));
-        const location = locationLine ? locationLine.replace('Location:', '').trim() : null;
+        // Extract description
+        const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+        const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+
+        // Extract event date
+        const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+        const baseEventDate = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : null;
+        if (!baseEventDate) return [];
+
+        // Extract location
+        const locationLine = lines.find(line => line.startsWith('event_location:'));
+        const location = locationLine ? locationLine.replace('event_location:', '').trim() : null;
 
         // Extract recurring information
-        const recurringLine = lines.find(line => line.trim().startsWith('meta::recurring::'));
-        const recurrenceType = recurringLine ? recurringLine.replace('meta::recurring::', '').trim() : null;
+        const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
+        const recurrenceType = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : null;
         
-        const recurringEndLine = lines.find(line => line.trim().startsWith('meta::recurring_end::'));
-        const recurrenceEndDate = recurringEndLine ? recurringEndLine.replace('meta::recurring_end::', '').trim() : null;
-
-        // Get the base event date and ensure it's a valid date string
-        const baseEventDate = lines[1]?.trim();
-        if (!baseEventDate) return [];
+        const recurringEndLine = lines.find(line => line.startsWith('event_recurring_end:'));
+        const recurrenceEndDate = recurringEndLine ? recurringEndLine.replace('event_recurring_end:', '').trim() : null;
 
         try {
           // Calculate next occurrence if it's a recurring event
@@ -298,7 +303,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
           return [{ 
             id: note.id, 
-            context: lines[0].trim(), 
+            context: description,
             time: nextOccurrence.toISOString(),
             location: location,
             isRecurring: !!recurrenceType,
@@ -340,6 +345,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
   const [editingMeetingId, setEditingMeetingId] = useState(null);
   const [editingEventId, setEditingEventId] = useState(null);
+  const [showingNormalEventEditor, setShowingNormalEventEditor] = useState(false);
 
   const handleSettingChange = (key, value) => {
     setUnsavedSettings(prev => ({
@@ -895,7 +901,33 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       {/* Edit Event Modal */}
       {editingEventId && (() => {
         const event = notes.find(n => n.id === editingEventId);
-        return (
+        return showingNormalEventEditor ? (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
+              </div>
+              <NoteEditor
+                note={event}
+                onSave={(updatedNote) => {
+                  updateNoteById(updatedNote.id, updatedNote.content);
+                  // Update the notes state immediately
+                  setNotes(prevNotes => 
+                    prevNotes.map(n => 
+                      n.id === updatedNote.id ? { ...n, content: updatedNote.content } : n
+                    )
+                  );
+                  setEditingEventId(null);
+                  setShowingNormalEventEditor(false);
+                }}
+                onCancel={() => {
+                  setEditingEventId(null);
+                  setShowingNormalEventEditor(false);
+                }}
+              />
+            </div>
+          </div>
+        ) : (
           <EditEventModal
             note={event}
             onSave={(updatedNote) => {
@@ -909,6 +941,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               setEditingEventId(null);
             }}
             onCancel={() => setEditingEventId(null)}
+            onSwitchToNormalEdit={() => setShowingNormalEventEditor(true)}
           />
         );
       })()}

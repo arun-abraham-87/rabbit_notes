@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const EditEventModal = ({ note, onSave, onCancel }) => {
+const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit }) => {
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -13,36 +13,45 @@ const EditEventModal = ({ note, onSave, onCancel }) => {
   useEffect(() => {
     if (note) {
       const lines = note.content.split('\n');
-      setDescription(lines[0] || '');
       
-      // Parse event date (remove T12:00)
-      if (lines[1]) {
-        setEventDate(lines[1].split('T')[0]);
+      // Find the description
+      const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+      if (descriptionLine) {
+        setDescription(descriptionLine.replace('event_description:', '').trim());
       }
       
-      // Parse end date if exists
-      if (lines[2] && !lines[2].startsWith('Location:')) {
-        setEndDate(lines[2].split('T')[0]);
+      // Find the event date
+      const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+      if (eventDateLine) {
+        const dateStr = eventDateLine.replace('event_date:', '').trim();
+        setEventDate(dateStr.split('T')[0]);
+      }
+      
+      // Find end date if exists
+      const endDateLine = lines.find(line => line.startsWith('event_end_date:'));
+      if (endDateLine) {
+        const dateStr = endDateLine.replace('event_end_date:', '').trim();
+        setEndDate(dateStr.split('T')[0]);
         setShowEndDate(true);
       }
       
       // Parse location
-      const locationLine = lines.find(line => line.startsWith('Location:'));
+      const locationLine = lines.find(line => line.startsWith('event_location:'));
       if (locationLine) {
-        setLocation(locationLine.replace('Location:', '').trim());
+        setLocation(locationLine.replace('event_location:', '').trim());
       }
 
       // Parse recurring info
-      const recurringLine = lines.find(line => line.startsWith('meta::recurring::'));
+      const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
       if (recurringLine) {
         setIsRecurring(true);
-        setRecurrenceType(recurringLine.replace('meta::recurring::', '').trim());
+        setRecurrenceType(recurringLine.replace('event_recurring_type:', '').trim());
       }
 
       // Parse recurring end date
-      const recurringEndLine = lines.find(line => line.startsWith('meta::recurring_end::'));
+      const recurringEndLine = lines.find(line => line.startsWith('event_recurring_end:'));
       if (recurringEndLine) {
-        setRecurrenceEndDate(recurringEndLine.replace('meta::recurring_end::', '').trim());
+        setRecurrenceEndDate(recurringEndLine.replace('event_recurring_end:', '').trim());
       }
     }
   }, [note]);
@@ -55,22 +64,34 @@ const EditEventModal = ({ note, onSave, onCancel }) => {
   const handleSubmit = () => {
     if (!description.trim() || !eventDate) return;
     
-    let content = `${description.trim()}\n${formatDateWithNoonTime(eventDate)}`;
+    let content = `meta::event::${new Date().toISOString()}\n`;
+    content += `event_description:${description.trim()}\n`;
+    content += `event_date:${formatDateWithNoonTime(eventDate)}`;
+    
     if (showEndDate && endDate) {
-      content += `\n${formatDateWithNoonTime(endDate)}`;
+      content += `\nevent_end_date:${formatDateWithNoonTime(endDate)}`;
     }
     if (location) {
-      content += `\nLocation: ${location}`;
+      content += `\nevent_location:${location}`;
     }
     if (isRecurring) {
-      content += `\nmeta::recurring::${recurrenceType}`;
+      content += `\nevent_recurring_type:${recurrenceType}`;
       if (recurrenceEndDate) {
-        content += `\nmeta::recurring_end::${recurrenceEndDate}`;
+        content += `\nevent_recurring_end:${recurrenceEndDate}`;
       }
     }
-    content += `\nmeta::event::${new Date().toISOString()}`;
     
     onSave({ ...note, content });
+
+    // Reset form
+    setDescription('');
+    setEventDate('');
+    setEndDate('');
+    setLocation('');
+    setShowEndDate(false);
+    setIsRecurring(false);
+    setRecurrenceType('daily');
+    setRecurrenceEndDate('');
   };
 
   // Close modal when clicking outside
@@ -91,13 +112,39 @@ const EditEventModal = ({ note, onSave, onCancel }) => {
     }
   };
 
+  // Handle cancel button click
+  const handleCancel = () => {
+    // Reset form state
+    setDescription('');
+    setEventDate('');
+    setEndDate('');
+    setLocation('');
+    setShowEndDate(false);
+    setIsRecurring(false);
+    setRecurrenceType('daily');
+    setRecurrenceEndDate('');
+    
+    // Call the onCancel prop
+    if (typeof onCancel === 'function') {
+      onCancel();
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-        <h2 className="text-xl font-semibold mb-4">Edit Event</h2>
+      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Edit Event</h2>
+          <button
+            onClick={onSwitchToNormalEdit}
+            className="text-sm text-gray-600 hover:text-gray-800 underline"
+          >
+            Switch to Normal Edit
+          </button>
+        </div>
         
         <div className="space-y-4">
           <div>
@@ -221,7 +268,7 @@ const EditEventModal = ({ note, onSave, onCancel }) => {
 
         <div className="mt-6 flex justify-end space-x-3">
           <button
-            onClick={onCancel}
+            onClick={handleCancel}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
           >
             Cancel

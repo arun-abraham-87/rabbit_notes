@@ -20,20 +20,22 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
   const handleSubmit = () => {
     if (!description.trim() || !eventDate) return;
     
-    let content = `${description.trim()}\n${formatDateWithNoonTime(eventDate)}`;
+    let content = `meta::event::${new Date().toISOString()}\n`;
+    content += `event_description:${description.trim()}\n`;
+    content += `event_date:${formatDateWithNoonTime(eventDate)}`;
+    
     if (showEndDate && endDate) {
-      content += `\n${formatDateWithNoonTime(endDate)}`;
+      content += `\nevent_end_date:${formatDateWithNoonTime(endDate)}`;
     }
     if (location) {
-      content += `\nLocation: ${location}`;
+      content += `\nevent_location:${location}`;
     }
     if (isRecurring) {
-      content += `\nmeta::recurring::${recurrenceType}`;
+      content += `\nevent_recurring_type:${recurrenceType}`;
       if (recurrenceEndDate) {
-        content += `\nmeta::recurring_end::${recurrenceEndDate}`;
+        content += `\nevent_recurring_end:${recurrenceEndDate}`;
       }
     }
-    content += `\nmeta::event::${new Date().toISOString()}`;
     
     onAdd(content);
     

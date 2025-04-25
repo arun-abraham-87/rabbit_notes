@@ -139,7 +139,7 @@ const NotesMainContainer = ({
 
     // Filter notes for display based on selected date and exclude states
     const filteredNotes = useMemo(() => {
-        return notes.filter(note => {
+        const filtered = notes.filter(note => {
             // First apply date filter if needed
             if (currentDate && !searchQuery) {
                 const lines = note.content.split('\n');
@@ -169,6 +169,17 @@ const NotesMainContainer = ({
 
             return true;
         });
+
+        // Update totals based on filtered notes
+        const newTotals = {
+            total: filtered.length,
+            events: filtered.filter(note => note.content.includes('meta::event::')).length,
+            meetings: filtered.filter(note => note.content.includes('meta::meeting::')).length,
+            todos: filtered.filter(note => note.content.includes('meta::todo::')).length
+        };
+        setTotals(newTotals);
+
+        return filtered;
     }, [notes, currentDate, searchQuery, excludeEvents, excludeMeetings]);
 
     // Handle date selection

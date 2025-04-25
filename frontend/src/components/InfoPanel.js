@@ -9,7 +9,12 @@ const InfoPanel = ({ totals, grpbyViewChkd, enableGroupByView }) => {
 
   return (
     <div className="flex justify-between items-center px-4 py-2 mb-4 mt-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-      <p className="text-sm text-gray-700">Count: {totals}</p>
+      <div className="flex items-center space-x-4">
+        <p className="text-sm text-gray-700">Total: {totals.total || 0}</p>
+        <p className="text-sm text-gray-700">Events: {totals.events || 0}</p>
+        <p className="text-sm text-gray-700">Meetings: {totals.meetings || 0}</p>
+        <p className="text-sm text-gray-700">Todos: {totals.todos || 0}</p>
+      </div>
 
       <div className="flex items-center space-x-2">
         <input

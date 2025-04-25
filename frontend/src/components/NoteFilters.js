@@ -9,6 +9,8 @@ const NoteFilters = ({
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
   const [activePriorityFilter, setActivePriorityFilter] = useState('');
+  const [excludeEvents, setExcludeEvents] = useState(false);
+  const [excludeMeetings, setExcludeMeetings] = useState(false);
 
   const removeFilterFromQuery = (filterText) => {
     if (setSearchQuery) {
@@ -136,6 +138,8 @@ const NoteFilters = ({
     setActivePriorityFilter('');
     setShowTodoSubButtons(false);
     setActivePriority('');
+    setExcludeEvents(false);
+    setExcludeMeetings(false);
     setLines([{ id: 'line-0', text: '', isTitle: false }]);
     setSearchQuery('');
   };
@@ -233,6 +237,47 @@ const NoteFilters = ({
       >
         People
       </button>
+
+      <div className="flex items-center gap-3 ml-2">
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input
+            type="checkbox"
+            checked={excludeEvents}
+            onChange={(e) => {
+              setExcludeEvents(e.target.checked);
+              if (e.target.checked) {
+                setSearchQuery(prev => {
+                  const trimmedPrev = prev ? prev.trim() : '';
+                  return trimmedPrev ? `${trimmedPrev} -meta::event::` : '-meta::event::';
+                });
+              } else {
+                removeFilterFromQuery('-meta::event::');
+              }
+            }}
+            className="form-checkbox h-3 w-3 text-purple-600"
+          />
+          Exclude Events
+        </label>
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input
+            type="checkbox"
+            checked={excludeMeetings}
+            onChange={(e) => {
+              setExcludeMeetings(e.target.checked);
+              if (e.target.checked) {
+                setSearchQuery(prev => {
+                  const trimmedPrev = prev ? prev.trim() : '';
+                  return trimmedPrev ? `${trimmedPrev} -meta::meeting::` : '-meta::meeting::';
+                });
+              } else {
+                removeFilterFromQuery('-meta::meeting::');
+              }
+            }}
+            className="form-checkbox h-3 w-3 text-purple-600"
+          />
+          Exclude Meetings
+        </label>
+      </div>
 
       <button
         onClick={handleClear}

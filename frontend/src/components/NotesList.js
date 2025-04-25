@@ -556,8 +556,13 @@ const NotesList = ({ objList, notes, allNotes, addNotes, updateNoteCallback, upd
           <EditEventModal
             note={editingEventNote}
             onClose={() => setEditingEventNote(null)}
-            onSave={(updatedContent) => {
-              updateNote(editingEventNote.id, updatedContent);
+            onSave={(updatedNote) => {
+              updateNote(updatedNote.id, updatedNote.content);
+              // Update the notes list immediately after successful update
+              const updatedNotes = notes.map(note => 
+                note.id === updatedNote.id ? { ...note, content: updatedNote.content } : note
+              );
+              updateNoteCallback(updatedNotes);
               setEditingEventNote(null);
             }}
             onCancel={() => setEditingEventNote(null)}

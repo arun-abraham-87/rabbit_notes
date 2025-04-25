@@ -560,6 +560,7 @@ const NotesList = ({ objList, notes, allNotes, addNotes, updateNoteCallback, upd
               updateNote(editingEventNote.id, updatedContent);
               setEditingEventNote(null);
             }}
+            onCancel={() => setEditingEventNote(null)}
             onSwitchToNormalEdit={() => setShowingNormalEventEditor(true)}
           />
         )

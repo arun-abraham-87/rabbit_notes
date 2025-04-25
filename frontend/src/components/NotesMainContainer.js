@@ -115,6 +115,8 @@ const NotesMainContainer = ({
     const [checked, setChecked] = useState(false);
     const [ongoingMeeting, setOngoingMeeting] = useState(null);
     const [currentDate, setCurrentDate] = useState(null);
+    const [excludeEvents, setExcludeEvents] = useState(settings.excludeEventsByDefault || false);
+    const [excludeMeetings, setExcludeMeetings] = useState(settings.excludeMeetingsByDefault || false);
 
     // Extract meetings from notes
     const meetings = useMemo(() => {
@@ -135,36 +137,39 @@ const NotesMainContainer = ({
         }).sort((a, b) => new Date(a.time) - new Date(b.time));
     }, [allNotes]);
 
-    // Filter notes for display based on selected date, but only if there's no search query
-    const filteredNotes = notes.filter(note => {
-        if (!currentDate || searchQuery) return true;  // Don't filter by date if there's a search query
-        
-        const lines = note.content.split('\n');
-        
-        // Try to find a date in either format
-        const isoDateStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
-        if (isoDateStr && isoDateStr.startsWith(currentDate)) return true;
-        
-        // Check for DD/MM/YYYY format
-        const ddmmyyyyStr = lines.find(line => /^\d{2}\/\d{2}\/\d{4}/.test(line));
-        if (ddmmyyyyStr) {
-            const [day, month, year] = ddmmyyyyStr.split('/');
-            const isoDate = `${year}-${month}-${day}`;
-            return isoDate.startsWith(currentDate);
-        }
-        
-        // Also check created_datetime which is in DD/MM/YYYY format
-        if (note.created_datetime) {
-            const [datePart] = note.created_datetime.split(',');
-            if (datePart) {
-                const [day, month, year] = datePart.split('/');
-                const isoDate = `${year}-${month}-${day}`;
-                return isoDate.startsWith(currentDate);
+    // Filter notes for display based on selected date and exclude states
+    const filteredNotes = useMemo(() => {
+        return notes.filter(note => {
+            // First apply date filter if needed
+            if (currentDate && !searchQuery) {
+                const lines = note.content.split('\n');
+                const isoDateStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
+                if (isoDateStr && !isoDateStr.startsWith(currentDate)) return false;
+                
+                const ddmmyyyyStr = lines.find(line => /^\d{2}\/\d{2}\/\d{4}/.test(line));
+                if (ddmmyyyyStr) {
+                    const [day, month, year] = ddmmyyyyStr.split('/');
+                    const isoDate = `${year}-${month}-${day}`;
+                    if (!isoDate.startsWith(currentDate)) return false;
+                }
+                
+                if (note.created_datetime) {
+                    const [datePart] = note.created_datetime.split(',');
+                    if (datePart) {
+                        const [day, month, year] = datePart.split('/');
+                        const isoDate = `${year}-${month}-${day}`;
+                        if (!isoDate.startsWith(currentDate)) return false;
+                    }
+                }
             }
-        }
-        
-        return false;
-    });
+
+            // Then apply exclude filters
+            if (excludeEvents && note.content.includes('meta::event::')) return false;
+            if (excludeMeetings && note.content.includes('meta::meeting::')) return false;
+
+            return true;
+        });
+    }, [notes, currentDate, searchQuery, excludeEvents, excludeMeetings]);
 
     // Handle date selection
     const handleDateChange = (date) => {
@@ -282,6 +287,8 @@ const NotesMainContainer = ({
                     setSearchQuery={setSearchQuery}
                     isAddMode={true}
                     settings={settings}
+                    onExcludeEventsChange={setExcludeEvents}
+                    onExcludeMeetingsChange={setExcludeMeetings}
                 />
                 <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
                 {checked ? (

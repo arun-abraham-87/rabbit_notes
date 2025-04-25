@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
 import NoteFilters from './NoteFilters';
 
-const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false, settings = {} }) => {
+const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange, onExcludeMeetingsChange }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
   const initialLines = contentSource
     ? [
@@ -840,6 +840,8 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
             setSearchQuery={setSearchQuery}
             searchQuery={searchQuery}
             settings={settings}
+            onExcludeEventsChange={onExcludeEventsChange}
+            onExcludeMeetingsChange={onExcludeMeetingsChange}
           />
         </div>
       )}

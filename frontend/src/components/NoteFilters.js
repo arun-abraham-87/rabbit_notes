@@ -7,7 +7,8 @@ const NoteFilters = ({
   setSearchQuery,
   searchQuery,
   settings = {},
-  isAddMode = false
+  onExcludeEventsChange,
+  onExcludeMeetingsChange
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
   const [activePriorityFilter, setActivePriorityFilter] = useState('');
@@ -20,8 +21,21 @@ const NoteFilters = ({
     setExcludeMeetings(settings.excludeMeetingsByDefault || false);
   }, [settings.excludeEventsByDefault, settings.excludeMeetingsByDefault]);
 
+  // Notify parent component when exclude states change
+  useEffect(() => {
+    if (onExcludeEventsChange) {
+      onExcludeEventsChange(excludeEvents);
+    }
+  }, [excludeEvents, onExcludeEventsChange]);
+
+  useEffect(() => {
+    if (onExcludeMeetingsChange) {
+      onExcludeMeetingsChange(excludeMeetings);
+    }
+  }, [excludeMeetings, onExcludeMeetingsChange]);
+
   const removeFilterFromQuery = (filterText) => {
-    if (setSearchQuery && !isAddMode) {
+    if (setSearchQuery) {
       setSearchQuery(prev => {
         const words = prev.split(' ');
         const filteredWords = words.filter(word => word !== filterText);

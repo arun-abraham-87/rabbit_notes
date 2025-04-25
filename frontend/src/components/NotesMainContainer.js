@@ -281,6 +281,7 @@ const NotesMainContainer = ({
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
                     isAddMode={true}
+                    settings={settings}
                 />
                 <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
                 {checked ? (

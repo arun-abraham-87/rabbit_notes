@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
 import NoteFilters from './NoteFilters';
 
-const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false }) => {
+const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false, settings = {} }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
   const initialLines = contentSource
     ? [
@@ -839,6 +839,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
             setActivePriority={setActivePriority}
             setSearchQuery={setSearchQuery}
             searchQuery={searchQuery}
+            settings={settings}
           />
         </div>
       )}

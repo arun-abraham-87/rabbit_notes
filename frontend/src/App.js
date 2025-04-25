@@ -19,6 +19,8 @@ const defaultSettings = {
   autoCollapse: false,
   showDates: true,
   showCreatedDate: false,
+  excludeEventsByDefault: false,
+  excludeMeetingsByDefault: false,
   searchQuery: '',
   totals: {
     total: 0,

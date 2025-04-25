@@ -1,19 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const NoteFilters = ({
   setLines,
   setShowTodoSubButtons,
   setActivePriority,
   setSearchQuery,
-  searchQuery
+  searchQuery,
+  settings = {},
+  isAddMode = false
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
   const [activePriorityFilter, setActivePriorityFilter] = useState('');
-  const [excludeEvents, setExcludeEvents] = useState(false);
-  const [excludeMeetings, setExcludeMeetings] = useState(false);
+  const [excludeEvents, setExcludeEvents] = useState(settings.excludeEventsByDefault || false);
+  const [excludeMeetings, setExcludeMeetings] = useState(settings.excludeMeetingsByDefault || false);
+
+  // Only set the initial state of checkboxes
+  useEffect(() => {
+    setExcludeEvents(settings.excludeEventsByDefault || false);
+    setExcludeMeetings(settings.excludeMeetingsByDefault || false);
+  }, [settings.excludeEventsByDefault, settings.excludeMeetingsByDefault]);
 
   const removeFilterFromQuery = (filterText) => {
-    if (setSearchQuery) {
+    if (setSearchQuery && !isAddMode) {
       setSearchQuery(prev => {
         const words = prev.split(' ');
         const filteredWords = words.filter(word => word !== filterText);
@@ -133,6 +141,42 @@ const NoteFilters = ({
     });
   };
 
+  const handleExcludeEventsChange = (checked) => {
+    setExcludeEvents(checked);
+    // Only update search query if it already contains filter text
+    if (searchQuery?.includes('-meta::event::') || searchQuery?.includes('-meta::meeting::')) {
+      if (checked) {
+        setSearchQuery(prev => {
+          const trimmedPrev = prev ? prev.trim() : '';
+          return trimmedPrev ? `${trimmedPrev} -meta::event::` : '-meta::event::';
+        });
+      } else {
+        setSearchQuery(prev => {
+          const words = prev.split(' ');
+          return words.filter(word => word !== '-meta::event::').join(' ').trim();
+        });
+      }
+    }
+  };
+
+  const handleExcludeMeetingsChange = (checked) => {
+    setExcludeMeetings(checked);
+    // Only update search query if it already contains filter text
+    if (searchQuery?.includes('-meta::event::') || searchQuery?.includes('-meta::meeting::')) {
+      if (checked) {
+        setSearchQuery(prev => {
+          const trimmedPrev = prev ? prev.trim() : '';
+          return trimmedPrev ? `${trimmedPrev} -meta::meeting::` : '-meta::meeting::';
+        });
+      } else {
+        setSearchQuery(prev => {
+          const words = prev.split(' ');
+          return words.filter(word => word !== '-meta::meeting::').join(' ').trim();
+        });
+      }
+    }
+  };
+
   const handleClear = () => {
     setShowTodoButtons(false);
     setActivePriorityFilter('');
@@ -243,17 +287,7 @@ const NoteFilters = ({
           <input
             type="checkbox"
             checked={excludeEvents}
-            onChange={(e) => {
-              setExcludeEvents(e.target.checked);
-              if (e.target.checked) {
-                setSearchQuery(prev => {
-                  const trimmedPrev = prev ? prev.trim() : '';
-                  return trimmedPrev ? `${trimmedPrev} -meta::event::` : '-meta::event::';
-                });
-              } else {
-                removeFilterFromQuery('-meta::event::');
-              }
-            }}
+            onChange={(e) => setExcludeEvents(e.target.checked)}
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Events
@@ -262,17 +296,7 @@ const NoteFilters = ({
           <input
             type="checkbox"
             checked={excludeMeetings}
-            onChange={(e) => {
-              setExcludeMeetings(e.target.checked);
-              if (e.target.checked) {
-                setSearchQuery(prev => {
-                  const trimmedPrev = prev ? prev.trim() : '';
-                  return trimmedPrev ? `${trimmedPrev} -meta::meeting::` : '-meta::meeting::';
-                });
-              } else {
-                removeFilterFromQuery('-meta::meeting::');
-              }
-            }}
+            onChange={(e) => setExcludeMeetings(e.target.checked)}
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Meetings

@@ -825,6 +825,34 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                   Show created date in notes
                 </label>
               </div>
+
+              {/* Exclude Events by Default Setting */}
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="excludeEventsByDefault"
+                  checked={unsavedSettings.excludeEventsByDefault}
+                  onChange={(e) => handleSettingChange('excludeEventsByDefault', e.target.checked)}
+                  className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                />
+                <label htmlFor="excludeEventsByDefault" className="ml-3 block text-base text-gray-700">
+                  Exclude events by default in new notes
+                </label>
+              </div>
+
+              {/* Exclude Meetings by Default Setting */}
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="excludeMeetingsByDefault"
+                  checked={unsavedSettings.excludeMeetingsByDefault}
+                  onChange={(e) => handleSettingChange('excludeMeetingsByDefault', e.target.checked)}
+                  className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                />
+                <label htmlFor="excludeMeetingsByDefault" className="ml-3 block text-base text-gray-700">
+                  Exclude meetings by default in new notes
+                </label>
+              </div>
             </div>
 
             {/* Save and Cancel buttons */}

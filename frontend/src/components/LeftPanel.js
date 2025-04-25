@@ -56,6 +56,86 @@ const defaultSettings = {
   }
 };
 
+const calculateNextOccurrence = (eventDate, recurrenceType, recurrenceEndDate) => {
+  const now = new Date();
+  
+  // Ensure we have a valid date string
+  let eventDateTime;
+  try {
+    // Handle both ISO string format and date-only format
+    eventDateTime = eventDate.includes('T') 
+      ? new Date(eventDate)
+      : new Date(eventDate + 'T12:00:00Z');
+      
+    if (isNaN(eventDateTime.getTime())) {
+      console.error('Invalid event date:', eventDate);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error parsing event date:', error);
+    return null;
+  }
+
+  // Parse end date if it exists
+  let endDateTime = null;
+  if (recurrenceEndDate) {
+    try {
+      endDateTime = new Date(recurrenceEndDate + 'T23:59:59Z');
+      if (isNaN(endDateTime.getTime())) {
+        console.error('Invalid recurrence end date:', recurrenceEndDate);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error parsing recurrence end date:', error);
+      return null;
+    }
+  }
+
+  // If the event date is in the future, return it
+  if (eventDateTime > now) {
+    return eventDateTime;
+  }
+
+  // If we have an end date and it's in the past, no more occurrences
+  if (endDateTime && endDateTime < now) {
+    return null;
+  }
+
+  const nextDate = new Date(eventDateTime);
+
+  switch (recurrenceType) {
+    case 'daily':
+      while (nextDate <= now) {
+        nextDate.setDate(nextDate.getDate() + 1);
+      }
+      break;
+    case 'weekly':
+      while (nextDate <= now) {
+        nextDate.setDate(nextDate.getDate() + 7);
+      }
+      break;
+    case 'monthly':
+      while (nextDate <= now) {
+        nextDate.setMonth(nextDate.getMonth() + 1);
+      }
+      break;
+    case 'yearly':
+      while (nextDate <= now) {
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+      }
+      break;
+    default:
+      return null;
+  }
+
+  // Check if the next occurrence is after the end date
+  if (endDateTime && nextDate > endDateTime) {
+    return null;
+  }
+
+  return nextDate;
+};
+
 const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery, settings, setSettings }) => {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -184,25 +264,53 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
   const events = useMemo(() => {
     const result = notes.flatMap(note => {
-        // Skip if no content
-        if (!note?.content) return [];
+      // Skip if no content
+      if (!note?.content) return [];
 
-        // Ensure content is a string
-        const content = typeof note.content === 'object' ? note.content.content : note.content;
-        const lines = content.split('\n');
+      // Ensure content is a string
+      const content = typeof note.content === 'object' ? note.content.content : note.content;
+      const lines = content.split('\n');
+      
+      if (lines.some(line => line.trim().startsWith('meta::event'))) {
+        // Extract location if it exists
+        const locationLine = lines.find(line => line.trim().startsWith('Location:'));
+        const location = locationLine ? locationLine.replace('Location:', '').trim() : null;
+
+        // Extract recurring information
+        const recurringLine = lines.find(line => line.trim().startsWith('meta::recurring::'));
+        const recurrenceType = recurringLine ? recurringLine.replace('meta::recurring::', '').trim() : null;
         
-        if (lines.some(line => line.trim().startsWith('meta::event'))) {
-            // Extract location if it exists
-            const locationLine = lines.find(line => line.trim().startsWith('Location:'));
-            const location = locationLine ? locationLine.replace('Location:', '').trim() : null;
-            return [{ 
-                id: note.id, 
-                context: lines[0].trim(), 
-                time: lines[1].trim(),
-                location: location
-            }];
+        const recurringEndLine = lines.find(line => line.trim().startsWith('meta::recurring_end::'));
+        const recurrenceEndDate = recurringEndLine ? recurringEndLine.replace('meta::recurring_end::', '').trim() : null;
+
+        // Get the base event date and ensure it's a valid date string
+        const baseEventDate = lines[1]?.trim();
+        if (!baseEventDate) return [];
+
+        try {
+          // Calculate next occurrence if it's a recurring event
+          const nextOccurrence = recurrenceType 
+            ? calculateNextOccurrence(baseEventDate, recurrenceType, recurrenceEndDate)
+            : new Date(baseEventDate);
+
+          // If there's no next occurrence (past end date) or invalid date, don't include the event
+          if (!nextOccurrence || isNaN(nextOccurrence.getTime())) return [];
+
+          return [{ 
+            id: note.id, 
+            context: lines[0].trim(), 
+            time: nextOccurrence.toISOString(),
+            location: location,
+            isRecurring: !!recurrenceType,
+            recurrenceType: recurrenceType,
+            baseEventDate: baseEventDate
+          }];
+        } catch (error) {
+          console.error('Error processing event:', error);
+          return [];
         }
-        return [];
+      }
+      return [];
     });
     return result.sort((a, b) => new Date(a.time) - new Date(b.time));
   }, [notes]);
@@ -544,7 +652,14 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                         className="group relative mb-2 rounded-lg hover:bg-purple-100 transition-colors"
                       >
                         <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} ${isFlashing ? 'animate-pulse bg-purple-200' : ''} rounded-lg`}>
-                          <div className="text-base font-medium text-gray-800 break-words">{e.context}</div>
+                          <div className="text-base font-medium text-gray-800 break-words">
+                            {e.context}
+                            {e.isRecurring && (
+                              <span className="ml-2 text-xs font-medium text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">
+                                {e.recurrenceType}
+                              </span>
+                            )}
+                          </div>
                           {e.location && (
                             <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0">
@@ -556,32 +671,9 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                           <div className="text-sm text-gray-600 mt-1">
                             {(() => {
                               const d = new Date(e.time);
-                              return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-                            })()}
-                          </div>
-                          <div className="text-sm font-medium text-purple-600 mt-1">
-                            {(() => {
-                              const delta = new Date(e.time).getTime() - now;
-                              if (delta <= 0) return 'Today';
-                              
-                              const millisecondsPerDay = 86400000;
-                              const millisecondsPerMonth = millisecondsPerDay * 30.44;
-                              const millisecondsPerYear = millisecondsPerDay * 365.25;
-                              
-                              const years = Math.floor(delta / millisecondsPerYear);
-                              const remainingAfterYears = delta % millisecondsPerYear;
-                              
-                              const months = Math.floor(remainingAfterYears / millisecondsPerMonth);
-                              const remainingAfterMonths = remainingAfterYears % millisecondsPerMonth;
-                              
-                              const days = Math.ceil(remainingAfterMonths / millisecondsPerDay);
-                              
-                              const parts = [];
-                              if (years > 0) parts.push(`${years} ${years === 1 ? 'year' : 'years'}`);
-                              if (months > 0) parts.push(`${months} ${months === 1 ? 'month' : 'months'}`);
-                              if (days > 0 || parts.length === 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
-                              
-                              return `in ${parts.join(', ')}`;
+                              const today = new Date(now);
+                              return d.toDateString() === today.toDateString() ? 'Today' :
+                                d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
                             })()}
                           </div>
                         </div>

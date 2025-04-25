@@ -153,6 +153,8 @@ export const extractMetaTags = (content) => {
     pins: [],        // meta::pin::INDICES
     abbreviations: [], // meta::abbreviation
     bookmarks: [],    // meta::bookmark
+    recurring: [],    // meta::recurring::TYPE
+    recurringEnd: [], // meta::recurring_end::DATE
     other: []        // Any other meta:: tags
   };
 
@@ -192,6 +194,12 @@ export const extractMetaTags = (content) => {
         break;
       case 'bookmark':
         metaTags.bookmarks.push(true);
+        break;
+      case 'recurring':
+        metaTags.recurring.push(parts[2]);
+        break;
+      case 'recurring_end':
+        metaTags.recurringEnd.push(parts[2]);
         break;
       default:
         metaTags.other.push(trimmedLine);

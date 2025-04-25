@@ -6,6 +6,9 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
   const [endDate, setEndDate] = useState('');
   const [location, setLocation] = useState('');
   const [showEndDate, setShowEndDate] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState('daily');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
 
   if (!isOpen) return null;
 
@@ -24,6 +27,12 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
     if (location) {
       content += `\nLocation: ${location}`;
     }
+    if (isRecurring) {
+      content += `\nmeta::recurring::${recurrenceType}`;
+      if (recurrenceEndDate) {
+        content += `\nmeta::recurring_end::${recurrenceEndDate}`;
+      }
+    }
     content += `\nmeta::event::${new Date().toISOString()}`;
     
     onAdd(content);
@@ -34,6 +43,9 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
     setEndDate('');
     setLocation('');
     setShowEndDate(false);
+    setIsRecurring(false);
+    setRecurrenceType('daily');
+    setRecurrenceEndDate('');
     onClose();
   };
 
@@ -49,6 +61,9 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
     setEventDate(e.target.value);
     if (new Date(endDate) <= new Date(e.target.value)) {
       setEndDate(e.target.value);
+    }
+    if (new Date(recurrenceEndDate) <= new Date(e.target.value)) {
+      setRecurrenceEndDate(e.target.value);
     }
   };
 
@@ -131,6 +146,52 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="isRecurring"
+              checked={isRecurring}
+              onChange={(e) => setIsRecurring(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="isRecurring" className="text-sm text-gray-600">
+              Recurring event
+            </label>
+          </div>
+
+          {isRecurring && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Recurrence Type
+                </label>
+                <select
+                  value={recurrenceType}
+                  onChange={(e) => setRecurrenceType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Recurrence End Date (optional)
+                </label>
+                <input
+                  type="date"
+                  value={recurrenceEndDate}
+                  onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                  min={eventDate}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </>
           )}
         </div>
 

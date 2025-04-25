@@ -1,8 +1,7 @@
-// frontend/src/components/RightClickMenu.js
 import React from 'react';
 
 
-export default function RightClickMenu({
+export default function RighClickMenu({
   noteId,
   lineIndex,
   pos,

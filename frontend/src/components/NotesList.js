@@ -5,7 +5,7 @@ import ConfirmationModal from './ConfirmationModal';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import { findDuplicatedUrls} from '../utils/genUtils';
 
-import RightClickMenu from './RighClickMenu';
+import RightClickMenu from './RightClickMenu';
 import NoteFooter from './NoteFooter';
 import LinkedNotesSection from './LinkedNotesSection';
 import EndDatePickerModal from './EndDatePickerModal';

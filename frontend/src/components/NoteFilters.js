@@ -11,6 +11,8 @@ const NoteFilters = ({
   onExcludeMeetingsChange
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
+  const [showEventButtons, setShowEventButtons] = useState(false);
+  const [showMeetingButtons, setShowMeetingButtons] = useState(false);
   const [activePriorityFilter, setActivePriorityFilter] = useState('');
   const [excludeEvents, setExcludeEvents] = useState(settings.excludeEventsByDefault || false);
   const [excludeMeetings, setExcludeMeetings] = useState(settings.excludeMeetingsByDefault || false);
@@ -105,6 +107,52 @@ const NoteFilters = ({
     });
   };
 
+  const handleEventClick = () => {
+    const filterAdded = toggleFilter('meta::event::');
+    setShowEventButtons(filterAdded);
+    
+    // If filter is added, uncheck exclude events
+    if (filterAdded) {
+      setExcludeEvents(false);
+    } else {
+      // When filter is removed, restore default state from settings
+      setExcludeEvents(settings.excludeEventsByDefault || false);
+    }
+    
+    setLines((prev) => {
+      if (filterAdded) {
+        const exists = prev.some(line => line.text.includes('meta::event::'));
+        if (exists) return prev;
+        return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::event::', isTitle: false }];
+      } else {
+        return prev.filter(line => !line.text.includes('meta::event::'));
+      }
+    });
+  };
+
+  const handleMeetingClick = () => {
+    const filterAdded = toggleFilter('meta::meeting::');
+    setShowMeetingButtons(filterAdded);
+    
+    // If filter is added, uncheck exclude meetings
+    if (filterAdded) {
+      setExcludeMeetings(false);
+    } else {
+      // When filter is removed, restore default state from settings
+      setExcludeMeetings(settings.excludeMeetingsByDefault || false);
+    }
+    
+    setLines((prev) => {
+      if (filterAdded) {
+        const exists = prev.some(line => line.text.includes('meta::meeting::'));
+        if (exists) return prev;
+        return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::meeting::', isTitle: false }];
+      } else {
+        return prev.filter(line => !line.text.includes('meta::meeting::'));
+      }
+    });
+  };
+
   const handlePriorityClick = (priority, metaTag) => {
     if (activePriorityFilter === priority) {
       // Remove the priority
@@ -193,6 +241,8 @@ const NoteFilters = ({
 
   const handleClear = () => {
     setShowTodoButtons(false);
+    setShowEventButtons(false);
+    setShowMeetingButtons(false);
     setActivePriorityFilter('');
     setShowTodoSubButtons(false);
     setActivePriority('');
@@ -213,6 +263,28 @@ const NoteFilters = ({
         }`}
       >
         Todos
+      </button>
+
+      <button
+        onClick={handleEventClick}
+        className={`px-3 py-1 text-xs rounded transition-all transform ${
+          showEventButtons
+            ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700'
+            : 'opacity-30 hover:opacity-60 border'
+        }`}
+      >
+        Events
+      </button>
+
+      <button
+        onClick={handleMeetingClick}
+        className={`px-3 py-1 text-xs rounded transition-all transform ${
+          showMeetingButtons
+            ? 'opacity-100 scale-105 bg-green-300 border border-green-700'
+            : 'opacity-30 hover:opacity-60 border'
+        }`}
+      >
+        Meetings
       </button>
 
       {showTodoButtons && (
@@ -301,7 +373,7 @@ const NoteFilters = ({
           <input
             type="checkbox"
             checked={excludeEvents}
-            onChange={(e) => setExcludeEvents(e.target.checked)}
+            onChange={(e) => handleExcludeEventsChange(e.target.checked)}
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Events
@@ -310,7 +382,7 @@ const NoteFilters = ({
           <input
             type="checkbox"
             checked={excludeMeetings}
-            onChange={(e) => setExcludeMeetings(e.target.checked)}
+            onChange={(e) => handleExcludeMeetingsChange(e.target.checked)}
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Meetings

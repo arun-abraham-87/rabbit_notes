@@ -88,35 +88,42 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     setShowPopup(filtered.length > 0);
   };
 
+  const handleMarkAsTitle = (index) => {
+    let newLines = [...lines];
+    // Prepare selected line
+    let content = newLines[index].text.trim();
+    // Remove any H2 markers if present
+    if (content.startsWith('##') && content.endsWith('##')) {
+      content = content.slice(2, -2);
+    }
+    // Toggle H1
+    if (content.startsWith('###') && content.endsWith('###')) {
+      content = content.slice(3, -3);
+    } else {
+      content = `###${content}###`;
+    }
+    // Update the line
+    newLines[index].text = content;
+    setLines(newLines);
+  };
+
   const handleMarkAsSubtitle = (index) => {
     let newLines = [...lines];
-    // Remove subtitle from any existing subtitle line
-    const existingSubtitleIndex = newLines.findIndex(line => line.isSubtitle);
-    if (existingSubtitleIndex !== -1) {
-      const existingSubtitle = { ...newLines[existingSubtitleIndex] };
-      existingSubtitle.isSubtitle = false;
-      if (existingSubtitle.text.startsWith('##') && existingSubtitle.text.endsWith('##')) {
-        existingSubtitle.text = existingSubtitle.text.slice(2, -2);
-      }
-      newLines.splice(existingSubtitleIndex, 1, existingSubtitle);
-      // Adjust index if existing subtitle was before current index
-      if (existingSubtitleIndex < index) index -= 1;
+    // Prepare selected line
+    let content = newLines[index].text.trim();
+    // Remove H1 markers if present
+    if (content.startsWith('###') && content.endsWith('###')) {
+      content = content.slice(3, -3);
     }
-
-    // Extract and wrap selected line as subtitle
-    const selected = { ...newLines[index] };
-    selected.isSubtitle = true;
-    selected.text = selected.text.replace(/^##|##$/g, '');
-    selected.text = `##${selected.text}##`;
-
-    // Remove the original selected line
-    newLines.splice(index, 1);
-
-    // Insert subtitle just after the first line (below title)
-    newLines.splice(1, 0, selected);
-
-    // Filter out any blank lines and update state
-    setLines(newLines.filter(line => line.text.trim() !== ''));
+    // Toggle H2
+    if (content.startsWith('##') && content.endsWith('##')) {
+      content = content.slice(2, -2);
+    } else {
+      content = `##${content}##`;
+    }
+    // Update the line
+    newLines[index].text = content;
+    setLines(newLines);
   };
 
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
@@ -518,33 +525,6 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
       const newLines = lines.filter((_, i) => i !== index);
       setLines(newLines);
     }
-  };
-
-  const handleMarkAsTitle = (index) => {
-    let newLines = [...lines];
-    // Unwrap any existing H1 (###...###)
-    const existingH1 = newLines.findIndex(line =>
-      line.text.trim().startsWith('###') && line.text.trim().endsWith('###')
-    );
-    if (existingH1 !== -1) {
-      const unwrapped = { ...newLines[existingH1] };
-      unwrapped.text = unwrapped.text.trim().slice(3, -3);
-      newLines.splice(existingH1, 1, unwrapped);
-      if (existingH1 < index) index -= 1;
-    }
-    // Prepare selected line
-    const selected = { ...newLines[index] };
-    let content = selected.text.trim();
-    // Remove any H2 markers
-    if (content.startsWith('##') && content.endsWith('##')) {
-      content = content.slice(2, -2);
-    }
-    // Wrap as H1
-    selected.text = `###${content}###`;
-    // Remove original line and prepend selected
-    newLines.splice(index, 1);
-    newLines.unshift(selected);
-    setLines(newLines);
   };
 
   const saveNote = () => {

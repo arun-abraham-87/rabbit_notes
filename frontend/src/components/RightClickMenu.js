@@ -122,8 +122,8 @@ export default function RightClickMenu({
               }
 
               // Remove heading markers
-              if (newText.startsWith('####') && newText.endsWith('####')) {
-                newText = newText.slice(4, -4);
+              if (newText.startsWith('###') && newText.endsWith('###')) {
+                newText = newText.slice(3, -3);
                 hasChanges = true;
               } else if (newText.startsWith('##') && newText.endsWith('##')) {
                 newText = newText.slice(2, -2);
@@ -161,10 +161,10 @@ export default function RightClickMenu({
           onClick={() => {
             const arr = note.content.split('\n');
             const h1Text = arr[lineIndex].trim()
-              .replace(/^###|###$/g, '')
-              .replace(/^##|##$/g, '')
+              .replace(/^###|###$/g, '')  // Remove H2 markers first
+              .replace(/^##|##$/g, '')    // Remove H1 markers
               .trim();
-            arr[lineIndex] = `###${h1Text}###`;
+            arr[lineIndex] = `##${h1Text}##`;
             updateNote(noteId, arr.join('\n'));
           }}
         >
@@ -175,10 +175,10 @@ export default function RightClickMenu({
           onClick={() => {
             const arr = note.content.split('\n');
             const h2Text = arr[lineIndex].trim()
-              .replace(/^###|###$/g, '')
-              .replace(/^##|##$/g, '')
+              .replace(/^###|###$/g, '')  // Remove H2 markers first
+              .replace(/^##|##$/g, '')    // Remove H1 markers
               .trim();
-            arr[lineIndex] = `##${h2Text}##`;
+            arr[lineIndex] = `###${h2Text}###`;
             updateNote(noteId, arr.join('\n'));
           }}
         >

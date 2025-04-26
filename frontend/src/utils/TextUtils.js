@@ -35,9 +35,9 @@ export const parseNoteContent = ({ content, searchTerm }) => {
     // Step 2: Check if this is a heading by looking at the original line
     const trimmed = line.trim();
     let type = 'normal';
-    if (trimmed.startsWith('##') && !trimmed.startsWith('####') && trimmed.endsWith('##')) {
+    if (trimmed.startsWith('##') && !trimmed.startsWith('###') && trimmed.endsWith('##')) {
       type = 'heading1';
-    } else if (trimmed.startsWith('####') && trimmed.endsWith('####')) {
+    } else if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
       type = 'heading2';
     } else if (trimmed.startsWith('- ')) {
       type = 'bullet';
@@ -68,13 +68,13 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
   // First handle any heading markers by temporarily replacing them
   let processedContent = content;
   const trimmed = content.trim();
-  const isH1 = trimmed.startsWith('##') && !trimmed.startsWith('####') && trimmed.endsWith('##');
-  const isH2 = trimmed.startsWith('####') && trimmed.endsWith('####');
+  const isH1 = trimmed.startsWith('##') && !trimmed.startsWith('###') && trimmed.endsWith('##');
+  const isH2 = trimmed.startsWith('###') && trimmed.endsWith('###');
   
   if (isH1) {
     processedContent = content.slice(2, -2);
   } else if (isH2) {
-    processedContent = content.slice(4, -4);
+    processedContent = content.slice(3, -3);
   }
 
   const elements = [];

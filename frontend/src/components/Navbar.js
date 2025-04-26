@@ -106,6 +106,14 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
               Journals
             </button>
           )}
+          <button
+            onClick={() => setActivePage('manage-notes')}
+            className={`px-3 py-1 rounded-full border ${
+              activePage === 'manage-notes' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+            } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
+          >
+            Manage Notes
+          </button>
         </div>
       </div>
     </nav>

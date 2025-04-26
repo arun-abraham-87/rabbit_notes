@@ -32,56 +32,96 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
       return notes;
     }
 
-    // Split the search query into parts (words) and normalize to lowercase
-    let searchQueryParts = [];
+    // Split the search query into words and normalize to lowercase
+    let searchWords = [];
     let useOrLogic = false;
+
     if (searchQuery) {
+      // Check if the search query contains the OR operator
       if (searchQuery.includes('||')) {
-        searchQueryParts = searchQuery
-          .split('||')
-          .map((part) => part.trim().toLowerCase())
-          .filter((part) => part && part !== '||');
         useOrLogic = true;
+        // Split on || and clean up each term
+        searchWords = searchQuery
+          .split('||')
+          .map(word => word.trim().toLowerCase())
+          .filter(word => word.length > 0);
+        
+        console.log('\nOR Search detected:');
+        console.log('Original query:', searchQuery);
+        console.log('Search terms:', searchWords);
       } else {
-        searchQueryParts = searchQuery
-          .split(/\s+/)  // Split on any whitespace
-          .map((part) => part.replace(/^\s+|\s+$/g, '').toLowerCase())
-          .filter((part) => part !== '');
+        // Regular AND search - split on spaces
+        searchWords = searchQuery
+          .toLowerCase()
+          .split(/\s+/)
+          .map(word => word.trim())
+          .filter(word => word.length > 0);
+        
+        console.log('\nAND Search detected:');
+        console.log('Original query:', searchQuery);
+        console.log('Search terms:', searchWords);
       }
     }
 
     // Get today's date in 'DD/MM/YYYY' format
     const today = new Date();
     const noteDate = moment(today).format('DD/MM/YYYY');
-    console.log(`Filtering for date: ${noteDate}`);
 
     // Filter notes
-    return notes.filter((note) => {
+    const filteredNotes = notes.filter((note) => {
       if (!note || typeof note !== 'object') {
         console.warn("Invalid note encountered:", note);
         return false;
       }
 
       const noteContent = (note.content || "").toLowerCase();
+      const eventDescription = (note.event_description || "").toLowerCase();
       const noteTags = Array.isArray(note.tags)
-        ? note.tags.map((tag) => (tag || "").toLowerCase())
+        ? note.tags.map(tag => (tag || "").toLowerCase())
         : [];
 
-      // Check if all words in the search query are present, or use OR logic if specified
+      // Function to check if a word matches in any searchable field
+      const wordMatchesInNote = (word) => {
+        const matchInContent = noteContent.includes(word);
+        const matchInEvent = eventDescription.includes(word);
+        const matchInTags = noteTags.some(tag => tag.includes(word));
+        
+        if (matchInContent || matchInEvent || matchInTags) {
+          console.log(`\nMatch found for term "${word}":`);
+          if (matchInContent) console.log('- Found in content');
+          if (matchInEvent) console.log('- Found in event_description');
+          if (matchInTags) console.log('- Found in tags');
+        }
+        
+        return matchInContent || matchInEvent || matchInTags;
+      };
+
+      // For OR logic, check if ANY word matches
+      // For AND logic, check if ALL words match
       const matchesSearchQuery = useOrLogic
-        ? searchQueryParts.some((part) => noteContent.includes(part) || noteTags.some((tag) => tag.includes(part)))
-        : searchQueryParts.every((part) => noteContent.includes(part) || noteTags.some((tag) => tag.includes(part)));
+        ? searchWords.some(word => wordMatchesInNote(word))
+        : searchWords.every(word => wordMatchesInNote(word));
+
+      if (matchesSearchQuery) {
+        console.log('\nMatched Note:');
+        console.log('Content preview:', noteContent.substring(0, 50) + (noteContent.length > 50 ? '...' : ''));
+        if (eventDescription) console.log('Event:', eventDescription);
+        if (noteTags.length > 0) console.log('Tags:', noteTags);
+      }
 
       // Check if the note is from today (if required)
       if (isCurrentDaySearch) {
         const noteRecordedDate = (note.created_datetime || "").split(',')[0].trim();
-        console.log(`Note date: ${noteRecordedDate}, Today: ${noteDate}`);
         const isNoteFromToday = noteRecordedDate === noteDate;
         return !searchQuery || (matchesSearchQuery && isNoteFromToday);
       }
 
       return matchesSearchQuery;
     });
+
+    console.log(`\nTotal matches found: ${filteredNotes.length}`);
+    return filteredNotes;
+
   } catch (error) {
     console.error("An error occurred in filterNotes:", error);
     return []; // Return an empty array as a fallback
@@ -131,21 +171,26 @@ const sortNotes = (notes) => {
 
 app.get('/api/notes', (req, res) => {
   try {
+    // Decode the search query and clean it up
+    const searchQuery = req.query.search ? decodeURIComponent(req.query.search).trim() : '';
+    console.log(`Raw search query received: "${req.query.search}"`);
+    console.log(`Decoded search query: "${searchQuery}"`);
     
-    const searchQuery = req.query.search.trim() ? req.query.search. trim().toLowerCase() : '';
-    console.log(`Search quwery recevied:==${searchQuery}==`)
-    const currentDateNotesOnly = req.query.currentDate === 'true'; // Check for current date filter
+    const currentDateNotesOnly = req.query.currentDate === 'true';
     console.log(`Current Date Filter: ${currentDateNotesOnly}`);
-    const noteDate = req.query.noteDate; // Check for current date filter
+    const noteDate = req.query.noteDate;
     console.log(`NoteDate: ${noteDate}`);
 
-    const files = fs.readdirSync(NOTES_DIR);
+    const files = fs.readdirSync(NOTES_DIR)
+      .filter(file => {
+        // Only process .md files and exclude objects.md
+        return file.endsWith('.md') && file !== 'objects.md';
+      });
+      
     let notesArray = [];
 
     files.forEach((file) => {
       try {
-        if (file === 'objects.md') return;
-
         const filePath = path.join(NOTES_DIR, file);
         if (fs.lstatSync(filePath).isDirectory()) return; // Skip directories
         const fileContent = fs.readFileSync(filePath, 'utf-8');
@@ -161,18 +206,8 @@ app.get('/api/notes', (req, res) => {
       }
     });
 
-    //console.log("Notes fetched");
-
     const filteredNotes = filterNotes(searchQuery, notesArray, currentDateNotesOnly, noteDate);
-
-    //console.log("Notes filtered");
-
-    const sortedNotes = sortNotes(filteredNotes)
-
-    //console.log(`Notes filtered & sorted ${sortedNotes}`);
-
-    //console.log(filteredNotes[0])
-    //console.log(sortedNotes[0])
+    const sortedNotes = sortNotes(filteredNotes);
 
     res.json({ notes: sortedNotes, totals: sortedNotes.length });
   } catch (err) {

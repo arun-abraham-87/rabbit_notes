@@ -142,14 +142,14 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
+    <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-gray-900">Your Journals</h1>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`p-2 rounded-lg transition-colors ${
-              showFilters ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'
+              showFilters ? 'bg-[rgb(31_41_55_/_0.1)] text-gray-700' : 'hover:bg-gray-100'
             }`}
             title="Toggle filters"
           >
@@ -158,7 +158,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
         </div>
         <button
           onClick={() => onNewJournal(new Date().toISOString().split('T')[0])}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-[rgb(31_41_55)] text-white rounded-lg hover:bg-[rgb(31_41_55_/_0.9)] transition-colors"
         >
           New Journal
         </button>
@@ -166,12 +166,12 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
 
       {/* Filters Section */}
       {showFilters && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+        <div className="mb-6 p-4 bg-[rgb(249_250_251)] rounded-lg border border-gray-200">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-700">Filters</h2>
             <button
               onClick={clearFilters}
-              className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+              className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors"
             >
               <XMarkIcon className="h-4 w-4" />
               Clear all
@@ -187,13 +187,13 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                   type="date"
                   value={filters.dateRange.start}
                   onChange={(e) => handleDateRangeChange('start', e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[rgb(31_41_55)] focus:ring-[rgb(31_41_55)] sm:text-sm"
                 />
                 <input
                   type="date"
                   value={filters.dateRange.end}
                   onChange={(e) => handleDateRangeChange('end', e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[rgb(31_41_55)] focus:ring-[rgb(31_41_55)] sm:text-sm"
                 />
               </div>
             </div>
@@ -206,7 +206,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                 value={filters.searchText}
                 onChange={(e) => handleFilterChange('searchText', e.target.value)}
                 placeholder="Search in journal content..."
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[rgb(31_41_55)] focus:ring-[rgb(31_41_55)] sm:text-sm"
               />
             </div>
 
@@ -218,10 +218,10 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                   <button
                     key={tag}
                     onClick={() => handleTagToggle(tag)}
-                    className={`px-3 py-1 rounded-full text-sm ${
+                    className={`px-3 py-1 rounded-full text-sm transition-colors ${
                       filters.tags.includes(tag)
-                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                        ? 'bg-[rgb(31_41_55_/_0.1)] text-gray-700 border border-gray-300'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
                     }`}
                   >
                     #{tag}
@@ -236,7 +236,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
               <select
                 value={filters.mood}
                 onChange={(e) => handleFilterChange('mood', e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[rgb(31_41_55)] focus:ring-[rgb(31_41_55)] sm:text-sm"
               >
                 <option value="">All moods</option>
                 {allMoods.map(mood => (
@@ -261,7 +261,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
           {filteredJournals.map((journal) => (
             <div
               key={journal.date}
-              className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
+              className="group flex flex-col p-6 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative hover:shadow-md transition-shadow"
             >
               <div className="flex justify-between items-start">
                 <div>
@@ -277,7 +277,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                   {journal.metadata?.tags?.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {journal.metadata.tags.map((tag, index) => (
-                        <span key={index} className="px-2 py-1 bg-gray-100 rounded-full text-xs text-gray-700">
+                        <span key={index} className="px-2 py-1 bg-[rgb(31_41_55_/_0.1)] rounded-full text-xs text-gray-700">
                           #{tag}
                         </span>
                       ))}
@@ -289,7 +289,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                 </div>
                 <button
                   onClick={() => onEditJournal(journal.date)}
-                  className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                  className="px-3 py-1 text-sm text-[rgb(31_41_55)] hover:bg-[rgb(31_41_55_/_0.1)] rounded-md transition-colors"
                 >
                   Edit
                 </button>

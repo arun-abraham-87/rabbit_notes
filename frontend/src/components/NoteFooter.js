@@ -16,6 +16,7 @@ import {
   ArrowsPointingInIcon,
   CodeBracketIcon,
 } from '@heroicons/react/24/solid';
+import { MapPinIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '../utils/DateUtils';
 import { toast } from 'react-toastify';
 
@@ -218,7 +219,9 @@ const NoteFooter = ({
             }`}
             title={isTodo ? 'Remove Todo Status' : 'Mark as Todo'}
           >
-            <ClockIcon className={`h-4 w-4 ${isTodo ? 'text-blue-500' : 'text-gray-500'}`} />
+            <ClockIcon className={`h-4 w-4 text-gray-500 transition-colors ${
+              isTodo ? 'text-blue-500' : 'hover:text-blue-500'
+            }`} />
           </button>
 
           {isTodo && (
@@ -230,7 +233,9 @@ const NoteFooter = ({
                 }`}
                 title="Low Priority"
               >
-                <FlagIcon className={`h-4 w-4 ${currentPriority === 'low' ? 'text-blue-500' : 'text-blue-400'}`} />
+                <FlagIcon className={`h-4 w-4 transition-colors ${
+                  currentPriority === 'low' ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+                }`} />
               </button>
 
               <button
@@ -240,7 +245,9 @@ const NoteFooter = ({
                 }`}
                 title="Medium Priority"
               >
-                <FlagIcon className={`h-4 w-4 ${currentPriority === 'medium' ? 'text-yellow-500' : 'text-yellow-400'}`} />
+                <FlagIcon className={`h-4 w-4 transition-colors ${
+                  currentPriority === 'medium' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'
+                }`} />
               </button>
 
               <button
@@ -250,7 +257,9 @@ const NoteFooter = ({
                 }`}
                 title="High Priority"
               >
-                <FlagIcon className={`h-4 w-4 ${currentPriority === 'high' ? 'text-red-500' : 'text-red-400'}`} />
+                <FlagIcon className={`h-4 w-4 transition-colors ${
+                  currentPriority === 'high' ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+                }`} />
               </button>
             </>
           )}
@@ -268,7 +277,9 @@ const NoteFooter = ({
             }`}
             title="Bookmark"
           >
-            <BookmarkIcon className="h-4 w-4 text-yellow-500" />
+            <BookmarkIcon className={`h-4 w-4 transition-colors ${
+              note.content.includes('meta::bookmark::') ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'
+            }`} />
           </button>
 
           <button
@@ -278,7 +289,9 @@ const NoteFooter = ({
             }`}
             title="Mark as Abbreviation"
           >
-            <TagIcon className="h-4 w-4 text-purple-500" />
+            <TagIcon className={`h-4 w-4 transition-colors ${
+              note.content.includes('meta::abbreviation::') ? 'text-purple-500' : 'text-gray-500 hover:text-purple-500'
+            }`} />
           </button>
 
           <button
@@ -288,7 +301,9 @@ const NoteFooter = ({
             }`}
             title="Watch"
           >
-            <EyeIcon className="h-4 w-4 text-green-500" />
+            <EyeIcon className={`h-4 w-4 transition-colors ${
+              note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500 hover:text-green-500'
+            }`} />
           </button>
         </div>
 
@@ -306,7 +321,7 @@ const NoteFooter = ({
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
             title="Link Note"
           >
-            <LinkIcon className="h-4 w-4 text-gray-500" />
+            <LinkIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
           </button>
 
           <button
@@ -316,7 +331,9 @@ const NoteFooter = ({
             }`}
             title={selectedNotes.length === 0 ? 'Start Merge' : selectedNotes.includes(note.id) ? 'Unselect for Merge' : 'Select for Merge'}
           >
-            <ArrowsPointingInIcon className={`h-4 w-4 ${selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500'}`} />
+            <ArrowsPointingInIcon className={`h-4 w-4 transition-colors ${
+              selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+            }`} />
           </button>
         </div>
 
@@ -333,7 +350,7 @@ const NoteFooter = ({
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
             title="Copy to Clipboard"
           >
-            <ClipboardIcon className="h-4 w-4 text-gray-500" />
+            <ClipboardIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
           </button>
 
           <button
@@ -343,7 +360,9 @@ const NoteFooter = ({
             }`}
             title="View Raw Note"
           >
-            <CodeBracketIcon className="h-4 w-4 text-gray-500" />
+            <CodeBracketIcon className={`h-4 w-4 transition-colors ${
+              showRawNote ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+            }`} />
           </button>
 
           <button
@@ -353,7 +372,9 @@ const NoteFooter = ({
             }`}
             title="Pin Lines"
           >
-            <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+            <MapPinIcon className={`h-4 w-4 transition-colors ${
+              showPinPopup ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+            }`} />
           </button>
         </div>
 
@@ -367,7 +388,7 @@ const NoteFooter = ({
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
             title="Edit Note"
           >
-            <PencilIcon className="h-4 w-4 text-gray-500" />
+            <PencilIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
           </button>
 
           <button
@@ -375,7 +396,7 @@ const NoteFooter = ({
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
             title="Delete Note"
           >
-            <TrashIcon className="h-4 w-4 text-red-500" />
+            <TrashIcon className="h-4 w-4 text-gray-500 hover:text-red-500 transition-colors" />
           </button>
         </div>
       </div>
@@ -407,7 +428,14 @@ const NoteFooter = ({
             <div className="p-6 overflow-y-auto max-h-[calc(80vh-8rem)]">
               <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
                 <pre className="whitespace-pre-wrap break-words text-sm font-mono text-gray-700 max-w-full" style={{ wordBreak: 'break-word' }}>
-                  {note.content}
+                  {note.content.split('\n').map((line, index) => (
+                    <div 
+                      key={index} 
+                      className={line.trim().startsWith('meta::') ? 'text-red-500' : ''}
+                    >
+                      {line}
+                    </div>
+                  ))}
                 </pre>
               </div>
             </div>

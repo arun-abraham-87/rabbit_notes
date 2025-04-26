@@ -3,7 +3,7 @@ import { listJournals, loadJournal } from '../utils/ApiUtils';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO, startOfMonth, differenceInDays } from 'date-fns';
 import { FunnelIcon, XMarkIcon, BookOpenIcon, CalendarIcon, ClockIcon, EyeIcon, XCircleIcon } from '@heroicons/react/24/solid';
 
-const JournalList = ({ onEditJournal, onNewJournal }) => {
+const JournalList = ({ onEditJournal, onNewJournal, initialJournals, onJournalsUpdate }) => {
   // Get default date range (start of current month to today)
   const today = new Date();
   const startOfCurrentMonth = startOfMonth(today);
@@ -12,8 +12,8 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
     end: today.toISOString().split('T')[0]
   };
 
-  const [journals, setJournals] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [journals, setJournals] = useState(initialJournals);
+  const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
   const [filters, setFilters] = useState({
     dateRange: defaultDateRange,
@@ -24,20 +24,8 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
   const [viewLoading, setViewLoading] = useState(false);
 
   useEffect(() => {
-    loadJournals();
-  }, []);
-
-  const loadJournals = async () => {
-    try {
-      const journalData = await listJournals();
-      console.log('Loaded journals:', journalData);
-      setJournals(journalData);
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to load journals:', error);
-      setLoading(false);
-    }
-  };
+    setJournals(initialJournals);
+  }, [initialJournals]);
 
   const formatDate = (dateString) => {
     try {

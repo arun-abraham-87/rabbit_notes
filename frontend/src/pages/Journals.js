@@ -1,10 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import JournalList from '../components/JournalList';
 import JournalEditor from '../components/JournalEditor';
+import JournalStats from '../components/JournalStats';
+import { ChartBarIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { listJournals } from '../utils/ApiUtils';
 
 const Journals = () => {
   const [currentView, setCurrentView] = useState('list');
   const [selectedDate, setSelectedDate] = useState(null);
+  const [journals, setJournals] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadJournals();
+  }, []);
+
+  const loadJournals = async () => {
+    try {
+      const journalData = await listJournals();
+      setJournals(journalData);
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to load journals:', error);
+      setLoading(false);
+    }
+  };
 
   const handleEditJournal = (date) => {
     setSelectedDate(date);
@@ -19,16 +39,41 @@ const Journals = () => {
   const handleBackToList = () => {
     setCurrentView('list');
     setSelectedDate(null);
+    loadJournals(); // Refresh journals after editing
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
-      {currentView === 'list' ? (
-        <JournalList
-          onEditJournal={handleEditJournal}
-          onNewJournal={handleNewJournal}
-        />
-      ) : (
+      {currentView === 'list' && (
+        <>
+          <div className="flex justify-end p-4">
+            <button
+              onClick={() => setCurrentView('stats')}
+              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+              title="View Statistics"
+            >
+              <ChartBarIcon className="h-5 w-5" />
+              <span>Analytics</span>
+            </button>
+          </div>
+          <JournalList
+            onEditJournal={handleEditJournal}
+            onNewJournal={handleNewJournal}
+            initialJournals={journals}
+            onJournalsUpdate={setJournals}
+          />
+        </>
+      )}
+      
+      {currentView === 'edit' && (
         <div className="w-full">
           <div className="pl-4 pt-4">
             <button
@@ -53,6 +98,21 @@ const Journals = () => {
           </div>
           <JournalEditor date={selectedDate} onSaved={handleBackToList} />
         </div>
+      )}
+
+      {currentView === 'stats' && (
+        <>
+          <div className="flex justify-end p-4">
+            <button
+              onClick={() => setCurrentView('list')}
+              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+            >
+              <XMarkIcon className="h-5 w-5" />
+              <span>Close Analytics</span>
+            </button>
+          </div>
+          <JournalStats journals={journals} />
+        </>
       )}
     </div>
   );

@@ -12,10 +12,12 @@ import {
   FunnelIcon,
   ListBulletIcon,
   Squares2X2Icon,
-  EllipsisHorizontalIcon
+  EllipsisHorizontalIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 import { formatDate } from '../utils/DateUtils';
+import TodoStats from './TodoStats';
 
 const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,6 +29,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [sortBy, setSortBy] = useState('priority');
   const [showFilters, setShowFilters] = useState(true);
   const [showHeaders, setShowHeaders] = useState(false);
+  const [showStats, setShowStats] = useState(false);
 
   // Get overdue high priority todos
   const getOverdueHighPriorityTodos = () => {
@@ -511,255 +514,279 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
 
   return (
     <div className="space-y-6 h-full p-6">
-      {unacknowledgedMeetings.length > 0 && (
-        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-amber-800">
-                Unacknowledged Past Meetings: {unacknowledgedMeetings.length}
-              </h3>
-              <div className="mt-2 text-sm text-amber-700">
-                <ul className="list-disc pl-5 space-y-1">
-                  {unacknowledgedMeetings.map(meeting => {
-                    const meetingTime = meeting.content.split('\n').find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
-                    const description = meeting.content.split('\n')[0];
-                    return (
-                      <li key={meeting.id} className="flex items-center justify-between">
-                        <span>
-                          {description} ({new Date(meetingTime).toLocaleString()})
-                        </span>
-                        <button
-                          onClick={() => handleDismissMeeting(meeting.id)}
-                          className="ml-2 text-amber-600 hover:text-amber-800"
-                        >
-                          Dismiss
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {overdueTodos.length > 0 && (
-        <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-rose-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-rose-800">
-                Attention needed: {overdueTodos.length} high priority {overdueTodos.length === 1 ? 'todo' : 'todos'} older than 2 days
-              </h3>
-              <div className="mt-2 text-sm text-rose-700">
-                <ul className="list-disc pl-5 space-y-1">
-                  {overdueTodos.map(todo => (
-                    <li key={todo.id}>
-                      {todo.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}
-                      {todo.content.length > 100 ? '...' : ''}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Header Controls */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-900">Todos</h1>
-          <div className="flex items-center gap-3">
+      {showStats ? (
+        <>
+          <div className="flex justify-end">
             <button
-              onClick={() => setShowHeaders(prev => !prev)}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                showHeaders ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'
-              }`}
-              title={showHeaders ? 'Hide headers' : 'Show headers'}
+              onClick={() => setShowStats(false)}
+              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
             >
-              <EllipsisHorizontalIcon className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
-              title={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
-            >
-              {viewMode === 'grid' ? (
-                <ListBulletIcon className="h-5 w-5 text-gray-600" />
-              ) : (
-                <Squares2X2Icon className="h-5 w-5 text-gray-600" />
-              )}
-            </button>
-            <button
-              onClick={() => setShowFilters(prev => !prev)}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                showFilters ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'
-              }`}
-              title="Toggle filters"
-            >
-              <FunnelIcon className="h-5 w-5" />
+              <XMarkIcon className="h-4 w-4" />
+              Close Stats
             </button>
           </div>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="flex flex-col gap-4 bg-white rounded-xl border p-4 shadow-sm">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search todos or press Cmd+Enter to create new todo..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              className="block w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-              >
-                <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-              </button>
-            )}
-          </div>
-
-          {showFilters && (
-            <div className="flex flex-col gap-4 pt-4 border-t">
-              {/* Priority Stats */}
-              <div className="grid grid-cols-4 gap-4">
-                <button
-                  onClick={() => setPriorityFilter(null)}
-                  className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
-                    priorityFilter === null
-                      ? 'ring-2 ring-indigo-500 ring-offset-2'
-                      : 'hover:border-indigo-200 hover:shadow-sm'
-                  }`}
-                >
-                  <div className="text-xs font-medium text-gray-500">Total</div>
-                  <div className="text-2xl font-bold text-gray-900">{total}</div>
-                </button>
-                <button
-                  onClick={() => setPriorityFilter('high')}
-                  className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
-                    priorityFilter === 'high'
-                      ? 'bg-rose-50 border-rose-200 ring-2 ring-rose-500 ring-offset-2'
-                      : 'hover:bg-rose-50/50 hover:border-rose-200 hover:shadow-sm'
-                  }`}
-                >
-                  <div className="text-xs font-medium text-rose-600">High</div>
-                  <div className="text-2xl font-bold text-rose-700">{high}</div>
-                </button>
-                <button
-                  onClick={() => setPriorityFilter('medium')}
-                  className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
-                    priorityFilter === 'medium'
-                      ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-500 ring-offset-2'
-                      : 'hover:bg-amber-50/50 hover:border-amber-200 hover:shadow-sm'
-                  }`}
-                >
-                  <div className="text-xs font-medium text-amber-600">Medium</div>
-                  <div className="text-2xl font-bold text-amber-700">{medium}</div>
-                </button>
-                <button
-                  onClick={() => setPriorityFilter('low')}
-                  className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
-                    priorityFilter === 'low'
-                      ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-500 ring-offset-2'
-                      : 'hover:bg-emerald-50/50 hover:border-emerald-200 hover:shadow-sm'
-                  }`}
-                >
-                  <div className="text-xs font-medium text-emerald-600">Low</div>
-                  <div className="text-2xl font-bold text-emerald-700">{low}</div>
-                </button>
-              </div>
-
-              {/* Sort Controls */}
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-gray-700">Sort by:</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setSortBy('priority')}
-                    className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                      sortBy === 'priority'
-                        ? 'bg-indigo-100 text-indigo-700 font-medium'
-                        : 'hover:bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    Priority
-                  </button>
-                  <button
-                    onClick={() => setSortBy('date')}
-                    className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                      sortBy === 'date'
-                        ? 'bg-indigo-100 text-indigo-700 font-medium'
-                        : 'hover:bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    Newest
-                  </button>
-                  <button
-                    onClick={() => setSortBy('age')}
-                    className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                      sortBy === 'age'
-                        ? 'bg-indigo-100 text-indigo-700 font-medium'
-                        : 'hover:bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    Oldest
-                  </button>
+          <TodoStats todos={todos} />
+        </>
+      ) : (
+        <>
+          {unacknowledgedMeetings.length > 0 && (
+            <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-amber-800">
+                    Unacknowledged Past Meetings: {unacknowledgedMeetings.length}
+                  </h3>
+                  <div className="mt-2 text-sm text-amber-700">
+                    <ul className="list-disc pl-5 space-y-1">
+                      {unacknowledgedMeetings.map(meeting => {
+                        const meetingTime = meeting.content.split('\n').find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
+                        const description = meeting.content.split('\n')[0];
+                        return (
+                          <li key={meeting.id} className="flex items-center justify-between">
+                            <span>
+                              {description} ({new Date(meetingTime).toLocaleString()})
+                            </span>
+                            <button
+                              onClick={() => handleDismissMeeting(meeting.id)}
+                              className="ml-2 text-amber-600 hover:text-amber-800"
+                            >
+                              Dismiss
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
           )}
-        </div>
-      </div>
+          
+          {overdueTodos.length > 0 && (
+            <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-rose-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-rose-800">
+                    Attention needed: {overdueTodos.length} high priority {overdueTodos.length === 1 ? 'todo' : 'todos'} older than 2 days
+                  </h3>
+                  <div className="mt-2 text-sm text-rose-700">
+                    <ul className="list-disc pl-5 space-y-1">
+                      {overdueTodos.map(todo => (
+                        <li key={todo.id}>
+                          {todo.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}
+                          {todo.content.length > 100 ? '...' : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Header Controls */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-semibold text-gray-900">Todos</h1>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowStats(true)}
+                  className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-all duration-200"
+                  title="View Statistics"
+                >
+                  <ChartBarIcon className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => setShowHeaders(prev => !prev)}
+                  className={`p-2 rounded-lg transition-all duration-200 ${
+                    showHeaders ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'
+                  }`}
+                  title={showHeaders ? 'Hide headers' : 'Show headers'}
+                >
+                  <EllipsisHorizontalIcon className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
+                  title={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+                >
+                  {viewMode === 'grid' ? (
+                    <ListBulletIcon className="h-5 w-5 text-gray-600" />
+                  ) : (
+                    <Squares2X2Icon className="h-5 w-5 text-gray-600" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowFilters(prev => !prev)}
+                  className={`p-2 rounded-lg transition-all duration-200 ${
+                    showFilters ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'
+                  }`}
+                  title="Toggle filters"
+                >
+                  <FunnelIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
 
-      {/* Todo Grid/List */}
-      <div className={`grid gap-4 flex-1 overflow-auto ${
-        viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
-      }`}>
-        {filteredTodos.map(renderTodoCard)}
-      </div>
+            {/* Search and Filters */}
+            <div className="flex flex-col gap-4 bg-white rounded-xl border p-4 shadow-sm">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search todos or press Cmd+Enter to create new todo..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                  className="block w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                  </button>
+                )}
+              </div>
 
-      {/* Empty State */}
-      {filteredTodos.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <CheckCircleIcon className="h-12 w-12 text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No todos found</h3>
-          <p className="text-sm text-gray-500">
-            {searchQuery
-              ? "No todos match your search criteria"
-              : "You're all caught up! Add a new todo to get started"}
-          </p>
-        </div>
-      )}
+              {showFilters && (
+                <div className="flex flex-col gap-4 pt-4 border-t">
+                  {/* Priority Stats */}
+                  <div className="grid grid-cols-4 gap-4">
+                    <button
+                      onClick={() => setPriorityFilter(null)}
+                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
+                        priorityFilter === null
+                          ? 'ring-2 ring-indigo-500 ring-offset-2'
+                          : 'hover:border-indigo-200 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="text-xs font-medium text-gray-500">Total</div>
+                      <div className="text-2xl font-bold text-gray-900">{total}</div>
+                    </button>
+                    <button
+                      onClick={() => setPriorityFilter('high')}
+                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
+                        priorityFilter === 'high'
+                          ? 'bg-rose-50 border-rose-200 ring-2 ring-rose-500 ring-offset-2'
+                          : 'hover:bg-rose-50/50 hover:border-rose-200 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="text-xs font-medium text-rose-600">High</div>
+                      <div className="text-2xl font-bold text-rose-700">{high}</div>
+                    </button>
+                    <button
+                      onClick={() => setPriorityFilter('medium')}
+                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
+                        priorityFilter === 'medium'
+                          ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-500 ring-offset-2'
+                          : 'hover:bg-amber-50/50 hover:border-amber-200 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="text-xs font-medium text-amber-600">Medium</div>
+                      <div className="text-2xl font-bold text-amber-700">{medium}</div>
+                    </button>
+                    <button
+                      onClick={() => setPriorityFilter('low')}
+                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
+                        priorityFilter === 'low'
+                          ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-500 ring-offset-2'
+                          : 'hover:bg-emerald-50/50 hover:border-emerald-200 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="text-xs font-medium text-emerald-600">Low</div>
+                      <div className="text-2xl font-bold text-emerald-700">{low}</div>
+                    </button>
+                  </div>
 
-      {/* Snackbar */}
-      {snackbar && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg z-50">
-          <CheckCircleIcon className="h-4 w-4 text-emerald-400" />
-          <span className="text-sm">Todo completed</span>
-          <button
-            onClick={handleUndo}
-            className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors duration-200"
-          >
-            Undo
-          </button>
-        </div>
+                  {/* Sort Controls */}
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-gray-700">Sort by:</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSortBy('priority')}
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
+                          sortBy === 'priority'
+                            ? 'bg-indigo-100 text-indigo-700 font-medium'
+                            : 'hover:bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        Priority
+                      </button>
+                      <button
+                        onClick={() => setSortBy('date')}
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
+                          sortBy === 'date'
+                            ? 'bg-indigo-100 text-indigo-700 font-medium'
+                            : 'hover:bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        Newest
+                      </button>
+                      <button
+                        onClick={() => setSortBy('age')}
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
+                          sortBy === 'age'
+                            ? 'bg-indigo-100 text-indigo-700 font-medium'
+                            : 'hover:bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        Oldest
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Todo Grid/List */}
+          <div className={`grid gap-4 flex-1 overflow-auto ${
+            viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
+          }`}>
+            {filteredTodos.map(renderTodoCard)}
+          </div>
+
+          {/* Empty State */}
+          {filteredTodos.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <CheckCircleIcon className="h-12 w-12 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No todos found</h3>
+              <p className="text-sm text-gray-500">
+                {searchQuery
+                  ? "No todos match your search criteria"
+                  : "You're all caught up! Add a new todo to get started"}
+              </p>
+            </div>
+          )}
+
+          {/* Snackbar */}
+          {snackbar && (
+            <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+              <CheckCircleIcon className="h-4 w-4 text-emerald-400" />
+              <span className="text-sm">Todo completed</span>
+              <button
+                onClick={handleUndo}
+                className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors duration-200"
+              >
+                Undo
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

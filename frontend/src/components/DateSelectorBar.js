@@ -44,7 +44,7 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
     return {
       container: `
         relative cursor-pointer rounded-xl overflow-hidden shadow-sm transition-all duration-300
-        ${isActive ? 'bg-gradient-to-br from-blue-500 to-purple-600 scale-105 shadow-lg' : 'bg-white hover:shadow-md'}
+        ${isActive ? 'bg-black scale-105 shadow-lg' : 'bg-white hover:shadow-md'}
         ${!isActive && isToday ? 'border-2 border-green-500' : 'border border-gray-200'}
       `,
       month: `text-xs font-semibold py-1 text-center ${isActive ? 'text-white/90' : 'text-gray-600'} bg-opacity-10`,

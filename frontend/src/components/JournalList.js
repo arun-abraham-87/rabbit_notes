@@ -58,6 +58,11 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
 
   const filterJournals = (journals) => {
     return journals.filter(journal => {
+      // Filter out empty journals
+      if (!journal.preview?.trim() && !journal.metadata?.tags?.length) {
+        return false;
+      }
+
       // Date range filter
       if (filters.dateRange.start || filters.dateRange.end) {
         const journalDate = parseISO(journal.date);

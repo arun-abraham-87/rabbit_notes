@@ -3,7 +3,7 @@ import { format, addDays } from 'date-fns';
 import { loadJournal, saveJournal } from '../utils/ApiUtils';
 import TagInput from './TagInput';
 import { ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
-import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { ExclamationCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const JournalEditor = ({ date, onSaved }) => {
   const [content, setContent] = useState('');
@@ -16,6 +16,7 @@ const JournalEditor = ({ date, onSaved }) => {
   const [isStale, setIsStale] = useState(false);
   const [lastSavedContent, setLastSavedContent] = useState('');
   const [lastSavedTags, setLastSavedTags] = useState([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const loadJournalData = useCallback(async (targetDate) => {
     try {
@@ -148,6 +149,28 @@ const JournalEditor = ({ date, onSaved }) => {
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      // Save empty content to effectively delete the entry
+      await saveJournal(currentDate, {
+        content: '',
+        tags: [],
+        metadata: {
+          lastModified: new Date().toISOString(),
+          deleted: true
+        }
+      });
+      setContent('');
+      setTags([]);
+      setMetadata({});
+      setShowDeleteConfirm(false);
+      setSaveStatus('pristine');
+      if (onSaved) onSaved();
+    } catch (error) {
+      console.error('Error deleting journal:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -181,13 +204,46 @@ const JournalEditor = ({ date, onSaved }) => {
               <ChevronRightIcon className="h-5 w-5 text-gray-600" />
             </button>
           </div>
-          {/* Persistent Status Indicator */}
-          {status && (
-            <div className={`flex items-center gap-2 ${status.className}`}>
-              {status.icon}
-              <span className="text-sm font-medium">{status.text}</span>
+          <div className="flex items-center gap-4">
+            {status && (
+              <div className={`flex items-center gap-2 ${status.className}`}>
+                {status.icon}
+                <span className="text-sm font-medium">{status.text}</span>
+              </div>
+            )}
+            <div className="relative">
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                title="Delete journal entry"
+              >
+                <TrashIcon className="h-5 w-5" />
+              </button>
+              
+              {/* Delete Confirmation Popup */}
+              {showDeleteConfirm && (
+                <div className="absolute right-0 top-full mt-2 bg-white border rounded-lg shadow-lg p-4 w-72 z-20">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Are you sure you want to delete this journal entry? This action cannot be undone.
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         <div className="mb-6">
@@ -198,6 +254,7 @@ const JournalEditor = ({ date, onSaved }) => {
           <textarea
             value={content}
             onChange={handleContentChange}
+            spellCheck="true"
             className="w-full h-96 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Write your journal entry here..."
           />

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
 import NoteFilters from './NoteFilters';
+import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 
 const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange, onExcludeMeetingsChange }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
@@ -31,6 +32,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
   const throttleRef = useRef(null);
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const popupRef = useRef(null);
+  const [showTextSelection, setShowTextSelection] = useState(false);
 
   const replaceLastWord = (tag) => {
     console.log(lines)
@@ -800,6 +802,63 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                     autoFocus
                   />
                 </div>
+
+                <div className="border rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setShowTextSelection(!showTextSelection)}
+                    className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-between"
+                  >
+                    <span>Select from text</span>
+                    {showTextSelection ? (
+                      <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <ChevronRightIcon className="h-4 w-4 text-gray-500" />
+                    )}
+                  </button>
+                  
+                  {showTextSelection && (
+                    <div className="border-t max-h-48 overflow-y-auto">
+                      {lines.map((line, idx) => {
+                        // Skip empty lines, meta lines, and the current URL line
+                        if (
+                          idx === pendingUrlIndex ||
+                          !line.text.trim() ||
+                          line.text.trim().startsWith('meta::') ||
+                          line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/) ||
+                          line.text.match(/^https?:\/\/[^\s]+$/)
+                        ) {
+                          return null;
+                        }
+
+                        return (
+                          <button
+                            key={line.id}
+                            onClick={() => {
+                              setCustomLabel(line.text);
+                              // Remove the selected line from the note
+                              const newLines = [...lines];
+                              // Get the URL from the current URL line
+                              const url = newLines[pendingUrlIndex].text.match(/\((https?:\/\/[^\s)]+)\)/)?.[1] || newLines[pendingUrlIndex].text;
+                              // Update the URL line with the markdown link format
+                              newLines[pendingUrlIndex].text = `[${line.text}](${url})`;
+                              // Remove the selected text line
+                              newLines.splice(idx, 1);
+                              setLines(newLines);
+                              setPendingUrlIndex(null);
+                              setCustomLabel('');
+                              setShowTextSelection(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 border-b last:border-b-0 flex items-center group"
+                          >
+                            <span className="flex-1 truncate">{line.text}</span>
+                            <span className="text-blue-500 opacity-0 group-hover:opacity-100 ml-2">Use</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 <div className="text-sm text-gray-500 break-all">
                   <span className="font-medium">URL: </span>
                   <span className="break-all">
@@ -811,6 +870,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                     onClick={() => {
                       setPendingUrlIndex(null);
                       setCustomLabel('');
+                      setShowTextSelection(false);
                     }}
                     className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded"
                   >
@@ -824,6 +884,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                       setLines(newLines);
                       setPendingUrlIndex(null);
                       setCustomLabel('');
+                      setShowTextSelection(false);
                     }}
                     className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
                   >

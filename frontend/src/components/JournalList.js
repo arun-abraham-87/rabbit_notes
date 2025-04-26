@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { listJournals } from '../utils/ApiUtils';
-import { format, isWithinInterval, startOfDay, endOfDay, parseISO, startOfMonth } from 'date-fns';
-import { FunnelIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { format, isWithinInterval, startOfDay, endOfDay, parseISO, startOfMonth, differenceInDays } from 'date-fns';
+import { FunnelIcon, XMarkIcon, BookOpenIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/solid';
 
 const JournalList = ({ onEditJournal, onNewJournal }) => {
   // Get default date range (start of current month to today)
@@ -247,6 +247,64 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
           </div>
         </div>
       )}
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="p-4 rounded-lg bg-white border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-[rgb(31_41_55_/_0.1)] rounded-full">
+              <BookOpenIcon className="h-5 w-5 text-[rgb(31_41_55)]" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Journals</p>
+              <p className="text-2xl font-bold text-gray-900">{journals.length}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-lg bg-white border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-[rgb(31_41_55_/_0.1)] rounded-full">
+              <CalendarIcon className="h-5 w-5 text-[rgb(31_41_55)]" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">This Month</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {journals.filter(journal => {
+                  const journalDate = parseISO(journal.date);
+                  return isWithinInterval(journalDate, {
+                    start: startOfCurrentMonth,
+                    end: today
+                  });
+                }).length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-lg bg-white border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-[rgb(31_41_55_/_0.1)] rounded-full">
+              <ClockIcon className="h-5 w-5 text-[rgb(31_41_55)]" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Last Entry</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {journals.length > 0
+                  ? `${differenceInDays(
+                      today,
+                      parseISO(
+                        journals.reduce((latest, journal) =>
+                          latest.date > journal.date ? latest : journal
+                        ).date
+                      )
+                    )} days ago`
+                  : 'No entries'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {filteredJournals.length === 0 ? (
         <div className="text-center py-12">

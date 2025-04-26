@@ -29,8 +29,8 @@ const Journals = () => {
           onNewJournal={handleNewJournal}
         />
       ) : (
-        <div>
-          <div className="max-w-4xl mx-auto p-4">
+        <div className="w-full">
+          <div className="pl-4 pt-4">
             <button
               onClick={handleBackToList}
               className="mb-4 flex items-center text-gray-600 hover:text-gray-900"

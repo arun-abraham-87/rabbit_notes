@@ -130,8 +130,8 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
   }
 
   return (
-    <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div className="flex justify-between items-center p-6">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-gray-900">Your Journals</h1>
           <button

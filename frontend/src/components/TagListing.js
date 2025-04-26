@@ -111,7 +111,7 @@ const TagListing = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-[80%] mx-auto rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+      <div className="w-full rounded-lg border bg-card text-card-foreground shadow-sm p-6">
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
         </div>
@@ -120,7 +120,7 @@ const TagListing = () => {
   }
 
   return (
-    <div className="max-w-[80%] mx-auto rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+    <div className="w-full rounded-lg border bg-card text-card-foreground shadow-sm p-6">
       <h2 className="text-xl font-bold mb-4">Tags Page</h2>
       
       {/* Error Message */}

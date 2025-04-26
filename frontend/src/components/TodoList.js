@@ -27,6 +27,33 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [sortBy, setSortBy] = useState('priority'); // 'priority', 'date', 'age'
   const [showFilters, setShowFilters] = useState(true); // Changed from false to true
 
+  // Get overdue high priority todos
+  const getOverdueHighPriorityTodos = () => {
+    return todos.filter(todo => {
+      const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
+      const priority = tagMatch ? tagMatch[1].toLowerCase() : 'low';
+      const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
+      const createdDate = todoDateMatch ? new Date(todoDateMatch[1]) : new Date(todo.created_datetime);
+      const daysOld = (Date.now() - createdDate) / (1000 * 60 * 60 * 24);
+      return priority === 'high' && daysOld > 2;
+    });
+  };
+
+  // Check for overdue todos every hour instead of every minute since we're checking days
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const overdueTodos = getOverdueHighPriorityTodos();
+      if (overdueTodos.length > 0) {
+        // Force a re-render
+        setPriorities(prev => ({...prev}));
+      }
+    }, 3600000); // Check every hour
+
+    return () => clearInterval(interval);
+  }, [todos]);
+
+  const overdueTodos = getOverdueHighPriorityTodos();
+
   const parseAusDate = (str) => {
     // For ISO format dates (e.g., 2025-04-24T14:16:35.161Z)
     if (str.includes('T') && str.endsWith('Z')) {
@@ -291,36 +318,36 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           <div className="flex items-center gap-2">
             <button
               onClick={() => handlePriorityClick(todo.id, 'high')}
-              className={`p-1.5 rounded transition-all duration-200 ${
+              className={`px-2 py-1 rounded font-medium transition-all duration-200 ${
                 currentPriority === 'high'
                   ? 'bg-rose-200 text-rose-700'
                   : 'hover:bg-rose-100 text-gray-400 hover:text-rose-600'
               }`}
               title="High priority"
             >
-              <ChevronUpIcon className="h-4 w-4" />
+              H
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'medium')}
-              className={`p-1.5 rounded transition-all duration-200 ${
+              className={`px-2 py-1 rounded font-medium transition-all duration-200 ${
                 currentPriority === 'medium'
                   ? 'bg-amber-200 text-amber-700'
                   : 'hover:bg-amber-100 text-gray-400 hover:text-amber-600'
               }`}
               title="Medium priority"
             >
-              <EllipsisHorizontalIcon className="h-4 w-4" />
+              M
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'low')}
-              className={`p-1.5 rounded transition-all duration-200 ${
+              className={`px-2 py-1 rounded font-medium transition-all duration-200 ${
                 currentPriority === 'low'
                   ? 'bg-emerald-200 text-emerald-700'
                   : 'hover:bg-emerald-100 text-gray-400 hover:text-emerald-600'
               }`}
               title="Low priority"
             >
-              <ChevronDownIcon className="h-4 w-4" />
+              L
             </button>
           </div>
         </div>
@@ -374,6 +401,33 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
 
   return (
     <div className="space-y-6">
+      {overdueTodos.length > 0 && (
+        <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-rose-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-rose-800">
+                Attention needed: {overdueTodos.length} high priority {overdueTodos.length === 1 ? 'todo' : 'todos'} older than 2 days
+              </h3>
+              <div className="mt-2 text-sm text-rose-700">
+                <ul className="list-disc pl-5 space-y-1">
+                  {overdueTodos.map(todo => (
+                    <li key={todo.id}>
+                      {todo.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}
+                      {todo.content.length > 100 ? '...' : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header Controls */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">

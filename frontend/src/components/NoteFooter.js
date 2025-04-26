@@ -35,9 +35,7 @@ const NoteFooter = ({
 }) => {
   const [showPinPopup, setShowPinPopup] = useState(false);
   const [selectedPinLines, setSelectedPinLines] = useState([]);
-  const [showMoreActions, setShowMoreActions] = useState(false);
   const [showRawNote, setShowRawNote] = useState(false);
-  const moreActionsRef = useRef(null);
   const pinPopupRef = useRef(null);
   const rawNotePopupRef = useRef(null);
   const lines = note.content.split('\n');
@@ -45,10 +43,6 @@ const NoteFooter = ({
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Handle More Actions dropdown
-      if (moreActionsRef.current && !moreActionsRef.current.contains(event.target)) {
-        setShowMoreActions(false);
-      }
       // Handle Pin popup
       if (pinPopupRef.current && !pinPopupRef.current.contains(event.target)) {
         setShowPinPopup(false);
@@ -61,7 +55,6 @@ const NoteFooter = ({
 
     const handleEscapeKey = (event) => {
       if (event.key === 'Escape') {
-        setShowMoreActions(false);
         setShowPinPopup(false);
         setShowRawNote(false);
       }
@@ -116,7 +109,7 @@ const NoteFooter = ({
   return (
     <div className="flex items-center justify-between px-4 py-2 text-xs text-gray-500">
       <div className="flex items-center space-x-2">
-        {/* Left side - only created date */}
+        {/* Left side - Created date */}
         {showCreatedDate && (
           <span className="text-gray-400">
             Created: {formatDate(note.created_datetime)}
@@ -124,146 +117,163 @@ const NoteFooter = ({
         )}
       </div>
 
-      <div className="flex items-center space-x-2">
-        {/* Right side icons */}
-        <button
-          onClick={() => setShowEndDatePickerForNoteId(note.id)}
-          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <CalendarIcon className="h-4 w-4" />
-        </button>
-
-        <button
-          onClick={() => {
-            setLinkingNoteId(note.id);
-            setLinkSearchTerm('');
-            setLinkPopupVisible(true);
-          }}
-          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-          title="Link Note"
-        >
-          <LinkIcon className="h-4 w-4" />
-        </button>
-
-        <button
-          onClick={() => toggleNoteSelection(note.id)}
-          className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-            selectedNotes.includes(note.id) ? 'bg-gray-100' : ''
-          }`}
-          title={selectedNotes.length === 0 ? 'Start Merge' : 'Select for Merge'}
-        >
-          <DocumentTextIcon className="h-4 w-4" />
-        </button>
-
-        <button
-          onClick={() => setPopupNoteText(note.id)}
-          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <PencilIcon className="h-4 w-4" />
-        </button>
-
-        <button
-          onClick={() => handleDelete(note.id)}
-          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <TrashIcon className="h-4 w-4" />
-        </button>
-
-        <div className="relative">
+      <div className="flex items-center">
+        {/* Todo Group */}
+        <div className="flex items-center space-x-1">
           <button
-            onClick={() => setShowMoreActions(!showMoreActions)}
-            ref={moreActionsRef}
+            onClick={() => handleTodoAction('low')}
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            title="Low Priority Todo"
           >
-            <EllipsisHorizontalIcon className="h-4 w-4" />
+            <FlagIcon className="h-4 w-4 text-blue-400" />
           </button>
 
-          {showMoreActions && (
-            <div
-              ref={moreActionsRef}
-              className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10"
-            >
-              {/* Organization actions */}
-              <button
-                onClick={() => handleAction('bookmark')}
-                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-              >
-                <BookmarkIcon className="h-3.5 w-3.5 mr-2 text-yellow-500" />
-                <span>Bookmark</span>
-              </button>
-              
-              <button
-                onClick={() => handleAction('abbreviation')}
-                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-              >
-                <TagIcon className="h-3.5 w-3.5 mr-2 text-purple-500" />
-                <span>Mark as Abbreviation</span>
-              </button>
+          <button
+            onClick={() => handleTodoAction('medium')}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            title="Medium Priority Todo"
+          >
+            <FlagIcon className="h-4 w-4 text-yellow-500" />
+          </button>
 
-              <button
-                onClick={() => handleAction('watch')}
-                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-              >
-                <EyeIcon className="h-3.5 w-3.5 mr-2 text-green-500" />
-                <span>Watch</span>
-              </button>
+          <button
+            onClick={() => handleTodoAction('high')}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            title="High Priority Todo"
+          >
+            <FlagIcon className="h-4 w-4 text-red-500" />
+          </button>
+        </div>
 
-              {/* Todo actions */}
-              <div className="border-t border-gray-100 my-1"></div>
-              <button
-                onClick={() => handleTodoAction('low')}
-                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-              >
-                <FlagIcon className="h-3.5 w-3.5 mr-2 text-blue-400" />
-                <span>Low Priority Todo</span>
-              </button>
+        {/* Separator */}
+        <div className="h-4 w-px bg-gray-200 mx-2"></div>
 
-              <button
-                onClick={() => handleTodoAction('medium')}
-                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-              >
-                <FlagIcon className="h-3.5 w-3.5 mr-2 text-yellow-500" />
-                <span>Medium Priority Todo</span>
-              </button>
+        {/* Organization Group */}
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => handleAction('bookmark')}
+            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+              note.content.includes('meta::bookmark::') ? 'bg-yellow-100' : ''
+            }`}
+            title="Bookmark"
+          >
+            <BookmarkIcon className="h-4 w-4 text-yellow-500" />
+          </button>
 
-              <button
-                onClick={() => handleTodoAction('high')}
-                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-              >
-                <FlagIcon className="h-3.5 w-3.5 mr-2 text-red-500" />
-                <span>High Priority Todo</span>
-              </button>
+          <button
+            onClick={() => handleAction('abbreviation')}
+            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+              note.content.includes('meta::abbreviation::') ? 'bg-purple-100' : ''
+            }`}
+            title="Mark as Abbreviation"
+          >
+            <TagIcon className="h-4 w-4 text-purple-500" />
+          </button>
 
-              {/* View actions */}
-              <div className="border-t border-gray-100 my-1"></div>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(note.content);
-                  toast.success('Note content copied to clipboard!');
-                }}
-                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-              >
-                <ClipboardIcon className="h-3.5 w-3.5 mr-2 text-gray-500" />
-                <span>Copy to Clipboard</span>
-              </button>
+          <button
+            onClick={() => handleAction('watch')}
+            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+              note.content.includes('meta::watch::') ? 'bg-green-100' : ''
+            }`}
+            title="Watch"
+          >
+            <EyeIcon className="h-4 w-4 text-green-500" />
+          </button>
+        </div>
 
-              <button
-                onClick={() => setShowRawNote(!showRawNote)}
-                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-              >
-                <DocumentTextIcon className="h-3.5 w-3.5 mr-2 text-gray-500" />
-                <span>View Raw Note</span>
-              </button>
+        {/* Separator */}
+        <div className="h-4 w-px bg-gray-200 mx-2"></div>
 
-              <button
-                onClick={() => setShowPinPopup(!showPinPopup)}
-                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-              >
-                <ChevronDownIcon className="h-3.5 w-3.5 mr-2 text-gray-500" />
-                <span>Pin Lines</span>
-              </button>
-            </div>
-          )}
+        {/* Date and Link Group */}
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => setShowEndDatePickerForNoteId(note.id)}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            title="Set End Date"
+          >
+            <CalendarIcon className="h-4 w-4 text-gray-500" />
+          </button>
+
+          <button
+            onClick={() => {
+              setLinkingNoteId(note.id);
+              setLinkSearchTerm('');
+              setLinkPopupVisible(true);
+            }}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            title="Link Note"
+          >
+            <LinkIcon className="h-4 w-4 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Separator */}
+        <div className="h-4 w-px bg-gray-200 mx-2"></div>
+
+        {/* View and Copy Group */}
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(note.content);
+              toast.success('Note content copied to clipboard!');
+            }}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            title="Copy to Clipboard"
+          >
+            <ClipboardIcon className="h-4 w-4 text-gray-500" />
+          </button>
+
+          <button
+            onClick={() => setShowRawNote(!showRawNote)}
+            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+              showRawNote ? 'bg-gray-100' : ''
+            }`}
+            title="View Raw Note"
+          >
+            <DocumentTextIcon className="h-4 w-4 text-gray-500" />
+          </button>
+
+          <button
+            onClick={() => setShowPinPopup(!showPinPopup)}
+            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+              showPinPopup ? 'bg-gray-100' : ''
+            }`}
+            title="Pin Lines"
+          >
+            <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Separator */}
+        <div className="h-4 w-px bg-gray-200 mx-2"></div>
+
+        {/* Edit/Delete Group */}
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => toggleNoteSelection(note.id)}
+            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+              selectedNotes.includes(note.id) ? 'bg-blue-100' : ''
+            }`}
+            title={selectedNotes.length === 0 ? 'Start Merge' : selectedNotes.includes(note.id) ? 'Unselect for Merge' : 'Select for Merge'}
+          >
+            <DocumentTextIcon className={`h-4 w-4 ${selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500'}`} />
+          </button>
+
+          <button
+            onClick={() => setPopupNoteText(note.id)}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            title="Edit Note"
+          >
+            <PencilIcon className="h-4 w-4 text-gray-500" />
+          </button>
+
+          <button
+            onClick={() => handleDelete(note.id)}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            title="Delete Note"
+          >
+            <TrashIcon className="h-4 w-4 text-red-500" />
+          </button>
         </div>
       </div>
 

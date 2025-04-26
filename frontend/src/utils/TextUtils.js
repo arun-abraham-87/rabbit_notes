@@ -14,67 +14,58 @@ export const parseNoteContent = ({ content, searchTerm }) => {
   const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
 
   return lines.map((line, lineIndex) => {
-    // Step 1: Parse the line and identify its type
-    const lineType = getLineType(line);
-    const rawContent = extractContent(line, lineType);
-    
-    // Step 2: Parse inline formatting
+    // Step 1: Parse inline formatting first
     const formattedContent = parseInlineFormatting({
-      content: rawContent,
+      content: line,
       searchTerm,
       lineIndex
     });
 
+    // Step 2: Check if this is a heading by looking at the original line
+    const trimmed = line.trim();
+    let type = 'normal';
+    if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
+      type = 'heading1';
+    } else if (trimmed.startsWith('##') && trimmed.endsWith('##')) {
+      type = 'heading2';
+    } else if (trimmed.startsWith('- ')) {
+      type = 'bullet';
+    }
+
     // Step 3: Wrap in appropriate container based on line type
     return wrapInContainer({
       content: formattedContent,
-      type: lineType,
+      type,
       lineIndex
     });
   });
 };
 
 /**
- * Determine the type of line (heading1, heading2, bullet, normal)
- */
-const getLineType = (line) => {
-  const trimmed = line.trim();
-  if (trimmed.startsWith('###') && trimmed.endsWith('###')) return 'heading1';
-  if (trimmed.startsWith('##') && trimmed.endsWith('##')) return 'heading2';
-  if (trimmed.startsWith('- ')) return 'bullet';
-  return 'normal';
-};
-
-/**
- * Extract the actual content based on line type
- */
-const extractContent = (line, type) => {
-  switch (type) {
-    case 'heading1':
-      return line.slice(3, -3);
-    case 'heading2':
-      return line.slice(2, -2);
-    case 'bullet':
-      return line.slice(2);
-    default:
-      return line;
-  }
-};
-
-/**
  * Parse inline formatting (bold, links, colors)
  */
 const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
+  // First handle any heading markers by temporarily replacing them
+  let processedContent = content;
+  const isH1 = content.trim().startsWith('###') && content.trim().endsWith('###');
+  const isH2 = content.trim().startsWith('##') && content.trim().endsWith('##');
+  
+  if (isH1) {
+    processedContent = content.slice(3, -3);
+  } else if (isH2) {
+    processedContent = content.slice(2, -2);
+  }
+
   const elements = [];
   const regex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)|\[color:(#[0-9a-fA-F]{6}):([^\]]+)\]|<span style="color: (#[0-9a-fA-F]{6}|[a-z-]+)">([^<]+)<\/span>/g;
   let lastIndex = 0;
   let match;
 
-  while ((match = regex.exec(content)) !== null) {
+  while ((match = regex.exec(processedContent)) !== null) {
     // Add text before the match
     if (match.index > lastIndex) {
       elements.push(...highlightSearchTerm(
-        content.slice(lastIndex, match.index),
+        processedContent.slice(lastIndex, match.index),
         searchTerm,
         `text-${lineIndex}-${lastIndex}`
       ));
@@ -149,9 +140,9 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
   }
 
   // Add remaining text
-  if (lastIndex < content.length) {
+  if (lastIndex < processedContent.length) {
     elements.push(...highlightSearchTerm(
-      content.slice(lastIndex),
+      processedContent.slice(lastIndex),
       searchTerm,
       `text-${lineIndex}-${lastIndex}`
     ));
@@ -262,8 +253,6 @@ export const reorderMetaTags = (content) => {
 
 // Export for use in tests
 export const __testing__ = {
-  getLineType,
-  extractContent,
   parseInlineFormatting,
   highlightSearchTerm,
   wrapInContainer

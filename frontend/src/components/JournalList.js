@@ -130,7 +130,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
   }
 
   return (
-    <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+    <div className="rounded-lg border bg-white text-card-foreground shadow-sm">
       <div className="flex justify-between items-center p-6">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-gray-900">Your Journals</h1>
@@ -154,7 +154,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
 
       {/* Filters Section */}
       {showFilters && (
-        <div className="mb-6 p-4 bg-[rgb(249_250_251)] rounded-lg border border-gray-200">
+        <div className="mx-6 mb-6 p-4 bg-[rgb(249_250_251)] rounded-lg border border-gray-200">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-700">Filters</h2>
             <button
@@ -202,7 +202,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mx-6 mb-6">
         <div className="p-4 rounded-lg bg-white border border-slate-200 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-[rgb(31_41_55_/_0.1)] rounded-full">
@@ -275,7 +275,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
               ).date
           )
         ) > 1 && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3">
+        <div className="mx-6 mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3">
           <div className="p-2 bg-amber-100 rounded-full">
             <ClockIcon className="h-5 w-5 text-amber-600" />
           </div>
@@ -291,7 +291,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
       )}
 
       {filteredJournals.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="text-center py-12 mx-6">
           <p className="text-gray-500">
             {journals.length === 0
               ? "No journal entries yet. Start writing today!"
@@ -299,7 +299,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 mx-6 mb-6">
           {filteredJournals.map((journal) => (
             <div
               key={journal.date}

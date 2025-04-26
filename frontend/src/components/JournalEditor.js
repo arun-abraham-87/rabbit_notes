@@ -255,7 +255,7 @@ const JournalEditor = ({ date, onSaved }) => {
             value={content}
             onChange={handleContentChange}
             spellCheck="true"
-            className="w-full h-96 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full h-96 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             placeholder="Write your journal entry here..."
           />
         </div>

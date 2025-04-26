@@ -11,6 +11,7 @@ import NoteEditor from './components/NoteEditor';
 import LeftPanel from './components/LeftPanel';
 import Journals from './pages/Journals';
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { parseNoteContent } from './utils/TextUtils';
 
 import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings, defaultSettings } from './utils/ApiUtils';
 
@@ -49,14 +50,45 @@ const PinnedSection = ({ notes, onUnpin }) => {
                 }}
                 title="Unpin note"
               />
-              {pinnedLines.map((text, i) => (
-                <div
-                  key={i}
-                  className={i === 0 ? 'font-medium truncate' : 'text-sm text-gray-500 truncate'}
-                >
-                  {text}
-                </div>
-              ))}
+              <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                {pinnedLines.map((line, lineIndex) => {
+                  // Check for headings first
+                  const h1Match = line.match(/^###(.+)###$/);
+                  const h2Match = line.match(/^##(.+)##$/);
+
+                  if (h1Match) {
+                    return (
+                      <h1 key={`line-${lineIndex}`} className="text-xl font-bold mb-2 text-gray-900">
+                        {parseNoteContent({ content: h1Match[1].trim(), searchTerm: '' }).map((element, idx) => (
+                          <React.Fragment key={idx}>{element}</React.Fragment>
+                        ))}
+                      </h1>
+                    );
+                  }
+
+                  if (h2Match) {
+                    return (
+                      <h2 key={`line-${lineIndex}`} className="text-lg font-semibold mb-2 text-gray-800">
+                        {parseNoteContent({ content: h2Match[1].trim(), searchTerm: '' }).map((element, idx) => (
+                          <React.Fragment key={idx}>{element}</React.Fragment>
+                        ))}
+                      </h2>
+                    );
+                  }
+
+                  // Process regular lines with URL parsing
+                  return (
+                    <div 
+                      key={`line-${lineIndex}`} 
+                      className={`mb-1 ${lineIndex === 0 ? 'font-medium' : 'text-gray-500'}`}
+                    >
+                      {parseNoteContent({ content: line, searchTerm: '' }).map((element, idx) => (
+                        <React.Fragment key={idx}>{element}</React.Fragment>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           );
         })}

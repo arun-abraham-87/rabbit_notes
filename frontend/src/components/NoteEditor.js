@@ -783,50 +783,54 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
         )}
         {pendingUrlIndex !== null && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white p-4 rounded shadow-md w-80">
-              <label htmlFor="custom-label-input" className="block text-sm mb-2 text-gray-700">
-                Enter custom label for the URL:
-              </label>
-              <input
-                id="custom-label-input"
-                type="text"
-                value={customLabel}
-                onChange={(e) => setCustomLabel(e.target.value)}
-
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const newLines = [...lines];
-                    const url = newLines[pendingUrlIndex].text;
-                    newLines[pendingUrlIndex].text = `[${customLabel}](${url})`;
-
-                    // Insert new line below
-                    const newLine = {
-                      id: `line-${Date.now()}-after-url`,
-                      text: '',
-                      isTitle: false
-                    };
-                    newLines.splice(pendingUrlIndex + 1, 0, newLine);
-                    setLines(newLines);
-
-                    setPendingUrlIndex(null);
-                    setCustomLabel('');
-
-                    setTimeout(() => {
-                      requestAnimationFrame(() => {
-                        const target = textareasRef.current[pendingUrlIndex + 1];
-                        if (target) {
-                          target.focus();
-                          target.selectionStart = target.selectionEnd = target.value.length;
-                        }
-                      });
-                    }, 0);
-                  } else if (e.key === 'Escape') {
-                    setPendingUrlIndex(null);
-                    setCustomLabel('');
-                  }
-                }}
-                className="w-full border px-2 py-1 rounded text-sm"
-              />
+            <div className="bg-white p-6 rounded-lg shadow-md w-96 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Edit Link Text</h3>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="custom-label-input" className="block text-sm mb-2 text-gray-700">
+                    Custom text for the link:
+                  </label>
+                  <input
+                    id="custom-label-input"
+                    type="text"
+                    value={customLabel}
+                    onChange={(e) => setCustomLabel(e.target.value)}
+                    className="w-full border px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter custom text"
+                    autoFocus
+                  />
+                </div>
+                <div className="text-sm text-gray-500 break-all">
+                  <span className="font-medium">URL: </span>
+                  <span className="break-all">
+                    {lines[pendingUrlIndex]?.text.match(/\((https?:\/\/[^\s)]+)\)/)?.[1] || lines[pendingUrlIndex]?.text}
+                  </span>
+                </div>
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setPendingUrlIndex(null);
+                      setCustomLabel('');
+                    }}
+                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newLines = [...lines];
+                      const url = newLines[pendingUrlIndex].text.match(/\((https?:\/\/[^\s)]+)\)/)?.[1] || newLines[pendingUrlIndex].text;
+                      newLines[pendingUrlIndex].text = `[${customLabel}](${url})`;
+                      setLines(newLines);
+                      setPendingUrlIndex(null);
+                      setCustomLabel('');
+                    }}
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -905,14 +909,18 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                 )}
                 {line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/) ? (
                   <div className="flex items-center pl-6 pr-28 w-full">
-                    <a
-                      href={line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/)[2]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline text-sm mr-2"
+                    <button
+                      onClick={() => {
+                        const match = line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+                        const currentLabel = match[1];
+                        const url = match[2];
+                        setPendingUrlIndex(index);
+                        setCustomLabel(currentLabel);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 underline text-sm mr-2 text-left"
                     >
                       {line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/)[1]}
-                    </a>
+                    </button>
                     <button
                       onClick={() => handleDeleteLine(index)}
                       className="text-red-400 text-xs ml-2 font-mono transition-transform transform hover:scale-150"
@@ -923,14 +931,15 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                   </div>
                 ) : line.text.match(/^https?:\/\/[^\s]+$/) ? (
                   <div className="flex items-center pl-6 pr-28 w-full">
-                    <a
-                      href={line.text}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline text-sm mr-2"
+                    <button
+                      onClick={() => {
+                        setPendingUrlIndex(index);
+                        setCustomLabel(new URL(line.text).hostname);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 underline text-sm mr-2 text-left"
                     >
                       {new URL(line.text).hostname}
-                    </a>
+                    </button>
                     <button
                       onClick={() => handleDeleteLine(index)}
                       className="text-red-400 text-xs ml-2 font-mono transition-transform transform hover:scale-150"

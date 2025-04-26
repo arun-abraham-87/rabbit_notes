@@ -28,7 +28,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
 
   return (
     <nav className="border-b py-4 px-8 bg-background hover:shadow-sm transition-shadow">
-      <div className="max-w-[80%] mx-auto flex justify-between items-center">
+      <div className="w-full mx-auto flex justify-between items-center">
         {/* Left: Brand */}
         <div className="flex items-center gap-2 cursor-pointer">
           <div>

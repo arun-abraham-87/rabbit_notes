@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { loadJournal, saveJournal } from '../utils/ApiUtils';
 import TagInput from './TagInput';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 
 const JournalEditor = ({ date, onSaved }) => {
   const [content, setContent] = useState('');
@@ -10,42 +11,43 @@ const JournalEditor = ({ date, onSaved }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [metadata, setMetadata] = useState({});
   const [saveStatus, setSaveStatus] = useState('');
+  const [currentDate, setCurrentDate] = useState(date);
+
+  const loadJournalData = useCallback(async (targetDate) => {
+    try {
+      setIsLoading(true);
+      const journal = await loadJournal(targetDate);
+      if (journal) {
+        setContent(journal.content);
+        setTags(journal.tags);
+        setMetadata(journal.metadata);
+      } else {
+        // Initialize new journal
+        setContent('');
+        setTags([]);
+        setMetadata({});
+      }
+    } catch (error) {
+      console.error('Error loading journal:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadJournalData = async () => {
-      try {
-        setIsLoading(true);
-        const journal = await loadJournal(date);
-        if (journal) {
-          setContent(journal.content);
-          setTags(journal.tags);
-          setMetadata(journal.metadata);
-        } else {
-          // Initialize new journal
-          setContent('');
-          setTags([]);
-          setMetadata({});
-        }
-      } catch (error) {
-        console.error('Error loading journal:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (date) {
-      loadJournalData();
+    if (currentDate) {
+      loadJournalData(currentDate);
     } else {
       setIsLoading(false);
     }
-  }, [date]);
+  }, [currentDate, loadJournalData]);
 
   const handleSave = useCallback(async () => {
     try {
       setIsSaving(true);
       setSaveStatus('Saving...');
       const now = new Date().toISOString();
-      await saveJournal(date, {
+      await saveJournal(currentDate, {
         content,
         tags,
         metadata: {
@@ -72,7 +74,7 @@ const JournalEditor = ({ date, onSaved }) => {
     } finally {
       setIsSaving(false);
     }
-  }, [content, tags, date, metadata]);
+  }, [content, tags, currentDate, metadata]);
 
   // Debounced auto-save
   useEffect(() => {
@@ -93,6 +95,13 @@ const JournalEditor = ({ date, onSaved }) => {
     setTags(newTags);
   };
 
+  const handleDateChange = (direction) => {
+    const newDate = addDays(new Date(currentDate), direction === 'forward' ? 1 : -1)
+      .toISOString()
+      .split('T')[0];
+    setCurrentDate(newDate);
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -105,9 +114,25 @@ const JournalEditor = ({ date, onSaved }) => {
     <div className="max-w-4xl mx-auto p-4">
       <div className="bg-white shadow-sm rounded-lg p-6">
         <div className="mb-6 flex justify-between items-center">
-          <h2 className="text-2xl font-semibold text-gray-900">
-            {format(new Date(date), 'MMMM d, yyyy')}
-          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleDateChange('backward')}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Previous day"
+            >
+              <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
+            </button>
+            <h2 className="text-2xl font-semibold text-gray-900 min-w-[200px] text-center">
+              {format(new Date(currentDate), 'MMMM d, yyyy')}
+            </h2>
+            <button
+              onClick={() => handleDateChange('forward')}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Next day"
+            >
+              <ChevronRightIcon className="h-5 w-5 text-gray-600" />
+            </button>
+          </div>
           {saveStatus && (
             <span className="text-sm text-gray-500 transition-opacity duration-200">
               {saveStatus}

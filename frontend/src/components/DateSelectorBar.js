@@ -92,6 +92,24 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
               {collapsed ? selectedDate : 'Date Selection'}
             </h2>
             {collapsed && (
+              <button
+                onClick={() => updateDate(true)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Next day"
+              >
+                <ChevronRightIcon className="h-5 w-5 text-gray-600" />
+              </button>
+            )}
+            {collapsed && selectedDate !== getAustralianDate() && (
+              <button
+                onClick={() => handleDateChange(getAustralianDate())}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Reset to Today"
+              >
+                <ArrowPathIcon className="h-5 w-5 text-gray-600" />
+              </button>
+            )}
+            {collapsed && (
               <span className="text-sm font-light text-gray-500">
                 {selectedDate === getAustralianDate() 
                   ? '(Today)' 
@@ -99,31 +117,13 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
                       const diffTime = new Date(selectedDate).getTime() - new Date(getAustralianDate()).getTime();
                       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                       return diffDays > 0 
-                        ? `(${diffDays} ${diffDays === 1 ? 'day' : 'days'} from now)`
-                        : `(${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'day' : 'days'} ago)`;
+                        ? `(+${diffDays})`
+                        : `(${diffDays})`;
                     })()
                 }
               </span>
             )}
           </div>
-          {collapsed && (
-            <button
-              onClick={() => updateDate(true)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Next day"
-            >
-              <ChevronRightIcon className="h-5 w-5 text-gray-600" />
-            </button>
-          )}
-          {collapsed && selectedDate !== getAustralianDate() && (
-            <button
-              onClick={() => handleDateChange(getAustralianDate())}
-              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Reset to Today"
-            >
-              <ArrowPathIcon className="h-5 w-5 text-gray-600" />
-            </button>
-          )}
         </div>
         
         {collapsed && (

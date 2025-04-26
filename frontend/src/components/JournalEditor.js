@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { format, addDays } from 'date-fns';
 import { loadJournal, saveJournal } from '../utils/ApiUtils';
 import TagInput from './TagInput';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
+import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
 
 const JournalEditor = ({ date, onSaved }) => {
   const [content, setContent] = useState('');
@@ -10,8 +11,11 @@ const JournalEditor = ({ date, onSaved }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [metadata, setMetadata] = useState({});
-  const [saveStatus, setSaveStatus] = useState('');
+  const [saveStatus, setSaveStatus] = useState('pristine'); // 'pristine' | 'unsaved' | 'saving' | 'saved' | 'error'
   const [currentDate, setCurrentDate] = useState(date);
+  const [isStale, setIsStale] = useState(false);
+  const [lastSavedContent, setLastSavedContent] = useState('');
+  const [lastSavedTags, setLastSavedTags] = useState([]);
 
   const loadJournalData = useCallback(async (targetDate) => {
     try {
@@ -21,14 +25,21 @@ const JournalEditor = ({ date, onSaved }) => {
         setContent(journal.content);
         setTags(journal.tags);
         setMetadata(journal.metadata);
+        setLastSavedContent(journal.content);
+        setLastSavedTags(journal.tags);
       } else {
         // Initialize new journal
         setContent('');
         setTags([]);
         setMetadata({});
+        setLastSavedContent('');
+        setLastSavedTags([]);
       }
+      setSaveStatus('pristine');
+      setIsStale(false);
     } catch (error) {
       console.error('Error loading journal:', error);
+      setSaveStatus('error');
     } finally {
       setIsLoading(false);
     }
@@ -42,10 +53,19 @@ const JournalEditor = ({ date, onSaved }) => {
     }
   }, [currentDate, loadJournalData]);
 
+  // Check for unsaved changes
+  useEffect(() => {
+    const contentChanged = content !== lastSavedContent;
+    const tagsChanged = JSON.stringify(tags) !== JSON.stringify(lastSavedTags);
+    if (contentChanged || tagsChanged) {
+      setSaveStatus('unsaved');
+    }
+  }, [content, tags, lastSavedContent, lastSavedTags]);
+
   const handleSave = useCallback(async () => {
     try {
       setIsSaving(true);
-      setSaveStatus('Saving...');
+      setSaveStatus('saving');
       const now = new Date().toISOString();
       await saveJournal(currentDate, {
         content,
@@ -60,17 +80,12 @@ const JournalEditor = ({ date, onSaved }) => {
           topics: metadata.topics || []
         }
       });
-      setSaveStatus('Saved');
-      // Clear the "Saved" message after 2 seconds
-      setTimeout(() => {
-        setSaveStatus('');
-      }, 2000);
+      setLastSavedContent(content);
+      setLastSavedTags([...tags]);
+      setSaveStatus('saved');
     } catch (error) {
       console.error('Error saving journal:', error);
-      setSaveStatus('Save failed');
-      setTimeout(() => {
-        setSaveStatus('');
-      }, 3000);
+      setSaveStatus('error');
     } finally {
       setIsSaving(false);
     }
@@ -78,14 +93,14 @@ const JournalEditor = ({ date, onSaved }) => {
 
   // Debounced auto-save
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && saveStatus === 'unsaved') {
       const saveTimer = setTimeout(() => {
         handleSave();
       }, 1000); // Wait 1 second after last change before saving
 
       return () => clearTimeout(saveTimer);
     }
-  }, [content, tags, handleSave, isLoading]);
+  }, [content, tags, handleSave, isLoading, saveStatus]);
 
   const handleContentChange = (e) => {
     setContent(e.target.value);
@@ -102,6 +117,37 @@ const JournalEditor = ({ date, onSaved }) => {
     setCurrentDate(newDate);
   };
 
+  const getStatusDisplay = () => {
+    switch (saveStatus) {
+      case 'unsaved':
+        return {
+          icon: <ExclamationCircleIcon className="h-5 w-5" />,
+          text: 'Unsaved changes',
+          className: 'text-amber-600'
+        };
+      case 'saving':
+        return {
+          icon: <div className="h-5 w-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />,
+          text: 'Saving...',
+          className: 'text-gray-600'
+        };
+      case 'saved':
+        return {
+          icon: <CheckCircleIcon className="h-5 w-5" />,
+          text: 'All changes saved',
+          className: 'text-green-600'
+        };
+      case 'error':
+        return {
+          icon: <ExclamationCircleIcon className="h-5 w-5" />,
+          text: 'Save failed',
+          className: 'text-red-600'
+        };
+      default:
+        return null;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -109,6 +155,8 @@ const JournalEditor = ({ date, onSaved }) => {
       </div>
     );
   }
+
+  const status = getStatusDisplay();
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -133,10 +181,12 @@ const JournalEditor = ({ date, onSaved }) => {
               <ChevronRightIcon className="h-5 w-5 text-gray-600" />
             </button>
           </div>
-          {saveStatus && (
-            <span className="text-sm text-gray-500 transition-opacity duration-200">
-              {saveStatus}
-            </span>
+          {/* Persistent Status Indicator */}
+          {status && (
+            <div className={`flex items-center gap-2 ${status.className}`}>
+              {status.icon}
+              <span className="text-sm font-medium">{status.text}</span>
+            </div>
           )}
         </div>
 

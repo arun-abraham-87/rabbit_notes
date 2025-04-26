@@ -14,11 +14,9 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
 
   const [journals, setJournals] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showFilters, setShowFilters] = useState(true); // Show filters by default
+  const [showFilters, setShowFilters] = useState(true);
   const [filters, setFilters] = useState({
     dateRange: defaultDateRange,
-    tags: [],
-    mood: '',
     searchText: ''
   });
   const [selectedJournal, setSelectedJournal] = useState(null);
@@ -50,12 +48,6 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
     }
   };
 
-  // Get unique tags from all journals
-  const allTags = [...new Set(journals.flatMap(journal => journal.metadata?.tags || []))];
-  
-  // Get unique moods from all journals
-  const allMoods = [...new Set(journals.map(journal => journal.metadata?.mood).filter(Boolean))];
-
   const filterJournals = (journals) => {
     return journals.filter(journal => {
       // Filter out empty journals
@@ -76,19 +68,6 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
         } else if (!start && end && journalDate > end) {
           return false;
         }
-      }
-
-      // Tags filter
-      if (filters.tags.length > 0) {
-        const journalTags = journal.metadata?.tags || [];
-        if (!filters.tags.some(tag => journalTags.includes(tag))) {
-          return false;
-        }
-      }
-
-      // Mood filter
-      if (filters.mood && journal.metadata?.mood !== filters.mood) {
-        return false;
       }
 
       // Search text filter
@@ -123,20 +102,9 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
     }));
   };
 
-  const handleTagToggle = (tag) => {
-    setFilters(prev => ({
-      ...prev,
-      tags: prev.tags.includes(tag)
-        ? prev.tags.filter(t => t !== tag)
-        : [...prev.tags, tag]
-    }));
-  };
-
   const clearFilters = () => {
     setFilters({
-      dateRange: defaultDateRange, // Reset to default date range instead of empty
-      tags: [],
-      mood: '',
+      dateRange: defaultDateRange,
       searchText: ''
     });
   };
@@ -207,13 +175,13 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                   type="date"
                   value={filters.dateRange.start}
                   onChange={(e) => handleDateRangeChange('start', e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[rgb(31_41_55)] focus:ring-[rgb(31_41_55)] sm:text-sm"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[rgb(31_41_55)] focus:ring-[rgb(31_41_55)] text-base py-2.5 px-4"
                 />
                 <input
                   type="date"
                   value={filters.dateRange.end}
                   onChange={(e) => handleDateRangeChange('end', e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[rgb(31_41_55)] focus:ring-[rgb(31_41_55)] sm:text-sm"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[rgb(31_41_55)] focus:ring-[rgb(31_41_55)] text-base py-2.5 px-4"
                 />
               </div>
             </div>
@@ -226,43 +194,8 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                 value={filters.searchText}
                 onChange={(e) => handleFilterChange('searchText', e.target.value)}
                 placeholder="Search in journal content..."
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[rgb(31_41_55)] focus:ring-[rgb(31_41_55)] sm:text-sm"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[rgb(31_41_55)] focus:ring-[rgb(31_41_55)] text-base py-2.5 px-4"
               />
-            </div>
-
-            {/* Tags */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Tags</label>
-              <div className="flex flex-wrap gap-2">
-                {allTags.map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => handleTagToggle(tag)}
-                    className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                      filters.tags.includes(tag)
-                        ? 'bg-[rgb(31_41_55_/_0.1)] text-gray-700 border border-gray-300'
-                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
-                    }`}
-                  >
-                    #{tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Mood */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Mood</label>
-              <select
-                value={filters.mood}
-                onChange={(e) => handleFilterChange('mood', e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[rgb(31_41_55)] focus:ring-[rgb(31_41_55)] sm:text-sm"
-              >
-                <option value="">All moods</option>
-                {allMoods.map(mood => (
-                  <option key={mood} value={mood}>{mood}</option>
-                ))}
-              </select>
             </div>
           </div>
         </div>
@@ -277,7 +210,9 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Total Journals</p>
-              <p className="text-2xl font-bold text-gray-900">{journals.length}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {journals.filter(journal => journal.preview?.trim()).length}
+              </p>
             </div>
           </div>
         </div>
@@ -292,7 +227,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
               <p className="text-2xl font-bold text-gray-900">
                 {journals.filter(journal => {
                   const journalDate = parseISO(journal.date);
-                  return isWithinInterval(journalDate, {
+                  return journal.preview?.trim() && isWithinInterval(journalDate, {
                     start: startOfCurrentMonth,
                     end: today
                   });
@@ -310,13 +245,15 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
             <div>
               <p className="text-sm font-medium text-gray-500">Last Entry</p>
               <p className="text-2xl font-bold text-gray-900">
-                {journals.length > 0
+                {journals.some(j => j.preview?.trim()) 
                   ? `${differenceInDays(
                       today,
                       parseISO(
-                        journals.reduce((latest, journal) =>
-                          latest.date > journal.date ? latest : journal
-                        ).date
+                        journals
+                          .filter(j => j.preview?.trim())
+                          .reduce((latest, journal) =>
+                            latest.date > journal.date ? latest : journal
+                          ).date
                       )
                     )} days ago`
                   : 'No entries'}
@@ -352,15 +289,6 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                       <> • Last modified {format(new Date(journal.metadata.lastModified), 'h:mm a')}</>
                     )}
                   </p>
-                  {journal.metadata?.tags?.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {journal.metadata.tags.map((tag, index) => (
-                        <span key={index} className="px-2 py-1 bg-[rgb(31_41_55_/_0.1)] rounded-full text-xs text-gray-700">
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                   {journal.preview && (
                     <div className="mt-3">
                       <p className="text-gray-600 line-clamp-3">{journal.preview}</p>
@@ -387,11 +315,6 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                   </button>
                 </div>
               </div>
-              {journal.metadata?.mood && (
-                <div className="mt-2 text-sm text-gray-500">
-                  Mood: {journal.metadata.mood}
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -416,20 +339,6 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
               </button>
             </div>
             <div className="p-6 overflow-y-auto flex-grow">
-              {selectedJournal.metadata?.tags?.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {selectedJournal.metadata.tags.map((tag, index) => (
-                    <span key={index} className="px-2 py-1 bg-[rgb(31_41_55_/_0.1)] rounded-full text-xs text-gray-700">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {selectedJournal.metadata?.mood && (
-                <div className="mb-4 text-sm text-gray-500">
-                  Mood: {selectedJournal.metadata.mood}
-                </div>
-              )}
               <div className="whitespace-pre-wrap text-gray-700">
                 {selectedJournal.content}
               </div>

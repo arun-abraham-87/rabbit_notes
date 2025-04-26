@@ -90,10 +90,48 @@ export default function RighClickMenu({
                   arr.splice(lineIndex + 1, 0, '');
                   break;
                 case 'removeFormatting':
-                  const trimmed = arr[lineIndex].trim();
-                  const isH1 = trimmed.startsWith('###') && trimmed.endsWith('###');
-                  const isH2 = trimmed.startsWith('##') && trimmed.endsWith('##');
-                  if (isH1 || isH2) arr[lineIndex] = isH1 ? trimmed.slice(3, -3) : trimmed.slice(2, -2);
+                  let cleanText = arr[lineIndex];
+                  let hasChanges;
+                  
+                  do {
+                    hasChanges = false;
+                    let newText = cleanText;
+
+                    // Remove color markers
+                    if (newText.startsWith('[color:')) {
+                      const endBracket = newText.indexOf(']');
+                      if (endBracket !== -1) {
+                        const parts = newText.slice(7, endBracket).split(':');
+                        if (parts.length === 2) {
+                          newText = parts[1] + newText.slice(endBracket + 1);
+                          hasChanges = true;
+                        }
+                      }
+                    }
+
+                    // Remove heading markers
+                    if (newText.startsWith('####') && newText.endsWith('####')) {
+                      newText = newText.slice(4, -4);
+                      hasChanges = true;
+                    } else if (newText.startsWith('##') && newText.endsWith('##')) {
+                      newText = newText.slice(2, -2);
+                      hasChanges = true;
+                    }
+
+                    // Remove bold markers
+                    if (newText.startsWith('**') && newText.endsWith('**')) {
+                      newText = newText.slice(2, -2);
+                      hasChanges = true;
+                    }
+
+                    newText = newText.trim();
+                    if (newText !== cleanText) {
+                      hasChanges = true;
+                      cleanText = newText;
+                    }
+                  } while (hasChanges);
+
+                  arr[lineIndex] = cleanText;
                   break;
                 case 'makeH1':
                   const h1Text = arr[lineIndex].trim()

@@ -101,10 +101,48 @@ export default function RightClickMenu({
           className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
           onClick={() => {
             const arr = note.content.split('\n');
-            const trimmed = arr[lineIndex].trim();
-            const isH1 = trimmed.startsWith('###') && trimmed.endsWith('###');
-            const isH2 = trimmed.startsWith('##') && trimmed.endsWith('##');
-            if (isH1 || isH2) arr[lineIndex] = isH1 ? trimmed.slice(3, -3) : trimmed.slice(2, -2);
+            let text = arr[lineIndex];
+            let hasChanges;
+
+            do {
+              hasChanges = false;
+              let newText = text;
+
+              // Remove color markers in [color:#XXXXXX:text] format
+              if (newText.match(/^\[color:#[0-9A-Fa-f]{6}:([^\]]+)\]$/)) {
+                newText = newText.replace(/^\[color:#[0-9A-Fa-f]{6}:([^\]]+)\]$/, '$1');
+                hasChanges = true;
+              }
+
+              // Remove heading markers
+              if (newText.startsWith('####') && newText.endsWith('####')) {
+                newText = newText.slice(4, -4);
+                hasChanges = true;
+              } else if (newText.startsWith('##') && newText.endsWith('##')) {
+                newText = newText.slice(2, -2);
+                hasChanges = true;
+              }
+
+              // Remove bold markers
+              if (newText.startsWith('**') && newText.endsWith('**')) {
+                newText = newText.slice(2, -2);
+                hasChanges = true;
+              }
+
+              // Remove meta links
+              if (newText.startsWith('meta::link::')) {
+                newText = '';
+                hasChanges = true;
+              }
+
+              newText = newText.trim();
+              if (newText !== text) {
+                hasChanges = true;
+                text = newText;
+              }
+            } while (hasChanges);
+
+            arr[lineIndex] = text;
             updateNote(noteId, arr.join('\n'));
           }}
         >

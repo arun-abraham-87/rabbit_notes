@@ -14,8 +14,10 @@ import {
   FlagIcon,
   ChevronDownIcon,
   DocumentTextIcon,
+  ClipboardIcon,
 } from '@heroicons/react/24/solid';
 import { formatDate } from '../utils/DateUtils';
+import { toast } from 'react-toastify';
 
 const NoteFooter = ({
   note,
@@ -418,12 +420,29 @@ const NoteFooter = ({
           <div ref={rawNotePopupRef} className="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Raw Note Content</h3>
-              <button
-                onClick={() => setShowRawNote(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <XCircleIcon className="h-6 w-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(note.content).then(() => {
+                      // Show toast or some feedback
+                      toast.success('Content copied to clipboard!', {
+                        position: 'bottom-right',
+                        autoClose: 2000
+                      });
+                    });
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                  title="Copy to clipboard"
+                >
+                  <ClipboardIcon className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => setShowRawNote(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg overflow-auto max-h-[60vh]">
               <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">

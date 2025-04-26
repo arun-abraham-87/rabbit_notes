@@ -15,7 +15,7 @@ import {
   ChevronDownIcon,
   DocumentTextIcon,
   ClipboardIcon,
-  EllipsisHorizontalIcon,
+  ArrowsPointingInIcon,
 } from '@heroicons/react/24/solid';
 import { formatDate } from '../utils/DateUtils';
 import { toast } from 'react-toastify';
@@ -272,6 +272,16 @@ const NoteFooter = ({
           >
             <LinkIcon className="h-4 w-4 text-gray-500" />
           </button>
+
+          <button
+            onClick={() => toggleNoteSelection(note.id)}
+            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+              selectedNotes.includes(note.id) ? 'bg-blue-100' : ''
+            }`}
+            title={selectedNotes.length === 0 ? 'Start Merge' : selectedNotes.includes(note.id) ? 'Unselect for Merge' : 'Select for Merge'}
+          >
+            <ArrowsPointingInIcon className={`h-4 w-4 ${selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500'}`} />
+          </button>
         </div>
 
         {/* Separator */}
@@ -316,16 +326,6 @@ const NoteFooter = ({
 
         {/* Edit/Delete Group */}
         <div className="flex items-center space-x-1">
-          <button
-            onClick={() => toggleNoteSelection(note.id)}
-            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-              selectedNotes.includes(note.id) ? 'bg-blue-100' : ''
-            }`}
-            title={selectedNotes.length === 0 ? 'Start Merge' : selectedNotes.includes(note.id) ? 'Unselect for Merge' : 'Select for Merge'}
-          >
-            <DocumentTextIcon className={`h-4 w-4 ${selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500'}`} />
-          </button>
-
           <button
             onClick={() => setPopupNoteText(note.id)}
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"

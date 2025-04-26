@@ -950,6 +950,15 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                     }}
                     onKeyDown={(e) => handleKeyDown(e, index)}
                     onPaste={(e) => handlePaste(e, index)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setContextMenu({
+                        visible: true,
+                        x: e.clientX,
+                        y: e.clientY,
+                        index: index
+                      });
+                    }}
                     className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${
                       line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
                     }`}

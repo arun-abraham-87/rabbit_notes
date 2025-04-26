@@ -1,7 +1,7 @@
 import React from 'react';
 import InlineEditor from './InlineEditor';
 import { updateNoteById as updateNote } from '../utils/ApiUtils';
-import { processContent } from '../utils/TextUtils';
+import { parseNoteContent } from '../utils/TextUtils';
 
 /**
  * RenderH1 component
@@ -52,7 +52,7 @@ export default function H1({
         />
       ) : (
         <span className="flex-1">
-          {processContent(content, searchTerm, duplicatedUrlColors)}
+          {parseNoteContent({ content, searchTerm })}
         </span>
       )}
     </h1>

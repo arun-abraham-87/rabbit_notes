@@ -14,7 +14,7 @@ import {
   Squares2X2Icon,
   EllipsisHorizontalIcon
 } from '@heroicons/react/24/solid';
-import { processContent } from '../utils/TextUtils';
+import { parseNoteContent } from '../utils/TextUtils';
 import { formatDate } from '../utils/DateUtils';
 
 const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => {
@@ -345,7 +345,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                 if (h1Match) {
                   return (
                     <h1 key={`line-${lineIndex}`} className="text-xl font-bold mb-2 text-gray-900">
-                      {processContent(h1Match[1].trim(), searchQuery)}
+                      {parseNoteContent({ content: h1Match[1].trim(), searchTerm: searchQuery })}
                     </h1>
                   );
                 }
@@ -353,7 +353,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                 if (h2Match) {
                   return (
                     <h2 key={`line-${lineIndex}`} className="text-lg font-semibold mb-2 text-gray-800">
-                      {processContent(h2Match[1].trim(), searchQuery)}
+                      {parseNoteContent({ content: h2Match[1].trim(), searchTerm: searchQuery })}
                     </h2>
                   );
                 }
@@ -361,7 +361,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                 // Process regular lines with URLs and search highlighting
                 return (
                   <div key={`line-${lineIndex}`} className="mb-1">
-                    {processContent(line, searchQuery)}
+                    {parseNoteContent({ content: line, searchTerm: searchQuery })}
                   </div>
                 );
               });

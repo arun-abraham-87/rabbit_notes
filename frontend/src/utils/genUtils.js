@@ -141,9 +141,11 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
       }
     } else if (match[7] && match[8]) {
       // [color:#HEXCODE:text]
+      const color = match[7];
+      const text = match[8];
       elements.push(
-        <span key={`color-${idx}-${match.index}`} style={{ color: match[7] }}>
-          {match[8]}
+        <span key={`color-${idx}-${match.index}`} style={{ color }}>
+          {buildLineElements(text, `${idx}-color-${match.index}`, false, searchTerm)}
         </span>
       );
     }
@@ -210,18 +212,25 @@ export const renderLineWithClickableDates = (
  */
 export const getIndentFlags = (contentLines) => {
   if (!Array.isArray(contentLines) || contentLines.length === 0) {
-    return '';
+    return [];
   }
   let flag = false;
   return contentLines.map((line) => {
-    if (line.startsWith('<h2>')) {
+    // Handle both string and React element inputs
+    const lineContent = typeof line === 'string' ? line : (line?.props?.children || '');
+    
+    // Check for h2 tag in string content
+    if (typeof lineContent === 'string' && (lineContent.startsWith('<h2>') || lineContent.startsWith('##'))) {
       flag = true;
       return false;
     }
-    if (line.trim() === '') {
+    
+    // Check for empty line
+    if (typeof lineContent === 'string' && lineContent.trim() === '') {
       flag = false;
       return false;
     }
+    
     return flag;
   });
 };

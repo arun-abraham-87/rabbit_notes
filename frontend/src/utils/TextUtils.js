@@ -1,126 +1,213 @@
 import React from 'react';
-import { buildLineElements } from './genUtils';
 
-// Function to process the content with links, capitalization, and search query highlighting
-export const processContent = (content, searchTerm) => {
+/**
+ * Comprehensive function to parse and format note content
+ * @param {Object} params
+ * @param {string} params.content - The note content
+ * @param {string} params.searchTerm - Search term for highlighting
+ * @returns {Array<React.ReactElement>} Array of formatted React elements
+ */
+export const parseNoteContent = ({ content, searchTerm }) => {
   if (!content) return [];
 
-  // Convert HTML color spans to our marker format
-  content = content.replace(/<span style="color: (#[0-9a-fA-F]{6})">[^<]+<\/span>/g, (match, color) => {
-    const text = match.match(/<span[^>]*>([^<]+)<\/span>/)[1];
-    return `[color:${color}:${text}]`;
-  });
+  // Split into lines and process each line
+  const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
 
-  // Split content into lines and process each line
-  const lines = content.split('\n');
-  return lines.map((line, idx) => {
-    // Check for headings
-    if (line.startsWith('### ')) {
-      return <h1 key={idx}>{line.slice(4)}</h1>;
-    }
-    if (line.startsWith('## ')) {
-      return <h2 key={idx}>{line.slice(3)}</h2>;
-    }
+  return lines.map((line, lineIndex) => {
+    // Step 1: Parse the line and identify its type
+    const lineType = getLineType(line);
+    const rawContent = extractContent(line, lineType);
     
-    // Process regular lines
-    return <div key={idx}>{buildLineElements(line, idx, line.startsWith('- '), searchTerm)}</div>;
+    // Step 2: Parse inline formatting
+    const formattedContent = parseInlineFormatting({
+      content: rawContent,
+      searchTerm,
+      lineIndex
+    });
+
+    // Step 3: Wrap in appropriate container based on line type
+    return wrapInContainer({
+      content: formattedContent,
+      type: lineType,
+      lineIndex
+    });
   });
 };
 
-// Helper function to process text segments (handles links and search highlighting)
-const processTextSegment = (text, shouldCapitalize, searchTerms) => {
+/**
+ * Determine the type of line (heading1, heading2, bullet, normal)
+ */
+const getLineType = (line) => {
+  const trimmed = line.trim();
+  if (trimmed.startsWith('###') && trimmed.endsWith('###')) return 'heading1';
+  if (trimmed.startsWith('##') && trimmed.endsWith('##')) return 'heading2';
+  if (trimmed.startsWith('- ')) return 'bullet';
+  return 'normal';
+};
+
+/**
+ * Extract the actual content based on line type
+ */
+const extractContent = (line, type) => {
+  switch (type) {
+    case 'heading1':
+      return line.slice(3, -3);
+    case 'heading2':
+      return line.slice(2, -2);
+    case 'bullet':
+      return line.slice(2);
+    default:
+      return line;
+  }
+};
+
+/**
+ * Parse inline formatting (bold, links, colors)
+ */
+const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
   const elements = [];
-  const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
+  const regex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)|\[color:(#[0-9a-fA-F]{6}):([^\]]+)\]|<span style="color: (#[0-9a-fA-F]{6}|[a-z-]+)">([^<]+)<\/span>/g;
   let lastIndex = 0;
   let match;
 
-  // Capitalize if needed
-  if (shouldCapitalize && text.trim()) {
-    text = text.charAt(0).toUpperCase() + text.slice(1);
-  }
-
-  while ((match = linkRegex.exec(text)) !== null) {
-    // Text before link
+  while ((match = regex.exec(content)) !== null) {
+    // Add text before the match
     if (match.index > lastIndex) {
-      let textSegment = text.slice(lastIndex, match.index);
-      if (searchTerms.length) {
-        const regex = new RegExp(`(${searchTerms.join('|')})`, 'gi');
-        textSegment = textSegment.replace(regex, '<span class="bg-yellow-300">$1</span>');
-      }
+      elements.push(...highlightSearchTerm(
+        content.slice(lastIndex, match.index),
+        searchTerm,
+        `text-${lineIndex}-${lastIndex}`
+      ));
+    }
+
+    // Process the match based on type
+    if (match[1]) { // Bold
       elements.push(
-        <span
-          key={`text-${lastIndex}`}
-          dangerouslySetInnerHTML={{ __html: textSegment }}
-        />
+        <strong key={`bold-${lineIndex}-${match.index}`}>
+          {match[2]}
+        </strong>
+      );
+    } else if (match[3]) { // Markdown link
+      elements.push(
+        <a
+          key={`link-${lineIndex}-${match.index}`}
+          href={match[5]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline hover:text-blue-800"
+        >
+          {match[4]}
+        </a>
+      );
+    } else if (match[6]) { // Raw URL
+      const url = match[6];
+      const display = (() => {
+        try {
+          return new URL(url).hostname.replace(/^www\./, '');
+        } catch {
+          return url;
+        }
+      })();
+      elements.push(
+        <a
+          key={`url-${lineIndex}-${match.index}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline hover:text-blue-800"
+        >
+          {display}
+        </a>
+      );
+    } else if (match[7]) { // [color:#HEXCODE:text] format
+      const color = match[7];
+      const text = match[8];
+      elements.push(
+        <span key={`color-${lineIndex}-${match.index}`} style={{ color }}>
+          {parseInlineFormatting({
+            content: text,
+            searchTerm,
+            lineIndex: `${lineIndex}-color-${match.index}`
+          })}
+        </span>
+      );
+    } else if (match[9]) { // HTML-style color span
+      const color = match[9];
+      const text = match[10];
+      elements.push(
+        <span key={`color-${lineIndex}-${match.index}`} style={{ color }}>
+          {parseInlineFormatting({
+            content: text,
+            searchTerm,
+            lineIndex: `${lineIndex}-color-${match.index}`
+          })}
+        </span>
       );
     }
 
-    // Handle link
-    const url = match[2] || match[3];
-    const display = match[1] || (() => {
-      try { return new URL(url).hostname.replace(/^www\./, ''); }
-      catch { return url; }
-    })();
-    elements.push(
-      <a
-        key={`link-${match.index}`}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-blue-600 underline hover:text-blue-800"
-      >
-        {display}
-      </a>
-    );
     lastIndex = match.index + match[0].length;
   }
 
-  // Remaining text after last link
-  if (lastIndex < text.length) {
-    let textSegment = text.slice(lastIndex);
-    if (searchTerms.length) {
-      const regex = new RegExp(`(${searchTerms.join('|')})`, 'gi');
-      textSegment = textSegment.replace(regex, '<span class="bg-yellow-300">$1</span>');
-    }
-    elements.push(
-      <span
-        key={`text-end-${lastIndex}`}
-        dangerouslySetInnerHTML={{ __html: textSegment }}
-      />
-    );
+  // Add remaining text
+  if (lastIndex < content.length) {
+    elements.push(...highlightSearchTerm(
+      content.slice(lastIndex),
+      searchTerm,
+      `text-${lineIndex}-${lastIndex}`
+    ));
   }
 
   return elements;
 };
 
-export const parseFormattedContent = (formatted_lines) => {
-  // If no lines array or it's empty, return an empty string (or array, if that makes more sense)
-  if (!Array.isArray(formatted_lines) || formatted_lines.length === 0) {
-    console.log(typeof formatted_lines)
-    console.log(" --Not array", formatted_lines)
-    return '';
+/**
+ * Highlight search terms in text
+ */
+const highlightSearchTerm = (text, searchTerm, keyPrefix) => {
+  if (!searchTerm || !text) return [text];
+
+  try {
+    const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    return text.split(regex).map((part, idx) =>
+      regex.test(part) ? (
+        <mark key={`${keyPrefix}-mark-${idx}`} className="bg-yellow-200">
+          {part}
+        </mark>
+      ) : part
+    );
+  } catch {
+    return [text];
   }
+};
 
-  console.log("=================================");
-  console.log(formatted_lines);
-  console.log("=================================");
-  console.log(
-    'DEBUG – lines:',
-    formatted_lines,
-    'typeof lines =', typeof formatted_lines,
-    'Array.isArray =', Array.isArray(formatted_lines)
-  );
-
-  return formatted_lines.map((line) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
-      return `<h1>${trimmed.slice(3, -3)}</h1>`;
-    } else if (trimmed.startsWith('##') && trimmed.endsWith('##')) {
-      return `<h2>${trimmed.slice(2, -2)}</h2>`;
-    } else {
-      return line;
-    }
-  });
+/**
+ * Wrap content in appropriate container based on line type
+ */
+const wrapInContainer = ({ content, type, lineIndex }) => {
+  switch (type) {
+    case 'heading1':
+      return (
+        <h1 key={`h1-${lineIndex}`} className="text-2xl font-bold">
+          {content}
+        </h1>
+      );
+    case 'heading2':
+      return (
+        <h2 key={`h2-${lineIndex}`} className="text-lg font-semibold text-purple-700">
+          {content}
+        </h2>
+      );
+    case 'bullet':
+      return (
+        <div key={`bullet-${lineIndex}`} className="flex">
+          <span className="mr-2">•</span>
+          <div>{content}</div>
+        </div>
+      );
+    default:
+      return <div key={`line-${lineIndex}`}>{content}</div>;
+  }
 };
 
 /**
@@ -171,5 +258,14 @@ export const reorderMetaTags = (content) => {
   
   // Combine content with meta tags at the bottom
   return [...nonMetaLines, '', ...metaLines].join('\n').trim();
+};
+
+// Export for use in tests
+export const __testing__ = {
+  getLineType,
+  extractContent,
+  parseInlineFormatting,
+  highlightSearchTerm,
+  wrapInContainer
 };
 

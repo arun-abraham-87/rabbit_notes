@@ -1,5 +1,5 @@
 import React from "react";
-import { processContent } from '../utils/TextUtils';
+import { parseNoteContent } from '../utils/TextUtils';
 import { getAge, getDayOfWeek } from '../utils/DateUtils';
 
 function NotesListByDate({ notes, searchQuery }) {
@@ -137,7 +137,7 @@ function NotesListByDate({ notes, searchQuery }) {
 
                         return (
                           <div key={idx} className="py-0.5 leading-relaxed">
-                            {processContent(line, searchQuery)}
+                            {parseNoteContent({ content: line, searchTerm: searchQuery })}
                           </div>
                         );
                       })}

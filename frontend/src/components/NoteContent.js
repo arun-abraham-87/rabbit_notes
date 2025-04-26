@@ -5,7 +5,7 @@ import H2 from './H2';
 import InlineEditor from './InlineEditor';
 import { PlusIcon } from '@heroicons/react/24/solid';
 import {
-    parseFormattedContent
+    parseNoteContent
 } from '../utils/TextUtils';
 import { renderLineWithClickableDates, getIndentFlags, getRawLines } from '../utils/genUtils';
 import { updateNoteById as updateNote } from '../utils/ApiUtils';
@@ -46,7 +46,7 @@ export default function NoteContent({
     const rawLines = getRawLines(note.content);
     console.log("typeof rawLines")
     console.log(typeof rawLines)
-    const contentLines = parseFormattedContent(rawLines);
+    const contentLines = parseNoteContent({ content: rawLines.join('\n'), searchTerm: searchQuery });
     const indentFlags = getIndentFlags(contentLines);
 
     console.log("Content Lines")
@@ -54,14 +54,37 @@ export default function NoteContent({
 
     if (!Array.isArray(contentLines) || contentLines.length === 0) {
         return '<div>1234</div>';
-      }
+    }
 
     return (
         <div className="relative bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
             <div className="whitespace-pre-wrap break-words break-all space-y-1">
                 {contentLines.map((line, idx) => {
-                    const isListItem = line.startsWith('- ');
-                    if (line.trim() === '') {
+                    // Check if line is a React element
+                    if (React.isValidElement(line)) {
+                        // If it's already a React element, just render it with the right click handler
+                        const elementWithProps = React.cloneElement(line, {
+                            key: idx,
+                            onContextMenu: (e) => {
+                                e.preventDefault();
+                                setRightClickNoteId(note.id);
+                                setRightClickIndex(idx);
+                                setRightClickPos({ x: e.clientX, y: e.clientY });
+                            },
+                            className: `${line.props.className || ''} ${
+                                rightClickNoteId === note.id && rightClickIndex === idx
+                                    ? 'bg-yellow-100'
+                                    : ''
+                            }`,
+                        });
+                        return elementWithProps;
+                    }
+
+                    // Handle string content
+                    const lineContent = line.toString();
+                    const isListItem = lineContent.startsWith('- ');
+
+                    if (lineContent.trim() === '') {
                         return (
                             <div
                                 key={idx}
@@ -71,22 +94,23 @@ export default function NoteContent({
                                     setRightClickIndex(idx);
                                     setRightClickPos({ x: e.clientX, y: e.clientY });
                                 }}
-                                className={`cursor-text  ${rightClickNoteId === note.id &&
-                                        rightClickIndex === idx
+                                className={`cursor-text ${
+                                    rightClickNoteId === note.id && rightClickIndex === idx
                                         ? 'bg-yellow-100'
                                         : ''
-                                    }`}
+                                }`}
                             >
                                 &nbsp;
                             </div>
                         );
                     }
-                    if (line.startsWith('<h1>') && line.endsWith('</h1>')) {
+
+                    if (lineContent.startsWith('<h1>') && lineContent.endsWith('</h1>')) {
                         return (
                             <H1
                                 key={idx}
                                 note={note}
-                                line={line}
+                                line={lineContent}
                                 idx={idx}
                                 searchQuery={searchQuery}
                                 duplicatedUrlColors={duplicatedUrlColors}
@@ -102,12 +126,12 @@ export default function NoteContent({
                             />
                         );
                     }
-                    if (line.startsWith('<h2>') && line.endsWith('</h2>')) {
+                    if (lineContent.startsWith('<h2>') && lineContent.endsWith('</h2>')) {
                         return (
                             <H2
                                 key={idx}
                                 note={note}
-                                line={line}
+                                line={lineContent}
                                 idx={idx}
                                 searchQuery={searchQuery}
                                 duplicatedUrlColors={duplicatedUrlColors}
@@ -132,11 +156,14 @@ export default function NoteContent({
                                 setRightClickIndex(idx);
                                 setRightClickPos({ x: e.clientX, y: e.clientY });
                             }}
-                            className={`${(indentFlags[idx] || isListItem) ? 'pl-8 ' : ''
-                                }group cursor-text flex items-center justify-between `}
+                            className={`${(indentFlags[idx] || isListItem) ? 'pl-8 ' : ''}
+                                group cursor-text flex items-center justify-between ${
+                                    rightClickNoteId === note.id && rightClickIndex === idx
+                                        ? 'bg-yellow-100'
+                                        : ''
+                                }`}
                         >
-                            {editingLine.noteId === note.id &&
-                                editingLine.lineIndex === idx ? (
+                            {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
                                 <InlineEditor
                                     text={editedLineContent}
                                     setText={setEditedLineContent}
@@ -159,12 +186,12 @@ export default function NoteContent({
                                     )}
                                     <span className="flex-1">
                                         {renderLineWithClickableDates(
-                                            line,
+                                            lineContent,
                                             note,
                                             idx,
                                             isListItem,
                                             searchQuery,
-                                            parseFormattedContent,
+                                            parseNoteContent,
                                             setEditingInlineDate,
                                             handleInlineDateSelect
                                         )}
@@ -239,19 +266,17 @@ export default function NoteContent({
                     />
                 </div>
             )}
-            <div className="absolute bottom-2 right-2">
-                <button
-                    title="Add line"
-                    onClick={() => {
-                        setAddingLineNoteId(note.id);
-                        setNewLineText('');
-                        setTimeout(() => newLineInputRef.current?.focus(), 0);
-                    }}
-                    className="text-gray-500 hover:text-gray-700"
-                >
-                    <PlusIcon className="h-5 w-5" />
-                </button>
-            </div>
+            <button
+                onClick={() => {
+                    setAddingLineNoteId(note.id);
+                    if (newLineInputRef.current) {
+                        newLineInputRef.current.focus();
+                    }
+                }}
+                className="absolute bottom-2 right-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"
+            >
+                <PlusIcon className="w-4 h-4" />
+            </button>
         </div>
     );
 }

@@ -15,6 +15,7 @@ import {
   ClipboardIcon,
   ArrowsPointingInIcon,
   CodeBracketIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/solid';
 import { MapPinIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '../utils/DateUtils';
@@ -35,6 +36,7 @@ const NoteFooter = ({
   const [showPinPopup, setShowPinPopup] = useState(false);
   const [selectedPinLines, setSelectedPinLines] = useState([]);
   const [showRawNote, setShowRawNote] = useState(false);
+  const [showRemoveTagsConfirm, setShowRemoveTagsConfirm] = useState(false);
   const pinPopupRef = useRef(null);
   const rawNotePopupRef = useRef(null);
   const lines = note.content.split('\n');
@@ -198,6 +200,18 @@ const NoteFooter = ({
     note.content.toLowerCase().includes('meta::medium') ? 'medium' :
     note.content.toLowerCase().includes('meta::high') ? 'high' : null : null;
 
+  const handleRemoveAllTags = () => {
+    const lines = note.content.split('\n');
+    const contentWithoutTags = lines
+      .filter(line => !line.trim().startsWith('meta::'))
+      .join('\n')
+      .trim();
+    
+    updateNote(note.id, contentWithoutTags);
+    setShowRemoveTagsConfirm(false);
+    toast.success('All tags removed from note');
+  };
+
   return (
     <div className="flex items-center justify-between px-4 py-2 text-xs text-gray-500">
       <div className="flex items-center space-x-2">
@@ -304,6 +318,14 @@ const NoteFooter = ({
             <EyeIcon className={`h-4 w-4 transition-colors ${
               note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500 hover:text-green-500'
             }`} />
+          </button>
+
+          <button
+            onClick={() => setShowRemoveTagsConfirm(true)}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            title="Remove All Tags"
+          >
+            <XMarkIcon className="h-4 w-4 text-gray-500 hover:text-red-500 transition-colors" />
           </button>
         </div>
 
@@ -494,6 +516,42 @@ const NoteFooter = ({
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Tags Confirmation Modal */}
+      {showRemoveTagsConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-800">Remove All Tags</h2>
+              <button
+                onClick={() => setShowRemoveTagsConfirm(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XCircleIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="mb-6">
+              <p className="text-gray-600">
+                Are you sure you want to remove all tags from this note? This will remove all meta tags including bookmarks, todos, priorities, and pins. This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowRemoveTagsConfirm(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRemoveAllTags}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Remove All Tags
+              </button>
             </div>
           </div>
         </div>

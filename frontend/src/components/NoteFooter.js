@@ -21,6 +21,30 @@ import { MapPinIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '../utils/DateUtils';
 import { toast } from 'react-toastify';
 
+const Tooltip = ({ text, children }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  
+  return (
+    <div 
+      className="relative inline-block"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {children}
+      <div className={`
+        absolute bottom-full left-1/2 -translate-x-1/2 mb-2 
+        px-2 py-1 text-xs text-white bg-gray-800 rounded-md 
+        whitespace-nowrap pointer-events-none z-50
+        transition-opacity duration-75
+        ${isHovered ? 'opacity-100' : 'opacity-0'}
+      `}>
+        {text}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-800"></div>
+      </div>
+    </div>
+  );
+};
+
 const NoteFooter = ({
   note,
   showCreatedDate,
@@ -226,55 +250,59 @@ const NoteFooter = ({
       <div className="flex items-center bg-gray-50 rounded-lg">
         {/* Todo Group */}
         <div className="flex items-center space-x-1 px-2 py-1">
-          <button
-            onClick={() => handleTodoAction()}
-            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-              isTodo ? 'bg-blue-100' : ''
-            }`}
-            title={isTodo ? 'Remove Todo Status' : 'Mark as Todo'}
-          >
-            <ClockIcon className={`h-4 w-4 text-gray-500 transition-colors ${
-              isTodo ? 'text-blue-500' : 'hover:text-blue-500'
-            }`} />
-          </button>
+          <Tooltip text={isTodo ? 'Remove Todo Status' : 'Mark as Todo'}>
+            <button
+              onClick={() => handleTodoAction()}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                isTodo ? 'bg-blue-100' : ''
+              }`}
+            >
+              <ClockIcon className={`h-4 w-4 text-gray-500 transition-colors ${
+                isTodo ? 'text-blue-500' : 'hover:text-blue-500'
+              }`} />
+            </button>
+          </Tooltip>
 
           {isTodo && (
             <>
-              <button
-                onClick={() => handleTodoAction('low')}
-                className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                  currentPriority === 'low' ? 'bg-blue-100' : ''
-                }`}
-                title="Low Priority"
-              >
-                <FlagIcon className={`h-4 w-4 transition-colors ${
-                  currentPriority === 'low' ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-                }`} />
-              </button>
+              <Tooltip text="Low Priority">
+                <button
+                  onClick={() => handleTodoAction('low')}
+                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                    currentPriority === 'low' ? 'bg-blue-100' : ''
+                  }`}
+                >
+                  <FlagIcon className={`h-4 w-4 transition-colors ${
+                    currentPriority === 'low' ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+                  }`} />
+                </button>
+              </Tooltip>
 
-              <button
-                onClick={() => handleTodoAction('medium')}
-                className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                  currentPriority === 'medium' ? 'bg-yellow-100' : ''
-                }`}
-                title="Medium Priority"
-              >
-                <FlagIcon className={`h-4 w-4 transition-colors ${
-                  currentPriority === 'medium' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'
-                }`} />
-              </button>
+              <Tooltip text="Medium Priority">
+                <button
+                  onClick={() => handleTodoAction('medium')}
+                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                    currentPriority === 'medium' ? 'bg-yellow-100' : ''
+                  }`}
+                >
+                  <FlagIcon className={`h-4 w-4 transition-colors ${
+                    currentPriority === 'medium' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'
+                  }`} />
+                </button>
+              </Tooltip>
 
-              <button
-                onClick={() => handleTodoAction('high')}
-                className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                  currentPriority === 'high' ? 'bg-red-100' : ''
-                }`}
-                title="High Priority"
-              >
-                <FlagIcon className={`h-4 w-4 transition-colors ${
-                  currentPriority === 'high' ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
-                }`} />
-              </button>
+              <Tooltip text="High Priority">
+                <button
+                  onClick={() => handleTodoAction('high')}
+                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                    currentPriority === 'high' ? 'bg-red-100' : ''
+                  }`}
+                >
+                  <FlagIcon className={`h-4 w-4 transition-colors ${
+                    currentPriority === 'high' ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+                  }`} />
+                </button>
+              </Tooltip>
             </>
           )}
         </div>
@@ -284,49 +312,53 @@ const NoteFooter = ({
 
         {/* Organization Group */}
         <div className="flex items-center space-x-1 px-2 py-1 bg-white">
-          <button
-            onClick={() => handleAction('bookmark')}
-            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-              note.content.includes('meta::bookmark::') ? 'bg-yellow-100' : ''
-            }`}
-            title="Bookmark"
-          >
-            <BookmarkIcon className={`h-4 w-4 transition-colors ${
-              note.content.includes('meta::bookmark::') ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'
-            }`} />
-          </button>
+          <Tooltip text="Bookmark">
+            <button
+              onClick={() => handleAction('bookmark')}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                note.content.includes('meta::bookmark::') ? 'bg-yellow-100' : ''
+              }`}
+            >
+              <BookmarkIcon className={`h-4 w-4 transition-colors ${
+                note.content.includes('meta::bookmark::') ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'
+              }`} />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => handleAction('abbreviation')}
-            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-              note.content.includes('meta::abbreviation::') ? 'bg-purple-100' : ''
-            }`}
-            title="Mark as Abbreviation"
-          >
-            <TagIcon className={`h-4 w-4 transition-colors ${
-              note.content.includes('meta::abbreviation::') ? 'text-purple-500' : 'text-gray-500 hover:text-purple-500'
-            }`} />
-          </button>
+          <Tooltip text="Mark as Abbreviation">
+            <button
+              onClick={() => handleAction('abbreviation')}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                note.content.includes('meta::abbreviation::') ? 'bg-purple-100' : ''
+              }`}
+            >
+              <TagIcon className={`h-4 w-4 transition-colors ${
+                note.content.includes('meta::abbreviation::') ? 'text-purple-500' : 'text-gray-500 hover:text-purple-500'
+              }`} />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => handleAction('watch')}
-            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-              note.content.includes('meta::watch::') ? 'bg-green-100' : ''
-            }`}
-            title="Watch"
-          >
-            <EyeIcon className={`h-4 w-4 transition-colors ${
-              note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500 hover:text-green-500'
-            }`} />
-          </button>
+          <Tooltip text="Watch">
+            <button
+              onClick={() => handleAction('watch')}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                note.content.includes('meta::watch::') ? 'bg-green-100' : ''
+              }`}
+            >
+              <EyeIcon className={`h-4 w-4 transition-colors ${
+                note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500 hover:text-green-500'
+              }`} />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => setShowRemoveTagsConfirm(true)}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            title="Remove All Tags"
-          >
-            <XMarkIcon className="h-4 w-4 text-gray-500 hover:text-red-500 transition-colors" />
-          </button>
+          <Tooltip text="Remove All Tags">
+            <button
+              onClick={() => setShowRemoveTagsConfirm(true)}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <XMarkIcon className="h-4 w-4 text-gray-500 hover:text-red-500 transition-colors" />
+            </button>
+          </Tooltip>
         </div>
 
         {/* Separator */}
@@ -334,29 +366,31 @@ const NoteFooter = ({
 
         {/* Link Group */}
         <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50">
-          <button
-            onClick={() => {
-              setLinkingNoteId(note.id);
-              setLinkSearchTerm('');
-              setLinkPopupVisible(true);
-            }}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            title="Link Note"
-          >
-            <LinkIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
-          </button>
+          <Tooltip text="Link Note">
+            <button
+              onClick={() => {
+                setLinkingNoteId(note.id);
+                setLinkSearchTerm('');
+                setLinkPopupVisible(true);
+              }}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <LinkIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => toggleNoteSelection(note.id)}
-            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-              selectedNotes.includes(note.id) ? 'bg-blue-100' : ''
-            }`}
-            title={selectedNotes.length === 0 ? 'Start Merge' : selectedNotes.includes(note.id) ? 'Unselect for Merge' : 'Select for Merge'}
-          >
-            <ArrowsPointingInIcon className={`h-4 w-4 transition-colors ${
-              selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-            }`} />
-          </button>
+          <Tooltip text={selectedNotes.length === 0 ? 'Start Merge' : selectedNotes.includes(note.id) ? 'Unselect for Merge' : 'Select for Merge'}>
+            <button
+              onClick={() => toggleNoteSelection(note.id)}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                selectedNotes.includes(note.id) ? 'bg-blue-100' : ''
+              }`}
+            >
+              <ArrowsPointingInIcon className={`h-4 w-4 transition-colors ${
+                selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+              }`} />
+            </button>
+          </Tooltip>
         </div>
 
         {/* Separator */}
@@ -364,40 +398,43 @@ const NoteFooter = ({
 
         {/* View and Copy Group */}
         <div className="flex items-center space-x-1 px-2 py-1 bg-white">
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(note.content);
-              toast.success('Note content copied to clipboard!');
-            }}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            title="Copy to Clipboard"
-          >
-            <ClipboardIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
-          </button>
+          <Tooltip text="Copy to Clipboard">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(note.content);
+                toast.success('Note content copied to clipboard!');
+              }}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ClipboardIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => setShowRawNote(!showRawNote)}
-            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-              showRawNote ? 'bg-gray-100' : ''
-            }`}
-            title="View Raw Note"
-          >
-            <CodeBracketIcon className={`h-4 w-4 transition-colors ${
-              showRawNote ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-            }`} />
-          </button>
+          <Tooltip text="View Raw Note">
+            <button
+              onClick={() => setShowRawNote(!showRawNote)}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                showRawNote ? 'bg-gray-100' : ''
+              }`}
+            >
+              <CodeBracketIcon className={`h-4 w-4 transition-colors ${
+                showRawNote ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+              }`} />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => setShowPinPopup(!showPinPopup)}
-            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-              showPinPopup ? 'bg-gray-100' : ''
-            }`}
-            title="Pin Lines"
-          >
-            <MapPinIcon className={`h-4 w-4 transition-colors ${
-              showPinPopup ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-            }`} />
-          </button>
+          <Tooltip text="Pin Lines">
+            <button
+              onClick={() => setShowPinPopup(!showPinPopup)}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                showPinPopup ? 'bg-gray-100' : ''
+              }`}
+            >
+              <MapPinIcon className={`h-4 w-4 transition-colors ${
+                showPinPopup ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+              }`} />
+            </button>
+          </Tooltip>
         </div>
 
         {/* Separator */}
@@ -405,21 +442,23 @@ const NoteFooter = ({
 
         {/* Edit/Delete Group */}
         <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50">
-          <button
-            onClick={() => setPopupNoteText(note.id)}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            title="Edit Note"
-          >
-            <PencilIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
-          </button>
+          <Tooltip text="Edit Note">
+            <button
+              onClick={() => setPopupNoteText(note.id)}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <PencilIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => handleDelete(note.id)}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            title="Delete Note"
-          >
-            <TrashIcon className="h-4 w-4 text-gray-500 hover:text-red-500 transition-colors" />
-          </button>
+          <Tooltip text="Delete Note">
+            <button
+              onClick={() => handleDelete(note.id)}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <TrashIcon className="h-4 w-4 text-gray-500 hover:text-red-500 transition-colors" />
+            </button>
+          </Tooltip>
         </div>
       </div>
 

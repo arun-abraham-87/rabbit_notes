@@ -1014,108 +1014,110 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                     rows={1}
                   />
                 )}
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-row justify-center gap-0.5 h-full items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => handleMarkAsTitle(index)}
-                    className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
-                    title="Mark as H1"
-                  >
-                    H1
-                  </button>
-                  <button
-                    onClick={() => handleMarkAsSubtitle(index)}
-                    className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
-                    title="Mark as H2"
-                  >
-                    H2
-                  </button>
-                  <button
-                    onClick={() => {
-                      const newLines = [...lines];
-                      newLines[index].text = newLines[index].text.toUpperCase();
-                      setLines(newLines);
-                    }}
-                    className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
-                    title="UPPERCASE"
-                  >
-                    AA
-                  </button>
-                  <button
-                    onClick={() => handleSentenceCase(index)}
-                    className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
-                    title="Sentence case"
-                  >
-                    Aa
-                  </button>
-                  <div className="h-4 w-px bg-gray-200 mx-1"></div>
-                  <button
-                    onClick={() => handleDeleteLine(index)}
-                    className="text-gray-500 text-xs hover:text-red-500 px-1 transition-transform transform hover:scale-125"
-                    title="Delete line"
-                  >
-                    🗑
-                  </button>
-                  <button
-                    onClick={() => {
-                      const newLines = [...lines];
-                      newLines.splice(index, 0, {
-                        id: `line-${Date.now()}-above`,
-                        text: '',
-                        isTitle: false
-                      });
-                      setLines(newLines);
-                      setTimeout(() => textareasRef.current[index]?.focus(), 0);
-                    }}
-                    className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
-                    title="Insert line above"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    onClick={() => {
-                      const newLines = [...lines];
-                      newLines.splice(index + 1, 0, {
-                        id: `line-${Date.now()}-below`,
-                        text: '',
-                        isTitle: false
-                      });
-                      setLines(newLines);
-                      setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
-                    }}
-                    className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
-                    title="Insert line below"
-                  >
-                    ↓
-                  </button>
-                  {(() => {
-                    const text = lines[index]?.text || '';
-                    const isH1 = text.startsWith('###') && text.endsWith('###');
-                    const isH2 = text.startsWith('##') && text.endsWith('##');
-                    if (isH1 || isH2) {
-                      return (
-                        <>
-                          <div className="h-4 w-px bg-gray-200 mx-1"></div>
-                          <button
-                            onClick={() => {
-                              const newLines = [...lines];
-                              let text = newLines[index].text;
-                              if (isH1) text = text.slice(3, -3);
-                              else if (isH2) text = text.slice(2, -2);
-                              newLines[index].text = text;
-                              newLines[index].isTitle = false;
-                              setLines(newLines);
-                            }}
-                            className="text-gray-500 text-xs hover:text-red-500 px-1 transition-transform transform hover:scale-125"
-                            title="Remove formatting"
-                          >
-                            ❌
-                          </button>
-                        </>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
+                {!isTextMode && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-row justify-center gap-0.5 h-full items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleMarkAsTitle(index)}
+                      className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
+                      title="Mark as H1"
+                    >
+                      H1
+                    </button>
+                    <button
+                      onClick={() => handleMarkAsSubtitle(index)}
+                      className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
+                      title="Mark as H2"
+                    >
+                      H2
+                    </button>
+                    <button
+                      onClick={() => {
+                        const newLines = [...lines];
+                        newLines[index].text = newLines[index].text.toUpperCase();
+                        setLines(newLines);
+                      }}
+                      className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
+                      title="UPPERCASE"
+                    >
+                      AA
+                    </button>
+                    <button
+                      onClick={() => handleSentenceCase(index)}
+                      className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
+                      title="Sentence case"
+                    >
+                      Aa
+                    </button>
+                    <div className="h-4 w-px bg-gray-200 mx-1"></div>
+                    <button
+                      onClick={() => handleDeleteLine(index)}
+                      className="text-gray-500 text-xs hover:text-red-500 px-1 transition-transform transform hover:scale-125"
+                      title="Delete line"
+                    >
+                      🗑
+                    </button>
+                    <button
+                      onClick={() => {
+                        const newLines = [...lines];
+                        newLines.splice(index, 0, {
+                          id: `line-${Date.now()}-above`,
+                          text: '',
+                          isTitle: false
+                        });
+                        setLines(newLines);
+                        setTimeout(() => textareasRef.current[index]?.focus(), 0);
+                      }}
+                      className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
+                      title="Insert line above"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      onClick={() => {
+                        const newLines = [...lines];
+                        newLines.splice(index + 1, 0, {
+                          id: `line-${Date.now()}-below`,
+                          text: '',
+                          isTitle: false
+                        });
+                        setLines(newLines);
+                        setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
+                      }}
+                      className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
+                      title="Insert line below"
+                    >
+                      ↓
+                    </button>
+                    {(() => {
+                      const text = lines[index]?.text || '';
+                      const isH1 = text.startsWith('###') && text.endsWith('###');
+                      const isH2 = text.startsWith('##') && text.endsWith('##');
+                      if (isH1 || isH2) {
+                        return (
+                          <>
+                            <div className="h-4 w-px bg-gray-200 mx-1"></div>
+                            <button
+                              onClick={() => {
+                                const newLines = [...lines];
+                                let text = newLines[index].text;
+                                if (isH1) text = text.slice(3, -3);
+                                else if (isH2) text = text.slice(2, -2);
+                                newLines[index].text = text;
+                                newLines[index].isTitle = false;
+                                setLines(newLines);
+                              }}
+                              className="text-gray-500 text-xs hover:text-red-500 px-1 transition-transform transform hover:scale-125"
+                              title="Remove formatting"
+                            >
+                              ❌
+                            </button>
+                          </>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           ))}

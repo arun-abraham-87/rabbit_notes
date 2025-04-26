@@ -15,6 +15,7 @@ import {
   ChevronDownIcon,
   DocumentTextIcon,
   ClipboardIcon,
+  EllipsisHorizontalIcon,
 } from '@heroicons/react/24/solid';
 import { formatDate } from '../utils/DateUtils';
 import { toast } from 'react-toastify';
@@ -113,350 +114,185 @@ const NoteFooter = ({
   const isWatched = note.content.toLowerCase().includes('#watch');
 
   return (
-    <div className="flex flex-col text-xs text-gray-700 px-4 pb-2">
-      {/* Main actions row */}
-      <div className="flex items-center justify-between border-t pt-2 mt-2">
-        {/* Left side: Created date */}
-        <div className="flex items-center space-x-2">
-          {showCreatedDate && (
-            <div className="flex items-center">
-              <ClockIcon className="h-3.5 w-3.5 text-gray-500 mr-1" />
-              <span>{formatDate(note.created_datetime)}</span>
-            </div>
-          )}
-        </div>
+    <div className="flex items-center justify-between px-4 py-2 text-xs text-gray-500">
+      <div className="flex items-center space-x-2">
+        {/* Left side - only created date */}
+        {showCreatedDate && (
+          <span className="text-gray-400">
+            Created: {formatDate(note.created_datetime)}
+          </span>
+        )}
+      </div>
 
-        {/* Right side: Primary actions */}
-        <div className="flex items-center space-x-3">
-          {/* Todo actions */}
-          {isTodo ? (
-            <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+      <div className="flex items-center space-x-2">
+        {/* Right side icons */}
+        <button
+          onClick={() => setShowEndDatePickerForNoteId(note.id)}
+          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+        >
+          <CalendarIcon className="h-4 w-4" />
+        </button>
+
+        <button
+          onClick={() => {
+            setLinkingNoteId(note.id);
+            setLinkSearchTerm('');
+            setLinkPopupVisible(true);
+          }}
+          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+          title="Link Note"
+        >
+          <LinkIcon className="h-4 w-4" />
+        </button>
+
+        <button
+          onClick={() => toggleNoteSelection(note.id)}
+          className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+            selectedNotes.includes(note.id) ? 'bg-gray-100' : ''
+          }`}
+          title={selectedNotes.length === 0 ? 'Start Merge' : 'Select for Merge'}
+        >
+          <DocumentTextIcon className="h-4 w-4" />
+        </button>
+
+        <button
+          onClick={() => setPopupNoteText(note.id)}
+          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+        >
+          <PencilIcon className="h-4 w-4" />
+        </button>
+
+        <button
+          onClick={() => handleDelete(note.id)}
+          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+        >
+          <TrashIcon className="h-4 w-4" />
+        </button>
+
+        <div className="relative">
+          <button
+            onClick={() => setShowMoreActions(!showMoreActions)}
+            ref={moreActionsRef}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <EllipsisHorizontalIcon className="h-4 w-4" />
+          </button>
+
+          {showMoreActions && (
+            <div
+              ref={moreActionsRef}
+              className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10"
+            >
+              {/* Organization actions */}
+              <button
+                onClick={() => handleAction('bookmark')}
+                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
+              >
+                <BookmarkIcon className="h-3.5 w-3.5 mr-2 text-yellow-500" />
+                <span>Bookmark</span>
+              </button>
+              
+              <button
+                onClick={() => handleAction('abbreviation')}
+                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
+              >
+                <TagIcon className="h-3.5 w-3.5 mr-2 text-purple-500" />
+                <span>Mark as Abbreviation</span>
+              </button>
+
+              <button
+                onClick={() => handleAction('watch')}
+                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
+              >
+                <EyeIcon className="h-3.5 w-3.5 mr-2 text-green-500" />
+                <span>Watch</span>
+              </button>
+
+              {/* Todo actions */}
+              <div className="border-t border-gray-100 my-1"></div>
               <button
                 onClick={() => handleTodoAction('low')}
-                className="px-2 py-1 text-xs rounded hover:bg-green-100 text-green-700"
-                title="Set Low Priority"
+                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
               >
-                L
+                <FlagIcon className="h-3.5 w-3.5 mr-2 text-blue-400" />
+                <span>Low Priority Todo</span>
               </button>
+
               <button
                 onClick={() => handleTodoAction('medium')}
-                className="px-2 py-1 text-xs rounded hover:bg-yellow-100 text-yellow-700"
-                title="Set Medium Priority"
+                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
               >
-                M
+                <FlagIcon className="h-3.5 w-3.5 mr-2 text-yellow-500" />
+                <span>Medium Priority Todo</span>
               </button>
+
               <button
                 onClick={() => handleTodoAction('high')}
-                className="px-2 py-1 text-xs rounded hover:bg-red-100 text-red-700"
-                title="Set High Priority"
+                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
               >
-                H
+                <FlagIcon className="h-3.5 w-3.5 mr-2 text-red-500" />
+                <span>High Priority Todo</span>
               </button>
-              <div className="w-px h-4 bg-gray-300 mx-1" />
+
+              {/* View actions */}
+              <div className="border-t border-gray-100 my-1"></div>
               <button
                 onClick={() => {
-                  const updatedContent = note.content
-                    .split('\n')
-                    .filter(line =>
-                      !line.trim().startsWith('meta::todo::') &&
-                      !line.trim().startsWith('meta::low') &&
-                      !line.trim().startsWith('meta::medium') &&
-                      !line.trim().startsWith('meta::high')
-                    )
-                    .join('\n')
-                    .trim();
-                  updateNote(note.id, updatedContent);
+                  navigator.clipboard.writeText(note.content);
+                  toast.success('Note content copied to clipboard!');
                 }}
-                title="Unmark as Todo"
+                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
               >
-                <XCircleIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+                <ClipboardIcon className="h-3.5 w-3.5 mr-2 text-gray-500" />
+                <span>Copy to Clipboard</span>
               </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => handleTodoAction('low')}
-              title="Mark as Todo"
-              className="p-1 hover:bg-gray-100 rounded"
-            >
-              <CheckCircleIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
-            </button>
-          )}
 
-          {/* Quick actions */}
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setPopupNoteText(note.id)}
-              title="Edit Note"
-              className="p-1 hover:bg-gray-100 rounded"
-            >
-              <PencilIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
-            </button>
-            
-            <button
-              onClick={() => {
-                setShowRawNote(true);
-                setShowMoreActions(false);
-              }}
-              title="Show Raw"
-              className="p-1 hover:bg-gray-100 rounded"
-            >
-              <DocumentTextIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
-            </button>
-
-            <button
-              onClick={() => handleDelete(note.id)}
-              title="Delete Note"
-              className="p-1 hover:bg-gray-100 rounded"
-            >
-              <TrashIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
-            </button>
-
-            <div className="relative">
               <button
-                onClick={() => setShowMoreActions(!showMoreActions)}
-                title="More Actions"
-                className="p-1 hover:bg-gray-100 rounded flex items-center"
+                onClick={() => setShowRawNote(!showRawNote)}
+                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
               >
-                <ChevronDownIcon className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+                <DocumentTextIcon className="h-3.5 w-3.5 mr-2 text-gray-500" />
+                <span>View Raw Note</span>
               </button>
 
-              {/* More actions dropdown */}
-              {showMoreActions && (
-                <div 
-                  ref={moreActionsRef}
-                  className="absolute right-0 bottom-full mb-1 bg-white border rounded-lg shadow-lg py-1 min-w-[160px] z-50"
-                >
-                  <div className="px-2 py-1 text-xs text-gray-500 font-medium border-b">Actions</div>
-                  
-                  {/* Time-based actions */}
-                  <button
-                    onClick={() => handleAction('today')}
-                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-                  >
-                    <CalendarIcon className="h-3.5 w-3.5 mr-2 text-blue-500" />
-                    <span>Mark as Today</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => handleAction('meeting')}
-                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-                  >
-                    <ClockIcon className="h-3.5 w-3.5 mr-2 text-purple-500" />
-                    <span>Mark as Meeting</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => handleAction('event')}
-                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-                  >
-                    <FlagIcon className="h-3.5 w-3.5 mr-2 text-green-500" />
-                    <span>Mark as Event</span>
-                  </button>
-
-                  <div className="border-t my-1" />
-
-                  {/* Organization actions */}
-                  <button
-                    onClick={() => handleAction('bookmark')}
-                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-                  >
-                    <BookmarkIcon className="h-3.5 w-3.5 mr-2 text-yellow-500" />
-                    <span>Bookmark</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => handleAction('abbreviation')}
-                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-                  >
-                    <TagIcon className="h-3.5 w-3.5 mr-2 text-purple-500" />
-                    <span>Mark as Abbreviation</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      setLinkingNoteId(note.id);
-                      setLinkSearchTerm('');
-                      setLinkPopupVisible(true);
-                      setShowMoreActions(false);
-                    }}
-                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-                  >
-                    <LinkIcon className="h-3.5 w-3.5 mr-2 text-blue-500" />
-                    <span>Link Note</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      toggleNoteSelection(note.id);
-                      setShowMoreActions(false);
-                    }}
-                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-                  >
-                    <DocumentTextIcon className="h-3.5 w-3.5 mr-2 text-indigo-500" />
-                    <span>{selectedNotes.length === 0 ? 'Start Merge' : 'Select for Merge'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      updateNote(
-                        note.id,
-                        note.content.toLowerCase().includes('#watch')
-                          ? note.content.replace(/#watch/gi, '').trim()
-                          : `${note.content.trim()} #watch`
-                      );
-                      setShowMoreActions(false);
-                    }}
-                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-                  >
-                    <EyeIcon className="h-3.5 w-3.5 mr-2 text-indigo-500" />
-                    <span>{isWatched ? 'Unmark Watchlist' : 'Add to Watchlist'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setSelectedPinLines([]);
-                      setShowPinPopup(true);
-                      setShowMoreActions(false);
-                    }}
-                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
-                  >
-                    <TagIcon className="h-3.5 w-3.5 mr-2 text-orange-500" />
-                    <span>Pin Note</span>
-                  </button>
-
-                  <div className="border-t my-1" />
-
-                  {/* Danger zone */}
-                  <button
-                    onClick={() => {
-                      const withoutMeta = note.content
-                        .split('\n')
-                        .filter(l => !l.trim().startsWith('meta::'))
-                        .join('\n')
-                        .trim();
-                      updateNote(note.id, withoutMeta);
-                      setShowMoreActions(false);
-                    }}
-                    className="flex items-center w-full px-3 py-1.5 text-left hover:bg-red-50 text-red-600"
-                  >
-                    <XCircleIcon className="h-3.5 w-3.5 mr-2" />
-                    <span>Remove All Tags</span>
-                  </button>
-                </div>
-              )}
+              <button
+                onClick={() => setShowPinPopup(!showPinPopup)}
+                className="flex items-center w-full px-3 py-1.5 text-left hover:bg-gray-50"
+              >
+                <ChevronDownIcon className="h-3.5 w-3.5 mr-2 text-gray-500" />
+                <span>Pin Lines</span>
+              </button>
             </div>
-
-            {/* Selection checkbox - only show when in merge mode */}
-            {isMergeMode && (
-              <input
-                type="checkbox"
-                checked={selectedNotes.includes(note.id)}
-                onChange={() => toggleNoteSelection(note.id)}
-                title="Select Note for Merge"
-                className="ml-2 accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
-              />
-            )}
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Pin Popup */}
-      {showPinPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div ref={pinPopupRef} className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h3 className="text-sm font-semibold mb-3">Select lines to pin</h3>
-            <div className="grid grid-cols-5 gap-2 mb-4 max-h-[200px] overflow-y-auto">
-              {lines.map((line, idx) => {
-                const lineNum = idx + 1;
-                const isSelected = selectedPinLines.includes(lineNum);
-                return (
-                  <button
-                    key={lineNum}
-                    onClick={() => toggleLineSelection(lineNum)}
-                    className={`px-2 py-1.5 text-xs border rounded transition-colors
-                      ${isSelected 
-                        ? 'bg-blue-100 border-blue-400 text-blue-700' 
-                        : 'bg-gray-50 hover:bg-gray-100 border-gray-200'
-                      }`}
-                    title={line}
-                  >
-                    {lineNum}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => {
-                  const without = note.content
-                    .split('\n')
-                    .filter(l => !l.trim().startsWith('meta::pin::'))
-                    .join('\n')
-                    .trim();
-                  updateNote(
-                    note.id,
-                    `${without}\nmeta::pin::${selectedPinLines.sort((a, b) => a - b).join(',')}`
-                  );
-                  setShowPinPopup(false);
-                }}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Pin Selected Lines
-              </button>
-              <button
-                onClick={() => setShowPinPopup(false)}
-                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+      {showRawNote && (
+        <div
+          ref={rawNotePopupRef}
+          className="absolute right-0 mt-1 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-10"
+        >
+          <pre className="whitespace-pre-wrap text-xs">{note.content}</pre>
         </div>
       )}
 
-      {/* Raw Note Popup */}
-      {showRawNote && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div ref={rawNotePopupRef} className="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Raw Note Content</h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(note.content).then(() => {
-                      // Show toast or some feedback
-                      toast.success('Content copied to clipboard!', {
-                        position: 'bottom-right',
-                        autoClose: 2000
-                      });
-                    });
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                  title="Copy to clipboard"
-                >
-                  <ClipboardIcon className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={() => setShowRawNote(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <XCircleIcon className="h-6 w-6" />
-                </button>
+      {showPinPopup && (
+        <div
+          ref={pinPopupRef}
+          className="absolute right-0 mt-1 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-10"
+        >
+          <div className="space-y-2">
+            {lines.map((line, index) => (
+              <div key={index} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={selectedPinLines.includes(index)}
+                  onChange={() => toggleLineSelection(index)}
+                  className="rounded text-blue-500"
+                />
+                <span className="text-xs">{line}</span>
               </div>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg overflow-auto max-h-[60vh]">
-              <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">
-                {note.content}
-              </pre>
-            </div>
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={() => setShowRawNote(false)}
-                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                Close
-              </button>
-            </div>
+            ))}
           </div>
         </div>
       )}

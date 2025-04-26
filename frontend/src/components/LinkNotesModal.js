@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { parseNoteContent } from '../utils/TextUtils';
 
 /**
  * Modal for linking two notes together.
@@ -44,6 +45,27 @@ export default function LinkNotesModal({
     });
   };
 
+  const getPreviewContent = (content) => {
+    const lines = content.split('\n');
+    const nonMetaLines = lines.filter(line => !line.startsWith('meta::'));
+    if (nonMetaLines.length === 0) return '';
+    
+    // Get first line and format it
+    const firstLine = nonMetaLines[0];
+    const formattedContent = parseNoteContent({ 
+      content: firstLine,
+      searchTerm: searchTerm 
+    });
+
+    return (
+      <div className="text-sm text-gray-800">
+        {formattedContent.map((element, idx) => (
+          <React.Fragment key={idx}>{element}</React.Fragment>
+        ))}
+      </div>
+    );
+  };
+
   const filteredNotes = filterNotes(notes, searchTerm);
   const displayNotes = searchTerm ? filteredNotes : filteredNotes.slice(0, 5);
 
@@ -67,29 +89,22 @@ export default function LinkNotesModal({
         />
 
         <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-          {displayNotes.map(n => {
-            const firstLine = n.content.split('\n')[0];
-            const previewContent = firstLine.length > 60 
-              ? firstLine.slice(0, 60) + '...'
-              : firstLine;
-            
-            return (
-              <div
-                key={n.id}
-                className="flex justify-between items-center p-2 border rounded hover:bg-gray-50"
-              >
-                <span className="text-sm text-gray-800 line-clamp-2 flex-1 mr-4">
-                  {previewContent}
-                </span>
-                <button
-                  onClick={() => onLink(linkingNoteId, n.id)}
-                  className="text-blue-600 hover:text-blue-800 whitespace-nowrap"
-                >
-                  Link
-                </button>
+          {displayNotes.map(n => (
+            <div
+              key={n.id}
+              className="flex justify-between items-center p-2 border rounded hover:bg-gray-50"
+            >
+              <div className="flex-1 mr-4">
+                {getPreviewContent(n.content)}
               </div>
-            );
-          })}
+              <button
+                onClick={() => onLink(linkingNoteId, n.id)}
+                className="text-blue-600 hover:text-blue-800 whitespace-nowrap"
+              >
+                Link
+              </button>
+            </div>
+          ))}
           
           {displayNotes.length === 0 && (
             <div className="text-center text-gray-500 py-4">

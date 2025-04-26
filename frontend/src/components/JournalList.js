@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { listJournals } from '../utils/ApiUtils';
+import { listJournals, loadJournal } from '../utils/ApiUtils';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO, startOfMonth, differenceInDays } from 'date-fns';
-import { FunnelIcon, XMarkIcon, BookOpenIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/solid';
+import { FunnelIcon, XMarkIcon, BookOpenIcon, CalendarIcon, ClockIcon, EyeIcon, XCircleIcon } from '@heroicons/react/24/solid';
 
 const JournalList = ({ onEditJournal, onNewJournal }) => {
   // Get default date range (start of current month to today)
@@ -21,6 +21,9 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
     mood: '',
     searchText: ''
   });
+  const [selectedJournal, setSelectedJournal] = useState(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
 
   useEffect(() => {
     loadJournals();
@@ -131,6 +134,18 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
       mood: '',
       searchText: ''
     });
+  };
+
+  const handleViewJournal = async (date) => {
+    setViewLoading(true);
+    try {
+      const journalData = await loadJournal(date);
+      setSelectedJournal(journalData);
+      setViewModalOpen(true);
+    } catch (error) {
+      console.error('Failed to load journal:', error);
+    }
+    setViewLoading(false);
   };
 
   if (loading) {
@@ -322,7 +337,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
               className="group flex flex-col p-6 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative hover:shadow-md transition-shadow"
             >
               <div className="flex justify-between items-start">
-                <div>
+                <div className="flex-grow">
                   <h2 className="text-lg font-semibold text-gray-900">
                     {formatDate(journal.date)}
                   </h2>
@@ -342,15 +357,30 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                     </div>
                   )}
                   {journal.preview && (
-                    <p className="mt-3 text-gray-600 line-clamp-2">{journal.preview}</p>
+                    <div className="mt-3">
+                      <p className="text-gray-600 line-clamp-3">{journal.preview}</p>
+                      {journal.preview.split('\n').length > 3 && (
+                        <span className="text-gray-400">...</span>
+                      )}
+                    </div>
                   )}
                 </div>
-                <button
-                  onClick={() => onEditJournal(journal.date)}
-                  className="px-3 py-1 text-sm text-[rgb(31_41_55)] hover:bg-[rgb(31_41_55_/_0.1)] rounded-md transition-colors"
-                >
-                  Edit
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleViewJournal(journal.date)}
+                    className="px-3 py-1 text-sm text-[rgb(31_41_55)] hover:bg-[rgb(31_41_55_/_0.1)] rounded-md transition-colors flex items-center gap-1"
+                    disabled={viewLoading}
+                  >
+                    <EyeIcon className="h-4 w-4" />
+                    View
+                  </button>
+                  <button
+                    onClick={() => onEditJournal(journal.date)}
+                    className="px-3 py-1 text-sm text-[rgb(31_41_55)] hover:bg-[rgb(31_41_55_/_0.1)] rounded-md transition-colors"
+                  >
+                    Edit
+                  </button>
+                </div>
               </div>
               {journal.metadata?.mood && (
                 <div className="mt-2 text-sm text-gray-500">
@@ -359,6 +389,53 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* View Journal Modal */}
+      {viewModalOpen && selectedJournal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-[90%] max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {formatDate(selectedJournal.date)}
+              </h2>
+              <button
+                onClick={() => {
+                  setViewModalOpen(false);
+                  setSelectedJournal(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <XCircleIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-grow">
+              {selectedJournal.metadata?.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {selectedJournal.metadata.tags.map((tag, index) => (
+                    <span key={index} className="px-2 py-1 bg-[rgb(31_41_55_/_0.1)] rounded-full text-xs text-gray-700">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {selectedJournal.metadata?.mood && (
+                <div className="mb-4 text-sm text-gray-500">
+                  Mood: {selectedJournal.metadata.mood}
+                </div>
+              )}
+              <div className="whitespace-pre-wrap text-gray-700">
+                {selectedJournal.content}
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <p className="text-sm text-gray-500">
+                Last modified: {selectedJournal.metadata?.lastModified && 
+                  format(new Date(selectedJournal.metadata.lastModified), 'MMMM d, yyyy h:mm a')}
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>

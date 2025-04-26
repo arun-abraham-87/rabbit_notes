@@ -1,28 +1,48 @@
 import React from 'react';
+import { buildLineElements } from './genUtils';
 
 // Function to process the content with links, capitalization, and search query highlighting
-export const processContent = (content, searchQuery) => {
-  if (typeof content !== 'string') return content;
+export const processContent = (content, searchTerm) => {
+  if (!content) return [];
 
-  const searchTerms = searchQuery ? searchQuery.split(' ') : [];
-  let isFirstTextSegment = true;
+  // Convert HTML color spans to our marker format
+  content = content.replace(/<span style="color: (#[0-9a-fA-F]{6})">[^<]+<\/span>/g, (match, color) => {
+    const text = match.match(/<span[^>]*>([^<]+)<\/span>/)[1];
+    return `[color:${color}:${text}]`;
+  });
 
-  // Regex to match [text](url) or bare URLs
-  const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
+  // Split content into lines and process each line
+  const lines = content.split('\n');
+  return lines.map((line, idx) => {
+    // Check for headings
+    if (line.startsWith('### ')) {
+      return <h1 key={idx}>{line.slice(4)}</h1>;
+    }
+    if (line.startsWith('## ')) {
+      return <h2 key={idx}>{line.slice(3)}</h2>;
+    }
+    
+    // Process regular lines
+    return <div key={idx}>{buildLineElements(line, idx, line.startsWith('- '), searchTerm)}</div>;
+  });
+};
+
+// Helper function to process text segments (handles links and search highlighting)
+const processTextSegment = (text, shouldCapitalize, searchTerms) => {
   const elements = [];
+  const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
   let lastIndex = 0;
   let match;
 
-  while ((match = linkRegex.exec(content)) !== null) {
+  // Capitalize if needed
+  if (shouldCapitalize && text.trim()) {
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  while ((match = linkRegex.exec(text)) !== null) {
     // Text before link
     if (match.index > lastIndex) {
-      let textSegment = content.slice(lastIndex, match.index);
-      // Capitalize first text segment
-      if (isFirstTextSegment) {
-        textSegment = textSegment.charAt(0).toUpperCase() + textSegment.slice(1);
-        isFirstTextSegment = false;
-      }
-      // Highlight search terms
+      let textSegment = text.slice(lastIndex, match.index);
       if (searchTerms.length) {
         const regex = new RegExp(`(${searchTerms.join('|')})`, 'gi');
         textSegment = textSegment.replace(regex, '<span class="bg-yellow-300">$1</span>');
@@ -34,7 +54,8 @@ export const processContent = (content, searchQuery) => {
         />
       );
     }
-    // Determine URL and display text
+
+    // Handle link
     const url = match[2] || match[3];
     const display = match[1] || (() => {
       try { return new URL(url).hostname.replace(/^www\./, ''); }
@@ -54,19 +75,16 @@ export const processContent = (content, searchQuery) => {
     lastIndex = match.index + match[0].length;
   }
 
-  // Remaining text after last match
-  if (lastIndex < content.length) {
-    let textSegment = content.slice(lastIndex);
-    if (isFirstTextSegment) {
-      textSegment = textSegment.charAt(0).toUpperCase() + textSegment.slice(1);
-    }
+  // Remaining text after last link
+  if (lastIndex < text.length) {
+    let textSegment = text.slice(lastIndex);
     if (searchTerms.length) {
       const regex = new RegExp(`(${searchTerms.join('|')})`, 'gi');
       textSegment = textSegment.replace(regex, '<span class="bg-yellow-300">$1</span>');
     }
     elements.push(
       <span
-        key={`text-end`}
+        key={`text-end-${lastIndex}`}
         dangerouslySetInnerHTML={{ __html: textSegment }}
       />
     );
@@ -74,7 +92,6 @@ export const processContent = (content, searchQuery) => {
 
   return elements;
 };
-
 
 export const parseFormattedContent = (formatted_lines) => {
   // If no lines array or it's empty, return an empty string (or array, if that makes more sense)

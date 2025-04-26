@@ -78,11 +78,11 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
   const raw = isListItem ? line.slice(2) : line; // strip "- " bullet
   const elements = [];
   const regex =
-    /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
+    /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)|\[color:(#[0-9a-fA-F]{6}):([^\]]+)\]/g;
   let lastIndex = 0;
   let match;
 
-  // Walk through every markdown / URL match
+  // Walk through every markdown / URL / color match
   while ((match = regex.exec(raw)) !== null) {
     // Add text between previous match and current match (with highlights)
     if (match.index > lastIndex) {
@@ -139,6 +139,13 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
           </a>
         );
       }
+    } else if (match[7] && match[8]) {
+      // [color:#HEXCODE:text]
+      elements.push(
+        <span key={`color-${idx}-${match.index}`} style={{ color: match[7] }}>
+          {match[8]}
+        </span>
+      );
     }
 
     lastIndex = match.index + match[0].length;

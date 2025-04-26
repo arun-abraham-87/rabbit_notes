@@ -39,11 +39,13 @@ export default function RightClickMenu({
     const arr = note.content.split('\n');
     const text = arr[lineIndex];
     
-    // Remove existing color spans if any
-    let cleanText = text.replace(/<span style="color: [^"]+">|<\/span>/g, '');
+    // Remove both HTML spans and color markers
+    let cleanText = text
+      .replace(/<span style="color: [^"]+">([^<]+)<\/span>/g, '$1')  // Remove HTML spans
+      .replace(/\[color:([^:]+):([^\]]+)\]/g, '$2');  // Remove color markers
     
-    // Add new color span if color is not 'default'
-    arr[lineIndex] = color === 'default' ? cleanText : `<span style="color: ${color}">${cleanText}</span>`;
+    // Add new color marker if color is not 'default'
+    arr[lineIndex] = color === 'default' ? cleanText : `[color:${color}:${cleanText}]`;
     
     updateNote(noteId, arr.join('\n'));
     setShowColorSubmenu(false);

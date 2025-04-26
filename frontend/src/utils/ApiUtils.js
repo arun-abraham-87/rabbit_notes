@@ -95,17 +95,15 @@ export const loadJournal = async (date) => {
 export const saveJournal = async (date, journalData) => {
   try {
     const response = await fetch(`${API_BASE_URL}/journals/${date}`, {
-      method: 'PUT',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        date,
         content: journalData.content,
-        tags: journalData.tags,
-        metadata: {
-          lastModified: journalData.lastModified,
-          ...journalData.metadata
-        }
+        metadata: journalData.metadata,
+        preview: journalData.content.slice(0, 150)
       }),
     });
     if (!response.ok) throw new Error('Failed to save journal');

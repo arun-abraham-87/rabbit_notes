@@ -1016,6 +1016,22 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                 )}
                 {!isTextMode && (
                   <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-row justify-center gap-0.5 h-full items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {line.text && (
+                      <>
+                        <button
+                          onClick={() => {
+                            const newLines = [...lines];
+                            newLines[index].text = '';
+                            setLines(newLines);
+                          }}
+                          className="text-gray-500 text-sm hover:text-blue-500 px-2 py-0.5 border border-gray-300 rounded hover:border-blue-500 transition-colors"
+                          title="Clear text"
+                        >
+                          Clear
+                        </button>
+                        <div className="h-4 w-px bg-gray-200 mx-1"></div>
+                      </>
+                    )}
                     <button
                       onClick={() => handleMarkAsTitle(index)}
                       className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"

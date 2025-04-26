@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import TimeZoneDisplay from './TimeZoneDisplay';
-import { ChevronDownIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, Cog6ToothIcon } from '@heroicons/react/24/solid';
 
 const Navbar = ({ activePage, setActivePage, settings }) => {
   const [time, setTime] = useState(new Date());
@@ -108,11 +108,14 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
           )}
           <button
             onClick={() => setActivePage('manage-notes')}
-            className={`px-3 py-1 rounded-full border ${
-              activePage === 'manage-notes' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-            } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
+            className={`p-2 rounded-full ${
+              activePage === 'manage-notes' 
+                ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' 
+                : 'text-gray-700 hover:bg-gray-100'
+            } transition`}
+            title="Manage Notes"
           >
-            Manage Notes
+            <Cog6ToothIcon className="h-5 w-5" />
           </button>
         </div>
       </div>

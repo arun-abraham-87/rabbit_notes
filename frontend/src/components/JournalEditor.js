@@ -1,121 +1,93 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { loadJournal, saveJournal } from '../utils/ApiUtils';
-import { toast } from 'react-toastify';
+import TagInput from './TagInput';
 
-const JournalEditor = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [journalContent, setJournalContent] = useState('');
-  const [metadata, setMetadata] = useState(null);
+const JournalEditor = ({ date, onSaved }) => {
+  const [content, setContent] = useState('');
+  const [tags, setTags] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load journal entry when date changes
   useEffect(() => {
-    const fetchJournal = async () => {
+    const loadJournal = async () => {
       try {
-        const journal = await loadJournal(selectedDate);
-        setJournalContent(journal.content);
-        setMetadata(journal.metadata);
+        setIsLoading(true);
+        const journal = await loadJournal(date);
+        if (journal) {
+          setContent(journal.content || '');
+          setTags(journal.tags || []);
+        }
       } catch (error) {
-        toast.error('Failed to load journal entry');
+        console.error('Error loading journal:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
-    fetchJournal();
-  }, [selectedDate]);
 
-  // Auto-save functionality with debounce
-  const debouncedSave = useCallback(
-    async (content) => {
-      if (!content.trim()) return;
-      
-      try {
-        setIsSaving(true);
-        const journal = await saveJournal(selectedDate, content);
-        setMetadata(journal.metadata);
-        toast.success('Journal saved', { autoClose: 2000 });
-      } catch (error) {
-        toast.error('Failed to save journal');
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [selectedDate]
-  );
+    if (date) {
+      loadJournal();
+    } else {
+      setIsLoading(false);
+    }
+  }, [date]);
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      debouncedSave(journalContent);
-    }, 1000);
-
-    return () => clearTimeout(timeoutId);
-  }, [journalContent, debouncedSave]);
-
-  const handleDateChange = (e) => {
-    setSelectedDate(e.target.value);
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      await saveJournal(date, {
+        content,
+        tags,
+        lastModified: new Date().toISOString(),
+      });
+      onSaved?.();
+    } catch (error) {
+      console.error('Error saving journal:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleContentChange = (e) => {
-    setJournalContent(e.target.value);
-  };
-
-  const handleManualSave = async () => {
-    await debouncedSave(journalContent);
-  };
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={handleDateChange}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          {metadata && (
-            <div className="text-sm text-gray-500">
-              <span>Words: {metadata.wordCount}</span>
-              <span className="mx-2">•</span>
-              <span>Characters: {metadata.charCount}</span>
-              {metadata.mood && (
-                <>
-                  <span className="mx-2">•</span>
-                  <span>Mood: {metadata.mood}</span>
-                </>
-              )}
-            </div>
-          )}
+    <div className="max-w-4xl mx-auto p-4">
+      <div className="bg-white shadow-sm rounded-lg p-6">
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold text-gray-900">
+            {format(new Date(date), 'MMMM d, yyyy')}
+          </h2>
         </div>
-        <button
-          onClick={handleManualSave}
-          disabled={isSaving}
-          className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${
-            isSaving ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </button>
-      </div>
-      
-      {metadata?.tags?.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {metadata.tags.map((tag, index) => (
-            <span key={index} className="px-2 py-1 bg-gray-100 rounded-full text-sm text-gray-700">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
 
-      <div className="mb-2 text-sm text-gray-500">
-        Use #tag for tags, mood::happy for mood, and topic::work for topics
+        <div className="mb-6">
+          <TagInput tags={tags} onChange={setTags} />
+        </div>
+
+        <div className="mb-6">
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="w-full h-96 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Write your journal entry here..."
+          />
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
       </div>
-      
-      <textarea
-        value={journalContent}
-        onChange={handleContentChange}
-        placeholder="Write your journal entry here..."
-        className="w-full h-[calc(100vh-200px)] p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-sans text-base leading-relaxed"
-      />
     </div>
   );
 };

@@ -210,3 +210,20 @@ export const addNewTag = async (tagText) => {
         throw error;
     }
 };
+
+export const defaultSettings = {
+  theme: 'light',
+  sortBy: 'date',
+  autoCollapse: false,
+  showDates: true,
+  showCreatedDate: false,
+  excludeEventsByDefault: false,
+  excludeMeetingsByDefault: false,
+  searchQuery: '',
+  totals: {
+    total: 0,
+    todos: 0,
+    meetings: 0,
+    events: 0
+  }
+};

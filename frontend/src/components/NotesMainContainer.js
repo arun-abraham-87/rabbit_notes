@@ -8,7 +8,7 @@ import NotesList from './NotesList.js';
 import NoteEditor from './NoteEditor.js';
 import OngoingMeetingBanner from './OngoingMeetingBanner.js';
 import NextMeetingBanner from './NextMeetingBanner.js';
-import { updateNoteById, loadNotes } from '../utils/ApiUtils';
+import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
 
 const checkForOngoingMeeting = (notes) => {
   if (!notes) return null;
@@ -98,32 +98,38 @@ const findNextMeeting = (notes) => {
 };
 
 const NotesMainContainer = ({ 
-    objList, 
-    notes,
-    allNotes, 
+    objList = [], 
+    notes = [],
+    allNotes = [], 
     addNote, 
     setNotes, 
-    objects, 
-    searchQuery, 
+    objects = [], 
+    searchQuery = '', 
     setSearchQuery, 
     addTag, 
     setNoteDate, 
-    totals, 
+    totals = {
+        total: 0,
+        todos: 0,
+        meetings: 0,
+        events: 0
+    }, 
     setTotals,
-    settings
+    settings = defaultSettings
 }) => {
     const [checked, setChecked] = useState(false);
     const [ongoingMeeting, setOngoingMeeting] = useState(null);
     const [currentDate, setCurrentDate] = useState(null);
-    const [excludeEvents, setExcludeEvents] = useState(settings.excludeEventsByDefault || false);
-    const [excludeMeetings, setExcludeMeetings] = useState(settings.excludeMeetingsByDefault || false);
+    const [excludeEvents, setExcludeEvents] = useState(settings?.excludeEventsByDefault || false);
+    const [excludeMeetings, setExcludeMeetings] = useState(settings?.excludeMeetingsByDefault || false);
 
-    // Extract meetings from notes
+    // Extract meetings from notes with null check
     const meetings = useMemo(() => {
+        if (!Array.isArray(allNotes)) return [];
         return allNotes.flatMap(note => {
+            if (!note?.content) return [];
             if (note.content.split('\n').some(line => line.trim().startsWith('meta::meeting'))) {
                 const lines = note.content.split('\n');
-                // Extract duration from meta tag
                 const durationMatch = note.content.match(/meta::meeting_duration::(\d+)/);
                 const duration = durationMatch ? parseInt(durationMatch[1]) : null;
                 return [{ 

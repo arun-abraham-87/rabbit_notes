@@ -12,24 +12,7 @@ import LeftPanel from './components/LeftPanel';
 import Journals from './pages/Journals';
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 
-import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings } from './utils/ApiUtils';
-
-const defaultSettings = {
-  theme: 'light',
-  sortBy: 'date',
-  autoCollapse: false,
-  showDates: true,
-  showCreatedDate: false,
-  excludeEventsByDefault: false,
-  excludeMeetingsByDefault: false,
-  searchQuery: '',
-  totals: {
-    total: 0,
-    todos: 0,
-    meetings: 0,
-    events: 0
-  }
-};
+import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings, defaultSettings } from './utils/ApiUtils';
 
 // Helper to render first four pinned notes
 const PinnedSection = ({ notes, onUnpin }) => {

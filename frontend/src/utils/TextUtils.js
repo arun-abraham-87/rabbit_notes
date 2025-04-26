@@ -14,14 +14,14 @@ export const parseNoteContent = ({ content, searchTerm }) => {
   const lines = content.split('\n')
     .filter(line => !line.trim().startsWith('meta::'))
     .map(line => {
-      // Extract color if the entire line is wrapped in a color tag
-      const colorMatch = line.match(/^\[color:(#[0-9a-fA-F]{6}):(.+)\]$/);
-      if (!colorMatch) return { line, color: null };
+      // First extract any color value wrapped in @$%^ markers
+      const colorMatch = line.match(/@\$%\^([^@]+)@\$%\^/);
+      const color = colorMatch ? colorMatch[1] : null;
       
-      return {
-        line: colorMatch[2].trim(),
-        color: colorMatch[1]
-      };
+      // Remove the color markers and get clean text
+      const cleanLine = line.replace(/@\$%\^[^@]+@\$%\^/, '');
+      
+      return { line: cleanLine, color };
     });
 
   return lines.map(({ line, color }, lineIndex) => {

@@ -39,13 +39,14 @@ export default function RightClickMenu({
     const arr = note.content.split('\n');
     const text = arr[lineIndex];
     
-    // Remove both HTML spans and color markers
+    // Remove existing color meta info
     let cleanText = text
       .replace(/<span style="color: [^"]+">([^<]+)<\/span>/g, '$1')  // Remove HTML spans
-      .replace(/\[color:([^:]+):([^\]]+)\]/g, '$2');  // Remove color markers
+      .replace(/\[color:([^:]+):([^\]]+)\]/g, '$2')  // Remove old color markers
+      .replace(/@\$%\^[^@]+@\$%\^/g, '');  // Remove existing new format color markers
     
-    // Add new color marker if color is not 'default'
-    arr[lineIndex] = color === 'default' ? cleanText : `[color:${color}:${cleanText}]`;
+    // Add new color meta info if color is not 'default'
+    arr[lineIndex] = color === 'default' ? cleanText : `${cleanText}@$%^${color}@$%^`;
     
     updateNote(noteId, arr.join('\n'));
     setShowColorSubmenu(false);
@@ -108,7 +109,13 @@ export default function RightClickMenu({
               hasChanges = false;
               let newText = text;
 
-              // Remove color markers in [color:#XXXXXX:text] format
+              // Remove new format color markers
+              if (newText.match(/@\$%\^[^@]+@\$%\^/)) {
+                newText = newText.replace(/@\$%\^[^@]+@\$%\^/, '');
+                hasChanges = true;
+              }
+
+              // Remove old format color markers
               if (newText.match(/^\[color:#[0-9A-Fa-f]{6}:([^\]]+)\]$/)) {
                 newText = newText.replace(/^\[color:#[0-9A-Fa-f]{6}:([^\]]+)\]$/, '$1');
                 hasChanges = true;

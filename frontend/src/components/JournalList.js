@@ -263,6 +263,33 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
         </div>
       </div>
 
+      {/* Alert for Last Entry */}
+      {journals.some(j => j.preview?.trim()) && 
+        differenceInDays(
+          today,
+          parseISO(
+            journals
+              .filter(j => j.preview?.trim())
+              .reduce((latest, journal) =>
+                latest.date > journal.date ? latest : journal
+              ).date
+          )
+        ) > 1 && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3">
+          <div className="p-2 bg-amber-100 rounded-full">
+            <ClockIcon className="h-5 w-5 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-amber-800 font-medium">
+              It's been a while since your last journal entry
+            </p>
+            <p className="text-amber-600 text-sm">
+              Consider taking a moment to reflect and write about your recent experiences
+            </p>
+          </div>
+        </div>
+      )}
+
       {filteredJournals.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-500">

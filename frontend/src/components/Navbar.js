@@ -18,6 +18,13 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
     second: '2-digit',
   });
 
+  const formattedDate = time.toLocaleDateString(undefined, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
   // Get AEST timezone details
   const aestTime = time.toLocaleTimeString('en-US', {
     timeZone: 'Australia/Sydney',
@@ -37,13 +44,14 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
           <h1 className="text-xl font-bold">Rabbit Notes</h1>
         </div>
 
-        {/* Center: Clock */}
+        {/* Center: Date and Time */}
         <div
           className="relative group"
           onMouseEnter={() => setShowTimezones(true)}
           onMouseLeave={() => setShowTimezones(false)}
         >
-          <div className="flex items-center gap-2 cursor-pointer">
+          <div className="flex items-center gap-4 cursor-pointer">
+            <div className="text-sm text-gray-600">{formattedDate}</div>
             <div className="text-base font-medium">{formattedTime}</div>
             <div className="flex items-center gap-1 text-sm text-gray-500">
               <span>🇦🇺</span>

@@ -62,8 +62,8 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
     const diffTime = dateObj.getTime() - new Date(getAustralianDate()).getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays > 0 
-      ? `(${diffDays} ${diffDays === 1 ? 'day' : 'days'} from now)`
-      : `(${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'day' : 'days'} ago)`;
+      ? `(+${diffDays})`
+      : `(${diffDays})`;
   };
 
   return (

@@ -265,15 +265,15 @@ const NoteFooter = ({
 
           {isTodo && (
             <>
-              <Tooltip text="Low Priority">
+              <Tooltip text="High Priority">
                 <button
-                  onClick={() => handleTodoAction('low')}
+                  onClick={() => handleTodoAction('high')}
                   className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                    currentPriority === 'low' ? 'bg-blue-100' : ''
+                    currentPriority === 'high' ? 'bg-red-100' : ''
                   }`}
                 >
                   <FlagIcon className={`h-4 w-4 transition-colors ${
-                    currentPriority === 'low' ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+                    currentPriority === 'high' ? 'text-red-500' : 'text-red-400'
                   }`} />
                 </button>
               </Tooltip>
@@ -286,20 +286,20 @@ const NoteFooter = ({
                   }`}
                 >
                   <FlagIcon className={`h-4 w-4 transition-colors ${
-                    currentPriority === 'medium' ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'
+                    currentPriority === 'medium' ? 'text-yellow-500' : 'text-yellow-400'
                   }`} />
                 </button>
               </Tooltip>
 
-              <Tooltip text="High Priority">
+              <Tooltip text="Low Priority">
                 <button
-                  onClick={() => handleTodoAction('high')}
+                  onClick={() => handleTodoAction('low')}
                   className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                    currentPriority === 'high' ? 'bg-red-100' : ''
+                    currentPriority === 'low' ? 'bg-blue-100' : ''
                   }`}
                 >
                   <FlagIcon className={`h-4 w-4 transition-colors ${
-                    currentPriority === 'high' ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+                    currentPriority === 'low' ? 'text-blue-500' : 'text-blue-400'
                   }`} />
                 </button>
               </Tooltip>

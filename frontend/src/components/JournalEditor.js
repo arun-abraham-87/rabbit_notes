@@ -8,15 +8,22 @@ const JournalEditor = ({ date, onSaved }) => {
   const [tags, setTags] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [metadata, setMetadata] = useState({});
 
   useEffect(() => {
-    const loadJournal = async () => {
+    const loadJournalData = async () => {
       try {
         setIsLoading(true);
         const journal = await loadJournal(date);
         if (journal) {
-          setContent(journal.content || '');
-          setTags(journal.tags || []);
+          setContent(journal.content);
+          setTags(journal.tags);
+          setMetadata(journal.metadata);
+        } else {
+          // Initialize new journal
+          setContent('');
+          setTags([]);
+          setMetadata({});
         }
       } catch (error) {
         console.error('Error loading journal:', error);
@@ -26,7 +33,7 @@ const JournalEditor = ({ date, onSaved }) => {
     };
 
     if (date) {
-      loadJournal();
+      loadJournalData();
     } else {
       setIsLoading(false);
     }
@@ -39,6 +46,10 @@ const JournalEditor = ({ date, onSaved }) => {
         content,
         tags,
         lastModified: new Date().toISOString(),
+        metadata: {
+          ...metadata,
+          wordCount: content.trim().split(/\s+/).length
+        }
       });
       onSaved?.();
     } catch (error) {

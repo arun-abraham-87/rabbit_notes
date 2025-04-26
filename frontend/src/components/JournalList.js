@@ -13,6 +13,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
   const loadJournals = async () => {
     try {
       const journalData = await listJournals();
+      console.log('Loaded journals:', journalData); // Debug log
       setJournals(journalData);
       setLoading(false);
     } catch (error) {
@@ -67,18 +68,23 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                     {formatDate(journal.date)}
                   </h2>
                   <p className="text-sm text-gray-500 mt-1">
-                    {journal.metadata.wordCount} words • Last modified {format(new Date(journal.metadata.lastModified), 'h:mm a')}
+                    {journal.metadata?.wordCount || 0} words
+                    {journal.metadata?.lastModified && (
+                      <> • Last modified {format(new Date(journal.metadata.lastModified), 'h:mm a')}</>
+                    )}
                   </p>
-                  {journal.metadata.tags.length > 0 && (
+                  {journal.metadata?.tags?.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {journal.metadata.tags.map((tag, index) => (
                         <span key={index} className="px-2 py-1 bg-gray-100 rounded-full text-xs text-gray-700">
-                          {tag}
+                          #{tag}
                         </span>
                       ))}
                     </div>
                   )}
-                  <p className="mt-3 text-gray-600 line-clamp-2">{journal.preview}</p>
+                  {journal.preview && (
+                    <p className="mt-3 text-gray-600 line-clamp-2">{journal.preview}</p>
+                  )}
                 </div>
                 <button
                   onClick={() => onEditJournal(journal.date)}
@@ -87,7 +93,7 @@ const JournalList = ({ onEditJournal, onNewJournal }) => {
                   Edit
                 </button>
               </div>
-              {journal.metadata.mood && (
+              {journal.metadata?.mood && (
                 <div className="mt-2 text-sm text-gray-500">
                   Mood: {journal.metadata.mood}
                 </div>

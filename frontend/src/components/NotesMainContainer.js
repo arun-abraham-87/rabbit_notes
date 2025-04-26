@@ -275,7 +275,7 @@ const NotesMainContainer = ({
 
     return (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
-            <div className="sticky top-0 z-10 bg-card -mx-6 px-6 pb-4 border-b">
+            <div className="bg-card -mx-6 px-6 pb-4 border-b">
                 {ongoingMeeting && (
                     <OngoingMeetingBanner
                         meeting={ongoingMeeting}

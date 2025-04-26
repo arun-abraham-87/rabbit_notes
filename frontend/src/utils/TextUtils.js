@@ -160,19 +160,41 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
 const highlightSearchTerm = (text, searchTerm, keyPrefix) => {
   if (!searchTerm || !text) return [text];
 
-  try {
-    const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(${escaped})`, 'gi');
-    return text.split(regex).map((part, idx) =>
-      regex.test(part) ? (
-        <mark key={`${keyPrefix}-mark-${idx}`} className="bg-yellow-200">
-          {part}
-        </mark>
-      ) : part
+  // Split search term into individual words and escape special regex characters
+  const searchWords = searchTerm.split(/\s+/)
+    .map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .filter(word => word.length > 0);
+
+  if (searchWords.length === 0) return [text];
+
+  // Create a regex that matches any of the search words
+  const regex = new RegExp(`(${searchWords.join('|')})`, 'gi');
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    // Add text before the match
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    // Add the highlighted match
+    parts.push(
+      <span key={`${keyPrefix}-${match.index}`} className="bg-yellow-200">
+        {match[0]}
+      </span>
     );
-  } catch {
-    return [text];
+
+    lastIndex = match.index + match[0].length;
   }
+
+  // Add any remaining text
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
 };
 
 /**

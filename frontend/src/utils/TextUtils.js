@@ -11,9 +11,20 @@ export const parseNoteContent = ({ content, searchTerm }) => {
   if (!content) return [];
 
   // Split into lines and process each line
-  const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
+  const lines = content.split('\n')
+    .filter(line => !line.trim().startsWith('meta::'))
+    .map(line => {
+      // Extract color if the entire line is wrapped in a color tag
+      const colorMatch = line.match(/^\[color:(#[0-9a-fA-F]{6}):(.+)\]$/);
+      if (!colorMatch) return { line, color: null };
+      
+      return {
+        line: colorMatch[2].trim(),
+        color: colorMatch[1]
+      };
+    });
 
-  return lines.map((line, lineIndex) => {
+  return lines.map(({ line, color }, lineIndex) => {
     // Step 1: Parse inline formatting first
     const formattedContent = parseInlineFormatting({
       content: line,
@@ -24,20 +35,29 @@ export const parseNoteContent = ({ content, searchTerm }) => {
     // Step 2: Check if this is a heading by looking at the original line
     const trimmed = line.trim();
     let type = 'normal';
-    if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
+    if (trimmed.startsWith('##') && !trimmed.startsWith('####') && trimmed.endsWith('##')) {
       type = 'heading1';
-    } else if (trimmed.startsWith('##') && trimmed.endsWith('##')) {
+    } else if (trimmed.startsWith('####') && trimmed.endsWith('####')) {
       type = 'heading2';
     } else if (trimmed.startsWith('- ')) {
       type = 'bullet';
     }
 
     // Step 3: Wrap in appropriate container based on line type
-    return wrapInContainer({
+    let element = wrapInContainer({
       content: formattedContent,
       type,
       lineIndex
     });
+
+    // Step 4: If we have a color value, wrap the final element in a colored span
+    if (color) {
+      element = React.cloneElement(element, {
+        style: { color }
+      });
+    }
+
+    return element;
   });
 };
 
@@ -47,17 +67,18 @@ export const parseNoteContent = ({ content, searchTerm }) => {
 const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
   // First handle any heading markers by temporarily replacing them
   let processedContent = content;
-  const isH1 = content.trim().startsWith('###') && content.trim().endsWith('###');
-  const isH2 = content.trim().startsWith('##') && content.trim().endsWith('##');
+  const trimmed = content.trim();
+  const isH1 = trimmed.startsWith('##') && !trimmed.startsWith('####') && trimmed.endsWith('##');
+  const isH2 = trimmed.startsWith('####') && trimmed.endsWith('####');
   
   if (isH1) {
-    processedContent = content.slice(3, -3);
-  } else if (isH2) {
     processedContent = content.slice(2, -2);
+  } else if (isH2) {
+    processedContent = content.slice(4, -4);
   }
 
   const elements = [];
-  const regex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)|\[color:(#[0-9a-fA-F]{6}):([^\]]+)\]|<span style="color: (#[0-9a-fA-F]{6}|[a-z-]+)">([^<]+)<\/span>/g;
+  const regex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
   let lastIndex = 0;
   let match;
 
@@ -109,30 +130,6 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
         >
           {display}
         </a>
-      );
-    } else if (match[7]) { // [color:#HEXCODE:text] format
-      const color = match[7];
-      const text = match[8];
-      elements.push(
-        <span key={`color-${lineIndex}-${match.index}`} style={{ color }}>
-          {parseInlineFormatting({
-            content: text,
-            searchTerm,
-            lineIndex: `${lineIndex}-color-${match.index}`
-          })}
-        </span>
-      );
-    } else if (match[9]) { // HTML-style color span
-      const color = match[9];
-      const text = match[10];
-      elements.push(
-        <span key={`color-${lineIndex}-${match.index}`} style={{ color }}>
-          {parseInlineFormatting({
-            content: text,
-            searchTerm,
-            lineIndex: `${lineIndex}-color-${match.index}`
-          })}
-        </span>
       );
     }
 

@@ -323,20 +323,30 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   // Add new function to create todo
   const createTodo = async (content) => {
     const now = new Date();
-    const timestamp = now.toISOString(); // This gives us format like 2025-04-24T14:16:35.161Z
-    const todoContent = `${content}\nmeta::todo::${timestamp}\nmeta::low\nmeta::priority_age::${timestamp}`;
+    const isoTimestamp = now.toISOString();
+    const formattedDate = formatDate(now);
+    
+    const todoContent = `${content}\nmeta::todo::${isoTimestamp}\nmeta::low\nmeta::priority_age::${isoTimestamp}`;
     
     try {
       const response = await fetch('http://localhost:5001/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: todoContent }),
+        body: JSON.stringify({ 
+          content: todoContent,
+          created_datetime: formattedDate
+        }),
       });
 
       if (response.ok) {
         const newTodo = await response.json();
-        updateTodosCallback([newTodo, ...todos]);
-        updateNoteCallBack([newTodo, ...notes]);
+        // Ensure the todo has the correct created_datetime
+        const todoWithDate = {
+          ...newTodo,
+          created_datetime: formattedDate
+        };
+        updateTodosCallback([todoWithDate, ...todos]);
+        updateNoteCallBack([todoWithDate, ...notes]);
         setSearchQuery(''); // Clear the search bar after creating todo
       }
     } catch (error) {

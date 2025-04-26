@@ -283,7 +283,7 @@ const App = () => {
           )}
           {activePage === 'tags' && <TagListing objectList={objects} />}
           {activePage === 'todos' && (
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm max-w-[80%] mx-auto p-6">
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
               <TodoList
                 todos={todos}
                 notes={notes}

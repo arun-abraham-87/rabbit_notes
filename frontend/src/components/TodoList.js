@@ -400,7 +400,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 h-full p-6">
       {overdueTodos.length > 0 && (
         <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg">
           <div className="flex items-center">
@@ -572,7 +572,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       </div>
 
       {/* Todo Grid/List */}
-      <div className={`grid gap-4 ${
+      <div className={`grid gap-4 flex-1 overflow-auto ${
         viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
       }`}>
         {filteredTodos.map(renderTodoCard)}

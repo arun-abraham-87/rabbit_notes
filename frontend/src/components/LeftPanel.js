@@ -758,46 +758,6 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               </button>
             </div>
             <div className="space-y-4">
-              {/* Theme Setting */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Theme</label>
-                <select
-                  value={unsavedSettings.theme}
-                  onChange={(e) => handleSettingChange('theme', e.target.value)}
-                  className="mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
-                >
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                </select>
-              </div>
-
-              {/* Sort By Setting */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Sort Notes By</label>
-                <select
-                  value={unsavedSettings.sortBy}
-                  onChange={(e) => handleSettingChange('sortBy', e.target.value)}
-                  className="mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
-                >
-                  <option value="date">Date</option>
-                  <option value="priority">Priority</option>
-                </select>
-              </div>
-
-              {/* Auto Collapse Setting */}
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="autoCollapse"
-                  checked={unsavedSettings.autoCollapse}
-                  onChange={(e) => handleSettingChange('autoCollapse', e.target.checked)}
-                  className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
-                />
-                <label htmlFor="autoCollapse" className="ml-3 block text-base text-gray-700">
-                  Auto-collapse sections
-                </label>
-              </div>
-
               {/* Show Dates Setting */}
               <div className="flex items-center">
                 <input
@@ -852,6 +812,53 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                 <label htmlFor="excludeMeetingsByDefault" className="ml-3 block text-base text-gray-700">
                   Exclude meetings by default in new notes
                 </label>
+              </div>
+
+              {/* Page Visibility Settings */}
+              <div className="pt-4 border-t border-gray-200">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Page Visibility</h3>
+                
+                {/* Show Todos Page Setting */}
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="showTodosPage"
+                    checked={unsavedSettings.showTodosPage !== false}
+                    onChange={(e) => handleSettingChange('showTodosPage', e.target.checked)}
+                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                  />
+                  <label htmlFor="showTodosPage" className="ml-3 block text-base text-gray-700">
+                    Show Todos page
+                  </label>
+                </div>
+
+                {/* Show Tags Page Setting */}
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="showTagsPage"
+                    checked={unsavedSettings.showTagsPage !== false}
+                    onChange={(e) => handleSettingChange('showTagsPage', e.target.checked)}
+                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                  />
+                  <label htmlFor="showTagsPage" className="ml-3 block text-base text-gray-700">
+                    Show Tags page
+                  </label>
+                </div>
+
+                {/* Show Journals Page Setting */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="showJournalsPage"
+                    checked={unsavedSettings.showJournalsPage !== false}
+                    onChange={(e) => handleSettingChange('showJournalsPage', e.target.checked)}
+                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                  />
+                  <label htmlFor="showJournalsPage" className="ml-3 block text-base text-gray-700">
+                    Show Journals page
+                  </label>
+                </div>
               </div>
             </div>
 

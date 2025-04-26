@@ -204,7 +204,7 @@ const App = () => {
 
   return (
     <div className="App flex flex-col h-screen">
-      <Navbar activePage={activePage} setActivePage={setActivePage} />
+      <Navbar activePage={activePage} setActivePage={setActivePage} settings={settings} />
       <div className="flex flex-1 overflow-hidden">
         {/* Left panel */}
         <div

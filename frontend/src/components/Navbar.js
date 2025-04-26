@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import TimeZoneDisplay from './TimeZoneDisplay';
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
 
-const Navbar = ({ activePage, setActivePage }) => {
+const Navbar = ({ activePage, setActivePage, settings }) => {
   const [time, setTime] = useState(new Date());
   const [showTimezones, setShowTimezones] = useState(false);
 
@@ -68,30 +68,36 @@ const Navbar = ({ activePage, setActivePage }) => {
           >
             Notes
           </button>
-          <button
-            onClick={() => setActivePage('tags')}
-            className={`px-3 py-1 rounded-full border ${
-              activePage === 'tags' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-            } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-          >
-            Tags
-          </button>
-          <button
-            onClick={() => setActivePage('todos')}
-            className={`px-3 py-1 rounded-full border ${
-              activePage === 'todos' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-            } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-          >
-            Todos
-          </button>
-          <button
-            onClick={() => setActivePage('journals')}
-            className={`px-3 py-1 rounded-full border ${
-              activePage === 'journals' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-            } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-          >
-            Journals
-          </button>
+          {settings?.showTagsPage !== false && (
+            <button
+              onClick={() => setActivePage('tags')}
+              className={`px-3 py-1 rounded-full border ${
+                activePage === 'tags' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
+            >
+              Tags
+            </button>
+          )}
+          {settings?.showTodosPage !== false && (
+            <button
+              onClick={() => setActivePage('todos')}
+              className={`px-3 py-1 rounded-full border ${
+                activePage === 'todos' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
+            >
+              Todos
+            </button>
+          )}
+          {settings?.showJournalsPage !== false && (
+            <button
+              onClick={() => setActivePage('journals')}
+              className={`px-3 py-1 rounded-full border ${
+                activePage === 'journals' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
+            >
+              Journals
+            </button>
+          )}
         </div>
       </div>
     </nav>

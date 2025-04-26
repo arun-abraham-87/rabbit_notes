@@ -785,10 +785,14 @@ const NotesList = ({
       {editingMeetingNote && (
         <EditMeetingModal
           note={editingMeetingNote}
-          onClose={() => setEditingMeetingNote(null)}
-          onSave={(updatedContent) => {
-            updateNote(editingMeetingNote.id, updatedContent);
+          onSave={(updatedNote) => {
+            updateNote(editingMeetingNote.id, updatedNote.content);
             setEditingMeetingNote(null);
+          }}
+          onCancel={() => setEditingMeetingNote(null)}
+          onSwitchToNormalEdit={() => {
+            setEditingMeetingNote(null);
+            setPopupNoteText(editingMeetingNote.id);
           }}
         />
       )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const EditMeetingModal = ({ note, onSave, onCancel }) => {
+const EditMeetingModal = ({ note, onSave, onCancel, onSwitchToNormalEdit }) => {
   const [description, setDescription] = useState('');
   const [dateTime, setDateTime] = useState('');
   const [duration, setDuration] = useState('30');
@@ -44,8 +44,16 @@ const EditMeetingModal = ({ note, onSave, onCancel }) => {
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-        <h2 className="text-xl font-semibold mb-4">Edit Meeting</h2>
+      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Edit Meeting</h2>
+          <button
+            onClick={onSwitchToNormalEdit}
+            className="text-sm text-gray-600 hover:text-gray-800 underline"
+          >
+            Switch to Normal Edit
+          </button>
+        </div>
         
         <div className="space-y-4">
           <div>

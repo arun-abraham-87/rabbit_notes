@@ -272,6 +272,19 @@ const NoteFooter = ({
           ref={rawNotePopupRef}
           className="absolute right-0 mt-1 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-10"
         >
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium text-gray-700">Raw Note Content</span>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(note.content);
+                toast.success('Raw note content copied to clipboard!');
+              }}
+              className="flex items-center text-xs px-2 py-1 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+            >
+              <ClipboardIcon className="h-3.5 w-3.5 mr-1" />
+              Copy
+            </button>
+          </div>
           <pre className="whitespace-pre-wrap text-xs">{note.content}</pre>
         </div>
       )}

@@ -352,11 +352,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b bg-white/50">
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              onChange={(e) => handleCheckboxChange(todo.id, e.target.checked)}
-            />
             <span className={`text-xs font-medium ${ageColorClass}`}>
               {getAgeLabel(createdDate)}
             </span>
@@ -407,8 +402,18 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-3 overflow-auto">
-          <div className="text-sm text-gray-800 whitespace-pre-wrap">
+        <div className="flex-1 p-3 overflow-auto relative">
+          {/* Complete button - Absolutely positioned within content area */}
+          <button
+            onClick={() => handleCheckboxChange(todo.id, true)}
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center hover:bg-emerald-50 hover:border-emerald-200 transition-all duration-200 z-10"
+            title="Mark as complete"
+          >
+            <svg className="w-5 h-5 text-gray-400 hover:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+          <div className="text-sm text-gray-800 whitespace-pre-wrap pr-12">
             {(() => {
               // Remove all meta tags from content
               const content = todo.content

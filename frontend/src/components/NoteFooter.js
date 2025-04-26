@@ -79,18 +79,37 @@ const NoteFooter = ({
 
   const handleAction = (action) => {
     const ts = new Date().toISOString();
-    const without = note.content
-      .split('\n')
-      .filter(l => !l.trim().startsWith(`meta::${action}::`))
-      .join('\n')
-      .trim();
-    updateNote(note.id, `${without}\nmeta::${action}::${ts}`);
+    const lines = note.content.split('\n');
+    const hasAction = lines.some(l => l.trim().startsWith(`meta::${action}::`));
+
+    if (hasAction) {
+      // Remove the action if it exists
+      const without = lines
+        .filter(l => !l.trim().startsWith(`meta::${action}::`))
+        .join('\n')
+        .trim();
+      updateNote(note.id, without);
+      toast.success(`Removed ${action} tag`);
+    } else {
+      // Add the action if it doesn't exist
+      const without = lines
+        .filter(l => !l.trim().startsWith(`meta::${action}::`))
+        .join('\n')
+        .trim();
+      updateNote(note.id, `${without}\nmeta::${action}::${ts}`);
+      toast.success(`Added ${action} tag`);
+    }
   };
 
-  const handleTodoAction = (priority) => {
+  const handleTodoAction = (priority = null) => {
     const timestamp = new Date().toISOString();
-    const contentWithoutOldTodoMeta = note.content
-      .split('\n')
+    const lines = note.content.split('\n');
+    const isTodo = lines.some(l => l.trim().startsWith('meta::todo::'));
+    const currentPriority = priority ? 
+      lines.some(l => l.trim().startsWith(`meta::${priority}`)) : false;
+
+    // Filter out all todo-related meta tags
+    const contentWithoutTodoMeta = lines
       .filter(line => 
         !line.trim().startsWith('meta::todo::') &&
         !line.trim().startsWith('meta::low') &&
@@ -99,12 +118,40 @@ const NoteFooter = ({
       )
       .join('\n')
       .trim();
-    const newContent = `${contentWithoutOldTodoMeta}\nmeta::todo::${timestamp}\nmeta::${priority}`;
-    updateNote(note.id, newContent);
+
+    if (!priority) {
+      // Toggling todo status
+      if (isTodo) {
+        // Remove todo status
+        updateNote(note.id, contentWithoutTodoMeta);
+        toast.success('Removed todo status');
+      } else {
+        // Add todo status
+        updateNote(note.id, `${contentWithoutTodoMeta}\nmeta::todo::${timestamp}`);
+        toast.success('Marked as todo');
+      }
+    } else {
+      if (!isTodo) {
+        // If not a todo yet, make it a todo with the selected priority
+        updateNote(note.id, `${contentWithoutTodoMeta}\nmeta::todo::${timestamp}\nmeta::${priority}`);
+        toast.success(`Marked as todo with ${priority} priority`);
+      } else if (currentPriority) {
+        // If already has this priority, remove only the priority
+        updateNote(note.id, `${contentWithoutTodoMeta}\nmeta::todo::${timestamp}`);
+        toast.success(`Removed ${priority} priority`);
+      } else {
+        // Change to new priority
+        updateNote(note.id, `${contentWithoutTodoMeta}\nmeta::todo::${timestamp}\nmeta::${priority}`);
+        toast.success(`Changed to ${priority} priority`);
+      }
+    }
   };
 
-  const isTodo = note.content.toLowerCase().includes('meta::todo');
-  const isWatched = note.content.toLowerCase().includes('#watch');
+  const isTodo = note.content.toLowerCase().includes('meta::todo::');
+  const currentPriority = isTodo ? 
+    note.content.toLowerCase().includes('meta::low') ? 'low' :
+    note.content.toLowerCase().includes('meta::medium') ? 'medium' :
+    note.content.toLowerCase().includes('meta::high') ? 'high' : null : null;
 
   return (
     <div className="flex items-center justify-between px-4 py-2 text-xs text-gray-500">
@@ -121,28 +168,48 @@ const NoteFooter = ({
         {/* Todo Group */}
         <div className="flex items-center space-x-1">
           <button
-            onClick={() => handleTodoAction('low')}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            title="Low Priority Todo"
+            onClick={() => handleTodoAction()}
+            className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+              isTodo ? 'bg-blue-100' : ''
+            }`}
+            title={isTodo ? 'Remove Todo Status' : 'Mark as Todo'}
           >
-            <FlagIcon className="h-4 w-4 text-blue-400" />
+            <ClockIcon className={`h-4 w-4 ${isTodo ? 'text-blue-500' : 'text-gray-500'}`} />
           </button>
 
-          <button
-            onClick={() => handleTodoAction('medium')}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            title="Medium Priority Todo"
-          >
-            <FlagIcon className="h-4 w-4 text-yellow-500" />
-          </button>
+          {isTodo && (
+            <>
+              <button
+                onClick={() => handleTodoAction('low')}
+                className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                  currentPriority === 'low' ? 'bg-blue-100' : ''
+                }`}
+                title="Low Priority"
+              >
+                <FlagIcon className={`h-4 w-4 ${currentPriority === 'low' ? 'text-blue-500' : 'text-blue-400'}`} />
+              </button>
 
-          <button
-            onClick={() => handleTodoAction('high')}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            title="High Priority Todo"
-          >
-            <FlagIcon className="h-4 w-4 text-red-500" />
-          </button>
+              <button
+                onClick={() => handleTodoAction('medium')}
+                className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                  currentPriority === 'medium' ? 'bg-yellow-100' : ''
+                }`}
+                title="Medium Priority"
+              >
+                <FlagIcon className={`h-4 w-4 ${currentPriority === 'medium' ? 'text-yellow-500' : 'text-yellow-400'}`} />
+              </button>
+
+              <button
+                onClick={() => handleTodoAction('high')}
+                className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                  currentPriority === 'high' ? 'bg-red-100' : ''
+                }`}
+                title="High Priority"
+              >
+                <FlagIcon className={`h-4 w-4 ${currentPriority === 'high' ? 'text-red-500' : 'text-red-400'}`} />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Separator */}

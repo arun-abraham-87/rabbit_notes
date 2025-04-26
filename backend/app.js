@@ -15,6 +15,9 @@ console.log('✓ Settings router imported');
 const tagsRouter = require('./routes/tags');
 console.log('✓ Tags router imported');
 
+const journalsRouter = require('./routes/journals');
+console.log('✓ Journals router imported');
+
 const app = express();
 
 // Middleware
@@ -72,6 +75,9 @@ console.log('✓ Settings router registered at /api/settings');
 
 app.use('/api/tags', tagsRouter);
 console.log('✓ Tags router registered at /api/tags');
+
+app.use('/api/journals', journalsRouter);
+console.log('✓ Journals router registered at /api/journals');
 
 // Test endpoint
 app.get('/api/test', (req, res) => {

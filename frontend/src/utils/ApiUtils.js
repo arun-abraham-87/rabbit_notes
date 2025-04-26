@@ -239,3 +239,43 @@ export const editTag = async (tagId, newText) => {
         throw error;
     }
 };
+
+// Journal APIs
+export const loadJournal = async (date) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/journals/${date}`);
+    if (!response.ok) throw new Error('Failed to load journal');
+    return await response.json();
+  } catch (error) {
+    console.error('Error loading journal:', error);
+    throw error;
+  }
+};
+
+export const saveJournal = async (date, content) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/journals/${date}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ content }),
+    });
+    if (!response.ok) throw new Error('Failed to save journal');
+    return await response.json();
+  } catch (error) {
+    console.error('Error saving journal:', error);
+    throw error;
+  }
+};
+
+export const listJournals = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/journals`);
+    if (!response.ok) throw new Error('Failed to list journals');
+    return await response.json();
+  } catch (error) {
+    console.error('Error listing journals:', error);
+    throw error;
+  }
+};

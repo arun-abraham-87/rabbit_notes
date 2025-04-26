@@ -9,6 +9,7 @@ import TagListing from './components/TagListing.js';
 import TodoList from './components/TodoList.js';
 import NoteEditor from './components/NoteEditor';
 import LeftPanel from './components/LeftPanel';
+import Journals from './pages/Journals';
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 
 import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings } from './utils/ApiUtils';
@@ -276,6 +277,7 @@ const App = () => {
               />
             </div>
           )}
+          {activePage === 'journals' && <Journals />}
         </div>
       </div>
       <ToastContainer

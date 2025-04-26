@@ -36,3 +36,6 @@ coverage/
 *.lock
 *.cache/
 *.tmp
+
+# Journals
+/journals/

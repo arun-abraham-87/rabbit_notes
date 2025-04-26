@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const settingsRouter = require('./routes/settings');
+const journalsRouter = require('./routes/journals');
 
 const app = express();
 app.use(express.json());
@@ -13,8 +14,9 @@ app.use(cors({
   origin: 'http://localhost:3000', // Allow requests only from this origin
 }));
 
-// Mount settings router
+// Mount routers
 app.use('/api/settings', settingsRouter);
+app.use('/api/journals', journalsRouter);
 
 const NOTES_DIR = './notes';
 if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);

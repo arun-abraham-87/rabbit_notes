@@ -263,7 +263,7 @@ const App = () => {
         <div
           className={`flex-1 p-8 overflow-auto`}
         >
-          <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
+          {activePage === 'notes' && <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />}
           {activePage === 'notes' && (
             <NotesMainContainer
               objList={objectList}

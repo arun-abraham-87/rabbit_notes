@@ -16,6 +16,7 @@ import {
   DocumentTextIcon,
   ClipboardIcon,
   ArrowsPointingInIcon,
+  CodeBracketIcon,
 } from '@heroicons/react/24/solid';
 import { formatDate } from '../utils/DateUtils';
 import { toast } from 'react-toastify';
@@ -307,7 +308,7 @@ const NoteFooter = ({
             }`}
             title="View Raw Note"
           >
-            <DocumentTextIcon className="h-4 w-4 text-gray-500" />
+            <CodeBracketIcon className="h-4 w-4 text-gray-500" />
           </button>
 
           <button

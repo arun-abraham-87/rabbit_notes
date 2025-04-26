@@ -579,7 +579,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       {/* Header Controls */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-900">Todo List</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Todos</h1>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowHeaders(prev => !prev)}

@@ -221,26 +221,55 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     if (!note) return;
 
     if (checked) {
+      // Store the original content before removing meta::todo
+      const originalContent = note.content;
       const updatedContent = note.content.replace(/meta::todo/gi, '').trim();
+      
+      // Set the snackbar and removed todo state before updating
+      setSnackbar({ id, content: originalContent });
+      setRemovedTodo({ ...note, content: originalContent });
+
+      // Update the todo
       updateTodo(id, updatedContent, true);
 
+      // Clear the snackbar after 5 seconds
       const timeoutId = setTimeout(() => {
-        updateTodo(id, updatedContent, true);
         setSnackbar(null);
         setRemovedTodo(null);
       }, 5000);
 
-      setSnackbar({ id, content: note.content, timeoutId });
-      setRemovedTodo({ ...note, content: updatedContent });
+      // Update snackbar with timeout ID
+      setSnackbar(prev => ({ ...prev, timeoutId }));
     }
   };
 
-  const handleUndo = () => {
-    if (snackbar?.timeoutId) clearTimeout(snackbar.timeoutId);
-    if (removedTodo) {
-      const updatedTodos = [removedTodo, ...todos];
-      updateTodosCallback(updatedTodos);
+  const handleUndo = async () => {
+    if (!removedTodo) return;
+
+    // Clear any existing timeout
+    if (snackbar?.timeoutId) {
+      clearTimeout(snackbar.timeoutId);
     }
+
+    try {
+      // Restore the todo with its original content
+      const response = await fetch(`http://localhost:5001/api/notes/${removedTodo.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: removedTodo.content }),
+      });
+
+      if (response.ok) {
+        // Add the todo back to the list
+        const updatedTodos = [removedTodo, ...todos.filter(t => t.id !== removedTodo.id)];
+        updateTodosCallback(updatedTodos);
+        updateNoteCallBack([removedTodo, ...notes.filter(n => n.id !== removedTodo.id)]);
+      }
+    } catch (error) {
+      console.error('Error undoing todo completion:', error);
+    }
+
+    // Clear snackbar and removed todo state
     setSnackbar(null);
     setRemovedTodo(null);
   };

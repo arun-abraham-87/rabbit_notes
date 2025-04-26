@@ -1,7 +1,5 @@
 import React from 'react';
 import NoteEditor from './NoteEditor';
-import H1 from './H1';
-import H2 from './H2';
 import InlineEditor from './InlineEditor';
 import { PlusIcon } from '@heroicons/react/24/solid';
 import {
@@ -39,18 +37,9 @@ export default function NoteContent({
     setNewLineText,
     newLineInputRef,
 }) {
-    console.log("Note")
-    console.log(note)
-    console.log("Note-END")
-
     const rawLines = getRawLines(note.content);
-    console.log("typeof rawLines")
-    console.log(typeof rawLines)
     const contentLines = parseNoteContent({ content: rawLines.join('\n'), searchTerm: searchQuery });
     const indentFlags = getIndentFlags(contentLines);
-
-    console.log("Content Lines")
-    console.log(contentLines)
 
     if (!Array.isArray(contentLines) || contentLines.length === 0) {
         return '<div>1234</div>';
@@ -105,48 +94,11 @@ export default function NoteContent({
                         );
                     }
 
-                    if (lineContent.startsWith('<h1>') && lineContent.endsWith('</h1>')) {
-                        return (
-                            <H1
-                                key={idx}
-                                note={note}
-                                line={lineContent}
-                                idx={idx}
-                                searchQuery={searchQuery}
-                                duplicatedUrlColors={duplicatedUrlColors}
-                                editingLine={editingLine}
-                                setEditingLine={setEditingLine}
-                                editedLineContent={editedLineContent}
-                                setEditedLineContent={setEditedLineContent}
-                                setRightClickNoteId={setRightClickNoteId}
-                                setRightClickIndex={setRightClickIndex}
-                                setRightClickPos={setRightClickPos}
-                                rightClickNoteId={rightClickNoteId}
-                                rightClickIndex={rightClickIndex}
-                            />
-                        );
-                    }
-                    if (lineContent.startsWith('<h2>') && lineContent.endsWith('</h2>')) {
-                        return (
-                            <H2
-                                key={idx}
-                                note={note}
-                                line={lineContent}
-                                idx={idx}
-                                searchQuery={searchQuery}
-                                duplicatedUrlColors={duplicatedUrlColors}
-                                editingLine={editingLine}
-                                setEditingLine={setEditingLine}
-                                editedLineContent={editedLineContent}
-                                setEditedLineContent={setEditedLineContent}
-                                setRightClickNoteId={setRightClickNoteId}
-                                setRightClickIndex={setRightClickIndex}
-                                setRightClickPos={setRightClickPos}
-                                rightClickNoteId={rightClickNoteId}
-                                rightClickIndex={rightClickIndex}
-                            />
-                        );
-                    }
+                    // Handle headings and regular content in a unified way
+                    const isH1 = lineContent.startsWith('<h1>') && lineContent.endsWith('</h1>');
+                    const isH2 = lineContent.startsWith('<h2>') && lineContent.endsWith('</h2>');
+                    const headingContent = isH1 ? lineContent.slice(4, -5) : isH2 ? lineContent.slice(4, -5) : lineContent;
+
                     return (
                         <div
                             key={idx}
@@ -161,6 +113,10 @@ export default function NoteContent({
                                     rightClickNoteId === note.id && rightClickIndex === idx
                                         ? 'bg-yellow-100'
                                         : ''
+                                } ${
+                                    isH1 ? 'text-2xl font-bold text-gray-900' :
+                                    isH2 ? 'text-lg font-semibold text-purple-700' :
+                                    ''
                                 }`}
                         >
                             {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
@@ -169,7 +125,14 @@ export default function NoteContent({
                                     setText={setEditedLineContent}
                                     onSave={(newText) => {
                                         const lines = note.content.split('\n');
-                                        lines[idx] = newText;
+                                        // Preserve heading markers when saving
+                                        if (isH1) {
+                                            lines[idx] = `###${newText}###`;
+                                        } else if (isH2) {
+                                            lines[idx] = `##${newText}##`;
+                                        } else {
+                                            lines[idx] = newText;
+                                        }
                                         updateNote(note.id, lines.join('\n'));
                                         setEditingLine({ noteId: null, lineIndex: null });
                                     }}
@@ -179,14 +142,14 @@ export default function NoteContent({
                                 />
                             ) : (
                                 <>
-                                    {(indentFlags[idx] || isListItem) && (
+                                    {(indentFlags[idx] || isListItem) && !isH1 && !isH2 && (
                                         <span className="mr-2 text-3xl self-start leading-none">
                                             •
                                         </span>
                                     )}
                                     <span className="flex-1">
                                         {renderLineWithClickableDates(
-                                            lineContent,
+                                            headingContent,
                                             note,
                                             idx,
                                             isListItem,
@@ -210,18 +173,8 @@ export default function NoteContent({
                                                             }
                                                             const [day, mon, year] = orig.split(' ');
                                                             const months = [
-                                                                'Jan',
-                                                                'Feb',
-                                                                'Mar',
-                                                                'Apr',
-                                                                'May',
-                                                                'Jun',
-                                                                'Jul',
-                                                                'Aug',
-                                                                'Sep',
-                                                                'Oct',
-                                                                'Nov',
-                                                                'Dec',
+                                                                'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
                                                             ];
                                                             const mm = (months.indexOf(mon) + 1).toString().padStart(2, '0');
                                                             return `${year}-${mm}-${day.padStart(2, '0')}`;

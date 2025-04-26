@@ -31,16 +31,6 @@ export default function RightClickMenu({
     });
   };
 
-  const colorOptions = [
-    { label: 'Default', value: 'default' },
-    { label: 'Red', value: '#DC2626' },
-    { label: 'Blue', value: '#2563EB' },
-    { label: 'Green', value: '#059669' },
-    { label: 'Purple', value: '#7C3AED' },
-    { label: 'Orange', value: '#EA580C' },
-    { label: 'Gray', value: '#4B5563' }
-  ];
-
   const handleSetColor = (color) => {
     if (noteId == null || lineIndex == null) return;
     const note = notes.find((n) => n.id === noteId);
@@ -62,6 +52,14 @@ export default function RightClickMenu({
   if (noteId == null || lineIndex == null) return null;
   const note = notes.find((n) => n.id === noteId);
   if (!note) return null;
+
+  const colorOptions = [
+    { color: '#DC2626', label: 'Red' },
+    { color: '#2563EB', label: 'Blue' },
+    { color: '#059669', label: 'Green' },
+    { color: '#7C3AED', label: 'Purple' },
+    { color: '#EA580C', label: 'Orange' }
+  ];
 
   return (
     <div
@@ -188,48 +186,25 @@ export default function RightClickMenu({
         </button>
         <div className="col-span-2 border-t-2 my-1"></div>
         
-        {/* Color options */}
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          style={{ color: '#DC2626' }}
-          onClick={() => handleSetColor('#DC2626')}
-        >
-          Red
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          style={{ color: '#2563EB' }}
-          onClick={() => handleSetColor('#2563EB')}
-        >
-          Blue
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          style={{ color: '#059669' }}
-          onClick={() => handleSetColor('#059669')}
-        >
-          Green
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          style={{ color: '#7C3AED' }}
-          onClick={() => handleSetColor('#7C3AED')}
-        >
-          Purple
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          style={{ color: '#EA580C' }}
-          onClick={() => handleSetColor('#EA580C')}
-        >
-          Orange
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => handleSetColor('default')}
-        >
-          Default
-        </button>
+        {/* Color options as squares */}
+        <div className="col-span-2 flex justify-center gap-1 py-1">
+          {colorOptions.map((option) => (
+            <button
+              key={option.color}
+              className="w-6 h-6 rounded shadow hover:shadow-lg transition-shadow"
+              style={{ backgroundColor: option.color }}
+              title={option.label}
+              onClick={() => handleSetColor(option.color)}
+            />
+          ))}
+          <button
+            className="w-6 h-6 rounded shadow hover:shadow-lg transition-shadow bg-white border border-gray-300 relative"
+            title="Default"
+            onClick={() => handleSetColor('default')}
+          >
+            <span className="absolute inset-0 flex items-center justify-center text-red-500 font-bold text-xs">×</span>
+          </button>
+        </div>
         <div className="col-span-2 border-t-2 my-1"></div>
 
         <button
@@ -263,7 +238,7 @@ export default function RightClickMenu({
             }
           }}
         >
-          Merge down ↑
+          Merge ↑
         </button>
         <button
           className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"

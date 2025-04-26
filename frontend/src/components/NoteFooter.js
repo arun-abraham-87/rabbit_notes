@@ -381,66 +381,91 @@ const NoteFooter = ({
       </div>
 
       {showRawNote && (
-        <div
-          ref={rawNotePopupRef}
-          className="absolute right-0 mt-1 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-10"
-        >
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">Raw Note Content</span>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(note.content);
-                toast.success('Raw note content copied to clipboard!');
-              }}
-              className="flex items-center text-xs px-2 py-1 text-gray-600 hover:bg-gray-100 rounded transition-colors"
-            >
-              <ClipboardIcon className="h-3.5 w-3.5 mr-1" />
-              Copy
-            </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-800">Raw Note Content</h2>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(note.content);
+                    toast.success('Raw note content copied to clipboard!');
+                  }}
+                  className="flex items-center px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                >
+                  <ClipboardIcon className="h-4 w-4 mr-1.5" />
+                  Copy
+                </button>
+                <button
+                  onClick={() => setShowRawNote(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-8rem)]">
+              <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
+                <pre className="whitespace-pre-wrap break-words text-sm font-mono text-gray-700 max-w-full" style={{ wordBreak: 'break-word' }}>
+                  {note.content}
+                </pre>
+              </div>
+            </div>
           </div>
-          <pre className="whitespace-pre-wrap text-xs">{note.content}</pre>
         </div>
       )}
 
       {showPinPopup && (
-        <div
-          ref={pinPopupRef}
-          className="absolute right-0 mt-1 w-96 max-h-[400px] bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-10 overflow-hidden"
-        >
-          <div className="flex flex-col h-full">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-medium text-gray-700">Select lines to pin to top</span>
-              <button
-                onClick={handlePinLines}
-                className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
-              >
-                Pin Selected
-              </button>
-            </div>
-            <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2">
-              {lines.map((line, index) => (
-                <div 
-                  key={index} 
-                  className={`flex items-start space-x-2 py-1 ${
-                    isPinned(index) ? 'bg-blue-50' : ''
-                  }`}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-800">Pin Lines to Top</h2>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handlePinLines}
+                  className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  disabled={selectedPinLines.length === 0}
                 >
-                  <div className="flex items-start space-x-2 min-w-[40px]">
-                    <input
-                      type="checkbox"
-                      checked={selectedPinLines.includes(index)}
-                      onChange={() => toggleLineSelection(index)}
-                      className="mt-1 rounded text-blue-500"
-                    />
-                    <span className="text-xs text-gray-400 select-none">
-                      {index + 1}
-                    </span>
+                  <CheckCircleIcon className="h-4 w-4 mr-1.5" />
+                  Pin Selected Lines
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPinPopup(false);
+                    setSelectedPinLines([]);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-8rem)]">
+              <div className="space-y-1">
+                {lines.map((line, index) => (
+                  <div 
+                    key={index} 
+                    className={`flex items-start space-x-3 p-2 rounded ${
+                      isPinned(index) ? 'bg-blue-50' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 min-w-[60px]">
+                      <input
+                        type="checkbox"
+                        checked={selectedPinLines.includes(index)}
+                        onChange={() => toggleLineSelection(index)}
+                        className="rounded text-blue-500 w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-400 select-none font-mono">
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                    </div>
+                    <div className="flex-1 text-sm text-gray-700 font-mono break-words whitespace-pre-wrap">
+                      {line || <em className="text-gray-400">Empty line</em>}
+                    </div>
                   </div>
-                  <span className="text-xs text-gray-700 break-words whitespace-pre-wrap flex-1">
-                    {line || <em className="text-gray-400">Empty line</em>}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>

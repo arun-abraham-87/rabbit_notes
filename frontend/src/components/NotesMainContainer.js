@@ -275,15 +275,13 @@ const NotesMainContainer = ({
 
     return (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
-            <div className="bg-card -mx-6 px-6 pb-4 border-b">
-                {ongoingMeeting && (
-                    <OngoingMeetingBanner
-                        meeting={ongoingMeeting}
-                        onDismiss={handleDismissMeeting}
-                    />
-                )}
-                <NextMeetingBanner meetings={meetings} notes={allNotes} />
-            </div>
+            {ongoingMeeting && (
+                <OngoingMeetingBanner
+                    meeting={ongoingMeeting}
+                    onDismiss={handleDismissMeeting}
+                />
+            )}
+            <NextMeetingBanner meetings={meetings} notes={allNotes} />
             <div className="mt-4">
                 <DateSelectorBar
                     setNoteDate={handleDateChange}

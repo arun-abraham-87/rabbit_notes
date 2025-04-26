@@ -7,9 +7,11 @@ const Manage = () => {
   const [activeSubTab, setActiveSubTab] = useState('search-replace');
   const [searchText, setSearchText] = useState('');
   const [replaceText, setReplaceText] = useState('');
+  const [useRegex, setUseRegex] = useState(false);
   const [notes, setNotes] = useState([]);
   const [matchingNotes, setMatchingNotes] = useState([]);
   const [totalMatches, setTotalMatches] = useState(0);
+  const [regexError, setRegexError] = useState('');
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -21,28 +23,66 @@ const Manage = () => {
 
   useEffect(() => {
     if (searchText.trim()) {
-      const matches = notes.filter(note => 
-        note.content.toLowerCase().includes(searchText.toLowerCase())
-      );
-      setMatchingNotes(matches);
-      
-      // Count total occurrences
-      const count = matches.reduce((total, note) => {
-        const regex = new RegExp(searchText, 'gi');
-        const matches = note.content.match(regex);
-        return total + (matches ? matches.length : 0);
-      }, 0);
-      setTotalMatches(count);
+      try {
+        let matches;
+        if (useRegex) {
+          // Test if the regex is valid
+          try {
+            new RegExp(searchText);
+            setRegexError('');
+          } catch (e) {
+            setRegexError('Invalid regular expression');
+            return;
+          }
+          
+          const regex = new RegExp(searchText, 'g');
+          matches = notes.filter(note => regex.test(note.content));
+          
+          // Reset regex lastIndex for next test
+          regex.lastIndex = 0;
+        } else {
+          matches = notes.filter(note => 
+            note.content.toLowerCase().includes(searchText.toLowerCase())
+          );
+        }
+        setMatchingNotes(matches);
+        
+        // Count total occurrences
+        const count = matches.reduce((total, note) => {
+          if (useRegex) {
+            const regex = new RegExp(searchText, 'g');
+            const matches = note.content.match(regex);
+            return total + (matches ? matches.length : 0);
+          } else {
+            const regex = new RegExp(searchText, 'gi');
+            const matches = note.content.match(regex);
+            return total + (matches ? matches.length : 0);
+          }
+        }, 0);
+        setTotalMatches(count);
+      } catch (error) {
+        setRegexError('Error processing search: ' + error.message);
+      }
     } else {
       setMatchingNotes([]);
       setTotalMatches(0);
+      setRegexError('');
     }
-  }, [searchText, notes]);
+  }, [searchText, notes, useRegex]);
 
   const handleReplace = async () => {
     if (!searchText.trim() || !replaceText.trim()) {
       toast.error('Please enter both search and replace text');
       return;
+    }
+
+    if (useRegex) {
+      try {
+        new RegExp(searchText);
+      } catch (e) {
+        toast.error('Invalid regular expression');
+        return;
+      }
     }
 
     const confirmed = window.confirm(
@@ -52,10 +92,14 @@ const Manage = () => {
     if (confirmed) {
       try {
         for (const note of matchingNotes) {
-          const updatedContent = note.content.replace(
-            new RegExp(searchText, 'gi'),
-            replaceText
-          );
+          let updatedContent;
+          if (useRegex) {
+            const regex = new RegExp(searchText, 'g');
+            updatedContent = note.content.replace(regex, replaceText);
+          } else {
+            const regex = new RegExp(searchText, 'gi');
+            updatedContent = note.content.replace(regex, replaceText);
+          }
           await updateNoteById(note.id, updatedContent);
         }
         toast.success(`Successfully replaced text in ${matchingNotes.length} notes`);
@@ -127,13 +171,27 @@ const Manage = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Search Text
                       </label>
-                      <input
-                        type="text"
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter text to search for..."
-                      />
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="text"
+                          value={searchText}
+                          onChange={(e) => setSearchText(e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder={useRegex ? "Enter regular expression..." : "Enter text to search for..."}
+                        />
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={useRegex}
+                            onChange={(e) => setUseRegex(e.target.checked)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <span className="text-sm text-gray-700">Use Regex</span>
+                        </label>
+                      </div>
+                      {regexError && (
+                        <p className="mt-1 text-sm text-red-600">{regexError}</p>
+                      )}
                     </div>
                     
                     <div>
@@ -149,7 +207,7 @@ const Manage = () => {
                       />
                     </div>
 
-                    {searchText && (
+                    {searchText && !regexError && (
                       <div className="text-sm text-gray-600">
                         Found {totalMatches} occurrences in {matchingNotes.length} notes
                       </div>
@@ -157,9 +215,9 @@ const Manage = () => {
 
                     <button
                       onClick={handleReplace}
-                      disabled={!searchText || !replaceText || matchingNotes.length === 0}
+                      disabled={!searchText || !replaceText || matchingNotes.length === 0 || regexError}
                       className={`px-4 py-2 rounded-md text-white ${
-                        !searchText || !replaceText || matchingNotes.length === 0
+                        !searchText || !replaceText || matchingNotes.length === 0 || regexError
                           ? 'bg-gray-400 cursor-not-allowed'
                           : 'bg-blue-600 hover:bg-blue-700'
                       }`}
@@ -168,7 +226,7 @@ const Manage = () => {
                     </button>
                   </div>
 
-                  {matchingNotes.length > 0 && (
+                  {matchingNotes.length > 0 && !regexError && (
                     <div className="mt-6">
                       <h2 className="text-lg font-semibold text-gray-800 mb-4">
                         Matching Notes
@@ -184,7 +242,32 @@ const Manage = () => {
                             </div>
                             <div className="text-gray-800 whitespace-pre-wrap">
                               {note.content.split('\n').map((line, index) => {
-                                if (line.toLowerCase().includes(searchText.toLowerCase())) {
+                                if (useRegex) {
+                                  try {
+                                    const regex = new RegExp(searchText, 'g');
+                                    if (regex.test(line)) {
+                                      const parts = line.split(new RegExp(`(${searchText})`, 'g'));
+                                      return (
+                                        <div key={index} className="mb-1">
+                                          {parts.map((part, i) => (
+                                            <span
+                                              key={i}
+                                              className={
+                                                regex.test(part)
+                                                  ? 'bg-yellow-200'
+                                                  : ''
+                                              }
+                                            >
+                                              {part}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      );
+                                    }
+                                  } catch (e) {
+                                    return <div key={index} className="mb-1">{line}</div>;
+                                  }
+                                } else if (line.toLowerCase().includes(searchText.toLowerCase())) {
                                   const parts = line.split(new RegExp(`(${searchText})`, 'gi'));
                                   return (
                                     <div key={index} className="mb-1">

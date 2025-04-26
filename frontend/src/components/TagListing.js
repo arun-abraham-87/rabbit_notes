@@ -121,7 +121,7 @@ const TagListing = () => {
 
   return (
     <div className="w-full rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-      <h2 className="text-xl font-bold mb-4">Tags Page</h2>
+      <h2 className="text-xl font-bold mb-4">Tags</h2>
       
       {/* Error Message */}
       {error && (
@@ -155,13 +155,13 @@ const TagListing = () => {
       </div>
 
       {/* Tags List */}
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {tags
           .filter(tag => tag.text.toLowerCase().includes(tagSearch.toLowerCase()))
           .map((tag) => (
             <div
               key={tag.id}
-              className="group flex items-center justify-between p-3 rounded-lg border bg-white hover:shadow-sm transition-all duration-200"
+              className="group flex items-center justify-between p-2 rounded-full border bg-gray-50 hover:bg-gray-100 transition-all duration-200"
             >
               {editingTag && editingTag.id === tag.id ? (
                 <input
@@ -169,19 +169,19 @@ const TagListing = () => {
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onKeyDown={handleEditKeyDown}
-                  className="flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="flex-1 px-3 py-1 bg-white border rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 min-w-0"
                   autoFocus
                 />
               ) : (
-                <span className="text-gray-700">{tag.text}</span>
+                <span className="text-gray-700 px-3 truncate">{tag.text}</span>
               )}
               
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pr-2">
                 {editingTag && editingTag.id === tag.id ? (
                   <>
                     <button
                       onClick={handleSaveEdit}
-                      className="p-1 rounded hover:bg-green-50 text-green-600"
+                      className="p-1 rounded-full hover:bg-green-100 text-green-600"
                       title="Save changes"
                     >
                       <CheckIcon className="h-4 w-4" />
@@ -192,7 +192,7 @@ const TagListing = () => {
                         setEditingTag(null);
                         setEditValue('');
                       }}
-                      className="p-1 rounded hover:bg-gray-100 text-gray-600"
+                      className="p-1 rounded-full hover:bg-gray-200 text-gray-600"
                       title="Cancel"
                     >
                       <XMarkIcon className="h-4 w-4" />
@@ -202,14 +202,14 @@ const TagListing = () => {
                   <>
                     <button
                       onClick={() => handleEditTag(tag)}
-                      className="p-1 rounded hover:bg-blue-50 text-blue-600"
+                      className="p-1 rounded-full hover:bg-blue-100 text-blue-600"
                       title="Edit tag"
                     >
                       <PencilIcon className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteTag(tag)}
-                      className="p-1 rounded hover:bg-red-50 text-red-600"
+                      className="p-1 rounded-full hover:bg-red-100 text-red-600"
                       title="Delete tag"
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -222,7 +222,7 @@ const TagListing = () => {
 
         {/* Empty State */}
         {tags.filter(tag => tag.text.toLowerCase().includes(tagSearch.toLowerCase())).length === 0 && (
-          <div className="text-center py-8 text-gray-500">
+          <div className="col-span-full text-center py-8 text-gray-500">
             {tagSearch ? (
               <p>No tags match your search</p>
             ) : (

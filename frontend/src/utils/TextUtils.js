@@ -78,7 +78,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
   }
 
   const elements = [];
-  const regex = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
+  const regex = /(\*\*([^*]+)\*\*)|(\*(?!\*)([^*]+)(?<!\*)\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
   let lastIndex = 0;
   let match;
 
@@ -99,20 +99,26 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
           {match[2]}
         </strong>
       );
-    } else if (match[3]) { // Markdown link
+    } else if (match[3]) { // Italics
+      elements.push(
+        <em key={`italic-${lineIndex}-${match.index}`}>
+          {match[4]}
+        </em>
+      );
+    } else if (match[5]) { // Markdown link
       elements.push(
         <a
           key={`link-${lineIndex}-${match.index}`}
-          href={match[5]}
+          href={match[6]}
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-600 underline hover:text-blue-800"
         >
-          {match[4]}
+          {match[6]}
         </a>
       );
-    } else if (match[6]) { // Raw URL
-      const url = match[6];
+    } else if (match[7]) { // Raw URL
+      const url = match[7];
       const display = (() => {
         try {
           return new URL(url).hostname.replace(/^www\./, '');

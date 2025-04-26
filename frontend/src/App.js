@@ -10,7 +10,7 @@ import TodoList from './components/TodoList.js';
 import NoteEditor from './components/NoteEditor';
 import LeftPanel from './components/LeftPanel';
 import Journals from './pages/Journals';
-import ManageNotes from './pages/ManageNotes';
+import Manage from './pages/Manage';
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from './utils/TextUtils';
 
@@ -294,7 +294,7 @@ const App = () => {
             </div>
           )}
           {activePage === 'journals' && <Journals />}
-          {activePage === 'manage-notes' && <ManageNotes />}
+          {activePage === 'manage-notes' && <Manage />}
         </div>
       </div>
       <ToastContainer

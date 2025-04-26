@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getAustralianDate, getNextOrPrevDate, getAge } from '../utils/DateUtils.js'
-import { ChevronRightIcon, ChevronLeftIcon, CalendarIcon } from '@heroicons/react/24/solid';
+import { ChevronRightIcon, ChevronLeftIcon, CalendarIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 
 const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
   const [selectedDate, setSelectedDate] = useState(getAustralianDate());
@@ -78,6 +78,15 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
               className={`h-5 w-5 text-gray-600 transition-transform duration-200 ${!collapsed ? 'rotate-90' : ''}`}
             />
           </button>
+          {collapsed && (
+            <button
+              onClick={() => updateDate(false)}
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Previous day"
+            >
+              <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
+            </button>
+          )}
           <div className="flex items-center gap-2">
             <h2 className={`text-lg font-semibold ${selectedDate === getAustralianDate() ? 'text-gray-800' : 'text-red-600'}`}>
               {collapsed ? selectedDate : 'Date Selection'}
@@ -97,32 +106,7 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
               </span>
             )}
           </div>
-          {collapsed && selectedDate !== getAustralianDate() && (
-            <button
-              onClick={() => handleDateChange(getAustralianDate())}
-              className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-            >
-              Reset to Today
-            </button>
-          )}
-        </div>
-        
-        {collapsed && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => updateDate(false)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Previous day"
-            >
-              <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
-            </button>
-            <button
-              onClick={() => setShowCalendar(true)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Choose date"
-            >
-              <CalendarIcon className="h-5 w-5 text-gray-600" />
-            </button>
+          {collapsed && (
             <button
               onClick={() => updateDate(true)}
               className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
@@ -130,7 +114,26 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
             >
               <ChevronRightIcon className="h-5 w-5 text-gray-600" />
             </button>
-          </div>
+          )}
+          {collapsed && selectedDate !== getAustralianDate() && (
+            <button
+              onClick={() => handleDateChange(getAustralianDate())}
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Reset to Today"
+            >
+              <ArrowPathIcon className="h-5 w-5 text-gray-600" />
+            </button>
+          )}
+        </div>
+        
+        {collapsed && (
+          <button
+            onClick={() => setShowCalendar(true)}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            title="Choose date"
+          >
+            <CalendarIcon className="h-5 w-5 text-gray-600" />
+          </button>
         )}
       </div>
 

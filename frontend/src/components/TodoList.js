@@ -23,9 +23,10 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [priorityFilter, setPriorityFilter] = useState(null);
   const [snackbar, setSnackbar] = useState(null);
   const [removedTodo, setRemovedTodo] = useState(null);
-  const [viewMode, setViewMode] = useState('list'); // Changed from 'grid' to 'list'
-  const [sortBy, setSortBy] = useState('priority'); // 'priority', 'date', 'age'
-  const [showFilters, setShowFilters] = useState(true); // Changed from false to true
+  const [viewMode, setViewMode] = useState('list');
+  const [sortBy, setSortBy] = useState('priority');
+  const [showFilters, setShowFilters] = useState(true);
+  const [showHeaders, setShowHeaders] = useState(false);
 
   // Get overdue high priority todos
   const getOverdueHighPriorityTodos = () => {
@@ -367,7 +368,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
     const currentPriority = priorities[todo.id] || tag;
     
-    // Extract creation date from meta::todo tag
     const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
     const createdDate = todoDateMatch ? todoDateMatch[1] : todo.created_datetime;
     const ageColorClass = getAgeClass(createdDate);
@@ -388,28 +388,42 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           priorityColors[currentPriority]
         }`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b bg-white/50">
-          <div className="flex items-center gap-2">
-            <span className={`text-xs font-medium ${ageColorClass}`}>
-              {getAgeLabel(createdDate)}
-            </span>
-            {priorityAge && (
-              <>
-                <span className="text-gray-300">•</span>
+        {/* Header - Only shown when showHeaders is true */}
+        {showHeaders && (
+          <div className="flex items-center justify-between p-3 border-b bg-white/50">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-500">Added:</span>
+              <span className={`text-xs font-medium ${ageColorClass}`}>
+                {getAgeLabel(createdDate)}
+              </span>
+              <span className="text-gray-300">•</span>
+              <span className="text-xs font-medium text-gray-500">Status:</span>
+              <span className={`text-xs font-medium ${
+                currentPriority === 'high' ? 'text-rose-600' :
+                currentPriority === 'medium' ? 'text-amber-600' :
+                'text-emerald-600'
+              }`}>
+                {currentPriority.charAt(0).toUpperCase() + currentPriority.slice(1)}
+              </span>
+              {priorityAge && (
                 <span className="text-xs font-medium text-gray-500">
-                  {currentPriority} for {priorityAge}
+                  (for {priorityAge})
                 </span>
-              </>
-            )}
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+        )}
+
+        {/* Content */}
+        <div className="flex-1 p-3 overflow-auto relative">
+          {/* Priority Buttons - Now on the left of complete button */}
+          <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
             <button
               onClick={() => handlePriorityClick(todo.id, 'high')}
-              className={`px-2 py-1 rounded font-medium transition-all duration-200 ${
+              className={`w-6 h-6 rounded-full font-medium transition-all duration-200 flex items-center justify-center ${
                 currentPriority === 'high'
                   ? 'bg-rose-200 text-rose-700'
-                  : 'hover:bg-rose-100 text-gray-400 hover:text-rose-600'
+                  : 'bg-white border border-gray-200 hover:bg-rose-100 text-gray-400 hover:text-rose-600'
               }`}
               title="High priority"
             >
@@ -417,10 +431,10 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'medium')}
-              className={`px-2 py-1 rounded font-medium transition-all duration-200 ${
+              className={`w-6 h-6 rounded-full font-medium transition-all duration-200 flex items-center justify-center ${
                 currentPriority === 'medium'
                   ? 'bg-amber-200 text-amber-700'
-                  : 'hover:bg-amber-100 text-gray-400 hover:text-amber-600'
+                  : 'bg-white border border-gray-200 hover:bg-amber-100 text-gray-400 hover:text-amber-600'
               }`}
               title="Medium priority"
             >
@@ -428,21 +442,18 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'low')}
-              className={`px-2 py-1 rounded font-medium transition-all duration-200 ${
+              className={`w-6 h-6 rounded-full font-medium transition-all duration-200 flex items-center justify-center ${
                 currentPriority === 'low'
                   ? 'bg-emerald-200 text-emerald-700'
-                  : 'hover:bg-emerald-100 text-gray-400 hover:text-emerald-600'
+                  : 'bg-white border border-gray-200 hover:bg-emerald-100 text-gray-400 hover:text-emerald-600'
               }`}
               title="Low priority"
             >
               L
             </button>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="flex-1 p-3 overflow-auto relative">
-          {/* Complete button - Absolutely positioned within content area */}
+          {/* Complete button */}
           <button
             onClick={() => handleCheckboxChange(todo.id, true)}
             className="absolute right-4 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center hover:bg-emerald-50 hover:border-emerald-200 transition-all duration-200 z-10"
@@ -452,7 +463,8 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </button>
-          <div className="text-sm text-gray-800 whitespace-pre-wrap pr-12">
+
+          <div className="text-sm text-gray-800 whitespace-pre-wrap pr-32">
             {(() => {
               // Remove all meta tags from content
               const content = todo.content
@@ -569,6 +581,15 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-gray-900">Todo List</h1>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowHeaders(prev => !prev)}
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                showHeaders ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'
+              }`}
+              title={showHeaders ? 'Hide headers' : 'Show headers'}
+            >
+              <EllipsisHorizontalIcon className="h-5 w-5" />
+            </button>
             <button
               onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}
               className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"

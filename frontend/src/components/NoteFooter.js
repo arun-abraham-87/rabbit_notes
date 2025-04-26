@@ -6,14 +6,12 @@ import {
   PencilIcon,
   TrashIcon,
   TagIcon,
-  CalendarIcon,
   BookmarkIcon,
   LinkIcon,
   EyeIcon,
   ClockIcon,
   FlagIcon,
   ChevronDownIcon,
-  DocumentTextIcon,
   ClipboardIcon,
   ArrowsPointingInIcon,
   CodeBracketIcon,
@@ -24,7 +22,6 @@ import { toast } from 'react-toastify';
 const NoteFooter = ({
   note,
   showCreatedDate,
-  setShowEndDatePickerForNoteId,
   handleDelete,
   setPopupNoteText,
   setLinkingNoteId,
@@ -76,6 +73,52 @@ const NoteFooter = ({
         ? prev.filter(l => l !== lineNum)
         : [...prev, lineNum]
     );
+  };
+
+  const handlePinLines = () => {
+    if (selectedPinLines.length === 0) {
+      toast.error('Please select at least one line to pin');
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const lines = note.content.split('\n');
+    
+    // Remove any existing pin metadata
+    const contentWithoutPinMeta = lines
+      .filter(line => !line.trim().startsWith('meta::pin::'))
+      .join('\n');
+
+    // Convert 0-based indices to 1-based line numbers
+    const lineNumbers = selectedPinLines.map(index => index + 1);
+
+    // Create pin metadata with 1-based line numbers
+    const pinMeta = `meta::pin::${lineNumbers.join(',')}`; 
+
+    // Combine content with new pin metadata
+    const newContent = `${contentWithoutPinMeta}\n${pinMeta}`;
+    
+    updateNote(note.id, newContent);
+    setSelectedPinLines([]);
+    setShowPinPopup(false);
+    toast.success('Lines marked for pinning');
+  };
+
+  // Add this function to check if a line is pinned (using 1-based line numbers)
+  const isPinned = (index) => {
+    const pinMetaLine = note.content
+      .split('\n')
+      .find(line => line.trim().startsWith('meta::pin::'));
+    
+    if (!pinMetaLine) return false;
+    
+    const pinnedLineNumbers = pinMetaLine
+      .replace('meta::pin::', '')
+      .split(',')
+      .map(num => parseInt(num.trim()));
+    
+    // Convert 0-based index to 1-based line number for comparison
+    return pinnedLineNumbers.includes(index + 1);
   };
 
   const handleAction = (action) => {
@@ -165,9 +208,9 @@ const NoteFooter = ({
         )}
       </div>
 
-      <div className="flex items-center">
+      <div className="flex items-center bg-gray-50 rounded-lg">
         {/* Todo Group */}
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 px-2 py-1">
           <button
             onClick={() => handleTodoAction()}
             className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
@@ -214,10 +257,10 @@ const NoteFooter = ({
         </div>
 
         {/* Separator */}
-        <div className="h-4 w-px bg-gray-200 mx-2"></div>
+        <div className="h-6 w-px bg-gray-200 mx-px"></div>
 
         {/* Organization Group */}
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 px-2 py-1 bg-white">
           <button
             onClick={() => handleAction('bookmark')}
             className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
@@ -250,18 +293,10 @@ const NoteFooter = ({
         </div>
 
         {/* Separator */}
-        <div className="h-4 w-px bg-gray-200 mx-2"></div>
+        <div className="h-6 w-px bg-gray-200 mx-px"></div>
 
-        {/* Date and Link Group */}
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={() => setShowEndDatePickerForNoteId(note.id)}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            title="Set End Date"
-          >
-            <CalendarIcon className="h-4 w-4 text-gray-500" />
-          </button>
-
+        {/* Link Group */}
+        <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50">
           <button
             onClick={() => {
               setLinkingNoteId(note.id);
@@ -286,10 +321,10 @@ const NoteFooter = ({
         </div>
 
         {/* Separator */}
-        <div className="h-4 w-px bg-gray-200 mx-2"></div>
+        <div className="h-6 w-px bg-gray-200 mx-px"></div>
 
         {/* View and Copy Group */}
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 px-2 py-1 bg-white">
           <button
             onClick={() => {
               navigator.clipboard.writeText(note.content);
@@ -323,10 +358,10 @@ const NoteFooter = ({
         </div>
 
         {/* Separator */}
-        <div className="h-4 w-px bg-gray-200 mx-2"></div>
+        <div className="h-6 w-px bg-gray-200 mx-px"></div>
 
         {/* Edit/Delete Group */}
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50">
           <button
             onClick={() => setPopupNoteText(note.id)}
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -370,20 +405,43 @@ const NoteFooter = ({
       {showPinPopup && (
         <div
           ref={pinPopupRef}
-          className="absolute right-0 mt-1 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-10"
+          className="absolute right-0 mt-1 w-96 max-h-[400px] bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-10 overflow-hidden"
         >
-          <div className="space-y-2">
-            {lines.map((line, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={selectedPinLines.includes(index)}
-                  onChange={() => toggleLineSelection(index)}
-                  className="rounded text-blue-500"
-                />
-                <span className="text-xs">{line}</span>
-              </div>
-            ))}
+          <div className="flex flex-col h-full">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm font-medium text-gray-700">Select lines to pin to top</span>
+              <button
+                onClick={handlePinLines}
+                className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+              >
+                Pin Selected
+              </button>
+            </div>
+            <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2">
+              {lines.map((line, index) => (
+                <div 
+                  key={index} 
+                  className={`flex items-start space-x-2 py-1 ${
+                    isPinned(index) ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <div className="flex items-start space-x-2 min-w-[40px]">
+                    <input
+                      type="checkbox"
+                      checked={selectedPinLines.includes(index)}
+                      onChange={() => toggleLineSelection(index)}
+                      className="mt-1 rounded text-blue-500"
+                    />
+                    <span className="text-xs text-gray-400 select-none">
+                      {index + 1}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-700 break-words whitespace-pre-wrap flex-1">
+                    {line || <em className="text-gray-400">Empty line</em>}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

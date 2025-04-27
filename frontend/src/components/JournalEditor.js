@@ -7,7 +7,7 @@ import { ExclamationCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { checkText } from '../utils/languageTool';
 import { toast } from 'react-hot-toast';
 
-const HighlightedTextarea = ({ value, onChange, grammarIssues }) => {
+const HighlightedTextarea = ({ value, onChange, grammarIssues, onSuggestionClick }) => {
   const [contextMenu, setContextMenu] = useState(null);
   const [selectedIssue, setSelectedIssue] = useState(null);
   const menuRef = useRef(null);
@@ -123,6 +123,50 @@ const HighlightedTextarea = ({ value, onChange, grammarIssues }) => {
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+const SuggestionsPanel = ({ issues, onSuggestionClick }) => {
+  if (!issues || issues.length === 0) {
+    return (
+      <div className="w-64 p-4 border-l bg-gray-50">
+        <p className="text-sm text-gray-500">No suggestions</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-64 p-4 border-l bg-gray-50 overflow-y-auto">
+      <h3 className="text-sm font-medium text-gray-700 mb-3">Suggestions</h3>
+      <div className="space-y-4">
+        {issues.map((issue, index) => {
+          const lineNumber = (issue.context.text.substring(0, issue.offset).match(/\n/g) || []).length + 1;
+          const charPosition = issue.offset - issue.context.text.substring(0, issue.offset).lastIndexOf('\n') - 1;
+          
+          return (
+            <div key={index} className="text-sm">
+              <div className="text-gray-500 mb-1">
+                Line {lineNumber}, Char {charPosition}
+              </div>
+              <div className="font-medium text-gray-900 mb-1">
+                {issue.context.text.substring(issue.offset, issue.offset + issue.length)}
+              </div>
+              <div className="space-y-1">
+                {issue.replacements.slice(0, 5).map((replacement, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => onSuggestionClick(issue, replacement.value)}
+                    className="w-full text-left px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded"
+                  >
+                    {replacement.value}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -320,6 +364,13 @@ const JournalEditor = ({ date, onSaved }) => {
     return () => clearTimeout(timer);
   }, [content]);
 
+  const handleSuggestionClick = (issue, replacement) => {
+    const start = issue.offset;
+    const end = start + issue.length;
+    const newContent = content.substring(0, start) + replacement + content.substring(end);
+    setContent(newContent);
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -332,117 +383,129 @@ const JournalEditor = ({ date, onSaved }) => {
 
   return (
     <div className="p-4">
-      <div className="bg-white shadow-sm rounded-lg p-6">
-        <div className="mb-6 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleDateChange('backward')}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Previous day"
-            >
-              <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
-            </button>
-            <h2 className="text-2xl font-semibold text-gray-900 min-w-[200px] text-center">
-              {format(new Date(currentDate), 'MMMM d, yyyy')}
-            </h2>
-            <button
-              onClick={() => handleDateChange('forward')}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Next day"
-            >
-              <ChevronRightIcon className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-          <div className="flex items-center gap-4">
-            {status && (
-              <div className={`flex items-center gap-2 ${status.className}`}>
-                {status.icon}
-                <span className="text-sm font-medium">{status.text}</span>
-              </div>
-            )}
-            {isCheckingGrammar && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <div className="h-5 w-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm font-medium">Checking grammar...</span>
-              </div>
-            )}
-            <div className="relative">
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
-                title="Delete journal entry"
-              >
-                <TrashIcon className="h-5 w-5" />
-              </button>
-              
-              {/* Delete Confirmation Popup */}
-              {showDeleteConfirm && (
-                <div className="absolute right-0 top-full mt-2 bg-white border rounded-lg shadow-lg p-4 w-72 z-20">
-                  <p className="text-sm text-gray-700 mb-3">
-                    Are you sure you want to delete this journal entry? This action cannot be undone.
-                  </p>
-                  <div className="flex justify-end gap-2">
+      <div className="bg-white shadow-sm rounded-lg">
+        <div className="flex">
+          <div className="flex-1">
+            <div className="p-6">
+              <div className="mb-6 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDateChange('backward')}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Previous day"
+                  >
+                    <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-gray-900 min-w-[200px] text-center">
+                    {format(new Date(currentDate), 'MMMM d, yyyy')}
+                  </h2>
+                  <button
+                    onClick={() => handleDateChange('forward')}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Next day"
+                  >
+                    <ChevronRightIcon className="h-5 w-5 text-gray-600" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-4">
+                  {status && (
+                    <div className={`flex items-center gap-2 ${status.className}`}>
+                      {status.icon}
+                      <span className="text-sm font-medium">{status.text}</span>
+                    </div>
+                  )}
+                  {isCheckingGrammar && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <div className="h-5 w-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm font-medium">Checking grammar...</span>
+                    </div>
+                  )}
+                  <div className="relative">
                     <button
-                      onClick={() => setShowDeleteConfirm(false)}
-                      className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                      title="Delete journal entry"
                     >
-                      Cancel
+                      <TrashIcon className="h-5 w-5" />
                     </button>
-                    <button
-                      onClick={handleDelete}
-                      className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                    >
-                      Delete
-                    </button>
+                    
+                    {/* Delete Confirmation Popup */}
+                    {showDeleteConfirm && (
+                      <div className="absolute right-0 top-full mt-2 bg-white border rounded-lg shadow-lg p-4 w-72 z-20">
+                        <p className="text-sm text-gray-700 mb-3">
+                          Are you sure you want to delete this journal entry? This action cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setShowDeleteConfirm(false)}
+                            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleDelete}
+                            className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <TagInput tags={tags} onChange={handleTagsChange} />
+              </div>
+
+              <div className="mb-6">
+                <HighlightedTextarea
+                  value={content}
+                  onChange={handleContentChange}
+                  grammarIssues={grammarResults?.matches || []}
+                  onSuggestionClick={handleSuggestionClick}
+                />
+              </div>
+
+              {grammarResults && grammarResults.matches && grammarResults.matches.length > 0 && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Grammar Check Results</h3>
+                  <ul className="space-y-2">
+                    {grammarResults.matches.map((match, index) => {
+                      const textBeforeOffset = content.substring(0, match.offset);
+                      const lineNumber = (textBeforeOffset.match(/\n/g) || []).length + 1;
+                      const charPosition = match.offset - textBeforeOffset.lastIndexOf('\n') - 1;
+                      
+                      return (
+                        <li key={index} className="text-sm text-gray-700">
+                          <span className="font-medium text-red-600">
+                            Position {match.offset} (Line {lineNumber}, Char {charPosition}):
+                          </span> {match.message}
+                          {match.replacements && match.replacements.length > 0 && (
+                            <div className="ml-4 mt-1">
+                              <span className="text-gray-500">Suggestions:</span>
+                              <ul className="list-disc list-inside">
+                                {match.replacements.map((replacement, idx) => (
+                                  <li key={idx} className="text-gray-600">{replacement.value}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               )}
             </div>
           </div>
-        </div>
-
-        <div className="mb-6">
-          <TagInput tags={tags} onChange={handleTagsChange} />
-        </div>
-
-        <div className="mb-6">
-          <HighlightedTextarea
-            value={content}
-            onChange={handleContentChange}
-            grammarIssues={grammarResults?.matches || []}
+          
+          <SuggestionsPanel
+            issues={grammarResults?.matches || []}
+            onSuggestionClick={handleSuggestionClick}
           />
         </div>
-
-        {grammarResults && grammarResults.matches && grammarResults.matches.length > 0 && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Grammar Check Results</h3>
-            <ul className="space-y-2">
-              {grammarResults.matches.map((match, index) => {
-                const textBeforeOffset = content.substring(0, match.offset);
-                const lineNumber = (textBeforeOffset.match(/\n/g) || []).length + 1;
-                const charPosition = match.offset - textBeforeOffset.lastIndexOf('\n') - 1;
-                
-                return (
-                  <li key={index} className="text-sm text-gray-700">
-                    <span className="font-medium text-red-600">
-                      Position {match.offset} (Line {lineNumber}, Char {charPosition}):
-                    </span> {match.message}
-                    {match.replacements && match.replacements.length > 0 && (
-                      <div className="ml-4 mt-1">
-                        <span className="text-gray-500">Suggestions:</span>
-                        <ul className="list-disc list-inside">
-                          {match.replacements.map((replacement, idx) => (
-                            <li key={idx} className="text-gray-600">{replacement.value}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );

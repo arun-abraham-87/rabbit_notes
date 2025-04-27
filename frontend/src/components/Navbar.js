@@ -25,14 +25,6 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
     day: 'numeric'
   });
 
-  // Get AEST timezone details
-  const aestTime = time.toLocaleTimeString('en-US', {
-    timeZone: 'Australia/Sydney',
-    hour12: true,
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-
   return (
     <nav className="border-b py-4 px-8 bg-background hover:shadow-sm transition-shadow">
       <div className="w-full mx-auto flex justify-between items-center">

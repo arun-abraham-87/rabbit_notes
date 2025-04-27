@@ -1,5 +1,5 @@
 // src/components/TimeZoneDisplay.js
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 /**
  * List of zones to display.
@@ -91,7 +91,7 @@ const ZoneCard = ({ label, timeZone }) => {
   // Compute offset relative to AEST
   const diff = label === 'AEST' ? null : getTimeDiffFromAEST(timeZone);
 
-  // Determine if this zone’s date is before/after AEST date
+  // Determine if this zone's date is before/after AEST date
   const zoneYMD = formatYMD(now, timeZone);
   const aestYMD = formatYMD(now, 'Australia/Sydney');
   let dayLabel = 'Same Day';
@@ -137,6 +137,13 @@ const ZoneCard = ({ label, timeZone }) => {
  * Renders the full grid of ZoneCards.
  */
 const TimeZoneDisplay = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Enrich with numeric diff, dayLabel, and sort by diffHrs ascending (least behind first)
   const sortedZones = timeZones
     .map(z => {

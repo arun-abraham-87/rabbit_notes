@@ -102,8 +102,8 @@ const getUnacknowledgedPastMeetings = (notes) => {
   return notes.filter(note => {
     // Check if it's a meeting note
     if (!note.content.includes('meta::meeting::')) return false;
-    // Skip if already dismissed
-    if (note.content.includes('meta_detail::dismissed')) return false;
+    // Skip if already acknowledged
+    if (note.content.includes('meta::meeting_acknowledge')) return false;
 
     const lines = note.content.split('\n');
     const meetingTimeStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
@@ -308,15 +308,16 @@ const NotesMainContainer = ({
         const note = allNotes.find(n => n.id === noteId);
         if (!note) return;
         
-        // Add the dismissed tag
-        const updatedContent = `${note.content}\nmeta_detail::dismissed`;
+        // Add the acknowledged tag with timestamp
+        const ackLine = `meta::meeting_acknowledge::${new Date().toISOString()}`;
+        const updatedContent = `${note.content}\n${ackLine}`;
         
         try {
             await updateNoteById(noteId, updatedContent);
             // Update the notes state to reflect the change
             setNotes(allNotes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
         } catch (error) {
-            console.error('Error dismissing meeting:', error);
+            console.error('Error acknowledging meeting:', error);
         }
     };
 

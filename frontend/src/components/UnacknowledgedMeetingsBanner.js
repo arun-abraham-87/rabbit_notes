@@ -30,7 +30,7 @@ const UnacknowledgedMeetingsBanner = ({ meetings, onDismiss }) => {
                       onClick={() => onDismiss(meeting.id)}
                       className="ml-2 text-amber-600 hover:text-amber-800"
                     >
-                      Dismiss
+                      Acknowledge
                     </button>
                   </li>
                 );

@@ -591,6 +591,33 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                           <div className="text-sm font-medium text-indigo-600 mt-1">
                             {(() => {
                               const delta = new Date(m.time).getTime() - now;
+                              if (delta < 0) {
+                                const note = notes.find(n => n.id === m.id);
+                                const isAcknowledged = note?.content.includes('meta::meeting_acknowledge');
+                                return (
+                                  <div className="flex items-center gap-2">
+                                    <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs">
+                                      Passed
+                                    </span>
+                                    {!isAcknowledged && (
+                                      <button
+                                        onClick={() => {
+                                          const note = notes.find(n => n.id === m.id);
+                                          if (note) {
+                                            const ackLine = `meta::meeting_acknowledge::${new Date().toISOString()}`;
+                                            const updated = (note.content + '\n' + ackLine).trim();
+                                            updateNoteById(note.id, updated);
+                                            setNotes(notes.map(n => n.id === note.id ? { ...n, content: updated } : n));
+                                          }
+                                        }}
+                                        className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full hover:bg-indigo-200 transition-colors"
+                                      >
+                                        Acknowledge
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              }
                               const days = Math.floor(delta / 86400000);
                               const hrs = Math.floor((delta % 86400000) / 3600000);
                               const mins = Math.floor((delta % 3600000) / 60000);

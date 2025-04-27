@@ -4,6 +4,24 @@ import { XMarkIcon } from '@heroicons/react/24/solid';
 const UnacknowledgedMeetingsBanner = ({ meetings, onDismiss }) => {
   if (meetings.length === 0) return null;
 
+  // Filter out meetings that have been acknowledged
+  const unacknowledgedMeetings = meetings.filter(meeting => {
+    // Extract all acknowledgment dates from meta tags
+    const ackDates = meeting.content
+      .split('\n')
+      .filter(line => line.trim().startsWith('meta::meeting_acknowledge::'))
+      .map(line => line.split('::')[2].trim());
+
+    // Get the meeting date
+    const meetingTime = meeting.content.split('\n').find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
+    const meetingDate = meetingTime ? meetingTime.split('T')[0] : null;
+
+    // Meeting is unacknowledged if there's no matching acknowledgment date
+    return meetingDate && !ackDates.includes(meetingDate);
+  });
+
+  if (unacknowledgedMeetings.length === 0) return null;
+
   return (
     <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
       <div className="flex items-center">
@@ -14,11 +32,11 @@ const UnacknowledgedMeetingsBanner = ({ meetings, onDismiss }) => {
         </div>
         <div className="ml-3">
           <h3 className="text-sm font-medium text-amber-800">
-            Unacknowledged Past Meetings: {meetings.length}
+            Unacknowledged Past Meetings: {unacknowledgedMeetings.length}
           </h3>
           <div className="mt-2 text-sm text-amber-700">
             <ul className="list-disc pl-5 space-y-1">
-              {meetings.map(meeting => {
+              {unacknowledgedMeetings.map(meeting => {
                 const meetingTime = meeting.content.split('\n').find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
                 const description = meeting.content.split('\n')[0];
                 return (

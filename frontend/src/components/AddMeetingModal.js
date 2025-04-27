@@ -4,6 +4,16 @@ const AddMeetingModal = ({ isOpen, onClose, onAdd }) => {
   const [description, setDescription] = useState('');
   const [dateTime, setDateTime] = useState('');
   const [duration, setDuration] = useState('30'); // Default 30 minutes
+  const [recurrence, setRecurrence] = useState('none');
+  const [selectedDays, setSelectedDays] = useState({
+    monday: true,
+    tuesday: true,
+    wednesday: true,
+    thursday: true,
+    friday: true,
+    saturday: true,
+    sunday: true
+  });
 
   // Generate duration options: 15 min increments from 15 mins to 2 hours
   const durationOptions = Array.from({ length: 8 }, (_, i) => ({
@@ -11,18 +21,79 @@ const AddMeetingModal = ({ isOpen, onClose, onAdd }) => {
     label: `${(i + 1) * 15} minutes`
   }));
 
+  const recurrenceOptions = [
+    { value: 'none', label: 'No Recurrence' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'monthly', label: 'Monthly' },
+    { value: 'yearly', label: 'Yearly' },
+    { value: 'custom', label: 'Custom' }
+  ];
+
+  const daysOfWeek = [
+    { value: 'monday', label: 'Monday' },
+    { value: 'tuesday', label: 'Tuesday' },
+    { value: 'wednesday', label: 'Wednesday' },
+    { value: 'thursday', label: 'Thursday' },
+    { value: 'friday', label: 'Friday' },
+    { value: 'saturday', label: 'Saturday' },
+    { value: 'sunday', label: 'Sunday' }
+  ];
+
+  const handleDayToggle = (day) => {
+    setSelectedDays(prev => ({
+      ...prev,
+      [day]: !prev[day]
+    }));
+  };
+
+  const handleSelectAllDays = () => {
+    const allSelected = Object.values(selectedDays).every(Boolean);
+    setSelectedDays({
+      monday: !allSelected,
+      tuesday: !allSelected,
+      wednesday: !allSelected,
+      thursday: !allSelected,
+      friday: !allSelected,
+      saturday: !allSelected,
+      sunday: !allSelected
+    });
+  };
+
   if (!isOpen) return null;
 
   const handleSubmit = () => {
     if (!description.trim() || !dateTime) return;
     
-    const content = `${description.trim()}\n${dateTime}\nmeta::meeting::${new Date().toISOString()}\nmeta::meeting_duration::${duration}`;
+    let content = `${description.trim()}\n${dateTime}\nmeta::meeting::${new Date().toISOString()}\nmeta::meeting_duration::${duration}`;
+    
+    if (recurrence !== 'none') {
+      if (recurrence === 'weekly' || recurrence === 'custom') {
+        const selectedDaysList = Object.entries(selectedDays)
+          .filter(([_, isSelected]) => isSelected)
+          .map(([day]) => day);
+        content += `\nmeta::meeting_recurrence::${recurrence}:${selectedDaysList.join(',')}`;
+      } else {
+        content += `\nmeta::meeting_recurrence::${recurrence}`;
+      }
+    }
+    
     onAdd(content);
     
     // Reset form
     setDescription('');
     setDateTime('');
-    setDuration('30'); // Reset to default
+    setDuration('30');
+    setRecurrence('none');
+    setSelectedDays({
+      monday: true,
+      tuesday: true,
+      wednesday: true,
+      thursday: true,
+      friday: true,
+      saturday: true,
+      sunday: true
+    });
     onClose();
   };
 
@@ -86,6 +157,53 @@ const AddMeetingModal = ({ isOpen, onClose, onAdd }) => {
               </select>
             </div>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Recurrence
+            </label>
+            <select
+              value={recurrence}
+              onChange={(e) => setRecurrence(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              {recurrenceOptions.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {(recurrence === 'weekly' || recurrence === 'custom') && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="block text-sm font-medium text-gray-700">
+                  Days of Week
+                </label>
+                <button
+                  type="button"
+                  onClick={handleSelectAllDays}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  {Object.values(selectedDays).every(Boolean) ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {daysOfWeek.map(({ value, label }) => (
+                  <label key={value} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedDays[value]}
+                      onChange={() => handleDayToggle(value)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm text-gray-700">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex justify-end space-x-3">

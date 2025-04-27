@@ -81,81 +81,118 @@ const defaultSettings = {
   }
 };
 
-const calculateNextOccurrence = (eventDate, recurrenceType, recurrenceEndDate) => {
+const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [], content = '') => {
   const now = new Date();
+  const meetingDate = new Date(meetingTime);
   
-  // Ensure we have a valid date string
-  let eventDateTime;
-  try {
-    // Handle both ISO string format and date-only format
-    eventDateTime = eventDate.includes('T') 
-      ? new Date(eventDate)
-      : new Date(eventDate + 'T12:00:00Z');
-      
-    if (isNaN(eventDateTime.getTime())) {
-      console.error('Invalid event date:', eventDate);
-      return null;
-    }
-  } catch (error) {
-    console.error('Error parsing event date:', error);
-    return null;
-  }
+  console.log('Calculating next occurrence:');
+  console.log('Meeting time:', meetingTime);
+  console.log('Meeting date:', meetingDate.toISOString());
+  console.log('Now:', now.toISOString());
+  console.log('Recurrence type:', recurrenceType);
+  
+  // Extract all acknowledgment dates from meta tags and normalize to YYYY-MM-DD format
+  const ackDates = content
+    .split('\n')
+    .filter(line => line.trim().startsWith('meta::meeting_acknowledge::'))
+    .map(line => {
+      const dateStr = line.split('::')[2].trim();
+      const datePart = dateStr.split('T')[0];
+      console.log('Found acknowledgment date:', datePart);
+      return datePart;
+    });
 
-  // Parse end date if it exists
-  let endDateTime = null;
-  if (recurrenceEndDate) {
-    try {
-      endDateTime = new Date(recurrenceEndDate + 'T23:59:59Z');
-      if (isNaN(endDateTime.getTime())) {
-        console.error('Invalid recurrence end date:', recurrenceEndDate);
-        return null;
+  console.log('All acknowledgment dates:', ackDates);
+
+  // For daily recurrence, we need to handle the date comparison differently
+  if (recurrenceType === 'daily') {
+    // Create a new date object preserving the original time
+    const nextDate = new Date(meetingTime);
+    
+    // Get today's date string
+    const todayStr = now.toISOString().split('T')[0];
+    const meetingDateStr = meetingDate.toISOString().split('T')[0];
+    console.log('Today:', todayStr);
+    console.log('Meeting date:', meetingDateStr);
+    
+    // If today's meeting hasn't been acknowledged, return it
+    if (meetingDateStr === todayStr && !ackDates.includes(todayStr)) {
+      console.log('Returning today\'s meeting');
+      return meetingDate;
+    }
+    
+    // Start from tomorrow's date
+    let currentDate = new Date(now);
+    currentDate.setDate(currentDate.getDate() + 1);
+    currentDate.setHours(meetingDate.getHours());
+    currentDate.setMinutes(meetingDate.getMinutes());
+    currentDate.setSeconds(meetingDate.getSeconds());
+    
+    // Find the next unacknowledged date
+    while (true) {
+      const currentDateStr = currentDate.toISOString().split('T')[0];
+      console.log('Checking next date:', currentDateStr);
+      if (!ackDates.includes(currentDateStr)) {
+        console.log('Found next unacknowledged date:', currentDateStr);
+        return currentDate;
       }
-    } catch (error) {
-      console.error('Error parsing recurrence end date:', error);
-      return null;
+      currentDate.setDate(currentDate.getDate() + 1);
     }
   }
 
-  // If the event date is in the future, return it
-  if (eventDateTime > now) {
-    return eventDateTime;
-  }
-
-  // If we have an end date and it's in the past, no more occurrences
-  if (endDateTime && endDateTime < now) {
-    return null;
-  }
-
-  const nextDate = new Date(eventDateTime);
+  // For other recurrence types, create a new date object preserving the original time
+  const nextDate = new Date(meetingTime);
 
   switch (recurrenceType) {
-    case 'daily':
-      while (nextDate <= now) {
-        nextDate.setDate(nextDate.getDate() + 1);
-      }
-      break;
     case 'weekly':
-      while (nextDate <= now) {
+      while (nextDate <= now || ackDates.includes(nextDate.toISOString().split('T')[0])) {
         nextDate.setDate(nextDate.getDate() + 7);
       }
       break;
     case 'monthly':
-      while (nextDate <= now) {
+      while (nextDate <= now || ackDates.includes(nextDate.toISOString().split('T')[0])) {
         nextDate.setMonth(nextDate.getMonth() + 1);
       }
       break;
     case 'yearly':
-      while (nextDate <= now) {
+      while (nextDate <= now || ackDates.includes(nextDate.toISOString().split('T')[0])) {
         nextDate.setFullYear(nextDate.getFullYear() + 1);
+      }
+      break;
+    case 'custom':
+      if (selectedDays.length === 0) return null;
+      
+      const currentDay = now.getDay();
+      const meetingDay = meetingDate.getDay();
+      
+      let nextDay = null;
+      let minDiff = Infinity;
+      
+      selectedDays.forEach(day => {
+        const dayIndex = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(day);
+        if (dayIndex === -1) return;
+        
+        let diff = dayIndex - currentDay;
+        if (diff <= 0) diff += 7;
+        
+        if (diff < minDiff) {
+          minDiff = diff;
+          nextDay = dayIndex;
+        }
+      });
+      
+      if (nextDay === null) return null;
+      
+      nextDate.setDate(now.getDate() + minDiff);
+      nextDate.setHours(meetingDate.getHours());
+      nextDate.setMinutes(meetingDate.getMinutes());
+
+      while (ackDates.includes(nextDate.toISOString().split('T')[0])) {
+        nextDate.setDate(nextDate.getDate() + 7);
       }
       break;
     default:
       return null;
-  }
-
-  // Check if the next occurrence is after the end date
-  if (endDateTime && nextDate > endDateTime) {
-    return null;
   }
 
   return nextDate;
@@ -310,21 +347,63 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   }, [notes]);
 
   const meetings = useMemo(() => {
+    console.log('Calculating meetings...');
     const result = notes.flatMap(note => {
       if (note.content.split('\n').some(line => line.trim().startsWith('meta::meeting'))) {
+        console.log('Processing meeting note:', note.id);
         const lines = note.content.split('\n');
-        // Extract duration from meta tag
+        const description = lines[0].trim();
+        const time = lines[1].trim();
+        
+        console.log('Meeting time from note:', time);
+        
         const durationMatch = note.content.match(/meta::meeting_duration::(\d+)/);
-        const duration = durationMatch ? parseInt(durationMatch[1]) : null;
-        return [{ 
-          id: note.id, 
-          context: lines[0].trim(), 
-          time: lines[1].trim(),
-          duration: duration
+        const duration = durationMatch ? durationMatch[1] : null;
+        
+        const recurrenceMatch = note.content.match(/meta::meeting_recurrence::([^:]+)(?::(.+))?/);
+        let recurrenceType = null;
+        let selectedDays = [];
+        
+        if (recurrenceMatch) {
+          const [_, type, days] = recurrenceMatch;
+          recurrenceType = type;
+          if (type === 'custom' && days) {
+            selectedDays = days.split(',');
+          }
+        }
+
+        console.log('Recurrence type:', recurrenceType);
+        
+        const meetingTime = new Date(time).getTime();
+        const now = Date.now();
+        let nextTime = time;
+        
+        if (meetingTime < now && recurrenceType) {
+          console.log('Calculating next occurrence for past meeting');
+          const nextOccurrence = calculateNextOccurrence(time, recurrenceType, selectedDays, note.content);
+          if (nextOccurrence) {
+            nextTime = nextOccurrence.toISOString();
+            console.log('Next occurrence:', nextTime);
+          } else {
+            console.log('No next occurrence found');
+            return [];
+          }
+        }
+
+        return [{
+          id: note.id,
+          description,
+          time: nextTime,
+          duration,
+          recurrenceType,
+          selectedDays,
+          originalTime: time
         }];
       }
       return [];
     });
+    
+    console.log('Sorted meetings:', result.map(m => ({ time: m.time, description: m.description })));
     return result.sort((a, b) => new Date(a.time) - new Date(b.time));
   }, [notes]);
 
@@ -372,11 +451,11 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         try {
           // Calculate next occurrence if it's a recurring event
           const nextOccurrence = recurrenceType 
-            ? calculateNextOccurrence(baseEventDate, recurrenceType, recurrenceEndDate)
+            ? calculateNextOccurrence(baseEventDate, recurrenceType, [], content)
             : new Date(baseEventDate);
 
           // If there's no next occurrence (past end date) or invalid date, don't include the event
-          if (!nextOccurrence || isNaN(nextOccurrence.getTime())) return [];
+          if (!nextOccurrence || !(nextOccurrence instanceof Date)) return [];
 
           return [{ 
             id: note.id, 
@@ -428,6 +507,24 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [expandedMeetings, setExpandedMeetings] = useState(false);
   const [expandedEvents, setExpandedEvents] = useState(false);
 
+  const handleMeetingAcknowledge = (meetingId) => {
+    const note = notes.find(n => n.id === meetingId);
+    if (!note) return;
+
+    // Extract the meeting date from the time line
+    const lines = note.content.split('\n');
+    const meetingTime = lines[1].trim();
+    // Get only the date part (YYYY-MM-DD) from the datetime string
+    const meetingDate = meetingTime.split('T')[0];
+
+    // Add new acknowledgment tag
+    const updatedContent = note.content + `\nmeta::meeting_acknowledge::${meetingDate}`;
+    
+    // Update the note
+    updateNoteById(note.id, updatedContent);
+    setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+  };
+
   return (
     <>
       {alertMeetingId && (() => {
@@ -436,13 +533,16 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg shadow-xl bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 animate-pulse max-w-sm text-center">
               <h3 className="text-xl font-bold mb-2 text-white">Meeting Soon!</h3>
-              <p className="mb-4 text-white text-lg break-words">{m.context}</p>
+              <p className="mb-4 text-white text-lg break-words">{m.description}</p>
               <p className="mb-6 text-white text-base">{m.time}</p>
               <button
                 onClick={() => {
                   const note = notes.find(n => n.id === alertMeetingId);
                   if (note) {
-                    const ackLine = `meta::meeting_acknowledge::${new Date().toISOString()}`;
+                    const lines = note.content.split('\n');
+                    const meetingTime = lines[1].trim();
+                    const meetingDate = meetingTime.split('T')[0];
+                    const ackLine = `meta::meeting_acknowledge::${meetingDate}`;
                     const updated = (note.content + '\n' + ackLine).trim();
                     updateNoteById(note.id, updated);
                     setNotes(notes.map(n => n.id === note.id ? { ...n, content: updated } : n));
@@ -618,7 +718,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                         className="group relative mb-2 rounded-lg hover:bg-indigo-100 transition-colors"
                       >
                         <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} ${isFlashing ? 'animate-pulse bg-purple-100' : ''} rounded-lg`}>
-                          <div className="text-base font-medium text-gray-800 break-words">{m.context}</div>
+                          <div className="text-base font-medium text-gray-800 break-words">{m.description}</div>
                           <div className="text-sm text-gray-600 mt-1">
                             {(() => {
                               const d = new Date(m.time);
@@ -656,15 +756,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                                     </span>
                                     {!isAcknowledged && (
                                       <button
-                                        onClick={() => {
-                                          const note = notes.find(n => n.id === m.id);
-                                          if (note) {
-                                            const ackLine = `meta::meeting_acknowledge::${new Date().toISOString()}`;
-                                            const updated = (note.content + '\n' + ackLine).trim();
-                                            updateNoteById(note.id, updated);
-                                            setNotes(notes.map(n => n.id === note.id ? { ...n, content: updated } : n));
-                                          }
-                                        }}
+                                        onClick={() => handleMeetingAcknowledge(m.id)}
                                         className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full hover:bg-indigo-200 transition-colors"
                                       >
                                         Acknowledge
@@ -685,6 +777,13 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                               return `in ${parts.join(' ')}`;
                             })()}
                           </div>
+                          {m.recurrenceType && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Recurring: {m.recurrenceType === 'custom' 
+                                ? m.selectedDays.map(day => day.charAt(0).toUpperCase() + day.slice(1)).join(', ')
+                                : m.recurrenceType.charAt(0).toUpperCase() + m.recurrenceType.slice(1)}
+                            </div>
+                          )}
                         </div>
                         <button
                           onClick={() => setEditingMeetingId(m.id)}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { format, addDays } from 'date-fns';
 import { loadJournal, saveJournal } from '../utils/ApiUtils';
 import TagInput from './TagInput';
@@ -8,6 +8,62 @@ import { checkText } from '../utils/languageTool';
 import { toast } from 'react-hot-toast';
 
 const HighlightedTextarea = ({ value, onChange, grammarIssues }) => {
+  const [contextMenu, setContextMenu] = useState(null);
+  const [selectedIssue, setSelectedIssue] = useState(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setContextMenu(null);
+        setSelectedIssue(null);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setContextMenu(null);
+        setSelectedIssue(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
+
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    
+    const clickPosition = e.target.selectionStart;
+    const issue = grammarIssues.find(issue => {
+      return clickPosition >= issue.offset && clickPosition <= issue.offset + issue.length;
+    });
+
+    if (issue && issue.replacements && issue.replacements.length > 0) {
+      setSelectedIssue(issue);
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY
+      });
+    }
+  };
+
+  const handleReplace = (replacement) => {
+    if (!selectedIssue) return;
+
+    const start = selectedIssue.offset;
+    const end = start + selectedIssue.length;
+    const newContent = value.substring(0, start) + replacement + value.substring(end);
+    onChange({ target: { value: newContent } });
+    setContextMenu(null);
+    setSelectedIssue(null);
+  };
+
   const getHighlightedText = () => {
     if (!grammarIssues || grammarIssues.length === 0) {
       return value;
@@ -16,7 +72,6 @@ const HighlightedTextarea = ({ value, onChange, grammarIssues }) => {
     let result = value;
     let offset = 0;
     
-    // Sort issues by offset to handle them in order
     const sortedIssues = [...grammarIssues].sort((a, b) => a.offset - b.offset);
     
     sortedIssues.forEach(issue => {
@@ -42,10 +97,32 @@ const HighlightedTextarea = ({ value, onChange, grammarIssues }) => {
       <textarea
         value={value}
         onChange={onChange}
+        onContextMenu={handleContextMenu}
         spellCheck="true"
         className="w-full h-96 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent relative z-10"
         placeholder="Write your journal entry here..."
       />
+      
+      {contextMenu && selectedIssue && (
+        <div
+          ref={menuRef}
+          className="fixed bg-white shadow-lg rounded-lg py-2 min-w-[200px] z-50"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y
+          }}
+        >
+          {selectedIssue.replacements.map((replacement, index) => (
+            <button
+              key={index}
+              onClick={() => handleReplace(replacement.value)}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              {replacement.value}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

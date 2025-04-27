@@ -5,10 +5,19 @@ import { ChevronDownIcon, Cog6ToothIcon } from '@heroicons/react/24/solid';
 const Navbar = ({ activePage, setActivePage, settings }) => {
   const [time, setTime] = useState(new Date());
   const [showTimezones, setShowTimezones] = useState(false);
+  const [selectedTimezones, setSelectedTimezones] = useState([]);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Load selected timezones from localStorage on component mount
+  useEffect(() => {
+    const savedTimezones = localStorage.getItem('selectedTimezones');
+    if (savedTimezones) {
+      setSelectedTimezones(JSON.parse(savedTimezones));
+    }
   }, []);
 
   const formattedTime = time.toLocaleTimeString(undefined, {
@@ -53,7 +62,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
           </div>
           {showTimezones && (
             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
-              <TimeZoneDisplay />
+              <TimeZoneDisplay selectedTimezones={selectedTimezones} />
             </div>
           )}
         </div>

@@ -3,38 +3,16 @@ import { format, addDays } from 'date-fns';
 import { loadJournal, saveJournal } from '../utils/ApiUtils';
 import TagInput from './TagInput';
 import { ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
-import { ExclamationCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ExclamationCircleIcon, TrashIcon, BookmarkIcon } from '@heroicons/react/24/outline';
 import { checkText } from '../utils/languageTool';
+import { getVocabulary, addToVocabulary, removeFromVocabulary, isInVocabulary } from '../utils/vocabulary';
 import { toast } from 'react-hot-toast';
 
 const HighlightedTextarea = ({ value, onChange, grammarIssues, onSuggestionClick }) => {
   const [contextMenu, setContextMenu] = useState(null);
   const [selectedIssue, setSelectedIssue] = useState(null);
+  const [selectedWord, setSelectedWord] = useState(null);
   const menuRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setContextMenu(null);
-        setSelectedIssue(null);
-      }
-    };
-
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        setContextMenu(null);
-        setSelectedIssue(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, []);
 
   const handleContextMenu = (e) => {
     e.preventDefault();
@@ -44,7 +22,9 @@ const HighlightedTextarea = ({ value, onChange, grammarIssues, onSuggestionClick
       return clickPosition >= issue.offset && clickPosition <= issue.offset + issue.length;
     });
 
-    if (issue && issue.replacements && issue.replacements.length > 0) {
+    if (issue) {
+      const word = value.substring(issue.offset, issue.offset + issue.length);
+      setSelectedWord(word);
       setSelectedIssue(issue);
       setContextMenu({
         x: e.clientX,
@@ -53,15 +33,24 @@ const HighlightedTextarea = ({ value, onChange, grammarIssues, onSuggestionClick
     }
   };
 
-  const handleReplace = (replacement) => {
-    if (!selectedIssue) return;
+  const handleAddToVocabulary = () => {
+    if (selectedWord) {
+      addToVocabulary(selectedWord);
+      toast.success(`Added "${selectedWord}" to vocabulary`);
+      setContextMenu(null);
+      setSelectedWord(null);
+      setSelectedIssue(null);
+    }
+  };
 
-    const start = selectedIssue.offset;
-    const end = start + selectedIssue.length;
-    const newContent = value.substring(0, start) + replacement + value.substring(end);
-    onChange({ target: { value: newContent } });
-    setContextMenu(null);
-    setSelectedIssue(null);
+  const handleRemoveFromVocabulary = () => {
+    if (selectedWord) {
+      removeFromVocabulary(selectedWord);
+      toast.success(`Removed "${selectedWord}" from vocabulary`);
+      setContextMenu(null);
+      setSelectedWord(null);
+      setSelectedIssue(null);
+    }
   };
 
   const getHighlightedText = () => {
@@ -77,11 +66,15 @@ const HighlightedTextarea = ({ value, onChange, grammarIssues, onSuggestionClick
     sortedIssues.forEach(issue => {
       const start = issue.offset + offset;
       const end = start + issue.length;
-      const before = result.substring(0, start);
-      const highlighted = `<span class="bg-yellow-300">${result.substring(start, end)}</span>`;
-      const after = result.substring(end);
-      result = before + highlighted + after;
-      offset += highlighted.length - (end - start);
+      const word = value.substring(issue.offset, issue.offset + issue.length);
+      
+      if (!isInVocabulary(word)) {
+        const before = result.substring(0, start);
+        const highlighted = `<span class="bg-yellow-300">${result.substring(start, end)}</span>`;
+        const after = result.substring(end);
+        result = before + highlighted + after;
+        offset += highlighted.length - (end - start);
+      }
     });
 
     return result;
@@ -112,15 +105,40 @@ const HighlightedTextarea = ({ value, onChange, grammarIssues, onSuggestionClick
             top: contextMenu.y
           }}
         >
-          {selectedIssue.replacements.map((replacement, index) => (
+          {selectedIssue.replacements && selectedIssue.replacements.length > 0 && (
+            <>
+              <div className="px-4 py-2 text-sm font-medium text-gray-700 border-b">
+                Suggestions
+              </div>
+              {selectedIssue.replacements.map((replacement, index) => (
+                <button
+                  key={index}
+                  onClick={() => onSuggestionClick(selectedIssue, replacement.value)}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  {replacement.value}
+                </button>
+              ))}
+            </>
+          )}
+          <div className="px-4 py-2 text-sm font-medium text-gray-700 border-t">
+            Vocabulary
+          </div>
+          {isInVocabulary(selectedWord) ? (
             <button
-              key={index}
-              onClick={() => handleReplace(replacement.value)}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              onClick={handleRemoveFromVocabulary}
+              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
             >
-              {replacement.value}
+              Remove from vocabulary
             </button>
-          ))}
+          ) : (
+            <button
+              onClick={handleAddToVocabulary}
+              className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50"
+            >
+              Add to vocabulary
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -129,35 +147,48 @@ const HighlightedTextarea = ({ value, onChange, grammarIssues, onSuggestionClick
 
 const SuggestionsPanel = ({ issues, onSuggestionClick }) => {
   if (!issues || issues.length === 0) {
-    return (
-      <div className="w-64 p-4 border-l bg-gray-50">
-        <p className="text-sm text-gray-500">No suggestions</p>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="w-64 p-4 border-l bg-gray-50 overflow-y-auto">
-      <h3 className="text-sm font-medium text-gray-700 mb-3">Suggestions</h3>
-      <div className="space-y-4">
+    <div className="w-72 p-4 border-l bg-white shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-900">Grammar Suggestions</h3>
+        <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full">
+          {issues.length} {issues.length === 1 ? 'issue' : 'issues'}
+        </span>
+      </div>
+      <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
         {issues.map((issue, index) => {
           const lineNumber = (issue.context.text.substring(0, issue.offset).match(/\n/g) || []).length + 1;
           const charPosition = issue.offset - issue.context.text.substring(0, issue.offset).lastIndexOf('\n') - 1;
+          const word = issue.context.text.substring(issue.offset, issue.offset + issue.length);
+          
+          if (isInVocabulary(word)) {
+            return null;
+          }
           
           return (
-            <div key={index} className="text-sm">
-              <div className="text-gray-500 mb-1">
-                Line {lineNumber}, Char {charPosition}
+            <div key={index} className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500 bg-white px-2 py-1 rounded">
+                    Line {lineNumber}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    Char {charPosition}
+                  </span>
+                </div>
+                <span className="text-xs font-medium text-red-600">
+                  {word}
+                </span>
               </div>
-              <div className="font-medium text-gray-900 mb-1">
-                {issue.context.text.substring(issue.offset, issue.offset + issue.length)}
-              </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {issue.replacements.slice(0, 5).map((replacement, idx) => (
                   <button
                     key={idx}
                     onClick={() => onSuggestionClick(issue, replacement.value)}
-                    className="w-full text-left px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded"
+                    className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-white hover:text-blue-600 rounded-md transition-colors"
                   >
                     {replacement.value}
                   </button>
@@ -501,10 +532,12 @@ const JournalEditor = ({ date, onSaved }) => {
             </div>
           </div>
           
-          <SuggestionsPanel
-            issues={grammarResults?.matches || []}
-            onSuggestionClick={handleSuggestionClick}
-          />
+          {grammarResults?.matches && grammarResults.matches.length > 0 && (
+            <SuggestionsPanel
+              issues={grammarResults.matches}
+              onSuggestionClick={handleSuggestionClick}
+            />
+          )}
         </div>
       </div>
     </div>

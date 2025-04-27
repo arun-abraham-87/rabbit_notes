@@ -8,6 +8,7 @@ import NotesList from './NotesList.js';
 import NoteEditor from './NoteEditor.js';
 import OngoingMeetingBanner from './OngoingMeetingBanner.js';
 import NextMeetingBanner from './NextMeetingBanner.js';
+import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner.js';
 import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
 
 const checkForOngoingMeeting = (notes) => {
@@ -95,6 +96,34 @@ const findNextMeeting = (notes) => {
   }
   
   return nextMeeting;
+};
+
+const getUnacknowledgedPastMeetings = (notes) => {
+  return notes.filter(note => {
+    // Check if it's a meeting note
+    if (!note.content.includes('meta::meeting::')) return false;
+    // Skip if already dismissed
+    if (note.content.includes('meta_detail::dismissed')) return false;
+
+    const lines = note.content.split('\n');
+    const meetingTimeStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
+    if (!meetingTimeStr) return false;
+
+    try {
+      const meetingTime = new Date(meetingTimeStr);
+      // Find meeting duration from meta tag
+      const durationMatch = note.content.match(/meta::meeting_duration::(\d+)/);
+      if (!durationMatch) return false;
+      
+      const durationMins = parseInt(durationMatch[1], 10);
+      const meetingEndTime = new Date(meetingTime.getTime() + durationMins * 60000);
+      
+      // Check if meeting has ended and wasn't acknowledged
+      return Date.now() > meetingEndTime;
+    } catch (error) {
+      return false;
+    }
+  });
 };
 
 const NotesMainContainer = ({ 
@@ -273,8 +302,30 @@ const NotesMainContainer = ({
         }
     };
 
+    const unacknowledgedMeetings = useMemo(() => getUnacknowledgedPastMeetings(allNotes), [allNotes]);
+
+    const handleDismissUnacknowledgedMeeting = async (noteId) => {
+        const note = allNotes.find(n => n.id === noteId);
+        if (!note) return;
+        
+        // Add the dismissed tag
+        const updatedContent = `${note.content}\nmeta_detail::dismissed`;
+        
+        try {
+            await updateNoteById(noteId, updatedContent);
+            // Update the notes state to reflect the change
+            setNotes(allNotes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
+        } catch (error) {
+            console.error('Error dismissing meeting:', error);
+        }
+    };
+
     return (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
+            <UnacknowledgedMeetingsBanner 
+                meetings={unacknowledgedMeetings} 
+                onDismiss={handleDismissUnacknowledgedMeeting} 
+            />
             {ongoingMeeting && (
                 <OngoingMeetingBanner
                     meeting={ongoingMeeting}

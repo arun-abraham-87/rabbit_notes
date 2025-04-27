@@ -18,7 +18,6 @@ import {
 import { parseNoteContent } from '../utils/TextUtils';
 import { formatDate } from '../utils/DateUtils';
 import TodoStats from './TodoStats';
-import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner';
 
 const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,60 +57,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   }, [todos]);
 
   const overdueTodos = getOverdueHighPriorityTodos();
-
-  // Get unacknowledged past meetings
-  const getUnacknowledgedPastMeetings = () => {
-    return notes.filter(note => {
-      // Check if it's a meeting note
-      if (!note.content.includes('meta::meeting::')) return false;
-      // Skip if already dismissed
-      if (note.content.includes('meta_detail::dismissed')) return false;
-
-      const lines = note.content.split('\n');
-      const meetingTimeStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
-      if (!meetingTimeStr) return false;
-
-      try {
-        const meetingTime = new Date(meetingTimeStr);
-        // Find meeting duration from meta tag
-        const durationMatch = note.content.match(/meta::meeting_duration::(\d+)/);
-        if (!durationMatch) return false;
-        
-        const durationMins = parseInt(durationMatch[1], 10);
-        const meetingEndTime = new Date(meetingTime.getTime() + durationMins * 60000);
-        
-        // Check if meeting has ended and wasn't acknowledged
-        return Date.now() > meetingEndTime;
-      } catch (error) {
-        return false;
-      }
-    });
-  };
-
-  const handleDismissMeeting = async (noteId) => {
-    const note = notes.find(n => n.id === noteId);
-    if (!note) return;
-    
-    // Add the dismissed tag
-    const updatedContent = `${note.content}\nmeta_detail::dismissed`;
-    
-    try {
-      const response = await fetch(`http://localhost:5001/api/notes/${noteId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: updatedContent }),
-      });
-
-      if (response.ok) {
-        // Update the notes state to reflect the change
-        updateNoteCallBack(notes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
-      }
-    } catch (error) {
-      console.error('Error dismissing meeting:', error);
-    }
-  };
-
-  const unacknowledgedMeetings = getUnacknowledgedPastMeetings();
 
   const parseAusDate = (str) => {
     // For ISO format dates (e.g., 2025-04-24T14:16:35.161Z)
@@ -530,11 +475,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         </>
       ) : (
         <>
-          <UnacknowledgedMeetingsBanner 
-            meetings={unacknowledgedMeetings} 
-            onDismiss={handleDismissMeeting} 
-          />
-          
           {overdueTodos.length > 0 && (
             <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg">
               <div className="flex items-center">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // Common timezones with their offsets and locations
-const timeZones = [
+export const timeZones = [
   { label: 'AEST (Sydney, +10:00)', value: 'Australia/Sydney' },
   { label: 'AEDT (Sydney, +11:00)', value: 'Australia/Sydney' },
   { label: 'IST (Mumbai, +5:30)', value: 'Asia/Kolkata' },
@@ -27,12 +27,17 @@ const timeZones = [
 
 const Settings = ({ onClose }) => {
   const [selectedTimezones, setSelectedTimezones] = useState([]);
+  const [baseTimezone, setBaseTimezone] = useState('');
 
-  // Load saved timezones on component mount
+  // Load saved timezones and base timezone on component mount
   useEffect(() => {
     const savedTimezones = localStorage.getItem('selectedTimezones');
+    const savedBaseTimezone = localStorage.getItem('baseTimezone');
     if (savedTimezones) {
       setSelectedTimezones(JSON.parse(savedTimezones));
+    }
+    if (savedBaseTimezone) {
+      setBaseTimezone(savedBaseTimezone);
     }
   }, []);
 
@@ -40,6 +45,10 @@ const Settings = ({ onClose }) => {
     const newTimezones = [...selectedTimezones];
     newTimezones[index] = value;
     setSelectedTimezones(newTimezones);
+  };
+
+  const handleBaseTimezoneChange = (timezone) => {
+    setBaseTimezone(timezone);
   };
 
   const addTimezone = () => {
@@ -51,11 +60,16 @@ const Settings = ({ onClose }) => {
   const removeTimezone = (index) => {
     const newTimezones = selectedTimezones.filter((_, i) => i !== index);
     setSelectedTimezones(newTimezones);
+    // If the removed timezone was the base timezone, clear the base timezone
+    if (selectedTimezones[index] === baseTimezone) {
+      setBaseTimezone('');
+    }
   };
 
   const handleSave = () => {
-    // Save selected timezones to localStorage
+    // Save selected timezones and base timezone to localStorage
     localStorage.setItem('selectedTimezones', JSON.stringify(selectedTimezones));
+    localStorage.setItem('baseTimezone', baseTimezone);
     onClose();
   };
 
@@ -91,6 +105,7 @@ const Settings = ({ onClose }) => {
             </div>
           </div>
 
+          {/* Timezone Settings */}
           <div className="border-b pb-4">
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-lg font-semibold text-gray-700">Timezones</h3>
@@ -103,12 +118,35 @@ const Settings = ({ onClose }) => {
                 </button>
               )}
             </div>
+
+            {/* Timezone List */}
             <div className="space-y-3">
               {selectedTimezones.map((timezone, index) => (
                 <div key={index} className="flex items-center gap-2">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={timezone === baseTimezone}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setBaseTimezone(timezone);
+                        } else {
+                          setBaseTimezone('');
+                        }
+                      }}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2 text-sm text-gray-500">Base</span>
+                  </div>
                   <select
                     value={timezone}
-                    onChange={(e) => handleTimezoneChange(index, e.target.value)}
+                    onChange={(e) => {
+                      const newTimezone = e.target.value;
+                      handleTimezoneChange(index, newTimezone);
+                      if (timezone === baseTimezone) {
+                        setBaseTimezone(newTimezone);
+                      }
+                    }}
                     className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Select a timezone</option>

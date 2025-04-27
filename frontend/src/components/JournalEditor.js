@@ -4,6 +4,51 @@ import { loadJournal, saveJournal } from '../utils/ApiUtils';
 import TagInput from './TagInput';
 import { ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
 import { ExclamationCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { checkText } from '../utils/languageTool';
+import { toast } from 'react-hot-toast';
+
+const HighlightedTextarea = ({ value, onChange, grammarIssues }) => {
+  const getHighlightedText = () => {
+    if (!grammarIssues || grammarIssues.length === 0) {
+      return value;
+    }
+
+    let result = value;
+    let offset = 0;
+    
+    // Sort issues by offset to handle them in order
+    const sortedIssues = [...grammarIssues].sort((a, b) => a.offset - b.offset);
+    
+    sortedIssues.forEach(issue => {
+      const start = issue.offset + offset;
+      const end = start + issue.length;
+      const before = result.substring(0, start);
+      const highlighted = `<span class="bg-yellow-300">${result.substring(start, end)}</span>`;
+      const after = result.substring(end);
+      result = before + highlighted + after;
+      offset += highlighted.length - (end - start);
+    });
+
+    return result;
+  };
+
+  return (
+    <div className="relative">
+      <div
+        className="absolute inset-0 p-4 whitespace-pre-wrap text-transparent"
+        dangerouslySetInnerHTML={{ __html: getHighlightedText() }}
+        style={{ zIndex: 1, pointerEvents: 'none' }}
+      />
+      <textarea
+        value={value}
+        onChange={onChange}
+        spellCheck="true"
+        className="w-full h-96 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent relative z-10"
+        placeholder="Write your journal entry here..."
+      />
+    </div>
+  );
+};
 
 const JournalEditor = ({ date, onSaved }) => {
   const [content, setContent] = useState('');
@@ -17,6 +62,8 @@ const JournalEditor = ({ date, onSaved }) => {
   const [lastSavedContent, setLastSavedContent] = useState('');
   const [lastSavedTags, setLastSavedTags] = useState([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [grammarResults, setGrammarResults] = useState(null);
+  const [isCheckingGrammar, setIsCheckingGrammar] = useState(false);
 
   const loadJournalData = useCallback(async (targetDate) => {
     try {
@@ -171,6 +218,31 @@ const JournalEditor = ({ date, onSaved }) => {
     }
   };
 
+  // Debounced grammar check
+  useEffect(() => {
+    if (!content.trim()) {
+      setGrammarResults(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsCheckingGrammar(true);
+        const result = await checkText(content);
+        setGrammarResults(result);
+        if (result.matches && result.matches.length > 0) {
+          toast.warning(`Found ${result.matches.length} issues`);
+        }
+      } catch (error) {
+        console.error('Error checking grammar:', error);
+      } finally {
+        setIsCheckingGrammar(false);
+      }
+    }, 1000); // Wait 1 second after typing stops
+
+    return () => clearTimeout(timer);
+  }, [content]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -209,6 +281,12 @@ const JournalEditor = ({ date, onSaved }) => {
               <div className={`flex items-center gap-2 ${status.className}`}>
                 {status.icon}
                 <span className="text-sm font-medium">{status.text}</span>
+              </div>
+            )}
+            {isCheckingGrammar && (
+              <div className="flex items-center gap-2 text-gray-600">
+                <div className="h-5 w-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm font-medium">Checking grammar...</span>
               </div>
             )}
             <div className="relative">
@@ -251,14 +329,43 @@ const JournalEditor = ({ date, onSaved }) => {
         </div>
 
         <div className="mb-6">
-          <textarea
+          <HighlightedTextarea
             value={content}
             onChange={handleContentChange}
-            spellCheck="true"
-            className="w-full h-96 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            placeholder="Write your journal entry here..."
+            grammarIssues={grammarResults?.matches || []}
           />
         </div>
+
+        {grammarResults && grammarResults.matches && grammarResults.matches.length > 0 && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Grammar Check Results</h3>
+            <ul className="space-y-2">
+              {grammarResults.matches.map((match, index) => {
+                const textBeforeOffset = content.substring(0, match.offset);
+                const lineNumber = (textBeforeOffset.match(/\n/g) || []).length + 1;
+                const charPosition = match.offset - textBeforeOffset.lastIndexOf('\n') - 1;
+                
+                return (
+                  <li key={index} className="text-sm text-gray-700">
+                    <span className="font-medium text-red-600">
+                      Position {match.offset} (Line {lineNumber}, Char {charPosition}):
+                    </span> {match.message}
+                    {match.replacements && match.replacements.length > 0 && (
+                      <div className="ml-4 mt-1">
+                        <span className="text-gray-500">Suggestions:</span>
+                        <ul className="list-disc list-inside">
+                          {match.replacements.map((replacement, idx) => (
+                            <li key={idx} className="text-gray-600">{replacement.value}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

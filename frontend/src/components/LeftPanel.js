@@ -682,6 +682,14 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                                 d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
                             })()}
                           </div>
+                          <div className="text-sm font-medium text-purple-600 mt-1">
+                            {(() => {
+                              const delta = new Date(e.time).getTime() - now;
+                              const days = Math.floor(delta / 86400000);
+                              if (days === 0) return 'Today';
+                              return `${days} day${days !== 1 ? 's' : ''}`;
+                            })()}
+                          </div>
                         </div>
                         <button
                           onClick={() => setEditingEventId(e.id)}

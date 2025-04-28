@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { formatDate } from '../utils/DateUtils';
-import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
 // Function to extract event details from note content
@@ -18,6 +18,7 @@ const getEventDetails = (content) => {
 const EventsPage = ({ notes }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingEvent, setEditingEvent] = useState(null);
+  const [deletingEvent, setDeletingEvent] = useState(null);
   const [editForm, setEditForm] = useState({
     description: '',
     dateTime: '',
@@ -56,14 +57,24 @@ const EventsPage = ({ notes }) => {
   };
 
   const handleDelete = async (eventId) => {
-    if (window.confirm('Are you sure you want to delete this event?')) {
-      try {
-        await deleteNoteById(eventId);
-        // Refresh the page or update the notes list
-        window.location.reload();
-      } catch (error) {
-        console.error('Error deleting event:', error);
+    const eventToDelete = notes.find(note => note.id === eventId);
+    setDeletingEvent(eventToDelete);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingEvent) return;
+
+    try {
+      await deleteNoteById(deletingEvent.id);
+      // Update the notes list by removing the deleted event
+      const updatedNotes = notes.filter(note => note.id !== deletingEvent.id);
+      // Update the parent component's state through the notes prop
+      if (typeof notes === 'object' && notes !== null && 'onUpdate' in notes) {
+        notes.onUpdate(updatedNotes);
       }
+      setDeletingEvent(null);
+    } catch (error) {
+      console.error('Error deleting event:', error);
     }
   };
 
@@ -187,6 +198,35 @@ const EventsPage = ({ notes }) => {
                   Save
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Popup */}
+      {deletingEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <div className="flex items-center gap-3 mb-4">
+              <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />
+              <h2 className="text-xl font-semibold text-gray-900">Delete Event</h2>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this event? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setDeletingEvent(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

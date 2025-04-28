@@ -296,7 +296,17 @@ const App = () => {
           )}
           {activePage === 'journals' && <Journals />}
           {activePage === 'manage-notes' && <Manage />}
-          {activePage === 'events' && <EventsPage notes={allNotes} />}
+          {activePage === 'events' && (
+            <EventsPage 
+              notes={allNotes} 
+              onUpdate={(updatedNotes) => {
+                setAllNotes(updatedNotes);
+                if (activePage === 'notes') {
+                  setNotes(updatedNotes);
+                }
+              }}
+            />
+          )}
         </div>
       </div>
       <ToastContainer

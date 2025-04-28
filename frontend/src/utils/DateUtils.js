@@ -14,18 +14,30 @@ export const getDayOfWeek = (datePart) => {
 
 // Function to format the date with relative time
 export const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
+    if (!dateString) return '';
     
-    const now = new Date();
-    const diff = date - now;
-    const inFuture = diff > 0;
-    
-    const age = calculateAgeString(Math.abs(diff), inFuture);
-    
-    return `${day}-${month}-${year} ${age}`;
+    try {
+        // Parse the date string in format "DD/MM/YYYY, h:mm:ss a"
+        const [datePart, timePart] = dateString.split(", ");
+        const [day, month, year] = datePart.split("/").map(Number);
+        const date = new Date(year, month - 1, day);
+        
+        // Format the date parts
+        const formattedDay = String(date.getDate()).padStart(2, '0');
+        const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
+        const formattedYear = date.getFullYear();
+        
+        const now = new Date();
+        const diff = date - now;
+        const inFuture = diff > 0;
+        
+        const age = calculateAgeString(Math.abs(diff), inFuture);
+        
+        return `${formattedDay}-${formattedMonth}-${formattedYear} ${age}`;
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return '';
+    }
 };
 
 

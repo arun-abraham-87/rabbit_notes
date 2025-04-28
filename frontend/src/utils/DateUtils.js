@@ -14,7 +14,18 @@ export const getDayOfWeek = (datePart) => {
 
 // Function to format the date with relative time
 export const formatDate = (dateString) => {
-    return `${dateString} (${getAge(dateString)})`;
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    
+    const now = new Date();
+    const diff = date - now;
+    const inFuture = diff > 0;
+    
+    const age = calculateAgeString(Math.abs(diff), inFuture);
+    
+    return `${day}-${month}-${year} ${age}`;
 };
 
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { formatDate } from '../utils/DateUtils';
-import { PencilIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
 // Function to extract event details from note content
@@ -32,6 +32,17 @@ const EventsPage = ({ notes }) => {
       const { description } = getEventDetails(note.content);
       return description.toLowerCase().includes(searchQuery.toLowerCase());
     });
+
+  // Calculate totals for different recurrence types
+  const { total, daily, weekly, monthly, none } = events.reduce(
+    (acc, event) => {
+      const { recurrence } = getEventDetails(event.content);
+      acc.total++;
+      acc[recurrence]++;
+      return acc;
+    },
+    { total: 0, daily: 0, weekly: 0, monthly: 0, none: 0 }
+  );
 
   const handleEdit = (event) => {
     const details = getEventDetails(event.content);
@@ -81,14 +92,48 @@ const EventsPage = ({ notes }) => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Events</h1>
         <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+          </div>
           <input
             type="text"
             placeholder="Search events..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="block w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            >
+              <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Totals Bar */}
+      <div className="grid grid-cols-5 gap-4 bg-white rounded-xl border p-4 shadow-sm">
+        <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
+          <div className="text-xs font-medium text-gray-500">Total</div>
+          <div className="text-2xl font-bold text-gray-900">{total}</div>
+        </div>
+        <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
+          <div className="text-xs font-medium text-indigo-600">Daily</div>
+          <div className="text-2xl font-bold text-indigo-700">{daily}</div>
+        </div>
+        <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
+          <div className="text-xs font-medium text-indigo-600">Weekly</div>
+          <div className="text-2xl font-bold text-indigo-700">{weekly}</div>
+        </div>
+        <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
+          <div className="text-xs font-medium text-indigo-600">Monthly</div>
+          <div className="text-2xl font-bold text-indigo-700">{monthly}</div>
+        </div>
+        <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
+          <div className="text-xs font-medium text-gray-500">One-time</div>
+          <div className="text-2xl font-bold text-gray-900">{none}</div>
         </div>
       </div>
 

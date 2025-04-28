@@ -443,6 +443,34 @@ const NotesMainContainer = ({
                             <h3 className="text-sm font-medium text-rose-800">
                                 Urgent: {highPriorityOverdueCount} high priority {highPriorityOverdueCount === 1 ? 'todo' : 'todos'} older than 2 days
                             </h3>
+                            <div className="mt-2 text-sm text-rose-700">
+                                <ul className="list-disc pl-5 space-y-1">
+                                    {notes
+                                        .filter(note => {
+                                            const content = note.content;
+                                            const hasHighPriority = content.includes('meta::high');
+                                            const hasTodo = content.includes('meta::todo');
+                                            if (!hasHighPriority || !hasTodo) return false;
+                                            
+                                            const dateMatch = content.match(/meta::todo::(\d{4}-\d{2}-\d{2})/);
+                                            if (!dateMatch) return false;
+                                            
+                                            const todoDate = new Date(dateMatch[1]);
+                                            const now = new Date();
+                                            const diffTime = Math.abs(now - todoDate);
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                            
+                                            return diffDays > 2;
+                                        })
+                                        .slice(0, 1)
+                                        .map(note => (
+                                            <li key={note.id}>
+                                                {note.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}
+                                                {note.content.length > 100 ? '...' : ''}
+                                            </li>
+                                        ))}
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -461,6 +489,30 @@ const NotesMainContainer = ({
                             <h3 className="text-sm font-medium text-rose-800">
                                 Deadline passed: {passedDeadlineCount} {passedDeadlineCount === 1 ? 'todo' : 'todos'} with passed deadlines
                             </h3>
+                            <div className="mt-2 text-sm text-rose-700">
+                                <ul className="list-disc pl-5 space-y-1">
+                                    {notes
+                                        .filter(note => {
+                                            const content = note.content;
+                                            const hasTodo = content.includes('meta::todo');
+                                            if (!hasTodo) return false;
+                                            
+                                            const dateMatch = content.match(/meta::todo::(\d{4}-\d{2}-\d{2})/);
+                                            if (!dateMatch) return false;
+                                            
+                                            const todoDate = new Date(dateMatch[1]);
+                                            const now = new Date();
+                                            return todoDate < now;
+                                        })
+                                        .slice(0, 1)
+                                        .map(note => (
+                                            <li key={note.id}>
+                                                {note.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}
+                                                {note.content.length > 100 ? '...' : ''}
+                                            </li>
+                                        ))}
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -479,6 +531,34 @@ const NotesMainContainer = ({
                             <h3 className="text-sm font-medium text-rose-800">
                                 Attention needed: {oldTodosCount} {oldTodosCount === 1 ? 'todo' : 'todos'} older than 2 days
                             </h3>
+                            <div className="mt-2 text-sm text-rose-700">
+                                <ul className="list-disc pl-5 space-y-1">
+                                    {notes
+                                        .filter(note => {
+                                            const content = note.content;
+                                            const hasTodo = content.includes('meta::todo');
+                                            const hasHighPriority = content.includes('meta::high');
+                                            if (!hasTodo || hasHighPriority) return false;
+                                            
+                                            const dateMatch = content.match(/meta::todo::(\d{4}-\d{2}-\d{2})/);
+                                            if (!dateMatch) return false;
+                                            
+                                            const todoDate = new Date(dateMatch[1]);
+                                            const now = new Date();
+                                            const diffTime = Math.abs(now - todoDate);
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                            
+                                            return diffDays > 2;
+                                        })
+                                        .slice(0, 1)
+                                        .map(note => (
+                                            <li key={note.id}>
+                                                {note.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}
+                                                {note.content.length > 100 ? '...' : ''}
+                                            </li>
+                                        ))}
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>

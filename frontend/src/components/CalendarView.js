@@ -148,11 +148,33 @@ const CalendarView = ({ events }) => {
                         }`}>
                           {occurrence.event.description}
                         </p>
-                        <p className={`text-sm ${
-                          occurrence.isPast ? 'text-gray-400' : 'text-gray-500'
-                        }`}>
-                          {formatDate(occurrence.date)}
-                        </p>
+                        <div className="flex flex-col gap-1">
+                          <p className={`text-sm ${
+                            occurrence.isPast ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
+                            {occurrence.date.toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            {occurrence.isPast && (
+                              <span className="text-xs text-gray-400">
+                                {Math.ceil((new Date() - occurrence.date) / (1000 * 60 * 60 * 24))} days ago
+                              </span>
+                            )}
+                            {!occurrence.isPast && !occurrence.isToday && (
+                              <span className="text-xs text-indigo-600">
+                                {Math.ceil((occurrence.date - new Date()) / (1000 * 60 * 60 * 24))} days to event
+                              </span>
+                            )}
+                            {occurrence.isToday && (
+                              <span className="text-xs font-medium text-indigo-600">Today</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       {occurrence.event.recurrence !== 'none' && (
                         <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
@@ -166,11 +188,13 @@ const CalendarView = ({ events }) => {
                     </div>
 
                     {/* Age information */}
-                    <div className={`text-sm font-medium ${
-                      occurrence.isPast ? 'text-gray-400' : 'text-indigo-600'
-                    }`}>
-                      {occurrence.age}
-                    </div>
+                    {occurrence.age && (
+                      <div className={`text-sm font-medium ${
+                        occurrence.isPast ? 'text-gray-400' : 'text-indigo-600'
+                      }`}>
+                        Age: {occurrence.age}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

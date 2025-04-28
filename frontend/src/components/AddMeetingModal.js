@@ -68,7 +68,7 @@ const AddMeetingModal = ({ isOpen, onClose, onAdd }) => {
     let content = `${description.trim()}\n${dateTime}\nmeta::meeting::${new Date().toISOString()}\nmeta::meeting_duration::${duration}`;
     
     if (recurrence !== 'none') {
-      if (recurrence === 'weekly' || recurrence === 'custom') {
+      if (recurrence === 'custom') {
         const selectedDaysList = Object.entries(selectedDays)
           .filter(([_, isSelected]) => isSelected)
           .map(([day]) => day);
@@ -175,35 +175,39 @@ const AddMeetingModal = ({ isOpen, onClose, onAdd }) => {
             </select>
           </div>
 
-          {(recurrence === 'weekly' || recurrence === 'custom') && (
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="block text-sm font-medium text-gray-700">
-                  Days of Week
-                </label>
-                <button
-                  type="button"
-                  onClick={handleSelectAllDays}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  {Object.values(selectedDays).every(Boolean) ? 'Deselect All' : 'Select All'}
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {daysOfWeek.map(({ value, label }) => (
-                  <label key={value} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedDays[value]}
-                      onChange={() => handleDayToggle(value)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <span className="text-sm text-gray-700">{label}</span>
+          {/* Days selection UI - ONLY show for custom recurrence */}
+          {(() => {
+            if (recurrence !== 'custom') return null;
+            return (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Days of Week
                   </label>
-                ))}
+                  <button
+                    type="button"
+                    onClick={handleSelectAllDays}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    {Object.values(selectedDays).every(Boolean) ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {daysOfWeek.map(({ value, label }) => (
+                    <label key={value} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedDays[value]}
+                        onChange={() => handleDayToggle(value)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-700">{label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         <div className="mt-6 flex justify-end space-x-3">

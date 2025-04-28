@@ -100,6 +100,8 @@ const formatDateString = (date) => {
 };
 
 const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [], content = '') => {
+  console.log('finding occurence');
+  console.log(recurrenceType);
   // Ensure meetingTime is a Date object
   const meetingDateObj = meetingTime instanceof Date ? meetingTime : new Date(meetingTime);
   const now = new Date();
@@ -179,7 +181,8 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
           nextDay = dayIndex;
         }
       });
-
+      console.log(recurrenceType);
+      console.log('Next day:', nextDay);
       if (nextDay === null) return null;
 
       nextDate.setDate(now.getDate() + minDiff);

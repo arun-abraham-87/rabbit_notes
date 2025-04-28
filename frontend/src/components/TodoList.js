@@ -32,6 +32,33 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [showStats, setShowStats] = useState(false);
   const [showToday, setShowToday] = useState(false);
   const [showYesterday, setShowYesterday] = useState(false);
+  const [showLastXDays, setShowLastXDays] = useState(false);
+  const [showLastXDaysPopup, setShowLastXDaysPopup] = useState(false);
+  const [selectedDays, setSelectedDays] = useState([]);
+
+  // Function to clear all date filters
+  const clearDateFilters = () => {
+    setShowToday(false);
+    setShowYesterday(false);
+    setShowLastXDays(false);
+    setSelectedDays([]);
+  };
+
+  // Function to handle date filter selection
+  const handleDateFilterClick = (filterType) => {
+    clearDateFilters();
+    switch (filterType) {
+      case 'today':
+        setShowToday(true);
+        break;
+      case 'yesterday':
+        setShowYesterday(true);
+        break;
+      case 'lastXDays':
+        setShowLastXDaysPopup(true);
+        break;
+    }
+  };
 
   // Get overdue high priority todos
   const getOverdueHighPriorityTodos = () => {
@@ -245,6 +272,13 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     { total: 0, high: 0, medium: 0, low: 0 }
   );
 
+  // Function to get date string for n days ago
+  const getDateStringForDaysAgo = (days) => {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return date.toDateString();
+  };
+
   // Filter todos for display based on all filters
   const filteredTodos = todos
     .filter((todo) => {
@@ -267,8 +301,17 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         if (showYesterday && todoDate.toDateString() === yesterday.toDateString()) return true;
         return false;
       })();
+
+      // Check if todo was added in selected last X days
+      const isInLastXDays = (() => {
+        if (!showLastXDays || selectedDays.length === 0) return true;
+        const todoDate = new Date(todo.created_datetime);
+        return selectedDays.some(days => 
+          todoDate.toDateString() === getDateStringForDaysAgo(days)
+        );
+      })();
       
-      return matchesSearch && matchesPriority && isMetaTodo && isTodayOrYesterday;
+      return matchesSearch && matchesPriority && isMetaTodo && isTodayOrYesterday && isInLastXDays;
     })
     .sort((a, b) => {
       if (sortBy === 'priority') {
@@ -676,7 +719,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                   {/* Today Filter */}
                   <div className="flex items-center gap-4">
                     <button
-                      onClick={() => setShowToday(!showToday)}
+                      onClick={() => handleDateFilterClick('today')}
                       className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
                         showToday
                           ? 'bg-indigo-100 text-indigo-700 font-medium'
@@ -686,7 +729,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                       Today's Todos
                     </button>
                     <button
-                      onClick={() => setShowYesterday(!showYesterday)}
+                      onClick={() => handleDateFilterClick('yesterday')}
                       className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
                         showYesterday
                           ? 'bg-indigo-100 text-indigo-700 font-medium'
@@ -695,7 +738,75 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                     >
                       Yesterday's Todos
                     </button>
+                    <button
+                      onClick={() => handleDateFilterClick('lastXDays')}
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
+                        showLastXDays
+                          ? 'bg-indigo-100 text-indigo-700 font-medium'
+                          : 'hover:bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      Last X Days
+                    </button>
+                    {(showToday || showYesterday || showLastXDays) && (
+                      <button
+                        onClick={clearDateFilters}
+                        className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                      >
+                        Clear Date Filters
+                      </button>
+                    )}
                   </div>
+
+                  {/* Last X Days Popup */}
+                  {showLastXDaysPopup && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                      <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                        <h3 className="text-lg font-medium mb-4">Select Days</h3>
+                        <div className="grid grid-cols-4 gap-2 mb-4">
+                          {[1, 2, 3, 4, 5, 6, 7].map((day) => (
+                            <button
+                              key={day}
+                              onClick={() => {
+                                setSelectedDays(prev => 
+                                  prev.includes(day)
+                                    ? prev.filter(d => d !== day)
+                                    : [...prev, day]
+                                );
+                              }}
+                              className={`px-3 py-2 rounded-lg transition-all duration-200 ${
+                                selectedDays.includes(day)
+                                  ? 'bg-indigo-100 text-indigo-700 font-medium'
+                                  : 'hover:bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {day} {day === 1 ? 'Day' : 'Days'} Ago
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setShowLastXDaysPopup(false);
+                              setSelectedDays([]);
+                            }}
+                            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowLastXDaysPopup(false);
+                              setShowLastXDays(selectedDays.length > 0);
+                            }}
+                            className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

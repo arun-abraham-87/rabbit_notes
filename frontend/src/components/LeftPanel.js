@@ -1,7 +1,7 @@
 // src/components/LeftPanel.js
 import React, { useMemo, useState, useEffect } from 'react';
-import { 
-  ChevronDownIcon, 
+import {
+  ChevronDownIcon,
   ChevronRightIcon,
   ChevronDoubleUpIcon,
   ChevronDoubleDownIcon,
@@ -81,113 +81,112 @@ const defaultSettings = {
   }
 };
 
+const formatDateString = (date) => {
+  // If date is already a string in YYYY-MM-DD format, return it
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
+  
+  // Convert to Date object if it's a string
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  // Ensure we have a valid Date object
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+    console.error('Invalid date:', date);
+    return '';
+  }
+  
+  return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+};
+
 const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [], content = '') => {
+  // Ensure meetingTime is a Date object
+  const meetingDateObj = meetingTime instanceof Date ? meetingTime : new Date(meetingTime);
   const now = new Date();
-  const meetingDate = new Date(meetingTime);
-  
-  //console.log('Calculating next occurrence:');
-  //console.log('Meeting time:', meetingTime);
-  //console.log('Meeting date:', meetingDate.toISOString());
-  //console.log('Now:', now.toISOString());
-  //console.log('Recurrence type:', recurrenceType);
-  
+  const meetingDate = formatDateString(meetingDateObj);
+  const todayStr = formatDateString(now);
+
   // Extract all acknowledgment dates from meta tags and normalize to YYYY-MM-DD format
   const ackDates = content
     .split('\n')
     .filter(line => line.trim().startsWith('meta::meeting_acknowledge::'))
     .map(line => {
       const dateStr = line.split('::')[2].trim();
-      const datePart = dateStr.split('T')[0];
-      //console.log('Found acknowledgment date:', datePart);
-      return datePart;
+      return formatDateString(dateStr);
     });
 
-  //console.log('All acknowledgment dates:', ackDates);
-
-  // For daily recurrence, we need to handle the date comparison differently
-  if (recurrenceType === 'daily') {
-    // Create a new date object preserving the original time
-    const nextDate = new Date(meetingTime);
-    
-    // Get today's date string
-    const todayStr = now.toDateString().split('T')[0];
-    //console.log('Today Str', todayStr);
-    const meetingDateStr = meetingDate.toDateString().split('T')[0];
-    //console.log('Meeting date:', meetingDateStr);
-    
+  // For daily recurrence
+  if (recurrenceType.trim() === 'daily') {
     // If today's meeting hasn't been acknowledged, return it
-    if (meetingDateStr === todayStr && !ackDates.includes(todayStr)) {
-      //console.log('Returning today\'s meeting');
-      return meetingDate;
+    if (meetingDate === todayStr && !ackDates.includes(todayStr)) {
+      return meetingDateObj;
     }
-    
+
     // Start from tomorrow's date
     let currentDate = new Date(now);
     currentDate.setDate(currentDate.getDate() + 1);
-    currentDate.setHours(meetingDate.getHours());
-    currentDate.setMinutes(meetingDate.getMinutes());
-    currentDate.setSeconds(meetingDate.getSeconds());
-    
+    currentDate.setHours(meetingDateObj.getHours());
+    currentDate.setMinutes(meetingDateObj.getMinutes());
+    currentDate.setSeconds(meetingDateObj.getSeconds());
+
     // Find the next unacknowledged date
     while (true) {
-      const currentDateStr = currentDate.toISOString().split('T')[0];
-      //console.log('Checking next date:', currentDateStr);
+      const currentDateStr = formatDateString(currentDate);
       if (!ackDates.includes(currentDateStr)) {
-        //console.log('Found next unacknowledged date:', currentDateStr);
         return currentDate;
       }
       currentDate.setDate(currentDate.getDate() + 1);
     }
   }
 
-  // For other recurrence types, create a new date object preserving the original time
-  const nextDate = new Date(meetingTime);
+  // For other recurrence types
+  const nextDate = new Date(meetingDateObj);
 
   switch (recurrenceType) {
     case 'weekly':
-      while (nextDate <= now || ackDates.includes(nextDate.toISOString().split('T')[0])) {
+      while (formatDateString(nextDate) <= todayStr || ackDates.includes(formatDateString(nextDate))) {
         nextDate.setDate(nextDate.getDate() + 7);
       }
       break;
     case 'monthly':
-      while (nextDate <= now || ackDates.includes(nextDate.toISOString().split('T')[0])) {
+      while (formatDateString(nextDate) <= todayStr || ackDates.includes(formatDateString(nextDate))) {
         nextDate.setMonth(nextDate.getMonth() + 1);
       }
       break;
     case 'yearly':
-      while (nextDate <= now || ackDates.includes(nextDate.toISOString().split('T')[0])) {
+      while (formatDateString(nextDate) <= todayStr || ackDates.includes(formatDateString(nextDate))) {
         nextDate.setFullYear(nextDate.getFullYear() + 1);
       }
       break;
     case 'custom':
       if (selectedDays.length === 0) return null;
-      
+
       const currentDay = now.getDay();
-      const meetingDay = meetingDate.getDay();
-      
+      const meetingDay = meetingDateObj.getDay();
+
       let nextDay = null;
       let minDiff = Infinity;
-      
+
       selectedDays.forEach(day => {
         const dayIndex = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(day);
         if (dayIndex === -1) return;
-        
+
         let diff = dayIndex - currentDay;
         if (diff <= 0) diff += 7;
-        
+
         if (diff < minDiff) {
           minDiff = diff;
           nextDay = dayIndex;
         }
       });
-      
-      if (nextDay === null) return null;
-      
-      nextDate.setDate(now.getDate() + minDiff);
-      nextDate.setHours(meetingDate.getHours());
-      nextDate.setMinutes(meetingDate.getMinutes());
 
-      while (ackDates.includes(nextDate.toISOString().split('T')[0])) {
+      if (nextDay === null) return null;
+
+      nextDate.setDate(now.getDate() + minDiff);
+      nextDate.setHours(meetingDateObj.getHours());
+      nextDate.setMinutes(meetingDateObj.getMinutes());
+
+      while (ackDates.includes(formatDateString(nextDate))) {
         nextDate.setDate(nextDate.getDate() + 7);
       }
       break;
@@ -255,7 +254,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     try {
       // Save timezones to localStorage
       localStorage.setItem('selectedTimezones', JSON.stringify(selectedTimezones));
-      
+
       // Save other settings
       await updateSettings(unsavedSettings);
       setSettings(unsavedSettings);
@@ -354,30 +353,39 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         const lines = note.content.split('\n');
         const description = lines[0].trim();
         const time = lines[1].trim();
-        
-        //console.log('Meeting time from note:', time);
-        
+
+        console.log(description);
+
         const durationMatch = note.content.match(/meta::meeting_duration::(\d+)/);
         const duration = durationMatch ? durationMatch[1] : null;
-        
-        const recurrenceMatch = note.content.match(/meta::meeting_recurrence::([^:]+)(?::(.+))?/);
+
+
+
         let recurrenceType = null;
         let selectedDays = [];
-        
-        if (recurrenceMatch) {
-          const [_, type, days] = recurrenceMatch;
-          recurrenceType = type;
-          if (type === 'custom' && days) {
-            selectedDays = days.split(',');
+
+        for (const line of lines) {
+          if (line.trim().startsWith('meta::meeting_recurrence::')) {
+            const recurrenceMatch = line.split("::")[2].trim();
+
+            if (recurrenceMatch && recurrenceMatch.startsWith('custom')) {
+              const [type, days] = recurrenceMatch.split(':');
+              recurrenceType = type;
+              selectedDays = days.split(',');
+            } else {
+              recurrenceType = recurrenceMatch ? recurrenceMatch : null;
+            }
+            break;
           }
         }
 
-        //console.log('Recurrence type:', recurrenceType);
-        
+
+        console.log('Recurrence type:', recurrenceType);
+
         const meetingTime = new Date(time).getTime();
         const now = Date.now();
         let nextTime = time;
-        
+
         if (meetingTime < now && recurrenceType) {
           //console.log('Calculating next occurrence for past meeting');
           const nextOccurrence = calculateNextOccurrence(time, recurrenceType, selectedDays, note.content);
@@ -402,7 +410,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       }
       return [];
     });
-    
+
     //console.log('Sorted meetings:', result.map(m => ({ time: m.time, description: m.description })));
     return result.sort((a, b) => new Date(a.time) - new Date(b.time));
   }, [notes]);
@@ -426,7 +434,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       // Ensure content is a string
       const content = typeof note.content === 'object' ? note.content.content : note.content;
       const lines = content.split('\n');
-      
+
       if (lines.some(line => line.trim().startsWith('meta::event'))) {
         // Extract description
         const descriptionLine = lines.find(line => line.startsWith('event_description:'));
@@ -444,21 +452,21 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         // Extract recurring information
         const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
         const recurrenceType = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : null;
-        
+
         const recurringEndLine = lines.find(line => line.startsWith('event_recurring_end:'));
         const recurrenceEndDate = recurringEndLine ? recurringEndLine.replace('event_recurring_end:', '').trim() : null;
 
         try {
           // Calculate next occurrence if it's a recurring event
-          const nextOccurrence = recurrenceType 
+          const nextOccurrence = recurrenceType
             ? calculateNextOccurrence(baseEventDate, recurrenceType, [], content)
             : new Date(baseEventDate);
 
           // If there's no next occurrence (past end date) or invalid date, don't include the event
           if (!nextOccurrence || !(nextOccurrence instanceof Date)) return [];
 
-          return [{ 
-            id: note.id, 
+          return [{
+            id: note.id,
             context: description,
             time: nextOccurrence.toISOString(),
             location: location,
@@ -478,13 +486,13 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
   const visibleEvents = useMemo(() => {
     return events.filter(e => {
-        try {
-            const eventTime = new Date(e.time).getTime();
-            return eventTime >= now;
-        } catch (error) {
-            console.error('Error filtering event:', error);
-            return false;
-        }
+      try {
+        const eventTime = new Date(e.time).getTime();
+        return eventTime >= now;
+      } catch (error) {
+        console.error('Error filtering event:', error);
+        return false;
+      }
     });
   }, [events, now]);
 
@@ -519,7 +527,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
     // Add new acknowledgment tag
     const updatedContent = note.content + `\nmeta::meeting_acknowledge::${meetingDate}`;
-    
+
     // Update the note
     updateNoteById(note.id, updatedContent);
     setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
@@ -605,8 +613,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               onClick={() => setShowQuickLinks(prev => !prev)}
             >
               <span className="truncate flex-1">Quick Links</span>
-              {showQuickLinks ? 
-                <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> : 
+              {showQuickLinks ?
+                <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> :
                 <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" />
               }
             </h2>
@@ -655,8 +663,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               onClick={() => setShowQuickLinks(prev => !prev)}
             >
               <span>Bookmarks</span>
-              {showQuickLinks ? 
-                <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> : 
+              {showQuickLinks ?
+                <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> :
                 <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
               }
             </h2>
@@ -701,8 +709,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                   Meetings
                   <span className="text-indigo-600 ml-2 text-sm">({visibleMeetings.length})</span>
                 </span>
-                {showMeetingsSection ? 
-                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> : 
+                {showMeetingsSection ?
+                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> :
                   <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" />
                 }
               </h2>
@@ -779,7 +787,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                           </div>
                           {m.recurrenceType && (
                             <div className="text-xs text-gray-500 mt-1">
-                              Recurring: {m.recurrenceType === 'custom' 
+                              Recurring: {m.recurrenceType === 'custom'
                                 ? m.selectedDays.map(day => day.charAt(0).toUpperCase() + day.slice(1)).join(', ')
                                 : m.recurrenceType.charAt(0).toUpperCase() + m.recurrenceType.slice(1)}
                             </div>
@@ -822,8 +830,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                   Events
                   <span className="text-purple-600 ml-2 text-sm">({visibleEvents.length})</span>
                 </span>
-                {showEventsSection ? 
-                  <ChevronDoubleUpIcon className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" /> : 
+                {showEventsSection ?
+                  <ChevronDoubleUpIcon className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" /> :
                   <ChevronDoubleDownIcon className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" />
                 }
               </h2>
@@ -926,7 +934,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               </button>
               {note ? <NoteEditor note={note} onSave={(updatedNote) => {
                 updateNote(updatedNote.id, updatedNote.content);
-               // setPopupNoteText(null);
+                // setPopupNoteText(null);
               }} /> : <p className="text-red-500">Original note not found.</p>}
             </div>
           </div>
@@ -1006,7 +1014,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               {/* Page Visibility Settings */}
               <div className="pt-4 border-t border-gray-200">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Page Visibility</h3>
-                
+
                 {/* Show Todos Page Setting */}
                 <div className="flex items-center mb-2">
                   <input
@@ -1149,8 +1157,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
             onSave={(updatedNote) => {
               updateNoteById(updatedNote.id, updatedNote.content);
               // Update the notes state immediately
-              setNotes(prevNotes => 
-                prevNotes.map(n => 
+              setNotes(prevNotes =>
+                prevNotes.map(n =>
                   n.id === updatedNote.id ? { ...n, content: updatedNote.content } : n
                 )
               );
@@ -1175,8 +1183,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                 onSave={(updatedNote) => {
                   updateNoteById(updatedNote.id, updatedNote.content);
                   // Update the notes state immediately
-                  setNotes(prevNotes => 
-                    prevNotes.map(n => 
+                  setNotes(prevNotes =>
+                    prevNotes.map(n =>
                       n.id === updatedNote.id ? { ...n, content: updatedNote.content } : n
                     )
                   );
@@ -1196,8 +1204,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
             onSave={(updatedNote) => {
               updateNoteById(updatedNote.id, updatedNote.content);
               // Update the notes state immediately
-              setNotes(prevNotes => 
-                prevNotes.map(n => 
+              setNotes(prevNotes =>
+                prevNotes.map(n =>
                   n.id === updatedNote.id ? { ...n, content: updatedNote.content } : n
                 )
               );

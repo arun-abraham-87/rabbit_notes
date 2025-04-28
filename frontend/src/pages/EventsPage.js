@@ -15,7 +15,7 @@ const getEventDetails = (content) => {
   return { description, dateTime, recurrence, days };
 };
 
-const EventsPage = ({ notes }) => {
+const EventsPage = ({ notes, onUpdate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingEvent, setEditingEvent] = useState(null);
   const [deletingEvent, setDeletingEvent] = useState(null);
@@ -68,10 +68,8 @@ const EventsPage = ({ notes }) => {
       await deleteNoteById(deletingEvent.id);
       // Update the notes list by removing the deleted event
       const updatedNotes = notes.filter(note => note.id !== deletingEvent.id);
-      // Update the parent component's state through the notes prop
-      if (typeof notes === 'object' && notes !== null && 'onUpdate' in notes) {
-        notes.onUpdate(updatedNotes);
-      }
+      // Call the onUpdate prop directly
+      onUpdate(updatedNotes);
       setDeletingEvent(null);
     } catch (error) {
       console.error('Error deleting event:', error);

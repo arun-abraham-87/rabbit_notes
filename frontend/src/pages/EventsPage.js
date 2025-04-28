@@ -28,26 +28,47 @@ const getEventDetails = (content) => {
   let nextOccurrence = null;
   if (recurrence !== 'none' && dateTime) {
     const eventDate = new Date(dateTime);
+    const now = new Date();
     
     if (recurrence === 'daily') {
       // For daily events, next occurrence is tomorrow
       nextOccurrence = new Date(eventDate);
       nextOccurrence.setDate(eventDate.getDate() + 1);
+      
+      // If next occurrence is in the past, keep adding days until it's in the future
+      while (nextOccurrence <= now) {
+        nextOccurrence.setDate(nextOccurrence.getDate() + 1);
+      }
     } 
     else if (recurrence === 'weekly') {
       // For weekly events, next occurrence is 7 days from last
       nextOccurrence = new Date(eventDate);
       nextOccurrence.setDate(eventDate.getDate() + 7);
+      
+      // If next occurrence is in the past, keep adding weeks until it's in the future
+      while (nextOccurrence <= now) {
+        nextOccurrence.setDate(nextOccurrence.getDate() + 7);
+      }
     } 
     else if (recurrence === 'monthly') {
       // For monthly events, next occurrence is 1 month from last
       nextOccurrence = new Date(eventDate);
       nextOccurrence.setMonth(eventDate.getMonth() + 1);
+      
+      // If next occurrence is in the past, keep adding months until it's in the future
+      while (nextOccurrence <= now) {
+        nextOccurrence.setMonth(nextOccurrence.getMonth() + 1);
+      }
     }
     else if (recurrence === 'yearly') {
       // For yearly events, next occurrence is 1 year from last
       nextOccurrence = new Date(eventDate);
       nextOccurrence.setFullYear(eventDate.getFullYear() + 1);
+      
+      // If next occurrence is in the past, keep adding years until it's in the future
+      while (nextOccurrence <= now) {
+        nextOccurrence.setFullYear(nextOccurrence.getFullYear() + 1);
+      }
     }
   }
 

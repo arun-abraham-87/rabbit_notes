@@ -8,7 +8,8 @@ const NoteFilters = ({
   searchQuery,
   settings = {},
   onExcludeEventsChange,
-  onExcludeMeetingsChange
+  onExcludeMeetingsChange,
+  onDeadlinePassedChange
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
   const [showEventButtons, setShowEventButtons] = useState(false);
@@ -16,6 +17,7 @@ const NoteFilters = ({
   const [activePriorityFilter, setActivePriorityFilter] = useState('');
   const [excludeEvents, setExcludeEvents] = useState(settings.excludeEventsByDefault || false);
   const [excludeMeetings, setExcludeMeetings] = useState(settings.excludeMeetingsByDefault || false);
+  const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
 
   // Only set the initial state of checkboxes
   useEffect(() => {
@@ -35,6 +37,13 @@ const NoteFilters = ({
       onExcludeMeetingsChange(excludeMeetings);
     }
   }, [excludeMeetings, onExcludeMeetingsChange]);
+
+  // Notify parent component when deadline passed filter changes
+  useEffect(() => {
+    if (onDeadlinePassedChange) {
+      onDeadlinePassedChange(showDeadlinePassedFilter);
+    }
+  }, [showDeadlinePassedFilter, onDeadlinePassedChange]);
 
   const removeFilterFromQuery = (filterText) => {
     if (setSearchQuery) {
@@ -336,7 +345,10 @@ const NoteFilters = ({
       </button>
 
       <button
-        onClick={() => handleFilterClick('meta::end_date::')}
+        onClick={() => {
+          const filterAdded = toggleFilter('meta::end_date::');
+          setShowDeadlinePassedFilter(filterAdded);
+        }}
         className={`px-3 py-1 text-xs rounded transition-all transform ${
           searchQuery?.includes('meta::end_date::')
             ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700'
@@ -345,6 +357,19 @@ const NoteFilters = ({
       >
         End Date
       </button>
+
+      {showDeadlinePassedFilter && (
+        <button
+          onClick={() => setShowDeadlinePassedFilter(prev => !prev)}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${
+            showDeadlinePassedFilter
+              ? 'opacity-100 scale-105 bg-red-300 border border-red-700'
+              : 'opacity-30 hover:opacity-60 border'
+          }`}
+        >
+          Deadline Passed
+        </button>
+      )}
 
       <button
         onClick={() => handleFilterClick('meta::Abbreviation::')}

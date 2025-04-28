@@ -207,6 +207,37 @@ const checkForOldTodos = (notes) => {
   }).length;
 };
 
+const filterNotes = (notes, searchQuery, showDeadlinePassedFilter) => {
+  if (!notes) return [];
+  
+  const now = new Date();
+  return notes.filter(note => {
+    const content = note.content.toLowerCase();
+    const searchWords = searchQuery.toLowerCase().split(' ').filter(word => word);
+    
+    // Check if note matches all search words
+    const matchesSearch = searchWords.every(word => content.includes(word));
+    if (!matchesSearch) return false;
+
+    // Check for deadline passed filter
+    if (showDeadlinePassedFilter) {
+      const endDateMatch = content.match(/meta::end_date::([^\n]+)/);
+      if (!endDateMatch) return false;
+      
+      const endDate = new Date(endDateMatch[1]);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+      
+      // Only show notes with deadlines in the past
+      return endDate < today;
+    }
+
+    // For non-deadline passed filter, show all notes
+    return true;
+  });
+};
+
 const NotesMainContainer = ({ 
     objList = [], 
     notes = [],
@@ -237,6 +268,7 @@ const NotesMainContainer = ({
     const [passedDeadlineCount, setPassedDeadlineCount] = useState(0);
     const [oldTodosCount, setOldTodosCount] = useState(0);
     const [alertsExpanded, setAlertsExpanded] = useState(true);
+    const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
 
     // Extract meetings from notes with null check
     const meetings = useMemo(() => {
@@ -276,11 +308,9 @@ const NotesMainContainer = ({
                 
                 if (note.created_datetime) {
                     const [datePart] = note.created_datetime.split(',');
-                    if (datePart) {
-                        const [day, month, year] = datePart.split('/');
-                        const isoDate = `${year}-${month}-${day}`;
-                        if (!isoDate.startsWith(currentDate)) return false;
-                    }
+                    const [day, month, year] = datePart.split('/');
+                    const isoDate = `${year}-${month}-${day}`;
+                    if (!isoDate.startsWith(currentDate)) return false;
                 }
             }
 
@@ -288,11 +318,32 @@ const NotesMainContainer = ({
             if (excludeEvents && note.content.includes('meta::event::')) return false;
             if (excludeMeetings && note.content.includes('meta::meeting::')) return false;
 
+            // Check for end date and deadline passed filters
+            const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
+            if (endDateMatch) {
+                const endDate = new Date(endDateMatch[1]);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                endDate.setHours(0, 0, 0, 0);
+
+                // If deadline passed filter is active, only show passed deadlines
+                if (showDeadlinePassedFilter) {
+                    return endDate < today;
+                }
+                // If only end date filter is active, show all notes with end dates
+                return true;
+            }
+
+            // If end date filter is active but note doesn't have an end date, hide it
+            if (searchQuery.includes('meta::end_date::')) {
+                return false;
+            }
+
             return true;
         });
 
         return filtered;
-    }, [notes, currentDate, searchQuery, excludeEvents, excludeMeetings]);
+    }, [notes, currentDate, searchQuery, excludeEvents, excludeMeetings, showDeadlinePassedFilter]);
 
     // Update totals based on filtered notes
     useEffect(() => {
@@ -629,6 +680,7 @@ const NotesMainContainer = ({
                         settings={settings}
                         onExcludeEventsChange={setExcludeEvents}
                         onExcludeMeetingsChange={setExcludeMeetings}
+                        onDeadlinePassedChange={setShowDeadlinePassedFilter}
                     />
                     <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
                     {checked ? (

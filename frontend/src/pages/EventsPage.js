@@ -26,53 +26,70 @@ const getEventDetails = (content) => {
 
   // Calculate next occurrence for recurring events
   let nextOccurrence = null;
+  let lastOccurrence = null;
   if (recurrence !== 'none' && dateTime) {
     const eventDate = new Date(dateTime);
     const now = new Date();
     
+    // Calculate last occurrence
+    lastOccurrence = new Date(eventDate);
     if (recurrence === 'daily') {
-      // For daily events, next occurrence is tomorrow
-      nextOccurrence = new Date(eventDate);
-      nextOccurrence.setDate(eventDate.getDate() + 1);
-      
-      // If next occurrence is in the past, keep adding days until it's in the future
+      // For daily events, last occurrence is today or yesterday
+      while (lastOccurrence > now) {
+        lastOccurrence.setDate(lastOccurrence.getDate() - 1);
+      }
+    } 
+    else if (recurrence === 'weekly') {
+      // For weekly events, last occurrence is this week or last week
+      while (lastOccurrence > now) {
+        lastOccurrence.setDate(lastOccurrence.getDate() - 7);
+      }
+    } 
+    else if (recurrence === 'monthly') {
+      // For monthly events, last occurrence is this month or last month
+      while (lastOccurrence > now) {
+        lastOccurrence.setMonth(lastOccurrence.getMonth() - 1);
+      }
+    }
+    else if (recurrence === 'yearly') {
+      // For yearly events, last occurrence is this year or last year
+      while (lastOccurrence > now) {
+        lastOccurrence.setFullYear(lastOccurrence.getFullYear() - 1);
+      }
+    }
+
+    // Calculate next occurrence
+    if (recurrence === 'daily') {
+      nextOccurrence = new Date(lastOccurrence);
+      nextOccurrence.setDate(lastOccurrence.getDate() + 1);
       while (nextOccurrence <= now) {
         nextOccurrence.setDate(nextOccurrence.getDate() + 1);
       }
     } 
     else if (recurrence === 'weekly') {
-      // For weekly events, next occurrence is 7 days from last
-      nextOccurrence = new Date(eventDate);
-      nextOccurrence.setDate(eventDate.getDate() + 7);
-      
-      // If next occurrence is in the past, keep adding weeks until it's in the future
+      nextOccurrence = new Date(lastOccurrence);
+      nextOccurrence.setDate(lastOccurrence.getDate() + 7);
       while (nextOccurrence <= now) {
         nextOccurrence.setDate(nextOccurrence.getDate() + 7);
       }
     } 
     else if (recurrence === 'monthly') {
-      // For monthly events, next occurrence is 1 month from last
-      nextOccurrence = new Date(eventDate);
-      nextOccurrence.setMonth(eventDate.getMonth() + 1);
-      
-      // If next occurrence is in the past, keep adding months until it's in the future
+      nextOccurrence = new Date(lastOccurrence);
+      nextOccurrence.setMonth(lastOccurrence.getMonth() + 1);
       while (nextOccurrence <= now) {
         nextOccurrence.setMonth(nextOccurrence.getMonth() + 1);
       }
     }
     else if (recurrence === 'yearly') {
-      // For yearly events, next occurrence is 1 year from last
-      nextOccurrence = new Date(eventDate);
-      nextOccurrence.setFullYear(eventDate.getFullYear() + 1);
-      
-      // If next occurrence is in the past, keep adding years until it's in the future
+      nextOccurrence = new Date(lastOccurrence);
+      nextOccurrence.setFullYear(lastOccurrence.getFullYear() + 1);
       while (nextOccurrence <= now) {
         nextOccurrence.setFullYear(nextOccurrence.getFullYear() + 1);
       }
     }
   }
 
-  return { description, dateTime, recurrence, metaDate, nextOccurrence };
+  return { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence };
 };
 
 const EventsPage = ({ notes, onUpdate }) => {
@@ -308,7 +325,7 @@ const EventsPage = ({ notes, onUpdate }) => {
                   Upcoming Events
                 </h2>
                 {groupedEvents.upcoming.map((event) => {
-                  const { description, dateTime, recurrence, metaDate, nextOccurrence } = getEventDetails(event.content);
+                  const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
                   const eventDate = new Date(dateTime);
                   
                   return (
@@ -319,10 +336,19 @@ const EventsPage = ({ notes, onUpdate }) => {
                           <p className="text-sm text-gray-500">
                             {formatDate(eventDate)}
                           </p>
-                          {recurrence !== 'none' && nextOccurrence && (
-                            <p className="text-xs text-indigo-600 mt-1">
-                              Next occurrence: {formatDate(nextOccurrence)}
-                            </p>
+                          {recurrence !== 'none' && (
+                            <div className="mt-1 space-y-1">
+                              {lastOccurrence && (
+                                <p className="text-xs text-gray-600">
+                                  Last occurrence: {formatDate(lastOccurrence)}
+                                </p>
+                              )}
+                              {nextOccurrence && (
+                                <p className="text-xs text-indigo-600">
+                                  Next occurrence: {formatDate(nextOccurrence)}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
                         <div className="flex items-center gap-4">
@@ -363,7 +389,7 @@ const EventsPage = ({ notes, onUpdate }) => {
                   Past Events
                 </h2>
                 {groupedEvents.past.map((event) => {
-                  const { description, dateTime, recurrence, metaDate, nextOccurrence } = getEventDetails(event.content);
+                  const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
                   const eventDate = new Date(dateTime);
                   
                   return (
@@ -374,10 +400,19 @@ const EventsPage = ({ notes, onUpdate }) => {
                           <p className="text-sm text-gray-500">
                             {formatDate(eventDate)}
                           </p>
-                          {recurrence !== 'none' && nextOccurrence && (
-                            <p className="text-xs text-indigo-600 mt-1">
-                              Next occurrence: {formatDate(nextOccurrence)}
-                            </p>
+                          {recurrence !== 'none' && (
+                            <div className="mt-1 space-y-1">
+                              {lastOccurrence && (
+                                <p className="text-xs text-gray-600">
+                                  Last occurrence: {formatDate(lastOccurrence)}
+                                </p>
+                              )}
+                              {nextOccurrence && (
+                                <p className="text-xs text-indigo-600">
+                                  Next occurrence: {formatDate(nextOccurrence)}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
                         <div className="flex items-center gap-4">
@@ -414,7 +449,7 @@ const EventsPage = ({ notes, onUpdate }) => {
           </>
         ) : (
           groupedEvents.all.map((event) => {
-            const { description, dateTime, recurrence, metaDate, nextOccurrence } = getEventDetails(event.content);
+            const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
             const eventDate = new Date(dateTime);
             
             return (
@@ -425,10 +460,19 @@ const EventsPage = ({ notes, onUpdate }) => {
                     <p className="text-sm text-gray-500">
                       {formatDate(eventDate)}
                     </p>
-                    {recurrence !== 'none' && nextOccurrence && (
-                      <p className="text-xs text-indigo-600 mt-1">
-                        Next occurrence: {formatDate(nextOccurrence)}
-                      </p>
+                    {recurrence !== 'none' && (
+                      <div className="mt-1 space-y-1">
+                        {lastOccurrence && (
+                          <p className="text-xs text-gray-600">
+                            Last occurrence: {formatDate(lastOccurrence)}
+                          </p>
+                        )}
+                        {nextOccurrence && (
+                          <p className="text-xs text-indigo-600">
+                            Next occurrence: {formatDate(nextOccurrence)}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="flex items-center gap-4">

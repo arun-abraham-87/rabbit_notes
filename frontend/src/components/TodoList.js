@@ -400,6 +400,11 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         {showHeaders && (
           <div className="flex items-center justify-between p-3 border-b bg-white/50">
             <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-500">Created:</span>
+              <span className={`text-xs font-medium ${ageColorClass}`}>
+                {new Date(createdDate).toLocaleDateString()}
+              </span>
+              <span className="text-gray-300">•</span>
               <span className="text-xs font-medium text-gray-500">Added:</span>
               <span className={`text-xs font-medium ${ageColorClass}`}>
                 {getAgeLabel(createdDate)}

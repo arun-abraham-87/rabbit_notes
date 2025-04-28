@@ -30,6 +30,8 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [showFilters, setShowFilters] = useState(true);
   const [showHeaders, setShowHeaders] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showToday, setShowToday] = useState(false);
+  const [showYesterday, setShowYesterday] = useState(false);
 
   // Get overdue high priority todos
   const getOverdueHighPriorityTodos = () => {
@@ -252,7 +254,21 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       const assignedPriority = priorities[todo.id] || tag;
       const matchesPriority = priorityFilter ? assignedPriority === priorityFilter : true;
       const isMetaTodo = todo.content.includes('meta::todo');
-      return matchesSearch && matchesPriority && isMetaTodo;
+      
+      // Check if todo was added today or yesterday
+      const isTodayOrYesterday = (() => {
+        if (!showToday && !showYesterday) return true;
+        const todoDate = new Date(todo.created_datetime);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (showToday && todoDate.toDateString() === today.toDateString()) return true;
+        if (showYesterday && todoDate.toDateString() === yesterday.toDateString()) return true;
+        return false;
+      })();
+      
+      return matchesSearch && matchesPriority && isMetaTodo && isTodayOrYesterday;
     })
     .sort((a, b) => {
       if (sortBy === 'priority') {
@@ -655,6 +671,30 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                         Oldest
                       </button>
                     </div>
+                  </div>
+
+                  {/* Today Filter */}
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setShowToday(!showToday)}
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
+                        showToday
+                          ? 'bg-indigo-100 text-indigo-700 font-medium'
+                          : 'hover:bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      Today's Todos
+                    </button>
+                    <button
+                      onClick={() => setShowYesterday(!showYesterday)}
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
+                        showYesterday
+                          ? 'bg-indigo-100 text-indigo-700 font-medium'
+                          : 'hover:bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      Yesterday's Todos
+                    </button>
                   </div>
                 </div>
               )}

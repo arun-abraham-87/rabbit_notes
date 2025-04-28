@@ -110,9 +110,9 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
     const nextDate = new Date(meetingTime);
     
     // Get today's date string
-    const todayStr = now.toISOString().split('T')[0];
-    const meetingDateStr = meetingDate.toISOString().split('T')[0];
-    console.log('Today:', todayStr);
+    const todayStr = now.toDateString().split('T')[0];
+    console.log('Today Str', todayStr);
+    const meetingDateStr = meetingDate.toDateString().split('T')[0];
     console.log('Meeting date:', meetingDateStr);
     
     // If today's meeting hasn't been acknowledged, return it

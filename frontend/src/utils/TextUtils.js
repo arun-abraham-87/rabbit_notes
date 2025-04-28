@@ -17,10 +17,10 @@ export const parseNoteContent = ({ content, searchTerm }) => {
       // First extract any color value wrapped in @$%^ markers
       const colorMatch = line.match(/@\$%\^([^@]+)@\$%\^/);
       const color = colorMatch ? colorMatch[1] : null;
-      
+
       // Remove the color markers and get clean text
       const cleanLine = line.replace(/@\$%\^[^@]+@\$%\^/, '');
-      
+
       return { line: cleanLine, color };
     });
 
@@ -62,6 +62,27 @@ export const parseNoteContent = ({ content, searchTerm }) => {
 };
 
 /**
+ * Parse and format a URL for display
+ * @param {string} url - The URL to parse
+ * @returns {string} - The formatted display text for the URL
+ */
+const parseUrl = (url) => {
+  console.log('url', url);
+  return url;
+
+};
+
+/**
+ * Extract URL from markdown link format [text](url)
+ * @param {string} text - The text containing the markdown link
+ * @returns {string|null} - The extracted URL or null if not found
+ */
+const extractUrlFromMarkdown = (text) => {
+  const match = text.match(/\[[^\]]+\]\((https?:\/\/[^\s)]+)\)/);
+  return match ? match[1] : null;
+};
+
+/**
  * Parse inline formatting (bold, links, colors)
  */
 const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
@@ -70,7 +91,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
   const trimmed = content.trim();
   const isH1 = trimmed.startsWith('##') && !trimmed.startsWith('###') && trimmed.endsWith('##');
   const isH2 = trimmed.startsWith('###') && trimmed.endsWith('###');
-  
+
   if (isH1) {
     processedContent = content.slice(2, -2);
   } else if (isH2) {
@@ -78,77 +99,201 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
   }
 
   const elements = [];
-  const regex = /(\*\*([^*]+)\*\*)|(\*(?!\*)([^*]+)(?<!\*)\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s)]+)/g;
-  let lastIndex = 0;
-  let match;
+  let currentText = '';
+  let isBold = false;
+  let isItalic = false;
 
-  while ((match = regex.exec(processedContent)) !== null) {
-    // Add text before the match
-    if (match.index > lastIndex) {
-      elements.push(...highlightSearchTerm(
-        processedContent.slice(lastIndex, match.index),
-        searchTerm,
-        `text-${lineIndex}-${lastIndex}`
-      ));
-    }
-
-    // Process the match based on type
-    if (match[1]) { // Bold
-      elements.push(
-        <strong key={`bold-${lineIndex}-${match.index}`}>
-          {match[2]}
-        </strong>
-      );
-    } else if (match[3]) { // Italics
-      elements.push(
-        <em key={`italic-${lineIndex}-${match.index}`}>
-          {match[4]}
-        </em>
-      );
-    } else if (match[5]) { // Markdown link
-      elements.push(
+  console.log('-----------------------------------------------------------------------------')
+  console.log('processedContent', processedContent);
+  if (processedContent.trim().startsWith("http:") || processedContent.trim().startsWith("https:")) {
+    console.log('url', processedContent);
+    console.log('url is a full url')
+    let urlElement = (
+      <a
+        key={`url-${lineIndex}`}
+        href={processedContent.trim()}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 underline hover:text-blue-800"
+      >
+        {processedContent.trim()}
+      </a>
+    );
+    elements.push(urlElement);
+  } else if ((processedContent.includes("http:") || processedContent.includes("https:")) && !processedContent.startsWith("[") && !processedContent.trim().startsWith("http")) {
+    console.log('URL embedded in text');
+    // Find the URL portion
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const url = processedContent.match(urlRegex)[0];
+    // Extract hostname: everything between protocol and first slash or end
+    const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
+    
+    // Check if there's custom text in markdown format [text](url)
+    const markdownMatch = processedContent.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+    if (markdownMatch) {
+      // If markdown link found, replace the entire [text](url) with clickable link
+      const customText = markdownMatch[1];
+      const markdownUrl = markdownMatch[2];
+      const beforeLink = processedContent.slice(0, processedContent.indexOf('[')).trim();
+      const afterLink = processedContent.slice(processedContent.indexOf(')') + 1).trim();
+      
+      if (beforeLink) {
+        elements.push(beforeLink + ' ');
+      }
+      
+      let urlElement = (
         <a
-          key={`link-${lineIndex}-${match.index}`}
-          href={match[6]}
+          key={`url-${lineIndex}`}
+          href={markdownUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-600 underline hover:text-blue-800"
         >
-          {match[6]}
+          {customText}
         </a>
       );
-    } else if (match[7]) { // Raw URL
-      const url = match[7];
-      const display = (() => {
-        try {
-          return new URL(url).hostname.replace(/^www\./, '');
-        } catch {
-          return url;
-        }
-      })();
-      elements.push(
+      elements.push(urlElement);
+      
+      if (afterLink) {
+        elements.push(' ' + afterLink);
+      }
+    } else {
+      // Handle regular URL
+      const parts = processedContent.split(url);
+      const beforeUrl = parts[0].trim();
+      const afterUrl = parts[1] ? parts[1].trim() : '';
+      
+      if (beforeUrl) {
+        elements.push(beforeUrl + ' ');
+      }
+      
+      let urlElement = (
         <a
-          key={`url-${lineIndex}-${match.index}`}
+          key={`url-${lineIndex}`}
           href={url}
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-600 underline hover:text-blue-800"
         >
-          {display}
+          {hostname}
         </a>
       );
+      elements.push(urlElement);
+      
+      if (afterUrl) {
+        elements.push(' ' + afterUrl);
+      }
     }
+  } else if ((processedContent.includes("http:") || processedContent.includes("https:")) && processedContent.startsWith("[")) {
+    console.log('Url has custom text');
+    // Extract the custom text and URL
+    const textMatch = processedContent.match(/\[([^\]]+)\]/);
+    const urlMatch = processedContent.match(/\((https?:\/\/[^\s)]+)\)/);
+    
+    if (textMatch && urlMatch) {
+      const customText = textMatch[1];
+      const url = urlMatch[1];
+      
+      let urlElement = (
+        <a
+          key={`url-${lineIndex}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline hover:text-blue-800"
+        >
+          {customText}
+        </a>
+      );
+      elements.push(urlElement);
+    }
+  } else {
 
-    lastIndex = match.index + match[0].length;
+    console.log('-----------------------------------------------------------------------------')
+
+
+    for (let i = 0; i < processedContent.length; i++) {
+      const char = processedContent[i];
+      const nextChar = processedContent[i + 1];
+
+      // Handle bold markers
+      if (char === '*' && nextChar === '*') {
+        if (currentText) {
+          elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
+          currentText = '';
+        }
+        isBold = !isBold;
+        i++; // Skip next asterisk
+        continue;
+      }
+
+      // Handle italic markers
+      if (char === '*' && !isBold) {
+        if (currentText) {
+          elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
+          currentText = '';
+        }
+        isItalic = !isItalic;
+        continue;
+      }
+
+      // Handle URLs
+      if (char === 'h' && processedContent.slice(i, i + 7) === 'http://' ||
+        char === 'h' && processedContent.slice(i, i + 8) === 'https://') {
+        if (currentText) {
+          elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
+          currentText = '';
+        }
+
+        // Find the end of the URL (space or end of string)
+        let urlEnd = i;
+        while (urlEnd < processedContent.length && processedContent[urlEnd] !== ' ') {
+          urlEnd++;
+        }
+        const url = processedContent.slice(i, urlEnd);
+        //const display = parseUrl(url);
+
+        // let urlElement = (
+        //   <a
+        //     key={`url-${lineIndex}-${i}`}
+        //     href={url}
+        //     target="_blank"
+        //     rel="noopener noreferrer"
+        //     className="text-blue-600 underline hover:text-blue-800"
+        //   >
+        //     {display}
+        //   </a>
+        // );
+
+        // if (isBold) {
+        //   urlElement = <strong key={`bold-${lineIndex}-${i}`}>{urlElement}</strong>;
+        // }
+        // if (isItalic) {
+        //   urlElement = <em key={`italic-${lineIndex}-${i}`}>{urlElement}</em>;
+        // }
+
+        //elements.push(urlElement);
+        i = urlEnd - 1;
+        continue;
+      }
+
+      currentText += char;
+    }
   }
-
-  // Add remaining text
-  if (lastIndex < processedContent.length) {
-    elements.push(...highlightSearchTerm(
-      processedContent.slice(lastIndex),
-      searchTerm,
-      `text-${lineIndex}-${lastIndex}`
-    ));
+  // Add any remaining text
+  if (currentText) {
+    let textElement = highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-end`);
+    if (isBold) {
+      textElement = textElement.map((el, idx) =>
+        <strong key={`bold-${lineIndex}-end-${idx}`}>{el}</strong>
+      );
+    }
+    if (isItalic) {
+      textElement = textElement.map((el, idx) =>
+        <em key={`italic-${lineIndex}-end-${idx}`}>{el}</em>
+      );
+    }
+    elements.push(...textElement);
   }
 
   return elements;
@@ -233,11 +378,11 @@ const wrapInContainer = ({ content, type, lineIndex }) => {
  */
 export const reorderMetaTags = (content) => {
   if (!content) return content;
-  
+
   const lines = content.split('\n');
   const metaLines = [];
   const nonMetaLines = [];
-  
+
   // Separate meta tags from regular content
   lines.forEach(line => {
     const trimmedLine = line.trim();
@@ -247,7 +392,7 @@ export const reorderMetaTags = (content) => {
       nonMetaLines.push(line);
     }
   });
-  
+
   // Sort meta tags in a consistent order
   const metaOrder = [
     'meta::abbreviation',
@@ -260,18 +405,18 @@ export const reorderMetaTags = (content) => {
     'meta::end_date',
     'meta_detail::dismissed'
   ];
-  
+
   metaLines.sort((a, b) => {
     const aPrefix = metaOrder.find(prefix => a.trim().startsWith(prefix)) || a;
     const bPrefix = metaOrder.find(prefix => b.trim().startsWith(prefix)) || b;
     return metaOrder.indexOf(aPrefix) - metaOrder.indexOf(bPrefix);
   });
-  
+
   // Remove empty lines at the end of non-meta content
   while (nonMetaLines.length > 0 && !nonMetaLines[nonMetaLines.length - 1].trim()) {
     nonMetaLines.pop();
   }
-  
+
   // Combine content with meta tags at the bottom
   return [...nonMetaLines, '', ...metaLines].join('\n').trim();
 };

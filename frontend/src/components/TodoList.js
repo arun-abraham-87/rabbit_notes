@@ -292,7 +292,8 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       // Check if todo was added today or yesterday
       const isTodayOrYesterday = (() => {
         if (!showToday && !showYesterday) return true;
-        const todoDate = new Date(todo.created_datetime);
+        const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
+        const todoDate = new Date(todoDateMatch ? todoDateMatch[1] : todo.created_datetime);
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);

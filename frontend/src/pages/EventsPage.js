@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { formatDate } from '../utils/DateUtils';
-import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import EditEventModal from '../components/EditEventModal';
+import CalendarView from '../components/CalendarView';
 
 // Function to extract event details from note content
 const getEventDetails = (content) => {
@@ -97,6 +98,7 @@ const EventsPage = ({ notes, onUpdate }) => {
   const [editingEvent, setEditingEvent] = useState(null);
   const [deletingEvent, setDeletingEvent] = useState(null);
   const [showUpcoming, setShowUpcoming] = useState(false);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
   const [editForm, setEditForm] = useState({
     description: '',
     dateTime: '',
@@ -214,6 +216,20 @@ const EventsPage = ({ notes, onUpdate }) => {
     { total: 0, daily: 0, weekly: 0, monthly: 0, none: 0 }
   );
 
+  // Prepare events for calendar view
+  const calendarEvents = events.map(event => {
+    const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
+    return {
+      id: event.id,
+      description,
+      dateTime,
+      recurrence,
+      metaDate,
+      nextOccurrence,
+      lastOccurrence
+    };
+  });
+
   const handleEdit = (event) => {
     setEditingEvent(event);
   };
@@ -257,6 +273,30 @@ const EventsPage = ({ notes, onUpdate }) => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Events</h1>
         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                viewMode === 'list'
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+              title="List View"
+            >
+              <ListBulletIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                viewMode === 'calendar'
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+              title="Calendar View"
+            >
+              <CalendarIcon className="h-5 w-5" />
+            </button>
+          </div>
           <button
             onClick={() => setShowUpcoming(!showUpcoming)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 ${
@@ -315,203 +355,209 @@ const EventsPage = ({ notes, onUpdate }) => {
         </div>
       </div>
 
-      <div className="grid gap-4">
-        {showUpcoming ? (
-          <>
-            {groupedEvents.upcoming.length > 0 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-indigo-700 flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5" />
-                  Upcoming Events
-                </h2>
-                {groupedEvents.upcoming.map((event) => {
-                  const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
-                  const eventDate = new Date(dateTime);
-                  
-                  return (
-                    <div key={event.id} className="bg-white rounded-lg border p-4 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-lg font-medium text-gray-900">{description}</h3>
-                          <p className="text-sm text-gray-500">
-                            {formatDate(eventDate)}
-                          </p>
-                          {recurrence !== 'none' && (
-                            <div className="mt-1 space-y-1">
-                              {lastOccurrence && (
-                                <p className="text-xs text-gray-600">
-                                  Last occurrence: {formatDate(lastOccurrence)}
-                                </p>
-                              )}
-                              {nextOccurrence && (
-                                <p className="text-xs text-indigo-600">
-                                  Next occurrence: {formatDate(nextOccurrence)}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
+      {viewMode === 'calendar' ? (
+        <div className="bg-white rounded-lg border p-6 shadow-sm">
+          <CalendarView events={calendarEvents} />
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {showUpcoming ? (
+            <>
+              {groupedEvents.upcoming.length > 0 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-indigo-700 flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5" />
+                    Upcoming Events
+                  </h2>
+                  {groupedEvents.upcoming.map((event) => {
+                    const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
+                    const eventDate = new Date(dateTime);
+                    
+                    return (
+                      <div key={event.id} className="bg-white rounded-lg border p-4 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-lg font-medium text-gray-900">{description}</h3>
+                            <p className="text-sm text-gray-500">
+                              {formatDate(eventDate)}
+                            </p>
                             {recurrence !== 'none' && (
-                              <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
-                                {recurrence.charAt(0).toUpperCase() + recurrence.slice(1)}
-                              </span>
+                              <div className="mt-1 space-y-1">
+                                {lastOccurrence && (
+                                  <p className="text-xs text-gray-600">
+                                    Last occurrence: {formatDate(lastOccurrence)}
+                                  </p>
+                                )}
+                                {nextOccurrence && (
+                                  <p className="text-xs text-indigo-600">
+                                    Next occurrence: {formatDate(nextOccurrence)}
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleEdit(event)}
-                              className="p-1 text-gray-500 hover:text-indigo-600"
-                              title="Edit event"
-                            >
-                              <PencilIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(event.id)}
-                              className="p-1 text-gray-500 hover:text-red-600"
-                              title="Delete event"
-                            >
-                              <TrashIcon className="h-5 w-5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {groupedEvents.past.length > 0 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-gray-500 flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5" />
-                  Past Events
-                </h2>
-                {groupedEvents.past.map((event) => {
-                  const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
-                  const eventDate = new Date(dateTime);
-                  
-                  return (
-                    <div key={event.id} className="bg-white rounded-lg border p-4 shadow-sm opacity-75">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-lg font-medium text-gray-900">{description}</h3>
-                          <p className="text-sm text-gray-500">
-                            {formatDate(eventDate)}
-                          </p>
-                          {recurrence !== 'none' && (
-                            <div className="mt-1 space-y-1">
-                              {lastOccurrence && (
-                                <p className="text-xs text-gray-600">
-                                  Last occurrence: {formatDate(lastOccurrence)}
-                                </p>
-                              )}
-                              {nextOccurrence && (
-                                <p className="text-xs text-indigo-600">
-                                  Next occurrence: {formatDate(nextOccurrence)}
-                                </p>
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              {recurrence !== 'none' && (
+                                <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
+                                  {recurrence.charAt(0).toUpperCase() + recurrence.slice(1)}
+                                </span>
                               )}
                             </div>
-                          )}
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleEdit(event)}
+                                className="p-1 text-gray-500 hover:text-indigo-600"
+                                title="Edit event"
+                              >
+                                <PencilIcon className="h-5 w-5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(event.id)}
+                                className="p-1 text-gray-500 hover:text-red-600"
+                                title="Delete event"
+                              >
+                                <TrashIcon className="h-5 w-5" />
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {groupedEvents.past.length > 0 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-gray-500 flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5" />
+                    Past Events
+                  </h2>
+                  {groupedEvents.past.map((event) => {
+                    const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
+                    const eventDate = new Date(dateTime);
+                    
+                    return (
+                      <div key={event.id} className="bg-white rounded-lg border p-4 shadow-sm opacity-75">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-lg font-medium text-gray-900">{description}</h3>
+                            <p className="text-sm text-gray-500">
+                              {formatDate(eventDate)}
+                            </p>
                             {recurrence !== 'none' && (
-                              <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
-                                {recurrence.charAt(0).toUpperCase() + recurrence.slice(1)}
-                              </span>
+                              <div className="mt-1 space-y-1">
+                                {lastOccurrence && (
+                                  <p className="text-xs text-gray-600">
+                                    Last occurrence: {formatDate(lastOccurrence)}
+                                  </p>
+                                )}
+                                {nextOccurrence && (
+                                  <p className="text-xs text-indigo-600">
+                                    Next occurrence: {formatDate(nextOccurrence)}
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleEdit(event)}
-                              className="p-1 text-gray-500 hover:text-indigo-600"
-                              title="Edit event"
-                            >
-                              <PencilIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(event.id)}
-                              className="p-1 text-gray-500 hover:text-red-600"
-                              title="Delete event"
-                            >
-                              <TrashIcon className="h-5 w-5" />
-                            </button>
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              {recurrence !== 'none' && (
+                                <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
+                                  {recurrence.charAt(0).toUpperCase() + recurrence.slice(1)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleEdit(event)}
+                                className="p-1 text-gray-500 hover:text-indigo-600"
+                                title="Edit event"
+                              >
+                                <PencilIcon className="h-5 w-5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(event.id)}
+                                className="p-1 text-gray-500 hover:text-red-600"
+                                title="Delete event"
+                              >
+                                <TrashIcon className="h-5 w-5" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        ) : (
-          groupedEvents.all.map((event) => {
-            const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
-            const eventDate = new Date(dateTime);
-            
-            return (
-              <div key={event.id} className="bg-white rounded-lg border p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">{description}</h3>
-                    <p className="text-sm text-gray-500">
-                      {formatDate(eventDate)}
-                    </p>
-                    {recurrence !== 'none' && (
-                      <div className="mt-1 space-y-1">
-                        {lastOccurrence && (
-                          <p className="text-xs text-gray-600">
-                            Last occurrence: {formatDate(lastOccurrence)}
-                          </p>
-                        )}
-                        {nextOccurrence && (
-                          <p className="text-xs text-indigo-600">
-                            Next occurrence: {formatDate(nextOccurrence)}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            groupedEvents.all.map((event) => {
+              const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
+              const eventDate = new Date(dateTime);
+              
+              return (
+                <div key={event.id} className="bg-white rounded-lg border p-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">{description}</h3>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(eventDate)}
+                      </p>
                       {recurrence !== 'none' && (
-                        <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
-                          {recurrence.charAt(0).toUpperCase() + recurrence.slice(1)}
-                        </span>
+                        <div className="mt-1 space-y-1">
+                          {lastOccurrence && (
+                            <p className="text-xs text-gray-600">
+                              Last occurrence: {formatDate(lastOccurrence)}
+                            </p>
+                          )}
+                          {nextOccurrence && (
+                            <p className="text-xs text-indigo-600">
+                              Next occurrence: {formatDate(nextOccurrence)}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleEdit(event)}
-                        className="p-1 text-gray-500 hover:text-indigo-600"
-                        title="Edit event"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(event.id)}
-                        className="p-1 text-gray-500 hover:text-red-600"
-                        title="Delete event"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        {recurrence !== 'none' && (
+                          <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
+                            {recurrence.charAt(0).toUpperCase() + recurrence.slice(1)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEdit(event)}
+                          className="p-1 text-gray-500 hover:text-indigo-600"
+                          title="Edit event"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(event.id)}
+                          className="p-1 text-gray-500 hover:text-red-600"
+                          title="Delete event"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
-        )}
+              );
+            })
+          )}
 
-        {events.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No events found</p>
-          </div>
-        )}
-      </div>
+          {events.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No events found</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Edit Event Modal */}
       {editingEvent && (

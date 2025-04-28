@@ -11,6 +11,7 @@ import NoteEditor from './components/NoteEditor';
 import LeftPanel from './components/LeftPanel';
 import Journals from './pages/Journals';
 import Manage from './pages/Manage';
+import EventsPage from './pages/EventsPage';
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from './utils/TextUtils';
 
@@ -295,6 +296,7 @@ const App = () => {
           )}
           {activePage === 'journals' && <Journals />}
           {activePage === 'manage-notes' && <Manage />}
+          {activePage === 'events' && <EventsPage notes={allNotes} />}
         </div>
       </div>
       <ToastContainer

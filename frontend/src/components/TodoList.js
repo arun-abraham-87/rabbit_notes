@@ -679,83 +679,87 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                     </button>
                   </div>
 
-                  {/* Sort Controls */}
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-medium text-gray-700">Sort by:</span>
-                    <div className="flex gap-2">
+                  {/* Sort Controls and Filters Row */}
+                  <div className="flex items-center justify-between gap-4">
+                    {/* Filters Group */}
+                    <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">Filters:</span>
                       <button
-                        onClick={() => setSortBy('priority')}
+                        onClick={() => handleDateFilterClick('today')}
                         className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                          sortBy === 'priority'
+                          showToday
                             ? 'bg-indigo-100 text-indigo-700 font-medium'
                             : 'hover:bg-gray-100 text-gray-600'
                         }`}
                       >
-                        Priority
+                        Today's Todos
                       </button>
                       <button
-                        onClick={() => setSortBy('date')}
+                        onClick={() => handleDateFilterClick('yesterday')}
                         className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                          sortBy === 'date'
+                          showYesterday
                             ? 'bg-indigo-100 text-indigo-700 font-medium'
                             : 'hover:bg-gray-100 text-gray-600'
                         }`}
                       >
-                        Newest
+                        Yesterday's Todos
                       </button>
                       <button
-                        onClick={() => setSortBy('age')}
+                        onClick={() => handleDateFilterClick('lastXDays')}
                         className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                          sortBy === 'age'
+                          showLastXDays
                             ? 'bg-indigo-100 text-indigo-700 font-medium'
                             : 'hover:bg-gray-100 text-gray-600'
                         }`}
                       >
-                        Oldest
+                        Last X Days
                       </button>
+                      {(showToday || showYesterday || showLastXDays) && (
+                        <button
+                          onClick={clearDateFilters}
+                          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                        >
+                          Clear Date Filters
+                        </button>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Today Filter */}
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => handleDateFilterClick('today')}
-                      className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                        showToday
-                          ? 'bg-indigo-100 text-indigo-700 font-medium'
-                          : 'hover:bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      Today's Todos
-                    </button>
-                    <button
-                      onClick={() => handleDateFilterClick('yesterday')}
-                      className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                        showYesterday
-                          ? 'bg-indigo-100 text-indigo-700 font-medium'
-                          : 'hover:bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      Yesterday's Todos
-                    </button>
-                    <button
-                      onClick={() => handleDateFilterClick('lastXDays')}
-                      className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                        showLastXDays
-                          ? 'bg-indigo-100 text-indigo-700 font-medium'
-                          : 'hover:bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      Last X Days
-                    </button>
-                    {(showToday || showYesterday || showLastXDays) && (
-                      <button
-                        onClick={clearDateFilters}
-                        className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
-                      >
-                        Clear Date Filters
-                      </button>
-                    )}
+                    {/* Sort Group */}
+                    <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">Sort by:</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setSortBy('priority')}
+                          className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
+                            sortBy === 'priority'
+                              ? 'bg-indigo-100 text-indigo-700 font-medium'
+                              : 'hover:bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          Priority
+                        </button>
+                        <button
+                          onClick={() => setSortBy('date')}
+                          className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
+                            sortBy === 'date'
+                              ? 'bg-indigo-100 text-indigo-700 font-medium'
+                              : 'hover:bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          Newest
+                        </button>
+                        <button
+                          onClick={() => setSortBy('age')}
+                          className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
+                            sortBy === 'age'
+                              ? 'bg-indigo-100 text-indigo-700 font-medium'
+                              : 'hover:bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          Oldest
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Last X Days Popup */}

@@ -205,17 +205,19 @@ const NotesMainContainer = ({
             return true;
         });
 
-        // Update totals based on filtered notes
-        const newTotals = {
-            total: filtered.length,
-            events: filtered.filter(note => note.content.includes('meta::event::')).length,
-            meetings: filtered.filter(note => note.content.includes('meta::meeting::')).length,
-            todos: filtered.filter(note => note.content.includes('meta::todo::')).length
-        };
-        setTotals(newTotals);
-
         return filtered;
     }, [notes, currentDate, searchQuery, excludeEvents, excludeMeetings]);
+
+    // Update totals based on filtered notes
+    useEffect(() => {
+        const newTotals = {
+            total: filteredNotes.length,
+            events: filteredNotes.filter(note => note.content.includes('meta::event::')).length,
+            meetings: filteredNotes.filter(note => note.content.includes('meta::meeting::')).length,
+            todos: filteredNotes.filter(note => note.content.includes('meta::todo::')).length
+        };
+        setTotals(newTotals);
+    }, [filteredNotes, setTotals]);
 
     // Handle date selection
     const handleDateChange = (date) => {

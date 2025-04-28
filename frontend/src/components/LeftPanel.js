@@ -85,11 +85,11 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
   const now = new Date();
   const meetingDate = new Date(meetingTime);
   
-  console.log('Calculating next occurrence:');
-  console.log('Meeting time:', meetingTime);
-  console.log('Meeting date:', meetingDate.toISOString());
-  console.log('Now:', now.toISOString());
-  console.log('Recurrence type:', recurrenceType);
+  //console.log('Calculating next occurrence:');
+  //console.log('Meeting time:', meetingTime);
+  //console.log('Meeting date:', meetingDate.toISOString());
+  //console.log('Now:', now.toISOString());
+  //console.log('Recurrence type:', recurrenceType);
   
   // Extract all acknowledgment dates from meta tags and normalize to YYYY-MM-DD format
   const ackDates = content
@@ -98,11 +98,11 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
     .map(line => {
       const dateStr = line.split('::')[2].trim();
       const datePart = dateStr.split('T')[0];
-      console.log('Found acknowledgment date:', datePart);
+      //console.log('Found acknowledgment date:', datePart);
       return datePart;
     });
 
-  console.log('All acknowledgment dates:', ackDates);
+  //console.log('All acknowledgment dates:', ackDates);
 
   // For daily recurrence, we need to handle the date comparison differently
   if (recurrenceType === 'daily') {
@@ -111,13 +111,13 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
     
     // Get today's date string
     const todayStr = now.toDateString().split('T')[0];
-    console.log('Today Str', todayStr);
+    //console.log('Today Str', todayStr);
     const meetingDateStr = meetingDate.toDateString().split('T')[0];
-    console.log('Meeting date:', meetingDateStr);
+    //console.log('Meeting date:', meetingDateStr);
     
     // If today's meeting hasn't been acknowledged, return it
     if (meetingDateStr === todayStr && !ackDates.includes(todayStr)) {
-      console.log('Returning today\'s meeting');
+      //console.log('Returning today\'s meeting');
       return meetingDate;
     }
     
@@ -131,9 +131,9 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
     // Find the next unacknowledged date
     while (true) {
       const currentDateStr = currentDate.toISOString().split('T')[0];
-      console.log('Checking next date:', currentDateStr);
+      //console.log('Checking next date:', currentDateStr);
       if (!ackDates.includes(currentDateStr)) {
-        console.log('Found next unacknowledged date:', currentDateStr);
+        //console.log('Found next unacknowledged date:', currentDateStr);
         return currentDate;
       }
       currentDate.setDate(currentDate.getDate() + 1);
@@ -347,15 +347,15 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   }, [notes]);
 
   const meetings = useMemo(() => {
-    console.log('Calculating meetings...');
+    //console.log('Calculating meetings...');
     const result = notes.flatMap(note => {
       if (note.content.split('\n').some(line => line.trim().startsWith('meta::meeting'))) {
-        console.log('Processing meeting note:', note.id);
+        //console.log('Processing meeting note:', note.id);
         const lines = note.content.split('\n');
         const description = lines[0].trim();
         const time = lines[1].trim();
         
-        console.log('Meeting time from note:', time);
+        //console.log('Meeting time from note:', time);
         
         const durationMatch = note.content.match(/meta::meeting_duration::(\d+)/);
         const duration = durationMatch ? durationMatch[1] : null;
@@ -372,20 +372,20 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           }
         }
 
-        console.log('Recurrence type:', recurrenceType);
+        //console.log('Recurrence type:', recurrenceType);
         
         const meetingTime = new Date(time).getTime();
         const now = Date.now();
         let nextTime = time;
         
         if (meetingTime < now && recurrenceType) {
-          console.log('Calculating next occurrence for past meeting');
+          //console.log('Calculating next occurrence for past meeting');
           const nextOccurrence = calculateNextOccurrence(time, recurrenceType, selectedDays, note.content);
           if (nextOccurrence) {
             nextTime = nextOccurrence.toISOString();
-            console.log('Next occurrence:', nextTime);
+            //console.log('Next occurrence:', nextTime);
           } else {
-            console.log('No next occurrence found');
+            //console.log('No next occurrence found');
             return [];
           }
         }
@@ -403,7 +403,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       return [];
     });
     
-    console.log('Sorted meetings:', result.map(m => ({ time: m.time, description: m.description })));
+    //console.log('Sorted meetings:', result.map(m => ({ time: m.time, description: m.description })));
     return result.sort((a, b) => new Date(a.time) - new Date(b.time));
   }, [notes]);
 

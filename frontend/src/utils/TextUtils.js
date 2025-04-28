@@ -67,7 +67,7 @@ export const parseNoteContent = ({ content, searchTerm }) => {
  * @returns {string} - The formatted display text for the URL
  */
 const parseUrl = (url) => {
-  console.log('url', url);
+  //('url', url);
   return url;
 
 };
@@ -103,11 +103,11 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
   let isBold = false;
   let isItalic = false;
 
-  console.log('-----------------------------------------------------------------------------')
-  console.log('processedContent', processedContent);
+  //console.log('-----------------------------------------------------------------------------')
+  //console.log('processedContent', processedContent);
   if (processedContent.trim().startsWith("http:") || processedContent.trim().startsWith("https:")) {
-    console.log('url', processedContent);
-    console.log('url is a full url')
+    //console.log('url', processedContent);
+    //console.log('url is a full url')
     let urlElement = (
       <a
         key={`url-${lineIndex}`}
@@ -121,7 +121,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
     );
     elements.push(urlElement);
   } else if ((processedContent.includes("http:") || processedContent.includes("https:")) && !processedContent.startsWith("[") && !processedContent.trim().startsWith("http")) {
-    console.log('URL embedded in text');
+    //console.log('URL embedded in text');
     // Find the URL portion
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const url = processedContent.match(urlRegex)[0];
@@ -185,7 +185,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
       }
     }
   } else if ((processedContent.includes("http:") || processedContent.includes("https:")) && processedContent.startsWith("[")) {
-    console.log('Url has custom text');
+    //console.log('Url has custom text');
     // Extract the custom text and URL
     const textMatch = processedContent.match(/\[([^\]]+)\]/);
     const urlMatch = processedContent.match(/\((https?:\/\/[^\s)]+)\)/);
@@ -209,7 +209,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
     }
   } else {
 
-    console.log('-----------------------------------------------------------------------------')
+    //console.log('-----------------------------------------------------------------------------')
 
 
     for (let i = 0; i < processedContent.length; i++) {

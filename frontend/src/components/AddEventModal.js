@@ -20,8 +20,7 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
   const handleSubmit = () => {
     if (!description.trim() || !eventDate) return;
     
-    let content = `meta::event::${new Date().toISOString()}\n`;
-    content += `event_description:${description.trim()}\n`;
+    let content = `event_description:${description.trim()}\n`;
     content += `event_date:${formatDateWithNoonTime(eventDate)}`;
     
     if (showEndDate && endDate) {
@@ -36,6 +35,9 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
         content += `\nevent_recurring_end:${recurrenceEndDate}`;
       }
     }
+    
+    // Add meta information as the last lines
+    content += `\nmeta::event::${new Date().toISOString()}`;
     
     onAdd(content);
     

@@ -2,17 +2,29 @@ import React, { useState } from 'react';
 import { formatDate } from '../utils/DateUtils';
 import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+import EditEventModal from '../components/EditEventModal';
 
 // Function to extract event details from note content
 const getEventDetails = (content) => {
   const lines = content.split('\n');
-  const description = lines[0];
-  const dateTime = lines[1];
-  const recurrenceMatch = content.match(/meta::event_recurrence::([^:]+)(?::(.+))?/);
-  const recurrence = recurrenceMatch ? recurrenceMatch[1] : 'none';
-  const days = recurrenceMatch && recurrenceMatch[2] ? recurrenceMatch[2].split(',') : [];
+  
+  // Find the description
+  const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+  const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+  
+  // Find the event date
+  const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+  const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
+  
+  // Find recurring info
+  const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
+  const recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
+  
+  // Find meta information
+  const metaLine = lines.find(line => line.startsWith('meta::event::'));
+  const metaDate = metaLine ? metaLine.replace('meta::event::', '').trim() : '';
 
-  return { description, dateTime, recurrence, days };
+  return { description, dateTime, recurrence, metaDate };
 };
 
 const EventsPage = ({ notes, onUpdate }) => {
@@ -138,14 +150,7 @@ const EventsPage = ({ notes, onUpdate }) => {
   );
 
   const handleEdit = (event) => {
-    const details = getEventDetails(event.content);
     setEditingEvent(event);
-    setEditForm({
-      description: details.description,
-      dateTime: details.dateTime,
-      recurrence: details.recurrence,
-      days: details.days
-    });
   };
 
   const handleDelete = async (eventId) => {
@@ -168,21 +173,15 @@ const EventsPage = ({ notes, onUpdate }) => {
     }
   };
 
-  const handleSave = async () => {
-    if (!editingEvent) return;
-
-    const content = [
-      editForm.description,
-      editForm.dateTime,
-      `meta::event::`,
-      `meta::event_recurrence::${editForm.recurrence}${editForm.days.length ? '::' + editForm.days.join(',') : ''}`
-    ].join('\n');
-
+  const handleSave = async (updatedNote) => {
     try {
-      await updateNoteById(editingEvent.id, content);
+      await updateNoteById(updatedNote.id, updatedNote.content);
+      // Update the notes list by updating the edited event
+      const updatedNotes = notes.map(note => 
+        note.id === updatedNote.id ? { ...note, content: updatedNote.content } : note
+      );
+      onUpdate(updatedNotes);
       setEditingEvent(null);
-      // Refresh the page or update the notes list
-      window.location.reload();
     } catch (error) {
       console.error('Error updating event:', error);
     }
@@ -251,90 +250,6 @@ const EventsPage = ({ notes, onUpdate }) => {
         </div>
       </div>
 
-      {editingEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Edit Event</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <input
-                  type="text"
-                  value={editForm.description}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Date & Time</label>
-                <input
-                  type="datetime-local"
-                  value={editForm.dateTime}
-                  onChange={(e) => setEditForm({ ...editForm, dateTime: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Recurrence</label>
-                <select
-                  value={editForm.recurrence}
-                  onChange={(e) => setEditForm({ ...editForm, recurrence: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                >
-                  <option value="none">None</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setEditingEvent(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Popup */}
-      {deletingEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <div className="flex items-center gap-3 mb-4">
-              <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />
-              <h2 className="text-xl font-semibold text-gray-900">Delete Event</h2>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete this event? This action cannot be undone.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setDeletingEvent(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="grid gap-4">
         {showUpcoming ? (
           <>
@@ -345,7 +260,7 @@ const EventsPage = ({ notes, onUpdate }) => {
                   Upcoming Events
                 </h2>
                 {groupedEvents.upcoming.map((event) => {
-                  const { description, dateTime, recurrence, days } = getEventDetails(event.content);
+                  const { description, dateTime, recurrence, metaDate } = getEventDetails(event.content);
                   const eventDate = new Date(dateTime);
                   
                   return (
@@ -362,11 +277,6 @@ const EventsPage = ({ notes, onUpdate }) => {
                             {recurrence !== 'none' && (
                               <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
                                 {recurrence.charAt(0).toUpperCase() + recurrence.slice(1)}
-                              </span>
-                            )}
-                            {days.length > 0 && (
-                              <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
-                                {days.join(', ')}
                               </span>
                             )}
                           </div>
@@ -400,7 +310,7 @@ const EventsPage = ({ notes, onUpdate }) => {
                   Past Events
                 </h2>
                 {groupedEvents.past.map((event) => {
-                  const { description, dateTime, recurrence, days } = getEventDetails(event.content);
+                  const { description, dateTime, recurrence, metaDate } = getEventDetails(event.content);
                   const eventDate = new Date(dateTime);
                   
                   return (
@@ -417,11 +327,6 @@ const EventsPage = ({ notes, onUpdate }) => {
                             {recurrence !== 'none' && (
                               <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
                                 {recurrence.charAt(0).toUpperCase() + recurrence.slice(1)}
-                              </span>
-                            )}
-                            {days.length > 0 && (
-                              <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
-                                {days.join(', ')}
                               </span>
                             )}
                           </div>
@@ -451,7 +356,7 @@ const EventsPage = ({ notes, onUpdate }) => {
           </>
         ) : (
           groupedEvents.all.map((event) => {
-            const { description, dateTime, recurrence, days } = getEventDetails(event.content);
+            const { description, dateTime, recurrence, metaDate } = getEventDetails(event.content);
             const eventDate = new Date(dateTime);
             
             return (
@@ -468,11 +373,6 @@ const EventsPage = ({ notes, onUpdate }) => {
                       {recurrence !== 'none' && (
                         <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
                           {recurrence.charAt(0).toUpperCase() + recurrence.slice(1)}
-                        </span>
-                      )}
-                      {days.length > 0 && (
-                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
-                          {days.join(', ')}
                         </span>
                       )}
                     </div>
@@ -505,6 +405,44 @@ const EventsPage = ({ notes, onUpdate }) => {
           </div>
         )}
       </div>
+
+      {/* Edit Event Modal */}
+      {editingEvent && (
+        <EditEventModal
+          note={editingEvent}
+          onSave={handleSave}
+          onCancel={() => setEditingEvent(null)}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <div className="flex items-center gap-3 mb-4">
+              <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />
+              <h2 className="text-xl font-semibold text-gray-900">Delete Event</h2>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this event? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setDeletingEvent(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

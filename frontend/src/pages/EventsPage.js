@@ -98,7 +98,7 @@ const EventsPage = ({ notes, onUpdate }) => {
   const [editingEvent, setEditingEvent] = useState(null);
   const [deletingEvent, setDeletingEvent] = useState(null);
   const [showUpcoming, setShowUpcoming] = useState(false);
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
+  const [viewMode, setViewMode] = useState('calendar'); // Changed from 'list' to 'calendar'
   const [editForm, setEditForm] = useState({
     description: '',
     dateTime: '',

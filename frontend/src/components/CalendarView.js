@@ -4,6 +4,36 @@ import { formatDate } from '../utils/DateUtils';
 const CalendarView = ({ events }) => {
   const todayRef = useRef(null);
 
+  // Function to calculate age in years, months, and days
+  const calculateAge = (date) => {
+    const today = new Date();
+    const birthDate = new Date(date);
+    
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
+
+    // Adjust for negative days
+    if (days < 0) {
+      months--;
+      const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, birthDate.getDate());
+      days = Math.floor((today - lastMonth) / (1000 * 60 * 60 * 24));
+    }
+
+    // Adjust for negative months
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    const parts = [];
+    if (years > 0) parts.push(`${years} year${years !== 1 ? 's' : ''}`);
+    if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+    if (days > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+
+    return parts.join(', ');
+  };
+
   // Function to get all occurrences of an event for the current year
   const getEventOccurrences = (event) => {
     const { dateTime, recurrence } = event;
@@ -50,7 +80,9 @@ const CalendarView = ({ events }) => {
     return occurrences.map(date => ({
       date,
       event: event,
-      isToday: date.toDateString() === new Date().toDateString()
+      isToday: date.toDateString() === new Date().toDateString(),
+      isPast: date < new Date() && !(date.toDateString() === new Date().toDateString()),
+      age: calculateAge(event.dateTime)
     }));
   });
 
@@ -86,30 +118,55 @@ const CalendarView = ({ events }) => {
               <div
                 key={`${occurrence.event.id}-${occurrence.date.toISOString()}`}
                 ref={occurrence.isToday ? todayRef : null}
-                className={`relative pl-8 pb-4 ${
-                  occurrence.isToday ? 'bg-indigo-50 rounded-lg p-4' : ''
+                className={`relative pl-8 ${
+                  occurrence.isPast ? 'opacity-60' : ''
                 }`}
               >
                 {/* Timeline line */}
-                <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-gray-200" />
+                <div className={`absolute left-3 top-0 bottom-0 w-0.5 ${
+                  occurrence.isPast ? 'bg-gray-300' : 'bg-gray-200'
+                }`} />
                 
                 {/* Timeline dot */}
-                <div className={`absolute left-2.5 top-2 w-3 h-3 rounded-full ${
-                  occurrence.isToday ? 'bg-indigo-600' : 'bg-gray-400'
+                <div className={`absolute left-2.5 top-4 w-3 h-3 rounded-full ${
+                  occurrence.isPast ? 'bg-gray-400' : 'bg-indigo-400'
                 }`} />
 
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-900">
-                    {occurrence.event.description}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {formatDate(occurrence.date)}
-                  </p>
-                  {occurrence.event.recurrence !== 'none' && (
-                    <span className="inline-block px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
-                      {occurrence.event.recurrence.charAt(0).toUpperCase() + occurrence.event.recurrence.slice(1)}
-                    </span>
-                  )}
+                <div className={`ml-4 p-4 rounded-lg border ${
+                  occurrence.isPast 
+                    ? 'bg-gray-50 border-gray-200' 
+                    : occurrence.isToday 
+                      ? 'bg-indigo-50 border-indigo-200' 
+                      : 'bg-white border-gray-200'
+                } shadow-sm`}>
+                  <div className="space-y-2">
+                    <p className={`text-sm font-medium ${
+                      occurrence.isPast ? 'text-gray-500' : 'text-gray-900'
+                    }`}>
+                      {occurrence.event.description}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-xs ${
+                        occurrence.isPast ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        {formatDate(occurrence.date)}
+                      </p>
+                      {occurrence.event.recurrence !== 'none' && (
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
+                          occurrence.isPast 
+                            ? 'bg-gray-100 text-gray-500' 
+                            : 'bg-indigo-100 text-indigo-700'
+                        }`}>
+                          {occurrence.event.recurrence.charAt(0).toUpperCase() + occurrence.event.recurrence.slice(1)}
+                        </span>
+                      )}
+                      <span className={`text-xs font-medium ${
+                        occurrence.isPast ? 'text-gray-400' : 'text-indigo-600'
+                      }`}>
+                        {occurrence.age}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

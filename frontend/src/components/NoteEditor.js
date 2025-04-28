@@ -35,9 +35,9 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
   const [showTextSelection, setShowTextSelection] = useState(false);
 
   const replaceLastWord = (tag) => {
-    console.log(lines)
-    console.log(focusedLineIndex)
-    console.log(lines[focusedLineIndex])
+    //console.log(lines)
+    //console.log(focusedLineIndex)
+    //console.log(lines[focusedLineIndex])
     const lastSpaceIndex = lines[focusedLineIndex].text.lastIndexOf(" ");
     const updatedText =
       (lastSpaceIndex === -1 ? "" : lines[focusedLineIndex].text.slice(0, lastSpaceIndex + 1)) +
@@ -78,7 +78,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
       setShowPopup(false);
       return;
     }
-    console.log(objList);
+    //console.log(objList);
     const filterText = match[1].toLowerCase();
     const filtered = objList.filter((tag) =>
       tag.text.toLowerCase().startsWith(filterText)
@@ -219,8 +219,8 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
   };
 
   const handleTextChange = (index, value) => {
-    console.log("Text changed:", value);
-    console.log("objList:", objList);
+    //console.log("Text changed:", value);
+    //console.log("objList:", objList);
     
     const updatedLines = [...lines];
     updatedLines[index].text = value;
@@ -240,14 +240,14 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     const match = value.trim().match(/(\S+)$/);
     if (match) {
       const filterText = match[1].toLowerCase();
-      console.log("Filter text:", filterText);
+      //console.log("Filter text:", filterText);
 
       clearTimeout(throttleRef.current);
       throttleRef.current = setTimeout(() => {
         const filtered = objList.filter((tag) =>
           tag.text.toLowerCase().startsWith(filterText)
         );
-        console.log("Filtered tags:", filtered);
+        //console.log("Filtered tags:", filtered);
 
         if (filtered.length > 0) {
           const textarea = textareasRef.current[index];
@@ -257,7 +257,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
               x: rect.left + window.scrollX + (textarea.selectionStart * 8), // Approximate character width
               y: rect.bottom + window.scrollY
             };
-            console.log("Setting popup position:", coords);
+            //console.log("Setting popup position:", coords);
             setCursorPosition(coords);
             setFilteredTags(filtered.map(tag => tag.text));
             setShowPopup(true);
@@ -627,7 +627,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     const inputedText = e.target.value;
     //    updatedNotes[index] = inputedText
     //  setNotes(updatedNotes);
-    console.log(`INputed text set as searhcquwery: ${inputedText}`)
+    //console.log(`INputed text set as searhcquwery: ${inputedText}`)
     //searchQuery(!inputedText ? "" : inputedText);
 
     //Needed to fix issue of popup showing after deleting all text and popup showing up based on last deleted char
@@ -660,8 +660,8 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
 
 
             setFilteredTags(filtered.map(tag => tag.text));
-            //console.log(`objlit: ${objList}`)
-            //console.log(`FilteredTags: ${filteredTags}`)
+            ////console.log(`objlit: ${objList}`)
+            ////console.log(`FilteredTags: ${filteredTags}`)
           }
           if (filtered.length > 0) {
             const textarea = textareasRef.current[focusedLineIndex];

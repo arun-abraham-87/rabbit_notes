@@ -126,6 +126,87 @@ const getUnacknowledgedPastMeetings = (notes) => {
   });
 };
 
+const checkForOverdueTodos = (notes) => {
+  if (!notes) return 0;
+  
+  const now = new Date();
+  return notes.filter(note => {
+    // Check if it's a todo
+    if (!note.content.includes('meta::todo::')) return false;
+    
+    // Check for deadline
+    const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
+    if (endDateMatch) {
+      const endDate = new Date(endDateMatch[1]);
+      if (endDate < now) return true; // Deadline has passed
+    }
+    
+    // Check for age (older than 2 days)
+    const todoDateMatch = note.content.match(/meta::todo::([^\n]+)/);
+    if (todoDateMatch) {
+      const todoDate = new Date(todoDateMatch[1]);
+      const daysOld = (now - todoDate) / (1000 * 60 * 60 * 24);
+      return daysOld > 2;
+    }
+    
+    return false;
+  }).length;
+};
+
+const checkForHighPriorityOverdueTodos = (notes) => {
+  if (!notes) return 0;
+  
+  const now = new Date();
+  return notes.filter(note => {
+    // Check if it's a high priority todo
+    if (!note.content.includes('meta::high')) return false;
+    
+    // Check for age (older than 2 days)
+    const todoDateMatch = note.content.match(/meta::todo::([^\n]+)/);
+    if (todoDateMatch) {
+      const todoDate = new Date(todoDateMatch[1]);
+      const daysOld = (now - todoDate) / (1000 * 60 * 60 * 24);
+      return daysOld > 2;
+    }
+    
+    return false;
+  }).length;
+};
+
+const checkForPassedDeadlineTodos = (notes) => {
+  if (!notes) return 0;
+  
+  const now = new Date();
+  return notes.filter(note => {
+    if (!note.content.includes('meta::todo::')) return false;
+    
+    const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
+    if (endDateMatch) {
+      const endDate = new Date(endDateMatch[1]);
+      return endDate < now;
+    }
+    return false;
+  }).length;
+};
+
+const checkForOldTodos = (notes) => {
+  if (!notes) return 0;
+  
+  const now = new Date();
+  return notes.filter(note => {
+    if (!note.content.includes('meta::todo::')) return false;
+    if (note.content.includes('meta::high')) return false; // Exclude high priority todos
+    
+    const todoDateMatch = note.content.match(/meta::todo::([^\n]+)/);
+    if (todoDateMatch) {
+      const todoDate = new Date(todoDateMatch[1]);
+      const daysOld = (now - todoDate) / (1000 * 60 * 60 * 24);
+      return daysOld > 2;
+    }
+    return false;
+  }).length;
+};
+
 const NotesMainContainer = ({ 
     objList = [], 
     notes = [],
@@ -151,6 +232,10 @@ const NotesMainContainer = ({
     const [currentDate, setCurrentDate] = useState(null);
     const [excludeEvents, setExcludeEvents] = useState(settings?.excludeEventsByDefault || false);
     const [excludeMeetings, setExcludeMeetings] = useState(settings?.excludeMeetingsByDefault || false);
+    const [overdueTodosCount, setOverdueTodosCount] = useState(0);
+    const [highPriorityOverdueCount, setHighPriorityOverdueCount] = useState(0);
+    const [passedDeadlineCount, setPassedDeadlineCount] = useState(0);
+    const [oldTodosCount, setOldTodosCount] = useState(0);
 
     // Extract meetings from notes with null check
     const meetings = useMemo(() => {
@@ -268,6 +353,26 @@ const NotesMainContainer = ({
         };
     }, [allNotes]); // Keep dependency on allNotes instead of filtered notes
 
+    // Update overdue todos count when notes change
+    useEffect(() => {
+        setOverdueTodosCount(checkForOverdueTodos(allNotes));
+    }, [allNotes]);
+
+    // Update high priority overdue todos count when notes change
+    useEffect(() => {
+        setHighPriorityOverdueCount(checkForHighPriorityOverdueTodos(allNotes));
+    }, [allNotes]);
+
+    // Update passed deadline todos count when notes change
+    useEffect(() => {
+        setPassedDeadlineCount(checkForPassedDeadlineTodos(allNotes));
+    }, [allNotes]);
+
+    // Update old todos count when notes change
+    useEffect(() => {
+        setOldTodosCount(checkForOldTodos(allNotes));
+    }, [allNotes]);
+
     const handleTagClick = (tag) => {
         setSearchQuery(tag);
     };
@@ -324,65 +429,120 @@ const NotesMainContainer = ({
     };
 
     return (
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
-            <UnacknowledgedMeetingsBanner 
-                meetings={unacknowledgedMeetings} 
-                onDismiss={handleDismissUnacknowledgedMeeting} 
-            />
-            {ongoingMeeting && (
-                <OngoingMeetingBanner
-                    meeting={ongoingMeeting}
-                    onDismiss={handleDismissMeeting}
-                />
+        <div className="flex flex-col h-full">
+            {/* High Priority Overdue Todos Alert */}
+            {highPriorityOverdueCount > 0 && (
+                <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg mb-4">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-rose-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <h3 className="text-sm font-medium text-rose-800">
+                                Urgent: {highPriorityOverdueCount} high priority {highPriorityOverdueCount === 1 ? 'todo' : 'todos'} older than 2 days
+                            </h3>
+                        </div>
+                    </div>
+                </div>
             )}
-            <NextMeetingBanner meetings={meetings} notes={allNotes} />
-            <div className="mt-4">
-                <DateSelectorBar
-                    setNoteDate={handleDateChange}
-                    defaultCollapsed={true}
+
+            {/* Passed Deadline Todos Alert */}
+            {passedDeadlineCount > 0 && (
+                <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg mb-4">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-rose-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <h3 className="text-sm font-medium text-rose-800">
+                                Deadline passed: {passedDeadlineCount} {passedDeadlineCount === 1 ? 'todo' : 'todos'} with passed deadlines
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Old Todos Alert */}
+            {oldTodosCount > 0 && (
+                <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg mb-4">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-rose-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <h3 className="text-sm font-medium text-rose-800">
+                                Attention needed: {oldTodosCount} {oldTodosCount === 1 ? 'todo' : 'todos'} older than 2 days
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
+                <UnacknowledgedMeetingsBanner 
+                    meetings={unacknowledgedMeetings} 
+                    onDismiss={handleDismissUnacknowledgedMeeting} 
                 />
-                <NoteEditor
-                    objList={objList}
-                    note={{ id: '', content: '' }}
-                    text=""
-                    addNote={addNote}
-                    onSave={(note) => {
-                        addNote(note.content);
-                    }}
-                    onCancel={() => {
-                        console.log("NoteEditor canceled");
-                    }}
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    isAddMode={true}
-                    settings={settings}
-                    onExcludeEventsChange={setExcludeEvents}
-                    onExcludeMeetingsChange={setExcludeMeetings}
-                />
-                <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
-                {checked ? (
-                    <NotesListByDate
-                        notes={filteredNotes}
-                        searchQuery={searchQuery}
-                        onWordClick={handleTagClick}
-                        settings={settings}
-                    />
-                ) : (
-                    <NotesList
-                        objList={objList}
-                        notes={filteredNotes}
-                        allNotes={allNotes}
-                        addNotes={addNote}
-                        updateNoteCallback={updateNoteCallback}
-                        updateTotals={setTotals}
-                        objects={objects}
-                        addObjects={addTag}
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                        onWordClick={handleTagClick}
-                        settings={settings}
+                {ongoingMeeting && (
+                    <OngoingMeetingBanner
+                        meeting={ongoingMeeting}
+                        onDismiss={handleDismissMeeting}
                     />
                 )}
+                <NextMeetingBanner meetings={meetings} notes={allNotes} />
+                <div className="mt-4">
+                    <DateSelectorBar
+                        setNoteDate={handleDateChange}
+                        defaultCollapsed={true}
+                    />
+                    <NoteEditor
+                        objList={objList}
+                        note={{ id: '', content: '' }}
+                        text=""
+                        addNote={addNote}
+                        onSave={(note) => {
+                            addNote(note.content);
+                        }}
+                        onCancel={() => {
+                            console.log("NoteEditor canceled");
+                        }}
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                        isAddMode={true}
+                        settings={settings}
+                        onExcludeEventsChange={setExcludeEvents}
+                        onExcludeMeetingsChange={setExcludeMeetings}
+                    />
+                    <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
+                    {checked ? (
+                        <NotesListByDate
+                            notes={filteredNotes}
+                            searchQuery={searchQuery}
+                            onWordClick={handleTagClick}
+                            settings={settings}
+                        />
+                    ) : (
+                        <NotesList
+                            objList={objList}
+                            notes={filteredNotes}
+                            allNotes={allNotes}
+                            addNotes={addNote}
+                            updateNoteCallback={updateNoteCallback}
+                            updateTotals={setTotals}
+                            objects={objects}
+                            addObjects={addTag}
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            onWordClick={handleTagClick}
+                            settings={settings}
+                        />
+                    )}
+                </div>
             </div>
         </div>
     );

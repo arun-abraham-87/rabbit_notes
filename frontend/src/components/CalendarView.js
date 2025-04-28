@@ -139,18 +139,21 @@ const CalendarView = ({ events }) => {
                       ? 'bg-indigo-50 border-indigo-200' 
                       : 'bg-white border-gray-200'
                 } shadow-sm`}>
-                  <div className="space-y-2">
-                    <p className={`text-sm font-medium ${
-                      occurrence.isPast ? 'text-gray-500' : 'text-gray-900'
-                    }`}>
-                      {occurrence.event.description}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <p className={`text-xs ${
-                        occurrence.isPast ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        {formatDate(occurrence.date)}
-                      </p>
+                  <div className="space-y-3">
+                    {/* Event description and date row */}
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <p className={`text-base font-medium ${
+                          occurrence.isPast ? 'text-gray-500' : 'text-gray-900'
+                        }`}>
+                          {occurrence.event.description}
+                        </p>
+                        <p className={`text-sm ${
+                          occurrence.isPast ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                          {formatDate(occurrence.date)}
+                        </p>
+                      </div>
                       {occurrence.event.recurrence !== 'none' && (
                         <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
                           occurrence.isPast 
@@ -160,11 +163,13 @@ const CalendarView = ({ events }) => {
                           {occurrence.event.recurrence.charAt(0).toUpperCase() + occurrence.event.recurrence.slice(1)}
                         </span>
                       )}
-                      <span className={`text-xs font-medium ${
-                        occurrence.isPast ? 'text-gray-400' : 'text-indigo-600'
-                      }`}>
-                        {occurrence.age}
-                      </span>
+                    </div>
+
+                    {/* Age information */}
+                    <div className={`text-sm font-medium ${
+                      occurrence.isPast ? 'text-gray-400' : 'text-indigo-600'
+                    }`}>
+                      {occurrence.age}
                     </div>
                   </div>
                 </div>

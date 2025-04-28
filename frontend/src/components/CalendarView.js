@@ -187,8 +187,8 @@ const CalendarView = ({ events }) => {
                       )}
                     </div>
 
-                    {/* Age information */}
-                    {occurrence.age && (
+                    {/* Age information - only show for recurring events */}
+                    {occurrence.event.recurrence !== 'none' && occurrence.age && (
                       <div className={`text-sm font-medium ${
                         occurrence.isPast ? 'text-gray-400' : 'text-indigo-600'
                       }`}>

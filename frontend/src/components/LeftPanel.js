@@ -610,10 +610,21 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           )}
 
           {/* Quick Links Section */}
-          <div className="bg-white p-3 rounded-lg shadow-sm mb-3 max-w-full">
+          <div 
+            className="bg-white p-3 rounded-lg shadow-sm mb-3 max-w-full"
+            onMouseEnter={() => {
+              setShowQuickLinks(true);
+              setShowMeetingsSection(false);
+              setShowEventsSection(false);
+            }}
+            onMouseLeave={() => {
+              setShowQuickLinks(false);
+              setShowMeetingsSection(true);
+              setShowEventsSection(true);
+            }}
+          >
             <h2
               className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base"
-              onClick={() => setShowQuickLinks(prev => !prev)}
             >
               <span className="truncate flex-1">Quick Links</span>
               {showQuickLinks ?
@@ -703,10 +714,21 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
           {/* Meetings Section */}
           {visibleMeetings.length > 0 && (
-            <div className="bg-indigo-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full">
+            <div 
+              className="bg-indigo-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
+              onMouseEnter={() => {
+                setShowMeetingsSection(true);
+                setShowQuickLinks(false);
+                setShowEventsSection(false);
+              }}
+              onMouseLeave={() => {
+                setShowMeetingsSection(true);
+                setShowQuickLinks(false);
+                setShowEventsSection(true);
+              }}
+            >
               <h2
                 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-100 rounded-lg text-base"
-                onClick={() => setShowMeetingsSection(prev => !prev)}
               >
                 <span className="truncate flex-1">
                   Meetings
@@ -824,10 +846,21 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
           {/* Events Section */}
           {visibleEvents.length > 0 && (
-            <div className="bg-purple-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full">
+            <div 
+              className="bg-purple-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
+              onMouseEnter={() => {
+                setShowEventsSection(true);
+                setShowQuickLinks(false);
+                setShowMeetingsSection(false);
+              }}
+              onMouseLeave={() => {
+                setShowEventsSection(true);
+                setShowQuickLinks(false);
+                setShowMeetingsSection(true);
+              }}
+            >
               <h2
                 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-purple-100 rounded-lg text-base"
-                onClick={() => setShowEventsSection(prev => !prev)}
               >
                 <span className="truncate flex-1">
                   Events

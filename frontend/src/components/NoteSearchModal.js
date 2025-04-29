@@ -129,6 +129,20 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
     });
   };
 
+  const highlightSearchTerms = (text) => {
+    if (!searchQuery) return text;
+    
+    const searchTerms = searchQuery.toLowerCase().split(' ').filter(term => term.length > 0);
+    let highlightedText = text;
+    
+    searchTerms.forEach(term => {
+      const regex = new RegExp(`(${term})`, 'gi');
+      highlightedText = highlightedText.replace(regex, '<mark class="bg-yellow-200">$1</mark>');
+    });
+    
+    return highlightedText;
+  };
+
   const formatNoteContent = (content) => {
     const lines = content.split('\n');
     const nonMetaLines = lines.filter(line => !line.trim().startsWith('meta::'));
@@ -141,9 +155,7 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
       if (h1Match) {
         return (
           <h1 key={index} className="text-xl font-bold mb-2 text-gray-900">
-            {parseNoteContent({ content: h1Match[1].trim(), searchTerm: '' }).map((element, idx) => (
-              <React.Fragment key={idx}>{element}</React.Fragment>
-            ))}
+            <span dangerouslySetInnerHTML={{ __html: highlightSearchTerms(h1Match[1].trim()) }} />
           </h1>
         );
       }
@@ -151,9 +163,7 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
       if (h2Match) {
         return (
           <h2 key={index} className="text-lg font-semibold mb-2 text-gray-800">
-            {parseNoteContent({ content: h2Match[1].trim(), searchTerm: '' }).map((element, idx) => (
-              <React.Fragment key={idx}>{element}</React.Fragment>
-            ))}
+            <span dangerouslySetInnerHTML={{ __html: highlightSearchTerms(h2Match[1].trim()) }} />
           </h2>
         );
       }
@@ -164,9 +174,7 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
           key={index} 
           className={`mb-1 ${index === 0 ? 'font-medium' : 'text-gray-500'}`}
         >
-          {parseNoteContent({ content: line, searchTerm: '' }).map((element, idx) => (
-            <React.Fragment key={idx}>{element}</React.Fragment>
-          ))}
+          <span dangerouslySetInnerHTML={{ __html: highlightSearchTerms(line) }} />
         </div>
       );
     });

@@ -16,6 +16,7 @@ import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroi
 import { parseNoteContent } from './utils/TextUtils';
 
 import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings, defaultSettings } from './utils/ApiUtils';
+import { SearchModalProvider } from './contexts/SearchModalContext';
 
 // Helper to render first four pinned notes
 const PinnedSection = ({ notes, onUnpin }) => {
@@ -220,108 +221,110 @@ const App = () => {
   }, []);
 
   return (
-    <div className="App flex flex-col h-screen">
-      <Navbar activePage={activePage} setActivePage={setActivePage} settings={settings} />
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left panel */}
-        <div
-          className={`border-r flex-shrink-0 transition-all duration-300 ease-in-out ${
-            isLeftPanelCollapsed ? 'w-0' : 'w-[300px]'
-          } relative`}
-        >
-          <button
-            onClick={() => setIsLeftPanelCollapsed(prev => !prev)}
-            className="absolute top-2 right-[-12px] w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500 z-50"
-            title={isLeftPanelCollapsed ? "Expand Panel" : "Collapse Panel"}
+    <SearchModalProvider notes={allNotes}>
+      <div className="App flex flex-col h-screen">
+        <Navbar activePage={activePage} setActivePage={setActivePage} settings={settings} />
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left panel */}
+          <div
+            className={`border-r flex-shrink-0 transition-all duration-300 ease-in-out ${
+              isLeftPanelCollapsed ? 'w-0' : 'w-[300px]'
+            } relative`}
           >
-            {isLeftPanelCollapsed ? (
-              <ChevronDoubleRightIcon className="h-4 w-4" />
-            ) : (
-              <ChevronDoubleLeftIcon className="h-4 w-4" />
-            )}
-          </button>
-          <div className="h-full overflow-hidden">
-            <LeftPanel
-              notes={allNotes}
-              setNotes={setAllNotes}
-              searchQuery={searchQuery}
-              settings={settings}
-              setSettings={setSettings}
-            />
-          </div>
-        </div>
-
-        {isLeftPanelCollapsed && (
-          <button
-            onClick={() => setIsLeftPanelCollapsed(false)}
-            className="absolute top-2 left-2 w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500 z-50"
-            title="Expand Panel"
-          >
-            <ChevronDoubleRightIcon className="h-4 w-4" />
-          </button>
-        )}
-
-        {/* Right panel: main content */}
-        <div
-          className={`flex-1 p-8 overflow-auto`}
-        >
-          {activePage === 'notes' && <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />}
-          {activePage === 'notes' && (
-            <NotesMainContainer
-              objList={objectList}
-              notes={notes}
-              allNotes={allNotes}
-              addNote={addNote}
-              setNotes={updateBothNotesLists}
-              objects={objects}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              addTag={addTag}
-              setNoteDate={setNoteDate}
-              totals={totals}
-              setTotals={setTotals}
-              settings={settings}
-            />
-          )}
-          {activePage === 'tags' && <TagListing objectList={objects} />}
-          {activePage === 'todos' && (
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-              <TodoList
-                todos={todos}
-                notes={notes}
-                updateTodosCallback={setTodos}
-                updateNoteCallBack={setNotes}
+            <button
+              onClick={() => setIsLeftPanelCollapsed(prev => !prev)}
+              className="absolute top-2 right-[-12px] w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500 z-50"
+              title={isLeftPanelCollapsed ? "Expand Panel" : "Collapse Panel"}
+            >
+              {isLeftPanelCollapsed ? (
+                <ChevronDoubleRightIcon className="h-4 w-4" />
+              ) : (
+                <ChevronDoubleLeftIcon className="h-4 w-4" />
+              )}
+            </button>
+            <div className="h-full overflow-hidden">
+              <LeftPanel
+                notes={allNotes}
+                setNotes={setAllNotes}
+                searchQuery={searchQuery}
+                settings={settings}
+                setSettings={setSettings}
               />
             </div>
+          </div>
+
+          {isLeftPanelCollapsed && (
+            <button
+              onClick={() => setIsLeftPanelCollapsed(false)}
+              className="absolute top-2 left-2 w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500 z-50"
+              title="Expand Panel"
+            >
+              <ChevronDoubleRightIcon className="h-4 w-4" />
+            </button>
           )}
-          {activePage === 'journals' && <Journals />}
-          {activePage === 'manage-notes' && <Manage />}
-          {activePage === 'events' && (
-            <EventsPage 
-              notes={allNotes} 
-              onUpdate={(updatedNotes) => {
-                setAllNotes(updatedNotes);
-                if (activePage === 'notes') {
-                  setNotes(updatedNotes);
-                }
-              }}
-            />
-          )}
+
+          {/* Right panel: main content */}
+          <div
+            className={`flex-1 p-8 overflow-auto`}
+          >
+            {activePage === 'notes' && <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />}
+            {activePage === 'notes' && (
+              <NotesMainContainer
+                objList={objectList}
+                notes={notes}
+                allNotes={allNotes}
+                addNote={addNote}
+                setNotes={updateBothNotesLists}
+                objects={objects}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                addTag={addTag}
+                setNoteDate={setNoteDate}
+                totals={totals}
+                setTotals={setTotals}
+                settings={settings}
+              />
+            )}
+            {activePage === 'tags' && <TagListing objectList={objects} />}
+            {activePage === 'todos' && (
+              <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                <TodoList
+                  todos={todos}
+                  notes={notes}
+                  updateTodosCallback={setTodos}
+                  updateNoteCallBack={setNotes}
+                />
+              </div>
+            )}
+            {activePage === 'journals' && <Journals />}
+            {activePage === 'manage-notes' && <Manage />}
+            {activePage === 'events' && (
+              <EventsPage 
+                notes={allNotes} 
+                onUpdate={(updatedNotes) => {
+                  setAllNotes(updatedNotes);
+                  if (activePage === 'notes') {
+                    setNotes(updatedNotes);
+                  }
+                }}
+              />
+            )}
+          </div>
         </div>
+        <ToastContainer
+          position="bottom-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
       </div>
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
-    </div>
+    </SearchModalProvider>
   );
 };
 

@@ -202,9 +202,7 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
 
 const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery, settings, setSettings }) => {
   const [now, setNow] = useState(Date.now());
-  const [showQuickLinks, setShowQuickLinks] = useState(true);
-  const [showMeetingsSection, setShowMeetingsSection] = useState(true);
-  const [showEventsSection, setShowEventsSection] = useState(true);
+  const [activeSection, setActiveSection] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [unsavedSettings, setUnsavedSettings] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
@@ -269,18 +267,6 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     } finally {
       setIsSaving(false);
     }
-  };
-
-  // Collapse / Expand helpers
-  const handleCollapseAll = () => {
-    setShowQuickLinks(false);
-    setShowMeetingsSection(false);
-    setShowEventsSection(false);
-  };
-  const handleOpenAll = () => {
-    setShowQuickLinks(true);
-    setShowMeetingsSection(true);
-    setShowEventsSection(true);
   };
 
   // Context-menu & modal for Quick Links
@@ -575,14 +561,14 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           <div className="flex justify-between items-center mb-4">
             <div className="flex space-x-2">
               <button
-                onClick={handleCollapseAll}
+                onClick={() => setActiveSection(null)}
                 className="p-2 bg-white hover:bg-indigo-50 rounded-lg text-indigo-600 hover:text-indigo-700 transition-colors duration-150 shadow-sm"
                 title="Collapse All Sections"
               >
                 <ChevronDoubleUpIcon className="h-5 w-5" />
               </button>
               <button
-                onClick={handleOpenAll}
+                onClick={() => setActiveSection('quickLinks')}
                 className="p-2 bg-white hover:bg-indigo-50 rounded-lg text-indigo-600 hover:text-indigo-700 transition-colors duration-150 shadow-sm"
                 title="Expand All Sections"
               >
@@ -612,27 +598,17 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           {/* Quick Links Section */}
           <div 
             className="bg-white p-3 rounded-lg shadow-sm mb-3 max-w-full"
-            onMouseEnter={() => {
-              setShowQuickLinks(true);
-              setShowMeetingsSection(false);
-              setShowEventsSection(false);
-            }}
-            onMouseLeave={() => {
-              setShowQuickLinks(false);
-              setShowMeetingsSection(true);
-              setShowEventsSection(true);
-            }}
+            onMouseEnter={() => setActiveSection('quickLinks')}
+            onMouseLeave={() => setActiveSection(null)}
           >
-            <h2
-              className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base"
-            >
+            <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
               <span className="truncate flex-1">Quick Links</span>
-              {showQuickLinks ?
+              {activeSection === 'quickLinks' ?
                 <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> :
                 <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" />
               }
             </h2>
-            {showQuickLinks && (
+            {activeSection === 'quickLinks' && (
               <div className="space-y-1.5 w-full">
                 {uniqueUrls.length === 0 ? (
                   <p className="text-gray-500 text-sm">No Quick Links</p>
@@ -671,18 +647,19 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           </div>
 
           {/* Bookmarks Section */}
-          <div className="bg-white p-3 rounded-lg shadow-sm mb-3">
-            <h2
-              className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base"
-              onClick={() => setShowQuickLinks(prev => !prev)}
-            >
+          <div 
+            className="bg-white p-3 rounded-lg shadow-sm mb-3"
+            onMouseEnter={() => setActiveSection('bookmarks')}
+            onMouseLeave={() => setActiveSection(null)}
+          >
+            <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
               <span>Bookmarks</span>
-              {showQuickLinks ?
+              {activeSection === 'bookmarks' ?
                 <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> :
                 <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
               }
             </h2>
-            {showQuickLinks && (
+            {activeSection === 'bookmarks' && (
               bookmarkedUrls.length === 0 ? (
                 <p className="text-gray-500 text-sm">No Bookmarks</p>
               ) : (
@@ -716,30 +693,20 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           {visibleMeetings.length > 0 && (
             <div 
               className="bg-indigo-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
-              onMouseEnter={() => {
-                setShowMeetingsSection(true);
-                setShowQuickLinks(false);
-                setShowEventsSection(false);
-              }}
-              onMouseLeave={() => {
-                setShowMeetingsSection(true);
-                setShowQuickLinks(false);
-                setShowEventsSection(true);
-              }}
+              onMouseEnter={() => setActiveSection('meetings')}
+              onMouseLeave={() => setActiveSection(null)}
             >
-              <h2
-                className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-100 rounded-lg text-base"
-              >
+              <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-100 rounded-lg text-base">
                 <span className="truncate flex-1">
                   Meetings
                   <span className="text-indigo-600 ml-2 text-sm">({visibleMeetings.length})</span>
                 </span>
-                {showMeetingsSection ?
+                {activeSection === 'meetings' ?
                   <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> :
                   <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" />
                 }
               </h2>
-              {showMeetingsSection && (
+              {activeSection === 'meetings' && (
                 <div className="space-y-2 w-full">
                   {(expandedMeetings ? visibleMeetings : visibleMeetings.slice(0, 3)).map((m, idx) => {
                     const eventTime = new Date(m.time).getTime();
@@ -848,30 +815,20 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           {visibleEvents.length > 0 && (
             <div 
               className="bg-purple-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
-              onMouseEnter={() => {
-                setShowEventsSection(true);
-                setShowQuickLinks(false);
-                setShowMeetingsSection(false);
-              }}
-              onMouseLeave={() => {
-                setShowEventsSection(true);
-                setShowQuickLinks(false);
-                setShowMeetingsSection(true);
-              }}
+              onMouseEnter={() => setActiveSection('events')}
+              onMouseLeave={() => setActiveSection(null)}
             >
-              <h2
-                className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-purple-100 rounded-lg text-base"
-              >
+              <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-purple-100 rounded-lg text-base">
                 <span className="truncate flex-1">
                   Events
                   <span className="text-purple-600 ml-2 text-sm">({visibleEvents.length})</span>
                 </span>
-                {showEventsSection ?
+                {activeSection === 'events' ?
                   <ChevronDoubleUpIcon className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" /> :
                   <ChevronDoubleDownIcon className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" />
                 }
               </h2>
-              {showEventsSection && (
+              {activeSection === 'events' && (
                 <div className="space-y-2 w-full">
                   {(expandedEvents ? visibleEvents : visibleEvents.slice(0, 3)).map((e, idx) => {
                     const eventTime = new Date(e.time).getTime();

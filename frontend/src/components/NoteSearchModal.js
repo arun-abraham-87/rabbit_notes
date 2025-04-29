@@ -1,17 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, ChevronDownIcon, ChevronUpIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 import { getAge } from '../utils/DateUtils';
+import { getRecentSearches, addRecentSearch } from '../utils/SearchUtils';
 import moment from 'moment';
 
 const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [expandedNotes, setExpandedNotes] = useState(new Set());
+  const [recentSearches, setRecentSearches] = useState([]);
   const inputRef = useRef(null);
   const resultsRef = useRef(null);
   const noteRefs = useRef([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setRecentSearches(getRecentSearches());
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }
+  }, [isOpen]);
 
   // Fuzzy search implementation
   const fuzzySearch = (text, query) => {
@@ -44,60 +55,45 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
     return searchTerms.every(term => noteContent.includes(term));
   }).slice(0, 10); // Limit to 10 results
 
-  // Focus input when modal opens
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-      setSelectedIndex(0); // Reset selection when opening
-    }
-  }, [isOpen]);
-
-  // Update note refs when filtered notes change
-  useEffect(() => {
-    noteRefs.current = noteRefs.current.slice(0, filteredNotes.length);
-  }, [filteredNotes]);
-
-  // Focus and scroll to selected note
-  const focusSelectedNote = (index) => {
-    if (noteRefs.current[index]) {
-      noteRefs.current[index].focus();
-      noteRefs.current[index].scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
-      });
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    if (query.trim()) {
+      // Get current recent searches
+      const currentSearches = getRecentSearches();
+      
+      // Filter out searches that are subsets of the current query
+      const filteredSearches = currentSearches.filter(
+        search => !query.toLowerCase().includes(search.toLowerCase())
+      );
+      
+      // Add the new search if it's not already in the list
+      if (!filteredSearches.includes(query)) {
+        filteredSearches.unshift(query);
+      }
+      
+      // Update localStorage with the new list
+      localStorage.setItem('recentSearches', JSON.stringify(filteredSearches));
+      
+      // Update the state
+      setRecentSearches(filteredSearches);
     }
   };
 
-  // Handle keyboard navigation
   const handleKeyDown = (e) => {
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'Escape') {
+      onClose();
+    } else if (e.key === 'Enter' && filteredNotes.length > 0) {
       e.preventDefault();
-      setSelectedIndex(prev => {
-        const newIndex = Math.min(filteredNotes.length - 1, prev + 1);
-        focusSelectedNote(newIndex);
-        return newIndex;
-      });
+      const selectedNote = filteredNotes[selectedIndex];
+      onSelectNote(selectedNote);
+      handleSearch(searchQuery);
+      onClose();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev + 1) % filteredNotes.length);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      if (selectedIndex === 0) {
-        // If on first note, move focus to input and place cursor at end
-        if (inputRef.current) {
-          inputRef.current.focus();
-          const length = inputRef.current.value.length;
-          inputRef.current.setSelectionRange(length, length);
-        }
-        return;
-      }
-      setSelectedIndex(prev => {
-        const newIndex = Math.max(0, prev - 1);
-        focusSelectedNote(newIndex);
-        return newIndex;
-      });
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (filteredNotes[selectedIndex]) {
-        onSelectNote(filteredNotes[selectedIndex]);
-      }
+      setSelectedIndex((prev) => (prev - 1 + filteredNotes.length) % filteredNotes.length);
     }
   };
 
@@ -201,6 +197,19 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
     }
   };
 
+  const handleDeleteRecentSearch = (searchToDelete, e) => {
+    e.stopPropagation(); // Prevent triggering the search
+    const currentSearches = getRecentSearches();
+    const filteredSearches = currentSearches.filter(search => search !== searchToDelete);
+    localStorage.setItem('recentSearches', JSON.stringify(filteredSearches));
+    setRecentSearches(filteredSearches);
+  };
+
+  const handleClearAllRecentSearches = () => {
+    localStorage.setItem('recentSearches', JSON.stringify([]));
+    setRecentSearches([]);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -213,7 +222,8 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
               ref={inputRef}
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Search notes..."
               className="w-full px-4 py-3 pl-10 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
             />
@@ -237,6 +247,38 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
           ref={resultsRef}
           className="max-h-[60vh] overflow-y-auto"
         >
+          {recentSearches.length > 0 && !searchQuery && (
+            <div className="p-4 border-b border-gray-100">
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-xs text-gray-500">Recent searches:</div>
+                <button
+                  onClick={handleClearAllRecentSearches}
+                  className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+                >
+                  <TrashIcon className="h-3 w-3" />
+                  Clear all
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {recentSearches.map((search) => (
+                  <button
+                    key={search}
+                    onClick={() => handleSearch(search)}
+                    className="group px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 flex items-center gap-1"
+                  >
+                    {search}
+                    <button
+                      onClick={(e) => handleDeleteRecentSearch(search, e)}
+                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600"
+                    >
+                      <XMarkIcon className="h-3 w-3" />
+                    </button>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {filteredNotes.map((note, index) => {
             const isExpanded = expandedNotes.has(note.id);
             const lines = note.content.split('\n');
@@ -255,7 +297,11 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                       ? 'bg-gray-50' 
                       : 'bg-gray-100'
                 }`}
-                onClick={() => onSelectNote(note)}
+                onClick={() => {
+                  onSelectNote(note);
+                  handleSearch(searchQuery);
+                  onClose();
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     onSelectNote(note);

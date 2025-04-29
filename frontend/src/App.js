@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -176,18 +177,34 @@ const PinnedSection = ({ notes, onUnpin }) => {
   );
 };
 
-const App = () => {
+const AppContent = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [allNotes, setAllNotes] = useState([]);
   const [notes, setNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [settings, setSettings] = useState(defaultSettings);
-
   const [objects, setObjects] = useState([]);
   const [objectList, setObjectList] = useState([]);
-  const [activePage, setActivePage] = useState('notes');
   const [todos, setTodos] = useState([]);
   const [noteDate, setNoteDate] = useState(null);
   const [totals, setTotals] = useState(0);
+
+  // Get active page from URL hash
+  const activePage = location.pathname.split('/')[1] || 'notes';
+
+  // Save active page to localStorage
+  useEffect(() => {
+    localStorage.setItem('activePage', activePage);
+  }, [activePage]);
+
+  // Load active page from localStorage on mount
+  useEffect(() => {
+    const savedPage = localStorage.getItem('activePage');
+    if (savedPage) {
+      navigate(savedPage);
+    }
+  }, [navigate]);
 
   const updateBothNotesLists = async (updatedNotes) => {
     try {
@@ -297,7 +314,7 @@ const App = () => {
   return (
     <SearchModalProvider notes={allNotes}>
       <div className="App flex flex-col h-screen">
-        <Navbar activePage={activePage} setActivePage={setActivePage} settings={settings} />
+        <Navbar activePage={activePage} setActivePage={(page) => navigate(`/${page}`)} settings={settings} />
         <div className="flex flex-1 overflow-hidden">
           {/* Left panel */}
           <div className="border-r flex-shrink-0 w-[300px] relative">
@@ -314,48 +331,72 @@ const App = () => {
 
           {/* Right panel: main content */}
           <div className="flex-1 p-8 overflow-auto">
-            {activePage === 'notes' && <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />}
-            {activePage === 'notes' && (
-              <NotesMainContainer
-                objList={objectList}
-                notes={notes}
-                allNotes={allNotes}
-                addNote={addNote}
-                setNotes={updateBothNotesLists}
-                objects={objects}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                addTag={addTag}
-                setNoteDate={setNoteDate}
-                totals={totals}
-                setTotals={setTotals}
-                settings={settings}
-              />
-            )}
-            {activePage === 'tags' && <TagListing objectList={objects} />}
-            {activePage === 'todos' && (
-              <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                <TodoList
-                  todos={todos}
-                  notes={notes}
-                  updateTodosCallback={setTodos}
-                  updateNoteCallBack={setNotes}
+            <Routes>
+              <Route path="/" element={
+                <>
+                  <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
+                  <NotesMainContainer
+                    objList={objectList}
+                    notes={notes}
+                    allNotes={allNotes}
+                    addNote={addNote}
+                    setNotes={updateBothNotesLists}
+                    objects={objects}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    addTag={addTag}
+                    setNoteDate={setNoteDate}
+                    totals={totals}
+                    setTotals={setTotals}
+                    settings={settings}
+                  />
+                </>
+              } />
+              <Route path="/notes" element={
+                <>
+                  <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
+                  <NotesMainContainer
+                    objList={objectList}
+                    notes={notes}
+                    allNotes={allNotes}
+                    addNote={addNote}
+                    setNotes={updateBothNotesLists}
+                    objects={objects}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    addTag={addTag}
+                    setNoteDate={setNoteDate}
+                    totals={totals}
+                    setTotals={setTotals}
+                    settings={settings}
+                  />
+                </>
+              } />
+              <Route path="/tags" element={<TagListing objectList={objects} />} />
+              <Route path="/todos" element={
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                  <TodoList
+                    todos={todos}
+                    notes={notes}
+                    updateTodosCallback={setTodos}
+                    updateNoteCallBack={setNotes}
+                  />
+                </div>
+              } />
+              <Route path="/journals" element={<Journals />} />
+              <Route path="/manage-notes" element={<Manage />} />
+              <Route path="/events" element={
+                <EventsPage 
+                  notes={allNotes} 
+                  onUpdate={(updatedNotes) => {
+                    setAllNotes(updatedNotes);
+                    if (activePage === 'notes') {
+                      setNotes(updatedNotes);
+                    }
+                  }}
                 />
-              </div>
-            )}
-            {activePage === 'journals' && <Journals />}
-            {activePage === 'manage-notes' && <Manage />}
-            {activePage === 'events' && (
-              <EventsPage 
-                notes={allNotes} 
-                onUpdate={(updatedNotes) => {
-                  setAllNotes(updatedNotes);
-                  if (activePage === 'notes') {
-                    setNotes(updatedNotes);
-                  }
-                }}
-              />
-            )}
+              } />
+            </Routes>
           </div>
         </div>
         <ToastContainer
@@ -372,6 +413,14 @@ const App = () => {
         />
       </div>
     </SearchModalProvider>
+  );
+};
+
+const App = () => {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 };
 

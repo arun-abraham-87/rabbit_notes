@@ -297,13 +297,30 @@ const EventsPage = ({ notes, onUpdate }) => {
           {events.map((event) => {
             const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
             const eventDate = new Date(dateTime);
+            const isToday = eventDate.toDateString() === new Date().toDateString();
             
             return (
-              <div key={event.id} className="bg-white rounded-lg border p-4 shadow-sm">
+              <div 
+                key={event.id} 
+                className={`bg-white rounded-lg border p-4 shadow-sm ${
+                  isToday ? 'border-2 border-indigo-500 bg-indigo-50' : ''
+                }`}
+              >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">{description}</h3>
-                    <p className="text-sm text-gray-500">
+                    <h3 className={`text-lg font-medium ${
+                      isToday ? 'text-indigo-900' : 'text-gray-900'
+                    }`}>
+                      {description}
+                      {isToday && (
+                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                          Today
+                        </span>
+                      )}
+                    </h3>
+                    <p className={`text-sm ${
+                      isToday ? 'text-indigo-700' : 'text-gray-500'
+                    }`}>
                       {formatDate(eventDate)}
                     </p>
                     {recurrence !== 'none' && (
@@ -332,14 +349,18 @@ const EventsPage = ({ notes, onUpdate }) => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleEdit(event)}
-                        className="p-1 text-gray-500 hover:text-indigo-600"
+                        className={`p-1 ${
+                          isToday ? 'text-indigo-600 hover:text-indigo-700' : 'text-gray-500 hover:text-indigo-600'
+                        }`}
                         title="Edit event"
                       >
                         <PencilIcon className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => handleDelete(event.id)}
-                        className="p-1 text-gray-500 hover:text-red-600"
+                        className={`p-1 ${
+                          isToday ? 'text-indigo-600 hover:text-red-600' : 'text-gray-500 hover:text-red-600'
+                        }`}
                         title="Delete event"
                       >
                         <TrashIcon className="h-5 w-5" />

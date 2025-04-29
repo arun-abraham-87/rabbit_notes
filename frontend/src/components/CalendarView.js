@@ -160,28 +160,28 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
                     occurrence.isPast 
                       ? 'bg-gray-50 border-gray-200' 
                       : occurrence.isToday 
-                        ? 'bg-indigo-50 border-indigo-200' 
+                        ? 'border-2 border-indigo-500 bg-indigo-50 shadow-md'
                         : 'bg-white border-gray-200'
                   } shadow-sm`}>
                     <div className="space-y-3">
                       {/* Event description and date row */}
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
-                          <p className={`text-base font-medium ${
-                            occurrence.isPast ? 'text-gray-500' : 'text-gray-900'
+                          <h3 className={`text-lg font-medium ${
+                            occurrence.isToday ? 'text-indigo-900' : 'text-gray-900'
                           }`}>
                             {occurrence.event.description}
-                          </p>
+                            {occurrence.isToday && (
+                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                Today
+                              </span>
+                            )}
+                          </h3>
                           <div className="flex flex-col gap-1">
                             <p className={`text-sm ${
-                              occurrence.isPast ? 'text-gray-400' : 'text-gray-500'
+                              occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
                             }`}>
-                              {occurrence.date.toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
+                              {formatDate(occurrence.date)}
                             </p>
                             <div className="flex items-center gap-2">
                               {occurrence.isPast && (

@@ -125,18 +125,7 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
       {/* Alerts Section */}
       <EventAlerts events={events} onAcknowledgeEvent={onAcknowledgeEvent} />
 
-      <div className="flex justify-end gap-2">
-        <button
-          onClick={() => {
-            if (currentMonthRef.current) {
-              currentMonthRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <CalendarIcon className="w-4 h-4" />
-          Scroll to This Month
-        </button>
+      <div className="flex justify-end">
         <button
           onClick={() => setShowPastEvents(!showPastEvents)}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"

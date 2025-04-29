@@ -1,8 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { formatDate } from '../utils/DateUtils';
+import { ChevronRightIcon, ChevronLeftIcon, CalendarIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/solid';
 
 const CalendarView = ({ events }) => {
   const todayRef = useRef(null);
+  const [showPastEvents, setShowPastEvents] = useState(false);
 
   // Function to calculate age in years, months, and days
   const calculateAge = (date) => {
@@ -86,8 +88,11 @@ const CalendarView = ({ events }) => {
     }));
   });
 
-  // Sort occurrences by date
-  const sortedOccurrences = allOccurrences.sort((a, b) => a.date - b.date);
+  // Filter and sort occurrences
+  const filteredOccurrences = allOccurrences.filter(occurrence => 
+    showPastEvents || !occurrence.isPast
+  );
+  const sortedOccurrences = filteredOccurrences.sort((a, b) => a.date - b.date);
 
   // Group occurrences by month
   const groupedByMonth = sortedOccurrences.reduce((acc, occurrence) => {
@@ -108,6 +113,25 @@ const CalendarView = ({ events }) => {
 
   return (
     <div className="space-y-8">
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowPastEvents(!showPastEvents)}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          {showPastEvents ? (
+            <>
+              <EyeSlashIcon className="w-4 h-4" />
+              Hide Past Events
+            </>
+          ) : (
+            <>
+              <EyeIcon className="w-4 h-4" />
+              Show Past Events
+            </>
+          )}
+        </button>
+      </div>
+
       {Object.entries(groupedByMonth).map(([month, occurrences]) => (
         <div key={month} className="space-y-4">
           <h2 className="text-xl font-semibold text-gray-900 sticky top-0 bg-white py-2 z-10">
@@ -129,7 +153,7 @@ const CalendarView = ({ events }) => {
                 
                 {/* Timeline dot */}
                 <div className={`absolute left-2.5 top-4 w-3 h-3 rounded-full ${
-                  occurrence.isPast ? 'bg-gray-400' : 'bg-indigo-400'
+                  occurrence.isPast ? 'bg-gray-400' : occurrence.isToday ? 'bg-indigo-400' : 'bg-gray-400'
                 }`} />
 
                 <div className={`ml-4 p-4 rounded-lg border ${

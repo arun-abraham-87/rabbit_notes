@@ -134,7 +134,8 @@ const EventsPage = ({ notes, onUpdate }) => {
       recurrence,
       metaDate,
       nextOccurrence,
-      lastOccurrence
+      lastOccurrence,
+      content: event.content // Add the full content to check for acknowledgments
     };
   });
 

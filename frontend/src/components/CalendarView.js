@@ -121,8 +121,8 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
 
   // Function to check if an event is acknowledged for a specific year
   const isAcknowledged = (event, year) => {
-    const metaTag = `meta::acknowledged:${year}`;
-    return event.meta && event.meta.includes(metaTag);
+    const metaTag = `meta::acknowledged::${year}`;
+    return event.content.includes(metaTag);
   };
 
   // Function to check if an event needs acknowledgment

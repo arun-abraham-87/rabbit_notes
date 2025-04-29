@@ -52,32 +52,6 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
     noteRefs.current = noteRefs.current.slice(0, filteredNotes.length);
   }, [filteredNotes]);
 
-  // Handle keyboard navigation
-  useHotkeys('up', (e) => {
-    e.preventDefault();
-    setSelectedIndex(prev => {
-      const newIndex = Math.max(0, prev - 1);
-      focusSelectedNote(newIndex);
-      return newIndex;
-    });
-  }, { enabled: isOpen });
-
-  useHotkeys('down', (e) => {
-    e.preventDefault();
-    setSelectedIndex(prev => {
-      const newIndex = Math.min(filteredNotes.length - 1, prev + 1);
-      focusSelectedNote(newIndex);
-      return newIndex;
-    });
-  }, { enabled: isOpen });
-
-  useHotkeys('enter', (e) => {
-    e.preventDefault();
-    if (filteredNotes[selectedIndex]) {
-      onSelectNote(filteredNotes[selectedIndex]);
-    }
-  }, { enabled: isOpen });
-
   // Focus and scroll to selected note
   const focusSelectedNote = (index) => {
     if (noteRefs.current[index]) {
@@ -86,6 +60,30 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
         behavior: 'smooth',
         block: 'nearest'
       });
+    }
+  };
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => {
+        const newIndex = Math.min(filteredNotes.length - 1, prev + 1);
+        focusSelectedNote(newIndex);
+        return newIndex;
+      });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => {
+        const newIndex = Math.max(0, prev - 1);
+        focusSelectedNote(newIndex);
+        return newIndex;
+      });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredNotes[selectedIndex]) {
+        onSelectNote(filteredNotes[selectedIndex]);
+      }
     }
   };
 
@@ -100,12 +98,14 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
 
     if (isOpen) {
       document.addEventListener('keydown', handleEsc);
+      document.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
       document.removeEventListener('keydown', handleEsc);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, filteredNotes, selectedIndex]);
 
   const toggleNoteExpand = (noteId) => {
     setExpandedNotes(prev => {

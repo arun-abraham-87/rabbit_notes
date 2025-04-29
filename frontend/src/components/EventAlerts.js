@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
+import { ExclamationCircleIcon, CheckCircleIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { updateNoteById } from '../utils/ApiUtils';
 
-const EventAlerts = ({ events, onAcknowledgeEvent }) => {
+const EventAlerts = ({ events, onEventsUpdate }) => {
   const [acknowledgedEvents, setAcknowledgedEvents] = useState(new Set());
 
   // Reset acknowledged events when events prop changes
@@ -34,7 +35,6 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
 
   // Get all occurrences that need acknowledgment
   const getUnacknowledgedOccurrences = () => {
-    console.log('Processing events for alerts:', events);
     return events.flatMap(event => {
       const { dateTime, recurrence } = event;
       const eventDate = new Date(dateTime);
@@ -74,55 +74,98 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
 
   const handleAcknowledge = async (eventId, year) => {
     try {
-      await onAcknowledgeEvent(eventId, year);
-      // Immediately update local state
-      setAcknowledgedEvents(prev => {
-        const newSet = new Set(prev);
-        newSet.add(`${eventId}-${year}`);
-        return newSet;
-      });
+      const event = events.find(e => e.id === eventId);
+      if (!event) return;
+
+      const metaTag = `meta::acknowledged::${year}`;
+      if (event.content.includes(metaTag)) {
+        return; // Already acknowledged
+      }
+
+      const updatedContent = event.content.trim() + `\n${metaTag}`;
+      const response = await updateNoteById(eventId, { content: updatedContent });
+
+      if (response.success) {
+        setAcknowledgedEvents(prev => {
+          const newSet = new Set(prev);
+          newSet.add(`${eventId}-${year}`);
+          return newSet;
+        });
+        if (onEventsUpdate) {
+          onEventsUpdate();
+        }
+      } else {
+        console.error('Failed to update event:', response.error);
+      }
     } catch (error) {
       console.error('Error acknowledging event:', error);
     }
   };
 
+  const getEventAge = (date) => {
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
   const unacknowledgedOccurrences = getUnacknowledgedOccurrences();
-  console.log('Unacknowledged occurrences:', unacknowledgedOccurrences);
 
   if (unacknowledgedOccurrences.length === 0) return null;
 
   return (
-    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-md mb-6">
-      <div className="flex items-center">
-        <ExclamationCircleIcon className="h-5 w-5 text-yellow-400" />
-        <div className="ml-3">
-          <h3 className="text-sm font-medium text-yellow-800">
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+      <div className="bg-red-50 px-6 py-4 border-b border-red-100">
+        <div className="flex items-center">
+          <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
+          <h3 className="ml-3 text-lg font-semibold text-red-800">
             Unacknowledged Events
           </h3>
-          <div className="mt-2 text-sm text-yellow-700">
-            <ul className="list-disc pl-5 space-y-1">
-              {unacknowledgedOccurrences.map((occurrence, index) => (
-                <li key={index} className="flex items-center justify-between">
-                  <span>
-                    {occurrence.event.description} on {occurrence.date.toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </span>
-                  <button
-                    onClick={() => handleAcknowledge(occurrence.event.id, occurrence.date.getFullYear())}
-                    className="ml-4 flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-100 rounded-full hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-                  >
-                    <CheckCircleIcon className="w-4 h-4" />
-                    Acknowledge
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
+      </div>
+      <div className="divide-y divide-gray-100">
+        {unacknowledgedOccurrences.map((occurrence, index) => (
+          <div key={index} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  <span>{formatDate(occurrence.date)}</span>
+                </div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">
+                  {occurrence.event.description}
+                </h4>
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <ClockIcon className="h-4 w-4" />
+                    <span>{getEventAge(occurrence.date)} days ago</span>
+                  </div>
+                  {occurrence.event.recurrence !== 'none' && (
+                    <span className="px-2 py-1 bg-red-50 text-red-600 rounded-full text-xs">
+                      {occurrence.event.recurrence}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => handleAcknowledge(occurrence.event.id, occurrence.date.getFullYear())}
+                className="ml-4 flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+              >
+                <CheckCircleIcon className="w-5 h-5" />
+                Acknowledge
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

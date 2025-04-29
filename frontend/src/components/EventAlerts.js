@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ExclamationCircleIcon, CheckCircleIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { ExclamationCircleIcon, CheckCircleIcon, CalendarIcon, ClockIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { updateNoteById } from '../utils/ApiUtils';
 
-const EventAlerts = ({ events, onEventsUpdate }) => {
+const EventAlerts = ({ events, onAcknowledgeEvent }) => {
   const [acknowledgedEvents, setAcknowledgedEvents] = useState(new Set());
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Reset acknowledged events when events prop changes
   useEffect(() => {
@@ -83,19 +84,19 @@ const EventAlerts = ({ events, onEventsUpdate }) => {
       }
 
       const updatedContent = event.content.trim() + `\n${metaTag}`;
-      const response = await updateNoteById(eventId, { content: updatedContent });
+      const response = await updateNoteById(eventId, updatedContent);
 
-      if (response.success) {
+      if (response && response.message) {
         setAcknowledgedEvents(prev => {
           const newSet = new Set(prev);
           newSet.add(`${eventId}-${year}`);
           return newSet;
         });
-        if (onEventsUpdate) {
-          onEventsUpdate();
+        if (onAcknowledgeEvent) {
+          onAcknowledgeEvent(eventId, year);
         }
       } else {
-        console.error('Failed to update event:', response.error);
+        console.error('Failed to update event:', response);
       }
     } catch (error) {
       console.error('Error acknowledging event:', error);
@@ -125,48 +126,63 @@ const EventAlerts = ({ events, onEventsUpdate }) => {
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
       <div className="bg-red-50 px-6 py-4 border-b border-red-100">
-        <div className="flex items-center">
-          <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
-          <h3 className="ml-3 text-lg font-semibold text-red-800">
-            Unacknowledged Events
-          </h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
+            <h3 className="ml-3 text-lg font-semibold text-red-800">
+              Unacknowledged Events ({unacknowledgedOccurrences.length})
+            </h3>
+          </div>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-red-600 hover:text-red-700 focus:outline-none"
+            aria-label={isExpanded ? "Collapse events" : "Expand events"}
+          >
+            {isExpanded ? (
+              <ChevronUpIcon className="h-5 w-5" />
+            ) : (
+              <ChevronDownIcon className="h-5 w-5" />
+            )}
+          </button>
         </div>
       </div>
-      <div className="divide-y divide-gray-100">
-        {unacknowledgedOccurrences.map((occurrence, index) => (
-          <div key={index} className="p-6 hover:bg-gray-50 transition-colors duration-150">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                  <CalendarIcon className="h-4 w-4" />
-                  <span>{formatDate(occurrence.date)}</span>
-                </div>
-                <h4 className="text-lg font-medium text-gray-900 mb-2">
-                  {occurrence.event.description}
-                </h4>
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <ClockIcon className="h-4 w-4" />
-                    <span>{getEventAge(occurrence.date)} days ago</span>
+      {isExpanded && (
+        <div className="divide-y divide-gray-100">
+          {unacknowledgedOccurrences.map((occurrence, index) => (
+            <div key={index} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    <span>{formatDate(occurrence.date)}</span>
                   </div>
-                  {occurrence.event.recurrence !== 'none' && (
-                    <span className="px-2 py-1 bg-red-50 text-red-600 rounded-full text-xs">
-                      {occurrence.event.recurrence}
-                    </span>
-                  )}
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">
+                    {occurrence.event.description}
+                  </h4>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <ClockIcon className="h-4 w-4" />
+                      <span>{getEventAge(occurrence.date)} days ago</span>
+                    </div>
+                    {occurrence.event.recurrence !== 'none' && (
+                      <span className="px-2 py-1 bg-red-50 text-red-600 rounded-full text-xs">
+                        {occurrence.event.recurrence}
+                      </span>
+                    )}
+                  </div>
                 </div>
+                <button
+                  onClick={() => handleAcknowledge(occurrence.event.id, occurrence.date.getFullYear())}
+                  className="ml-4 flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                >
+                  <CheckCircleIcon className="w-5 h-5" />
+                  Acknowledge
+                </button>
               </div>
-              <button
-                onClick={() => handleAcknowledge(occurrence.event.id, occurrence.date.getFullYear())}
-                className="ml-4 flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-              >
-                <CheckCircleIcon className="w-5 h-5" />
-                Acknowledge
-              </button>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

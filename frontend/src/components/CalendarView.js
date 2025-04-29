@@ -1,12 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { formatDate } from '../utils/DateUtils';
 import { ChevronRightIcon, ChevronLeftIcon, CalendarIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
 
 const CalendarView = ({ events, onAcknowledgeEvent }) => {
-  const todayRef = useRef(null);
   const [showPastEvents, setShowPastEvents] = useState(false);
-  const currentMonthRef = useRef(null);
 
   // Function to calculate age in years, months, and days
   const calculateAge = (date) => {
@@ -106,20 +104,6 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
     return acc;
   }, {});
 
-  // Scroll to today's events when component mounts
-  useEffect(() => {
-    if (todayRef.current) {
-      todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, []);
-
-  // Scroll to current month when component mounts or when button is clicked
-  useEffect(() => {
-    if (currentMonthRef.current) {
-      currentMonthRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [showPastEvents]); // Re-run when showPastEvents changes to ensure proper scrolling
-
   return (
     <div className="space-y-8">
       {/* Alerts Section */}
@@ -149,7 +133,6 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
         return (
           <div 
             key={month} 
-            ref={isCurrentMonth ? currentMonthRef : null}
             className="space-y-4"
           >
             <h2 className="text-xl font-semibold text-gray-900 sticky top-0 bg-white py-2 z-10">
@@ -159,7 +142,6 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
               {occurrences.map((occurrence, index) => (
                 <div
                   key={`${occurrence.event.id}-${occurrence.date.toISOString()}`}
-                  ref={occurrence.isToday ? todayRef : null}
                   className={`relative pl-8 ${
                     occurrence.isPast ? 'opacity-60' : ''
                   }`}

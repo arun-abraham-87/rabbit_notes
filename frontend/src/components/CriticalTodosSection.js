@@ -32,9 +32,6 @@ const CriticalTodosSection = ({ notes }) => {
                   <React.Fragment key={idx}>{element}</React.Fragment>
                 ))}
               </div>
-              <div className="text-xs text-red-600 mt-1">
-                {new Date(note.created_at).toLocaleDateString()}
-              </div>
             </div>
           );
         })}

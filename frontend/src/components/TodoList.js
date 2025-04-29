@@ -195,6 +195,24 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     onPriorityChange(id, level);
   };
 
+  const handleCriticalClick = (id) => {
+    const note = todos.find((todo) => todo.id === id);
+    if (note) {
+      const isCritical = note.content.includes('meta::critical');
+      const cleanedContent = note.content
+        .split('\n')
+        .filter(line => !line.trim().startsWith('meta::critical'))
+        .join('\n')
+        .trim();
+      
+      const updatedContent = isCritical 
+        ? cleanedContent 
+        : `${cleanedContent}\nmeta::critical`;
+      
+      updateTodo(id, updatedContent);
+    }
+  };
+
   const handleCheckboxChange = (id, checked) => {
     const note = todos.find((todo) => todo.id === id);
     if (!note) return;
@@ -376,6 +394,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
     const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
     const currentPriority = priorities[todo.id] || tag;
+    const isCritical = todo.content.includes('meta::critical');
     
     const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
     const createdDate = todoDateMatch ? todoDateMatch[1] : todo.created_datetime;
@@ -394,7 +413,9 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         className={`group relative ${
           viewMode === 'grid' ? 'h-[200px]' : 'min-h-[80px]'
         } flex flex-col rounded-lg border shadow-sm hover:shadow-md transition-all duration-200 ${
-          priorityColors[currentPriority]
+          isCritical 
+            ? 'bg-red-900 text-white border-red-800' 
+            : priorityColors[currentPriority]
         }`}
       >
         {/* Header - Only shown when showHeaders is true */}
@@ -434,36 +455,47 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
             <button
               onClick={() => handlePriorityClick(todo.id, 'high')}
-              className={`w-6 h-6 rounded-full font-medium transition-all duration-200 flex items-center justify-center ${
+              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${
                 currentPriority === 'high'
                   ? 'bg-rose-200 text-rose-700'
                   : 'bg-white border border-gray-200 hover:bg-rose-100 text-gray-400 hover:text-rose-600'
               }`}
               title="High priority"
             >
-              H
+              High
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'medium')}
-              className={`w-6 h-6 rounded-full font-medium transition-all duration-200 flex items-center justify-center ${
+              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${
                 currentPriority === 'medium'
                   ? 'bg-amber-200 text-amber-700'
                   : 'bg-white border border-gray-200 hover:bg-amber-100 text-gray-400 hover:text-amber-600'
               }`}
               title="Medium priority"
             >
-              M
+              Medium
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'low')}
-              className={`w-6 h-6 rounded-full font-medium transition-all duration-200 flex items-center justify-center ${
+              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${
                 currentPriority === 'low'
                   ? 'bg-emerald-200 text-emerald-700'
                   : 'bg-white border border-gray-200 hover:bg-emerald-100 text-gray-400 hover:text-emerald-600'
               }`}
               title="Low priority"
             >
-              L
+              Low
+            </button>
+            <button
+              onClick={() => handleCriticalClick(todo.id)}
+              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${
+                isCritical
+                  ? 'bg-red-200 text-red-700'
+                  : 'bg-white border border-gray-200 hover:bg-red-100 text-gray-400 hover:text-red-600'
+              }`}
+              title="Mark as critical"
+            >
+              Critical
             </button>
           </div>
 

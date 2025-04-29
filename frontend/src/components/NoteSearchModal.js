@@ -32,12 +32,15 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
   const filteredNotes = notes.filter(note => {
     if (!searchQuery) return false;
     
-    // Search in note content
-    const content = note.content.toLowerCase();
-    const lines = content.split('\n');
+    // Split search query into individual words
+    const searchTerms = searchQuery.toLowerCase().split(' ').filter(term => term.length > 0);
+    if (searchTerms.length === 0) return false;
     
-    // Check if any line matches the search query
-    return lines.some(line => fuzzySearch(line, searchQuery));
+    // Get the full note content in lowercase
+    const noteContent = note.content.toLowerCase();
+    
+    // Check if all search terms are present in the note content
+    return searchTerms.every(term => noteContent.includes(term));
   }).slice(0, 10); // Limit to 10 results
 
   // Focus input when modal opens

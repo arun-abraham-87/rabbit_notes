@@ -294,7 +294,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
       newLines[index].text = pasteText;
       setLines(newLines);
       setPendingUrlIndex(index);
-      setCustomLabel('');
+      setCustomLabel(new URL(pasteText).hostname);
       setTimeout(() => {
         const input = document.getElementById('custom-label-input');
         if (input) input.focus();
@@ -777,6 +777,17 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                     type="text"
                     value={customLabel}
                     onChange={(e) => setCustomLabel(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === 'Escape') {
+                        const newLines = [...lines];
+                        const url = newLines[pendingUrlIndex].text.match(/\((https?:\/\/[^\s)]+)\)/)?.[1] || newLines[pendingUrlIndex].text;
+                        newLines[pendingUrlIndex].text = `[${customLabel}](${url})`;
+                        setLines(newLines);
+                        setPendingUrlIndex(null);
+                        setCustomLabel('');
+                        setShowTextSelection(false);
+                      }
+                    }}
                     className="w-full border px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter custom text"
                     autoFocus

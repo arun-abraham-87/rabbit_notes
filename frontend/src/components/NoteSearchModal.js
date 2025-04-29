@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { XMarkIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 import moment from 'moment';
 
@@ -198,28 +198,38 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center pt-20 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
-        <div className="p-4 border-b flex items-center justify-between">
-          <input
-            ref={inputRef}
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search notes..."
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-start justify-center pt-20 z-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden">
+        {/* Search Header */}
+        <div className="p-4 border-b border-gray-100 flex items-center gap-3 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+          <div className="flex-1 relative">
+            <input
+              ref={inputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search notes..."
+              className="w-full px-4 py-3 pl-10 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              </svg>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="ml-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
             title="Close search"
           >
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Results Container */}
         <div 
           ref={resultsRef}
-          className="max-h-96 overflow-y-auto"
+          className="max-h-[60vh] overflow-y-auto"
         >
           {filteredNotes.map((note, index) => {
             const isExpanded = expandedNotes.has(note.id);
@@ -231,10 +241,10 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                 key={note.id}
                 ref={el => noteRefs.current[index] = el}
                 tabIndex={0}
-                className={`p-4 cursor-pointer transition-colors duration-150 outline-none ${
+                className={`group p-4 cursor-pointer transition-all duration-200 outline-none border-b border-gray-50 last:border-b-0 ${
                   index === selectedIndex 
-                    ? 'bg-blue-50 border-l-4 border-blue-500 ring-2 ring-blue-200' 
-                    : 'hover:bg-gray-50'
+                    ? 'bg-blue-50/50 border-l-4 border-l-blue-500' 
+                    : 'hover:bg-gray-50/50'
                 }`}
                 onClick={() => onSelectNote(note)}
                 onKeyDown={(e) => {
@@ -243,29 +253,72 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                   }
                 }}
               >
-                <div className="text-sm">
-                  {formatNoteContent(displayLines.join('\n'))}
+                <div className="flex flex-col gap-2">
+                  {/* Note Content */}
+                  <div className="text-sm space-y-1.5">
+                    {formatNoteContent(displayLines.join('\n'))}
+                  </div>
+
+                  {/* Expand/Collapse Button */}
                   {lines.length > 4 && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleNoteExpand(note.id);
                       }}
-                      className="text-xs text-blue-500 hover:text-blue-700 mt-1"
+                      className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 mt-1 group-hover:underline"
                     >
-                      {isExpanded ? 'Show less' : 'Show more...'}
+                      {isExpanded ? (
+                        <>
+                          <ChevronUpIcon className="h-3 w-3" />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDownIcon className="h-3 w-3" />
+                          Show more
+                        </>
+                      )}
                     </button>
                   )}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {formatDate(note.created_datetime)}
+
+                  {/* Date and Time */}
+                  <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                    <span className="bg-gray-100 px-2 py-0.5 rounded-full">
+                      {formatDate(note.created_datetime)}
+                    </span>
+                  </div>
                 </div>
               </div>
             );
           })}
+
+          {/* No Results Message */}
           {filteredNotes.length === 0 && searchQuery && (
-            <div className="p-4 text-center text-gray-500">
-              No notes found
+            <div className="p-8 text-center">
+              <div className="text-gray-400 mb-2">No notes found</div>
+              <div className="text-sm text-gray-500">
+                Try different search terms or check your spelling
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!searchQuery && (
+            <div className="p-8 text-center">
+              <div className="text-gray-400 mb-2">Start typing to search notes</div>
+              <div className="text-sm text-gray-500">
+                Search by any word or phrase in your notes
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-3 border-t border-gray-100 bg-gray-50/50 text-xs text-gray-500 text-center">
+          {filteredNotes.length > 0 && (
+            <div>
+              Showing {filteredNotes.length} of {notes.length} notes
             </div>
           )}
         </div>

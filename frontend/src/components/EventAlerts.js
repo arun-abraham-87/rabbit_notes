@@ -1,11 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
 
 const EventAlerts = ({ events, onAcknowledgeEvent }) => {
+  const [acknowledgedEvents, setAcknowledgedEvents] = useState(new Set());
+
+  // Reset acknowledged events when events prop changes
+  useEffect(() => {
+    setAcknowledgedEvents(new Set());
+  }, [events]);
+
   // Function to check if an event is acknowledged for a specific year
   const isAcknowledged = (event, year) => {
     const metaTag = `meta::acknowledged::${year}`;
-    return event.content.includes(metaTag);
+    return event.content.includes(metaTag) || acknowledgedEvents.has(`${event.id}-${year}`);
   };
 
   // Function to check if an event needs acknowledgment
@@ -23,6 +30,7 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
 
   // Get all occurrences that need acknowledgment
   const getUnacknowledgedOccurrences = () => {
+    console.log('Processing events for alerts:', events);
     return events.flatMap(event => {
       const { dateTime, recurrence } = event;
       const eventDate = new Date(dateTime);
@@ -60,7 +68,22 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
     }).filter(occurrence => needsAcknowledgment(occurrence.event, occurrence.date));
   };
 
+  const handleAcknowledge = async (eventId, year) => {
+    try {
+      await onAcknowledgeEvent(eventId, year);
+      // Immediately update local state
+      setAcknowledgedEvents(prev => {
+        const newSet = new Set(prev);
+        newSet.add(`${eventId}-${year}`);
+        return newSet;
+      });
+    } catch (error) {
+      console.error('Error acknowledging event:', error);
+    }
+  };
+
   const unacknowledgedOccurrences = getUnacknowledgedOccurrences();
+  console.log('Unacknowledged occurrences:', unacknowledgedOccurrences);
 
   if (unacknowledgedOccurrences.length === 0) return null;
 
@@ -85,7 +108,7 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
                     })}
                   </span>
                   <button
-                    onClick={() => onAcknowledgeEvent(occurrence.event.id, occurrence.date.getFullYear())}
+                    onClick={() => handleAcknowledge(occurrence.event.id, occurrence.date.getFullYear())}
                     className="ml-4 flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-100 rounded-full hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
                   >
                     <CheckCircleIcon className="w-4 h-4" />

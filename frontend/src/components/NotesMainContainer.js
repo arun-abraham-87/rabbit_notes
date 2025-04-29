@@ -9,6 +9,7 @@ import NoteEditor from './NoteEditor.js';
 import OngoingMeetingBanner from './OngoingMeetingBanner.js';
 import NextMeetingBanner from './NextMeetingBanner.js';
 import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner.js';
+import EventAlerts from './EventAlerts.js';
 import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
 
 const checkForOngoingMeeting = (notes) => {
@@ -269,6 +270,7 @@ const NotesMainContainer = ({
     const [oldTodosCount, setOldTodosCount] = useState(0);
     const [alertsExpanded, setAlertsExpanded] = useState(true);
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
+    const [eventsState, setEventsState] = useState([]);
 
     // Extract meetings from notes with null check
     const meetings = useMemo(() => {
@@ -289,6 +291,75 @@ const NotesMainContainer = ({
             return [];
         }).sort((a, b) => new Date(a.time) - new Date(b.time));
     }, [allNotes]);
+
+    // Extract events from notes with proper metadata
+    const events = useMemo(() => {
+        if (!Array.isArray(allNotes)) return [];
+        const processedEvents = allNotes
+            .filter(note => {
+                if (!note?.content) return false;
+                return note.content.includes('meta::event::') && !note.content.includes('meta::archived::');
+            })
+            .map(note => {
+                const lines = note.content.split('\n');
+                
+                // Extract date from event_date line
+                const dateLine = lines.find(line => line.startsWith('event_date:'));
+                let eventDate = null;
+                if (dateLine) {
+                    const dateStr = dateLine.split('event_date:')[1];
+                    eventDate = new Date(dateStr);
+                }
+                
+                // Extract description from event_description line
+                const descLine = lines.find(line => line.startsWith('event_description:'));
+                const description = descLine ? descLine.split('event_description:')[1] : lines[0] || '';
+                
+                // Determine recurrence type from event_recurring_type line
+                const recurLine = lines.find(line => line.startsWith('event_recurring_type:'));
+                let recurrence = 'none';
+                if (recurLine) {
+                    const recurType = recurLine.split('event_recurring_type:')[1].trim();
+                    if (recurType === 'daily') recurrence = 'daily';
+                    else if (recurType === 'weekly') recurrence = 'weekly';
+                    else if (recurType === 'monthly') recurrence = 'monthly';
+                    else if (recurType === 'yearly') recurrence = 'yearly';
+                }
+                
+                return {
+                    id: note.id,
+                    content: note.content,
+                    dateTime: eventDate,
+                    description: description,
+                    recurrence: recurrence
+                };
+            });
+        
+        console.log('Processed events:', processedEvents);
+        return processedEvents;
+    }, [allNotes]);
+
+    // Update eventsState when events change
+    useEffect(() => {
+        setEventsState(events);
+    }, [events]);
+
+    // Add debug logging
+    useEffect(() => {
+        console.log('Events in NotesMainContainer:', events);
+        const unacknowledged = events.filter(event => {
+            const now = new Date();
+            const april2025 = new Date('2025-04-01');
+            const eventDate = new Date(event.dateTime);
+            const year = eventDate.getFullYear();
+            const metaTag = `meta::acknowledged::${year}`;
+            
+            return eventDate >= april2025 && 
+                   eventDate < now && 
+                   !event.content.includes(metaTag);
+        });
+        console.log('Unacknowledged events:', unacknowledged);
+    }, [events]);
 
     // Filter notes for display based on selected date and exclude states
     const filteredNotes = useMemo(() => {
@@ -480,6 +551,50 @@ const NotesMainContainer = ({
         }
     };
 
+    // Handle event acknowledgment
+    const handleAcknowledgeEvent = async (noteId, year) => {
+        console.log('Acknowledging event:', noteId, year);
+        const note = allNotes.find(n => n.id === noteId);
+        if (!note) return;
+        
+        // Check if already acknowledged
+        const metaTag = `meta::acknowledged::${year}`;
+        if (note.content.includes(metaTag)) return;
+        
+        // Add the acknowledged tag with year
+        const updatedContent = `${note.content.trim()}\n${metaTag}`;
+        
+        try {
+            const response = await updateNoteById(noteId, updatedContent);
+            if (response && response.success) {
+                console.log('Event acknowledged successfully');
+                // Update the notes state to reflect the change
+                const updatedNotes = allNotes.map(n => 
+                    n.id === noteId ? { ...n, content: updatedContent } : n
+                );
+                
+                // Update both allNotes and notes state
+                setNotes(updatedNotes);
+                
+                // Force a refresh of the events by updating allNotes
+                const data = await loadNotes(searchQuery, currentDate);
+                if (data && data.notes) {
+                    console.log('Refreshing notes data');
+                    setNotes(data.notes);
+                    setTotals(data.totals);
+                    
+                    // Force update events state
+                    const updatedEvents = eventsState.filter(event => event.id !== noteId);
+                    setEventsState(updatedEvents);
+                }
+            } else {
+                console.error('Failed to acknowledge event:', response);
+            }
+        } catch (error) {
+            console.error('Error acknowledging event:', error);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full">
             {/* Alerts Section */}
@@ -647,6 +762,10 @@ const NotesMainContainer = ({
                 </div>
             )}
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
+                <EventAlerts 
+                    events={eventsState}
+                    onAcknowledgeEvent={handleAcknowledgeEvent}
+                />
                 <UnacknowledgedMeetingsBanner 
                     meetings={unacknowledgedMeetings} 
                     onDismiss={handleDismissUnacknowledgedMeeting} 

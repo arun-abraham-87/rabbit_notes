@@ -20,7 +20,26 @@ import { SearchModalProvider } from './contexts/SearchModalContext';
 
 // Helper to render first four pinned notes
 const PinnedSection = ({ notes, onUnpin }) => {
+  const [cardColors, setCardColors] = useState(() => {
+    // Load saved colors from localStorage
+    const savedColors = localStorage.getItem('pinnedCardColors');
+    return savedColors ? JSON.parse(savedColors) : {};
+  });
+
   const pinned = (notes || []).filter(n => n.content.includes('meta::pin')).slice(0, 4);
+  
+  // Save colors to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('pinnedCardColors', JSON.stringify(cardColors));
+  }, [cardColors]);
+
+  const handleColorChange = (noteId, color) => {
+    setCardColors(prev => ({
+      ...prev,
+      [noteId]: color
+    }));
+  };
+
   if (pinned.length === 0) return null;
   return (
     <div className="mb-6 p-4 bg-white rounded shadow-sm">
@@ -36,23 +55,80 @@ const PinnedSection = ({ notes, onUnpin }) => {
           // Gather the pinned lines (1-based indices)
           const pinnedLines = indices.map(i => contentLines[i - 1] || '');
           return (
-            <div key={note.id} className="relative border rounded-lg p-4 shadow">
-              <XMarkIcon
-                className="absolute top-2 right-2 h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer"
-                onClick={() => {
-                  if (window.confirm('Unpin this note?')) {
-                    const newContent = note.content
-                      .split('\n')
-                      .filter(l => !l.trim().startsWith('meta::pin::'))
-                      .join('\n')
-                      .trim();
-                    updateNote(note.id, newContent).then(() => {
-                      if (onUnpin) onUnpin();
-                    });
+            <div 
+              key={note.id} 
+              className="relative border rounded-lg p-4 shadow"
+              style={{ backgroundColor: cardColors[note.id] || 'white' }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                // Hide all other popups first
+                document.querySelectorAll('.color-popup').forEach(popup => {
+                  popup.classList.add('hidden');
+                });
+                // Show this popup
+                const popup = e.currentTarget.querySelector('.color-popup');
+                popup.classList.remove('hidden');
+                // Position the popup at the cursor relative to the viewport
+                popup.style.position = 'fixed';
+                popup.style.left = `${e.clientX}px`;
+                popup.style.top = `${e.clientY}px`;
+              }}
+            >
+              <div className="absolute top-2 right-2 z-20">
+                <XMarkIcon
+                  className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  onClick={() => {
+                    if (window.confirm('Unpin this note?')) {
+                      const newContent = note.content
+                        .split('\n')
+                        .filter(l => !l.trim().startsWith('meta::pin::'))
+                        .join('\n')
+                        .trim();
+                      updateNote(note.id, newContent).then(() => {
+                        if (onUnpin) onUnpin();
+                      });
+                    }
+                  }}
+                  title="Unpin note"
+                />
+              </div>
+              <div 
+                className="fixed hidden bg-white rounded-lg shadow-lg p-2 z-50 color-popup"
+                onMouseLeave={() => {
+                  const popup = document.querySelector('.color-popup');
+                  if (popup) {
+                    popup.classList.add('hidden');
                   }
                 }}
-                title="Unpin note"
-              />
+              >
+                <div className="flex flex-col space-y-1">
+                  {[
+                    { color: '#ffffff', label: 'White' },
+                    { color: '#fecaca', label: 'Light Red' },
+                    { color: '#fed7aa', label: 'Light Orange' },
+                    { color: '#bbf7d0', label: 'Light Green' }
+                  ].map(({ color, label }) => (
+                    <button
+                      key={color}
+                      className="flex items-center space-x-2 px-2 py-1 text-sm hover:bg-gray-100 rounded"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleColorChange(note.id, color);
+                        const popup = e.currentTarget.parentElement.parentElement;
+                        if (popup) {
+                          popup.classList.add('hidden');
+                        }
+                      }}
+                    >
+                      <div 
+                        className="w-3 h-3 rounded-full border border-gray-300"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="text-sm text-gray-800 whitespace-pre-wrap">
                 {pinnedLines.map((line, lineIndex) => {
                   // Check for headings first

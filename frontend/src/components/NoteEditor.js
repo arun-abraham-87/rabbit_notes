@@ -786,6 +786,21 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
                         setPendingUrlIndex(null);
                         setCustomLabel('');
                         setShowTextSelection(false);
+                        
+                        // Add a new row and focus on it
+                        const updatedLines = [...newLines];
+                        updatedLines.splice(pendingUrlIndex + 1, 0, {
+                          id: `line-${Date.now()}-new`,
+                          text: '',
+                          isTitle: false
+                        });
+                        setLines(updatedLines);
+                        setTimeout(() => {
+                          const nextTextarea = textareasRef.current[pendingUrlIndex + 1];
+                          if (nextTextarea) {
+                            nextTextarea.focus();
+                          }
+                        }, 0);
                       }
                     }}
                     className="w-full border px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

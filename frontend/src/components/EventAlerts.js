@@ -21,8 +21,12 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
     const now = new Date();
     const year = occurrenceDate.getFullYear();
 
-    // Check if the occurrence is after April 1st, 2025 and before current date
-    if (occurrenceDate >= april2025 && occurrenceDate < now) {
+    // Check if the occurrence is after April 1st, 2025 and on or before current date
+    if (occurrenceDate >= april2025 && occurrenceDate <= now) {
+      // If it's today's date, always needs acknowledgment
+      if (occurrenceDate.toDateString() === now.toDateString()) {
+        return true;
+      }
       return !isAcknowledged(event, year);
     }
     return false;

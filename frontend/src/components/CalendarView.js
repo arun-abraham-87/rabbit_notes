@@ -159,7 +159,7 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
               <div className="mt-2 text-sm text-yellow-700">
                 <ul className="list-disc pl-5 space-y-1">
                   {getUnacknowledgedOccurrences().map((occurrence, index) => (
-                    <li key={index} className="flex items-center justify-between group">
+                    <li key={index} className="flex items-center justify-between">
                       <span>
                         {occurrence.event.description} on {occurrence.date.toLocaleDateString('en-US', {
                           weekday: 'long',
@@ -170,7 +170,7 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
                       </span>
                       <button
                         onClick={() => onAcknowledgeEvent(occurrence.event.id, occurrence.date.getFullYear())}
-                        className="ml-4 flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-100 rounded-full hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="ml-4 flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-100 rounded-full hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
                       >
                         <CheckCircleIcon className="w-4 h-4" />
                         Acknowledge

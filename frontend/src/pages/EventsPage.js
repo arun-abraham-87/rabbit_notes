@@ -176,6 +176,37 @@ const EventsPage = ({ notes, onUpdate }) => {
     }
   };
 
+  const handleAcknowledgeEvent = async (eventId, year) => {
+    const event = notes.find(note => note.id === eventId);
+    if (!event) return;
+
+    // Add the acknowledgment meta tag with correct format
+    const metaTag = `meta::acknowledged::${year}`;
+    
+    // Check if the tag already exists
+    if (event.content.includes(metaTag)) {
+      return; // Already acknowledged
+    }
+
+    // Add the meta tag to the content
+    const updatedContent = event.content.trim() + '\n' + metaTag;
+
+    try {
+      // Update the note with the new content
+      await updateNoteById(eventId, updatedContent);
+      
+      // Update the notes array with the new content
+      const updatedNotes = notes.map(note => 
+        note.id === eventId ? { ...note, content: updatedContent } : note
+      );
+      
+      // Pass the updated notes array to onUpdate
+      onUpdate(updatedNotes);
+    } catch (error) {
+      console.error('Error acknowledging event:', error);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -255,7 +286,10 @@ const EventsPage = ({ notes, onUpdate }) => {
 
       {viewMode === 'calendar' ? (
         <div className="bg-white rounded-lg border p-6 shadow-sm">
-          <CalendarView events={calendarEvents} />
+          <CalendarView 
+            events={calendarEvents} 
+            onAcknowledgeEvent={handleAcknowledgeEvent}
+          />
         </div>
       ) : (
         <div className="grid gap-4">

@@ -598,7 +598,7 @@ const NotesMainContainer = ({
     return (
         <div className="flex flex-col h-full">
             {/* Alerts Section */}
-            {(highPriorityOverdueCount > 0 || passedDeadlineCount > 0 || oldTodosCount > 0) && (
+            {(highPriorityOverdueCount > 0 || passedDeadlineCount > 0) && (
                 <div className="mb-4">
                     <div 
                         className="flex items-center justify-between bg-rose-50 p-2 rounded-t-lg cursor-pointer"
@@ -609,7 +609,7 @@ const NotesMainContainer = ({
                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                             </svg>
                             <span className="text-sm font-medium text-rose-800">
-                                Alerts ({highPriorityOverdueCount + passedDeadlineCount + oldTodosCount})
+                                Alerts ({highPriorityOverdueCount + passedDeadlineCount})
                             </span>
                         </div>
                         <button className="text-rose-600 hover:text-rose-800">
@@ -656,7 +656,6 @@ const NotesMainContainer = ({
                                                             
                                                             return diffDays > 2;
                                                         })
-                                                        .slice(0, 1)
                                                         .map(note => (
                                                             <li key={note.id}>
                                                                 {note.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}
@@ -691,60 +690,13 @@ const NotesMainContainer = ({
                                                             const hasTodo = content.includes('meta::todo');
                                                             if (!hasTodo) return false;
                                                             
-                                                            const dateMatch = content.match(/meta::todo::(\d{4}-\d{2}-\d{2})/);
-                                                            if (!dateMatch) return false;
+                                                            const endDateMatch = content.match(/meta::end_date::(\d{4}-\d{2}-\d{2})/);
+                                                            if (!endDateMatch) return false;
                                                             
-                                                            const todoDate = new Date(dateMatch[1]);
+                                                            const endDate = new Date(endDateMatch[1]);
                                                             const now = new Date();
-                                                            return todoDate < now;
+                                                            return endDate < now;
                                                         })
-                                                        .slice(0, 1)
-                                                        .map(note => (
-                                                            <li key={note.id}>
-                                                                {note.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}
-                                                                {note.content.length > 100 ? '...' : ''}
-                                                            </li>
-                                                        ))}
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Old Todos Alert */}
-                            {oldTodosCount > 0 && (
-                                <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg">
-                                    <div className="flex items-center">
-                                        <div className="flex-shrink-0">
-                                            <svg className="h-5 w-5 text-rose-400" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                            </svg>
-                                        </div>
-                                        <div className="ml-3">
-                                            <h3 className="text-sm font-medium text-rose-800">
-                                                Attention needed: {oldTodosCount} {oldTodosCount === 1 ? 'todo' : 'todos'} older than 2 days
-                                            </h3>
-                                            <div className="mt-2 text-sm text-rose-700">
-                                                <ul className="list-disc pl-5 space-y-1">
-                                                    {notes
-                                                        .filter(note => {
-                                                            const content = note.content;
-                                                            const hasTodo = content.includes('meta::todo');
-                                                            const hasHighPriority = content.includes('meta::high');
-                                                            if (!hasTodo || hasHighPriority) return false;
-                                                            
-                                                            const dateMatch = content.match(/meta::todo::(\d{4}-\d{2}-\d{2})/);
-                                                            if (!dateMatch) return false;
-                                                            
-                                                            const todoDate = new Date(dateMatch[1]);
-                                                            const now = new Date();
-                                                            const diffTime = Math.abs(now - todoDate);
-                                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                                            
-                                                            return diffDays > 2;
-                                                        })
-                                                        .slice(0, 1)
                                                         .map(note => (
                                                             <li key={note.id}>
                                                                 {note.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}

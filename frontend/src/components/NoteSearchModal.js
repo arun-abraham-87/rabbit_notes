@@ -1,39 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
+import { XMarkIcon } from '@heroicons/react/24/solid';
+import { parseNoteContent } from '../utils/TextUtils';
 
 const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [expandedNotes, setExpandedNotes] = useState(new Set());
   const inputRef = useRef(null);
-
-  // Focus input when modal opens
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isOpen]);
-
-  // Handle keyboard navigation
-  useHotkeys('up', (e) => {
-    e.preventDefault();
-    setSelectedIndex(prev => Math.max(0, prev - 1));
-  }, { enabled: isOpen });
-
-  useHotkeys('down', (e) => {
-    e.preventDefault();
-    setSelectedIndex(prev => Math.min(filteredNotes.length - 1, prev + 1));
-  }, { enabled: isOpen });
-
-  useHotkeys('enter', (e) => {
-    e.preventDefault();
-    if (filteredNotes[selectedIndex]) {
-      onSelectNote(filteredNotes[selectedIndex]);
-    }
-  }, { enabled: isOpen });
-
-  useHotkeys('esc', () => {
-    onClose();
-  }, { enabled: isOpen });
+  const resultsRef = useRef(null);
+  const noteRefs = useRef([]);
 
   // Fuzzy search implementation
   const fuzzySearch = (text, query) => {
@@ -63,12 +39,135 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
     return lines.some(line => fuzzySearch(line, searchQuery));
   }).slice(0, 10); // Limit to 10 results
 
+  // Focus input when modal opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+      setSelectedIndex(0); // Reset selection when opening
+    }
+  }, [isOpen]);
+
+  // Update note refs when filtered notes change
+  useEffect(() => {
+    noteRefs.current = noteRefs.current.slice(0, filteredNotes.length);
+  }, [filteredNotes]);
+
+  // Handle keyboard navigation
+  useHotkeys('up', (e) => {
+    e.preventDefault();
+    setSelectedIndex(prev => {
+      const newIndex = Math.max(0, prev - 1);
+      focusSelectedNote(newIndex);
+      return newIndex;
+    });
+  }, { enabled: isOpen });
+
+  useHotkeys('down', (e) => {
+    e.preventDefault();
+    setSelectedIndex(prev => {
+      const newIndex = Math.min(filteredNotes.length - 1, prev + 1);
+      focusSelectedNote(newIndex);
+      return newIndex;
+    });
+  }, { enabled: isOpen });
+
+  useHotkeys('enter', (e) => {
+    e.preventDefault();
+    if (filteredNotes[selectedIndex]) {
+      onSelectNote(filteredNotes[selectedIndex]);
+    }
+  }, { enabled: isOpen });
+
+  // Focus and scroll to selected note
+  const focusSelectedNote = (index) => {
+    if (noteRefs.current[index]) {
+      noteRefs.current[index].focus();
+      noteRefs.current[index].scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+      });
+    }
+  };
+
+  // Update ESC key handling
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEsc);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [isOpen, onClose]);
+
+  const toggleNoteExpand = (noteId) => {
+    setExpandedNotes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) {
+        newSet.delete(noteId);
+      } else {
+        newSet.add(noteId);
+      }
+      return newSet;
+    });
+  };
+
+  const formatNoteContent = (content) => {
+    const lines = content.split('\n');
+    const nonMetaLines = lines.filter(line => !line.trim().startsWith('meta::'));
+    
+    return nonMetaLines.map((line, index) => {
+      // Check for headings
+      const h1Match = line.match(/^###(.+)###$/);
+      const h2Match = line.match(/^##(.+)##$/);
+
+      if (h1Match) {
+        return (
+          <h1 key={index} className="text-xl font-bold mb-2 text-gray-900">
+            {parseNoteContent({ content: h1Match[1].trim(), searchTerm: '' }).map((element, idx) => (
+              <React.Fragment key={idx}>{element}</React.Fragment>
+            ))}
+          </h1>
+        );
+      }
+
+      if (h2Match) {
+        return (
+          <h2 key={index} className="text-lg font-semibold mb-2 text-gray-800">
+            {parseNoteContent({ content: h2Match[1].trim(), searchTerm: '' }).map((element, idx) => (
+              <React.Fragment key={idx}>{element}</React.Fragment>
+            ))}
+          </h2>
+        );
+      }
+
+      // Regular lines with URL parsing
+      return (
+        <div 
+          key={index} 
+          className={`mb-1 ${index === 0 ? 'font-medium' : 'text-gray-500'}`}
+        >
+          {parseNoteContent({ content: line, searchTerm: '' }).map((element, idx) => (
+            <React.Fragment key={idx}>{element}</React.Fragment>
+          ))}
+        </div>
+      );
+    });
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center pt-20 z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
-        <div className="p-4">
+        <div className="p-4 border-b flex items-center justify-between">
           <input
             ref={inputRef}
             type="text"
@@ -77,22 +176,53 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
             placeholder="Search notes..."
             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <button
+            onClick={onClose}
+            className="ml-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+            title="Close search"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
         </div>
-        <div className="max-h-96 overflow-y-auto">
+        <div 
+          ref={resultsRef}
+          className="max-h-96 overflow-y-auto"
+        >
           {filteredNotes.map((note, index) => {
+            const isExpanded = expandedNotes.has(note.id);
             const lines = note.content.split('\n');
-            const matchingLine = lines.find(line => fuzzySearch(line, searchQuery));
+            const displayLines = isExpanded ? lines : lines.slice(0, 4);
             
             return (
               <div
                 key={note.id}
-                className={`p-4 cursor-pointer hover:bg-gray-100 ${
-                  index === selectedIndex ? 'bg-blue-50' : ''
+                ref={el => noteRefs.current[index] = el}
+                tabIndex={0}
+                className={`p-4 cursor-pointer transition-colors duration-150 outline-none ${
+                  index === selectedIndex 
+                    ? 'bg-blue-50 border-l-4 border-blue-500 ring-2 ring-blue-200' 
+                    : 'hover:bg-gray-50'
                 }`}
                 onClick={() => onSelectNote(note)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    onSelectNote(note);
+                  }
+                }}
               >
-                <div className="text-sm font-medium text-gray-900">
-                  {matchingLine || lines[0]}
+                <div className="text-sm">
+                  {formatNoteContent(displayLines.join('\n'))}
+                  {lines.length > 4 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleNoteExpand(note.id);
+                      }}
+                      className="text-xs text-blue-500 hover:text-blue-700 mt-1"
+                    >
+                      {isExpanded ? 'Show less' : 'Show more...'}
+                    </button>
+                  )}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
                   {new Date(note.created_datetime).toLocaleDateString()}

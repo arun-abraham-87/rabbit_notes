@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { XMarkIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
+import moment from 'moment';
 
 const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,6 +75,15 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
       });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      if (selectedIndex === 0) {
+        // If on first note, move focus to input and place cursor at end
+        if (inputRef.current) {
+          inputRef.current.focus();
+          const length = inputRef.current.value.length;
+          inputRef.current.setSelectionRange(length, length);
+        }
+        return;
+      }
       setSelectedIndex(prev => {
         const newIndex = Math.max(0, prev - 1);
         focusSelectedNote(newIndex);
@@ -162,6 +172,18 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
     });
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      // Parse the date string using moment with the correct format
+      const date = moment(dateString, "DD/MM/YYYY, hh:mm:ss a");
+      return date.format("DD MMM YYYY, hh:mm A");
+    } catch (error) {
+      console.error('Error parsing date:', error);
+      return '';
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -225,7 +247,7 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                   )}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {new Date(note.created_datetime).toLocaleDateString()}
+                  {formatDate(note.created_datetime)}
                 </div>
               </div>
             );

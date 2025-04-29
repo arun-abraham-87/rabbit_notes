@@ -11,6 +11,7 @@ import NextMeetingBanner from './NextMeetingBanner.js';
 import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner.js';
 import EventAlerts from './EventAlerts.js';
 import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
+import CriticalTodosSection from './CriticalTodosSection';
 
 const checkForOngoingMeeting = (notes) => {
   if (!notes) return null;
@@ -714,6 +715,7 @@ const NotesMainContainer = ({
                 </div>
             )}
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
+                <CriticalTodosSection notes={allNotes} />
                 <EventAlerts 
                     events={eventsState}
                     onAcknowledgeEvent={handleAcknowledgeEvent}

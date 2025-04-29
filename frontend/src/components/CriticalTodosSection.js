@@ -12,7 +12,10 @@ const CriticalTodosSection = ({ notes }) => {
 
   return (
     <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-      <h3 className="text-lg font-semibold text-red-800 mb-2">Critical Todos</h3>
+      <h3 className="text-lg font-semibold text-red-800 mb-2 flex items-center gap-2">
+        <span className="inline-block animate-spin">🚨</span>
+        Critical Todos
+      </h3>
       <div className="space-y-2">
         {criticalTodos.map(note => {
           // Extract the todo content (first non-meta line)

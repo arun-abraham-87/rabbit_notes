@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
+import { getAge } from '../utils/DateUtils';
 import moment from 'moment';
 
 const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
@@ -177,7 +178,12 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
           key={index} 
           className={`mb-1 ${index === 0 ? 'font-medium' : 'text-gray-500'}`}
         >
-          <span dangerouslySetInnerHTML={{ __html: highlightSearchTerms(line) }} />
+          {parseNoteContent({ content: line, searchTerm: searchQuery }).map((element, idx) => {
+            if (typeof element === 'string') {
+              return <span key={idx} dangerouslySetInnerHTML={{ __html: highlightSearchTerms(element) }} />;
+            }
+            return element;
+          })}
         </div>
       );
     });
@@ -235,6 +241,7 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
             const isExpanded = expandedNotes.has(note.id);
             const lines = note.content.split('\n');
             const displayLines = isExpanded ? lines : lines.slice(0, 4);
+            const isEven = index % 2 === 0;
             
             return (
               <div
@@ -244,7 +251,9 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                 className={`group p-4 cursor-pointer transition-all duration-200 outline-none border-b border-gray-50 last:border-b-0 ${
                   index === selectedIndex 
                     ? 'bg-blue-50/50 border-l-4 border-l-blue-500' 
-                    : 'hover:bg-gray-50/50'
+                    : isEven 
+                      ? 'bg-gray-50' 
+                      : 'bg-gray-100'
                 }`}
                 onClick={() => onSelectNote(note)}
                 onKeyDown={(e) => {
@@ -254,6 +263,13 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                 }}
               >
                 <div className="flex flex-col gap-2">
+                  {/* Note Age */}
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <span className="bg-gray-100 px-2 py-0.5 rounded-full">
+                      Added {getAge(note.created_datetime)}
+                    </span>
+                  </div>
+
                   {/* Note Content */}
                   <div className="text-sm space-y-1.5">
                     {formatNoteContent(displayLines.join('\n'))}

@@ -113,8 +113,6 @@ const App = () => {
   const [noteDate, setNoteDate] = useState(null);
   const [totals, setTotals] = useState(0);
 
-  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
-
   const updateBothNotesLists = async (updatedNotes) => {
     try {
       // First update the notes list
@@ -226,22 +224,7 @@ const App = () => {
         <Navbar activePage={activePage} setActivePage={setActivePage} settings={settings} />
         <div className="flex flex-1 overflow-hidden">
           {/* Left panel */}
-          <div
-            className={`border-r flex-shrink-0 transition-all duration-300 ease-in-out ${
-              isLeftPanelCollapsed ? 'w-0' : 'w-[300px]'
-            } relative`}
-          >
-            <button
-              onClick={() => setIsLeftPanelCollapsed(prev => !prev)}
-              className="absolute top-2 right-[-12px] w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500 z-50"
-              title={isLeftPanelCollapsed ? "Expand Panel" : "Collapse Panel"}
-            >
-              {isLeftPanelCollapsed ? (
-                <ChevronDoubleRightIcon className="h-4 w-4" />
-              ) : (
-                <ChevronDoubleLeftIcon className="h-4 w-4" />
-              )}
-            </button>
+          <div className="border-r flex-shrink-0 w-[300px] relative">
             <div className="h-full overflow-hidden">
               <LeftPanel
                 notes={allNotes}
@@ -253,20 +236,8 @@ const App = () => {
             </div>
           </div>
 
-          {isLeftPanelCollapsed && (
-            <button
-              onClick={() => setIsLeftPanelCollapsed(false)}
-              className="absolute top-2 left-2 w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-sm text-white shadow hover:bg-gray-500 z-50"
-              title="Expand Panel"
-            >
-              <ChevronDoubleRightIcon className="h-4 w-4" />
-            </button>
-          )}
-
           {/* Right panel: main content */}
-          <div
-            className={`flex-1 p-8 overflow-auto`}
-          >
+          <div className="flex-1 p-8 overflow-auto">
             {activePage === 'notes' && <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />}
             {activePage === 'notes' && (
               <NotesMainContainer

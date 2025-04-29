@@ -557,25 +557,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
       <div className="w-full h-full bg-slate-50 p-3 flex flex-col overflow-hidden">
         <div className="flex-1 space-y-2 overflow-y-auto overflow-x-hidden">
-          {/* Collapse / Open controls */}
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setActiveSection(null)}
-                className="p-2 bg-white hover:bg-indigo-50 rounded-lg text-indigo-600 hover:text-indigo-700 transition-colors duration-150 shadow-sm"
-                title="Collapse All Sections"
-              >
-                <ChevronDoubleUpIcon className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setActiveSection('quickLinks')}
-                className="p-2 bg-white hover:bg-indigo-50 rounded-lg text-indigo-600 hover:text-indigo-700 transition-colors duration-150 shadow-sm"
-                title="Expand All Sections"
-              >
-                <ChevronDoubleDownIcon className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
+ 
 
           {/* custom right‑click menu */}
           {showLinkMenu && (

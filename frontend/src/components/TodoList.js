@@ -420,20 +420,23 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       >
         {/* Header - Only shown when showHeaders is true */}
         {showHeaders && (
-          <div className="flex items-center justify-between p-3 border-b bg-white/50">
+          <div className={`flex items-center justify-between p-3 border-b ${
+            isCritical ? 'bg-red-800/50 border-red-700' : 'bg-white/50'
+          }`}>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-gray-500">Created:</span>
-              <span className={`text-xs font-medium ${ageColorClass}`}>
+              <span className={`text-xs font-medium ${isCritical ? 'text-white/80' : 'text-gray-500'}`}>Created:</span>
+              <span className={`text-xs font-medium ${isCritical ? 'text-white' : ageColorClass}`}>
                 {new Date(createdDate).toLocaleDateString()}
               </span>
-              <span className="text-gray-300">•</span>
-              <span className="text-xs font-medium text-gray-500">Added:</span>
-              <span className={`text-xs font-medium ${ageColorClass}`}>
+              <span className={isCritical ? 'text-white/30' : 'text-gray-300'}>•</span>
+              <span className={`text-xs font-medium ${isCritical ? 'text-white/80' : 'text-gray-500'}`}>Added:</span>
+              <span className={`text-xs font-medium ${isCritical ? 'text-white' : ageColorClass}`}>
                 {getAgeLabel(createdDate)}
               </span>
-              <span className="text-gray-300">•</span>
-              <span className="text-xs font-medium text-gray-500">Status:</span>
+              <span className={isCritical ? 'text-white/30' : 'text-gray-300'}>•</span>
+              <span className={`text-xs font-medium ${isCritical ? 'text-white/80' : 'text-gray-500'}`}>Status:</span>
               <span className={`text-xs font-medium ${
+                isCritical ? 'text-white' :
                 currentPriority === 'high' ? 'text-rose-600' :
                 currentPriority === 'medium' ? 'text-amber-600' :
                 'text-emerald-600'
@@ -441,7 +444,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                 {currentPriority.charAt(0).toUpperCase() + currentPriority.slice(1)}
               </span>
               {priorityAge && (
-                <span className="text-xs font-medium text-gray-500">
+                <span className={`text-xs font-medium ${isCritical ? 'text-white/80' : 'text-gray-500'}`}>
                   (for {priorityAge})
                 </span>
               )}
@@ -449,9 +452,8 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           </div>
         )}
 
-        {/* Content */}
         <div className="flex-1 p-3 overflow-auto relative">
-          {/* Priority Buttons - Now on the left of complete button */}
+          {/* Priority Buttons */}
           <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
             <button
               onClick={() => handlePriorityClick(todo.id, 'high')}
@@ -493,24 +495,15 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                   ? 'bg-red-200 text-red-700'
                   : 'bg-white border border-gray-200 hover:bg-red-100 text-gray-400 hover:text-red-600'
               }`}
-              title="Mark as critical"
+              title={isCritical ? "Unmark as critical" : "Mark as critical"}
             >
-              Critical
+              {todo.content.includes('meta::critical') ? "Unmark critical" : "Critical"}
             </button>
           </div>
 
-          {/* Complete button */}
-          <button
-            onClick={() => handleCheckboxChange(todo.id, true)}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center hover:bg-emerald-50 hover:border-emerald-200 transition-all duration-200 z-10"
-            title="Mark as complete"
-          >
-            <svg className="w-5 h-5 text-gray-400 hover:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </button>
-
-          <div className="text-sm text-gray-800 whitespace-pre-wrap pr-32">
+          <div className={`text-sm whitespace-pre-wrap pr-32 ${
+            isCritical ? 'text-white' : 'text-gray-800'
+          }`}>
             {(() => {
               // Remove all meta tags from content
               const content = todo.content
@@ -527,7 +520,9 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
 
                 if (h1Match) {
                   return (
-                    <h1 key={`line-${lineIndex}`} className="text-xl font-bold mb-2 text-gray-900">
+                    <h1 key={`line-${lineIndex}`} className={`text-xl font-bold mb-2 ${
+                      isCritical ? 'text-white' : 'text-gray-900'
+                    }`}>
                       {parseNoteContent({ content: h1Match[1].trim(), searchTerm: searchQuery })}
                     </h1>
                   );
@@ -535,7 +530,9 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
 
                 if (h2Match) {
                   return (
-                    <h2 key={`line-${lineIndex}`} className="text-lg font-semibold mb-2 text-gray-800">
+                    <h2 key={`line-${lineIndex}`} className={`text-lg font-semibold mb-2 ${
+                      isCritical ? 'text-white' : 'text-gray-800'
+                    }`}>
                       {parseNoteContent({ content: h2Match[1].trim(), searchTerm: searchQuery })}
                     </h2>
                   );

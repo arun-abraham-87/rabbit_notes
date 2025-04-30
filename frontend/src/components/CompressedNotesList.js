@@ -31,7 +31,12 @@ const CompressedNotesList = ({
   isWatchList = false
 }) => {
   const handleUnfollow = (noteId, content) => {
-    const updatedContent = content.replace('meta::watch', '');
+    const updatedContent = content
+      .split('\n')
+      .filter(line => !line.includes('meta::watch'))
+      .join('\n')
+      .trim();
+    
     updateNote(noteId, updatedContent);
   };
 
@@ -73,10 +78,11 @@ const CompressedNotesList = ({
           {isWatchList && (
             <button
               onClick={() => handleUnfollow(note.id, note.content)}
-              className="absolute top-1 right-1 p-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-1/2 -translate-y-1/2 right-2 px-2 py-1 rounded-md bg-red-50 text-red-600 hover:bg-red-100 flex items-center gap-1"
               title="Unfollow note"
             >
               <XMarkIcon className="h-4 w-4" />
+              <span className="text-sm">Unfollow</span>
             </button>
           )}
         </div>

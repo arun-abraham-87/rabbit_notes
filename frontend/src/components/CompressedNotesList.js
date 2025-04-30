@@ -1,6 +1,6 @@
 import React from 'react';
 import NoteContent from './NoteContent';
-import { XMarkIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, CheckIcon } from '@heroicons/react/24/solid';
 
 const CompressedNotesList = ({
   notes,
@@ -40,6 +40,11 @@ const CompressedNotesList = ({
     updateNote(noteId, updatedContent);
   };
 
+  const handleReview = (noteId, content) => {
+    const updatedContent = `${content}\nmeta::reviewed::${new Date().toISOString()}`;
+    updateNote(noteId, updatedContent);
+  };
+
   return (
     <div className="space-y-1">
       {notes.map(note => (
@@ -76,14 +81,24 @@ const CompressedNotesList = ({
             compressedView={true}
           />
           {isWatchList && (
-            <button
-              onClick={() => handleUnfollow(note.id, note.content)}
-              className="absolute top-1/2 -translate-y-1/2 right-2 px-2 py-1 rounded-md bg-red-50 text-red-600 hover:bg-red-100 flex items-center gap-1"
-              title="Unfollow note"
-            >
-              <XMarkIcon className="h-4 w-4" />
-              <span className="text-sm">Unfollow</span>
-            </button>
+            <div className="absolute top-1/2 -translate-y-1/2 right-2 flex items-center gap-2">
+              <button
+                onClick={() => handleReview(note.id, note.content)}
+                className="px-2 py-1 rounded-md bg-green-50 text-green-600 hover:bg-green-100 flex items-center gap-1"
+                title="Mark as reviewed"
+              >
+                <CheckIcon className="h-4 w-4" />
+                <span className="text-sm">Review</span>
+              </button>
+              <button
+                onClick={() => handleUnfollow(note.id, note.content)}
+                className="px-2 py-1 rounded-md bg-red-50 text-red-600 hover:bg-red-100 flex items-center gap-1"
+                title="Unfollow note"
+              >
+                <XMarkIcon className="h-4 w-4" />
+                <span className="text-sm">Unfollow</span>
+              </button>
+            </div>
           )}
         </div>
       ))}

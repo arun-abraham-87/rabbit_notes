@@ -35,6 +35,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [showLastXDays, setShowLastXDays] = useState(false);
   const [showLastXDaysPopup, setShowLastXDaysPopup] = useState(false);
   const [selectedDays, setSelectedDays] = useState([]);
+  const [completedTodos, setCompletedTodos] = useState({});
 
   // Function to clear all date filters
   const clearDateFilters = () => {
@@ -210,6 +211,41 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         : `${cleanedContent}\nmeta::critical`;
       
       updateTodo(id, updatedContent);
+    }
+  };
+
+  const handleCompleteTodo = async (id) => {
+    const note = todos.find((todo) => todo.id === id);
+    if (note) {
+      const lines = note.content.split('\n');
+      const isCompleted = lines.some(line => line.trim().startsWith('meta::completed::'));
+      
+      if (isCompleted) {
+        // Remove completed status
+        const updatedContent = lines
+          .filter(line => !line.trim().startsWith('meta::completed::'))
+          .join('\n')
+          .trim();
+        await updateTodo(id, updatedContent);
+        setCompletedTodos(prev => ({ ...prev, [id]: false }));
+      } else {
+        // Remove todo and priority tags, add completed status
+        const updatedContent = lines
+          .filter(line => 
+            !line.trim().startsWith('meta::todo::') && 
+            !line.trim().startsWith('meta::high') && 
+            !line.trim().startsWith('meta::medium') && 
+            !line.trim().startsWith('meta::low') &&
+            !line.trim().startsWith('meta::priority_age::')
+          )
+          .join('\n')
+          .trim();
+        
+        const timestamp = new Date().toISOString();
+        const finalContent = `${updatedContent}\nmeta::completed::${timestamp}`;
+        await updateTodo(id, finalContent);
+        setCompletedTodos(prev => ({ ...prev, [id]: true }));
+      }
     }
   };
 
@@ -390,11 +426,16 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     }
   };
 
-  // Add handler for Cmd+Enter
+  // Add handler for Enter and Cmd+Enter
   const handleSearchKeyDown = (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && searchQuery.trim()) {
-      e.preventDefault();
-      createTodo(searchQuery.trim());
+    if (searchQuery.trim()) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        createTodo(searchQuery.trim());
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        createTodo(searchQuery.trim());
+      }
     }
   };
 
@@ -403,6 +444,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
     const currentPriority = priorities[todo.id] || tag;
     const isCritical = todo.content.includes('meta::critical');
+    const isCompleted = todo.content.includes('meta::completed::');
     
     const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
     const createdDate = todoDateMatch ? todoDateMatch[1] : todo.created_datetime;
@@ -424,7 +466,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           isCritical 
             ? 'bg-red-900 text-white border-red-800' 
             : priorityColors[currentPriority]
-        }`}
+        } ${isCompleted ? 'opacity-60' : ''}`}
       >
         {/* Header - Only shown when showHeaders is true */}
         {showHeaders && (
@@ -506,6 +548,21 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
               title={isCritical ? "Unmark as critical" : "Mark as critical"}
             >
               {todo.content.includes('meta::critical') ? "Unmark critical" : "Critical"}
+            </button>
+            <button
+              onClick={() => handleCompleteTodo(todo.id)}
+              className={`p-1.5 rounded-full transition-all duration-200 ${
+                isCompleted
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+              }`}
+              title={isCompleted ? "Mark as incomplete" : "Mark as complete"}
+            >
+              {isCompleted ? (
+                <CheckCircleIcon className="h-4 w-4" />
+              ) : (
+                <div className="h-4 w-4 border-2 border-gray-300 rounded-full" />
+              )}
             </button>
           </div>
 

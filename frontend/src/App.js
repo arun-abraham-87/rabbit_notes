@@ -382,7 +382,11 @@ const AppContent = () => {
                   } />
                   <Route path="/watch" element={
                     <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                      <WatchList allNotes={allNotes} updateNote={updateNote} />
+                      <WatchList 
+                        allNotes={allNotes} 
+                        updateNote={updateNote} 
+                        refreshNotes={fetchAllNotes} 
+                      />
                     </div>
                   } />
                   <Route path="/tags" element={<TagListing objectList={objects} />} />

@@ -1,7 +1,7 @@
 import React from 'react';
 import CompressedNotesList from './CompressedNotesList';
 
-const WatchList = ({ allNotes, updateNote }) => {
+const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
   const watchlistNotes = allNotes.filter(note => 
     note.content.includes('meta::watch')
   );
@@ -16,11 +16,8 @@ const WatchList = ({ allNotes, updateNote }) => {
     
     // Call the parent's updateNote function to save the changes
     updateNote(noteId, updatedContent).then(() => {
-      // Force a re-render by updating the local state
-      const updatedNotes = allNotes.map(note => 
-        note.id === noteId ? { ...note, content: updatedContent } : note
-      );
-      // The parent component will handle the actual state update
+      // Refresh the notes list
+      refreshNotes();
     });
   };
 

@@ -1,5 +1,5 @@
 // src/components/LeftPanel.js
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -7,7 +7,8 @@ import {
   ChevronDoubleDownIcon,
   Cog6ToothIcon,
   XMarkIcon,
-  PencilSquareIcon
+  PencilSquareIcon,
+  EyeIcon
 } from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
 import EditMeetingModal from './EditMeetingModal';
@@ -218,6 +219,10 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       events: false
     };
   });
+  const [hoveredNote, setHoveredNote] = useState(null);
+  const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+  const [hoverTimeout, setHoverTimeout] = useState(null);
+  const popupRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
@@ -543,6 +548,46 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
   };
 
+  const handleViewHover = (e, note) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const popupWidth = 300; // Fixed width for the popup
+    const viewportWidth = window.innerWidth;
+
+    // Calculate position to prevent overflow
+    let x = rect.left;
+    let y = rect.top - 40; // Position above the title
+
+    // Adjust horizontal position if popup would overflow right edge
+    if (x + popupWidth > viewportWidth) {
+      x = viewportWidth - popupWidth - 10;
+    }
+
+    setHoverPosition({ x, y });
+
+    // Clear any existing timeout
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+    }
+
+    // Set a small delay before showing the popup
+    const timeout = setTimeout(() => {
+      setHoveredNote(note);
+    }, 100);
+    setHoverTimeout(timeout);
+  };
+
+  const handleViewLeave = (e) => {
+    // Check if the mouse is moving to the popup
+    if (popupRef.current && popupRef.current.contains(e.relatedTarget)) {
+      return;
+    }
+
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+    }
+    setHoveredNote(null);
+  };
+
   return (
     <>
       {alertMeetingId && (() => {
@@ -575,6 +620,24 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           </div>
         );
       })()}
+
+      {/* Hover Popup */}
+      {hoveredNote && (
+        <div 
+          ref={popupRef}
+          className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-3 w-[300px]"
+          style={{
+            left: hoverPosition.x,
+            top: hoverPosition.y,
+            transition: 'opacity 0.2s ease-in-out'
+          }}
+          onMouseLeave={handleViewLeave}
+        >
+          <div className="text-sm font-medium text-gray-900 break-words">
+            {hoveredNote.content.split('\n')[0]}
+          </div>
+        </div>
+      )}
 
       <div className="w-full h-full bg-slate-50 p-3 flex flex-col overflow-hidden">
         <div className="flex-1 space-y-2 overflow-y-auto overflow-x-hidden">
@@ -771,20 +834,31 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               </h2>
               {(activeSection === 'watchList' || lockedSections.watchList) && (
                 <div className="space-y-2 w-full">
-                  {watchList.map((note, idx) => {
-                    const firstLine = note.content.split('\n')[0];
-                    return (
-                      <div
-                        key={note.id}
-                        onClick={() => setSelectedNote(note)}
-                        className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} rounded-lg hover:bg-indigo-100 transition-colors cursor-pointer`}
-                      >
-                        <div className="text-base font-medium text-gray-800 break-words">
-                          {firstLine}
+                  {watchList.map((note, idx) => (
+                    <div
+                      key={note.id}
+                      className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} rounded-lg hover:bg-indigo-100 transition-colors cursor-pointer`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div 
+                            className="text-base font-medium text-gray-800 break-words hover:text-indigo-600 transition-colors"
+                            onMouseEnter={(e) => handleViewHover(e, note)}
+                            onMouseLeave={handleViewLeave}
+                          >
+                            {note.content.split('\n')[0]}
+                          </div>
                         </div>
+                        <button
+                          onClick={() => setSelectedNote(note)}
+                          className="p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-50"
+                          title="Edit note"
+                        >
+                          <PencilSquareIcon className="h-4 w-4 text-indigo-600" />
+                        </button>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -830,88 +904,136 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               {(activeSection === 'meetings' || lockedSections.meetings) && (
                 <div className="space-y-2 w-full">
                   {(expandedMeetings ? visibleMeetings : visibleMeetings.slice(0, 3)).map((m, idx) => {
+                    const note = notes.find(n => n.id === m.id);
                     const eventTime = new Date(m.time).getTime();
                     const diff = eventTime - now;
                     const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
+                    const isToday = new Date(m.time).toDateString() === new Date(now).toDateString();
+                    const isPast = diff < 0;
+                    const isAcknowledged = note?.content.includes('meta::meeting_acknowledge');
+                    
+                    // Calculate time until meeting
+                    const days = Math.floor(Math.abs(diff) / 86400000);
+                    const hrs = Math.floor((Math.abs(diff) % 86400000) / 3600000);
+                    const mins = Math.floor((Math.abs(diff) % 3600000) / 60000);
+                    const timeUntil = [];
+                    if (days) timeUntil.push(`${days}d`);
+                    if (hrs) timeUntil.push(`${hrs}h`);
+                    if (mins) timeUntil.push(`${mins}m`);
+                    
                     return (
                       <div
                         key={m.id}
-                        className="group relative mb-2 rounded-lg hover:bg-indigo-100 transition-colors"
+                        className="group relative mb-2 rounded-lg transition-all duration-200"
                       >
-                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} ${isFlashing ? 'animate-pulse bg-purple-100' : ''} rounded-lg`}>
-                          <div className="text-base font-medium text-gray-800 break-words">{m.description}</div>
-                          <div className="text-sm text-gray-600 mt-1">
-                            {(() => {
-                              const d = new Date(m.time);
-                              const today = new Date(now);
-                              return d.toDateString() === today.toDateString() ? 'Today' :
-                                d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-                            })()}
-                          </div>
-                          <div className="text-sm text-gray-600 flex items-center gap-2 flex-wrap">
-                            <span>
-                              {(() => {
-                                const d = new Date(m.time);
-                                let h = d.getHours(), mnt = d.getMinutes();
-                                const ampm = h >= 12 ? 'PM' : 'AM';
-                                h = h % 12 || 12;
-                                return `${h}:${mnt.toString().padStart(2, '0')} ${ampm}`;
-                              })()}
-                            </span>
-                            {m.duration && (
-                              <span className="text-indigo-500">
-                                • {m.duration} mins
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-sm font-medium text-indigo-600 mt-1">
-                            {(() => {
-                              const delta = new Date(m.time).getTime() - now;
-                              if (delta < 0) {
-                                const note = notes.find(n => n.id === m.id);
-                                const isAcknowledged = note?.content.includes('meta::meeting_acknowledge');
-                                return (
-                                  <div className="flex items-center gap-2">
-                                    <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs">
-                                      Passed
-                                    </span>
-                                    {!isAcknowledged && (
-                                      <button
-                                        onClick={() => handleMeetingAcknowledge(m.id)}
-                                        className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full hover:bg-indigo-200 transition-colors"
-                                      >
-                                        Acknowledge
-                                      </button>
-                                    )}
+                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-50'} ${
+                          isFlashing ? 'animate-pulse bg-purple-100' : ''
+                        } rounded-lg border ${
+                          isPast ? 'border-gray-200' : 'border-indigo-100'
+                        }`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              {/* Status Bar */}
+                              <div className="flex items-center gap-2 mb-2">
+                                {isPast ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                    Past
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    Upcoming
+                                  </span>
+                                )}
+                                {isToday && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                                    </svg>
+                                    Today
+                                  </span>
+                                )}
+                                {m.recurrenceType && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                                    </svg>
+                                    {m.recurrenceType === 'custom' 
+                                      ? m.selectedDays.map(day => day.charAt(0).toUpperCase() + day.slice(1)).join(', ')
+                                      : m.recurrenceType.charAt(0).toUpperCase() + m.recurrenceType.slice(1)}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Meeting Title */}
+                              <div 
+                                className="text-base font-medium text-gray-800 break-words hover:text-indigo-600 transition-colors"
+                                onMouseEnter={(e) => handleViewHover(e, note)}
+                                onMouseLeave={handleViewLeave}
+                              >
+                                {m.description}
+                              </div>
+
+                              {/* Time and Duration */}
+                              <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <div className="flex items-center gap-1.5">
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-indigo-500">
+                                    <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
+                                  </svg>
+                                  <span className="font-medium text-indigo-600">
+                                    {formatAndAgeDate(new Date(m.time))}
+                                  </span>
+                                </div>
+                                {m.duration && (
+                                  <div className="flex items-center gap-1.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-indigo-500">
+                                      <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="font-medium text-indigo-600">{m.duration} mins</span>
                                   </div>
-                                );
-                              }
-                              const days = Math.floor(delta / 86400000);
-                              const hrs = Math.floor((delta % 86400000) / 3600000);
-                              const mins = Math.floor((delta % 3600000) / 60000);
-                              const secs = Math.floor((delta % 60000) / 1000);
-                              const parts = [];
-                              if (days) parts.push(`${days}d`);
-                              if (hrs) parts.push(`${hrs}h`);
-                              if (mins) parts.push(`${mins}m`);
-                              if (!parts.length) parts.push(`${secs}s`);
-                              return `in ${parts.join(' ')}`;
-                            })()}
-                          </div>
-                          {m.recurrenceType && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              Recurring: {m.recurrenceType === 'custom'
-                                ? m.selectedDays.map(day => day.charAt(0).toUpperCase() + day.slice(1)).join(', ')
-                                : m.recurrenceType.charAt(0).toUpperCase() + m.recurrenceType.slice(1)}
+                                )}
+                              </div>
+
+                              {/* Time Until/Action Buttons */}
+                              <div className="mt-2 flex items-center gap-2">
+                                {!isPast ? (
+                                  <span className="text-sm font-medium text-indigo-600">
+                                    in {timeUntil.join(' ')}
+                                  </span>
+                                ) : !isAcknowledged ? (
+                                  <button
+                                    onClick={() => handleMeetingAcknowledge(m.id)}
+                                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    Acknowledge
+                                  </button>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    Acknowledged
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          )}
+                            <button
+                              onClick={() => setEditingMeetingId(m.id)}
+                              className="p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-50"
+                              title="Edit meeting"
+                            >
+                              <PencilSquareIcon className="h-4 w-4 text-indigo-600" />
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          onClick={() => setEditingMeetingId(m.id)}
-                          className="absolute top-3 right-3 p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-50"
-                        >
-                          <PencilSquareIcon className="h-4 w-4 text-indigo-600" />
-                        </button>
                       </div>
                     );
                   })}
@@ -972,30 +1094,21 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               {(activeSection === 'events' || lockedSections.events) && (
                 <div className="space-y-2 w-full">
                   {(expandedEvents ? visibleEvents : visibleEvents.slice(0, 3)).map((e, idx) => {
-                    const eventTime = new Date(e.time).getTime();
-                    const diff = eventTime - now;
-                    const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
-                    const isToday = new Date(e.time).toDateString() === new Date(now).toDateString();
+                    const note = notes.find(n => n.id === e.id);
                     return (
                       <div
                         key={e.id}
                         className="group relative mb-2 rounded-lg hover:bg-purple-100 transition-colors"
                       >
-                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} ${isFlashing ? 'animate-pulse bg-purple-200' : ''} rounded-lg`}>
+                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} rounded-lg`}>
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="text-base font-medium text-gray-800 break-words flex items-center gap-2">
-                                <span className="truncate">{e.context}</span>
-                                {e.isRecurring && (
-                                  <span className="ml-2 text-xs font-medium text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full whitespace-nowrap">
-                                    {e.recurrenceType}
-                                  </span>
-                                )}
-                                {isToday && (
-                                  <span className="text-xs font-medium text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full whitespace-nowrap">
-                                    Today
-                                  </span>
-                                )}
+                              <div 
+                                className="text-base font-medium text-gray-800 break-words hover:text-purple-600 transition-colors"
+                                onMouseEnter={(e) => handleViewHover(e, note)}
+                                onMouseLeave={handleViewLeave}
+                              >
+                                {e.context.replace('event_description:', '').trim()}
                               </div>
                               {e.location && (
                                 <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
@@ -1017,6 +1130,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                             <button
                               onClick={() => setEditingEventId(e.id)}
                               className="p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
+                              title="Edit event"
                             >
                               <PencilSquareIcon className="h-4 w-4 text-purple-600" />
                             </button>

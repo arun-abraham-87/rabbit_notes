@@ -18,6 +18,8 @@ import { parseNoteContent } from './utils/TextUtils';
 
 import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings, defaultSettings } from './utils/ApiUtils';
 import { SearchModalProvider } from './contexts/SearchModalContext';
+import { NoteEditorProvider, useNoteEditor } from './contexts/NoteEditorContext';
+import { NotesProvider, useNotes } from './contexts/NotesContext';
 
 // Helper to render first four pinned notes
 const PinnedSection = ({ notes, onUnpin }) => {
@@ -177,6 +179,51 @@ const PinnedSection = ({ notes, onUnpin }) => {
   );
 };
 
+const NoteEditorModal = () => {
+  const { isOpen, initialContent, closeEditor } = useNoteEditor();
+  const { addNote } = useNotes();
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        closeEditor();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, closeEditor]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800">New Note</h2>
+          <button
+            onClick={closeEditor}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        <NoteEditor
+          isAddMode={true}
+          onSave={(content) => {
+            addNote(content);
+            closeEditor();
+          }}
+          onCancel={closeEditor}
+          text={initialContent}
+        />
+      </div>
+    </div>
+  );
+};
+
 const AppContent = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -313,105 +360,110 @@ const AppContent = () => {
 
   return (
     <SearchModalProvider notes={allNotes}>
-      <div className="App flex flex-col h-screen">
-        <Navbar activePage={activePage} setActivePage={(page) => navigate(`/${page}`)} settings={settings} />
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left panel */}
-          <div className="border-r flex-shrink-0 w-[300px] relative">
-            <div className="h-full overflow-hidden">
-              <LeftPanel
-                notes={allNotes}
-                setNotes={setAllNotes}
-                searchQuery={searchQuery}
-                settings={settings}
-                setSettings={setSettings}
-              />
-            </div>
-          </div>
-
-          {/* Right panel: main content */}
-          <div className="flex-1 p-8 overflow-auto">
-            <Routes>
-              <Route path="/" element={
-                <>
-                  <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
-                  <NotesMainContainer
-                    objList={objectList}
-                    notes={notes}
-                    allNotes={allNotes}
-                    addNote={addNote}
-                    setNotes={updateBothNotesLists}
-                    objects={objects}
+      <NotesProvider>
+        <NoteEditorProvider>
+          <div className="App flex flex-col h-screen">
+            <Navbar activePage={activePage} setActivePage={(page) => navigate(`/${page}`)} settings={settings} />
+            <div className="flex flex-1 overflow-hidden">
+              {/* Left panel */}
+              <div className="border-r flex-shrink-0 w-[300px] relative">
+                <div className="h-full overflow-hidden">
+                  <LeftPanel
+                    notes={allNotes}
+                    setNotes={setAllNotes}
                     searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    addTag={addTag}
-                    setNoteDate={setNoteDate}
-                    totals={totals}
-                    setTotals={setTotals}
                     settings={settings}
-                  />
-                </>
-              } />
-              <Route path="/notes" element={
-                <>
-                  <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
-                  <NotesMainContainer
-                    objList={objectList}
-                    notes={notes}
-                    allNotes={allNotes}
-                    addNote={addNote}
-                    setNotes={updateBothNotesLists}
-                    objects={objects}
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    addTag={addTag}
-                    setNoteDate={setNoteDate}
-                    totals={totals}
-                    setTotals={setTotals}
-                    settings={settings}
-                  />
-                </>
-              } />
-              <Route path="/tags" element={<TagListing objectList={objects} />} />
-              <Route path="/todos" element={
-                <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                  <TodoList
-                    todos={todos}
-                    notes={notes}
-                    updateTodosCallback={setTodos}
-                    updateNoteCallBack={setNotes}
+                    setSettings={setSettings}
                   />
                 </div>
-              } />
-              <Route path="/journals" element={<Journals />} />
-              <Route path="/manage-notes" element={<Manage />} />
-              <Route path="/events" element={
-                <EventsPage 
-                  notes={allNotes} 
-                  onUpdate={(updatedNotes) => {
-                    setAllNotes(updatedNotes);
-                    if (activePage === 'notes') {
-                      setNotes(updatedNotes);
-                    }
-                  }}
-                />
-              } />
-            </Routes>
+              </div>
+
+              {/* Right panel: main content */}
+              <div className="flex-1 p-8 overflow-auto">
+                <Routes>
+                  <Route path="/" element={
+                    <>
+                      <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
+                      <NotesMainContainer
+                        objList={objectList}
+                        notes={notes}
+                        allNotes={allNotes}
+                        addNote={addNote}
+                        setNotes={updateBothNotesLists}
+                        objects={objects}
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                        addTag={addTag}
+                        setNoteDate={setNoteDate}
+                        totals={totals}
+                        setTotals={setTotals}
+                        settings={settings}
+                      />
+                    </>
+                  } />
+                  <Route path="/notes" element={
+                    <>
+                      <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
+                      <NotesMainContainer
+                        objList={objectList}
+                        notes={notes}
+                        allNotes={allNotes}
+                        addNote={addNote}
+                        setNotes={updateBothNotesLists}
+                        objects={objects}
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                        addTag={addTag}
+                        setNoteDate={setNoteDate}
+                        totals={totals}
+                        setTotals={setTotals}
+                        settings={settings}
+                      />
+                    </>
+                  } />
+                  <Route path="/tags" element={<TagListing objectList={objects} />} />
+                  <Route path="/todos" element={
+                    <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                      <TodoList
+                        todos={todos}
+                        notes={notes}
+                        updateTodosCallback={setTodos}
+                        updateNoteCallBack={setNotes}
+                      />
+                    </div>
+                  } />
+                  <Route path="/journals" element={<Journals />} />
+                  <Route path="/manage-notes" element={<Manage />} />
+                  <Route path="/events" element={
+                    <EventsPage 
+                      notes={allNotes} 
+                      onUpdate={(updatedNotes) => {
+                        setAllNotes(updatedNotes);
+                        if (activePage === 'notes') {
+                          setNotes(updatedNotes);
+                        }
+                      }}
+                    />
+                  } />
+                </Routes>
+              </div>
+            </div>
+            <ToastContainer
+              position="bottom-right"
+              autoClose={3000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
+            <NoteEditorModal />
           </div>
-        </div>
-        <ToastContainer
-          position="bottom-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="light"
-        />
-      </div>
+        </NoteEditorProvider>
+      </NotesProvider>
     </SearchModalProvider>
   );
 };

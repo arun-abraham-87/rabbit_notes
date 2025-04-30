@@ -26,6 +26,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
+import CompressedNotesList from './CompressedNotesList';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -44,7 +45,7 @@ const NotesList = ({
     onWordClick,
     settings,
     activePage = 'notes',
-    compressedView = false  // Add compressedView prop with default value
+    compressedView = false
 }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
@@ -357,6 +358,12 @@ const NotesList = ({
     }
   };
 
+  const handleContextMenu = (e, note) => {
+    e.preventDefault();
+    setRightClickNoteId(note.id);
+    setRightClickPos({ x: e.clientX, y: e.clientY });
+  };
+
   return (
     <div ref={notesListRef} className="relative">
       <div className="mb-4 flex justify-end gap-3">
@@ -392,142 +399,277 @@ const NotesList = ({
         </div>
       )}
     
-      {/* Only show pinned section when on notes page */}
-      {activePage === 'notes' ? (
+      {compressedView ? (
+        <CompressedNotesList
+          notes={safeNotes}
+          searchQuery={searchQuery}
+          duplicatedUrlColors={duplicatedUrlColors}
+          editingLine={editingLine}
+          setEditingLine={setEditingLine}
+          editedLineContent={editedLineContent}
+          setEditedLineContent={setEditedLineContent}
+          rightClickNoteId={rightClickNoteId}
+          rightClickIndex={rightClickIndex}
+          setRightClickNoteId={setRightClickNoteId}
+          setRightClickIndex={setRightClickIndex}
+          setRightClickPos={setRightClickPos}
+          editingInlineDate={editingInlineDate}
+          setEditingInlineDate={setEditingInlineDate}
+          handleInlineDateSelect={handleInlineDateSelect}
+          popupNoteText={popupNoteText}
+          setPopupNoteText={setPopupNoteText}
+          objList={objList}
+          addingLineNoteId={addingLineNoteId}
+          setAddingLineNoteId={setAddingLineNoteId}
+          newLineText={newLineText}
+          setNewLineText={setNewLineText}
+          newLineInputRef={newLineInputRef}
+          updateNote={updateNote}
+          onContextMenu={handleContextMenu}
+        />
+      ) : (
         <>
-          {safeNotes.filter(note => note.pinned).length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-900">Pinned Notes</h2>
-              <div className="grid grid-cols-1 gap-4">
-                {safeNotes.filter(note => note.pinned).map((note) => (
-                  <div
-                    key={note.id}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setRightClickNoteId(note.id);
-                      setRightClickPos({ x: e.clientX, y: e.clientY });
-                    }}
-                    className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative"
-                  >
-                    <div className="flex flex-col flex-auto">
-                      {/* Layer 1: Content and Edit/Delete */}
-                      <div className="p-2">
-                        < NoteMetaInfo
-                          note={note}
-                          setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
-                          urlToNotesMap={urlToNotesMap}
-                          updateNoteCallback={updateNoteCallback}
-                        />
-                        <NoteContent
-                          note={note}
-                          searchQuery={searchQuery}
-                          duplicatedUrlColors={duplicatedUrlColors}
-                          editingLine={editingLine}
-                          setEditingLine={setEditingLine}
-                          editedLineContent={editedLineContent}
-                          setEditedLineContent={setEditedLineContent}
-                          rightClickNoteId={rightClickNoteId}
-                          rightClickIndex={rightClickIndex}
-                          setRightClickNoteId={setRightClickNoteId}
-                          setRightClickIndex={setRightClickIndex}
-                          setRightClickPos={setRightClickPos}
-                          editingInlineDate={editingInlineDate}
-                          setEditingInlineDate={setEditingInlineDate}
-                          handleInlineDateSelect={handleInlineDateSelect}
-                          popupNoteText={popupNoteText}
-                          setPopupNoteText={setPopupNoteText}
-                          objList={objList}
-                          addingLineNoteId={addingLineNoteId}
-                          setAddingLineNoteId={setAddingLineNoteId}
-                          newLineText={newLineText}
-                          setNewLineText={setNewLineText}
-                          newLineInputRef={newLineInputRef}
-                          updateNote={updateNote}
-                        />
-                      </div>
-                      <div>
-                      </div>
+          {/* Only show pinned section when on notes page */}
+          {activePage === 'notes' ? (
+            <>
+              {safeNotes.filter(note => note.pinned).length > 0 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Pinned Notes</h2>
+                  <div className="grid grid-cols-1 gap-4">
+                    {safeNotes.filter(note => note.pinned).map((note) => (
+                      <div
+                        key={note.id}
+                        onContextMenu={(e) => handleContextMenu(e, note)}
+                        className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative"
+                      >
+                        <div className="flex flex-col flex-auto">
+                          {/* Layer 1: Content and Edit/Delete */}
+                          <div className="p-2">
+                            < NoteMetaInfo
+                              note={note}
+                              setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
+                              urlToNotesMap={urlToNotesMap}
+                              updateNoteCallback={updateNoteCallback}
+                            />
+                            <NoteContent
+                              note={note}
+                              searchQuery={searchQuery}
+                              duplicatedUrlColors={duplicatedUrlColors}
+                              editingLine={editingLine}
+                              setEditingLine={setEditingLine}
+                              editedLineContent={editedLineContent}
+                              setEditedLineContent={setEditedLineContent}
+                              rightClickNoteId={rightClickNoteId}
+                              rightClickIndex={rightClickIndex}
+                              setRightClickNoteId={setRightClickNoteId}
+                              setRightClickIndex={setRightClickIndex}
+                              setRightClickPos={setRightClickPos}
+                              editingInlineDate={editingInlineDate}
+                              setEditingInlineDate={setEditingInlineDate}
+                              handleInlineDateSelect={handleInlineDateSelect}
+                              popupNoteText={popupNoteText}
+                              setPopupNoteText={setPopupNoteText}
+                              objList={objList}
+                              addingLineNoteId={addingLineNoteId}
+                              setAddingLineNoteId={setAddingLineNoteId}
+                              newLineText={newLineText}
+                              setNewLineText={setNewLineText}
+                              newLineInputRef={newLineInputRef}
+                              updateNote={updateNote}
+                            />
+                          </div>
+                          <div>
+                          </div>
 
-                      {addingLineNoteId === note.id && (
-                        <div className="w-full px-4 py-2">
-                          <InlineEditor
-                            text={newLineText}
-                            setText={setNewLineText}
-                            onSave={(text) => {
-                              const updated = note.content.trimEnd() + '\n' + text;
-                              updateNote(note.id, updated);
-                              setAddingLineNoteId(null);
-                              setNewLineText('');
-                            }}
-                            onCancel={() => {
-                              setAddingLineNoteId(null);
-                              setNewLineText('');
-                            }}
+                          {addingLineNoteId === note.id && (
+                            <div className="w-full px-4 py-2">
+                              <InlineEditor
+                                text={newLineText}
+                                setText={setNewLineText}
+                                onSave={(text) => {
+                                  const updated = note.content.trimEnd() + '\n' + text;
+                                  updateNote(note.id, updated);
+                                  setAddingLineNoteId(null);
+                                  setNewLineText('');
+                                }}
+                                onCancel={() => {
+                                  setAddingLineNoteId(null);
+                                  setNewLineText('');
+                                }}
+                              />
+                            </div>
+                          )}
+
+                          <div className="flex items-center space-x-4 px-4 py-2">
+                            {/* Tag bar */}
+                            <NoteTagBar
+                              note={note}
+                              updateNote={updateNote}
+                              duplicateUrlNoteIds={duplicateUrlNoteIds}
+                              duplicateWithinNoteIds={duplicateWithinNoteIds}
+                            />
+                          </div>
+
+                          {!compressedView && (
+                            <NoteFooter
+                              note={note}
+                              showCreatedDate={settings.showCreatedDate || false}
+                              setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
+                              handleDelete={handleDelete}
+                              setPopupNoteText={(noteId) => {
+                                if (isMeetingNote(note)) {
+                                  setEditingMeetingNote(note);
+                                } else if (isEventNote(note)) {
+                                  setEditingEventNote(note);
+                                } else {
+                                  setPopupNoteText(noteId);
+                                }
+                              }}
+                              setLinkingNoteId={setLinkingNoteId}
+                              setLinkSearchTerm={setLinkSearchTerm}
+                              setLinkPopupVisible={setLinkPopupVisible}
+                              selectedNotes={selectedNotes}
+                              toggleNoteSelection={toggleNoteSelection}
+                              updateNote={updateNote}
+                            />
+                          )}
+
+                          <LinkedNotesSection
+                            note={note}
+                            allNotes={allNotes}
+                            onNavigate={scrollToNote}
+                            updateNote={updateNote}
                           />
                         </div>
-                      )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                      <div className="flex items-center space-x-4 px-4 py-2">
-                        {/* Tag bar */}
-                        <NoteTagBar
+              {/* Regular notes section */}
+              <div className="space-y-4">
+                {safeNotes.filter(note => !note.pinned).length > 0 && (
+                  <h2 className="text-lg font-semibold text-gray-900">Other Notes</h2>
+                )}
+                <div className="grid grid-cols-1 gap-4">
+                  {safeNotes.filter(note => !note.pinned).map(note => (
+                    <div
+                      key={note.id}
+                      onContextMenu={(e) => handleContextMenu(e, note)}
+                      className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative"
+                    >
+                      <div className="flex flex-col flex-auto">
+                        {/* Layer 1: Content and Edit/Delete */}
+                        <div className="p-2">
+                          < NoteMetaInfo
+                            note={note}
+                            setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
+                            urlToNotesMap={urlToNotesMap}
+                            updateNoteCallback={updateNoteCallback}
+                          />
+                          <NoteContent
+                            note={note}
+                            searchQuery={searchQuery}
+                            duplicatedUrlColors={duplicatedUrlColors}
+                            editingLine={editingLine}
+                            setEditingLine={setEditingLine}
+                            editedLineContent={editedLineContent}
+                            setEditedLineContent={setEditedLineContent}
+                            rightClickNoteId={rightClickNoteId}
+                            rightClickIndex={rightClickIndex}
+                            setRightClickNoteId={setRightClickNoteId}
+                            setRightClickIndex={setRightClickIndex}
+                            setRightClickPos={setRightClickPos}
+                            editingInlineDate={editingInlineDate}
+                            setEditingInlineDate={setEditingInlineDate}
+                            handleInlineDateSelect={handleInlineDateSelect}
+                            popupNoteText={popupNoteText}
+                            setPopupNoteText={setPopupNoteText}
+                            objList={objList}
+                            addingLineNoteId={addingLineNoteId}
+                            setAddingLineNoteId={setAddingLineNoteId}
+                            newLineText={newLineText}
+                            setNewLineText={setNewLineText}
+                            newLineInputRef={newLineInputRef}
+                            updateNote={updateNote}
+                          />
+                        </div>
+                        <div>
+                        </div>
+
+                        {addingLineNoteId === note.id && (
+                          <div className="w-full px-4 py-2">
+                            <InlineEditor
+                              text={newLineText}
+                              setText={setNewLineText}
+                              onSave={(text) => {
+                                const updated = note.content.trimEnd() + '\n' + text;
+                                updateNote(note.id, updated);
+                                setAddingLineNoteId(null);
+                                setNewLineText('');
+                              }}
+                              onCancel={() => {
+                                setAddingLineNoteId(null);
+                                setNewLineText('');
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        <div className="flex items-center space-x-4 px-4 py-2">
+                          {/* Tag bar */}
+                          <NoteTagBar
+                            note={note}
+                            updateNote={updateNote}
+                            duplicateUrlNoteIds={duplicateUrlNoteIds}
+                            duplicateWithinNoteIds={duplicateWithinNoteIds}
+                          />
+                        </div>
+
+                        {!compressedView && (
+                          <NoteFooter
+                            note={note}
+                            showCreatedDate={settings.showCreatedDate || false}
+                            setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
+                            handleDelete={handleDelete}
+                            setPopupNoteText={(noteId) => {
+                              if (isMeetingNote(note)) {
+                                setEditingMeetingNote(note);
+                              } else if (isEventNote(note)) {
+                                setEditingEventNote(note);
+                              } else {
+                                setPopupNoteText(noteId);
+                              }
+                            }}
+                            setLinkingNoteId={setLinkingNoteId}
+                            setLinkSearchTerm={setLinkSearchTerm}
+                            setLinkPopupVisible={setLinkPopupVisible}
+                            selectedNotes={selectedNotes}
+                            toggleNoteSelection={toggleNoteSelection}
+                            updateNote={updateNote}
+                          />
+                        )}
+
+                        <LinkedNotesSection
                           note={note}
+                          allNotes={allNotes}
+                          onNavigate={scrollToNote}
                           updateNote={updateNote}
-                          duplicateUrlNoteIds={duplicateUrlNoteIds}
-                          duplicateWithinNoteIds={duplicateWithinNoteIds}
                         />
                       </div>
-
-                      {!compressedView && (
-                        <NoteFooter
-                          note={note}
-                          showCreatedDate={settings.showCreatedDate || false}
-                          setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
-                          handleDelete={handleDelete}
-                          setPopupNoteText={(noteId) => {
-                            if (isMeetingNote(note)) {
-                              setEditingMeetingNote(note);
-                            } else if (isEventNote(note)) {
-                              setEditingEventNote(note);
-                            } else {
-                              setPopupNoteText(noteId);
-                            }
-                          }}
-                          setLinkingNoteId={setLinkingNoteId}
-                          setLinkSearchTerm={setLinkSearchTerm}
-                          setLinkPopupVisible={setLinkPopupVisible}
-                          selectedNotes={selectedNotes}
-                          toggleNoteSelection={toggleNoteSelection}
-                          updateNote={updateNote}
-                        />
-                      )}
-
-                      <LinkedNotesSection
-                        note={note}
-                        allNotes={allNotes}
-                        onNavigate={scrollToNote}
-                        updateNote={updateNote}
-                      />
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* Regular notes section */}
-          <div className="space-y-4">
-            {safeNotes.filter(note => !note.pinned).length > 0 && (
-              <h2 className="text-lg font-semibold text-gray-900">Other Notes</h2>
-            )}
+            </>
+          ) : (
+            // When not on notes page, render all notes without pinned/unpinned sections
             <div className="grid grid-cols-1 gap-4">
-              {safeNotes.filter(note => !note.pinned).map(note => (
+              {safeNotes.map(note => (
                 <div
                   key={note.id}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setRightClickNoteId(note.id);
-                    setRightClickPos({ x: e.clientX, y: e.clientY });
-                  }}
+                  onContextMenu={(e) => handleContextMenu(e, note)}
                   className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative"
                 >
                   <div className="flex flex-col flex-auto">
@@ -566,8 +708,6 @@ const NotesList = ({
                         updateNote={updateNote}
                       />
                     </div>
-                    <div>
-                    </div>
 
                     {addingLineNoteId === note.id && (
                       <div className="w-full px-4 py-2">
@@ -589,7 +729,6 @@ const NotesList = ({
                     )}
 
                     <div className="flex items-center space-x-4 px-4 py-2">
-                      {/* Tag bar */}
                       <NoteTagBar
                         note={note}
                         updateNote={updateNote}
@@ -632,120 +771,8 @@ const NotesList = ({
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </>
-      ) : (
-        // When not on notes page, render all notes without pinned/unpinned sections
-        <div className="grid grid-cols-1 gap-4">
-          {safeNotes.map(note => (
-            <div
-              key={note.id}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setRightClickNoteId(note.id);
-                setRightClickPos({ x: e.clientX, y: e.clientY });
-              }}
-              className="group flex flex-col p-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative"
-            >
-              <div className="flex flex-col flex-auto">
-                {/* Layer 1: Content and Edit/Delete */}
-                <div className="p-2">
-                  < NoteMetaInfo
-                    note={note}
-                    setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
-                    urlToNotesMap={urlToNotesMap}
-                    updateNoteCallback={updateNoteCallback}
-                  />
-                  <NoteContent
-                    note={note}
-                    searchQuery={searchQuery}
-                    duplicatedUrlColors={duplicatedUrlColors}
-                    editingLine={editingLine}
-                    setEditingLine={setEditingLine}
-                    editedLineContent={editedLineContent}
-                    setEditedLineContent={setEditedLineContent}
-                    rightClickNoteId={rightClickNoteId}
-                    rightClickIndex={rightClickIndex}
-                    setRightClickNoteId={setRightClickNoteId}
-                    setRightClickIndex={setRightClickIndex}
-                    setRightClickPos={setRightClickPos}
-                    editingInlineDate={editingInlineDate}
-                    setEditingInlineDate={setEditingInlineDate}
-                    handleInlineDateSelect={handleInlineDateSelect}
-                    popupNoteText={popupNoteText}
-                    setPopupNoteText={setPopupNoteText}
-                    objList={objList}
-                    addingLineNoteId={addingLineNoteId}
-                    setAddingLineNoteId={setAddingLineNoteId}
-                    newLineText={newLineText}
-                    setNewLineText={setNewLineText}
-                    newLineInputRef={newLineInputRef}
-                    updateNote={updateNote}
-                  />
-                </div>
-
-                {addingLineNoteId === note.id && (
-                  <div className="w-full px-4 py-2">
-                    <InlineEditor
-                      text={newLineText}
-                      setText={setNewLineText}
-                      onSave={(text) => {
-                        const updated = note.content.trimEnd() + '\n' + text;
-                        updateNote(note.id, updated);
-                        setAddingLineNoteId(null);
-                        setNewLineText('');
-                      }}
-                      onCancel={() => {
-                        setAddingLineNoteId(null);
-                        setNewLineText('');
-                      }}
-                    />
-                  </div>
-                )}
-
-                <div className="flex items-center space-x-4 px-4 py-2">
-                  <NoteTagBar
-                    note={note}
-                    updateNote={updateNote}
-                    duplicateUrlNoteIds={duplicateUrlNoteIds}
-                    duplicateWithinNoteIds={duplicateWithinNoteIds}
-                  />
-                </div>
-
-                {!compressedView && (
-                  <NoteFooter
-                    note={note}
-                    showCreatedDate={settings.showCreatedDate || false}
-                    setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
-                    handleDelete={handleDelete}
-                    setPopupNoteText={(noteId) => {
-                      if (isMeetingNote(note)) {
-                        setEditingMeetingNote(note);
-                      } else if (isEventNote(note)) {
-                        setEditingEventNote(note);
-                      } else {
-                        setPopupNoteText(noteId);
-                      }
-                    }}
-                    setLinkingNoteId={setLinkingNoteId}
-                    setLinkSearchTerm={setLinkSearchTerm}
-                    setLinkPopupVisible={setLinkPopupVisible}
-                    selectedNotes={selectedNotes}
-                    toggleNoteSelection={toggleNoteSelection}
-                    updateNote={updateNote}
-                  />
-                )}
-
-                <LinkedNotesSection
-                  note={note}
-                  allNotes={allNotes}
-                  onNavigate={scrollToNote}
-                  updateNote={updateNote}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
       )}
 
       <ConfirmationModal

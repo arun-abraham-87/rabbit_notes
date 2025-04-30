@@ -634,41 +634,6 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
             )}
           </div>
 
-          {/* Watch List Section */}
-          {watchList.length > 0 && (
-            <div 
-              className="bg-white p-3 rounded-lg shadow-sm mb-3 max-w-full"
-              onMouseEnter={() => setActiveSection('watchList')}
-              onMouseLeave={() => setActiveSection(null)}
-            >
-              <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
-                <span className="truncate flex-1">Watch List</span>
-                {activeSection === 'watchList' ?
-                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> :
-                  <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" />
-                }
-              </h2>
-              {activeSection === 'watchList' && (
-                <div className="space-y-1.5 w-full">
-                  {watchList.map((note, idx) => {
-                    const firstLine = note.content.split('\n')[0];
-                    return (
-                      <div
-                        key={note.id}
-                        onClick={() => setSelectedNote(note)}
-                        className={`flex items-center pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors w-full cursor-pointer`}
-                      >
-                        <span className="flex-1 text-gray-700 hover:text-indigo-600 truncate text-sm min-w-0">
-                          {firstLine}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Bookmarks Section */}
           <div 
             className="bg-white p-3 rounded-lg shadow-sm mb-3"
@@ -711,6 +676,44 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               )
             )}
           </div>
+
+          {/* Watch List Section */}
+          {watchList.length > 0 && (
+            <div 
+              className="bg-indigo-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
+              onMouseEnter={() => setActiveSection('watchList')}
+              onMouseLeave={() => setActiveSection(null)}
+            >
+              <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-100 rounded-lg text-base">
+                <span className="truncate flex-1">
+                  Watch List
+                  <span className="text-indigo-600 ml-2 text-sm">({watchList.length})</span>
+                </span>
+                {activeSection === 'watchList' ?
+                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> :
+                  <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" />
+                }
+              </h2>
+              {activeSection === 'watchList' && (
+                <div className="space-y-2 w-full">
+                  {watchList.map((note, idx) => {
+                    const firstLine = note.content.split('\n')[0];
+                    return (
+                      <div
+                        key={note.id}
+                        onClick={() => setSelectedNote(note)}
+                        className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} rounded-lg hover:bg-indigo-100 transition-colors cursor-pointer`}
+                      >
+                        <div className="text-base font-medium text-gray-800 break-words">
+                          {firstLine}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Meetings Section */}
           {visibleMeetings.length > 0 && (

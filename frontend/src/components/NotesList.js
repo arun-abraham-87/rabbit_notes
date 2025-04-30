@@ -315,11 +315,10 @@ const NotesList = ({
     return note.content.includes('meta::event::');
   };
 
-  const handlePasteX = async () => {
+  const handlePasteX = async (count) => {
     try {
-      const count = parseInt(pasteCount);
-      if (isNaN(count) || count <= 0) {
-        toast.error('Please enter a valid number');
+      if (count <= 0) {
+        toast.error('Please select a valid number');
         return;
       }
 
@@ -329,20 +328,21 @@ const NotesList = ({
         return;
       }
 
-      // Split clipboard content by double newlines to separate items
-      const items = clipboardText.split(/\n\s*\n/).filter(item => item.trim());
+      // Split clipboard content by newlines and filter out empty lines
+      const items = clipboardText.split('\n').filter(item => item.trim());
       
       if (items.length === 0) {
         toast.error('No valid items in clipboard');
         return;
       }
 
-      // Take the last X items, or all items if there are fewer than X
+      // Take the last X items
       const itemsToSave = items.slice(-count);
       
       const now = new Date();
       const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}, ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} ${now.getHours() >= 12 ? 'pm' : 'am'}`;
 
+      // Create a separate note for each item
       for (const item of itemsToSave) {
         const noteContent = `${item}\ncreated_datetime: ${formattedDate}`;
         await addNotes(noteContent);
@@ -350,7 +350,6 @@ const NotesList = ({
 
       toast.success(`Successfully created ${itemsToSave.length} notes`);
       setShowPastePopup(false);
-      setPasteCount('');
     } catch (error) {
       console.error('Error pasting notes:', error);
       toast.error('Failed to create notes');
@@ -360,13 +359,6 @@ const NotesList = ({
   return (
     <div ref={notesListRef} className="relative">
       <div className="mb-4 flex justify-end gap-3">
-        <button
-          onClick={() => setShowPastePopup(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
-        >
-          <ClipboardIcon className="h-5 w-5" />
-          <span>Paste X</span>
-        </button>
         <button
           onClick={() => setShowAddEventModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
@@ -909,59 +901,6 @@ const NotesList = ({
               onCancel={() => setPopupNoteText(null)}
               objList={objList}
             />
-          </div>
-        </div>
-      )}
-
-      {/* Paste X Popup */}
-      {showPastePopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-96">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Paste Multiple Notes</h2>
-              <button
-                onClick={() => {
-                  setShowPastePopup(false);
-                  setPasteCount('');
-                }}
-                className="p-1.5 hover:bg-indigo-50 rounded-full text-gray-500 hover:text-indigo-600 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="pasteCount" className="block text-sm font-medium text-gray-700 mb-1">
-                  Number of notes to create
-                </label>
-                <input
-                  type="number"
-                  id="pasteCount"
-                  value={pasteCount}
-                  onChange={(e) => setPasteCount(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Enter number"
-                  min="1"
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setShowPastePopup(false);
-                    setPasteCount('');
-                  }}
-                  className="px-4 py-2 text-base font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handlePasteX}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Create Notes
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}

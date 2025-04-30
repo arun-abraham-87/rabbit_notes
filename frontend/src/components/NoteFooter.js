@@ -16,6 +16,7 @@ import {
   ArrowsPointingInIcon,
   CodeBracketIcon,
   XMarkIcon,
+  FolderIcon,
 } from '@heroicons/react/24/solid';
 import { MapPinIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '../utils/DateUtils';
@@ -355,6 +356,19 @@ const NoteFooter = ({
             >
               <EyeIcon className={`h-4 w-4 transition-colors ${
                 note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500 hover:text-green-500'
+              }`} />
+            </button>
+          </Tooltip>
+
+          <Tooltip text="Workstream">
+            <button
+              onClick={() => handleAction('workstream')}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
+                note.content.includes('meta::workstream::') ? 'bg-indigo-100' : ''
+              }`}
+            >
+              <FolderIcon className={`h-4 w-4 transition-colors ${
+                note.content.includes('meta::workstream::') ? 'text-indigo-500' : 'text-gray-500 hover:text-indigo-500'
               }`} />
             </button>
           </Tooltip>

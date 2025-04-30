@@ -323,7 +323,7 @@ const NoteFilters = ({
       )}
 
       <button
-        onClick={() => handleFilterClick('#watch')}
+        onClick={() => handleFilterClick('meta::watch')}
         className={`px-3 py-1 text-xs rounded transition-all transform ${
           searchQuery?.includes('#watch')
             ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700'

@@ -1,7 +1,10 @@
 import React from 'react';
+import CompressedNotesList from './CompressedNotesList';
 
 const WatchList = ({ allNotes }) => {
-  const watchlistNotes = allNotes.filter(note => note.tags?.includes('meta::watch'));
+  const watchlistNotes = allNotes.filter(note => 
+    note.content.includes('meta::watch')
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -10,7 +13,17 @@ const WatchList = ({ allNotes }) => {
         {watchlistNotes.length === 0 ? (
           <p className="text-gray-600">No notes tagged with meta::watch found.</p>
         ) : (
-          <p className="text-gray-600">Found {watchlistNotes.length} notes in watchlist.</p>
+          <CompressedNotesList
+            notes={watchlistNotes}
+            searchQuery=""
+            duplicatedUrlColors={{}}
+            onEditNote={() => {}}
+            onDeleteNote={() => {}}
+            onPinNote={() => {}}
+            onUnpinNote={() => {}}
+            onWordClick={() => {}}
+            settings={{}}
+          />
         )}
       </div>
     </div>

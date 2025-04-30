@@ -22,6 +22,7 @@ import { SearchModalProvider } from './contexts/SearchModalContext';
 import { NoteEditorProvider, useNoteEditor } from './contexts/NoteEditorContext';
 import { NotesProvider, useNotes } from './contexts/NotesContext';
 import NoteEditorModal from './components/NoteEditorModal';
+import WatchList from './components/WatchList';
 
 
 // Helper to render first four pinned notes
@@ -378,6 +379,11 @@ const AppContent = () => {
                         settings={settings}
                       />
                     </>
+                  } />
+                  <Route path="/watch" element={
+                    <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                      <WatchList allNotes={allNotes} />
+                    </div>
                   } />
                   <Route path="/tags" element={<TagListing objectList={objects} />} />
                   <Route path="/todos" element={

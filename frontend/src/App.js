@@ -182,6 +182,10 @@ const PinnedSection = ({ notes, onUnpin }) => {
 const NoteEditorModal = () => {
   const { isOpen, initialContent, closeEditor } = useNoteEditor();
   const { addNote } = useNotes();
+  const [settings, setSettings] = useState({});
+  const [objList, setObjList] = useState([]);
+  const [excludeEvents, setExcludeEvents] = useState(false);
+  const [excludeMeetings, setExcludeMeetings] = useState(false);
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -195,6 +199,31 @@ const NoteEditorModal = () => {
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, closeEditor]);
+
+  // Load settings and tags on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedSettings = await getSettings();
+        const mergedSettings = { ...defaultSettings, ...savedSettings };
+        setSettings(mergedSettings);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    };
+
+    const loadTags = async () => {
+      try {
+        const tags = await loadTags();
+        setObjList(tags || []);
+      } catch (error) {
+        console.error('Failed to load tags:', error);
+      }
+    };
+
+    loadSettings();
+    loadTags();
+  }, []);
 
   if (!isOpen) return null;
 
@@ -218,6 +247,10 @@ const NoteEditorModal = () => {
           }}
           onCancel={closeEditor}
           text={initialContent}
+          objList={objList}
+          settings={settings}
+          onExcludeEventsChange={setExcludeEvents}
+          onExcludeMeetingsChange={setExcludeMeetings}
         />
       </div>
     </div>

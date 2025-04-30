@@ -975,44 +975,53 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                     const eventTime = new Date(e.time).getTime();
                     const diff = eventTime - now;
                     const isFlashing = diff > 0 && diff <= 10 * 60 * 1000;
+                    const isToday = new Date(e.time).toDateString() === new Date(now).toDateString();
                     return (
                       <div
                         key={e.id}
                         className="group relative mb-2 rounded-lg hover:bg-purple-100 transition-colors"
                       >
                         <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} ${isFlashing ? 'animate-pulse bg-purple-200' : ''} rounded-lg`}>
-                          <div className="text-base font-medium text-gray-800 break-words">
-                            {e.context}
-                            {e.isRecurring && (
-                              <span className="ml-2 text-xs font-medium text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">
-                                {e.recurrenceType}
-                              </span>
-                            )}
-                          </div>
-                          {e.location && (
-                            <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0">
-                                <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                              </svg>
-                              <span className="truncate">{e.location}</span>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-base font-medium text-gray-800 break-words flex items-center gap-2">
+                                <span className="truncate">{e.context}</span>
+                                {e.isRecurring && (
+                                  <span className="ml-2 text-xs font-medium text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                    {e.recurrenceType}
+                                  </span>
+                                )}
+                                {isToday && (
+                                  <span className="text-xs font-medium text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                    Today
+                                  </span>
+                                )}
+                              </div>
+                              {e.location && (
+                                <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0">
+                                    <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                                  </svg>
+                                  <span className="truncate">{e.location}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0">
+                                  <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
+                                </svg>
+                                <span className="font-medium text-purple-600">
+                                  {formatAndAgeDate(new Date(e.time))}
+                                </span>
+                              </div>
                             </div>
-                          )}
-                          
-                          <div className="text-sm font-medium text-purple-600 mt-1">
-                            {(() => {
-                              const delta = new Date(e.time).getTime() - now;
-                              const days = Math.floor(delta / 86400000)+1;
-                              if (days === 0) return 'Today';
-                            })()}
-                            {formatAndAgeDate(new Date(e.time))}
+                            <button
+                              onClick={() => setEditingEventId(e.id)}
+                              className="p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
+                            >
+                              <PencilSquareIcon className="h-4 w-4 text-purple-600" />
+                            </button>
                           </div>
                         </div>
-                        <button
-                          onClick={() => setEditingEventId(e.id)}
-                          className="absolute top-3 right-3 p-1.5 rounded-md bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
-                        >
-                          <PencilSquareIcon className="h-4 w-4 text-purple-600" />
-                        </button>
                       </div>
                     );
                   })}

@@ -396,7 +396,18 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const createTodo = async (content) => {
     const now = new Date();
     const isoTimestamp = now.toISOString();
-    const formattedDate = formatDate(now);
+    
+    // Format the date in DD/MM/YYYY, HH:mm:ss am/pm format
+    const day = now.getDate().toString().padStart(2, '0');
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    const formattedHours = (hours % 12 || 12).toString().padStart(2, '0');
+    
+    const formattedDate = `${day}/${month}/${year}, ${formattedHours}:${minutes}:${seconds} ${ampm}`;
     
     const todoContent = `${content}\nmeta::todo::${isoTimestamp}\nmeta::low\nmeta::priority_age::${isoTimestamp}`;
     
@@ -406,7 +417,8 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           content: todoContent,
-          created_datetime: formattedDate
+          created_datetime: formattedDate,
+          noteDate: `${year}-${month}-${day}` // Add this for backend date comparison
         }),
       });
 

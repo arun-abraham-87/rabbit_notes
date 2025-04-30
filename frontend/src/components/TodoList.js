@@ -272,7 +272,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   };
 
   // Calculate total todos and priority counts (only filtered by search)
-  const { total, high, medium, low } = todos.reduce(
+  const { total, high, medium, low, critical } = todos.reduce(
     (acc, todo) => {
       // Only count if it matches search and is a todo
       if (todo.content.toLowerCase().includes(searchQuery.toLowerCase()) &&
@@ -284,10 +284,15 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
         const priority = tagMatch ? tagMatch[1].toLowerCase() : 'low';
         acc[priority]++;
+        
+        // Count critical todos
+        if (todo.content.includes('meta::critical')) {
+          acc.critical++;
+        }
       }
       return acc;
     },
-    { total: 0, high: 0, medium: 0, low: 0 }
+    { total: 0, high: 0, medium: 0, low: 0, critical: 0 }
   );
 
   // Function to get date string for n days ago
@@ -304,7 +309,10 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
       const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
       const assignedPriority = priorities[todo.id] || tag;
-      const matchesPriority = priorityFilter ? assignedPriority === priorityFilter : true;
+      const isCritical = todo.content.includes('meta::critical');
+      const matchesPriority = priorityFilter 
+        ? (priorityFilter === 'critical' ? isCritical : assignedPriority === priorityFilter)
+        : true;
       const isMetaTodo = todo.content.includes('meta::todo');
       
       // Check if todo was added today or yesterday
@@ -667,7 +675,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
               {showFilters && (
                 <div className="flex flex-col gap-4 pt-4 border-t">
                   {/* Priority Stats */}
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-5 gap-4">
                     <button
                       onClick={() => setPriorityFilter(null)}
                       className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
@@ -678,6 +686,17 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                     >
                       <div className="text-xs font-medium text-gray-500">Total</div>
                       <div className="text-2xl font-bold text-gray-900">{total}</div>
+                    </button>
+                    <button
+                      onClick={() => setPriorityFilter('critical')}
+                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
+                        priorityFilter === 'critical'
+                          ? 'bg-red-50 border-red-200 ring-2 ring-red-500 ring-offset-2'
+                          : 'hover:bg-red-50/50 hover:border-red-200 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="text-xs font-medium text-red-600">Critical</div>
+                      <div className="text-2xl font-bold text-red-700">{critical}</div>
                     </button>
                     <button
                       onClick={() => setPriorityFilter('high')}

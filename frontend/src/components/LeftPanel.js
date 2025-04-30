@@ -208,6 +208,20 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [unsavedSettings, setUnsavedSettings] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTimezones, setSelectedTimezones] = useState([]);
+  const [lockedSections, setLockedSections] = useState(() => {
+    const saved = localStorage.getItem('lockedSections');
+    return saved ? JSON.parse(saved) : {
+      quickLinks: false,
+      bookmarks: false,
+      watchList: false,
+      meetings: false,
+      events: false
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
+  }, [lockedSections]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -588,16 +602,36 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           <div 
             className="bg-white p-3 rounded-lg shadow-sm mb-3 max-w-full"
             onMouseEnter={() => setActiveSection('quickLinks')}
-            onMouseLeave={() => setActiveSection(null)}
+            onMouseLeave={() => !lockedSections.quickLinks && setActiveSection(null)}
           >
             <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
               <span className="truncate flex-1">Quick Links</span>
-              {activeSection === 'quickLinks' ?
-                <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> :
-                <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" />
-              }
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLockedSections(prev => ({ ...prev, quickLinks: !prev.quickLinks }));
+                  }}
+                  className="p-1 rounded hover:bg-indigo-100"
+                  title={lockedSections.quickLinks ? "Unlock section" : "Lock section open"}
+                >
+                  {lockedSections.quickLinks ? (
+                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </button>
+                {activeSection === 'quickLinks' || lockedSections.quickLinks ?
+                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" /> :
+                  <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                }
+              </div>
             </h2>
-            {activeSection === 'quickLinks' && (
+            {(activeSection === 'quickLinks' || lockedSections.quickLinks) && (
               <div className="space-y-1.5 w-full">
                 {uniqueUrls.length === 0 ? (
                   <p className="text-gray-500 text-sm">No Quick Links</p>
@@ -639,16 +673,36 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           <div 
             className="bg-white p-3 rounded-lg shadow-sm mb-3"
             onMouseEnter={() => setActiveSection('bookmarks')}
-            onMouseLeave={() => setActiveSection(null)}
+            onMouseLeave={() => !lockedSections.bookmarks && setActiveSection(null)}
           >
             <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
               <span>Bookmarks</span>
-              {activeSection === 'bookmarks' ?
-                <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> :
-                <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
-              }
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLockedSections(prev => ({ ...prev, bookmarks: !prev.bookmarks }));
+                  }}
+                  className="p-1 rounded hover:bg-indigo-100"
+                  title={lockedSections.bookmarks ? "Unlock section" : "Lock section open"}
+                >
+                  {lockedSections.bookmarks ? (
+                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </button>
+                {activeSection === 'bookmarks' || lockedSections.bookmarks ?
+                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> :
+                  <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
+                }
+              </div>
             </h2>
-            {activeSection === 'bookmarks' && (
+            {(activeSection === 'bookmarks' || lockedSections.bookmarks) && (
               bookmarkedUrls.length === 0 ? (
                 <p className="text-gray-500 text-sm">No Bookmarks</p>
               ) : (
@@ -683,19 +737,39 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
             <div 
               className="bg-indigo-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
               onMouseEnter={() => setActiveSection('watchList')}
-              onMouseLeave={() => setActiveSection(null)}
+              onMouseLeave={() => !lockedSections.watchList && setActiveSection(null)}
             >
               <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-100 rounded-lg text-base">
                 <span className="truncate flex-1">
                   Watch List
                   <span className="text-indigo-600 ml-2 text-sm">({watchList.length})</span>
                 </span>
-                {activeSection === 'watchList' ?
-                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> :
-                  <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" />
-                }
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLockedSections(prev => ({ ...prev, watchList: !prev.watchList }));
+                    }}
+                    className="p-1 rounded hover:bg-indigo-100"
+                    title={lockedSections.watchList ? "Unlock section" : "Lock section open"}
+                  >
+                    {lockedSections.watchList ? (
+                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                  {activeSection === 'watchList' || lockedSections.watchList ?
+                    <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" /> :
+                    <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                  }
+                </div>
               </h2>
-              {activeSection === 'watchList' && (
+              {(activeSection === 'watchList' || lockedSections.watchList) && (
                 <div className="space-y-2 w-full">
                   {watchList.map((note, idx) => {
                     const firstLine = note.content.split('\n')[0];
@@ -721,19 +795,39 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
             <div 
               className="bg-indigo-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
               onMouseEnter={() => setActiveSection('meetings')}
-              onMouseLeave={() => setActiveSection(null)}
+              onMouseLeave={() => !lockedSections.meetings && setActiveSection(null)}
             >
               <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-100 rounded-lg text-base">
                 <span className="truncate flex-1">
                   Meetings
                   <span className="text-indigo-600 ml-2 text-sm">({visibleMeetings.length})</span>
                 </span>
-                {activeSection === 'meetings' ?
-                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" /> :
-                  <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0 ml-2" />
-                }
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLockedSections(prev => ({ ...prev, meetings: !prev.meetings }));
+                    }}
+                    className="p-1 rounded hover:bg-indigo-100"
+                    title={lockedSections.meetings ? "Unlock section" : "Lock section open"}
+                  >
+                    {lockedSections.meetings ? (
+                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                  {activeSection === 'meetings' || lockedSections.meetings ?
+                    <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" /> :
+                    <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                  }
+                </div>
               </h2>
-              {activeSection === 'meetings' && (
+              {(activeSection === 'meetings' || lockedSections.meetings) && (
                 <div className="space-y-2 w-full">
                   {(expandedMeetings ? visibleMeetings : visibleMeetings.slice(0, 3)).map((m, idx) => {
                     const eventTime = new Date(m.time).getTime();
@@ -843,19 +937,39 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
             <div 
               className="bg-purple-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
               onMouseEnter={() => setActiveSection('events')}
-              onMouseLeave={() => setActiveSection(null)}
+              onMouseLeave={() => !lockedSections.events && setActiveSection(null)}
             >
               <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-purple-100 rounded-lg text-base">
                 <span className="truncate flex-1">
                   Events
                   <span className="text-purple-600 ml-2 text-sm">({visibleEvents.length})</span>
                 </span>
-                {activeSection === 'events' ?
-                  <ChevronDoubleUpIcon className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" /> :
-                  <ChevronDoubleDownIcon className="h-4 w-4 text-purple-600 flex-shrink-0 ml-2" />
-                }
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLockedSections(prev => ({ ...prev, events: !prev.events }));
+                    }}
+                    className="p-1 rounded hover:bg-purple-100"
+                    title={lockedSections.events ? "Unlock section" : "Lock section open"}
+                  >
+                    {lockedSections.events ? (
+                      <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                  {activeSection === 'events' || lockedSections.events ?
+                    <ChevronDoubleUpIcon className="h-4 w-4 text-purple-600 flex-shrink-0" /> :
+                    <ChevronDoubleDownIcon className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                  }
+                </div>
               </h2>
-              {activeSection === 'events' && (
+              {(activeSection === 'events' || lockedSections.events) && (
                 <div className="space-y-2 w-full">
                   {(expandedEvents ? visibleEvents : visibleEvents.slice(0, 3)).map((e, idx) => {
                     const eventTime = new Date(e.time).getTime();

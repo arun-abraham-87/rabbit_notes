@@ -106,7 +106,7 @@ const calculateAgeString = (diff, inFuture) => {
   const diffDate = new Date(Math.abs(diff));
   const years = diffDate.getUTCFullYear() - 1970;
   const months = diffDate.getUTCMonth();
-  const days = diffDate.getUTCDate() - 1;
+  const days = diffDate.getUTCDate();
 
   const parts = [];
   if (years > 0) parts.push(`${years} yr${years > 1 ? 's' : ''}`);
@@ -141,15 +141,23 @@ const formatDateWithAge = (d, m, y, isMonthStr = false) => {
 };
 
 /**
- * Finds dates in text and replaces them with formatted dates including their age
- * Supports two formats:
+ * Formats a date and includes its age
+ * Supports both Date objects and text containing dates
+ * For text, supports two formats:
  * 1. DD/MM/YYYY (e.g., 25/12/2023)
  * 2. DD MMM YYYY (e.g., 25 Dec 2023)
- * @param {string} text - Input text containing dates
- * @returns {string} Text with formatted dates and ages
+ * @param {Date|string} input - Date object or text containing dates
+ * @returns {string} Formatted date with age
  */
-export const formatAndAgeDate = (text) => {
-  return text.replace(DATE_REGEX, (match, d1, m1, y1, d2, monthStr, y2) => {
+export const formatAndAgeDate = (input) => {
+  if (input instanceof Date) {
+    const day = input.getDate();
+    const month = input.getMonth() + 1;
+    const year = input.getFullYear();
+    return formatDateWithAge(day, month, year);
+  }
+  // If not a Date object, treat as text and use the regex implementation
+  return input.replace(DATE_REGEX, (match, d1, m1, y1, d2, monthStr, y2) => {
     if (d1 && m1 && y1) {
       return formatDateWithAge(d1, m1, y1);
     } else if (d2 && monthStr && y2) {

@@ -14,6 +14,7 @@ import EditMeetingModal from './EditMeetingModal';
 import EditEventModal from './EditEventModal';
 import { updateNoteById, getSettings, updateSettings } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
+import { formatAndAgeDate } from '../utils/DateUtils';
 
 // Common timezones with their offsets and locations
 const timeZones = [
@@ -882,21 +883,14 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                               <span className="truncate">{e.location}</span>
                             </div>
                           )}
-                          <div className="text-sm text-gray-600 mt-1">
-                            {(() => {
-                              const d = new Date(e.time);
-                              const today = new Date(now);
-                              return d.toDateString() === today.toDateString() ? 'Today' :
-                                d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-                            })()}
-                          </div>
+                          
                           <div className="text-sm font-medium text-purple-600 mt-1">
                             {(() => {
                               const delta = new Date(e.time).getTime() - now;
-                              const days = Math.floor(delta / 86400000);
+                              const days = Math.floor(delta / 86400000)+1;
                               if (days === 0) return 'Today';
-                              return `${days} day${days !== 1 ? 's' : ''}`;
                             })()}
+                            {formatAndAgeDate(new Date(e.time))}
                           </div>
                         </div>
                         <button

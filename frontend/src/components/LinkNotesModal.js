@@ -28,6 +28,7 @@ export default function LinkNotesModal({
     const searchLower = searchTerm.toLowerCase();
     return notes.filter(n => {
       if (n.id === linkingNoteId) return false;
+      if (!n.content.includes('meta::workstream')) return false;
       
       // Search in all content
       const contentLower = n.content.toLowerCase();

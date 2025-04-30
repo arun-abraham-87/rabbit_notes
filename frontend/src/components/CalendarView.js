@@ -198,16 +198,14 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
                                 <span className="text-xs font-medium text-indigo-600">Today</span>
                               )}
                             </div>
-                            {occurrence.event.recurrence !== 'none' && (
-                              <p className="text-xs text-gray-400 mt-1">
-                                Original date: {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
-                              </p>
-                            )}
+                            <p className="text-xs text-gray-400 mt-1">
+                              Original date: {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </p>
                           </div>
                         </div>
                         {occurrence.event.recurrence !== 'none' && (

@@ -68,6 +68,7 @@ const CompressedNotesList = ({
             setNewLineText={setNewLineText}
             newLineInputRef={newLineInputRef}
             updateNote={updateNote}
+            compressedView={true}
           />
           {isWatchList && (
             <button

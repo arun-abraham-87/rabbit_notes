@@ -36,6 +36,7 @@ export default function NoteContent({
     newLineText,
     setNewLineText,
     newLineInputRef,
+    compressedView = false
 }) {
     const rawLines = getRawLines(note.content);
     const contentLines = parseNoteContent({ content: rawLines.join('\n'), searchTerm: searchQuery });
@@ -219,17 +220,19 @@ export default function NoteContent({
                     />
                 </div>
             )}
-            <button
-                onClick={() => {
-                    setAddingLineNoteId(note.id);
-                    if (newLineInputRef.current) {
-                        newLineInputRef.current.focus();
-                    }
-                }}
-                className="absolute bottom-2 right-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"
-            >
-                <PlusIcon className="w-4 h-4" />
-            </button>
+            {!compressedView && (
+                <button
+                    onClick={() => {
+                        setAddingLineNoteId(note.id);
+                        if (newLineInputRef.current) {
+                            newLineInputRef.current.focus();
+                        }
+                    }}
+                    className="absolute bottom-2 right-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"
+                >
+                    <PlusIcon className="w-4 h-4" />
+                </button>
+            )}
         </div>
     );
 }

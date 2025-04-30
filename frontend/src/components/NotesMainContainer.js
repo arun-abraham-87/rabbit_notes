@@ -261,6 +261,7 @@ const NotesMainContainer = ({
     settings = defaultSettings
 }) => {
     const [checked, setChecked] = useState(false);
+    const [compressedView, setCompressedView] = useState(false);
     const [ongoingMeeting, setOngoingMeeting] = useState(null);
     const [currentDate, setCurrentDate] = useState(null);
     const [excludeEvents, setExcludeEvents] = useState(settings?.excludeEventsByDefault || false);
@@ -755,7 +756,13 @@ const NotesMainContainer = ({
                         onExcludeMeetingsChange={setExcludeMeetings}
                         onDeadlinePassedChange={setShowDeadlinePassedFilter}
                     />
-                    <InfoPanel totals={totals} grpbyViewChkd={checked} enableGroupByView={setChecked} />
+                    <InfoPanel 
+                        totals={totals} 
+                        grpbyViewChkd={checked} 
+                        enableGroupByView={setChecked}
+                        compressedView={compressedView}
+                        setCompressedView={setCompressedView}
+                    />
                     {checked ? (
                         <NotesListByDate
                             notes={filteredNotes}
@@ -777,6 +784,7 @@ const NotesMainContainer = ({
                             setSearchQuery={setSearchQuery}
                             onWordClick={handleTagClick}
                             settings={settings}
+                            compressedView={compressedView}
                         />
                     )}
                 </div>

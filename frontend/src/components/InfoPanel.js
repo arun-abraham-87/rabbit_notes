@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 
 
-const InfoPanel = ({ totals, grpbyViewChkd, enableGroupByView }) => {
+const InfoPanel = ({ totals, grpbyViewChkd, enableGroupByView, compressedView, setCompressedView }) => {
   
   const handleCheckboxChange = (event) => {
     enableGroupByView(event.target.checked);
+  };
+
+  const handleCompressedViewChange = (event) => {
+    setCompressedView(event.target.checked);
   };
 
   return (
@@ -31,6 +35,8 @@ const InfoPanel = ({ totals, grpbyViewChkd, enableGroupByView }) => {
         <div className="flex items-center space-x-2">
           <input
             type="checkbox"
+            checked={compressedView}
+            onChange={handleCompressedViewChange}
             title="Toggle Compressed View"
             className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
           />

@@ -43,7 +43,8 @@ const NotesList = ({
     setSearchQuery,
     onWordClick,
     settings,
-    activePage = 'notes'  // Add activePage prop with default value
+    activePage = 'notes',
+    compressedView = false  // Add compressedView prop with default value
 }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
@@ -374,6 +375,7 @@ const NotesList = ({
           <span>Add Meeting</span>
         </button>
       </div>
+
       {showCopyToast && (
         <div className="fixed bottom-4 right-4 bg-black text-white text-sm px-3 py-1 rounded shadow-lg z-50">
           Copied to clipboard
@@ -475,29 +477,29 @@ const NotesList = ({
                         />
                       </div>
 
-
-                      <NoteFooter
-                        note={note}
-                        showCreatedDate={settings.showCreatedDate || false}
-                        setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
-                        handleDelete={handleDelete}
-                        setPopupNoteText={(noteId) => {
-                          if (isMeetingNote(note)) {
-                            setEditingMeetingNote(note);
-                          } else if (isEventNote(note)) {
-                            setEditingEventNote(note);
-                          } else {
-                            setPopupNoteText(noteId);
-                          }
-                        }}
-                        setLinkingNoteId={setLinkingNoteId}
-                        setLinkSearchTerm={setLinkSearchTerm}
-                        setLinkPopupVisible={setLinkPopupVisible}
-                        selectedNotes={selectedNotes}
-                        toggleNoteSelection={toggleNoteSelection}
-                        updateNote={updateNote}
-                      />
-
+                      {!compressedView && (
+                        <NoteFooter
+                          note={note}
+                          showCreatedDate={settings.showCreatedDate || false}
+                          setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
+                          handleDelete={handleDelete}
+                          setPopupNoteText={(noteId) => {
+                            if (isMeetingNote(note)) {
+                              setEditingMeetingNote(note);
+                            } else if (isEventNote(note)) {
+                              setEditingEventNote(note);
+                            } else {
+                              setPopupNoteText(noteId);
+                            }
+                          }}
+                          setLinkingNoteId={setLinkingNoteId}
+                          setLinkSearchTerm={setLinkSearchTerm}
+                          setLinkPopupVisible={setLinkPopupVisible}
+                          selectedNotes={selectedNotes}
+                          toggleNoteSelection={toggleNoteSelection}
+                          updateNote={updateNote}
+                        />
+                      )}
 
                       <LinkedNotesSection
                         note={note}
@@ -596,29 +598,29 @@ const NotesList = ({
                       />
                     </div>
 
-
-                    <NoteFooter
-                      note={note}
-                      showCreatedDate={settings.showCreatedDate || false}
-                      setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
-                      handleDelete={handleDelete}
-                      setPopupNoteText={(noteId) => {
-                        if (isMeetingNote(note)) {
-                          setEditingMeetingNote(note);
-                        } else if (isEventNote(note)) {
-                          setEditingEventNote(note);
-                        } else {
-                          setPopupNoteText(noteId);
-                        }
-                      }}
-                      setLinkingNoteId={setLinkingNoteId}
-                      setLinkSearchTerm={setLinkSearchTerm}
-                      setLinkPopupVisible={setLinkPopupVisible}
-                      selectedNotes={selectedNotes}
-                      toggleNoteSelection={toggleNoteSelection}
-                      updateNote={updateNote}
-                    />
-
+                    {!compressedView && (
+                      <NoteFooter
+                        note={note}
+                        showCreatedDate={settings.showCreatedDate || false}
+                        setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
+                        handleDelete={handleDelete}
+                        setPopupNoteText={(noteId) => {
+                          if (isMeetingNote(note)) {
+                            setEditingMeetingNote(note);
+                          } else if (isEventNote(note)) {
+                            setEditingEventNote(note);
+                          } else {
+                            setPopupNoteText(noteId);
+                          }
+                        }}
+                        setLinkingNoteId={setLinkingNoteId}
+                        setLinkSearchTerm={setLinkSearchTerm}
+                        setLinkPopupVisible={setLinkPopupVisible}
+                        selectedNotes={selectedNotes}
+                        toggleNoteSelection={toggleNoteSelection}
+                        updateNote={updateNote}
+                      />
+                    )}
 
                     <LinkedNotesSection
                       note={note}
@@ -710,27 +712,29 @@ const NotesList = ({
                   />
                 </div>
 
-                <NoteFooter
-                  note={note}
-                  showCreatedDate={settings.showCreatedDate || false}
-                  setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
-                  handleDelete={handleDelete}
-                  setPopupNoteText={(noteId) => {
-                    if (isMeetingNote(note)) {
-                      setEditingMeetingNote(note);
-                    } else if (isEventNote(note)) {
-                      setEditingEventNote(note);
-                    } else {
-                      setPopupNoteText(noteId);
-                    }
-                  }}
-                  setLinkingNoteId={setLinkingNoteId}
-                  setLinkSearchTerm={setLinkSearchTerm}
-                  setLinkPopupVisible={setLinkPopupVisible}
-                  selectedNotes={selectedNotes}
-                  toggleNoteSelection={toggleNoteSelection}
-                  updateNote={updateNote}
-                />
+                {!compressedView && (
+                  <NoteFooter
+                    note={note}
+                    showCreatedDate={settings.showCreatedDate || false}
+                    setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
+                    handleDelete={handleDelete}
+                    setPopupNoteText={(noteId) => {
+                      if (isMeetingNote(note)) {
+                        setEditingMeetingNote(note);
+                      } else if (isEventNote(note)) {
+                        setEditingEventNote(note);
+                      } else {
+                        setPopupNoteText(noteId);
+                      }
+                    }}
+                    setLinkingNoteId={setLinkingNoteId}
+                    setLinkSearchTerm={setLinkSearchTerm}
+                    setLinkPopupVisible={setLinkPopupVisible}
+                    selectedNotes={selectedNotes}
+                    toggleNoteSelection={toggleNoteSelection}
+                    updateNote={updateNote}
+                  />
+                )}
 
                 <LinkedNotesSection
                   note={note}

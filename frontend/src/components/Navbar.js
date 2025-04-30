@@ -77,6 +77,14 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
           >
             Notes
           </button>
+          <button
+            onClick={() => setActivePage('watch')}
+            className={`px-3 py-1 rounded-full border ${
+              activePage === 'watch' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+            } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
+          >
+            Watch
+          </button>
           {settings?.showTagsPage !== false && (
             <button
               onClick={() => setActivePage('tags')}

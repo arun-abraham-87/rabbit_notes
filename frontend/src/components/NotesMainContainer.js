@@ -12,6 +12,7 @@ import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner.js';
 import EventAlerts from './EventAlerts.js';
 import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
 import CriticalTodosSection from './CriticalTodosSection';
+import WatchList from './WatchList';
 
 const checkForOngoingMeeting = (notes) => {
   if (!notes) return null;
@@ -258,7 +259,8 @@ const NotesMainContainer = ({
         events: 0
     }, 
     setTotals,
-    settings = defaultSettings
+    settings = defaultSettings,
+    activePage = 'notes'
 }) => {
     const [checked, setChecked] = useState(false);
     const [compressedView, setCompressedView] = useState(false);
@@ -733,59 +735,65 @@ const NotesMainContainer = ({
                 )}
                 <NextMeetingBanner meetings={meetings} notes={allNotes} />
                 <div className="mt-4">
-                    <DateSelectorBar
-                        setNoteDate={handleDateChange}
-                        defaultCollapsed={true}
-                    />
-                    <NoteEditor
-                        objList={objList}
-                        note={{ id: '', content: '' }}
-                        text=""
-                        addNote={addNote}
-                        onSave={(note) => {
-                            addNote(note.content);
-                        }}
-                        onCancel={() => {
-                            console.log("NoteEditor canceled");
-                        }}
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                        isAddMode={true}
-                        settings={settings}
-                        onExcludeEventsChange={setExcludeEvents}
-                        onExcludeMeetingsChange={setExcludeMeetings}
-                        onDeadlinePassedChange={setShowDeadlinePassedFilter}
-                    />
-                    <InfoPanel 
-                        totals={totals} 
-                        grpbyViewChkd={checked} 
-                        enableGroupByView={setChecked}
-                        compressedView={compressedView}
-                        setCompressedView={setCompressedView}
-                    />
-                    {checked ? (
-                        <NotesListByDate
-                            notes={filteredNotes}
-                            searchQuery={searchQuery}
-                            onWordClick={handleTagClick}
-                            settings={settings}
-                        />
+                    {activePage === 'watch' ? (
+                        <WatchList allNotes={allNotes} />
                     ) : (
-                        <NotesList
-                            objList={objList}
-                            notes={filteredNotes}
-                            allNotes={allNotes}
-                            addNotes={addNote}
-                            updateNoteCallback={updateNoteCallback}
-                            updateTotals={setTotals}
-                            objects={objects}
-                            addObjects={addTag}
-                            searchQuery={searchQuery}
-                            setSearchQuery={setSearchQuery}
-                            onWordClick={handleTagClick}
-                            settings={settings}
-                            compressedView={compressedView}
-                        />
+                        <>
+                            <DateSelectorBar
+                                setNoteDate={handleDateChange}
+                                defaultCollapsed={true}
+                            />
+                            <NoteEditor
+                                objList={objList}
+                                note={{ id: '', content: '' }}
+                                text=""
+                                addNote={addNote}
+                                onSave={(note) => {
+                                    addNote(note.content);
+                                }}
+                                onCancel={() => {
+                                    console.log("NoteEditor canceled");
+                                }}
+                                searchQuery={searchQuery}
+                                setSearchQuery={setSearchQuery}
+                                isAddMode={true}
+                                settings={settings}
+                                onExcludeEventsChange={setExcludeEvents}
+                                onExcludeMeetingsChange={setExcludeMeetings}
+                                onDeadlinePassedChange={setShowDeadlinePassedFilter}
+                            />
+                            <InfoPanel 
+                                totals={totals} 
+                                grpbyViewChkd={checked} 
+                                enableGroupByView={setChecked}
+                                compressedView={compressedView}
+                                setCompressedView={setCompressedView}
+                            />
+                            {checked ? (
+                                <NotesListByDate
+                                    notes={filteredNotes}
+                                    searchQuery={searchQuery}
+                                    onWordClick={handleTagClick}
+                                    settings={settings}
+                                />
+                            ) : (
+                                <NotesList
+                                    objList={objList}
+                                    notes={filteredNotes}
+                                    allNotes={allNotes}
+                                    addNotes={addNote}
+                                    updateNoteCallback={updateNoteCallback}
+                                    updateTotals={setTotals}
+                                    objects={objects}
+                                    addObjects={addTag}
+                                    searchQuery={searchQuery}
+                                    setSearchQuery={setSearchQuery}
+                                    onWordClick={handleTagClick}
+                                    settings={settings}
+                                    compressedView={compressedView}
+                                />
+                            )}
+                        </>
                     )}
                 </div>
             </div>

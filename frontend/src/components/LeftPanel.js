@@ -548,7 +548,10 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
   };
 
-  const handleViewHover = (e, note) => {
+  const handleViewHover = (e, note, section) => {
+    // Only show popup if section is locked
+    if (!lockedSections[section]) return;
+
     const rect = e.currentTarget.getBoundingClientRect();
     const popupWidth = 300; // Fixed width for the popup
     const viewportWidth = window.innerWidth;
@@ -842,8 +845,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div 
-                            className="text-base font-medium text-gray-800 break-words hover:text-indigo-600 transition-colors"
-                            onMouseEnter={(e) => handleViewHover(e, note)}
+                            className={`text-base font-medium text-gray-800 break-words ${lockedSections.watchList ? 'hover:text-indigo-600 transition-colors' : ''}`}
+                            onMouseEnter={(e) => handleViewHover(e, note, 'watchList')}
                             onMouseLeave={handleViewLeave}
                           >
                             {note.content.split('\n')[0]}

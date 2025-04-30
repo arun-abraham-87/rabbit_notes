@@ -149,7 +149,6 @@ const NoteFooter = ({
   };
 
   const handleAction = (action) => {
-    const ts = new Date().toISOString();
     const lines = note.content.split('\n');
     const hasAction = lines.some(l => l.trim().startsWith(`meta::${action}::`));
 
@@ -167,8 +166,17 @@ const NoteFooter = ({
         .filter(l => !l.trim().startsWith(`meta::${action}::`))
         .join('\n')
         .trim();
-      updateNote(note.id, `${without}\nmeta::${action}::${ts}`);
-      toast.success(`Added ${action} tag`);
+      
+      if (action === 'watch') {
+        // For watch action, use the note's creation date
+        updateNote(note.id, `${without}\nmeta::watch::${note.created_datetime}`);
+        toast.success('Added to watch list');
+      } else {
+        // For other actions, use current timestamp
+        const ts = new Date().toISOString();
+        updateNote(note.id, `${without}\nmeta::${action}::${ts}`);
+        toast.success(`Added ${action} tag`);
+      }
     }
   };
 

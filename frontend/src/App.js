@@ -15,12 +15,14 @@ import Manage from './pages/Manage';
 import EventsPage from './pages/EventsPage';
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from './utils/TextUtils';
+import { formatAndAgeDate } from './utils/DateUtils';
 
 import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings, defaultSettings } from './utils/ApiUtils';
 import { SearchModalProvider } from './contexts/SearchModalContext';
 import { NoteEditorProvider, useNoteEditor } from './contexts/NoteEditorContext';
 import { NotesProvider, useNotes } from './contexts/NotesContext';
 import NoteEditorModal from './components/NoteEditorModal';
+
 
 // Helper to render first four pinned notes
 const PinnedSection = ({ notes, onUnpin }) => {
@@ -165,7 +167,7 @@ const PinnedSection = ({ notes, onUnpin }) => {
                       key={`line-${lineIndex}`} 
                       className={`mb-1 ${lineIndex === 0 ? 'font-medium' : 'text-gray-500'}`}
                     >
-                      {parseNoteContent({ content: line, searchTerm: '' }).map((element, idx) => (
+                      {parseNoteContent({ content: formatAndAgeDate(line), searchTerm: '' }).map((element, idx) => (
                         <React.Fragment key={idx}>{element}</React.Fragment>
                       ))}
                     </div>

@@ -16,17 +16,27 @@ const InfoPanel = ({ totals, grpbyViewChkd, enableGroupByView }) => {
         <p className="text-sm text-gray-700">Todos: {totals.todos || 0}</p>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          checked={grpbyViewChkd}
-          onChange={handleCheckboxChange}
-          title="Toggle Group By Date View"
-          className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
-        />
-        <span className="text-sm text-gray-700">Group By Date View</span>
-      </div>
+      <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={grpbyViewChkd}
+            onChange={handleCheckboxChange}
+            title="Toggle Group By Date View"
+            className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
+          />
+          <span className="text-sm text-gray-700">Group By Date View</span>
+        </div>
 
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            title="Toggle Compressed View"
+            className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-purple-500"
+          />
+          <span className="text-sm text-gray-700">Compressed View</span>
+        </div>
+      </div>
     </div>
   )
 };

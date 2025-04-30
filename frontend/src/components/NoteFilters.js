@@ -212,6 +212,19 @@ const NoteFilters = ({
     });
   };
 
+  const handleWorkstreamClick = () => {
+    const filterAdded = toggleFilter('meta::workstream');
+    setLines((prev) => {
+      if (filterAdded) {
+        const exists = prev.some(line => line.text.includes('meta::workstream'));
+        if (exists) return prev;
+        return [...prev.filter(line => line.text.trim() !== ''), { id: `line-${Date.now()}`, text: 'meta::workstream', isTitle: false }];
+      } else {
+        return prev.filter(line => !line.text.includes('meta::workstream'));
+      }
+    });
+  };
+
   const handleExcludeEventsChange = (checked) => {
     setExcludeEvents(checked);
     // Only update search query if it already contains filter text
@@ -380,6 +393,17 @@ const NoteFilters = ({
         }`}
       >
         Abbreviation
+      </button>
+
+      <button
+        onClick={handleWorkstreamClick}
+        className={`px-3 py-1 text-xs rounded transition-all transform ${
+          searchQuery?.includes('meta::workstream')
+            ? 'opacity-100 scale-105 bg-orange-300 border border-orange-700'
+            : 'opacity-30 hover:opacity-60 border'
+        }`}
+      >
+        Workstream
       </button>
 
       <button

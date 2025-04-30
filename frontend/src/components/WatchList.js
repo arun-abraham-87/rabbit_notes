@@ -1,10 +1,28 @@
 import React from 'react';
 import CompressedNotesList from './CompressedNotesList';
 
-const WatchList = ({ allNotes }) => {
+const WatchList = ({ allNotes, updateNote }) => {
   const watchlistNotes = allNotes.filter(note => 
     note.content.includes('meta::watch')
   );
+
+  const handleUnfollow = (noteId, content) => {
+    // Remove the entire line containing meta::watch
+    const updatedContent = content
+      .split('\n')
+      .filter(line => !line.trim().startsWith('meta::watch'))
+      .join('\n')
+      .trim();
+    
+    // Call the parent's updateNote function to save the changes
+    updateNote(noteId, updatedContent).then(() => {
+      // Force a re-render by updating the local state
+      const updatedNotes = allNotes.map(note => 
+        note.id === noteId ? { ...note, content: updatedContent } : note
+      );
+      // The parent component will handle the actual state update
+    });
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -17,12 +35,29 @@ const WatchList = ({ allNotes }) => {
             notes={watchlistNotes}
             searchQuery=""
             duplicatedUrlColors={{}}
-            onEditNote={() => {}}
-            onDeleteNote={() => {}}
-            onPinNote={() => {}}
-            onUnpinNote={() => {}}
-            onWordClick={() => {}}
-            settings={{}}
+            editingLine={null}
+            setEditingLine={() => {}}
+            editedLineContent=""
+            setEditedLineContent={() => {}}
+            rightClickNoteId={null}
+            rightClickIndex={null}
+            setRightClickNoteId={() => {}}
+            setRightClickIndex={() => {}}
+            setRightClickPos={() => {}}
+            editingInlineDate={null}
+            setEditingInlineDate={() => {}}
+            handleInlineDateSelect={() => {}}
+            popupNoteText={null}
+            setPopupNoteText={() => {}}
+            objList={[]}
+            addingLineNoteId={null}
+            setAddingLineNoteId={() => {}}
+            newLineText=""
+            setNewLineText={() => {}}
+            newLineInputRef={null}
+            updateNote={handleUnfollow}
+            onContextMenu={() => {}}
+            isWatchList={true}
           />
         )}
       </div>

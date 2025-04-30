@@ -1,5 +1,6 @@
 import React from 'react';
 import NoteContent from './NoteContent';
+import { XMarkIcon } from '@heroicons/react/24/solid';
 
 const CompressedNotesList = ({
   notes,
@@ -26,15 +27,21 @@ const CompressedNotesList = ({
   setNewLineText,
   newLineInputRef,
   updateNote,
-  onContextMenu
+  onContextMenu,
+  isWatchList = false
 }) => {
+  const handleUnfollow = (noteId, content) => {
+    const updatedContent = content.replace('meta::watch', '');
+    updateNote(noteId, updatedContent);
+  };
+
   return (
     <div className="space-y-1">
       {notes.map(note => (
         <div
           key={note.id}
           onContextMenu={onContextMenu}
-          className="p-1 rounded bg-neutral-50 border border-slate-200"
+          className="p-1 rounded bg-neutral-50 border border-slate-200 relative group"
         >
           <NoteContent
             note={note}
@@ -62,6 +69,15 @@ const CompressedNotesList = ({
             newLineInputRef={newLineInputRef}
             updateNote={updateNote}
           />
+          {isWatchList && (
+            <button
+              onClick={() => handleUnfollow(note.id, note.content)}
+              className="absolute top-1 right-1 p-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Unfollow note"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          )}
         </div>
       ))}
     </div>

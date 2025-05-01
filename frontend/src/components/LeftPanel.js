@@ -8,14 +8,16 @@ import {
   Cog6ToothIcon,
   XMarkIcon,
   PencilSquareIcon,
-  EyeIcon
+  EyeIcon,
+  PlusIcon
 } from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
 import EditMeetingModal from './EditMeetingModal';
 import EditEventModal from './EditEventModal';
-import { updateNoteById, getSettings, updateSettings } from '../utils/ApiUtils';
+import { updateNoteById, getSettings, updateSettings, addNewNote, loadAllNotes, loadNotes } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
 import { formatAndAgeDate } from '../utils/DateUtils';
+import moment from 'moment';
 
 // Common timezones with their offsets and locations
 const timeZones = [
@@ -223,6 +225,11 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const [hoverTimeout, setHoverTimeout] = useState(null);
   const popupRef = useRef(null);
+  const [showQuickNote, setShowQuickNote] = useState(false);
+  const [quickNoteText, setQuickNoteText] = useState('');
+  const quickNoteInputRef = useRef(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [totals, setTotals] = useState(defaultSettings.totals);
 
   useEffect(() => {
     localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
@@ -590,6 +597,73 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     }
     setHoveredNote(null);
   };
+
+  // Handle Cmd+K shortcut
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowQuickNote(true);
+        setTimeout(() => quickNoteInputRef.current?.focus(), 0);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleQuickNoteSave = () => {
+    if (!quickNoteText.trim()) return;
+
+    const newNote = {
+      id: Date.now().toString(),
+      content: quickNoteText.trim(),
+      created_at: new Date().toISOString()
+    };
+
+    setNotes([newNote, ...notes]);
+    setQuickNoteText('');
+    setShowQuickNote(false);
+  };
+
+  // Handle Cmd+V shortcut for clipboard note
+  useEffect(() => {
+    const handleKeyDown = async (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        e.preventDefault();
+        try {
+          const clipboardText = await navigator.clipboard.readText();
+          if (!clipboardText.trim()) {
+            toast.error('No text in clipboard');
+            return;
+          }
+
+          // Get current date in YYYY-MM-DD format
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = (now.getMonth() + 1).toString().padStart(2, '0');
+          const day = now.getDate().toString().padStart(2, '0');
+          const noteDate = `${year}-${month}-${day}`;
+
+          // Create the note with the current date
+          const newNote = await addNewNote(clipboardText.trim(), [], noteDate);
+          
+          // Refresh the notes list with the current search query and date
+          const data = await loadNotes(searchQuery, currentDate);
+          setNotes(data.notes || []);
+          setTotals(data.totals || 0);
+          
+          toast.success('Note created from clipboard');
+        } catch (error) {
+          console.error('Error creating note from clipboard:', error);
+          toast.error('Failed to create note from clipboard');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [notes, setNotes, searchQuery, currentDate]);
 
   return (
     <>
@@ -1469,6 +1543,61 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           />
         );
       })()}
+
+      {/* Quick Note Section */}
+      {showQuickNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-4 w-96">
+            <div className="flex items-center gap-2">
+              <input
+                ref={quickNoteInputRef}
+                type="text"
+                value={quickNoteText}
+                onChange={(e) => setQuickNoteText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleQuickNoteSave();
+                  } else if (e.key === 'Escape') {
+                    setShowQuickNote(false);
+                    setQuickNoteText('');
+                  }
+                }}
+                placeholder="Type your note and press Enter..."
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                onClick={handleQuickNoteSave}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  setShowQuickNote(false);
+                  setQuickNoteText('');
+                }}
+                className="p-2 text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Note Button */}
+      <div className="fixed bottom-4 right-4">
+        <button
+          onClick={() => {
+            setShowQuickNote(true);
+            setTimeout(() => quickNoteInputRef.current?.focus(), 0);
+          }}
+          className="p-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
+          title="Quick Note (⌘K)"
+        >
+          <PlusIcon className="h-6 w-6" />
+        </button>
+      </div>
     </>
   );
 };

@@ -58,7 +58,8 @@ const NotesList = ({
   const [linkSearchTerm, setLinkSearchTerm] = useState('');
   const [linkPopupVisible, setLinkPopupVisible] = useState(false);
   const [showPastePopup, setShowPastePopup] = useState(false);
-  const [pasteCount, setPasteCount] = useState('');
+  const [pasteText, setPasteText] = useState('');
+  const [newNoteText, setNewNoteText] = useState('');
   const [isQuickPasteEnabled, setIsQuickPasteEnabled] = useState(() => {
     const saved = localStorage.getItem('quickPasteEnabled');
     return saved !== null ? JSON.parse(saved) : true;
@@ -87,6 +88,7 @@ const NotesList = ({
   const [editingEventNote, setEditingEventNote] = useState(null);
   const [showingNormalEventEditor, setShowingNormalEventEditor] = useState(false);
   const notesListRef = useRef(null);
+  const textareaRef = useRef(null);
 
   // Update localStorage when quick paste state changes
   useEffect(() => {
@@ -326,53 +328,6 @@ const NotesList = ({
     return note.content.includes('meta::event::');
   };
 
-  const handlePasteX = async (count) => {
-    try {
-      if (count <= 0) {
-        toast.error('Please select a valid number');
-        return;
-      }
-
-      const clipboardText = await navigator.clipboard.readText();
-      if (!clipboardText.trim()) {
-        toast.error('No text in clipboard');
-        return;
-      }
-
-      // Split clipboard content by newlines and filter out empty lines
-      const items = clipboardText.split('\n').filter(item => item.trim());
-      
-      if (items.length === 0) {
-        toast.error('No valid items in clipboard');
-        return;
-      }
-
-      // Take the last X items
-      const itemsToSave = items.slice(-count);
-      
-      const now = new Date();
-      const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}, ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} ${now.getHours() >= 12 ? 'pm' : 'am'}`;
-
-      // Create a separate note for each item
-      for (const item of itemsToSave) {
-        const noteContent = `${item}\ncreated_datetime: ${formattedDate}`;
-        await addNotes(noteContent);
-      }
-
-      toast.success(`Successfully created ${itemsToSave.length} notes`);
-      setShowPastePopup(false);
-    } catch (error) {
-      console.error('Error pasting notes:', error);
-      toast.error('Failed to create notes');
-    }
-  };
-
-  const handleContextMenu = (e, note) => {
-    e.preventDefault();
-    setRightClickNoteId(note.id);
-    setRightClickPos({ x: e.clientX, y: e.clientY });
-  };
-
   // Handle Cmd+V shortcut for clipboard note
   useEffect(() => {
     const handleKeyDown = async (e) => {
@@ -395,34 +350,73 @@ const NotesList = ({
             toast.error('No text in clipboard');
             return;
           }
-
-          // Get current date in YYYY-MM-DD format
-          const now = new Date();
-          const year = now.getFullYear();
-          const month = (now.getMonth() + 1).toString().padStart(2, '0');
-          const day = now.getDate().toString().padStart(2, '0');
-          const noteDate = `${year}-${month}-${day}`;
-
-          // Create the note with the current date and add review_pending as last line
-          const noteContent = `${clipboardText.trim()}\nmeta::review_pending`;
-          const newNote = await addNewNote(noteContent, [], noteDate);
-          
-          // Refresh the notes list with the current search query and date
-          const data = await loadNotes(searchQuery, noteDate);
-          updateNoteCallback(data.notes || []);
-          updateTotals(data.totals || 0);
-          
-          toast.success('Note created from clipboard with review pending status');
+          setPasteText(clipboardText);
+          setNewNoteText(''); // Reset the new note text
+          setShowPastePopup(true);
+          // Focus the textarea after a short delay to ensure the popup is rendered
+          setTimeout(() => {
+            textareaRef.current?.focus();
+          }, 100);
         } catch (error) {
-          console.error('Error creating note from clipboard:', error);
-          toast.error('Failed to create note from clipboard');
+          console.error('Error reading clipboard:', error);
+          toast.error('Failed to read clipboard');
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchQuery, updateNoteCallback, updateTotals, isQuickPasteEnabled]);
+  }, [isQuickPasteEnabled]);
+
+  // Handle Cmd+Enter to save note
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (showPastePopup && (e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handlePasteSubmit();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPastePopup, newNoteText, pasteText]);
+
+  const handlePasteSubmit = async () => {
+    try {
+      // Get current date in YYYY-MM-DD format
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const day = now.getDate().toString().padStart(2, '0');
+      const noteDate = `${year}-${month}-${day}`;
+
+      // Get the first line from clipboard content
+      const firstClipboardLine = pasteText.split('\n')[0].trim();
+      
+      // Create the note with textbox content and first line from clipboard
+      const noteContent = `${newNoteText.trim()}\n${firstClipboardLine}\nmeta::review_pending`;
+      const newNote = await addNewNote(noteContent, [], noteDate);
+      
+      // Refresh the notes list with the current search query and date
+      const data = await loadNotes(searchQuery, noteDate);
+      updateNoteCallback(data.notes || []);
+      updateTotals(data.totals || 0);
+      
+      setShowPastePopup(false);
+      setPasteText('');
+      setNewNoteText('');
+      toast.success('Note created successfully');
+    } catch (error) {
+      console.error('Error creating note:', error);
+      toast.error('Failed to create note');
+    }
+  };
+
+  const handleContextMenu = (e, note) => {
+    e.preventDefault();
+    setRightClickNoteId(note.id);
+    setRightClickPos({ x: e.clientX, y: e.clientY });
+  };
 
   return (
     <div ref={notesListRef} className="relative">
@@ -1005,6 +999,52 @@ const NotesList = ({
               onCancel={() => setPopupNoteText(null)}
               objList={objList}
             />
+          </div>
+        </div>
+      )}
+
+      {showPastePopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">Create New Note</h2>
+              <button
+                onClick={() => {
+                  setShowPastePopup(false);
+                  setPasteText('');
+                  setNewNoteText('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Note Content</label>
+                <textarea
+                  ref={textareaRef}
+                  value={newNoteText}
+                  onChange={(e) => setNewNoteText(e.target.value)}
+                  className="w-full h-32 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Type your note here... (Press Cmd+Enter to save)"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Clipboard Content (Reference Only)</label>
+                <div className="w-full h-32 p-2 border border-gray-300 rounded-lg bg-gray-50 overflow-auto">
+                  <pre className="whitespace-pre-wrap text-sm text-gray-600">{pasteText}</pre>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={handlePasteSubmit}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                Save Note
+              </button>
+            </div>
           </div>
         </div>
       )}

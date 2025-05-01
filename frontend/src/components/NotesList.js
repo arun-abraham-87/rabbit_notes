@@ -59,6 +59,7 @@ const NotesList = ({
   const [linkPopupVisible, setLinkPopupVisible] = useState(false);
   const [showPastePopup, setShowPastePopup] = useState(false);
   const [pasteCount, setPasteCount] = useState('');
+  const [isQuickPasteEnabled, setIsQuickPasteEnabled] = useState(true);
   const popupTimeoutRef = useRef(null);
   const safeNotes = notes || [];
   const [showEndDatePickerForNoteId, setShowEndDatePickerForNoteId] = useState(null);
@@ -367,6 +368,8 @@ const NotesList = ({
   // Handle Cmd+V shortcut for clipboard note
   useEffect(() => {
     const handleKeyDown = async (e) => {
+      if (!isQuickPasteEnabled) return; // Only handle if quick paste is enabled
+      
       if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
         e.preventDefault();
         try {
@@ -401,25 +404,38 @@ const NotesList = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchQuery, updateNoteCallback, updateTotals]);
+  }, [searchQuery, updateNoteCallback, updateTotals, isQuickPasteEnabled]);
 
   return (
     <div ref={notesListRef} className="relative">
-      <div className="mb-4 flex justify-end gap-3">
-        <button
-          onClick={() => setShowAddEventModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
-        >
-          <ClockIcon className="h-5 w-5" />
-          <span>Add Event</span>
-        </button>
-        <button
-          onClick={() => setShowAddMeetingModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
-        >
-          <CalendarIcon className="h-5 w-5" />
-          <span>Add Meeting</span>
-        </button>
+      <div className="mb-4 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAddEventModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
+          >
+            <ClockIcon className="h-5 w-5" />
+            <span>Add Event</span>
+          </button>
+          <button
+            onClick={() => setShowAddMeetingModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
+          >
+            <CalendarIcon className="h-5 w-5" />
+            <span>Add Meeting</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isQuickPasteEnabled}
+              onChange={(e) => setIsQuickPasteEnabled(e.target.checked)}
+              className="form-checkbox h-4 w-4 text-indigo-600"
+            />
+            <span>Quick Paste</span>
+          </label>
+        </div>
       </div>
 
       {showCopyToast && (

@@ -407,6 +407,17 @@ const NoteFilters = ({
       </button>
 
       <button
+        onClick={() => handleFilterClick('meta::review_pending')}
+        className={`px-3 py-1 text-xs rounded transition-all transform ${
+          searchQuery?.includes('meta::review_pending')
+            ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700'
+            : 'opacity-30 hover:opacity-60 border'
+        }`}
+      >
+        Review Pending
+      </button>
+
+      <button
         onClick={() => handleFilterClick('#people')}
         className={`px-3 py-1 text-xs rounded transition-all transform ${
           searchQuery?.includes('#people')

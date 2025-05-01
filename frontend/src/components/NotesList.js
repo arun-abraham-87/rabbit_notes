@@ -394,15 +394,16 @@ const NotesList = ({
           const day = now.getDate().toString().padStart(2, '0');
           const noteDate = `${year}-${month}-${day}`;
 
-          // Create the note with the current date
-          const newNote = await addNewNote(clipboardText.trim(), [], noteDate);
+          // Create the note with the current date and add review_pending as last line
+          const noteContent = `${clipboardText.trim()}\nmeta::review_pending`;
+          const newNote = await addNewNote(noteContent, [], noteDate);
           
           // Refresh the notes list with the current search query and date
           const data = await loadNotes(searchQuery, noteDate);
           updateNoteCallback(data.notes || []);
           updateTotals(data.totals || 0);
           
-          toast.success('Note created from clipboard');
+          toast.success('Note created from clipboard with review pending status');
         } catch (error) {
           console.error('Error creating note from clipboard:', error);
           toast.error('Failed to create note from clipboard');

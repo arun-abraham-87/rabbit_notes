@@ -376,6 +376,15 @@ const NotesList = ({
   // Handle Cmd+V shortcut for clipboard note
   useEffect(() => {
     const handleKeyDown = async (e) => {
+      // Handle Quick Paste toggle shortcut (Ctrl+Shift+Q)
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'q') {
+        e.preventDefault();
+        const newState = !isQuickPasteEnabled;
+        setIsQuickPasteEnabled(newState);
+        toast.info(`Quick Paste ${newState ? 'enabled' : 'disabled'}`);
+        return;
+      }
+
       if (!isQuickPasteEnabled) return; // Only handle if quick paste is enabled
       
       if ((e.metaKey || e.ctrlKey) && e.key === 'v') {

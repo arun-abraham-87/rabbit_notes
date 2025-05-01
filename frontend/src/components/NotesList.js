@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'react-toastify';
 
 import ConfirmationModal from './ConfirmationModal';
-import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+import { updateNoteById, deleteNoteById, addNewNote, loadNotes } from '../utils/ApiUtils';
 import { findDuplicatedUrls} from '../utils/genUtils';
 
 import RightClickMenu from './RightClickMenu';
@@ -363,6 +363,45 @@ const NotesList = ({
     setRightClickNoteId(note.id);
     setRightClickPos({ x: e.clientX, y: e.clientY });
   };
+
+  // Handle Cmd+V shortcut for clipboard note
+  useEffect(() => {
+    const handleKeyDown = async (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        e.preventDefault();
+        try {
+          const clipboardText = await navigator.clipboard.readText();
+          if (!clipboardText.trim()) {
+            toast.error('No text in clipboard');
+            return;
+          }
+
+          // Get current date in YYYY-MM-DD format
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = (now.getMonth() + 1).toString().padStart(2, '0');
+          const day = now.getDate().toString().padStart(2, '0');
+          const noteDate = `${year}-${month}-${day}`;
+
+          // Create the note with the current date
+          const newNote = await addNewNote(clipboardText.trim(), [], noteDate);
+          
+          // Refresh the notes list with the current search query and date
+          const data = await loadNotes(searchQuery, noteDate);
+          updateNoteCallback(data.notes || []);
+          updateTotals(data.totals || 0);
+          
+          toast.success('Note created from clipboard');
+        } catch (error) {
+          console.error('Error creating note from clipboard:', error);
+          toast.error('Failed to create note from clipboard');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchQuery, updateNoteCallback, updateTotals]);
 
   return (
     <div ref={notesListRef} className="relative">

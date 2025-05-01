@@ -59,7 +59,10 @@ const NotesList = ({
   const [linkPopupVisible, setLinkPopupVisible] = useState(false);
   const [showPastePopup, setShowPastePopup] = useState(false);
   const [pasteCount, setPasteCount] = useState('');
-  const [isQuickPasteEnabled, setIsQuickPasteEnabled] = useState(true);
+  const [isQuickPasteEnabled, setIsQuickPasteEnabled] = useState(() => {
+    const saved = localStorage.getItem('quickPasteEnabled');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const popupTimeoutRef = useRef(null);
   const safeNotes = notes || [];
   const [showEndDatePickerForNoteId, setShowEndDatePickerForNoteId] = useState(null);
@@ -84,6 +87,11 @@ const NotesList = ({
   const [editingEventNote, setEditingEventNote] = useState(null);
   const [showingNormalEventEditor, setShowingNormalEventEditor] = useState(false);
   const notesListRef = useRef(null);
+
+  // Update localStorage when quick paste state changes
+  useEffect(() => {
+    localStorage.setItem('quickPasteEnabled', JSON.stringify(isQuickPasteEnabled));
+  }, [isQuickPasteEnabled]);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);

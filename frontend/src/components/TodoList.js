@@ -16,7 +16,7 @@ import {
   ChartBarIcon
 } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
-import { formatDate } from '../utils/DateUtils';
+import { getFormattedDateWithAge } from '../utils/DateUtils';
 import TodoStats from './TodoStats';
 
 const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => {

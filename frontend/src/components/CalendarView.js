@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { formatDate } from '../utils/DateUtils';
+import { getFormattedDateWithAge } from '../utils/DateUtils';
 import { ChevronRightIcon, ChevronLeftIcon, CalendarIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
 
@@ -181,7 +181,7 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
                             <p className={`text-sm ${
                               occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
                             }`}>
-                              {formatDate(occurrence.date)}
+                              {getFormattedDateWithAge(occurrence.date)}
                             </p>
                             <div className="flex items-center gap-2">
                               {occurrence.isPast && (

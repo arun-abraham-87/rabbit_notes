@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { formatDate } from '../utils/DateUtils';
+import { getFormattedDateWithAge } from '../utils/DateUtils';
 import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import EditEventModal from '../components/EditEventModal';
@@ -321,18 +321,18 @@ const EventsPage = ({ notes, onUpdate }) => {
                     <p className={`text-sm ${
                       isToday ? 'text-indigo-700' : 'text-gray-500'
                     }`}>
-                      {formatDate(eventDate)}
+                      {getFormattedDateWithAge(eventDate)}
                     </p>
                     {recurrence !== 'none' && (
                       <div className="mt-1 space-y-1">
                         {lastOccurrence && (
                           <p className="text-xs text-gray-600">
-                            Last occurrence: {formatDate(lastOccurrence)}
+                            Last occurrence: {getFormattedDateWithAge(lastOccurrence)}
                           </p>
                         )}
                         {nextOccurrence && (
                           <p className="text-xs text-indigo-600">
-                            Next occurrence: {formatDate(nextOccurrence)}
+                            Next occurrence: {getFormattedDateWithAge(nextOccurrence)}
                           </p>
                         )}
                       </div>

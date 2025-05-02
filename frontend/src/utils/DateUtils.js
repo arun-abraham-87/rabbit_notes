@@ -2,12 +2,27 @@ import moment from 'moment';
 
 /**
  * Calculates the relative time from a given date string to now
- * @param {string} dateString - Date string in format "DD/MM/YYYY, h:mm:ss a" (e.g., "25/12/2023, 2:30:45 PM")
+ * Supports two formats:
+ * 1. "DD/MM/YYYY, h:mm:ss a"
+ * 2. "YYYY-MM-DDThh:mm:ss"
+ * @param {string} dateString - Date string in format "DD/MM/YYYY, h:mm:ss a" or "YYYY-MM-DDThh:mm:ss"
  * @returns {string} Relative time string (e.g., "2 hours ago", "in 3 days")
  */
 export const getAge = (dateString) => {
-    const noteDate = moment(dateString, "DD/MM/YYYY, h:mm:ss a");
-    return  `${noteDate.fromNow()}`
+    if (!dateString || (typeof dateString !== 'string' && typeof dateString.toString !== 'function')) {
+        return '';
+    }
+
+    const str = dateString.toString();
+
+    let noteDate;
+    if (str.includes('T')) {
+        noteDate = moment(str, moment.ISO_8601);
+    } else {
+        noteDate = moment(str, "DD/MM/YYYY, h:mm:ss a");
+    }
+
+    return `${noteDate.fromNow()}`;
 }
 
 /**
@@ -77,7 +92,7 @@ export const parseAustralianDate = (dateStr) => {
  * @param {string} [stringval] - Optional string value (unused parameter)
  * @returns {string} Formatted date string in "DD-MM-YYYY" format
  */
-export const getFormattedDate = (date,stringval) => {
+export const getFormattedDateString = (date,stringval) => {
   if (!date) return '';
   
   try {
@@ -95,17 +110,29 @@ export const getFormattedDate = (date,stringval) => {
 
 /**
  * Formats a date string with relative time
- * @param {string} dateString - Date string in format "DD/MM/YYYY, h:mm:ss a" (e.g., "25/12/2023, 2:30:45 PM")
+ * Supports two formats:
+ * 1. "DD/MM/YYYY, h:mm:ss a" (e.g., "25/12/2023, 2:30:45 PM")
+ * 2. "YYYY-MM-DDThh:mm:ss" (e.g., "2023-12-25T14:30:45")
+ * @param {string} dateString - Date string in either format
  * @returns {string} Formatted date string with relative time (e.g., "25-12-2023 (2 days ago)")
  */
-export const formatDate = (dateString) => {
+export const getFormattedDateWithAge = (dateString) => {
     if (!dateString) return '';
     
     try {
-        // Parse the date string in format "DD/MM/YYYY, h:mm:ss a"
-        const [datePart, timePart] = dateString.split(", ");
-        const [day, month, year] = datePart.split("/").map(Number);
-        const date = new Date(year, month - 1, day);
+        let date;
+        // Check for ISO format (YYYY-MM-DDThh:mm:ss)
+        if (dateString.includes('T')) {
+            date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                throw new Error('Invalid ISO date format');
+            }
+        } else {
+            // Parse the date string in format "DD/MM/YYYY, h:mm:ss a"
+            const [datePart, timePart] = dateString.split(", ");
+            const [day, month, year] = datePart.split("/").map(Number);
+            date = new Date(year, month - 1, day);
+        }
         
         // Format the date parts
         const formattedDay = String(date.getDate()).padStart(2, '0');
@@ -129,7 +156,7 @@ export const formatDate = (dateString) => {
  * Gets today's date in the Australian timezone
  * @returns {string} Date string in format "YYYY-MM-DD" (e.g., "2023-12-25")
  */
-export const getAustralianDate = () => {
+export const getTodaysDateInAusDateYYYYMMDDStr = () => {
     const ausDate = new Date().toLocaleDateString("en-AU", {
         timeZone: "Australia/Sydney",
     });
@@ -143,7 +170,7 @@ export const getAustralianDate = () => {
  * @param {boolean} next - If true, get next day; if false, get previous day
  * @returns {string} Date string in format "YYYY-MM-DD" (e.g., "2023-12-26")
  */
-export const getNextOrPrevDate = (dateString, next) => {
+export const getNextOrPrevDateStr = (dateString, next) => {
     const [year, month, day] = dateString.split("-");
     const date = new Date(year, month - 1, day); // Month is 0-based
 

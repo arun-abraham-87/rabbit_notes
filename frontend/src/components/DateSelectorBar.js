@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getAustralianDate, getNextOrPrevDate, getAge } from '../utils/DateUtils.js'
+import { getTodaysDateInAusDateYYYYMMDDStr, getNextOrPrevDateStr, getAge } from '../utils/DateUtils.js'
 import { ChevronRightIcon, ChevronLeftIcon, CalendarIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 
 const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
-  const [selectedDate, setSelectedDate] = useState(getAustralianDate());
+  const [selectedDate, setSelectedDate] = useState(getTodaysDateInAusDateYYYYMMDDStr());
   const [showCalendar, setShowCalendar] = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const calendarRef = useRef(null);
 
   useEffect(() => {
-    setSelectedDate(getAustralianDate());
-    setNoteDate(getAustralianDate());
+    setSelectedDate(getTodaysDateInAusDateYYYYMMDDStr());
+    setNoteDate(getTodaysDateInAusDateYYYYMMDDStr());
   }, []);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
   }, []);
 
   const updateDate = (nextDay) => {
-    const nextDateStr = getNextOrPrevDate(selectedDate, nextDay);
+    const nextDateStr = getNextOrPrevDateStr(selectedDate, nextDay);
     setSelectedDate(nextDateStr);
     setNoteDate(nextDateStr);
   };
@@ -39,7 +39,7 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
     dateObj.setDate(dateObj.getDate() + offset);
     const isoDate = dateObj.toISOString().split('T')[0];
     const isActive = isoDate === selectedDate;
-    const isToday = isoDate === getAustralianDate();
+    const isToday = isoDate === getTodaysDateInAusDateYYYYMMDDStr();
 
     return {
       container: `
@@ -56,10 +56,10 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
 
   const getDateLabel = (dateObj) => {
     const isoDate = dateObj.toISOString().split('T')[0];
-    if (isoDate === getAustralianDate()) {
+    if (isoDate === getTodaysDateInAusDateYYYYMMDDStr()) {
       return '(Today)';
     }
-    const diffTime = dateObj.getTime() - new Date(getAustralianDate()).getTime();
+    const diffTime = dateObj.getTime() - new Date(getTodaysDateInAusDateYYYYMMDDStr()).getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays > 0 
       ? `(+${diffDays})`
@@ -88,7 +88,7 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
             </button>
           )}
           <div className="flex items-center gap-2">
-            <h2 className={`text-lg font-semibold ${selectedDate === getAustralianDate() ? 'text-gray-800' : 'text-red-600'}`}>
+            <h2 className={`text-lg font-semibold ${selectedDate === getTodaysDateInAusDateYYYYMMDDStr() ? 'text-gray-800' : 'text-red-600'}`}>
               {collapsed ? selectedDate : 'Date Selection'}
             </h2>
             {collapsed && (
@@ -100,9 +100,9 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
                 <ChevronRightIcon className="h-5 w-5 text-gray-600" />
               </button>
             )}
-            {collapsed && selectedDate !== getAustralianDate() && (
+            {collapsed && selectedDate !== getTodaysDateInAusDateYYYYMMDDStr() && (
               <button
-                onClick={() => handleDateChange(getAustralianDate())}
+                onClick={() => handleDateChange(getTodaysDateInAusDateYYYYMMDDStr())}
                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                 title="Reset to Today"
               >
@@ -111,10 +111,10 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
             )}
             {collapsed && (
               <span className="text-sm font-light text-gray-500">
-                {selectedDate === getAustralianDate() 
+                {selectedDate === getTodaysDateInAusDateYYYYMMDDStr() 
                   ? '(Today)' 
                   : (() => {
-                      const diffTime = new Date(selectedDate).getTime() - new Date(getAustralianDate()).getTime();
+                      const diffTime = new Date(selectedDate).getTime() - new Date(getTodaysDateInAusDateYYYYMMDDStr()).getTime();
                       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                       return diffDays > 0 
                         ? `(+${diffDays})`
@@ -140,7 +140,7 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
       {!collapsed && (
         <div className="space-y-4">
           <div className="flex justify-center text-sm text-gray-500">
-            {selectedDate === getAustralianDate() ? 'Today' : getAge(new Date(selectedDate))}
+            {selectedDate === getTodaysDateInAusDateYYYYMMDDStr() ? 'Today' : getAge(new Date(selectedDate))}
           </div>
           
           <div className="flex items-center justify-center gap-2">
@@ -195,9 +195,9 @@ const DateSelectorBar = ({ setNoteDate, defaultCollapsed = true }) => {
             >
               Choose Date
             </button>
-            {selectedDate !== getAustralianDate() && (
+            {selectedDate !== getTodaysDateInAusDateYYYYMMDDStr() && (
               <button
-                onClick={() => handleDateChange(getAustralianDate())}
+                onClick={() => handleDateChange(getTodaysDateInAusDateYYYYMMDDStr())}
                 className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
               >
                 Reset To Today

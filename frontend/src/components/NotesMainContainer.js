@@ -598,12 +598,40 @@ const NotesMainContainer = ({
         }
     };
 
+    // Build workstream and people suggestions from allNotes
+    const workstreamSuggestions = useMemo(() =>
+      (allNotes || [])
+        .filter(note => note.content.includes('meta::workstream'))
+        .map(note => ({
+          type: 'workstream',
+          id: note.id,
+          text: note.content.split('\n')[0]
+        })),
+      [allNotes]
+    );
+    const peopleSuggestions = useMemo(() =>
+      (allNotes || [])
+        .filter(note => note.content.includes('meta::person::'))
+        .map(note => ({
+          type: 'person',
+          id: note.id,
+          text: note.content.split('\n')[0]
+        })),
+      [allNotes]
+    );
+    const mergedObjList = useMemo(() => [
+      ...(objList || []),
+      ...workstreamSuggestions,
+      ...peopleSuggestions
+    ], [objList, workstreamSuggestions, peopleSuggestions]);
+
     return (
         <AlertsProvider 
             notes={allNotes} 
             expanded={alertsExpanded}
             events={eventsState}
             onAcknowledgeEvent={handleAcknowledgeEvent}
+            setNotes={setNotes}
         >
             <div className="flex flex-col h-full">
                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
@@ -628,7 +656,7 @@ const NotesMainContainer = ({
                                     defaultCollapsed={true}
                                 />
                                 <NoteEditor
-                                    objList={objList}
+                                    objList={mergedObjList}
                                     note={{ id: '', content: '' }}
                                     text=""
                                     addNote={addNote}
@@ -662,7 +690,7 @@ const NotesMainContainer = ({
                                     />
                                 ) : (
                                     <NotesList
-                                        objList={objList}
+                                        objList={mergedObjList}
                                         notes={filteredNotes}
                                         allNotes={allNotes}
                                         addNotes={addNote}

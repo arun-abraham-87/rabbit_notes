@@ -81,7 +81,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
     //console.log(objList);
     const filterText = match[1].toLowerCase();
     const filtered = objList.filter((tag) =>
-      tag.text.toLowerCase().startsWith(filterText)
+      tag && tag.text && tag.text.toLowerCase().startsWith(filterText)
     );
     setFilteredTags(filtered.map(tag => tag.text));
     setSearchTerm(filterText);
@@ -245,7 +245,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
       clearTimeout(throttleRef.current);
       throttleRef.current = setTimeout(() => {
         const filtered = objList.filter((tag) =>
-          tag.text.toLowerCase().startsWith(filterText)
+          tag && tag.text && tag.text.toLowerCase().startsWith(filterText)
         );
         //console.log("Filtered tags:", filtered);
 
@@ -615,93 +615,54 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
   }
 
   const handleInputChange = (e) => {
-
-
     const selection = window.getSelection();
     const range = selection.getRangeAt(0);
 
     // Get the caret position relative to the current node
     const caretOffset = range.startOffset;
 
-    //const updatedNotes = [...notes];
-    const inputedText = e.target.value;
-    //    updatedNotes[index] = inputedText
-    //  setNotes(updatedNotes);
-    //console.log(`INputed text set as searhcquwery: ${inputedText}`)
-    //searchQuery(!inputedText ? "" : inputedText);
+    const inputedText = e.target.value || '';
 
     //Needed to fix issue of popup showing after deleting all text and popup showing up based on last deleted char
-    if (inputedText.trim().length === 0) {
-      setShowPopup(false);
-      //      setShowCalendar(false);
+    if (!inputedText || inputedText.trim().length === 0) {
+        setShowPopup(false);
+        return;
     }
 
     const match = inputedText.trim().match(/(\S+)$/); // Match the last word
-    if (match) {
-      const filterText = match[1].toLowerCase();
-      let filtered = [];
+    if (match && match[1]) {
+        const filterText = match[1].toLowerCase();
+        let filtered = [];
 
-      // Throttle logic
-      if (filterText !== "") {
-        clearTimeout(throttleRef.current); // Clear the existing timeout
-        throttleRef.current = setTimeout(() => {
+        // Throttle logic
+        if (filterText !== "") {
+            clearTimeout(throttleRef.current); // Clear the existing timeout
+            throttleRef.current = setTimeout(() => {
+                if (filterText === "cal") {
+                    // Calendar logic here
+                } else {
+                    filtered = objList.filter((tag) =>
+                        tag && tag.text && tag.text.toLowerCase().startsWith(filterText)
+                    );
 
-          if (filterText === "cal") {
-            // let { x, y } = getCursorCoordinates();
-            // x = x + 5;
-            // setCalendarPosition({ x, y });
-            // setShowCalendar(true);
-            // setShowPopup(false);
-          } else {
-
-            filtered = objList.filter((tag) =>
-              tag.text.toLowerCase().startsWith(filterText)
-            );
-
-
-            setFilteredTags(filtered.map(tag => tag.text));
-            ////console.log(`objlit: ${objList}`)
-            ////console.log(`FilteredTags: ${filteredTags}`)
-          }
-          if (filtered.length > 0) {
-            const textarea = textareasRef.current[focusedLineIndex];
-            if (textarea) {
-              const { x, y } = getCursorCoordinates(textarea);
-              setCursorPosition({ x, y: y + 20 });
-            }
-            setShowPopup(true);
-            // const popupElement = document.getElementById("tagpop");
-            // if (popupElement) {
-            //   popupElement.style.position = "absolute";
-            //   popupElement.style.left = `${x}px`;
-            //   popupElement.style.top = `${y}px`;
-            // }
-          } else {
-            setShowPopup(false);
-          }
-
-        }, 300); // 300ms delay for throttling
-      }
+                    setFilteredTags(filtered.map(tag => tag.text));
+                }
+                if (filtered.length > 0) {
+                    const textarea = textareasRef.current[focusedLineIndex];
+                    if (textarea) {
+                        const { x, y } = getCursorCoordinates(textarea);
+                        setCursorPosition({ x, y: y + 20 });
+                    }
+                    setShowPopup(true);
+                } else {
+                    setShowPopup(false);
+                }
+            }, 300); // 300ms delay for throttling
+        }
     } else {
-      setShowPopup(false);
-      setSelectedTagIndex(-1);
-      //focusTextareaAtEnd();
+        setShowPopup(false);
+        setSelectedTagIndex(-1);
     }
-
-
-    // Restore the caret position after the state update
-    // setTimeout(() => {
-    //   const div = editorRef.current?.children[index];
-    //   if (div) {
-    //     const newRange = document.createRange();
-    //     const newSelection = window.getSelection();
-    //     newRange.setStart(div.firstChild || div, caretOffset); // Restore the offset
-    //     newRange.collapse(true);
-    //     newSelection.removeAllRanges();
-    //     newSelection.addRange(newRange);
-    //   }
-    // }, 0);
-
   };
 
 

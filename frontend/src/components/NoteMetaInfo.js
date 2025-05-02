@@ -1,24 +1,6 @@
 import React from 'react';
 import { updateNoteById as updateNote } from '../utils/ApiUtils';
 import { getDateAgeInYearsMonthsDays } from '../utils/DateUtils';
-import {
-  CheckCircleIcon,
-  CalendarIcon,
-  ExclamationCircleIcon,
-  AdjustmentsVerticalIcon,
-  BookmarkIcon,
-  CalendarDaysIcon,
-  ClockIcon,
-  LinkIcon,
-  MapPinIcon,
-  EyeIcon,
-  BriefcaseIcon,
-  AcademicCapIcon,
-  BeakerIcon,
-  LightBulbIcon,
-  StarIcon,
-  DocumentTextIcon
-} from '@heroicons/react/24/solid';
 
 /**
  * NoteTitle - renders todo/deadline info plus meeting/event inputs based on note metadata
@@ -252,20 +234,6 @@ export default function NoteTitle({
     }
   };
 
-  const MetaIcon = ({ icon: Icon, title, type, color }) => (
-    <button
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        removeTag(type);
-      }}
-      className="group relative rounded-lg p-1.5 transition-all duration-200 hover:bg-gray-100/80 hover:shadow-sm active:scale-95"
-      title={title}
-    >
-      <Icon className={`h-4.5 w-4.5 ${color} transition-all duration-200 group-hover:scale-105`} />
-    </button>
-  );
-
   // Check if any tags or metadata are present
   const hasAnyTags = 
     isAbbreviation || 
@@ -297,124 +265,6 @@ export default function NoteTitle({
 
   return (
     <div className="flex flex-col gap-3 mb-3">
-      {/* Meta Icons Section */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 p-1 bg-gray-50/50 rounded-xl border border-gray-100/80">
-          {isAbbreviation && (
-            <MetaIcon
-              icon={AdjustmentsVerticalIcon}
-              title="Abbreviation"
-              type="abbreviation"
-              color="text-purple-500"
-            />
-          )}
-          {isBookmark && (
-            <MetaIcon
-              icon={BookmarkIcon}
-              title="Bookmark"
-              type="bookmark"
-              color="text-indigo-500"
-            />
-          )}
-          {isQuickLinks && (
-            <MetaIcon
-              icon={LinkIcon}
-              title="Quick Links"
-              type="quick_links"
-              color="text-blue-500"
-            />
-          )}
-          {isPinned && (
-            <MetaIcon
-              icon={MapPinIcon}
-              title="Pinned"
-              type="pin"
-              color="text-amber-500"
-            />
-          )}
-          {isEvent && !isMeeting && (
-            <MetaIcon
-              icon={CalendarDaysIcon}
-              title="Event"
-              type="event"
-              color="text-pink-500"
-            />
-          )}
-          {isMeeting && (
-            <MetaIcon
-              icon={ClockIcon}
-              title="Meeting"
-              type="meeting"
-              color="text-sky-500"
-            />
-          )}
-          {isTodo && (
-            <MetaIcon
-              icon={CheckCircleIcon}
-              title="Todo"
-              type="todo"
-              color="text-emerald-500"
-            />
-          )}
-          {isWatch && (
-            <MetaIcon
-              icon={EyeIcon}
-              title="Watch"
-              type="watch"
-              color="text-teal-500"
-            />
-          )}
-          {isWork && (
-            <MetaIcon
-              icon={BriefcaseIcon}
-              title="Work"
-              type="work"
-              color="text-slate-600"
-            />
-          )}
-          {isStudy && (
-            <MetaIcon
-              icon={AcademicCapIcon}
-              title="Study"
-              type="study"
-              color="text-green-500"
-            />
-          )}
-          {isResearch && (
-            <MetaIcon
-              icon={BeakerIcon}
-              title="Research"
-              type="research"
-              color="text-violet-500"
-            />
-          )}
-          {isIdea && (
-            <MetaIcon
-              icon={LightBulbIcon}
-              title="Idea"
-              type="idea"
-              color="text-amber-500"
-            />
-          )}
-          {isImportant && (
-            <MetaIcon
-              icon={StarIcon}
-              title="Important"
-              type="important"
-              color="text-rose-500"
-            />
-          )}
-          {isDocument && (
-            <MetaIcon
-              icon={DocumentTextIcon}
-              title="Document"
-              type="document"
-              color="text-slate-600"
-            />
-          )}
-        </div>
-      </div>
-
       {/* Todo and Deadline Info */}
       {(todoAgeNotice || endDateNotice) && !isMeeting && !isEvent && (
         <div className="flex items-center gap-3 flex-wrap">
@@ -424,7 +274,6 @@ export default function NoteTitle({
               onClick={() => removeTag('todo')}
               title="Remove todo notice"
             >
-              <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
               {todoAgeNotice}
             </button>
           )}
@@ -449,7 +298,6 @@ export default function NoteTitle({
               className="text-gray-700 text-xs tracking-wide font-medium px-3 py-1.5 rounded-lg flex items-center gap-2 bg-gray-50/80 hover:bg-gray-100/80 transition-colors duration-200 border border-gray-200/80"
             >
               Set Deadline
-              <CalendarIcon className="h-4 w-4 text-emerald-500" />
             </button>
           )}
         </div>

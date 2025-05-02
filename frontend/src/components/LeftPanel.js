@@ -14,7 +14,7 @@ import {
 import NoteEditor from './NoteEditor';
 import EditMeetingModal from './EditMeetingModal';
 import EditEventModal from './EditEventModal';
-import { updateNoteById, getSettings, updateSettings, addNewNote, loadAllNotes, loadNotes } from '../utils/ApiUtils';
+import { updateNoteById, getSettings, updateSettings, addNewNoteCommon, loadAllNotes, loadNotes } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
 import { formatAndAgeDate, getAge, getFormattedDateString } from '../utils/DateUtils';
 import moment from 'moment';

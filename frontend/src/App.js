@@ -18,7 +18,7 @@ import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroi
 import { parseNoteContent } from './utils/TextUtils';
 import { formatAndAgeDate } from './utils/DateUtils';
 
-import { addNewNote, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings, defaultSettings } from './utils/ApiUtils';
+import { addNewNoteCommon, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings, defaultSettings } from './utils/ApiUtils';
 import { SearchModalProvider } from './contexts/SearchModalContext';
 import { NoteEditorProvider, useNoteEditor } from './contexts/NoteEditorContext';
 import { NotesProvider, useNotes } from './contexts/NotesContext';
@@ -256,7 +256,7 @@ const AppContent = () => {
 
   const addNote = async (content, tags) => {
     try {
-      await addNewNote(content, tags, noteDate);
+      await addNewNoteCommon(content, tags, noteDate);
       setSearchQuery('');
       // Use empty search query to fetch all notes after adding
       await Promise.all([

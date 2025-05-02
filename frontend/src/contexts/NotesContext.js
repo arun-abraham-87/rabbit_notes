@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { addNewNote, loadAllNotes, updateNoteById } from '../utils/ApiUtils';
+import { addNewNoteCommon, loadAllNotes, updateNoteById } from '../utils/ApiUtils';
 
 const NotesContext = createContext();
 
@@ -25,7 +25,7 @@ export function NotesProvider({ children }) {
 
   const addNote = async (content) => {
     try {
-      const newNote = await addNewNote(content);
+      const newNote = await addNewNoteCommon(content);
       setNotes(prevNotes => [...prevNotes, newNote]);
       return newNote;
     } catch (error) {

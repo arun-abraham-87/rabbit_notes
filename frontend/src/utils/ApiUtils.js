@@ -4,7 +4,7 @@ import { reorderMetaTags } from './TextUtils';
 const API_BASE_URL = 'http://localhost:5001/api';
 
 // Notes API functions
-export const addNewNote = async (content, tags, noteDate) => {
+export const addNewNoteCommon = async (content, tags, noteDate) => {
     const response = await fetch(`${API_BASE_URL}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

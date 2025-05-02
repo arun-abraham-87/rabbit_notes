@@ -9,7 +9,7 @@ import {
 } from '@heroicons/react/24/solid';
 import { loadTags, addNewTag, deleteTag, editTag } from '../utils/ApiUtils';
 import { loadNotes } from '../utils/ApiUtils';
-import { addNewNote } from '../utils/ApiUtils';
+import { addNewNoteCommon } from '../utils/ApiUtils';
 import moment from 'moment';
 
 const TagListing = () => {
@@ -151,7 +151,7 @@ const TagListing = () => {
         // Create a new note with meta::workstream tag and the name as the first line
         const content = `${newWorkstream}\nmeta::workstream`;
         const now = moment().format('DD-MM-YYYY');
-        await addNewNote(content, undefined, null);
+        await addNewNoteCommon(content, undefined, null);
         await loadWorkstreamsList();
         setWorkstreamSearch('');
       } catch (err) {

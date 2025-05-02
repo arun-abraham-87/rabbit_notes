@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { Alerts } from './Alerts';
 
 import ConfirmationModal from './ConfirmationModal';
-import { updateNoteById, deleteNoteById, addNewNote, loadNotes } from '../utils/ApiUtils';
+import { updateNoteById, deleteNoteById, addNewNoteCommon, loadNotes } from '../utils/ApiUtils';
 import { findDuplicatedUrls} from '../utils/genUtils';
 
 import RightClickMenu from './RightClickMenu';
@@ -447,7 +447,7 @@ const NotesList = ({
       
       // Create the note with textbox content and first line from clipboard
       const noteContent = `${newNoteText.trim()}\n${firstClipboardLine}\nmeta::review_pending`;
-      const newNote = await addNewNote(noteContent, [], noteDate);
+      const newNote = await addNewNoteCommon(noteContent, [], noteDate);
       
       // Refresh the notes list with the current search query and date
       const data = await loadNotes(searchQuery, noteDate);

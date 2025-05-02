@@ -182,6 +182,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           !line.trim().startsWith('meta::high') && 
           !line.trim().startsWith('meta::medium') && 
           !line.trim().startsWith('meta::low') &&
+          !line.trim().startsWith('meta::critical') &&
           !line.trim().startsWith('meta::priority_age::')
         )
         .join('\n')
@@ -218,6 +219,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
             !line.trim().startsWith('meta::high') && 
             !line.trim().startsWith('meta::medium') && 
             !line.trim().startsWith('meta::low') &&
+            !line.trim().startsWith('meta::critical') &&
             !line.trim().startsWith('meta::priority_age::')
           )
           .join('\n')
@@ -319,7 +321,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const filteredTodos = todos
     .filter((todo) => {
       const matchesSearch = todo.content.toLowerCase().includes(searchQuery.toLowerCase());
-      const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
+      const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
       const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
       const assignedPriority = priorities[todo.id] || tag;
       const isMetaTodo = todo.content.includes('meta::todo');
@@ -352,9 +354,9 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     .sort((a, b) => {
       if (sortBy === 'priority') {
         const getPriorityValue = (todo) => {
-          const match = todo.content.match(/meta::(high|medium|low)/i);
+          const match = todo.content.match(/meta::(high|medium|low|critical)/i);
           const priority = match ? match[1].toLowerCase() : 'low';
-          return priority === 'high' ? 3 : priority === 'medium' ? 2 : 1;
+          return priority === 'high' ? 3 : priority === 'medium' ? 2 : priority === 'critical' ? 4 : 1;
         };
         return getPriorityValue(b) - getPriorityValue(a);
       } else if (sortBy === 'date') {
@@ -425,7 +427,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   };
 
   const renderTodoCard = (todo) => {
-    const tagMatch = todo.content.match(/meta::(high|medium|low)/i);
+    const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
     const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
     const currentPriority = priorities[todo.id] || tag;
     const isCompleted = todo.content.includes('meta::completed::');
@@ -436,6 +438,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     const priorityAge = getPriorityAge(todo.content);
 
     const priorityColors = {
+      critical: 'bg-rose-50 border-4 border-red-500',
       high: 'bg-rose-50',
       medium: 'bg-amber-50',
       low: 'bg-emerald-50'
@@ -469,6 +472,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
               <span className={`text-xs font-medium ${
                 currentPriority === 'high' ? 'text-rose-600' :
                 currentPriority === 'medium' ? 'text-amber-600' :
+                currentPriority === 'critical' ? 'text-red-600' :
                 'text-emerald-600'
               }`}>
                 {currentPriority.charAt(0).toUpperCase() + currentPriority.slice(1)}
@@ -485,6 +489,17 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         <div className="flex-1 p-3 overflow-auto relative">
           {/* Priority Buttons */}
           <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
+            <button
+              onClick={() => handlePriorityClick(todo.id, 'critical')}
+              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${
+                currentPriority === 'critical'
+                  ? 'bg-red-400 text-white'
+                  : 'bg-white border border-gray-200 hover:bg-red-100 text-gray-400 hover:text-red-600'
+              }`}
+              title="Critical priority"
+            >
+              Critical
+            </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'high')}
               className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${

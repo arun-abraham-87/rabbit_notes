@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { 
@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner';
-import { updateNoteById } from '../utils/ApiUtils';
+import { updateNoteById, loadNotes } from '../utils/ApiUtils';
 
 const Alerts = {
   success: (message) => {
@@ -532,6 +532,47 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
 };
 
 const AlertsProvider = ({ children, notes, expanded = false, events, setNotes }) => {
+  const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(10);
+  const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(true);
+  const autoRefreshIntervalRef = useRef(null);
+
+  // Auto refresh effect
+  useEffect(() => {
+    if (isAutoRefreshEnabled) {
+      autoRefreshIntervalRef.current = setInterval(() => {
+        setAutoRefreshCountdown(prev => {
+          if (prev <= 1) {
+            // Trigger a refresh by updating the notes
+            loadNotes('', new Date().toISOString().split('T')[0])
+              .then(data => {
+                if (data && data.notes) {
+                  setNotes(data.notes);
+                  // Only show success if we actually got new data
+                  if (data.notes.length > 0) {
+                    Alerts.success('Alerts refreshed successfully');
+                  }
+                }
+              })
+              .catch(error => {
+                console.error('Error refreshing alerts:', error);
+                // Don't show error toast to avoid spam
+              });
+            return 10;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setAutoRefreshCountdown(10);
+    }
+
+    return () => {
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current);
+      }
+    };
+  }, [isAutoRefreshEnabled, setNotes]);
+
   return (
     <>
       <ToastContainer
@@ -546,6 +587,26 @@ const AlertsProvider = ({ children, notes, expanded = false, events, setNotes })
         pauseOnHover
         theme="light"
       />
+      <div className="flex justify-end mb-4">
+        <div className="relative">
+          <button
+            onClick={() => setIsAutoRefreshEnabled(!isAutoRefreshEnabled)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
+            title={`Auto-refresh in ${autoRefreshCountdown}s`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+            </svg>
+            <span>Auto Refresh ({autoRefreshCountdown}s)</span>
+            <input
+              type="checkbox"
+              checked={isAutoRefreshEnabled}
+              onChange={(e) => setIsAutoRefreshEnabled(e.target.checked)}
+              className="ml-2 form-checkbox h-4 w-4 text-indigo-600"
+            />
+          </button>
+        </div>
+      </div>
       <AlertsContainer 
         expanded={expanded} 
         notes={notes} 

@@ -3,7 +3,7 @@ import { updateNoteById } from '../utils/ApiUtils';
 import NoteFilters from './NoteFilters';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 
-const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange, onExcludeMeetingsChange }) => {
+const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange, onExcludeMeetingsChange }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
   const initialLines = contentSource
     ? [
@@ -863,7 +863,7 @@ const NoteEditor = ({ objList, note, onSave, onCancel, text, searchQuery, setSea
           </div>
         )}
       </div>
-      {isAddMode && (
+      {isAddMode && !isModal && (
         <div className="mb-4 flex flex-wrap gap-2 group relative">
           <NoteFilters
             setLines={setLines}

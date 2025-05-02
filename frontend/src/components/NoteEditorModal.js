@@ -67,6 +67,7 @@ const NoteEditorModal = () => {
         </div>
         <NoteEditor
           isAddMode={true}
+          isModal={true}
           onSave={(content) => {
             addNote(content);
             closeEditor();

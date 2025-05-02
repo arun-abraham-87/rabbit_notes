@@ -8,6 +8,9 @@ import {
   ExclamationCircleIcon
 } from '@heroicons/react/24/solid';
 import { loadTags, addNewTag, deleteTag, editTag } from '../utils/ApiUtils';
+import { loadNotes } from '../utils/ApiUtils';
+import { addNewNote } from '../utils/ApiUtils';
+import moment from 'moment';
 
 const TagListing = () => {
   const [tagSearch, setTagSearch] = useState('');
@@ -17,10 +20,17 @@ const TagListing = () => {
   const [tags, setTags] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [workstreams, setWorkstreams] = useState([]);
+  const [isLoadingWorkstreams, setIsLoadingWorkstreams] = useState(true);
+  const [workstreamsError, setWorkstreamsError] = useState(null);
+  const [workstreamSearch, setWorkstreamSearch] = useState('');
+  const [isCreatingWorkstream, setIsCreatingWorkstream] = useState(false);
+  const [workstreamCreateError, setWorkstreamCreateError] = useState(null);
 
   // Load tags on component mount
   useEffect(() => {
     loadTagsList();
+    loadWorkstreamsList();
   }, []);
 
   const loadTagsList = async () => {
@@ -40,6 +50,24 @@ const TagListing = () => {
       setTags([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadWorkstreamsList = async () => {
+    try {
+      setIsLoadingWorkstreams(true);
+      setWorkstreamsError(null);
+      const notes = await loadNotes();
+      const workstreamNotes = (Array.isArray(notes) ? notes : notes?.notes || []).filter(note =>
+        note.content && note.content.split('\n').some(line => line.trim().startsWith('meta::workstream'))
+      );
+      setWorkstreams(workstreamNotes);
+    } catch (err) {
+      setWorkstreamsError('Failed to load workstreams. Please try again.');
+      setWorkstreams([]);
+      console.error('Error loading workstreams:', err);
+    } finally {
+      setIsLoadingWorkstreams(false);
     }
   };
 
@@ -106,6 +134,39 @@ const TagListing = () => {
       setIsEditing(false);
       setEditingTag(null);
       setEditValue('');
+    }
+  };
+
+  const handleCreateWorkstream = async () => {
+    const newWorkstream = workstreamSearch.trim();
+    if (
+      newWorkstream &&
+      !workstreams.some(
+        note => note.content.split('\n')[0].toLowerCase() === newWorkstream.toLowerCase()
+      )
+    ) {
+      try {
+        setWorkstreamCreateError(null);
+        setIsCreatingWorkstream(true);
+        // Create a new note with meta::workstream tag and the name as the first line
+        const content = `${newWorkstream}\nmeta::workstream`;
+        const now = moment().format('YYYY-MM-DD');
+        await addNewNote(content, undefined, now);
+        await loadWorkstreamsList();
+        setWorkstreamSearch('');
+      } catch (err) {
+        setWorkstreamCreateError('Failed to create workstream. Please try again.');
+        console.error('Error creating workstream:', err);
+      } finally {
+        setIsCreatingWorkstream(false);
+      }
+    }
+  };
+
+  const handleWorkstreamSearchKeyDown = (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleCreateWorkstream();
     }
   };
 
@@ -231,6 +292,70 @@ const TagListing = () => {
           </div>
         )}
       </div>
+
+      <h2 className="text-xl font-bold mb-4 mt-8">Workstreams</h2>
+      {/* Workstream Error Message */}
+      {workstreamCreateError && (
+        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">
+          <ExclamationCircleIcon className="h-5 w-5 text-red-400" />
+          <span>{workstreamCreateError}</span>
+        </div>
+      )}
+      {/* Workstream Search/Create Input */}
+      <div className="relative mb-6">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="Search workstreams or press Cmd+Enter to create new workstream..."
+          value={workstreamSearch}
+          onChange={(e) => setWorkstreamSearch(e.target.value)}
+          onKeyDown={handleWorkstreamSearchKeyDown}
+          className="w-full pl-10 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+        />
+        {workstreamSearch && (
+          <button
+            onClick={() => setWorkstreamSearch('')}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+          >
+            <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+          </button>
+        )}
+      </div>
+      {isLoadingWorkstreams ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+        </div>
+      ) : workstreamsError ? (
+        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">
+          <ExclamationCircleIcon className="h-5 w-5 text-red-400" />
+          <span>{workstreamsError}</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {workstreams.filter(note => note.content.split('\n')[0].toLowerCase().includes(workstreamSearch.toLowerCase())).length === 0 ? (
+            <div className="col-span-full text-center py-8 text-gray-500">
+              {workstreamSearch ? (
+                <p>No workstreams match your search</p>
+              ) : (
+                <p>No workstreams found. Create one by typing and pressing Cmd+Enter</p>
+              )}
+            </div>
+          ) : (
+            workstreams
+              .filter(note => note.content.split('\n')[0].toLowerCase().includes(workstreamSearch.toLowerCase()))
+              .map((note) => (
+                <div
+                  key={note.id}
+                  className="flex items-center justify-between p-2 rounded-full border bg-purple-50 hover:bg-purple-100 transition-all duration-200"
+                >
+                  <span className="text-purple-700 px-3 truncate font-medium">{note.content.split('\n')[0]}</span>
+                </div>
+              ))
+          )}
+        </div>
+      )}
     </div>
   );
 };

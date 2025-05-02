@@ -970,6 +970,7 @@ const NotesList = ({
         <TagSelectionPopup
           visible={isPopupVisible}
           position={popupPosition}
+          selectedText={selectedText}
           onConvert={handleConvertToTag}
           onSearch={handleSearch}
           onCancel={handleCancelPopup}

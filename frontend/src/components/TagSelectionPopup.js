@@ -17,9 +17,33 @@ import React, { useEffect, useRef } from 'react';
 export default function TagSelectionPopup({ visible, position, selectedText, onConvert, onSearch, onCancel }) {
   const popupRef = useRef(null);
 
-  const handleCopy = async () => {
+  const handleCopy = () => {
     try {
-      await navigator.clipboard.writeText(selectedText);
+      // Create a temporary textarea element
+      const textarea = document.createElement('textarea');
+      textarea.value = selectedText;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = 0;
+      document.body.appendChild(textarea);
+      
+      // Select and copy the text
+      textarea.select();
+      document.execCommand('copy');
+      
+      // Clean up
+      document.body.removeChild(textarea);
+      
+      // Show toast notification
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      toast.textContent = 'Text copied to clipboard!';
+      document.body.appendChild(toast);
+      
+      // Remove toast after 2 seconds
+      setTimeout(() => {
+        document.body.removeChild(toast);
+      }, 2000);
+      
       onCancel(); // Close the popup after copying
     } catch (err) {
       console.error('Failed to copy text: ', err);

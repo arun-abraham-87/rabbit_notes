@@ -8,7 +8,8 @@ import {
   InformationCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  ClockIcon
+  ClockIcon,
+  CalendarIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner';
@@ -230,6 +231,115 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true }) => {
   );
 };
 
+const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
+
+  const unacknowledgedMeetings = notes.filter(note => 
+    note.content.includes('meta::meeting::') && 
+    !note.content.includes('meta::acknowledged::')
+  );
+
+  if (unacknowledgedMeetings.length === 0) return null;
+
+  const handleDismissUnacknowledgedMeeting = async (noteId) => {
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    
+    // Add the acknowledged tag with timestamp
+    const ackLine = `meta::meeting_acknowledge::${new Date().toISOString()}`;
+    const updatedContent = `${note.content}\n${ackLine}`;
+    
+    try {
+      await updateNoteById(noteId, updatedContent);
+      // Update the notes state to reflect the change
+      setNotes(notes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
+    } catch (error) {
+      console.error('Error acknowledging meeting:', error);
+    }
+  };
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getMeetingAge = (date) => {
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  return (
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+      <div className="bg-red-50 px-6 py-4 border-b border-red-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
+            <h3 className="ml-3 text-lg font-semibold text-red-800">
+              Unacknowledged Meetings ({unacknowledgedMeetings.length})
+            </h3>
+          </div>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-red-600 hover:text-red-700 focus:outline-none"
+            aria-label={isExpanded ? "Collapse meetings" : "Expand meetings"}
+          >
+            {isExpanded ? (
+              <ChevronUpIcon className="h-5 w-5" />
+            ) : (
+              <ChevronDownIcon className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+      </div>
+      {isExpanded && (
+        <div className="divide-y divide-gray-100">
+          {unacknowledgedMeetings.map((meeting) => {
+            const lines = meeting.content.split('\n');
+            const meetingTimeStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
+            const meetingTime = meetingTimeStr ? new Date(meetingTimeStr) : null;
+            const description = lines[0];
+
+            return (
+              <div key={meeting.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      <span>{meetingTime ? formatDate(meetingTime) : 'No date'}</span>
+                    </div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">
+                      {description}
+                    </h4>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>{meetingTime ? getMeetingAge(meetingTime) : 0} days ago</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDismissUnacknowledgedMeeting(meeting.id)}
+                    className="ml-4 flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                  >
+                    <CheckCircleIcon className="w-5 h-5" />
+                    Acknowledge
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = false, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
 
@@ -386,12 +496,11 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
       {isExpanded && (
         <div className="divide-y divide-gray-100 p-4 space-y-4">
           {children}
-          {unacknowledgedMeetings.length > 0 && (
-            <UnacknowledgedMeetingsBanner 
-              meetings={unacknowledgedMeetings} 
-              onDismiss={handleDismissUnacknowledgedMeeting} 
-            />
-          )}
+          <UnacknowledgedMeetingsAlert 
+            notes={notes} 
+            expanded={isExpanded}
+            setNotes={setNotes}
+          />
         </div>
       )}
     </div>

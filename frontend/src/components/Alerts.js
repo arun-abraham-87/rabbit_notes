@@ -14,8 +14,8 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
-import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner';
 import { updateNoteById, loadNotes } from '../utils/ApiUtils';
+import { getAge } from '../utils/DateUtils'; 
 
 const Alerts = {
   success: (message) => {
@@ -91,13 +91,6 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
 
   if (passedDeadlineTodos.length === 0) return null;
 
-  const getTodoAge = (endDate) => {
-    const now = new Date();
-    const diffTime = Math.abs(now - endDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
   const formatDate = (date) => {
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -117,7 +110,7 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
           <div className="flex items-center">
             <ExclamationCircleIcon className="h-6 w-6 text-rose-500" />
             <h3 className="ml-3 text-lg font-semibold text-rose-800">
-              Deadline Passed ({passedDeadlineTodos.length})
+              Deadline Missed ({passedDeadlineTodos.length})
             </h3>
           </div>
           <button
@@ -157,7 +150,7 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <div className="flex items-center gap-1">
                         <ClockIcon className="h-4 w-4" />
-                        <span>{getTodoAge(endDate)} days overdue</span>
+                        <span>{getAge(endDate)} overdue</span>
                       </div>
                     </div>
                   </div>
@@ -254,13 +247,6 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
     });
   };
 
-  const getMeetingAge = (date) => {
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
   const handleViewRawNote = (note) => {
     setSelectedNote(note);
     setShowRawNote(true);
@@ -274,7 +260,7 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
             <div className="flex items-center">
               <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
               <h3 className="ml-3 text-lg font-semibold text-red-800">
-                Unacknowledged Meetings ({unacknowledgedMeetings.length})
+                Past Meetings ({unacknowledgedMeetings.length})
               </h3>
             </div>
             <button
@@ -312,7 +298,7 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
                       <div className="flex items-center gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
                           <ClockIcon className="h-4 w-4" />
-                          <span>{meetingTime ? getMeetingAge(meetingTime) : 0} days ago</span>
+                          <span>{getAge(meetingTime)} overdue</span>
                         </div>
                       </div>
                     </div>
@@ -516,22 +502,22 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
             <div className="flex gap-2">
               {unacknowledgedEvents.length > 0 && (
                 <span className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium">
-                  Events: {unacknowledgedEvents.length}
+                  Past Events: {unacknowledgedEvents.length}
                 </span>
               )}
               {criticalTodos.length > 0 && (
                 <span className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium">
-                  Critical: {criticalTodos.length}
+                 Critical Todos: {criticalTodos.length}
                 </span>
               )}
               {passedDeadlineTodos.length > 0 && (
                 <span className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium">
-                  Deadline: {passedDeadlineTodos.length}
+                  Deadline Missed: {passedDeadlineTodos.length}
                 </span>
               )}
               {unacknowledgedMeetings.length > 0 && (
                 <span className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium">
-                  Meetings: {unacknowledgedMeetings.length}
+                  Past Meetings: {unacknowledgedMeetings.length}
                 </span>
               )}
             </div>
@@ -539,7 +525,7 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <ArrowPathIcon className="h-5 w-5 text-gray-600" />
-              <span className="text-sm text-gray-600">Auto Refresh ({autoRefreshCountdown}s)</span>
+              <span className="text-sm text-gray-600">({autoRefreshCountdown}s)</span>
               <input
                 type="checkbox"
                 checked={isAutoRefreshEnabled}

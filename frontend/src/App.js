@@ -418,7 +418,7 @@ const AppContent = () => {
             </div>
             <ToastContainer
               position="bottom-right"
-              autoClose={3000}
+              autoClose={1500}
               hideProgressBar={false}
               newestOnTop={false}
               closeOnClick
@@ -427,6 +427,7 @@ const AppContent = () => {
               draggable
               pauseOnHover
               theme="light"
+              closeButton={false}
             />
             <NoteEditorModal />
           </div>

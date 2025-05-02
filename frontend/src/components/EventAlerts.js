@@ -4,7 +4,7 @@ import { updateNoteById } from '../utils/ApiUtils';
 
 const EventAlerts = ({ events, onAcknowledgeEvent }) => {
   const [acknowledgedEvents, setAcknowledgedEvents] = useState(new Set());
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   // Reset acknowledged events when events prop changes
   useEffect(() => {

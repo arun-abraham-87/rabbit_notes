@@ -271,7 +271,7 @@ const NotesMainContainer = ({
     const [highPriorityOverdueCount, setHighPriorityOverdueCount] = useState(0);
     const [passedDeadlineCount, setPassedDeadlineCount] = useState(0);
     const [oldTodosCount, setOldTodosCount] = useState(0);
-    const [alertsExpanded, setAlertsExpanded] = useState(true);
+    const [alertsExpanded, setAlertsExpanded] = useState(false);
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [eventsState, setEventsState] = useState([]);
 

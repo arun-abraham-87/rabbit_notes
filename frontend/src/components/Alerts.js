@@ -103,8 +103,11 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
   };
 
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
-      <div className="bg-rose-50 px-6 py-4 border-b border-rose-100">
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+      <div 
+        className="bg-rose-50 px-6 py-4 border-b border-rose-100 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <ExclamationCircleIcon className="h-6 w-6 text-rose-500" />
@@ -113,7 +116,10 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
             </h3>
           </div>
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
             className="text-rose-600 hover:text-rose-700 focus:outline-none"
             aria-label={isExpanded ? "Collapse todos" : "Expand todos"}
           >
@@ -171,8 +177,11 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true }) => {
   if (criticalTodos.length === 0) return null;
 
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
-      <div className="bg-red-50 px-6 py-4 border-b border-red-100">
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+      <div 
+        className="bg-red-50 px-6 py-4 border-b border-red-100 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
@@ -181,7 +190,10 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true }) => {
             </h3>
           </div>
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
             className="text-red-600 hover:text-red-700 focus:outline-none"
             aria-label={isExpanded ? "Collapse todos" : "Expand todos"}
           >
@@ -216,12 +228,37 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true }) => {
   );
 };
 
-const AlertsContainer = ({ children, expanded: initialExpanded = true }) => {
+const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = false }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
+
+  const criticalTodos = notes.filter(note => {
+    if (!note.content.includes('meta::todo::')) return false;
+    return note.content.includes('meta::critical');
+  });
+
+  const passedDeadlineTodos = notes.filter(note => {
+    if (!note.content.includes('meta::todo::')) return false;
+    
+    const endDateMatch = note.content.match(/meta::end_date::(\d{4}-\d{2}-\d{2})/);
+    if (!endDateMatch) return false;
+    
+    const endDate = new Date(endDateMatch[1]);
+    const now = new Date();
+    return endDate < now;
+  });
+
+  const totalAlerts = events.length + criticalTodos.length + passedDeadlineTodos.length;
+
+  const handleTitleClick = () => {
+    setIsExpanded(!isExpanded);
+  };
 
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-6 mx-4">
-      <div className="bg-red-50 px-6 py-4 border-b border-red-100">
+      <div 
+        className="bg-red-50 px-6 py-4 border-b border-red-100 cursor-pointer"
+        onClick={handleTitleClick}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <div className="relative">
@@ -231,11 +268,14 @@ const AlertsContainer = ({ children, expanded: initialExpanded = true }) => {
               <ExclamationCircleIcon className="h-6 w-6 text-red-500 relative" />
             </div>
             <h3 className="ml-3 text-lg font-semibold text-red-800">
-              Alerts
+              Alerts ({totalAlerts})
             </h3>
           </div>
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleTitleClick();
+            }}
             className="text-red-600 hover:text-red-700 focus:outline-none"
             aria-label={isExpanded ? "Collapse alerts" : "Expand alerts"}
           >
@@ -248,7 +288,7 @@ const AlertsContainer = ({ children, expanded: initialExpanded = true }) => {
         </div>
       </div>
       {isExpanded && (
-        <div className="divide-y divide-gray-100 p-4">
+        <div className="divide-y divide-gray-100 p-4 space-y-4">
           {children}
         </div>
       )}
@@ -256,7 +296,7 @@ const AlertsContainer = ({ children, expanded: initialExpanded = true }) => {
   );
 };
 
-const AlertsProvider = ({ children, notes, expanded = true, events, onAcknowledgeEvent }) => {
+const AlertsProvider = ({ children, notes, expanded = false, events, onAcknowledgeEvent }) => {
   return (
     <>
       <ToastContainer
@@ -271,10 +311,11 @@ const AlertsProvider = ({ children, notes, expanded = true, events, onAcknowledg
         pauseOnHover
         theme="light"
       />
-      <AlertsContainer expanded={expanded}>
+      <AlertsContainer expanded={expanded} notes={notes} events={events}>
         <EventAlerts 
           events={events}
           onAcknowledgeEvent={onAcknowledgeEvent}
+          expanded={expanded}
         />
         <CriticalTodosAlert notes={notes} expanded={expanded} />
         <DeadlinePassedAlert notes={notes} expanded={expanded} />

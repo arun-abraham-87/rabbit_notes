@@ -12,79 +12,33 @@ export const getAge = (dateString) => {
     if (!dateString || (typeof dateString !== 'string' && typeof dateString.toString !== 'function')) {
         return '';
     }
-
-    const str = dateString.toString();
-
-    let noteDate;
-    if (str.includes('T')) {
-        noteDate = moment(str, moment.ISO_8601);
-    } else {
-        noteDate = moment(str, "DD/MM/YYYY, h:mm:ss a");
-    }
-
-    return `${noteDate.fromNow()}`;
+    return `${parseToMoment(dateString).fromNow()}`;
 }
 
 /**
  * Gets the day of the week from a date string
- * @param {string} datePart - Date string in format "DD/MM/YYYY" (e.g., "25/12/2023")
+ * @param {string} dateStr - Date string in format "DD/MM/YYYY" (e.g., "25/12/2023")
  * @returns {string} Full name of the day (e.g., "Monday", "Tuesday")
  */
-export const getDayOfWeek = (datePart) => {
-    const date = moment(datePart, "DD/MM/YYYY");
-    const dayOfWeek = date.format('dddd');  // Get the full name of the day (e.g., Monday)
-    return dayOfWeek;
+export const getDayOfWeek = (dateStr) => {
+    const date = parseToMoment(dateStr);
+    return date.format('dddd');  // Get the full name of the day (e.g., Monday)
 };
 
 /**
- * Parses an Australian date string into a JavaScript Date object
+ * Parses an Australian date string into a JavaScript Date object using moment
  * @param {string} dateStr - Date string in format "DD/MM/YYYY, h:mm:ss a" (e.g., "25/12/2023, 2:30:45 PM")
  * @returns {Date} JavaScript Date object
- * @throws {Error} If date string is invalid or in wrong format
  */
 export const parseAustralianDate = (dateStr) => {
-  try {
-    if (!dateStr) {
-      throw new Error('Date string is empty');
-    }
-
-    const [datePart, timePartRaw] = dateStr.split(', ');
-    if (!datePart || !timePartRaw) {
-      throw new Error('Invalid date format');
-    }
-
-    const [day, month, year] = datePart.split('/').map(Number);
-    if (isNaN(day) || isNaN(month) || isNaN(year)) {
-      throw new Error('Invalid date numbers');
-    }
-
-    const timePart = timePartRaw.toLowerCase().replace(' pm', 'PM').replace(' am', 'AM');
-    const [time, period] = timePart.split(/(am|pm)/i);
-    let [hours, minutes, seconds] = time.trim().split(':').map(Number);
-
-    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
-      throw new Error('Invalid time numbers');
-    }
-
-    if (period.toLowerCase() === 'pm' && hours < 12) hours += 12;
-    if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
-
-    return new Date(year, month - 1, day, hours, minutes, seconds);
-  } catch (error) {
-    console.error('Error parsing date:', error.message);
-    // Return current date in Australian format
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    const period = now.getHours() >= 12 ? 'PM' : 'AM';
-    
-    return new Date(`${day}/${month}/${year}, ${hours}:${minutes}:${seconds} ${period}`);
+  const m = moment(dateStr, "DD/MM/YYYY, h:mm:ss a", true);
+  if (m.isValid()) {
+    return m.toDate();
+  } else {
+    console.error('Error parsing Australian date:', dateStr);
+    return new Date(); // fallback to current date
   }
-}
+};
 
 /**
  * Formats a date with relative time
@@ -371,4 +325,40 @@ export const extractMetaTags = (content) => {
   });
 
   return metaTags;
+};
+/**
+ * Attempts to parse a date string using common formats and returns a moment object
+ * Supports:
+ * 1. "DD/MM/YYYY, h:mm:ss a"
+ * 2. "YYYY-MM-DDThh:mm:ss"
+ * 3. "DD/MM/YYYY"
+ * 4. Default Moment parsing as fallback
+ * @param {string|Date} input - Date string or Date object
+ * @returns {moment.Moment|null} Parsed moment object or null if invalid
+ */
+export const parseToMoment = (input) => {
+  if (!input) return null;
+
+  if (moment.isMoment(input)) {
+      return input;
+  }
+
+  if (input instanceof Date) {
+      return moment(input);
+  }
+
+  const str = input.toString();
+  if (str.includes('T')) {
+      const m = moment(str, moment.ISO_8601, true);
+      return m.isValid() ? m : null;
+  }
+
+  let m = moment(str, "DD/MM/YYYY, h:mm:ss a", true);
+  if (m.isValid()) return m;
+
+  m = moment(str, "DD/MM/YYYY", true);
+  if (m.isValid()) return m;
+
+  m = moment(str);
+  return m.isValid() ? m : null;
 };

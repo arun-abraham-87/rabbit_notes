@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { XMarkIcon, PlusIcon, MinusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import { updateNoteById } from '../utils/ApiUtils';
 
-const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
+const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null }) => {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
@@ -11,6 +11,29 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
   const [selectedWorkstreams, setSelectedWorkstreams] = useState([]);
   const [teamSearchTerm, setTeamSearchTerm] = useState('');
   const [selectedTeams, setSelectedTeams] = useState([]);
+
+  // Prefill fields if editing
+  useEffect(() => {
+    if (personNote) {
+      const lines = personNote.content.split('\n');
+      setName(lines[0] || '');
+      setRole(lines.find(line => line.startsWith('meta::person_role::'))?.split('::')[2] || '');
+      setEmail(lines.find(line => line.startsWith('meta::person_email::'))?.split('::')[2] || '');
+      setPhone(lines.find(line => line.startsWith('meta::person_phone::'))?.split('::')[2] || '');
+      // Linked workstreams and teams
+      const linkedIds = lines.filter(line => line.startsWith('meta::link::')).map(line => line.split('::')[2]);
+      setSelectedWorkstreams(
+        allNotes.filter(n => n.content.includes('meta::workstream') && linkedIds.includes(n.id)).map(n => n.id)
+      );
+      setSelectedTeams(
+        allNotes.filter(n => n.content.includes('meta::team') && linkedIds.includes(n.id)).map(n => n.id)
+      );
+    } else {
+      setName(''); setRole(''); setEmail(''); setPhone('');
+      setSelectedWorkstreams([]); setSelectedTeams([]);
+      setWorkstreamSearchTerm(''); setTeamSearchTerm('');
+    }
+  }, [personNote, isOpen, allNotes]);
 
   // Filter workstream notes based on search term
   const filteredWorkstreams = allNotes.filter(note => {
@@ -53,8 +76,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
   const handleSubmit = async () => {
     if (!name.trim()) return;
     
-    // Create the content with meta tags
-    let content = `${name.trim()}\nmeta::person::${new Date().toISOString()}`;
+    let content = `${name.trim()}\nmeta::person::${personNote ? personNote.content.split('\n').find(line => line.startsWith('meta::person::'))?.split('::')[2] : new Date().toISOString()}`;
     
     // Add role if provided
     if (role.trim()) {
@@ -82,18 +104,22 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
     });
 
     try {
-      // First, create the person note
-      const newPersonNote = await onAdd(content);
-      
-      // Then, update each selected team note to include a link back to the person
-      await Promise.all(selectedTeams.map(async teamId => {
-        const teamNote = allNotes.find(note => note.id === teamId);
-        if (teamNote) {
-          const updatedContent = `${teamNote.content}\nmeta::link::${newPersonNote.id}`;
-          await updateNoteById(teamId, updatedContent);
-        }
-      }));
-      
+      if (personNote) {
+        // Edit mode
+        await onEdit(personNote.id, content);
+      } else {
+        // Add mode
+        const newPersonNote = await onAdd(content);
+        
+        // Then, update each selected team note to include a link back to the person
+        await Promise.all(selectedTeams.map(async teamId => {
+          const teamNote = allNotes.find(note => note.id === teamId);
+          if (teamNote) {
+            const updatedContent = `${teamNote.content}\nmeta::link::${newPersonNote.id}`;
+            await updateNoteById(teamId, updatedContent);
+          }
+        }));
+      }
       // Reset form
       setName('');
       setRole('');
@@ -103,8 +129,9 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
       setSelectedTeams([]);
       setWorkstreamSearchTerm('');
       setTeamSearchTerm('');
+      onClose();
     } catch (error) {
-      console.error('Error creating bidirectional links:', error);
+      console.error('Error saving person:', error);
     }
   };
 
@@ -130,7 +157,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Add Person</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{personNote ? 'Edit Person' : 'Add Person'}</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -297,7 +324,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
             disabled={!name.trim()}
           >
-            Add Person
+            {personNote ? 'Save Changes' : 'Add Person'}
           </button>
         </div>
       </div>

@@ -141,6 +141,67 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
   );
 };
 
+const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true }) => {
+  const [expanded, setExpanded] = useState(initialExpanded);
+
+  const criticalTodos = notes.filter(note => {
+    if (!note.content.includes('meta::todo::')) return false;
+    return note.content.includes('meta::critical');
+  });
+
+  if (criticalTodos.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      <div 
+        className="flex items-center justify-between bg-red-50 p-2 rounded-t-lg cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center">
+          <svg className="h-5 w-5 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          <span className="text-sm font-medium text-red-800">
+            Critical: {criticalTodos.length} {criticalTodos.length === 1 ? 'todo' : 'todos'}
+          </span>
+        </div>
+        <button className="text-red-600 hover:text-red-800">
+          <svg 
+            className={`h-5 w-5 transform transition-transform ${expanded ? 'rotate-180' : ''}`} 
+            viewBox="0 0 20 20" 
+            fill="currentColor"
+          >
+            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </button>
+      </div>
+      {expanded && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <div className="mt-2 text-sm text-red-700">
+                <ul className="list-disc pl-5 space-y-1">
+                  {criticalTodos.map(note => (
+                    <li key={note.id}>
+                      {note.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}
+                      {note.content.length > 100 ? '...' : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AlertsProvider = ({ children, notes, expanded = true }) => {
   return (
     <>
@@ -156,6 +217,7 @@ const AlertsProvider = ({ children, notes, expanded = true }) => {
         pauseOnHover
         theme="light"
       />
+      <CriticalTodosAlert notes={notes} expanded={expanded} />
       <DeadlinePassedAlert notes={notes} expanded={expanded} />
       {children}
     </>

@@ -938,7 +938,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                         key={m.id}
                         className="group relative mb-2 rounded-lg transition-all duration-200"
                       >
-                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} ${
+                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-white'} ${
                           isFlashing ? 'animate-pulse bg-purple-100' : ''
                         } rounded-lg border ${
                           isPast ? 'border-gray-200' : 'border-indigo-100'
@@ -1126,7 +1126,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                         key={e.id}
                         className="group relative mb-2 rounded-lg hover:bg-purple-100 transition-colors"
                       >
-                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} rounded-lg`}>
+                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-white'} rounded-lg`}>
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <div

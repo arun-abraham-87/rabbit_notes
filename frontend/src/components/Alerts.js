@@ -14,7 +14,7 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
-import { updateNoteById, loadNotes } from '../utils/ApiUtils';
+import { updateNoteById, loadNotes, loadTags } from '../utils/ApiUtils';
 import { getAge } from '../utils/DateUtils';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
 
@@ -437,8 +437,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
   );
 };
 
-const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = false, setNotes }) => {
-  const [isExpanded, setIsExpanded] = useState(initialExpanded);
+const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = true, setNotes }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
   const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(10);
   const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(true);
   const autoRefreshIntervalRef = useRef(null);
@@ -662,7 +662,7 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
   );
 };
 
-const AlertsProvider = ({ children, notes, expanded = false, events, setNotes }) => {
+const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) => {
   const handleDismissUnacknowledgedMeeting = async (noteId) => {
     const note = notes.find(n => n.id === noteId);
     if (!note) return;

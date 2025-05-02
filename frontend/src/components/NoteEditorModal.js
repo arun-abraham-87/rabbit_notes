@@ -38,7 +38,7 @@ const NoteEditorModal = () => {
       }
     };
 
-    const loadTags = async () => {
+    const fetchTags = async () => {
       try {
         const tags = await loadTags();
         setObjList(tags || []);
@@ -48,7 +48,7 @@ const NoteEditorModal = () => {
     };
 
     loadSettings();
-    loadTags();
+    fetchTags();
   }, []);
 
   if (!isOpen) return null;

@@ -13,6 +13,7 @@ import EventAlerts from './EventAlerts.js';
 import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
 import CriticalTodosSection from './CriticalTodosSection';
 import WatchList from './WatchList';
+import { DeadlinePassedAlert, ToastProvider } from './Alerts';
 
 const checkForOngoingMeeting = (notes) => {
   if (!notes) return null;
@@ -601,122 +602,10 @@ const NotesMainContainer = ({
 
     return (
         <div className="flex flex-col h-full">
+            <ToastProvider />
             {/* Alerts Section */}
-            {(highPriorityOverdueCount > 0 || passedDeadlineCount > 0) && (
-                <div className="mb-4">
-                    <div 
-                        className="flex items-center justify-between bg-rose-50 p-2 rounded-t-lg cursor-pointer"
-                        onClick={() => setAlertsExpanded(!alertsExpanded)}
-                    >
-                        <div className="flex items-center">
-                            <svg className="h-5 w-5 text-rose-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-sm font-medium text-rose-800">
-                                Alerts ({highPriorityOverdueCount + passedDeadlineCount})
-                            </span>
-                        </div>
-                        <button className="text-rose-600 hover:text-rose-800">
-                            <svg 
-                                className={`h-5 w-5 transform transition-transform ${alertsExpanded ? 'rotate-180' : ''}`} 
-                                viewBox="0 0 20 20" 
-                                fill="currentColor"
-                            >
-                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
-                    {alertsExpanded && (
-                        <div className="space-y-2">
-                            {/* High Priority Overdue Todos Alert */}
-                            {highPriorityOverdueCount > 0 && (
-                                <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg">
-                                    <div className="flex items-center">
-                                        <div className="flex-shrink-0">
-                                            <svg className="h-5 w-5 text-rose-400" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                            </svg>
-                                        </div>
-                                        <div className="ml-3">
-                                            <h3 className="text-sm font-medium text-rose-800">
-                                                Urgent: {highPriorityOverdueCount} high priority {highPriorityOverdueCount === 1 ? 'todo' : 'todos'} older than 2 days
-                                            </h3>
-                                            <div className="mt-2 text-sm text-rose-700">
-                                                <ul className="list-disc pl-5 space-y-1">
-                                                    {notes
-                                                        .filter(note => {
-                                                            const content = note.content;
-                                                            const hasHighPriority = content.includes('meta::high');
-                                                            const hasTodo = content.includes('meta::todo');
-                                                            if (!hasHighPriority || !hasTodo) return false;
-                                                            
-                                                            const dateMatch = content.match(/meta::todo::(\d{4}-\d{2}-\d{2})/);
-                                                            if (!dateMatch) return false;
-                                                            
-                                                            const todoDate = new Date(dateMatch[1]);
-                                                            const now = new Date();
-                                                            const diffTime = Math.abs(now - todoDate);
-                                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                                            
-                                                            return diffDays > 2;
-                                                        })
-                                                        .map(note => (
-                                                            <li key={note.id}>
-                                                                {note.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}
-                                                                {note.content.length > 100 ? '...' : ''}
-                                                            </li>
-                                                        ))}
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Passed Deadline Todos Alert */}
-                            {passedDeadlineCount > 0 && (
-                                <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-lg">
-                                    <div className="flex items-center">
-                                        <div className="flex-shrink-0">
-                                            <svg className="h-5 w-5 text-rose-400" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                            </svg>
-                                        </div>
-                                        <div className="ml-3">
-                                            <h3 className="text-sm font-medium text-rose-800">
-                                                Deadline passed: {passedDeadlineCount} {passedDeadlineCount === 1 ? 'todo' : 'todos'} with passed deadlines
-                                            </h3>
-                                            <div className="mt-2 text-sm text-rose-700">
-                                                <ul className="list-disc pl-5 space-y-1">
-                                                    {notes
-                                                        .filter(note => {
-                                                            const content = note.content;
-                                                            const hasTodo = content.includes('meta::todo');
-                                                            if (!hasTodo) return false;
-                                                            
-                                                            const endDateMatch = content.match(/meta::end_date::(\d{4}-\d{2}-\d{2})/);
-                                                            if (!endDateMatch) return false;
-                                                            
-                                                            const endDate = new Date(endDateMatch[1]);
-                                                            const now = new Date();
-                                                            return endDate < now;
-                                                        })
-                                                        .map(note => (
-                                                            <li key={note.id}>
-                                                                {note.content.split('\n').filter(line => !line.trim().startsWith('meta::')).join(' ').slice(0, 100)}
-                                                                {note.content.length > 100 ? '...' : ''}
-                                                            </li>
-                                                        ))}
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            )}
+            <DeadlinePassedAlert notes={allNotes} expanded={alertsExpanded} />
+            
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
                 <CriticalTodosSection notes={allNotes} />
                 <EventAlerts 

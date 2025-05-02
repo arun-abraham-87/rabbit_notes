@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'react-toastify';
+import Alerts from './Alerts';
 
 import ConfirmationModal from './ConfirmationModal';
 import { updateNoteById, deleteNoteById, addNewNote, loadNotes } from '../utils/ApiUtils';
@@ -206,7 +207,7 @@ const NotesList = ({
   const handleConvertToTag = () => {
     addObjects(selectedText);
     setPopupVisible(false);
-    toast.success('Tag created successfully');
+    Alerts.success('Tag created successfully');
   };
 
   const handleSearch = () => {
@@ -336,7 +337,7 @@ const NotesList = ({
         e.preventDefault();
         const newState = !isQuickPasteEnabled;
         setIsQuickPasteEnabled(newState);
-        toast.info(`Quick Paste ${newState ? 'enabled' : 'disabled'}`);
+        Alerts.info(`Quick Paste ${newState ? 'enabled' : 'disabled'}`);
         return;
       }
 
@@ -347,7 +348,7 @@ const NotesList = ({
         try {
           const clipboardText = await navigator.clipboard.readText();
           if (!clipboardText.trim()) {
-            toast.error('No text in clipboard');
+            Alerts.error('No text in clipboard');
             return;
           }
           setPasteText(clipboardText);
@@ -359,7 +360,7 @@ const NotesList = ({
           }, 100);
         } catch (error) {
           console.error('Error reading clipboard:', error);
-          toast.error('Failed to read clipboard');
+          Alerts.error('Failed to read clipboard');
         }
       }
     };
@@ -405,10 +406,10 @@ const NotesList = ({
       setShowPastePopup(false);
       setPasteText('');
       setNewNoteText('');
-      toast.success('Note created successfully');
+      Alerts.success('Note created successfully');
     } catch (error) {
       console.error('Error creating note:', error);
-      toast.error('Failed to create note');
+      Alerts.error('Failed to create note');
     }
   };
 

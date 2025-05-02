@@ -71,6 +71,7 @@ const NoteEditorModal = () => {
             addNote(content);
             closeEditor();
           }}
+          addNote={addNote}
           onCancel={closeEditor}
           text={initialContent}
           objList={objList}

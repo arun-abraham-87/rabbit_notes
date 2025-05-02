@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ExclamationCircleIcon, CheckCircleIcon, CalendarIcon, ClockIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { updateNoteById } from '../utils/ApiUtils';
+import { getAge } from '../utils/DateUtils';
 
 const EventAlerts = ({ events, onAcknowledgeEvent }) => {
   const [acknowledgedEvents, setAcknowledgedEvents] = useState(new Set());
@@ -123,13 +124,6 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
     }
   };
 
-  const getEventAge = (date) => {
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
   const formatDate = (date) => {
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -182,7 +176,7 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
                   <div className="flex items-center gap-4 text-sm text-gray-500">
                     <div className="flex items-center gap-1">
                       <ClockIcon className="h-4 w-4" />
-                      <span>{getEventAge(occurrence.date)} days ago</span>
+                      <span>{getAge(occurrence.date.toLocaleString())}</span>
                     </div>
                     {occurrence.event.recurrence !== 'none' && (
                       <span className="px-2 py-1 bg-red-50 text-red-600 rounded-full text-xs">

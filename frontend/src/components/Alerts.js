@@ -150,7 +150,7 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <div className="flex items-center gap-1">
                         <ClockIcon className="h-4 w-4" />
-                        <span>{getAge(endDate)} overdue</span>
+                        <span>{getAge(endDate)}</span>
                       </div>
                     </div>
                   </div>
@@ -298,7 +298,7 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
                       <div className="flex items-center gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
                           <ClockIcon className="h-4 w-4" />
-                          <span>{getAge(meetingTime)} overdue</span>
+                          <span>{meetingTime ? getAge(meetingTime) : '0 days ago'}</span>
                         </div>
                       </div>
                     </div>

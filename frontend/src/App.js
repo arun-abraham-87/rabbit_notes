@@ -13,6 +13,7 @@ import LeftPanel from './components/LeftPanel';
 import Journals from './pages/Journals';
 import Manage from './pages/Manage';
 import EventsPage from './pages/EventsPage';
+import PeopleList from './components/PeopleList';
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from './utils/TextUtils';
 import { formatAndAgeDate } from './utils/DateUtils';
@@ -412,6 +413,14 @@ const AppContent = () => {
                         }
                       }}
                     />
+                  } />
+                  <Route path="/people" element={
+                    <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                      <PeopleList 
+                        notes={allNotes}
+                        searchQuery={searchQuery}
+                      />
+                    </div>
                   } />
                 </Routes>
               </div>

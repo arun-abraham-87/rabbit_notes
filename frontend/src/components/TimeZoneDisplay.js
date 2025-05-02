@@ -171,31 +171,17 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     })
     .sort((a, b) => a.diffHrs - b.diffHrs);
 
-  // Find where Same Day ends and Previous/Next Day begins
-  const splitIndex = sortedZones.findIndex(z => z.dayLabel !== 'Same Day');
-
   return (
     <div className="bg-gray-100 p-4 rounded-lg">
-      <div className="flex flex-col space-y-4">
-        {/* Same Day zones */}
-        {splitIndex > 0
-          ? sortedZones.slice(0, splitIndex).map(({ label, timeZone }) => (
-              <ZoneCard key={label} label={label} timeZone={timeZone} />
-            ))
-          : sortedZones.map(({ label, timeZone }) => (
-              <ZoneCard key={label} label={label} timeZone={timeZone} />
-            ))}
-
-        {/* Separator */}
-        {splitIndex > 0 && (
-          <div className="h-1 bg-black w-full my-2" />
-        )}
-
-        {/* Previous/Next Day zones */}
-        {splitIndex > 0 &&
-          sortedZones.slice(splitIndex).map(({ label, timeZone }) => (
-            <ZoneCard key={label} label={label} timeZone={timeZone} />
-          ))}
+      <div className="flex flex-row space-x-4 overflow-x-auto">
+        {sortedZones.map(({ label, timeZone, dayLabel }, index) => (
+          <React.Fragment key={label}>
+            {index > 0 && sortedZones[index - 1].dayLabel !== dayLabel && (
+              <div className="w-2 h-full bg-black mx-2" />
+            )}
+            <ZoneCard label={label} timeZone={timeZone} />
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );

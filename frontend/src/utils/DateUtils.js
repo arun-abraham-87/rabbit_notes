@@ -124,12 +124,6 @@ export const getNextOrPrevDate = (dateString, next) => {
     return `${nextYear}-${nextMonth.padStart(2, "0")}-${nextDay.padStart(2, "0")}`;
 };
 
-export const addNumbers = (a, b) => {
-    return a + b;
-};
-
-
-
 export const getDateAgeInYearsMonthsDays = (dateToAge, since) => {
   const now = new Date();
   let diff = 0

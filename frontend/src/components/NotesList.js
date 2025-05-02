@@ -24,10 +24,12 @@ import {
   CalendarIcon,
   ClockIcon,
   ClipboardIcon,
-  XMarkIcon
+  XMarkIcon,
+  UserPlusIcon
 } from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
 import CompressedNotesList from './CompressedNotesList';
+import AddPeopleModal from './AddPeopleModal';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -95,6 +97,7 @@ const NotesList = ({
   const textareaRef = useRef(null);
   const autoRefreshIntervalRef = useRef(null);
   const refreshButtonRef = useRef(null);
+  const [showAddPeopleModal, setShowAddPeopleModal] = useState(false);
 
   // Update localStorage when quick paste state changes
   useEffect(() => {
@@ -484,6 +487,13 @@ const NotesList = ({
           >
             <CalendarIcon className="h-5 w-5" />
             <span>Add Meeting</span>
+          </button>
+          <button
+            onClick={() => setShowAddPeopleModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
+          >
+            <UserPlusIcon className="h-5 w-5" />
+            <span>Add People</span>
           </button>
           <div className="relative" ref={refreshButtonRef}>
             <button
@@ -1156,6 +1166,15 @@ const NotesList = ({
           </div>
         </div>
       )}
+
+      <AddPeopleModal
+        isOpen={showAddPeopleModal}
+        onClose={() => setShowAddPeopleModal(false)}
+        onAdd={(content) => {
+          addNotes(content);
+          setShowAddPeopleModal(false);
+        }}
+      />
 
     </div>
   );

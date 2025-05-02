@@ -84,6 +84,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               onContextMenu={() => {}}
               isWatchList={true}
               getNoteAge={getDaysSinceAdded}
+              refreshNotes={refreshNotes}
             />
           </div>
         )}
@@ -119,6 +120,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               onContextMenu={() => {}}
               isWatchList={true}
               getNoteAge={getDaysSinceAdded}
+              refreshNotes={refreshNotes}
             />
           </div>
         )}

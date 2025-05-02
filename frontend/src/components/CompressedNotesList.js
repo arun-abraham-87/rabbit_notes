@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import NoteContent from './NoteContent';
-import { XMarkIcon, CheckIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, CheckIcon, ClockIcon } from '@heroicons/react/24/solid';
 
 const CompressedNotesList = ({
   notes,
@@ -28,10 +28,15 @@ const CompressedNotesList = ({
   newLineInputRef,
   updateNote,
   onContextMenu,
-  isWatchList = false
+  isWatchList = false,
+  refreshNotes
 }) => {
   const [needsReviewState, setNeedsReviewState] = useState({});
   const [timeElapsed, setTimeElapsed] = useState({});
+  const [nextReviewTime, setNextReviewTime] = useState({});
+  const [showCadenceSelector, setShowCadenceSelector] = useState(null);
+  const [cadenceHours, setCadenceHours] = useState(24);
+  const [cadenceMinutes, setCadenceMinutes] = useState(0);
 
   // Function to format time elapsed
   const formatTimeElapsed = (timestamp) => {
@@ -59,7 +64,47 @@ const CompressedNotesList = ({
     return `${diffInDays} days ago`;
   };
 
-  // Function to check if a note needs review (not reviewed in last 24 hours)
+  // Function to get cadence for a note
+  const getNoteCadence = (noteId) => {
+    const cadences = JSON.parse(localStorage.getItem('noteReviewCadence') || '{}');
+    return cadences[noteId] || { hours: 24, minutes: 0 };
+  };
+
+  // Function to set cadence for a note
+  const setNoteCadence = (noteId, hours, minutes) => {
+    const cadences = JSON.parse(localStorage.getItem('noteReviewCadence') || '{}');
+    cadences[noteId] = { hours, minutes };
+    localStorage.setItem('noteReviewCadence', JSON.stringify(cadences));
+  };
+
+  // Function to format time remaining
+  const formatTimeRemaining = (reviewTime, noteId) => {
+    if (!reviewTime) return 'Never reviewed';
+    
+    const reviewDate = new Date(reviewTime);
+    const now = new Date();
+    const cadence = getNoteCadence(noteId);
+    const nextReviewDate = new Date(reviewDate.getTime() + 
+      (cadence.hours * 60 * 60 * 1000) + 
+      (cadence.minutes * 60 * 1000));
+    const diffInSeconds = Math.floor((nextReviewDate - now) / 1000);
+    
+    if (diffInSeconds <= 0) return 'Needs review now';
+    
+    const hours = Math.floor(diffInSeconds / 3600);
+    const minutes = Math.floor((diffInSeconds % 3600) / 60);
+    const seconds = diffInSeconds % 60;
+    
+    if (hours > 0) {
+      return `Next review in: ${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+      return `Next review in: ${minutes}m ${seconds}s`;
+    } else {
+      return `Next review in: ${seconds}s`;
+    }
+  };
+
+  // Function to check if a note needs review
   const checkNeedsReview = (noteId) => {
     const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
     const reviewTime = reviews[noteId];
@@ -67,8 +112,12 @@ const CompressedNotesList = ({
     
     const reviewDate = new Date(reviewTime);
     const now = new Date();
-    const diffInSeconds = (now - reviewDate) / 1000;
-    return diffInSeconds > 86400; // More than 24 hours ago
+    const cadence = getNoteCadence(noteId);
+    const nextReviewDate = new Date(reviewDate.getTime() + 
+      (cadence.hours * 60 * 60 * 1000) + 
+      (cadence.minutes * 60 * 1000));
+    
+    return now >= nextReviewDate;
   };
 
   // Background check for review times and update time elapsed
@@ -76,16 +125,19 @@ const CompressedNotesList = ({
     const interval = setInterval(() => {
       const newState = {};
       const newTimeElapsed = {};
+      const newNextReviewTime = {};
       
       notes.forEach(note => {
         newState[note.id] = checkNeedsReview(note.id);
         const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
         newTimeElapsed[note.id] = formatTimeElapsed(reviews[note.id]);
+        newNextReviewTime[note.id] = formatTimeRemaining(reviews[note.id], note.id);
       });
       
       setNeedsReviewState(newState);
       setTimeElapsed(newTimeElapsed);
-    }, 1000); // Check every second
+      setNextReviewTime(newNextReviewTime);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [notes]);
@@ -120,6 +172,11 @@ const CompressedNotesList = ({
       ...prev,
       [noteId]: 'Just now'
     }));
+
+    // Trigger a refresh of the notes list
+    if (typeof refreshNotes === 'function') {
+      refreshNotes();
+    }
   };
 
   // Function to check if a note has been reviewed
@@ -141,6 +198,14 @@ const CompressedNotesList = ({
     return date.toLocaleString();
   };
 
+  const handleCadenceChange = (noteId) => {
+    setNoteCadence(noteId, cadenceHours, cadenceMinutes);
+    setShowCadenceSelector(null);
+    if (typeof refreshNotes === 'function') {
+      refreshNotes();
+    }
+  };
+
   return (
     <div className="space-y-1">
       {notes.map(note => (
@@ -149,7 +214,7 @@ const CompressedNotesList = ({
           onContextMenu={onContextMenu}
           className={`p-1 rounded border relative group transition-all duration-300 ${
             needsReviewState[note.id] 
-              ? 'animate-[pulse_1s_ease-in-out_infinite] bg-gradient-to-r from-red-50 to-red-100 border-red-200' 
+              ? 'border-2 border-red-500 bg-red-50' 
               : 'bg-neutral-50 border-slate-200'
           }`}
         >
@@ -183,8 +248,57 @@ const CompressedNotesList = ({
           {isWatchList && (
             <div className="absolute top-1/2 -translate-y-1/2 right-2 flex items-center gap-2">
               <div className="text-xs text-gray-500 mr-2">
-                Last review: {formatTimestamp(getLastReviewTime(note.id))} ({timeElapsed[note.id] || 'Never reviewed'})
+                {needsReviewState[note.id] 
+                  ? 'Last review: ' + formatTimestamp(getLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
+                  : nextReviewTime[note.id]}
               </div>
+              {showCadenceSelector === note.id ? (
+                <div className="flex items-center gap-2 bg-white p-2 rounded shadow">
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="999"
+                      value={cadenceHours}
+                      onChange={(e) => setCadenceHours(parseInt(e.target.value) || 0)}
+                      className="w-12 px-1 py-0.5 border rounded text-sm"
+                      placeholder="Hours"
+                    />
+                    <span className="text-sm">h</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={cadenceMinutes}
+                      onChange={(e) => setCadenceMinutes(parseInt(e.target.value) || 0)}
+                      className="w-12 px-1 py-0.5 border rounded text-sm"
+                      placeholder="Minutes"
+                    />
+                    <span className="text-sm">m</span>
+                  </div>
+                  <button
+                    onClick={() => handleCadenceChange(note.id)}
+                    className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
+                  >
+                    Set
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    const cadence = getNoteCadence(note.id);
+                    setCadenceHours(cadence.hours);
+                    setCadenceMinutes(cadence.minutes);
+                    setShowCadenceSelector(note.id);
+                  }}
+                  className="p-1 text-gray-500 hover:text-gray-700"
+                  title="Set review cadence"
+                >
+                  <ClockIcon className="h-4 w-4" />
+                </button>
+              )}
               <button
                 onClick={() => handleReview(note.id)}
                 className={`px-2 py-1 rounded-md flex items-center gap-1 ${

@@ -625,7 +625,7 @@ const NotesList = ({
                       <div
                         key={note.id}
                         onContextMenu={(e) => handleContextMenu(e, note)}
-                        className="group flex flex-col px-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative"
+                        className="group flex flex-col px-6 py-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative"
                       >
                         <div className="flex flex-col flex-auto">
                           {/* Layer 1: Content and Edit/Delete */}
@@ -742,7 +742,7 @@ const NotesList = ({
                     <div
                       key={note.id}
                       onContextMenu={(e) => handleContextMenu(e, note)}
-                      className="group flex flex-col px-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative"
+                      className="group flex flex-col px-6 py-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100 relative"
                     >
                       <div className="flex flex-col flex-auto">
                         {/* Layer 1: Content and Edit/Delete */}
@@ -1174,6 +1174,7 @@ const NotesList = ({
           addNotes(content);
           setShowAddPeopleModal(false);
         }}
+        allNotes={allNotes || notes}
       />
 
     </div>

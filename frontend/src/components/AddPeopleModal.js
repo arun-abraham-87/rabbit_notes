@@ -1,18 +1,35 @@
 import React, { useState } from 'react';
-import { XMarkIcon, PlusIcon, MinusIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, PlusIcon, MinusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 
-const AddPeopleModal = ({ isOpen, onClose, onAdd }) => {
+const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
   const [name, setName] = useState('');
-  const [workstreams, setWorkstreams] = useState(['']);
   const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [workstreamSearchTerm, setWorkstreamSearchTerm] = useState('');
+  const [selectedWorkstreams, setSelectedWorkstreams] = useState([]);
+
+  // Filter workstream notes based on search term
+  const filteredWorkstreams = allNotes.filter(note => {
+    if (!note.content.includes('meta::workstream')) return false;
+    if (!workstreamSearchTerm.trim()) return true;
+    
+    const searchLower = workstreamSearchTerm.toLowerCase();
+    const contentLower = note.content.toLowerCase();
+    
+    // Search in first line (title) with higher priority
+    const firstLine = contentLower.split('\n')[0];
+    if (firstLine.includes(searchLower)) return true;
+    
+    // Search in non-meta lines
+    const nonMetaLines = contentLower
+      .split('\n')
+      .filter(line => !line.startsWith('meta::'));
+    return nonMetaLines.some(line => line.includes(searchLower));
+  });
 
   const handleSubmit = () => {
     if (!name.trim()) return;
-
-    // Filter out empty workstreams
-    const filteredWorkstreams = workstreams.filter(w => w.trim());
     
     // Create the content with meta tags
     let content = `${name.trim()}\nmeta::person::${new Date().toISOString()}`;
@@ -32,33 +49,28 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd }) => {
       content += `\nmeta::person_phone::${phone.trim()}`;
     }
 
-    // Add workstreams
-    if (filteredWorkstreams.length > 0) {
-      content += `\nmeta::person_workstreams::${filteredWorkstreams.join(',')}`;
-    }
+    // Add links to workstreams
+    selectedWorkstreams.forEach(workstreamId => {
+      content += `\nmeta::link::${workstreamId}`;
+    });
 
     onAdd(content);
     
     // Reset form
     setName('');
-    setWorkstreams(['']);
     setRole('');
     setEmail('');
     setPhone('');
+    setSelectedWorkstreams([]);
+    setWorkstreamSearchTerm('');
   };
 
-  const addWorkstream = () => {
-    setWorkstreams([...workstreams, '']);
-  };
-
-  const removeWorkstream = (index) => {
-    setWorkstreams(workstreams.filter((_, i) => i !== index));
-  };
-
-  const updateWorkstream = (index, value) => {
-    const newWorkstreams = [...workstreams];
-    newWorkstreams[index] = value;
-    setWorkstreams(newWorkstreams);
+  const toggleWorkstream = (workstreamId) => {
+    setSelectedWorkstreams(prev =>
+      prev.includes(workstreamId)
+        ? prev.filter(id => id !== workstreamId)
+        : [...prev, workstreamId]
+    );
   };
 
   if (!isOpen) return null;
@@ -138,33 +150,42 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Workstreams
             </label>
-            <div className="space-y-2">
-              {workstreams.map((workstream, index) => (
-                <div key={index} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={workstream}
-                    onChange={(e) => updateWorkstream(index, e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter workstream"
-                  />
-                  {workstreams.length > 1 && (
-                    <button
-                      onClick={() => removeWorkstream(index)}
-                      className="p-2 text-red-600 hover:text-red-800"
-                    >
-                      <MinusIcon className="h-5 w-5" />
-                    </button>
-                  )}
+            <div className="relative">
+              <input
+                type="text"
+                value={workstreamSearchTerm}
+                onChange={(e) => setWorkstreamSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Search workstreams..."
+              />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            </div>
+            <div className="mt-2 max-h-40 overflow-y-auto border rounded-md">
+              {filteredWorkstreams.map(workstream => {
+                const isSelected = selectedWorkstreams.includes(workstream.id);
+                const firstLine = workstream.content.split('\n')[0];
+                return (
+                  <div
+                    key={workstream.id}
+                    onClick={() => toggleWorkstream(workstream.id)}
+                    className={`p-2 cursor-pointer hover:bg-gray-50 flex items-center justify-between ${
+                      isSelected ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <span className="text-sm">{firstLine}</span>
+                    {isSelected && (
+                      <svg className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                );
+              })}
+              {filteredWorkstreams.length === 0 && (
+                <div className="p-2 text-sm text-gray-500 text-center">
+                  No workstreams found
                 </div>
-              ))}
-              <button
-                onClick={addWorkstream}
-                className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
-              >
-                <PlusIcon className="h-4 w-4" />
-                <span>Add Workstream</span>
-              </button>
+              )}
             </div>
           </div>
         </div>

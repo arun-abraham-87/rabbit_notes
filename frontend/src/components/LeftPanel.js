@@ -16,7 +16,7 @@ import EditMeetingModal from './EditMeetingModal';
 import EditEventModal from './EditEventModal';
 import { updateNoteById, getSettings, updateSettings, addNewNote, loadAllNotes, loadNotes } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
-import { formatAndAgeDate } from '../utils/DateUtils';
+import { formatAndAgeDate, getAge } from '../utils/DateUtils';
 import moment from 'moment';
 
 // Common timezones with their offsets and locations
@@ -1137,6 +1137,11 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                                 <span className="font-medium text-purple-600">
                                   {formatAndAgeDate(new Date(e.time))}
                                 </span>
+                                {e.baseEventDate && (
+                                  <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                                    <span className="text-xs text-gray-500">{getAge(new Date(e.baseEventDate))}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <button

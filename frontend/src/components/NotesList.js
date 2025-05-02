@@ -88,13 +88,47 @@ const NotesList = ({
   const [editingMeetingNote, setEditingMeetingNote] = useState(null);
   const [editingEventNote, setEditingEventNote] = useState(null);
   const [showingNormalEventEditor, setShowingNormalEventEditor] = useState(false);
+  const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(10);
+  const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(false);
   const notesListRef = useRef(null);
   const textareaRef = useRef(null);
+  const autoRefreshIntervalRef = useRef(null);
 
   // Update localStorage when quick paste state changes
   useEffect(() => {
     localStorage.setItem('quickPasteEnabled', JSON.stringify(isQuickPasteEnabled));
   }, [isQuickPasteEnabled]);
+
+  // Auto refresh effect
+  useEffect(() => {
+    if (isAutoRefreshEnabled) {
+      autoRefreshIntervalRef.current = setInterval(() => {
+        setAutoRefreshCountdown(prev => {
+          if (prev <= 1) {
+            loadNotes(searchQuery, new Date().toISOString().split('T')[0])
+              .then(data => {
+                updateNoteCallback(data.notes || []);
+                updateTotals(data.totals || 0);
+              })
+              .catch(error => {
+                console.error('Error refreshing notes:', error);
+                Alerts.error('Failed to refresh notes');
+              });
+            return 10;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setAutoRefreshCountdown(10);
+    }
+
+    return () => {
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current);
+      }
+    };
+  }, [isAutoRefreshEnabled, searchQuery, updateNoteCallback, updateTotals]);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -451,11 +485,12 @@ const NotesList = ({
                 });
             }}
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
+            title={`Auto-refresh in ${autoRefreshCountdown}s`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
             </svg>
-            <span>Refresh</span>
+            <span>Refresh ({autoRefreshCountdown}s)</span>
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -467,6 +502,15 @@ const NotesList = ({
               className="form-checkbox h-4 w-4 text-indigo-600"
             />
             <span>Quick Paste</span>
+          </label>
+          <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isAutoRefreshEnabled}
+              onChange={(e) => setIsAutoRefreshEnabled(e.target.checked)}
+              className="form-checkbox h-4 w-4 text-indigo-600"
+            />
+            <span>Auto Refresh</span>
           </label>
         </div>
       </div>

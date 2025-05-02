@@ -11,6 +11,8 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
+import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner';
+import { updateNoteById } from '../utils/ApiUtils';
 
 const Alerts = {
   success: (message) => {
@@ -228,7 +230,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true }) => {
   );
 };
 
-const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = false }) => {
+const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = false, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
 
   const criticalTodos = notes.filter(note => {
@@ -258,19 +260,16 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
       const occurrences = [];
 
       if (recurrence === 'none') {
-        // For non-recurring events, only include if it's in the current year
         if (eventDate.getFullYear() === currentYear) {
           occurrences.push({ date: eventDate, event });
         }
       } else {
-        // For recurring events, calculate all occurrences in the current year
         let occurrence = new Date(eventDate);
         while (occurrence.getFullYear() <= currentYear) {
           if (occurrence.getFullYear() === currentYear) {
             occurrences.push({ date: new Date(occurrence), event });
           }
 
-          // Calculate next occurrence based on recurrence type
           if (recurrence === 'daily') {
             occurrence.setDate(occurrence.getDate() + 1);
           } else if (recurrence === 'weekly') {
@@ -297,8 +296,32 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
   };
 
   const unacknowledgedEvents = getUnacknowledgedOccurrences();
+  const unacknowledgedMeetings = notes.filter(note => 
+    note.content.includes('meta::meeting::') && 
+    !note.content.includes('meta::acknowledged::')
+  );
 
-  const totalAlerts = unacknowledgedEvents.length + criticalTodos.length + passedDeadlineTodos.length;
+  const handleDismissUnacknowledgedMeeting = async (noteId) => {
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    
+    // Add the acknowledged tag with timestamp
+    const ackLine = `meta::meeting_acknowledge::${new Date().toISOString()}`;
+    const updatedContent = `${note.content}\n${ackLine}`;
+    
+    try {
+      await updateNoteById(noteId, updatedContent);
+      // Update the notes state to reflect the change
+      setNotes(notes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
+    } catch (error) {
+      console.error('Error acknowledging meeting:', error);
+    }
+  };
+
+  const totalAlerts = unacknowledgedEvents.length + 
+                     criticalTodos.length + 
+                     passedDeadlineTodos.length + 
+                     unacknowledgedMeetings.length;
 
   const handleTitleClick = () => {
     setIsExpanded(!isExpanded);
@@ -337,6 +360,11 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
                   Deadline: {passedDeadlineTodos.length}
                 </span>
               )}
+              {unacknowledgedMeetings.length > 0 && (
+                <span className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium">
+                  Meetings: {unacknowledgedMeetings.length}
+                </span>
+              )}
             </div>
           </div>
           <button
@@ -358,13 +386,19 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
       {isExpanded && (
         <div className="divide-y divide-gray-100 p-4 space-y-4">
           {children}
+          {unacknowledgedMeetings.length > 0 && (
+            <UnacknowledgedMeetingsBanner 
+              meetings={unacknowledgedMeetings} 
+              onDismiss={handleDismissUnacknowledgedMeeting} 
+            />
+          )}
         </div>
       )}
     </div>
   );
 };
 
-const AlertsProvider = ({ children, notes, expanded = false, events, onAcknowledgeEvent }) => {
+const AlertsProvider = ({ children, notes, expanded = false, events, setNotes }) => {
   return (
     <>
       <ToastContainer
@@ -379,10 +413,14 @@ const AlertsProvider = ({ children, notes, expanded = false, events, onAcknowled
         pauseOnHover
         theme="light"
       />
-      <AlertsContainer expanded={expanded} notes={notes} events={events}>
+      <AlertsContainer 
+        expanded={expanded} 
+        notes={notes} 
+        events={events}
+        setNotes={setNotes}
+      >
         <EventAlerts 
           events={events}
-          onAcknowledgeEvent={onAcknowledgeEvent}
           expanded={expanded}
         />
         <CriticalTodosAlert notes={notes} expanded={expanded} />

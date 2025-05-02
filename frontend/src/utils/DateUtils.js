@@ -11,18 +11,48 @@ export const getDayOfWeek = (datePart) => {
     return dayOfWeek;
 };
 
- export const parseAustralianDate = (dateStr) => {
-  const [datePart, timePartRaw] = dateStr.split(', ');
-  const [day, month, year] = datePart.split('/').map(Number);
+export const parseAustralianDate = (dateStr) => {
+  try {
+    if (!dateStr) {
+      throw new Error('Date string is empty');
+    }
 
-  const timePart = timePartRaw.toLowerCase().replace(' pm', 'PM').replace(' am', 'AM');
-  const [time, period] = timePart.split(/(am|pm)/i);
-  let [hours, minutes, seconds] = time.trim().split(':').map(Number);
+    const [datePart, timePartRaw] = dateStr.split(', ');
+    if (!datePart || !timePartRaw) {
+      throw new Error('Invalid date format');
+    }
 
-  if (period.toLowerCase() === 'pm' && hours < 12) hours += 12;
-  if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
+    const [day, month, year] = datePart.split('/').map(Number);
+    if (isNaN(day) || isNaN(month) || isNaN(year)) {
+      throw new Error('Invalid date numbers');
+    }
 
-  return new Date(year, month - 1, day, hours, minutes, seconds);
+    const timePart = timePartRaw.toLowerCase().replace(' pm', 'PM').replace(' am', 'AM');
+    const [time, period] = timePart.split(/(am|pm)/i);
+    let [hours, minutes, seconds] = time.trim().split(':').map(Number);
+
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
+      throw new Error('Invalid time numbers');
+    }
+
+    if (period.toLowerCase() === 'pm' && hours < 12) hours += 12;
+    if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
+
+    return new Date(year, month - 1, day, hours, minutes, seconds);
+  } catch (error) {
+    console.error('Error parsing date:', error.message);
+    // Return current date in Australian format
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const period = now.getHours() >= 12 ? 'PM' : 'AM';
+    
+    return new Date(`${day}/${month}/${year}, ${hours}:${minutes}:${seconds} ${period}`);
+  }
 }
 
 // Function to format the date with relative time

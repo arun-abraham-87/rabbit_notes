@@ -463,7 +463,7 @@ app.get('/api/objects', (req, res) => {
       }
     }
 
-    // Get all notes to count tag occurrences
+    // Get all notes to count tag occurrences and find workstreams/people
     const files = fs.readdirSync(NOTES_DIR);
     let allNotes = [];
 
@@ -504,7 +504,29 @@ app.get('/api/objects', (req, res) => {
       count: tagCounts[obj.text.trim()] || 0
     }));
 
-    res.json(objectsWithCounts);
+    // Add workstreams and people to the objects array
+    const workstreams = allNotes
+      .filter(note => note.content.includes('meta::workstream'))
+      .map(note => ({
+        id: note.id,
+        text: note.content.split('\n')[0],
+        type: 'workstream',
+        count: 1
+      }));
+
+    const people = allNotes
+      .filter(note => note.content.includes('meta::person::'))
+      .map(note => ({
+        id: note.id,
+        text: note.content.split('\n')[0],
+        type: 'person',
+        count: 1
+      }));
+
+    // Combine all objects
+    const allObjects = [...objectsWithCounts, ...workstreams, ...people];
+
+    res.json(allObjects);
   } catch (err) {
     console.error('Error processing the request:', err.message);
     res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });

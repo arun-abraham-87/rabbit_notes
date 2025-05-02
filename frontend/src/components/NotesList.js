@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'react-toastify';
-import Alerts from './Alerts';
+import { Alerts } from './Alerts';
 
 import ConfirmationModal from './ConfirmationModal';
 import { updateNoteById, deleteNoteById, addNewNote, loadNotes } from '../utils/ApiUtils';

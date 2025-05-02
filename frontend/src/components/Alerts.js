@@ -61,7 +61,7 @@ const Alerts = {
   },
 };
 
-export const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
+const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [expanded, setExpanded] = useState(initialExpanded);
 
   const passedDeadlineCount = notes.filter(note => {
@@ -141,19 +141,25 @@ export const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true })
   );
 };
 
-export const ToastProvider = () => (
-  <ToastContainer
-    position="top-right"
-    autoClose={3000}
-    hideProgressBar={false}
-    newestOnTop
-    closeOnClick
-    rtl={false}
-    pauseOnFocusLoss
-    draggable
-    pauseOnHover
-    theme="light"
-  />
-);
+const AlertsProvider = ({ children, notes, expanded = true }) => {
+  return (
+    <>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+      <DeadlinePassedAlert notes={notes} expanded={expanded} />
+      {children}
+    </>
+  );
+};
 
-export default Alerts; 
+export { Alerts, AlertsProvider }; 

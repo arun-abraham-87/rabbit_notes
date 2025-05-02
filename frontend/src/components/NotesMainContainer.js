@@ -13,7 +13,7 @@ import EventAlerts from './EventAlerts.js';
 import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
 import CriticalTodosSection from './CriticalTodosSection';
 import WatchList from './WatchList';
-import { DeadlinePassedAlert, ToastProvider } from './Alerts';
+import { AlertsProvider } from './Alerts';
 
 const checkForOngoingMeeting = (notes) => {
   if (!notes) return null;
@@ -601,92 +601,90 @@ const NotesMainContainer = ({
     };
 
     return (
-        <div className="flex flex-col h-full">
-            <ToastProvider />
-            {/* Alerts Section */}
-            <DeadlinePassedAlert notes={allNotes} expanded={alertsExpanded} />
-            
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
-                <CriticalTodosSection notes={allNotes} />
-                <EventAlerts 
-                    events={eventsState}
-                    onAcknowledgeEvent={handleAcknowledgeEvent}
-                />
-                <UnacknowledgedMeetingsBanner 
-                    meetings={unacknowledgedMeetings} 
-                    onDismiss={handleDismissUnacknowledgedMeeting} 
-                />
-                {ongoingMeeting && (
-                    <OngoingMeetingBanner
-                        meeting={ongoingMeeting}
-                        onDismiss={handleDismissMeeting}
+        <AlertsProvider notes={allNotes} expanded={alertsExpanded}>
+            <div className="flex flex-col h-full">
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
+                    <CriticalTodosSection notes={allNotes} />
+                    <EventAlerts 
+                        events={eventsState}
+                        onAcknowledgeEvent={handleAcknowledgeEvent}
                     />
-                )}
-                <NextMeetingBanner meetings={meetings} notes={allNotes} />
-                <div className="mt-4">
-                    {activePage === 'watch' ? (
-                        <WatchList allNotes={allNotes} />
-                    ) : (
-                        <>
-                            <DateSelectorBar
-                                setNoteDate={handleDateChange}
-                                defaultCollapsed={true}
-                            />
-                            <NoteEditor
-                                objList={objList}
-                                note={{ id: '', content: '' }}
-                                text=""
-                                addNote={addNote}
-                                onSave={(note) => {
-                                    addNote(note.content);
-                                }}
-                                onCancel={() => {
-                                    console.log("NoteEditor canceled");
-                                }}
-                                searchQuery={searchQuery}
-                                setSearchQuery={setSearchQuery}
-                                isAddMode={true}
-                                settings={settings}
-                                onExcludeEventsChange={setExcludeEvents}
-                                onExcludeMeetingsChange={setExcludeMeetings}
-                                onDeadlinePassedChange={setShowDeadlinePassedFilter}
-                            />
-                            <InfoPanel 
-                                totals={totals} 
-                                grpbyViewChkd={checked} 
-                                enableGroupByView={setChecked}
-                                compressedView={compressedView}
-                                setCompressedView={setCompressedView}
-                            />
-                            {checked ? (
-                                <NotesListByDate
-                                    notes={filteredNotes}
-                                    searchQuery={searchQuery}
-                                    onWordClick={handleTagClick}
-                                    settings={settings}
+                    <UnacknowledgedMeetingsBanner 
+                        meetings={unacknowledgedMeetings} 
+                        onDismiss={handleDismissUnacknowledgedMeeting} 
+                    />
+                    {ongoingMeeting && (
+                        <OngoingMeetingBanner
+                            meeting={ongoingMeeting}
+                            onDismiss={handleDismissMeeting}
+                        />
+                    )}
+                    <NextMeetingBanner meetings={meetings} notes={allNotes} />
+                    <div className="mt-4">
+                        {activePage === 'watch' ? (
+                            <WatchList allNotes={allNotes} />
+                        ) : (
+                            <>
+                                <DateSelectorBar
+                                    setNoteDate={handleDateChange}
+                                    defaultCollapsed={true}
                                 />
-                            ) : (
-                                <NotesList
+                                <NoteEditor
                                     objList={objList}
-                                    notes={filteredNotes}
-                                    allNotes={allNotes}
-                                    addNotes={addNote}
-                                    updateNoteCallback={updateNoteCallback}
-                                    updateTotals={setTotals}
-                                    objects={objects}
-                                    addObjects={addTag}
+                                    note={{ id: '', content: '' }}
+                                    text=""
+                                    addNote={addNote}
+                                    onSave={(note) => {
+                                        addNote(note.content);
+                                    }}
+                                    onCancel={() => {
+                                        console.log("NoteEditor canceled");
+                                    }}
                                     searchQuery={searchQuery}
                                     setSearchQuery={setSearchQuery}
-                                    onWordClick={handleTagClick}
+                                    isAddMode={true}
                                     settings={settings}
-                                    compressedView={compressedView}
+                                    onExcludeEventsChange={setExcludeEvents}
+                                    onExcludeMeetingsChange={setExcludeMeetings}
+                                    onDeadlinePassedChange={setShowDeadlinePassedFilter}
                                 />
-                            )}
-                        </>
-                    )}
+                                <InfoPanel 
+                                    totals={totals} 
+                                    grpbyViewChkd={checked} 
+                                    enableGroupByView={setChecked}
+                                    compressedView={compressedView}
+                                    setCompressedView={setCompressedView}
+                                />
+                                {checked ? (
+                                    <NotesListByDate
+                                        notes={filteredNotes}
+                                        searchQuery={searchQuery}
+                                        onWordClick={handleTagClick}
+                                        settings={settings}
+                                    />
+                                ) : (
+                                    <NotesList
+                                        objList={objList}
+                                        notes={filteredNotes}
+                                        allNotes={allNotes}
+                                        addNotes={addNote}
+                                        updateNoteCallback={updateNoteCallback}
+                                        updateTotals={setTotals}
+                                        objects={objects}
+                                        addObjects={addTag}
+                                        searchQuery={searchQuery}
+                                        setSearchQuery={setSearchQuery}
+                                        onWordClick={handleTagClick}
+                                        settings={settings}
+                                        compressedView={compressedView}
+                                    />
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
+        </AlertsProvider>
     );
 };
 

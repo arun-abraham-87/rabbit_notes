@@ -345,8 +345,7 @@ app.post('/api/notes', (req, res) => {
     console.log(noteDate)
     console.log(formattedToday)
 
-    if (noteDate === formattedToday) {
-      // Use the current timestamp in the specified timezone
+    if (!noteDate || (noteDate === formattedToday)) {
       created_datetime = new Date().toLocaleString('en-AU', {
         timeZone: TIMEZONE,
       });

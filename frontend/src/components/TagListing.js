@@ -150,8 +150,8 @@ const TagListing = () => {
         setIsCreatingWorkstream(true);
         // Create a new note with meta::workstream tag and the name as the first line
         const content = `${newWorkstream}\nmeta::workstream`;
-        const now = moment().format('YYYY-MM-DD');
-        await addNewNote(content, undefined, now);
+        const now = moment().format('DD-MM-YYYY');
+        await addNewNote(content, undefined, null);
         await loadWorkstreamsList();
         setWorkstreamSearch('');
       } catch (err) {

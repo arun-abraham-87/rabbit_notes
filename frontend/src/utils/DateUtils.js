@@ -11,9 +11,22 @@ export const getDayOfWeek = (datePart) => {
     return dayOfWeek;
 };
 
+ export const parseAustralianDate = (dateStr) => {
+  const [datePart, timePartRaw] = dateStr.split(', ');
+  const [day, month, year] = datePart.split('/').map(Number);
+
+  const timePart = timePartRaw.toLowerCase().replace(' pm', 'PM').replace(' am', 'AM');
+  const [time, period] = timePart.split(/(am|pm)/i);
+  let [hours, minutes, seconds] = time.trim().split(':').map(Number);
+
+  if (period.toLowerCase() === 'pm' && hours < 12) hours += 12;
+  if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
+
+  return new Date(year, month - 1, day, hours, minutes, seconds);
+}
 
 // Function to format the date with relative time
-export const getFormattedDate = (date) => {
+export const getFormattedDate = (date,stringval) => {
   if (!date) return '';
   
   try {
@@ -21,7 +34,12 @@ export const getFormattedDate = (date) => {
       const formattedDay = String(date.getDate()).padStart(2, '0');
       const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
       const formattedYear = date.getFullYear();
-      
+      const formattedDate = `${formattedDay}-${formattedMonth}-${formattedYear}`;
+      console.log("=============================");
+      console.log(date);
+      console.log(stringval);
+      console.log(formattedDate);
+      console.log("=============================");
       return `${formattedDay}-${formattedMonth}-${formattedYear}`;
   } catch (error) {
       console.error('Error formatting date:', error);

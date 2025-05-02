@@ -3,9 +3,6 @@ import { UserIcon, BriefcaseIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 
 const WorkstreamPeopleView = ({ notes, searchQuery }) => {
-  // Filter for person notes
-  const peopleNotes = notes.filter(note => note.content.includes('meta::person::'));
-
   // Get workstream information for a note
   const getWorkstreams = (content) => {
     const lines = content.split('\n');
@@ -31,7 +28,7 @@ const WorkstreamPeopleView = ({ notes, searchQuery }) => {
   };
 
   // Group people by workstreams
-  const groupedPeople = peopleNotes.reduce((acc, personNote) => {
+  const groupedPeople = notes.reduce((acc, personNote) => {
     const workstreams = getWorkstreams(personNote.content);
     
     if (workstreams.length === 0) {
@@ -60,9 +57,16 @@ const WorkstreamPeopleView = ({ notes, searchQuery }) => {
     return acc;
   }, {});
 
+  // Sort workstreams by name, but keep "No Workstream" at the end
+  const sortedWorkstreams = Object.entries(groupedPeople).sort(([idA, a], [idB, b]) => {
+    if (idA === 'no-workstream') return 1;
+    if (idB === 'no-workstream') return -1;
+    return a.name.localeCompare(b.name);
+  });
+
   return (
     <div className="space-y-8">
-      {Object.entries(groupedPeople).map(([workstreamId, { name, people }]) => (
+      {sortedWorkstreams.map(([workstreamId, { name, people }]) => (
         <div key={workstreamId} className="space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 border-b pb-2">
             <BriefcaseIcon className="h-5 w-5 text-gray-500" />

@@ -247,7 +247,58 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
     return endDate < now;
   });
 
-  const totalAlerts = events.length + criticalTodos.length + passedDeadlineTodos.length;
+  const getUnacknowledgedOccurrences = () => {
+    return events.flatMap(event => {
+      if (!event || !event.dateTime) return [];
+      
+      const { dateTime, recurrence } = event;
+      const eventDate = new Date(dateTime);
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const occurrences = [];
+
+      if (recurrence === 'none') {
+        // For non-recurring events, only include if it's in the current year
+        if (eventDate.getFullYear() === currentYear) {
+          occurrences.push({ date: eventDate, event });
+        }
+      } else {
+        // For recurring events, calculate all occurrences in the current year
+        let occurrence = new Date(eventDate);
+        while (occurrence.getFullYear() <= currentYear) {
+          if (occurrence.getFullYear() === currentYear) {
+            occurrences.push({ date: new Date(occurrence), event });
+          }
+
+          // Calculate next occurrence based on recurrence type
+          if (recurrence === 'daily') {
+            occurrence.setDate(occurrence.getDate() + 1);
+          } else if (recurrence === 'weekly') {
+            occurrence.setDate(occurrence.getDate() + 7);
+          } else if (recurrence === 'monthly') {
+            occurrence.setMonth(occurrence.getMonth() + 1);
+          } else if (recurrence === 'yearly') {
+            occurrence.setFullYear(occurrence.getFullYear() + 1);
+          }
+        }
+      }
+
+      return occurrences;
+    }).filter(occurrence => {
+      const april2025 = new Date('2025-04-01');
+      const now = new Date();
+      const year = occurrence.date.getFullYear();
+      const metaTag = `meta::acknowledged::${year}`;
+      
+      return occurrence.date >= april2025 && 
+             occurrence.date <= now && 
+             !occurrence.event.content.includes(metaTag);
+    });
+  };
+
+  const unacknowledgedEvents = getUnacknowledgedOccurrences();
+
+  const totalAlerts = unacknowledgedEvents.length + criticalTodos.length + passedDeadlineTodos.length;
 
   const handleTitleClick = () => {
     setIsExpanded(!isExpanded);
@@ -269,6 +320,9 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
             </div>
             <h3 className="ml-3 text-lg font-semibold text-red-800">
               Alerts ({totalAlerts})
+              <span className="text-sm text-red-600 ml-2">
+                [Events: {unacknowledgedEvents.length} | Critical: {criticalTodos.length} | Deadline: {passedDeadlineTodos.length}]
+              </span>
             </h3>
           </div>
           <button

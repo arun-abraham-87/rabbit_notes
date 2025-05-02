@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { XMarkIcon, PlusIcon, MinusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
+import { updateNoteById } from '../utils/ApiUtils';
 
 const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
   const [name, setName] = useState('');
@@ -8,6 +9,8 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
   const [phone, setPhone] = useState('');
   const [workstreamSearchTerm, setWorkstreamSearchTerm] = useState('');
   const [selectedWorkstreams, setSelectedWorkstreams] = useState([]);
+  const [teamSearchTerm, setTeamSearchTerm] = useState('');
+  const [selectedTeams, setSelectedTeams] = useState([]);
 
   // Filter workstream notes based on search term
   const filteredWorkstreams = allNotes.filter(note => {
@@ -28,7 +31,26 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
     return nonMetaLines.some(line => line.includes(searchLower));
   });
 
-  const handleSubmit = () => {
+  // Filter team notes based on search term
+  const filteredTeams = allNotes.filter(note => {
+    if (!note.content.includes('meta::team')) return false;
+    if (!teamSearchTerm.trim()) return true;
+    
+    const searchLower = teamSearchTerm.toLowerCase();
+    const contentLower = note.content.toLowerCase();
+    
+    // Search in first line (title) with higher priority
+    const firstLine = contentLower.split('\n')[0];
+    if (firstLine.includes(searchLower)) return true;
+    
+    // Search in non-meta lines
+    const nonMetaLines = contentLower
+      .split('\n')
+      .filter(line => !line.startsWith('meta::'));
+    return nonMetaLines.some(line => line.includes(searchLower));
+  });
+
+  const handleSubmit = async () => {
     if (!name.trim()) return;
     
     // Create the content with meta tags
@@ -54,15 +76,36 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
       content += `\nmeta::link::${workstreamId}`;
     });
 
-    onAdd(content);
-    
-    // Reset form
-    setName('');
-    setRole('');
-    setEmail('');
-    setPhone('');
-    setSelectedWorkstreams([]);
-    setWorkstreamSearchTerm('');
+    // Add links to teams
+    selectedTeams.forEach(teamId => {
+      content += `\nmeta::link::${teamId}`;
+    });
+
+    try {
+      // First, create the person note
+      const newPersonNote = await onAdd(content);
+      
+      // Then, update each selected team note to include a link back to the person
+      await Promise.all(selectedTeams.map(async teamId => {
+        const teamNote = allNotes.find(note => note.id === teamId);
+        if (teamNote) {
+          const updatedContent = `${teamNote.content}\nmeta::link::${newPersonNote.id}`;
+          await updateNoteById(teamId, updatedContent);
+        }
+      }));
+      
+      // Reset form
+      setName('');
+      setRole('');
+      setEmail('');
+      setPhone('');
+      setSelectedWorkstreams([]);
+      setSelectedTeams([]);
+      setWorkstreamSearchTerm('');
+      setTeamSearchTerm('');
+    } catch (error) {
+      console.error('Error creating bidirectional links:', error);
+    }
   };
 
   const toggleWorkstream = (workstreamId) => {
@@ -70,6 +113,14 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
       prev.includes(workstreamId)
         ? prev.filter(id => id !== workstreamId)
         : [...prev, workstreamId]
+    );
+  };
+
+  const toggleTeam = (teamId) => {
+    setSelectedTeams(prev =>
+      prev.includes(teamId)
+        ? prev.filter(id => id !== teamId)
+        : [...prev, teamId]
     );
   };
 
@@ -143,6 +194,50 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, allNotes = [] }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter phone (optional)"
             />
+          </div>
+
+          {/* Teams */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Teams
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={teamSearchTerm}
+                onChange={(e) => setTeamSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Search teams..."
+              />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            </div>
+            <div className="mt-2 max-h-40 overflow-y-auto border rounded-md">
+              {filteredTeams.map(team => {
+                const isSelected = selectedTeams.includes(team.id);
+                const firstLine = team.content.split('\n')[0];
+                return (
+                  <div
+                    key={team.id}
+                    onClick={() => toggleTeam(team.id)}
+                    className={`p-2 cursor-pointer hover:bg-gray-50 flex items-center justify-between ${
+                      isSelected ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <span className="text-sm">{firstLine}</span>
+                    {isSelected && (
+                      <svg className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                );
+              })}
+              {filteredTeams.length === 0 && (
+                <div className="p-2 text-sm text-gray-500 text-center">
+                  No teams found
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Workstreams */}

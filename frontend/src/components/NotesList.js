@@ -1170,9 +1170,10 @@ const NotesList = ({
       <AddPeopleModal
         isOpen={showAddPeopleModal}
         onClose={() => setShowAddPeopleModal(false)}
-        onAdd={(content) => {
-          addNotes(content);
+        onAdd={async (content) => {
+          const newNote = await addNotes(content);
           setShowAddPeopleModal(false);
+          return newNote;
         }}
         allNotes={allNotes || notes}
       />

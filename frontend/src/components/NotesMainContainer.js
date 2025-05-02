@@ -338,7 +338,7 @@ const NotesMainContainer = ({
                 };
             });
         
-        console.log('Processed events:', processedEvents);
+//console.log('Processed events:', processedEvents);
         return processedEvents;
     }, [allNotes]);
 
@@ -349,7 +349,7 @@ const NotesMainContainer = ({
 
     // Add debug logging
     useEffect(() => {
-        console.log('Events in NotesMainContainer:', events);
+//console.log('Events in NotesMainContainer:', events);
         const unacknowledged = events.filter(event => {
             const now = new Date();
             const april2025 = new Date('2025-04-01');
@@ -361,7 +361,7 @@ const NotesMainContainer = ({
                    eventDate < now && 
                    !event.content.includes(metaTag);
         });
-        console.log('Unacknowledged events:', unacknowledged);
+//console.log('Unacknowledged events:', unacknowledged);
     }, [events]);
 
     // Filter notes for display based on selected date and exclude states
@@ -556,7 +556,7 @@ const NotesMainContainer = ({
 
     // Handle event acknowledgment
     const handleAcknowledgeEvent = async (noteId, year) => {
-        console.log('Acknowledging event:', noteId, year);
+//console.log('Acknowledging event:', noteId, year);
         const note = allNotes.find(n => n.id === noteId);
         if (!note) return;
         
@@ -570,7 +570,7 @@ const NotesMainContainer = ({
         try {
             const response = await updateNoteById(noteId, updatedContent);
             if (response && response.success) {
-                console.log('Event acknowledged successfully');
+//console.log('Event acknowledged successfully');
                 // Update the notes state to reflect the change
                 const updatedNotes = allNotes.map(n => 
                     n.id === noteId ? { ...n, content: updatedContent } : n
@@ -582,7 +582,7 @@ const NotesMainContainer = ({
                 // Force a refresh of the events by updating allNotes
                 const data = await loadNotes(searchQuery, currentDate);
                 if (data && data.notes) {
-                    console.log('Refreshing notes data');
+//console.log('Refreshing notes data');
                     setNotes(data.notes);
                     setTotals(data.totals);
                     
@@ -636,7 +636,7 @@ const NotesMainContainer = ({
                                         addNote(note.content);
                                     }}
                                     onCancel={() => {
-                                        console.log("NoteEditor canceled");
+//console.log("NoteEditor canceled");
                                     }}
                                     searchQuery={searchQuery}
                                     setSearchQuery={setSearchQuery}

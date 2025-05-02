@@ -15,7 +15,8 @@ import {
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import { updateNoteById, loadNotes } from '../utils/ApiUtils';
-import { getAge } from '../utils/DateUtils'; 
+import { getAge } from '../utils/DateUtils';
+import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
 
 const Alerts = {
   success: (message) => {
@@ -352,11 +353,101 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
   );
 };
 
+const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
+
+  const overdueNotes = notes.filter(note => {
+    if (!note.content.includes('meta::watch')) return false;
+    return checkNeedsReview(note.id);
+  });
+
+  if (overdueNotes.length === 0) return null;
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  return (
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+      <div 
+        className="bg-amber-50 px-6 py-4 border-b border-amber-100 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <ClockIcon className="h-6 w-6 text-amber-500" />
+            <h3 className="ml-3 text-lg font-semibold text-amber-800">
+              Review Overdue ({overdueNotes.length})
+            </h3>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+            className="text-amber-600 hover:text-amber-700 focus:outline-none"
+            aria-label={isExpanded ? "Collapse reviews" : "Expand reviews"}
+          >
+            {isExpanded ? (
+              <ChevronUpIcon className="h-5 w-5" />
+            ) : (
+              <ChevronDownIcon className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+      </div>
+      {isExpanded && (
+        <div className="divide-y divide-gray-100">
+          {overdueNotes.map((note) => {
+            const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+            const reviewTime = reviews[note.id];
+            const cadence = getNoteCadence(note.id);
+            const content = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'))[0];
+
+            return (
+              <div key={note.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">
+                      {content}
+                    </h4>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>Review cadence: {cadence.hours}h {cadence.minutes}m</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = false, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(10);
   const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(true);
   const autoRefreshIntervalRef = useRef(null);
+
+  // Calculate overdue notes
+  const overdueNotes = notes.filter(note => {
+    if (!note.content.includes('meta::watch')) return false;
+    return checkNeedsReview(note.id);
+  });
 
   // Auto refresh effect
   useEffect(() => {
@@ -478,7 +569,8 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
   const totalAlerts = unacknowledgedEvents.length + 
                      criticalTodos.length + 
                      passedDeadlineTodos.length + 
-                     unacknowledgedMeetings.length;
+                     unacknowledgedMeetings.length +
+                     overdueNotes.length;
 
   const handleTitleClick = () => {
     setIsExpanded(!isExpanded);
@@ -522,6 +614,11 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
                   Past Meetings: {unacknowledgedMeetings.length}
                 </span>
               )}
+              {overdueNotes.length > 0 && (
+                <span className="px-2 py-1 bg-amber-100 text-amber-800 rounded-md text-sm font-medium">
+                  Review Overdue: {overdueNotes.length}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -559,11 +656,6 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
       {isExpanded && (
         <div className="divide-y divide-gray-100 p-4 space-y-4">
           {children}
-          <UnacknowledgedMeetingsAlert 
-            notes={notes} 
-            expanded={isExpanded}
-            onDismiss={handleDismissUnacknowledgedMeeting}
-          />
         </div>
       )}
     </div>
@@ -571,6 +663,23 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
 };
 
 const AlertsProvider = ({ children, notes, expanded = false, events, setNotes }) => {
+  const handleDismissUnacknowledgedMeeting = async (noteId) => {
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    
+    // Add the acknowledged tag with timestamp
+    const ackLine = `meta::meeting_acknowledge::${new Date().toISOString()}`;
+    const updatedContent = `${note.content}\n${ackLine}`;
+    
+    try {
+      await updateNoteById(noteId, updatedContent);
+      // Update the notes state to reflect the change
+      setNotes(notes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
+    } catch (error) {
+      console.error('Error acknowledging meeting:', error);
+    }
+  };
+
   return (
     <>
       <ToastContainer
@@ -597,6 +706,12 @@ const AlertsProvider = ({ children, notes, expanded = false, events, setNotes })
         />
         <CriticalTodosAlert notes={notes} expanded={expanded} />
         <DeadlinePassedAlert notes={notes} expanded={expanded} />
+        <ReviewOverdueAlert notes={notes} expanded={expanded} />
+        <UnacknowledgedMeetingsAlert 
+          notes={notes} 
+          expanded={expanded}
+          onDismiss={handleDismissUnacknowledgedMeeting}
+        />
       </AlertsContainer>
       {children}
     </>

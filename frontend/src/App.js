@@ -419,6 +419,7 @@ const AppContent = () => {
                       <PeopleList 
                         notes={allNotes}
                         searchQuery={searchQuery}
+                        allNotes={allNotes}
                       />
                     </div>
                   } />

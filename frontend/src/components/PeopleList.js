@@ -5,13 +5,16 @@ import { parseNoteContent } from '../utils/TextUtils';
 import WorkstreamPeopleView from './WorkstreamPeopleView';
 import TeamPeopleView from './TeamPeopleView';
 
-const PeopleList = ({ notes, searchQuery }) => {
+const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp }) => {
   const [viewMode, setViewMode] = useState('grid');
   const [selectedWorkstreams, setSelectedWorkstreams] = useState([]);
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [rawNoteModal, setRawNoteModal] = useState({ open: false, content: '' });
+
+  // Use allNotes if provided, otherwise fallback to notes
+  const allNotes = allNotesProp || notes;
 
   // Get all workstreams from notes
   const workstreams = useMemo(() => {
@@ -222,9 +225,9 @@ const PeopleList = ({ notes, searchQuery }) => {
       )}
 
       {viewMode === 'workstream' ? (
-        <WorkstreamPeopleView notes={filteredNotes} searchQuery={searchQuery} />
+        <WorkstreamPeopleView notes={filteredNotes} searchQuery={searchQuery} allNotes={allNotes} />
       ) : viewMode === 'team' ? (
-        <TeamPeopleView notes={filteredNotes} searchQuery={searchQuery} />
+        <TeamPeopleView notes={filteredNotes} searchQuery={searchQuery} allNotes={allNotes} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredNotes.map(note => {

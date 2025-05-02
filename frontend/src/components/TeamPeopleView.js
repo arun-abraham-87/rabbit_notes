@@ -2,7 +2,8 @@ import React from 'react';
 import { UserIcon, UsersIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 
-const TeamPeopleView = ({ notes, searchQuery }) => {
+const TeamPeopleView = ({ notes, searchQuery, allNotes: allNotesProp }) => {
+  const allNotes = allNotesProp || notes;
   // Get team information for a note
   const getTeams = (content) => {
     const lines = content.split('\n');
@@ -10,7 +11,7 @@ const TeamPeopleView = ({ notes, searchQuery }) => {
       .filter(line => line.startsWith('meta::link::'))
       .map(line => {
         const linkedNoteId = line.split('::')[2];
-        const teamNote = notes.find(note => note.id === linkedNoteId && note.content.includes('meta::team'));
+        const teamNote = allNotes.find(note => note.id === linkedNoteId && note.content.includes('meta::team'));
         if (teamNote) {
           const firstLine = teamNote.content.split('\n')[0];
           return {

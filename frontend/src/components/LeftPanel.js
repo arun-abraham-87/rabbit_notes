@@ -1015,7 +1015,6 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                               <div className="mt-2 flex items-center gap-2">
                                 {!isPast ? (
                                   <span className="text-sm font-medium text-indigo-600">
-                                    in {timeUntil.join(' ')}
                                   </span>
                                 ) : !isAcknowledged ? (
                                   <button

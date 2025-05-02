@@ -46,64 +46,42 @@ export const parseAustralianDate = (dateStr) => {
  * @param {string} [stringval] - Optional string value (unused parameter)
  * @returns {string} Formatted date string in "DD-MM-YYYY" format
  */
-export const getFormattedDateString = (date,stringval) => {
+export const getFormattedDateString = (date, stringval) => {
   if (!date) return '';
-  
+
   try {
-      // Format the date parts
-      const formattedDay = String(date.getDate()).padStart(2, '0');
-      const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
-      const formattedYear = date.getFullYear();
-      const formattedDate = `${formattedDay}-${formattedMonth}-${formattedYear}`;
-      return `${formattedDay}-${formattedMonth}-${formattedYear}`;
+    return moment(date).format('DD-MM-YYYY');
   } catch (error) {
-      console.error('Error formatting date:', error);
-      return '';
+    console.error('Error formatting date with moment:', error);
+    return '';
   }
 };
 
 /**
  * Formats a date string with relative time
- * Supports two formats:
- * 1. "DD/MM/YYYY, h:mm:ss a" (e.g., "25/12/2023, 2:30:45 PM")
- * 2. "YYYY-MM-DDThh:mm:ss" (e.g., "2023-12-25T14:30:45")
- * @param {string} dateString - Date string in either format
+ * Supports:
+ * 1. "DD/MM/YYYY, h:mm:ss a"
+ * 2. "YYYY-MM-DDThh:mm:ss"
+ * 3. "DD/MM/YYYY"
+ * @param {string} dateString - Date string in common formats
  * @returns {string} Formatted date string with relative time (e.g., "25-12-2023 (2 days ago)")
  */
 export const getFormattedDateWithAge = (dateString) => {
-    if (!dateString) return '';
-    
-    try {
-        let date;
-        // Check for ISO format (YYYY-MM-DDThh:mm:ss)
-        if (dateString.includes('T')) {
-            date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-                throw new Error('Invalid ISO date format');
-            }
-        } else {
-            // Parse the date string in format "DD/MM/YYYY, h:mm:ss a"
-            const [datePart, timePart] = dateString.split(", ");
-            const [day, month, year] = datePart.split("/").map(Number);
-            date = new Date(year, month - 1, day);
-        }
-        
-        // Format the date parts
-        const formattedDay = String(date.getDate()).padStart(2, '0');
-        const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
-        const formattedYear = date.getFullYear();
-        
-        const now = new Date();
-        const diff = date - now;
-        const inFuture = diff > 0;
-        
-        const age = calculateAgeString(Math.abs(diff), inFuture);
-        
-        return `${formattedDay}-${formattedMonth}-${formattedYear} ${age}`;
-    } catch (error) {
-        console.error('Error formatting date:', error);
-        return '';
-    }
+  if (!dateString) return '';
+
+  try {
+      const m = parseToMoment(dateString);
+      if (!m || !m.isValid()) {
+          throw new Error('Invalid date string');
+      }
+
+      const formattedDate = m.format('DD-MM-YYYY');
+      const age = m.fromNow();
+      return `${formattedDate} (${age})`;
+  } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+  }
 };
 
 /**

@@ -311,19 +311,33 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
         onClick={handleTitleClick}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
+          <div className="flex items-center gap-4">
             <div className="relative">
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
               </div>
               <ExclamationCircleIcon className="h-6 w-6 text-red-500 relative" />
             </div>
-            <h3 className="ml-3 text-lg font-semibold text-red-800">
+            <h3 className="text-lg font-semibold text-red-800">
               Alerts ({totalAlerts})
-              <span className="text-sm text-red-600 ml-2">
-                [Events: {unacknowledgedEvents.length} | Critical: {criticalTodos.length} | Deadline: {passedDeadlineTodos.length}]
-              </span>
             </h3>
+            <div className="flex gap-2">
+              {unacknowledgedEvents.length > 0 && (
+                <span className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium">
+                  Events: {unacknowledgedEvents.length}
+                </span>
+              )}
+              {criticalTodos.length > 0 && (
+                <span className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium">
+                  Critical: {criticalTodos.length}
+                </span>
+              )}
+              {passedDeadlineTodos.length > 0 && (
+                <span className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium">
+                  Deadline: {passedDeadlineTodos.length}
+                </span>
+              )}
+            </div>
           </div>
           <button
             onClick={(e) => {

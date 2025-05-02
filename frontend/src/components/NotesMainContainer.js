@@ -9,7 +9,6 @@ import NoteEditor from './NoteEditor.js';
 import OngoingMeetingBanner from './OngoingMeetingBanner.js';
 import NextMeetingBanner from './NextMeetingBanner.js';
 import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner.js';
-import EventAlerts from './EventAlerts.js';
 import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
 import WatchList from './WatchList';
 import { AlertsProvider } from './Alerts';
@@ -600,13 +599,14 @@ const NotesMainContainer = ({
     };
 
     return (
-        <AlertsProvider notes={allNotes} expanded={alertsExpanded}>
+        <AlertsProvider 
+            notes={allNotes} 
+            expanded={alertsExpanded}
+            events={eventsState}
+            onAcknowledgeEvent={handleAcknowledgeEvent}
+        >
             <div className="flex flex-col h-full">
                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
-                    <EventAlerts 
-                        events={eventsState}
-                        onAcknowledgeEvent={handleAcknowledgeEvent}
-                    />
                     <UnacknowledgedMeetingsBanner 
                         meetings={unacknowledgedMeetings} 
                         onDismiss={handleDismissUnacknowledgedMeeting} 

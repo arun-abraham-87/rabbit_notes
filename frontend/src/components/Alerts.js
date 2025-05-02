@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, InformationCircleIcon } from '@heroicons/react/24/solid';
+import EventAlerts from './EventAlerts';
 
 const Alerts = {
   success: (message) => {
@@ -202,7 +203,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true }) => {
   );
 };
 
-const AlertsProvider = ({ children, notes, expanded = true }) => {
+const AlertsProvider = ({ children, notes, expanded = true, events, onAcknowledgeEvent }) => {
   return (
     <>
       <ToastContainer
@@ -216,6 +217,10 @@ const AlertsProvider = ({ children, notes, expanded = true }) => {
         draggable
         pauseOnHover
         theme="light"
+      />
+      <EventAlerts 
+        events={events}
+        onAcknowledgeEvent={onAcknowledgeEvent}
       />
       <CriticalTodosAlert notes={notes} expanded={expanded} />
       <DeadlinePassedAlert notes={notes} expanded={expanded} />

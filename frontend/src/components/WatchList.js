@@ -8,15 +8,24 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
   );
 
   const overdueNotes = watchlistNotes.filter(note => {
-    // Check if note needs review (not reviewed in last 24 hours)
+    // Check if note needs review based on its cadence
     const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
     const reviewTime = reviews[note.id];
     if (!reviewTime) return true;
     
     const reviewDate = new Date(reviewTime);
     const now = new Date();
-    const diffInSeconds = (now - reviewDate) / 1000;
-    return diffInSeconds > 86400; // More than 24 hours ago
+    
+    // Get the note's cadence from localStorage
+    const cadences = JSON.parse(localStorage.getItem('noteReviewCadence') || '{}');
+    const cadence = cadences[note.id] || { hours: 24, minutes: 0 };
+    
+    // Calculate when the next review is due
+    const nextReviewDate = new Date(reviewDate.getTime() + 
+      (cadence.hours * 60 * 60 * 1000) + 
+      (cadence.minutes * 60 * 1000));
+    
+    return now >= nextReviewDate;
   });
 
   const activeNotes = watchlistNotes.filter(note => !overdueNotes.includes(note));

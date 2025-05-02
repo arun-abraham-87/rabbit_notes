@@ -126,21 +126,32 @@ const CompressedNotesList = ({
       const newState = {};
       const newTimeElapsed = {};
       const newNextReviewTime = {};
+      let needsRefresh = false;
       
       notes.forEach(note => {
         newState[note.id] = checkNeedsReview(note.id);
         const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
         newTimeElapsed[note.id] = formatTimeElapsed(reviews[note.id]);
         newNextReviewTime[note.id] = formatTimeRemaining(reviews[note.id], note.id);
+        
+        // Check if this note just became overdue
+        if (newState[note.id] && !needsReviewState[note.id]) {
+          needsRefresh = true;
+        }
       });
       
       setNeedsReviewState(newState);
       setTimeElapsed(newTimeElapsed);
       setNextReviewTime(newNextReviewTime);
+      
+      // If any note just became overdue, refresh the page
+      if (needsRefresh && typeof refreshNotes === 'function') {
+        refreshNotes();
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [notes]);
+  }, [notes, needsReviewState, refreshNotes]);
 
   const handleUnfollow = (noteId, content) => {
     const updatedContent = content
@@ -247,58 +258,63 @@ const CompressedNotesList = ({
           />
           {isWatchList && (
             <div className="absolute top-1/2 -translate-y-1/2 right-2 flex items-center gap-2">
-              <div className="text-xs text-gray-500 mr-2">
+              <div className="text-xs text-gray-500 mr-2 flex flex-col items-end">
                 {needsReviewState[note.id] 
                   ? 'Last review: ' + formatTimestamp(getLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
                   : nextReviewTime[note.id]}
-              </div>
-              {showCadenceSelector === note.id ? (
-                <div className="flex items-center gap-2 bg-white p-2 rounded shadow">
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="0"
-                      max="999"
-                      value={cadenceHours}
-                      onChange={(e) => setCadenceHours(parseInt(e.target.value) || 0)}
-                      className="w-12 px-1 py-0.5 border rounded text-sm"
-                      placeholder="Hours"
-                    />
-                    <span className="text-sm">h</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="0"
-                      max="59"
-                      value={cadenceMinutes}
-                      onChange={(e) => setCadenceMinutes(parseInt(e.target.value) || 0)}
-                      className="w-12 px-1 py-0.5 border rounded text-sm"
-                      placeholder="Minutes"
-                    />
-                    <span className="text-sm">m</span>
-                  </div>
-                  <button
-                    onClick={() => handleCadenceChange(note.id)}
-                    className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
-                  >
-                    Set
-                  </button>
+                <div className="text-xs text-gray-400">
+                  {showCadenceSelector === note.id ? (
+                    <div className="flex items-center gap-2 bg-white p-2 rounded shadow">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="0"
+                          max="999"
+                          value={cadenceHours}
+                          onChange={(e) => setCadenceHours(parseInt(e.target.value) || 0)}
+                          className="w-12 px-1 py-0.5 border rounded text-sm"
+                          placeholder="Hours"
+                        />
+                        <span className="text-sm">h</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="0"
+                          max="59"
+                          value={cadenceMinutes}
+                          onChange={(e) => setCadenceMinutes(parseInt(e.target.value) || 0)}
+                          className="w-12 px-1 py-0.5 border rounded text-sm"
+                          placeholder="Minutes"
+                        />
+                        <span className="text-sm">m</span>
+                      </div>
+                      <button
+                        onClick={() => handleCadenceChange(note.id)}
+                        className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
+                      >
+                        Set
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <span>Review every: {getNoteCadence(note.id).hours}h {getNoteCadence(note.id).minutes}m</span>
+                      <button
+                        onClick={() => {
+                          const cadence = getNoteCadence(note.id);
+                          setCadenceHours(cadence.hours);
+                          setCadenceMinutes(cadence.minutes);
+                          setShowCadenceSelector(note.id);
+                        }}
+                        className="p-0.5 text-gray-400 hover:text-gray-600"
+                        title="Set review cadence"
+                      >
+                        <ClockIcon className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    const cadence = getNoteCadence(note.id);
-                    setCadenceHours(cadence.hours);
-                    setCadenceMinutes(cadence.minutes);
-                    setShowCadenceSelector(note.id);
-                  }}
-                  className="p-1 text-gray-500 hover:text-gray-700"
-                  title="Set review cadence"
-                >
-                  <ClockIcon className="h-4 w-4" />
-                </button>
-              )}
+              </div>
               <button
                 onClick={() => handleReview(note.id)}
                 className={`px-2 py-1 rounded-md flex items-center gap-1 ${

@@ -418,9 +418,9 @@ const NoteFilters = ({
       </button>
 
       <button
-        onClick={() => handleFilterClick('#people')}
+        onClick={() => handleFilterClick('meta::people')}
         className={`px-3 py-1 text-xs rounded transition-all transform ${
-          searchQuery?.includes('#people')
+          searchQuery?.includes('meta::people')
             ? 'opacity-100 scale-105 bg-pink-300 border border-pink-700'
             : 'opacity-30 hover:opacity-60 border'
         }`}

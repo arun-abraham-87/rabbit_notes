@@ -9,12 +9,22 @@ import React, { useEffect, useRef } from 'react';
  * Props:
  * - visible: boolean       — whether the popup should be shown
  * - position: { x, y }     — viewport coordinates for placing the popup
+ * - selectedText: string   — the currently selected text
  * - onConvert: () => void  — callback when "Convert to Tag" is clicked
  * - onSearch: () => void   — callback when "Search" is clicked
  * - onCancel: () => void   — callback when "Cancel" is clicked
  */
-export default function TagSelectionPopup({ visible, position, onConvert, onSearch, onCancel }) {
+export default function TagSelectionPopup({ visible, position, selectedText, onConvert, onSearch, onCancel }) {
   const popupRef = useRef(null);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(selectedText);
+      onCancel(); // Close the popup after copying
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -84,6 +94,12 @@ export default function TagSelectionPopup({ visible, position, onConvert, onSear
         className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
       >
         Search
+      </button>
+      <button
+        onClick={handleCopy}
+        className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
+      >
+        Copy
       </button>
       <button
         onClick={onCancel}

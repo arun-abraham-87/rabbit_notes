@@ -1,16 +1,32 @@
 import moment from 'moment';
 
+/**
+ * Calculates the relative time from a given date string to now
+ * @param {string} dateString - Date string in format "DD/MM/YYYY, h:mm:ss a" (e.g., "25/12/2023, 2:30:45 PM")
+ * @returns {string} Relative time string (e.g., "2 hours ago", "in 3 days")
+ */
 export const getAge = (dateString) => {
     const noteDate = moment(dateString, "DD/MM/YYYY, h:mm:ss a");
     return  `${noteDate.fromNow()}`
 }
 
+/**
+ * Gets the day of the week from a date string
+ * @param {string} datePart - Date string in format "DD/MM/YYYY" (e.g., "25/12/2023")
+ * @returns {string} Full name of the day (e.g., "Monday", "Tuesday")
+ */
 export const getDayOfWeek = (datePart) => {
     const date = moment(datePart, "DD/MM/YYYY");
     const dayOfWeek = date.format('dddd');  // Get the full name of the day (e.g., Monday)
     return dayOfWeek;
 };
 
+/**
+ * Parses an Australian date string into a JavaScript Date object
+ * @param {string} dateStr - Date string in format "DD/MM/YYYY, h:mm:ss a" (e.g., "25/12/2023, 2:30:45 PM")
+ * @returns {Date} JavaScript Date object
+ * @throws {Error} If date string is invalid or in wrong format
+ */
 export const parseAustralianDate = (dateStr) => {
   try {
     if (!dateStr) {
@@ -55,7 +71,12 @@ export const parseAustralianDate = (dateStr) => {
   }
 }
 
-// Function to format the date with relative time
+/**
+ * Formats a date with relative time
+ * @param {Date} date - JavaScript Date object
+ * @param {string} [stringval] - Optional string value (unused parameter)
+ * @returns {string} Formatted date string in "DD-MM-YYYY" format
+ */
 export const getFormattedDate = (date,stringval) => {
   if (!date) return '';
   
@@ -72,7 +93,11 @@ export const getFormattedDate = (date,stringval) => {
   }
 };
 
-// Function to format the date with relative time
+/**
+ * Formats a date string with relative time
+ * @param {string} dateString - Date string in format "DD/MM/YYYY, h:mm:ss a" (e.g., "25/12/2023, 2:30:45 PM")
+ * @returns {string} Formatted date string with relative time (e.g., "25-12-2023 (2 days ago)")
+ */
 export const formatDate = (dateString) => {
     if (!dateString) return '';
     
@@ -100,8 +125,10 @@ export const formatDate = (dateString) => {
     }
 };
 
-
-// Get today's date in the Australian timezone and format as YYYY-MM-DD
+/**
+ * Gets today's date in the Australian timezone
+ * @returns {string} Date string in format "YYYY-MM-DD" (e.g., "2023-12-25")
+ */
 export const getAustralianDate = () => {
     const ausDate = new Date().toLocaleDateString("en-AU", {
         timeZone: "Australia/Sydney",
@@ -110,7 +137,12 @@ export const getAustralianDate = () => {
     return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 };
 
-
+/**
+ * Gets the next or previous date from a given date
+ * @param {string} dateString - Date string in format "YYYY-MM-DD" (e.g., "2023-12-25")
+ * @param {boolean} next - If true, get next day; if false, get previous day
+ * @returns {string} Date string in format "YYYY-MM-DD" (e.g., "2023-12-26")
+ */
 export const getNextOrPrevDate = (dateString, next) => {
     const [year, month, day] = dateString.split("-");
     const date = new Date(year, month - 1, day); // Month is 0-based
@@ -124,6 +156,12 @@ export const getNextOrPrevDate = (dateString, next) => {
     return `${nextYear}-${nextMonth.padStart(2, "0")}-${nextDay.padStart(2, "0")}`;
 };
 
+/**
+ * Calculates the age in years, months, and days between two dates
+ * @param {Date} dateToAge - The date to calculate age from
+ * @param {boolean} since - If true, calculate from dateToAge to now; if false, calculate from now to dateToAge
+ * @returns {string} Formatted age string (e.g., "2 yrs 3 months 5 days")
+ */
 export const getDateAgeInYearsMonthsDays = (dateToAge, since) => {
   const now = new Date();
   let diff = 0
@@ -154,7 +192,7 @@ const DATE_REGEX = /\b(\d{2})\/(\d{2})\/(\d{4})\b|\b(\d{2}) (Jan|Feb|Mar|Apr|May
  * Calculates the age string (years, months, days) from a date difference
  * @param {number} diff - Time difference in milliseconds
  * @param {boolean} inFuture - Whether the date is in the future
- * @returns {string} Formatted age string
+ * @returns {string} Formatted age string (e.g., "2 yrs 3 months 5 days ago")
  */
 const calculateAgeString = (diff, inFuture) => {
   const diffDate = new Date(Math.abs(diff));
@@ -176,7 +214,7 @@ const calculateAgeString = (diff, inFuture) => {
  * @param {string} m - Month (number or string)
  * @param {string} y - Year
  * @param {boolean} isMonthStr - Whether the month is a string
- * @returns {string} Formatted date with age
+ * @returns {string} Formatted date with age (e.g., "25 Dec 2023 (2 days ago)")
  */
 const formatDateWithAge = (d, m, y, isMonthStr = false) => {
   const date = isMonthStr 
@@ -201,7 +239,7 @@ const formatDateWithAge = (d, m, y, isMonthStr = false) => {
  * 1. DD/MM/YYYY (e.g., 25/12/2023)
  * 2. DD MMM YYYY (e.g., 25 Dec 2023)
  * @param {Date|string} input - Date object or text containing dates
- * @returns {string} Formatted date with age
+ * @returns {string} Formatted date with age (e.g., "25 Dec 2023 (2 days ago)")
  */
 export const formatAndAgeDate = (input) => {
   if (input instanceof Date) {
@@ -224,7 +262,21 @@ export const formatAndAgeDate = (input) => {
 /**
  * Extracts all meta tags from note content
  * @param {string} content - The note content to extract tags from
- * @returns {Object} Object containing arrays of different types of meta tags
+ * @returns {Object} Object containing arrays of different types of meta tags:
+ * {
+ *   priority: string[],    // meta::high, meta::medium, meta::low
+ *   todo: string[],        // meta::todo
+ *   links: string[],       // meta::link::ID
+ *   dates: string[],       // meta::end_date::DATE
+ *   events: string[],      // meta::event::DATE
+ *   meetings: string[],    // meta::meeting::DATE
+ *   pins: string[],        // meta::pin::INDICES
+ *   abbreviations: boolean[], // meta::abbreviation
+ *   bookmarks: boolean[],    // meta::bookmark
+ *   recurring: string[],    // meta::recurring::TYPE
+ *   recurringEnd: string[], // meta::recurring_end::DATE
+ *   other: string[]        // Any other meta:: tags
+ * }
  */
 export const extractMetaTags = (content) => {
   const lines = content.split('\n');

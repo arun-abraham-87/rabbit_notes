@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { UserIcon, ViewColumnsIcon, Squares2X2Icon, FunnelIcon, XMarkIcon, UsersIcon } from '@heroicons/react/24/solid';
+import { CodeBracketIcon } from '@heroicons/react/24/outline';
 import { parseNoteContent } from '../utils/TextUtils';
 import WorkstreamPeopleView from './WorkstreamPeopleView';
 import TeamPeopleView from './TeamPeopleView';
@@ -10,6 +11,7 @@ const PeopleList = ({ notes, searchQuery }) => {
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [rawNoteModal, setRawNoteModal] = useState({ open: false, content: '' });
 
   // Get all workstreams from notes
   const workstreams = useMemo(() => {
@@ -264,10 +266,37 @@ const PeopleList = ({ notes, searchQuery }) => {
                       </a>
                     )}
                   </div>
+                  <button
+                    className="ml-2 p-1 rounded hover:bg-gray-100"
+                    title="Show raw note"
+                    onClick={() => setRawNoteModal({ open: true, content: note.content })}
+                  >
+                    <CodeBracketIcon className="h-5 w-5 text-gray-400 hover:text-blue-600" />
+                  </button>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Raw Note Modal */}
+      {rawNoteModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+              onClick={() => setRawNoteModal({ open: false, content: '' })}
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <CodeBracketIcon className="h-5 w-5 text-blue-600" /> Raw Note
+            </h2>
+            <pre className="bg-gray-100 rounded p-4 text-xs overflow-x-auto whitespace-pre-wrap max-h-96">
+              {rawNoteModal.content}
+            </pre>
+          </div>
         </div>
       )}
     </div>

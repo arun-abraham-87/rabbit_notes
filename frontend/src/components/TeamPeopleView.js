@@ -11,7 +11,14 @@ const TeamPeopleView = ({ notes, searchQuery }) => {
       .map(line => {
         const linkedNoteId = line.split('::')[2];
         const teamNote = notes.find(note => note.id === linkedNoteId && note.content.includes('meta::team'));
-        return teamNote;
+        if (teamNote) {
+          const firstLine = teamNote.content.split('\n')[0];
+          return {
+            id: teamNote.id,
+            name: firstLine
+          };
+        }
+        return null;
       })
       .filter(Boolean); // Remove undefined entries
   };
@@ -46,7 +53,7 @@ const TeamPeopleView = ({ notes, searchQuery }) => {
         const teamId = team.id;
         if (!acc[teamId]) {
           acc[teamId] = {
-            name: team.content.split('\n')[0], // First line as team name
+            name: team.name,
             people: []
           };
         }

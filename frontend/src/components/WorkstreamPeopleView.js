@@ -11,7 +11,14 @@ const WorkstreamPeopleView = ({ notes, searchQuery }) => {
       .map(line => {
         const linkedNoteId = line.split('::')[2];
         const workstreamNote = notes.find(note => note.id === linkedNoteId && note.content.includes('meta::workstream'));
-        return workstreamNote;
+        if (workstreamNote) {
+          const firstLine = workstreamNote.content.split('\n')[0];
+          return {
+            id: workstreamNote.id,
+            name: firstLine
+          };
+        }
+        return null;
       })
       .filter(Boolean); // Remove undefined entries
   };
@@ -46,7 +53,7 @@ const WorkstreamPeopleView = ({ notes, searchQuery }) => {
         const workstreamId = workstream.id;
         if (!acc[workstreamId]) {
           acc[workstreamId] = {
-            name: workstream.content.split('\n')[0], // First line as workstream name
+            name: workstream.name,
             people: []
           };
         }

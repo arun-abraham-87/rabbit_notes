@@ -233,7 +233,8 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
 
   const unacknowledgedMeetings = notes.filter(note => 
     note.content.includes('meta::meeting::') && 
-    !note.content.includes('meta::acknowledged::')
+    !note.content.includes('meta::acknowledged::') &&
+    !note.content.includes('meta::meeting_acknowledge::')
   );
 
   if (unacknowledgedMeetings.length === 0) return null;
@@ -453,7 +454,8 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
   const unacknowledgedEvents = getUnacknowledgedOccurrences();
   const unacknowledgedMeetings = notes.filter(note => 
     note.content.includes('meta::meeting::') && 
-    !note.content.includes('meta::acknowledged::')
+    !note.content.includes('meta::acknowledged::') &&
+    !note.content.includes('meta::meeting_acknowledge::')
   );
 
   const handleDismissUnacknowledgedMeeting = async (noteId) => {

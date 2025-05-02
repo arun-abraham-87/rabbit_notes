@@ -111,14 +111,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
         // Add mode
         const newPersonNote = await onAdd(content);
         
-        // Then, update each selected team note to include a link back to the person
-        await Promise.all(selectedTeams.map(async teamId => {
-          const teamNote = allNotes.find(note => note.id === teamId);
-          if (teamNote) {
-            const updatedContent = `${teamNote.content}\nmeta::link::${newPersonNote.id}`;
-            await updateNoteById(teamId, updatedContent);
-          }
-        }));
+      
       }
       // Reset form
       setName('');

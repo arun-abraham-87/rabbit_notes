@@ -35,11 +35,6 @@ export const getFormattedDate = (date,stringval) => {
       const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
       const formattedYear = date.getFullYear();
       const formattedDate = `${formattedDay}-${formattedMonth}-${formattedYear}`;
-      console.log("=============================");
-      console.log(date);
-      console.log(stringval);
-      console.log(formattedDate);
-      console.log("=============================");
       return `${formattedDay}-${formattedMonth}-${formattedYear}`;
   } catch (error) {
       console.error('Error formatting date:', error);

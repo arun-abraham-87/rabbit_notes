@@ -216,6 +216,46 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true }) => {
   );
 };
 
+const AlertsContainer = ({ children, expanded: initialExpanded = true }) => {
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
+
+  return (
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-6 mx-4">
+      <div className="bg-red-50 px-6 py-4 border-b border-red-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+              </div>
+              <ExclamationCircleIcon className="h-6 w-6 text-red-500 relative" />
+            </div>
+            <h3 className="ml-3 text-lg font-semibold text-red-800">
+              Alerts
+            </h3>
+          </div>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-red-600 hover:text-red-700 focus:outline-none"
+            aria-label={isExpanded ? "Collapse alerts" : "Expand alerts"}
+          >
+            {isExpanded ? (
+              <ChevronUpIcon className="h-5 w-5" />
+            ) : (
+              <ChevronDownIcon className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+      </div>
+      {isExpanded && (
+        <div className="divide-y divide-gray-100 p-4">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AlertsProvider = ({ children, notes, expanded = true, events, onAcknowledgeEvent }) => {
   return (
     <>
@@ -231,12 +271,14 @@ const AlertsProvider = ({ children, notes, expanded = true, events, onAcknowledg
         pauseOnHover
         theme="light"
       />
-      <EventAlerts 
-        events={events}
-        onAcknowledgeEvent={onAcknowledgeEvent}
-      />
-      <CriticalTodosAlert notes={notes} expanded={expanded} />
-      <DeadlinePassedAlert notes={notes} expanded={expanded} />
+      <AlertsContainer expanded={expanded}>
+        <EventAlerts 
+          events={events}
+          onAcknowledgeEvent={onAcknowledgeEvent}
+        />
+        <CriticalTodosAlert notes={notes} expanded={expanded} />
+        <DeadlinePassedAlert notes={notes} expanded={expanded} />
+      </AlertsContainer>
       {children}
     </>
   );

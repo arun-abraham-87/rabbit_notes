@@ -16,7 +16,7 @@ import EditMeetingModal from './EditMeetingModal';
 import EditEventModal from './EditEventModal';
 import { updateNoteById, getSettings, updateSettings, addNewNote, loadAllNotes, loadNotes } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
-import { formatAndAgeDate, getAge } from '../utils/DateUtils';
+import { formatAndAgeDate, getAge, getFormattedDate } from '../utils/DateUtils';
 import moment from 'moment';
 
 // Common timezones with their offsets and locations
@@ -90,22 +90,22 @@ const formatDateString = (date) => {
   if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return date;
   }
-  
+
   // Convert to Date object if it's a string
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  
+
   // Ensure we have a valid Date object
   if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
     console.error('Invalid date:', date);
     return '';
   }
-  
+
   return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
 };
 
 const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [], content = '') => {
-//console.log('finding occurence');
-//console.log(recurrenceType);
+  //console.log('finding occurence');
+  //console.log(recurrenceType);
   // Ensure meetingTime is a Date object
   const meetingDateObj = meetingTime instanceof Date ? meetingTime : new Date(meetingTime);
   const now = new Date();
@@ -185,8 +185,8 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
           nextDay = dayIndex;
         }
       });
-//console.log(recurrenceType);
-//console.log('Next day:', nextDay);
+      //console.log(recurrenceType);
+      //console.log('Next day:', nextDay);
       if (nextDay === null) return null;
 
       nextDate.setDate(now.getDate() + minDiff);
@@ -340,7 +340,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   }, [notes]);
 
   const watchList = useMemo(() => {
-    return notes.filter(note => 
+    return notes.filter(note =>
       note.content.split('\n').some(line => line.trim().startsWith('meta::watch'))
     );
   }, [notes]);
@@ -368,15 +368,15 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   }, [notes]);
 
   const meetings = useMemo(() => {
-//console.log('Calculating meetings...');
+    //console.log('Calculating meetings...');
     const result = notes.flatMap(note => {
       if (note.content.split('\n').some(line => line.trim().startsWith('meta::meeting'))) {
-//console.log('Processing meeting note:', note.id);
+        //console.log('Processing meeting note:', note.id);
         const lines = note.content.split('\n');
         const description = lines[0].trim();
         const time = lines[1].trim();
 
-//console.log(description);
+        //console.log(description);
 
         const durationMatch = note.content.match(/meta::meeting_duration::(\d+)/);
         const duration = durationMatch ? durationMatch[1] : null;
@@ -402,20 +402,20 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         }
 
 
-//console.log('Recurrence type:', recurrenceType);
+        //console.log('Recurrence type:', recurrenceType);
 
         const meetingTime = new Date(time).getTime();
         const now = Date.now();
         let nextTime = time;
 
         if (meetingTime < now && recurrenceType) {
-//console.log('Calculating next occurrence for past meeting');
+          //console.log('Calculating next occurrence for past meeting');
           const nextOccurrence = calculateNextOccurrence(time, recurrenceType, selectedDays, note.content);
           if (nextOccurrence) {
             nextTime = nextOccurrence.toISOString();
-//console.log('Next occurrence:', nextTime);
+            //console.log('Next occurrence:', nextTime);
           } else {
-//console.log('No next occurrence found');
+            //console.log('No next occurrence found');
             return [];
           }
         }
@@ -433,7 +433,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       return [];
     });
 
-//console.log('Sorted meetings:', result.map(m => ({ time: m.time, description: m.description })));
+    //console.log('Sorted meetings:', result.map(m => ({ time: m.time, description: m.description })));
     return result.sort((a, b) => new Date(a.time) - new Date(b.time));
   }, [notes]);
 
@@ -635,7 +635,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
       {/* Hover Popup */}
       {hoveredNote && (
-        <div 
+        <div
           ref={popupRef}
           className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-3 w-[300px]"
           style={{
@@ -653,7 +653,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
       <div className="w-full h-full bg-slate-50 p-3 flex flex-col overflow-hidden">
         <div className="flex-1 space-y-2 overflow-y-auto overflow-x-hidden">
- 
+
 
           {/* custom right‑click menu */}
           {showLinkMenu && (
@@ -674,7 +674,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           )}
 
           {/* Quick Links Section */}
-          <div 
+          <div
             className="bg-white p-3 rounded-lg shadow-sm mb-3 max-w-full"
             onMouseEnter={() => setActiveSection('quickLinks')}
             onMouseLeave={() => !lockedSections.quickLinks && setActiveSection(null)}
@@ -745,7 +745,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           </div>
 
           {/* Bookmarks Section */}
-          <div 
+          <div
             className="bg-white p-3 rounded-lg shadow-sm mb-3"
             onMouseEnter={() => setActiveSection('bookmarks')}
             onMouseLeave={() => !lockedSections.bookmarks && setActiveSection(null)}
@@ -809,7 +809,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
           {/* Watch List Section */}
           {watchList.length > 0 && (
-            <div 
+            <div
               className="bg-indigo-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
               onMouseEnter={() => setActiveSection('watchList')}
               onMouseLeave={() => !lockedSections.watchList && setActiveSection(null)}
@@ -853,7 +853,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <div 
+                          <div
                             className={`text-base font-medium text-gray-800 break-words ${lockedSections.watchList ? 'hover:text-indigo-600 transition-colors' : ''}`}
                             onMouseEnter={(e) => handleViewHover(e, note, 'watchList')}
                             onMouseLeave={handleViewLeave}
@@ -878,8 +878,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
           {/* Meetings Section */}
           {visibleMeetings.length > 0 && (
-            <div 
-              className="bg-indigo-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
+            <div
+              className="bg-indigo-200 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
               onMouseEnter={() => setActiveSection('meetings')}
               onMouseLeave={() => !lockedSections.meetings && setActiveSection(null)}
             >
@@ -923,7 +923,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                     const isToday = new Date(m.time).toDateString() === new Date(now).toDateString();
                     const isPast = diff < 0;
                     const isAcknowledged = note?.content.includes('meta::meeting_acknowledge');
-                    
+
                     // Calculate time until meeting
                     const days = Math.floor(Math.abs(diff) / 86400000);
                     const hrs = Math.floor((Math.abs(diff) % 86400000) / 3600000);
@@ -932,13 +932,13 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                     if (days) timeUntil.push(`${days}d`);
                     if (hrs) timeUntil.push(`${hrs}h`);
                     if (mins) timeUntil.push(`${mins}m`);
-                    
+
                     return (
                       <div
                         key={m.id}
                         className="group relative mb-2 rounded-lg transition-all duration-200"
                       >
-                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-50'} ${
+                        <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-indigo-100'} ${
                           isFlashing ? 'animate-pulse bg-purple-100' : ''
                         } rounded-lg border ${
                           isPast ? 'border-gray-200' : 'border-indigo-100'
@@ -975,7 +975,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
                                       <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                                     </svg>
-                                    {m.recurrenceType === 'custom' 
+                                    {m.recurrenceType === 'custom'
                                       ? m.selectedDays.map(day => day.charAt(0).toUpperCase() + day.slice(1)).join(', ')
                                       : m.recurrenceType.charAt(0).toUpperCase() + m.recurrenceType.slice(1)}
                                   </span>
@@ -983,7 +983,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                               </div>
 
                               {/* Meeting Title */}
-                              <div 
+                              <div
                                 className="text-base font-medium text-gray-800 break-words hover:text-indigo-600 transition-colors"
                                 onMouseEnter={(e) => handleViewHover(e, note)}
                                 onMouseLeave={handleViewLeave}
@@ -994,23 +994,38 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                               {/* Time and Duration */}
                               <div className="flex items-center gap-4 text-sm text-gray-600">
                                 <div className="flex items-center gap-1.5">
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-indigo-500">
-                                    <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
-                                  </svg>
+
                                   <span className="font-medium text-indigo-600">
-                                    {formatAndAgeDate(new Date(m.time))}
+                                    {getFormattedDate(new Date(m.time))}
                                   </span>
                                 </div>
-                                {m.duration && (
-                                  <div className="flex items-center gap-1.5">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-indigo-500">
-                                      <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
-                                    </svg>
-                                    <span className="font-medium text-indigo-600">{m.duration} mins</span>
-                                  </div>
-                                )}
-                              </div>
+                                <div className="flex items-center gap-1.5">
 
+                                  <span className="font-medium text-indigo-600">
+                                    {getAge(new Date(m.time))}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-gray-600">
+
+
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <div className="flex items-center gap-1.5">
+
+                                  <span className="font-medium text-indigo-600">
+                                    {m.duration && (
+                                      <div className="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-indigo-500">
+                                          <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
+                                        </svg>
+                                        <span className="font-medium text-indigo-600">{m.duration} mins</span>
+                                      </div>
+                                    )}
+                                  </span>
+                                </div>
+
+                              </div>
                               {/* Time Until/Action Buttons */}
                               <div className="mt-2 flex items-center gap-2">
                                 {!isPast ? (
@@ -1067,8 +1082,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
           {/* Events Section */}
           {visibleEvents.length > 0 && (
-            <div 
-              className="bg-purple-50 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
+            <div
+              className="bg-purple-200 pb-3 px-3 rounded-lg shadow-sm mb-3 max-w-full"
               onMouseEnter={() => setActiveSection('events')}
               onMouseLeave={() => !lockedSections.events && setActiveSection(null)}
             >
@@ -1114,7 +1129,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                         <div className={`p-3 ${idx % 2 === 0 ? 'bg-white' : 'bg-purple-100'} rounded-lg`}>
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div 
+                              <div
                                 className="text-base font-medium text-gray-800 break-words hover:text-purple-600 transition-colors"
                                 onMouseEnter={(e) => handleViewHover(e, note)}
                                 onMouseLeave={handleViewLeave}
@@ -1483,7 +1498,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         );
       })()}
 
-         </>
+    </>
   );
 };
 

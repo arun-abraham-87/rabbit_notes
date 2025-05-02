@@ -13,6 +13,23 @@ export const getDayOfWeek = (datePart) => {
 
 
 // Function to format the date with relative time
+export const getFormattedDate = (date) => {
+  if (!date) return '';
+  
+  try {
+      // Format the date parts
+      const formattedDay = String(date.getDate()).padStart(2, '0');
+      const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
+      const formattedYear = date.getFullYear();
+      
+      return `${formattedDay}-${formattedMonth}-${formattedYear}`;
+  } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+  }
+};
+
+// Function to format the date with relative time
 export const formatDate = (dateString) => {
     if (!dateString) return '';
     

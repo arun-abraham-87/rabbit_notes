@@ -34,8 +34,32 @@ const ExpenseTracker = () => {
         );
         console.log('Found expense notes:', expenseNotes.length);
 
+        // Create a map of all notes for quick lookup
+        const notesMap = new Map(response.notes.map(note => [note.id, note]));
+        console.log('Created notes map with size:', notesMap.size);
+
         const parsedExpenses = expenseNotes.flatMap(note => {
           console.log('Processing note:', note.id);
+          
+          // Get linked notes
+          const linkedNotes = note.content
+            .split('\n')
+            .filter(line => line.includes('meta::link::'))
+            .map(line => {
+              const linkId = line.split('::')[2];
+              return notesMap.get(linkId);
+            })
+            .filter(linkedNote => linkedNote);
+          console.log('Found linked notes:', linkedNotes.length);
+
+          // Get expense source type from linked notes
+          const expenseSourceType = linkedNotes
+            .find(linkedNote => linkedNote.content.includes('meta::expense_source_type'))
+            ?.content
+            .split('\n')
+            .find(line => !line.includes('meta::'))
+            ?.trim() || '';
+
           // Split the content by newlines and filter out meta lines
           const lines = note.content.split('\n').filter(line => 
             line.trim() && !line.includes('meta::')
@@ -72,7 +96,8 @@ const ExpenseTracker = () => {
               amount,
               description,
               category,
-              noteId: note.id // Keep reference to source note
+              noteId: note.id, // Keep reference to source note
+              sourceType: expenseSourceType // Add expense source type
             };
           }).filter(expense => expense !== null);
         });
@@ -153,7 +178,7 @@ const ExpenseTracker = () => {
   if (loading) {
     console.log('Rendering loading state');
     return (
-      <div className="p-4 max-w-4xl mx-auto">
+      <div className="p-4 w-full">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
         </div>
@@ -163,7 +188,7 @@ const ExpenseTracker = () => {
 
   console.log('Rendering main component with expenses:', expenses);
   return (
-    <div className="p-4 max-w-4xl mx-auto">
+    <div className="p-4 w-full">
       <h1 className="text-2xl font-bold mb-6">Expense Tracker</h1>
 
       {/* Summary Cards */}
@@ -267,12 +292,13 @@ const ExpenseTracker = () => {
 
       {/* Expenses List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Type</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -290,6 +316,9 @@ const ExpenseTracker = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {expense.category}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {expense.sourceType}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     ${expense.amount.toFixed(2)}

@@ -18,6 +18,7 @@ const ExpenseTracker = () => {
   });
   const [editingId, setEditingId] = useState(null);
   const [totalExpenses, setTotalExpenses] = useState(0);
+  const [excludedFromBudget, setExcludedFromBudget] = useState(0);
   const [typeTotals, setTypeTotals] = useState({});
   const [loading, setLoading] = useState(true);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -28,6 +29,10 @@ const ExpenseTracker = () => {
   const [selectedExpenses, setSelectedExpenses] = useState(new Set());
   const [bulkType, setBulkType] = useState('Unassigned');
   const [expenseLineMap, setExpenseLineMap] = useState(new Map());
+  const [sortConfig, setSortConfig] = useState({
+    key: 'amount',
+    direction: 'desc'
+  });
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   //console.log('Initialized with categories:', categories);
@@ -108,6 +113,9 @@ const ExpenseTracker = () => {
           content: expenseLine
         });
 
+        // Check for exclude_from_budget tag
+        const isExcluded = expenseLine.includes('meta_line::exclude_from_budget');
+
         return {
           id: expenseId,
           date,
@@ -117,7 +125,8 @@ const ExpenseTracker = () => {
           noteId: note.id,
           lineIndex: index,
           sourceType: expenseSourceType,
-          sourceName: expenseSourceName
+          sourceName: expenseSourceName,
+          isExcluded
         };
       }).filter(expense => expense !== null);
     });
@@ -171,6 +180,37 @@ const ExpenseTracker = () => {
     fetchExpenses();
   }, []);
 
+  const sortExpenses = (expenses) => {
+    if (!sortConfig.key) return expenses;
+
+    return [...expenses].sort((a, b) => {
+      if (sortConfig.key === 'amount') {
+        return sortConfig.direction === 'asc' 
+          ? a.amount - b.amount 
+          : b.amount - a.amount;
+      } else if (sortConfig.key === 'date') {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return sortConfig.direction === 'asc'
+          ? dateA - dateB
+          : dateB - dateA;
+      } else if (sortConfig.key === 'description') {
+        return sortConfig.direction === 'asc'
+          ? a.description.localeCompare(b.description)
+          : b.description.localeCompare(a.description);
+      }
+      return 0;
+    });
+  };
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
   // Filter expenses when type, search query, or unassigned filter changes
   useEffect(() => {
     const filtered = expenses.filter(expense => {
@@ -190,25 +230,36 @@ const ExpenseTracker = () => {
       
       return typeMatch && searchMatch && unassignedMatch;
     });
-    setFilteredExpenses(filtered);
-    calculateTotals(filtered);
-  }, [selectedType, searchQuery, showUnassignedOnly, expenses]);
+
+    const sortedAndFiltered = sortExpenses(filtered);
+    setFilteredExpenses(sortedAndFiltered);
+    calculateTotals(sortedAndFiltered);
+  }, [selectedType, searchQuery, showUnassignedOnly, expenses, sortConfig]);
 
   const calculateTotals = (expenseList) => {
-    //console.log('Calculating totals for expenses:', expenseList);
+    // Calculate total expenses and excluded amount
+    let total = 0;
+    let excluded = 0;
     
-    // Calculate total expenses
-    const total = expenseList.reduce((sum, expense) => sum + expense.amount, 0);
-    //console.log('Total expenses:', total);
+    expenseList.forEach(expense => {
+      if (expense.isExcluded) {
+        excluded += expense.amount;
+      } else {
+        total += expense.amount;
+      }
+    });
+    
     setTotalExpenses(total);
+    setExcludedFromBudget(excluded);
 
-    // Calculate type totals
+    // Calculate type totals (excluding excluded expenses)
     const typeTotals = {};
     expenseList.forEach(expense => {
-      const type = expense.type;
-      typeTotals[type] = (typeTotals[type] || 0) + expense.amount;
+      if (!expense.isExcluded) {
+        const type = expense.type;
+        typeTotals[type] = (typeTotals[type] || 0) + expense.amount;
+      }
     });
-    //console.log('Type totals:', typeTotals);
     setTypeTotals(typeTotals);
   };
 
@@ -513,6 +564,72 @@ const ExpenseTracker = () => {
     });
   };
 
+  const handleExcludeFromBudget = async (expenseId, exclude) => {
+    console.log('handleExcludeFromBudget called with:', { expenseId, exclude });
+    
+    // Get the line info from the expense line map
+    const lineInfo = expenseLineMap.get(expenseId);
+    if (!lineInfo) {
+      console.error('Line info not found for expense:', expenseId);
+      return;
+    }
+
+    const { noteId, lineIndex } = lineInfo;
+    console.log('Found line info:', { noteId, lineIndex });
+
+    // Find the original note
+    const originalNote = allNotes.find(note => note.id === noteId);
+    if (!originalNote) {
+      console.error('Original note not found:', noteId);
+      return;
+    }
+
+    // Split the note content into lines
+    const lines = originalNote.content.split('\n');
+    const expenseLine = lines[lineIndex];
+    
+    if (expenseLine) {
+      // Get the base content (without any meta_line tags)
+      const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
+      
+      // Extract all existing meta_line tags except exclude_from_budget
+      const existingMetaTags = expenseLine.match(/meta_line::(?!exclude_from_budget)[^:]+::[^\s]+/g) || [];
+      
+      // Create the new line with all tags
+      const newMetaTags = [
+        ...existingMetaTags,
+        ...(exclude ? ['meta_line::exclude_from_budget'] : [])
+      ];
+      
+      // Combine everything with proper spacing
+      const updatedLine = [baseContent, ...newMetaTags].join(' ');
+      lines[lineIndex] = updatedLine;
+
+      try {
+        const updatedContent = lines.join('\n');
+        await updateNoteById(noteId, updatedContent);
+        
+        // Update allNotes state
+        setAllNotes(prevNotes => 
+          prevNotes.map(note => 
+            note.id === noteId ? { ...note, content: updatedContent } : note
+          )
+        );
+
+        // Refresh the expenses
+        const refreshResponse = await loadAllNotes();
+        setAllNotes(refreshResponse.notes);
+        const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+        setExpenses(parsedExpenses);
+        setFilteredExpenses(parsedExpenses);
+        calculateTotals(parsedExpenses);
+        
+      } catch (error) {
+        console.error('Error updating note:', error);
+      }
+    }
+  };
+
   if (loading) {
     //console.log('Rendering loading state');
     return (
@@ -606,10 +723,14 @@ const ExpenseTracker = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow">
           <h2 className="text-lg font-semibold mb-2">Total Expenses</h2>
-          <p className="text-2xl font-bold text-red-600">${totalExpenses.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-red-600">${Math.abs(totalExpenses).toFixed(2)}</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h2 className="text-lg font-semibold mb-2">Excluded from Budget</h2>
+          <p className="text-2xl font-bold text-gray-600">${Math.abs(excludedFromBudget).toFixed(2)}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h2 className="text-lg font-semibold mb-2">Type Breakdown</h2>
@@ -617,7 +738,7 @@ const ExpenseTracker = () => {
             {Object.entries(typeTotals).map(([type, total]) => (
               <div key={type} className="flex justify-between">
                 <span>{type}:</span>
-                <span className="font-medium">${total.toFixed(2)}</span>
+                <span className="font-medium">${Math.abs(total).toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -643,12 +764,25 @@ const ExpenseTracker = () => {
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Description</th>
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12 cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('date')}
+              >
+                Date {sortConfig.key === 'date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12 cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('description')}
+              >
+                Description {sortConfig.key === 'description' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-4/12">Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Source Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Source Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Amount</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Source</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Exclude</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('amount')}>
+                Amount {sortConfig.key === 'amount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -685,10 +819,18 @@ const ExpenseTracker = () => {
                     </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-2/12">
-                    {expense.sourceType}
+                    <div className="flex flex-col">
+                      <span className="font-medium">{expense.sourceType}</span>
+                      <span className="text-gray-500 text-xs">{expense.sourceName}</span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-2/12">
-                    {expense.sourceName}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <input
+                      type="checkbox"
+                      checked={expense.isExcluded}
+                      onChange={(e) => handleExcludeFromBudget(expense.id, e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-1/12">
                     ${expense.amount.toFixed(2)}

@@ -24,7 +24,7 @@ import { NoteEditorProvider, useNoteEditor } from './contexts/NoteEditorContext'
 import { NotesProvider, useNotes } from './contexts/NotesContext';
 import NoteEditorModal from './components/NoteEditorModal';
 import WatchList from './components/WatchList';
-import NewsFeed from './components/NewsFeed';
+import News from './components/News';
 
 
 // Helper to render first four pinned notes
@@ -425,8 +425,8 @@ const AppContent = () => {
                     </div>
                   } />
                   <Route path="/news" element={
-                    <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                      <NewsFeed />
+                    <div className="min-h-screen bg-gray-50">
+                      <News />
                     </div>
                   } />
                 </Routes>

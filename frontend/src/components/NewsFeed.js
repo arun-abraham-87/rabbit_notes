@@ -1,8 +1,7 @@
 // src/components/NewsFeed.js
 import React, { useEffect, useState } from 'react';
-import { InformationCircleIcon, ExclamationCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { InformationCircleIcon, ExclamationCircleIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { loadAllNotes } from '../utils/ApiUtils';
-import StockPrice from './Stocks';
 
 const NewsFeed = () => {
   const [articles, setArticles] = useState([]);
@@ -13,6 +12,20 @@ const NewsFeed = () => {
   const [activeTab, setActiveTab] = useState('org');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentQuery, setCurrentQuery] = useState('');
+  const [searchHistory, setSearchHistory] = useState([]);
+
+  // Load search history from localStorage on component mount
+  useEffect(() => {
+    const storedHistory = localStorage.getItem('newsSearchHistory');
+    if (storedHistory) {
+      setSearchHistory(JSON.parse(storedHistory));
+    }
+  }, []);
+
+  // Save search history to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('newsSearchHistory', JSON.stringify(searchHistory));
+  }, [searchHistory]);
 
   // Fetch API key from notes
   useEffect(() => {
@@ -102,19 +115,25 @@ const NewsFeed = () => {
     setApiCalls(apiCallData.count);
   }, []);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim() || !apiKey) return;
+  const handleSearch = async (e, query = null) => {
+    e?.preventDefault();
+    const searchTerm = query || searchQuery.trim();
+    if (!searchTerm || !apiKey) return;
     
-    setCurrentQuery(searchQuery);
+    setCurrentQuery(searchTerm);
     setLoading(true);
     try {
       const res = await fetch(
-        `https://newsapi.org/v2/everything?q=${searchQuery}&language=en&sortBy=publishedAt&pageSize=5&apiKey=${apiKey}`
+        `https://newsapi.org/v2/everything?q=${searchTerm}&language=en&sortBy=publishedAt&pageSize=5&apiKey=${apiKey}`
       );
       const data = await res.json();
       if (data.status === "ok") {
         setArticles(data.articles);
+        
+        // Update search history
+        const newHistory = [searchTerm, ...searchHistory.filter(item => item !== searchTerm)].slice(0, 10);
+        setSearchHistory(newHistory);
+        
         // Update API call count
         const today = new Date().toISOString().split('T')[0];
         const storedData = localStorage.getItem('newsApiCalls');
@@ -139,6 +158,11 @@ const NewsFeed = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const removeFromHistory = (query, e) => {
+    e.stopPropagation();
+    setSearchHistory(prev => prev.filter(item => item !== query));
   };
 
   if (loading && !articles.length) {
@@ -169,8 +193,6 @@ const NewsFeed = () => {
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <StockPrice />
-      
       {/* API Usage Card */}
       <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
         <InformationCircleIcon className="h-5 w-5 text-blue-500" />
@@ -221,6 +243,25 @@ const NewsFeed = () => {
               </button>
             </div>
           </form>
+
+          {/* Search History Pills */}
+          {searchHistory.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {searchHistory.map((query, index) => (
+                <button
+                  key={index}
+                  onClick={(e) => handleSearch(e, query)}
+                  className="flex items-center gap-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm transition-colors"
+                >
+                  <span>{query}</span>
+                  <XMarkIcon 
+                    className="h-4 w-4 text-gray-500 hover:text-gray-700"
+                    onClick={(e) => removeFromHistory(query, e)}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
 
           {currentQuery && (
             <h2 className="text-xl font-semibold mb-4">News on "{currentQuery}"</h2>

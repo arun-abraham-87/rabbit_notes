@@ -32,6 +32,9 @@ const ExpenseTracker = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [expenseTypeMap, setExpenseTypeMap] = useState(new Map());
   const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
+  const [showExcluded, setShowExcluded] = useState(false);
+  const [showIncome, setShowIncome] = useState(false);
+  const [showOnceOff, setShowOnceOff] = useState(false);
   const [selectedExpenses, setSelectedExpenses] = useState(new Set());
   const [bulkType, setBulkType] = useState('Unassigned');
   const [expenseLineMap, setExpenseLineMap] = useState(new Map());
@@ -311,8 +314,11 @@ const ExpenseTracker = () => {
         expense.sourceType.toLowerCase().includes(searchLower) ||
         expense.sourceName.toLowerCase().includes(searchLower);
       
-      // Unassigned filter
+      // Status filters
       const unassignedMatch = !showUnassignedOnly || expense.type === 'Unassigned';
+      const excludedMatch = !showExcluded || expense.isExcluded;
+      const incomeMatch = !showIncome || expense.isIncome;
+      const onceOffMatch = !showOnceOff || expense.isOnceOff;
 
       // Date filter
       const [day, month, year] = expense.date.split('/').map(Number);
@@ -320,13 +326,15 @@ const ExpenseTracker = () => {
       const yearMatch = expenseDate.getFullYear() === selectedYear;
       const monthMatch = expenseDate.getMonth() === selectedMonth;
       
-      return typeMatch && searchMatch && unassignedMatch && yearMatch && monthMatch;
+      return typeMatch && searchMatch && unassignedMatch && excludedMatch && 
+             incomeMatch && onceOffMatch && yearMatch && monthMatch;
     });
 
     const sortedAndFiltered = sortExpenses(filtered);
     setFilteredExpenses(sortedAndFiltered);
     calculateTotals(sortedAndFiltered);
-  }, [selectedType, searchQuery, showUnassignedOnly, expenses, sortConfig, selectedYear, selectedMonth]);
+  }, [selectedType, searchQuery, showUnassignedOnly, expenses, sortConfig, 
+      selectedYear, selectedMonth, showExcluded, showIncome, showOnceOff]);
 
   const calculateTotals = (expenseList) => {
     // Calculate total expenses, excluded amount, once-off total, and income
@@ -462,7 +470,6 @@ const ExpenseTracker = () => {
       
       // Combine everything with proper spacing
       const updatedLine = [baseContent, ...newMetaTags].join(' ');
-      console.log('Updated line:', updatedLine);
       lines[lineIndex] = updatedLine;
     }
 
@@ -1038,43 +1045,45 @@ const ExpenseTracker = () => {
       )}
 
       {/* Filters */}
-      <div className="flex gap-4 mb-6">
-        <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Type</label>
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="All">All Types</option>
-            {expenseTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Search Expenses</label>
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by description, type, source..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </button>
-            )}
+      <div className="space-y-4 mb-6">
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Type</label>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="All">All Types</option>
+              {expenseTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Search Expenses</label>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by description, type, source..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-end">
+        <div className="flex gap-6">
           <label className="flex items-center space-x-2">
             <input
               type="checkbox"
@@ -1082,7 +1091,34 @@ const ExpenseTracker = () => {
               onChange={(e) => setShowUnassignedOnly(e.target.checked)}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
-            <span className="text-sm font-medium text-gray-700">Show Unassigned Only</span>
+            <span className="text-sm font-medium text-gray-700">Unassigned Only</span>
+          </label>
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={showExcluded}
+              onChange={(e) => setShowExcluded(e.target.checked)}
+              className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-700">Excluded Only</span>
+          </label>
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={showIncome}
+              onChange={(e) => setShowIncome(e.target.checked)}
+              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-700">Income Only</span>
+          </label>
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={showOnceOff}
+              onChange={(e) => setShowOnceOff(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-700">Once Off Only</span>
           </label>
         </div>
       </div>

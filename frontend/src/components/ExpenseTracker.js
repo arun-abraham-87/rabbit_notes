@@ -778,6 +778,13 @@ const ExpenseTracker = () => {
           )
         );
 
+        // Update the local state
+        setExpenses(prevExpenses => 
+          prevExpenses.map(exp => 
+            exp.id === expenseId ? { ...exp, isOnceOff: isOnceOff } : exp
+          )
+        );
+
         // Refresh the expenses
         const refreshResponse = await loadAllNotes();
         setAllNotes(refreshResponse.notes);
@@ -1378,8 +1385,7 @@ const ExpenseTracker = () => {
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-4/12">Type</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Source</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Exclude</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Once Off</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12 cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('amount')}>
                 Amount {sortConfig.key === 'amount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -1389,7 +1395,6 @@ const ExpenseTracker = () => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredExpenses.map((expense, index) => {
-              //console.log('Rendering expense row:', expense);
               return (
                 <tr key={expense.id} className={selectedExpenses.has(expense.id) ? 'bg-blue-50' : ''}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
@@ -1425,21 +1430,28 @@ const ExpenseTracker = () => {
                       <span className="text-gray-500 text-xs">{expense.sourceName}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <input
-                      type="checkbox"
-                      checked={expense.isExcluded}
-                      onChange={(e) => handleExcludeFromBudget(expense.id, e.target.checked)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <input
-                      type="checkbox"
-                      checked={expense.isOnceOff}
-                      onChange={(e) => handleOnceOff(expense.id, e.target.checked)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
+                    <select
+                      value={expense.isExcluded ? 'excluded' : expense.isOnceOff ? 'onceOff' : 'normal'}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === 'excluded') {
+                          handleExcludeFromBudget(expense.id, true);
+                          handleOnceOff(expense.id, false);
+                        } else if (value === 'onceOff') {
+                          handleExcludeFromBudget(expense.id, false);
+                          handleOnceOff(expense.id, true);
+                        } else {
+                          handleExcludeFromBudget(expense.id, false);
+                          handleOnceOff(expense.id, false);
+                        }
+                      }}
+                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="normal">Normal</option>
+                      <option value="excluded">Excluded</option>
+                      <option value="onceOff">Once Off</option>
+                    </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-1/12">
                     ${expense.amount.toFixed(2)}

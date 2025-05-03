@@ -24,6 +24,7 @@ const ExpenseTracker = () => {
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [excludedFromBudget, setExcludedFromBudget] = useState(0);
   const [onceOffTotal, setOnceOffTotal] = useState(0);
+  const [incomeTotal, setIncomeTotal] = useState(0);
   const [typeTotals, setTypeTotals] = useState({});
   const [loading, setLoading] = useState(true);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -54,6 +55,8 @@ const ExpenseTracker = () => {
 
   // Add new state for load status
   const [loadStatus, setLoadStatus] = useState([]);
+
+  const [statusPopup, setStatusPopup] = useState(null);
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   const months = [
@@ -322,13 +325,16 @@ const ExpenseTracker = () => {
   }, [selectedType, searchQuery, showUnassignedOnly, expenses, sortConfig, selectedYear, selectedMonth]);
 
   const calculateTotals = (expenseList) => {
-    // Calculate total expenses, excluded amount, and once-off total
+    // Calculate total expenses, excluded amount, once-off total, and income
     let total = 0;
     let excluded = 0;
     let onceOff = 0;
+    let income = 0;
     
     expenseList.forEach(expense => {
-      if (expense.isExcluded) {
+      if (expense.isIncome) {
+        income += expense.amount;
+      } else if (expense.isExcluded) {
         excluded += expense.amount;
       } else if (expense.isOnceOff) {
         onceOff += expense.amount;
@@ -340,11 +346,12 @@ const ExpenseTracker = () => {
     setTotalExpenses(total);
     setExcludedFromBudget(excluded);
     setOnceOffTotal(onceOff);
+    setIncomeTotal(income);
 
-    // Calculate type totals (excluding excluded and once-off expenses)
+    // Calculate type totals (excluding excluded, once-off, and income expenses)
     const typeTotals = {};
     expenseList.forEach(expense => {
-      if (!expense.isExcluded && !expense.isOnceOff) {
+      if (!expense.isExcluded && !expense.isOnceOff && !expense.isIncome) {
         const type = expense.type;
         typeTotals[type] = (typeTotals[type] || 0) + expense.amount;
       }
@@ -828,6 +835,105 @@ const ExpenseTracker = () => {
   const hasUnassignedExpenses = filteredExpenses.some(expense => expense.type === 'Unassigned');
   const unassignedCount = filteredExpenses.filter(expense => expense.type === 'Unassigned').length;
 
+  const handleStatusClick = (event, expenseId) => {
+    setStatusPopup({
+      id: expenseId,
+      x: event.clientX,
+      y: event.clientY
+    });
+  };
+
+  const handleStatusChange = async (expenseId, type, checked) => {
+    if (type === 'excluded') {
+      handleExcludeFromBudget(expenseId, checked);
+    } else if (type === 'onceOff') {
+      handleOnceOff(expenseId, checked);
+    } else if (type === 'income') {
+      // Get the line info from the expense line map
+      const lineInfo = expenseLineMap.get(expenseId);
+      if (!lineInfo) {
+        console.error('Line info not found for expense:', expenseId);
+        return;
+      }
+
+      const { noteId, lineIndex } = lineInfo;
+      console.log('Found line info:', { noteId, lineIndex });
+
+      // Find the original note
+      const originalNote = allNotes.find(note => note.id === noteId);
+      if (!originalNote) {
+        console.error('Original note not found:', noteId);
+        return;
+      }
+
+      // Split the note content into lines
+      const lines = originalNote.content.split('\n');
+      const expenseLine = lines[lineIndex];
+      
+      if (expenseLine) {
+        // Get the base content (without any meta_line tags)
+        const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
+        
+        // Extract all existing meta_line tags except income
+        const existingMetaTags = expenseLine.match(/meta_line::(?!income)[^:]+::[^\s]+/g) || [];
+        
+        // Create the new line with all tags
+        const newMetaTags = [
+          ...existingMetaTags,
+          ...(checked ? ['meta_line::income'] : [])
+        ];
+        
+        // Combine everything with proper spacing
+        const updatedLine = [baseContent, ...newMetaTags].join(' ');
+        lines[lineIndex] = updatedLine;
+
+        try {
+          const updatedContent = lines.join('\n');
+          await updateNoteById(noteId, updatedContent);
+          
+          // Update allNotes state
+          setAllNotes(prevNotes => 
+            prevNotes.map(note => 
+              note.id === noteId ? { ...note, content: updatedContent } : note
+            )
+          );
+
+          // Update the local state
+          setExpenses(prevExpenses => 
+            prevExpenses.map(exp => 
+              exp.id === expenseId ? { ...exp, isIncome: checked } : exp
+            )
+          );
+
+          // Refresh the expenses
+          const refreshResponse = await loadAllNotes();
+          setAllNotes(refreshResponse.notes);
+          const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+          setExpenses(parsedExpenses);
+          setFilteredExpenses(parsedExpenses);
+          calculateTotals(parsedExpenses);
+          
+        } catch (error) {
+          console.error('Error updating note:', error);
+        }
+      }
+    }
+  };
+
+  // Add click handler to close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (statusPopup && !event.target.closest('.status-popup')) {
+        setStatusPopup(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [statusPopup]);
+
   if (loading) {
     //console.log('Rendering loading state');
     return (
@@ -1041,8 +1147,24 @@ const ExpenseTracker = () => {
                 onMouseMove={handleMouseMove}
               >
                 <div>
+                  <h3 className="text-sm font-medium text-gray-500">Income</h3>
+                  <p 
+                    className="text-2xl font-bold text-green-600 cursor-help"
+                    onMouseEnter={(e) => handleTotalHover(e, 'income')}
+                    onMouseLeave={() => setHoveredTotal(null)}
+                  >
+                    ${Math.abs(incomeTotal).toFixed(2)}
+                  </p>
+                </div>
+                <div>
                   <h3 className="text-sm font-medium text-gray-500">Total Expenses</h3>
                   <p className="text-2xl font-bold text-red-600">${Math.abs(totalExpenses).toFixed(2)}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Savings</h3>
+                  <p className={`text-2xl font-bold ${(incomeTotal - Math.abs(totalExpenses)) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${(incomeTotal - Math.abs(totalExpenses)).toFixed(2)}
+                  </p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500">Excluded from Budget</h3>
@@ -1076,14 +1198,15 @@ const ExpenseTracker = () => {
                 >
                   <div className="text-sm">
                     <div className="font-semibold mb-1">
-                      {hoveredTotal === 'excluded' ? 'Excluded from Budget' : 'Once Off'} Details:
+                      {hoveredTotal === 'income' ? 'Income' :
+                       hoveredTotal === 'excluded' ? 'Excluded from Budget' : 'Once Off'} Details:
                     </div>
                     <div className="space-y-1">
                       {filteredExpenses
                         .filter(expense => 
-                          hoveredTotal === 'excluded' 
-                            ? expense.isExcluded 
-                            : expense.isOnceOff
+                          hoveredTotal === 'income' ? expense.isIncome :
+                          hoveredTotal === 'excluded' ? expense.isExcluded :
+                          expense.isOnceOff
                         )
                         .map(expense => (
                           <div key={expense.id} className="flex justify-between">
@@ -1431,27 +1554,19 @@ const ExpenseTracker = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
-                    <select
-                      value={expense.isExcluded ? 'excluded' : expense.isOnceOff ? 'onceOff' : 'normal'}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === 'excluded') {
-                          handleExcludeFromBudget(expense.id, true);
-                          handleOnceOff(expense.id, false);
-                        } else if (value === 'onceOff') {
-                          handleExcludeFromBudget(expense.id, false);
-                          handleOnceOff(expense.id, true);
-                        } else {
-                          handleExcludeFromBudget(expense.id, false);
-                          handleOnceOff(expense.id, false);
-                        }
-                      }}
-                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    <button
+                      onClick={(e) => handleStatusClick(e, expense.id)}
+                      className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 hover:bg-gray-50 ${
+                        expense.isIncome ? 'border-green-500 bg-green-50' :
+                        expense.isExcluded ? 'border-red-500 bg-red-50' :
+                        expense.isOnceOff ? 'border-blue-500 bg-blue-50' :
+                        'border-gray-300'
+                      }`}
                     >
-                      <option value="normal">Normal</option>
-                      <option value="excluded">Excluded</option>
-                      <option value="onceOff">Once Off</option>
-                    </select>
+                      {expense.isIncome ? 'Income' :
+                       expense.isExcluded ? 'Excluded' :
+                       expense.isOnceOff ? 'Once Off' : 'Normal'}
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-1/12">
                     ${expense.amount.toFixed(2)}
@@ -1476,6 +1591,48 @@ const ExpenseTracker = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Status Popup */}
+      {statusPopup && (
+        <div
+          className="status-popup fixed bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-10"
+          style={{
+            left: `${statusPopup.x}px`,
+            top: `${statusPopup.y}px`,
+            transform: 'translateY(-50%)'
+          }}
+        >
+          <div className="space-y-2">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={filteredExpenses.find(e => e.id === statusPopup.id)?.isExcluded || false}
+                onChange={(e) => handleStatusChange(statusPopup.id, 'excluded', e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <span className="text-sm text-gray-700">Excluded</span>
+            </label>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={filteredExpenses.find(e => e.id === statusPopup.id)?.isOnceOff || false}
+                onChange={(e) => handleStatusChange(statusPopup.id, 'onceOff', e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <span className="text-sm text-gray-700">Once Off</span>
+            </label>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={filteredExpenses.find(e => e.id === statusPopup.id)?.isIncome || false}
+                onChange={(e) => handleStatusChange(statusPopup.id, 'income', e.target.checked)}
+                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+              />
+              <span className="text-sm text-gray-700">Income</span>
+            </label>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

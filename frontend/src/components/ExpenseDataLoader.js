@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { XMarkIcon, ArrowUpTrayIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import { updateNoteById, createNote } from '../utils/ApiUtils';
+import { updateNoteById, createNote, loadAllNotes } from '../utils/ApiUtils';
 
 const ExpenseDataLoader = ({ onClose, noteId }) => {
   const [data, setData] = useState([]);
@@ -12,6 +12,47 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
   const [mergeColumns, setMergeColumns] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+  const [expenseSourceTypes, setExpenseSourceTypes] = useState([]);
+  const [expenseSourceNames, setExpenseSourceNames] = useState([]);
+  const [selectedSourceType, setSelectedSourceType] = useState('');
+  const [selectedSourceName, setSelectedSourceName] = useState('');
+
+  useEffect(() => {
+    const fetchExpenseSources = async () => {
+      try {
+        const response = await loadAllNotes();
+        const allNotes = response.notes || [];
+        
+        console.log('All Notes:', allNotes);
+        
+        // Filter notes with meta::expense_source_type tag
+        const sourceTypes = allNotes.filter(note => 
+          note.content.split('\n').some(line => line.trim() === 'meta::expense_source_type')
+        ).map(note => ({
+          id: note.id,
+          name: note.content.split('\n')[0]
+        }));
+
+        // Filter notes with meta::expense_source_name tag
+        const sourceNames = allNotes.filter(note => 
+          note.content.split('\n').some(line => line.trim() === 'meta::expense_source_name')
+        ).map(note => ({
+          id: note.id,
+          name: note.content.split('\n')[0]
+        }));
+        
+        console.log('Source Types:', sourceTypes);
+        console.log('Source Names:', sourceNames);
+        
+        setExpenseSourceTypes(sourceTypes);
+        setExpenseSourceNames(sourceNames);
+      } catch (error) {
+        console.error('Error fetching expense sources:', error);
+      }
+    };
+
+    fetchExpenseSources();
+  }, []);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -137,16 +178,23 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
   };
 
   const handleSave = async () => {
+    if (!selectedSourceType || !selectedSourceName) {
+      alert('Please select both expense source type and name');
+      return;
+    }
+
     try {
         // Save all rows without quotes
         const formattedLines = data.map(row => 
             row.map(cell => cell.replace(/^"|"$/g, '')).join(' ')
         );
 
-        // Create content with meta::expense tag at the end
+        // Create content with meta::expense tag and links to source notes
         const content = [
             ...formattedLines,
-            'meta::expense'
+            'meta::expense',
+            `[[${selectedSourceType}]]`,
+            `[[${selectedSourceName}]]`
         ].join('\n');
 
         let response;
@@ -203,34 +251,75 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
             </div>
           ) : (
             <>
-              <div className="mb-4 flex gap-2">
-                <button
-                  onClick={handleDeleteSelected}
-                  disabled={selectedRows.size === 0}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
-                >
-                  Delete Selected Rows
-                </button>
-                <button
-                  onClick={handleDeleteSelectedColumns}
-                  disabled={selectedColumns.size === 0}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
-                >
-                  Delete Selected Columns
-                </button>
-                <button
-                  onClick={handleMergeColumns}
-                  disabled={mergeColumns.length < 2}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  Merge Selected Columns
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 ml-auto"
-                >
-                  Save to Note
-                </button>
+              <div className="mb-4 space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Expense Source Type *
+                    </label>
+                    <select
+                      value={selectedSourceType}
+                      onChange={(e) => setSelectedSourceType(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    >
+                      <option value="">Select a source type</option>
+                      {expenseSourceTypes.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Expense Source Name *
+                    </label>
+                    <select
+                      value={selectedSourceName}
+                      onChange={(e) => setSelectedSourceName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    >
+                      <option value="">Select a source name</option>
+                      {expenseSourceNames.map((name) => (
+                        <option key={name.id} value={name.id}>
+                          {name.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDeleteSelected}
+                    disabled={selectedRows.size === 0}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Delete Selected Rows
+                  </button>
+                  <button
+                    onClick={handleDeleteSelectedColumns}
+                    disabled={selectedColumns.size === 0}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Delete Selected Columns
+                  </button>
+                  <button
+                    onClick={handleMergeColumns}
+                    disabled={mergeColumns.length < 2}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Merge Selected Columns
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 ml-auto"
+                  >
+                    Save to Note
+                  </button>
+                </div>
               </div>
 
               <div className="overflow-x-auto">

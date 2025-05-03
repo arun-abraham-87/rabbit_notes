@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, TrashIcon, PencilIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, PencilIcon, Cog6ToothIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { loadAllNotes, updateNoteById } from '../utils/ApiUtils';
 import { Pie, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import Budget from './Budget';
+import CSVEditor from './CSVEditor';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -69,6 +70,8 @@ const ExpenseTracker = () => {
   const [breakdownView, setBreakdownView] = useState('type'); // 'type' or 'tag'
   const [tagTotals, setTagTotals] = useState({});
   const [showBudget, setShowBudget] = useState(false);
+  const [showDataLoader, setShowDataLoader] = useState(false);
+  const [budgetNote, setBudgetNote] = useState(null);
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   const months = [
@@ -1223,16 +1226,25 @@ const ExpenseTracker = () => {
 
   //console.log('Rendering main component with expenses:', expenses);
   return (
-    <div className="p-4 w-full">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Expense Tracker</h1>
-        <button
-          onClick={() => setShowBudget(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
-        >
-          <Cog6ToothIcon className="h-5 w-5" />
-          <span>Manage Budget</span>
-        </button>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Expense Tracker</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowDataLoader(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <ArrowUpTrayIcon className="h-5 w-5" />
+            Data Loader
+          </button>
+          <button
+            onClick={() => setShowBudget(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <Cog6ToothIcon className="h-5 w-5" />
+            Manage Budget
+          </button>
+        </div>
       </div>
 
       {/* Year and Month Selection */}
@@ -2134,6 +2146,13 @@ const ExpenseTracker = () => {
       )}
 
       {showBudget && <Budget onClose={() => setShowBudget(false)} />}
+
+      {showDataLoader && (
+        <CSVEditor 
+          onClose={() => setShowDataLoader(false)} 
+          noteId={budgetNote?.id} 
+        />
+      )}
     </div>
   );
 };

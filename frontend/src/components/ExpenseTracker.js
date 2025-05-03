@@ -1671,6 +1671,18 @@ const ExpenseTracker = () => {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900 w-2/12">
                     <div className="truncate max-w-xs">{expense.description}</div>
+                    {expense.tags && expense.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {expense.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-4/12">
                     <select

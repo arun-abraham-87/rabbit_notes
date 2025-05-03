@@ -64,6 +64,8 @@ const ExpenseTracker = () => {
   const [tagInput, setTagInput] = useState('');
   const [tagSuggestions, setTagSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [breakdownView, setBreakdownView] = useState('type'); // 'type' or 'tag'
+  const [tagTotals, setTagTotals] = useState({});
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   const months = [
@@ -371,13 +373,23 @@ const ExpenseTracker = () => {
 
     // Calculate type totals (excluding excluded, once-off, and income expenses)
     const typeTotals = {};
+    const tagTotals = {};
     expenseList.forEach(expense => {
       if (!expense.isExcluded && !expense.isOnceOff && !expense.isIncome) {
+        // Calculate type totals
         const type = expense.type;
         typeTotals[type] = (typeTotals[type] || 0) + expense.amount;
+
+        // Calculate tag totals
+        if (expense.tags && expense.tags.length > 0) {
+          expense.tags.forEach(tag => {
+            tagTotals[tag] = (tagTotals[tag] || 0) + expense.amount;
+          });
+        }
       }
     });
     setTypeTotals(typeTotals);
+    setTagTotals(tagTotals);
   };
 
   const handleInputChange = (e) => {
@@ -1608,12 +1620,36 @@ const ExpenseTracker = () => {
             onMouseMove={handleMouseMove}
           >
             <div className="flex justify-between items-center mb-2">
-              <h2 
-                className="text-lg font-semibold cursor-pointer hover:text-blue-600"
-                onClick={() => setTypeBreakdownSort(prev => prev === 'desc' ? 'asc' : 'desc')}
-              >
-                Type Breakdown {typeBreakdownSort === 'desc' ? '↓' : '↑'}
-              </h2>
+              <div className="flex items-center gap-4">
+                <h2 
+                  className="text-lg font-semibold cursor-pointer hover:text-blue-600"
+                  onClick={() => setTypeBreakdownSort(prev => prev === 'desc' ? 'asc' : 'desc')}
+                >
+                  {breakdownView === 'type' ? 'Type Breakdown' : 'Tag Breakdown'} {typeBreakdownSort === 'desc' ? '↓' : '↑'}
+                </h2>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setBreakdownView('type')}
+                    className={`px-3 py-1 rounded-md ${
+                      breakdownView === 'type'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    By Type
+                  </button>
+                  <button
+                    onClick={() => setBreakdownView('tag')}
+                    className={`px-3 py-1 rounded-md ${
+                      breakdownView === 'tag'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    By Tag
+                  </button>
+                </div>
+              </div>
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -1625,29 +1661,29 @@ const ExpenseTracker = () => {
               </label>
             </div>
             <div className="space-y-1">
-              {Object.entries(typeTotals)
+              {(breakdownView === 'type' ? Object.entries(typeTotals) : Object.entries(tagTotals))
                 .sort(([, a], [, b]) => {
                   const amountA = Math.abs(a);
                   const amountB = Math.abs(b);
                   return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
                 })
-                .map(([type, total]) => {
+                .map(([key, total]) => {
                   const currentDate = new Date();
                   const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
                   const remainingDays = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
-                  const budget = budgetAllocations[type] ?? 0; // Use 0 if type not found in budget
+                  const budget = breakdownView === 'type' ? (budgetAllocations[key] ?? 0) : 0;
                   const remainingBudget = budget - Math.abs(total);
                   const dailyAllowance = remainingBudget / remainingDays;
 
                   return (
-                    <div key={type} className="flex flex-col gap-1">
+                    <div key={key} className="flex flex-col gap-1">
                       <div className="flex justify-between items-center">
-                        <span className="w-1/4">{type}:</span>
-                        {showBudgetDetails && (
+                        <span className="w-1/4">{key}:</span>
+                        {showBudgetDetails && breakdownView === 'type' && (
                           <div className="flex-1 mx-4">
                             <div 
                               className="w-full bg-gray-200 rounded-full h-2.5 group hover:bg-gray-300 transition-colors duration-200 relative"
-                              onMouseEnter={(e) => handleAmountHover(e, type)}
+                              onMouseEnter={(e) => handleAmountHover(e, key)}
                               onMouseLeave={() => setHoveredType(null)}
                             >
                               {/* Budget allocation indicator */}
@@ -1671,17 +1707,17 @@ const ExpenseTracker = () => {
                           </div>
                         )}
                         <span 
-                          className={`font-medium ${showBudgetDetails ? 'w-1/4' : 'w-3/4'} text-right`}
+                          className={`font-medium ${showBudgetDetails && breakdownView === 'type' ? 'w-1/4' : 'w-3/4'} text-right`}
                         >
                           ${Math.abs(total).toFixed(2)}
-                          {showBudgetDetails && (
+                          {showBudgetDetails && breakdownView === 'type' && (
                             <span className="text-xs text-gray-500 ml-2">
                               / ${budget.toFixed(2)}
                             </span>
                           )}
                         </span>
                       </div>
-                      {showBudgetDetails && (
+                      {showBudgetDetails && breakdownView === 'type' && (
                         <div className="flex justify-between text-xs text-gray-500 pl-1/4 ml-4">
                           <span>Daily Allowance: ${dailyAllowance.toFixed(2)}</span>
                           <span>Remaining: ${remainingBudget.toFixed(2)}</span>
@@ -1694,8 +1730,8 @@ const ExpenseTracker = () => {
                 <div className="flex justify-between font-bold">
                   <span>Total:</span>
                   <div className="flex items-center">
-                    <span>${Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0)).toFixed(2)}</span>
-                    {showBudgetDetails && (
+                    <span>${Math.abs(Object.values(breakdownView === 'type' ? typeTotals : tagTotals).reduce((sum, total) => sum + total, 0)).toFixed(2)}</span>
+                    {showBudgetDetails && breakdownView === 'type' && (
                       <span className="text-xs text-gray-500 ml-2">
                         / ${Object.values(budgetAllocations).reduce((sum, budget) => sum + budget, 0).toFixed(2)}
                       </span>
@@ -1704,7 +1740,7 @@ const ExpenseTracker = () => {
                 </div>
               </div>
             </div>
-            {hoveredType && (
+            {hoveredType && breakdownView === 'type' && (
               <div 
                 className="fixed bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-10 w-[300px]"
                 style={{

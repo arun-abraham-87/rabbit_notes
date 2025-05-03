@@ -30,7 +30,7 @@ const ExpenseTracker = () => {
         console.log('Received notes response:', response);
 
         const expenseNotes = response.notes.filter(note => 
-          note.content.includes('meta::expense')
+          note.content.includes('meta::expense') && !note.content.includes('meta::expense_source_type')
         );
         console.log('Found expense notes:', expenseNotes.length);
 
@@ -55,6 +55,14 @@ const ExpenseTracker = () => {
           // Get expense source type from linked notes
           const expenseSourceType = linkedNotes
             .find(linkedNote => linkedNote.content.includes('meta::expense_source_type'))
+            ?.content
+            .split('\n')
+            .find(line => !line.includes('meta::'))
+            ?.trim() || '';
+
+          // Get expense source name from linked notes
+          const expenseSourceName = linkedNotes
+            .find(linkedNote => linkedNote.content.includes('meta::expense_source_name'))
             ?.content
             .split('\n')
             .find(line => !line.includes('meta::'))
@@ -97,7 +105,8 @@ const ExpenseTracker = () => {
               description,
               category,
               noteId: note.id, // Keep reference to source note
-              sourceType: expenseSourceType // Add expense source type
+              sourceType: expenseSourceType, // Add expense source type
+              sourceName: expenseSourceName // Add expense source name
             };
           }).filter(expense => expense !== null);
         });
@@ -299,6 +308,7 @@ const ExpenseTracker = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -319,6 +329,9 @@ const ExpenseTracker = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {expense.sourceType}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {expense.sourceName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     ${expense.amount.toFixed(2)}

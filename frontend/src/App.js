@@ -25,6 +25,7 @@ import { NotesProvider, useNotes } from './contexts/NotesContext';
 import NoteEditorModal from './components/NoteEditorModal';
 import WatchList from './components/WatchList';
 import News from './components/News';
+import ExpenseTracker from './components/ExpenseTracker';
 
 
 // Helper to render first four pinned notes
@@ -427,6 +428,11 @@ const AppContent = () => {
                   <Route path="/news" element={
                     <div className="min-h-screen bg-gray-50">
                       <News />
+                    </div>
+                  } />
+                  <Route path="/expense" element={
+                    <div className="min-h-screen bg-gray-50">
+                      <ExpenseTracker />
                     </div>
                   } />
                 </Routes>

@@ -5,6 +5,7 @@ import { Pie, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import Budget from './Budget';
 import CSVEditor from './CSVEditor';
+import ExpenseLoadStatus from './ExpenseLoadStatus';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -71,6 +72,7 @@ const ExpenseTracker = () => {
   const [budgetNote, setBudgetNote] = useState(null);
   const [showBulkExclude, setShowBulkExclude] = useState(false);
   const [isLoadStatusCollapsed, setIsLoadStatusCollapsed] = useState(true);
+  const [showYearlyLoadStatus, setShowYearlyLoadStatus] = useState(false);
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   const months = [
@@ -1363,6 +1365,13 @@ const ExpenseTracker = () => {
             <Cog6ToothIcon className="h-5 w-5" />
             Manage Budget
           </button>
+          <button
+            onClick={() => setShowYearlyLoadStatus(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <ArrowUpTrayIcon className="h-5 w-5" />
+            Yearly Load Status
+          </button>
         </div>
       </div>
 
@@ -2355,6 +2364,13 @@ const ExpenseTracker = () => {
         <CSVEditor 
           onClose={() => setShowDataLoader(false)} 
           noteId={budgetNote?.id} 
+        />
+      )}
+
+      {showYearlyLoadStatus && (
+        <ExpenseLoadStatus
+          expenses={expenses}
+          onClose={() => setShowYearlyLoadStatus(false)}
         />
       )}
     </div>

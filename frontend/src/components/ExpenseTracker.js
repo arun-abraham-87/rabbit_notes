@@ -44,8 +44,23 @@ const ExpenseTracker = () => {
   const [chartType, setChartType] = useState('pie');
   const [hoveredTotal, setHoveredTotal] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showBudgetDetails, setShowBudgetDetails] = useState(true);
+  const [budgetAllocations, setBudgetAllocations] = useState({});
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const currentDate = new Date();
+    return currentDate.getMonth() === 0 ? 11 : currentDate.getMonth() - 1;
+  });
+
+  // Add new state for load status
+  const [loadStatus, setLoadStatus] = useState([]);
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const years = [2025, 2026, 2027];
   //console.log('Initialized with categories:', categories);
 
   const parseExpenses = (notes, typeMap) => {
@@ -55,6 +70,19 @@ const ExpenseTracker = () => {
       !note.content.includes('meta::expense_source_type') &&
       !note.content.includes('meta::expense_source_name')
     );
+
+    // Parse budget allocations
+    const budgetNote = notes.find(note => note.content.includes('meta::budget'));
+    if (budgetNote) {
+      const allocations = {};
+      budgetNote.content.split('\n').forEach(line => {
+        if (line.trim() && !line.includes('meta::')) {
+          const [type, amount] = line.split(':').map(item => item.trim());
+          allocations[type] = parseFloat(amount);
+        }
+      });
+      setBudgetAllocations(allocations);
+    }
 
     // Create a map of all notes for quick lookup
     const notesMap = new Map(notes.map(note => [note.id, note]));
@@ -195,6 +223,42 @@ const ExpenseTracker = () => {
     fetchExpenses();
   }, []);
 
+  // Add useEffect to calculate load status
+  useEffect(() => {
+    const statusMap = new Map();
+    
+    filteredExpenses.forEach(expense => {
+      const key = `${expense.sourceType}-${expense.sourceName}`;
+      if (!statusMap.has(key)) {
+        statusMap.set(key, {
+          sourceType: expense.sourceType,
+          sourceName: expense.sourceName,
+          firstDate: expense.date,
+          lastDate: expense.date,
+          count: 1,
+          debit: expense.amount < 0 ? Math.abs(expense.amount) : 0,
+          credit: expense.amount > 0 ? expense.amount : 0
+        });
+      } else {
+        const status = statusMap.get(key);
+        status.count++;
+        if (expense.date < status.firstDate) {
+          status.firstDate = expense.date;
+        }
+        if (expense.date > status.lastDate) {
+          status.lastDate = expense.date;
+        }
+        if (expense.amount < 0) {
+          status.debit += Math.abs(expense.amount);
+        } else {
+          status.credit += expense.amount;
+        }
+      }
+    });
+
+    setLoadStatus(Array.from(statusMap.values()));
+  }, [filteredExpenses]);
+
   const sortExpenses = (expenses) => {
     if (!sortConfig.key) return expenses;
 
@@ -226,7 +290,7 @@ const ExpenseTracker = () => {
     setSortConfig({ key, direction });
   };
 
-  // Filter expenses when type, search query, or unassigned filter changes
+  // Filter expenses when type, search query, unassigned filter, year, or month changes
   useEffect(() => {
     const filtered = expenses.filter(expense => {
       // Type filter
@@ -242,14 +306,20 @@ const ExpenseTracker = () => {
       
       // Unassigned filter
       const unassignedMatch = !showUnassignedOnly || expense.type === 'Unassigned';
+
+      // Date filter
+      const [day, month, year] = expense.date.split('/').map(Number);
+      const expenseDate = new Date(year, month - 1, day); // month is 0-based in JavaScript Date
+      const yearMatch = expenseDate.getFullYear() === selectedYear;
+      const monthMatch = expenseDate.getMonth() === selectedMonth;
       
-      return typeMatch && searchMatch && unassignedMatch;
+      return typeMatch && searchMatch && unassignedMatch && yearMatch && monthMatch;
     });
 
     const sortedAndFiltered = sortExpenses(filtered);
     setFilteredExpenses(sortedAndFiltered);
     calculateTotals(sortedAndFiltered);
-  }, [selectedType, searchQuery, showUnassignedOnly, expenses, sortConfig]);
+  }, [selectedType, searchQuery, showUnassignedOnly, expenses, sortConfig, selectedYear, selectedMonth]);
 
   const calculateTotals = (expenseList) => {
     // Calculate total expenses, excluded amount, and once-off total
@@ -740,6 +810,10 @@ const ExpenseTracker = () => {
     }
   };
 
+  // Check for unassigned expenses
+  const hasUnassignedExpenses = filteredExpenses.some(expense => expense.type === 'Unassigned');
+  const unassignedCount = filteredExpenses.filter(expense => expense.type === 'Unassigned').length;
+
   if (loading) {
     //console.log('Rendering loading state');
     return (
@@ -755,6 +829,58 @@ const ExpenseTracker = () => {
   return (
     <div className="p-4 w-full">
       <h1 className="text-2xl font-bold mb-6">Expense Tracker</h1>
+
+      {/* Year and Month Selection */}
+      <div className="mb-6 space-y-4">
+        <div className="flex gap-2">
+          {years.map(year => (
+            <button
+              key={year}
+              onClick={() => setSelectedYear(year)}
+              className={`px-4 py-2 rounded-md transition-colors ${
+                selectedYear === year
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {year}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {months.map((month, index) => (
+            <button
+              key={month}
+              onClick={() => setSelectedMonth(index)}
+              className={`px-4 py-2 rounded-md transition-colors ${
+                selectedMonth === index
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {month}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Unassigned Expenses Alert */}
+      {hasUnassignedExpenses && (
+        <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-400">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                There {unassignedCount === 1 ? 'is' : 'are'} {unassignedCount} unassigned {unassignedCount === 1 ? 'expense' : 'expenses'} in the current selection. Please assign types to {unassignedCount === 1 ? 'this expense' : 'these expenses'}.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bulk Update Controls */}
       {selectedExpenses.size > 0 && (
@@ -829,6 +955,48 @@ const ExpenseTracker = () => {
             />
             <span className="text-sm font-medium text-gray-700">Show Unassigned Only</span>
           </label>
+        </div>
+      </div>
+
+      {/* Load Status Section */}
+      <div className="mb-6 bg-white p-4 rounded-lg shadow">
+        <h2 className="text-lg font-semibold mb-4">Load Status</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Transaction</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Transaction</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction Count</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {loadStatus.map((status, index) => (
+                <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{status.sourceType}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{status.sourceName}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{status.firstDate}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{status.lastDate}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{status.count}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">${status.debit.toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">${status.credit.toFixed(2)}</td>
+                </tr>
+              ))}
+              <tr className="bg-gray-50 font-bold">
+                <td colSpan="5" className="px-6 py-4 text-right text-sm text-gray-900">Total:</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
+                  ${loadStatus.reduce((sum, status) => sum + status.debit, 0).toFixed(2)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                  ${loadStatus.reduce((sum, status) => sum + status.credit, 0).toFixed(2)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1045,12 +1213,23 @@ const ExpenseTracker = () => {
             className="bg-white p-4 rounded-lg shadow mb-6"
             onMouseMove={handleMouseMove}
           >
-            <h2 
-              className="text-lg font-semibold mb-2 cursor-pointer hover:text-blue-600"
-              onClick={() => setTypeBreakdownSort(prev => prev === 'desc' ? 'asc' : 'desc')}
-            >
-              Type Breakdown {typeBreakdownSort === 'desc' ? '↓' : '↑'}
-            </h2>
+            <div className="flex justify-between items-center mb-2">
+              <h2 
+                className="text-lg font-semibold cursor-pointer hover:text-blue-600"
+                onClick={() => setTypeBreakdownSort(prev => prev === 'desc' ? 'asc' : 'desc')}
+              >
+                Type Breakdown {typeBreakdownSort === 'desc' ? '↓' : '↑'}
+              </h2>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={showBudgetDetails}
+                  onChange={(e) => setShowBudgetDetails(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Show Budget Details</span>
+              </label>
+            </div>
             <div className="space-y-1">
               {Object.entries(typeTotals)
                 .sort(([, a], [, b]) => {
@@ -1058,22 +1237,76 @@ const ExpenseTracker = () => {
                   const amountB = Math.abs(b);
                   return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
                 })
-                .map(([type, total]) => (
-                  <div key={type} className="flex justify-between">
-                    <span>{type}:</span>
-                    <span 
-                      className="font-medium cursor-help"
-                      onMouseEnter={(e) => handleAmountHover(e, type)}
-                      onMouseLeave={() => setHoveredType(null)}
-                    >
-                      ${Math.abs(total).toFixed(2)}
-                    </span>
-                  </div>
-                ))}
+                .map(([type, total]) => {
+                  const currentDate = new Date();
+                  const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+                  const remainingDays = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
+                  const budget = budgetAllocations[type] ?? 0; // Use 0 if type not found in budget
+                  const remainingBudget = budget - Math.abs(total);
+                  const dailyAllowance = remainingBudget / remainingDays;
+
+                  return (
+                    <div key={type} className="flex flex-col gap-1">
+                      <div className="flex justify-between items-center">
+                        <span className="w-1/4">{type}:</span>
+                        {showBudgetDetails && (
+                          <div className="flex-1 mx-4">
+                            <div 
+                              className="w-full bg-gray-200 rounded-full h-2.5 group hover:bg-gray-300 transition-colors duration-200 relative"
+                              onMouseEnter={(e) => handleAmountHover(e, type)}
+                              onMouseLeave={() => setHoveredType(null)}
+                            >
+                              {/* Budget allocation indicator */}
+                              {budget > 0 && (
+                                <div 
+                                  className="absolute h-2.5 border-r-2 border-dashed border-gray-400"
+                                  style={{ 
+                                    left: `${Math.min((budget / budget) * 100, 100)}%`,
+                                    transform: 'translateX(-50%)'
+                                  }}
+                                />
+                              )}
+                              <div 
+                                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                                style={{ 
+                                  width: budget === 0 ? '100%' : `${Math.min((Math.abs(total) / budget) * 100, 100)}%`,
+                                  backgroundColor: budget === 0 ? '#EF4444' : (Math.abs(total) > budget ? '#EF4444' : '#3B82F6')
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        <span 
+                          className={`font-medium ${showBudgetDetails ? 'w-1/4' : 'w-3/4'} text-right`}
+                        >
+                          ${Math.abs(total).toFixed(2)}
+                          {showBudgetDetails && (
+                            <span className="text-xs text-gray-500 ml-2">
+                              / ${budget.toFixed(2)}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      {showBudgetDetails && (
+                        <div className="flex justify-between text-xs text-gray-500 pl-1/4 ml-4">
+                          <span>Daily Allowance: ${dailyAllowance.toFixed(2)}</span>
+                          <span>Remaining: ${remainingBudget.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               <div className="border-t border-gray-200 pt-1 mt-1">
                 <div className="flex justify-between font-bold">
                   <span>Total:</span>
-                  <span>${Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0)).toFixed(2)}</span>
+                  <div className="flex items-center">
+                    <span>${Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0)).toFixed(2)}</span>
+                    {showBudgetDetails && (
+                      <span className="text-xs text-gray-500 ml-2">
+                        / ${Object.values(budgetAllocations).reduce((sum, budget) => sum + budget, 0).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

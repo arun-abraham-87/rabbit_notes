@@ -19,6 +19,7 @@ const ExpenseTracker = () => {
   const [editingId, setEditingId] = useState(null);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [excludedFromBudget, setExcludedFromBudget] = useState(0);
+  const [onceOffTotal, setOnceOffTotal] = useState(0);
   const [typeTotals, setTypeTotals] = useState({});
   const [loading, setLoading] = useState(true);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -33,6 +34,9 @@ const ExpenseTracker = () => {
     key: 'amount',
     direction: 'desc'
   });
+  const [typeBreakdownSort, setTypeBreakdownSort] = useState('desc');
+  const [hoveredType, setHoveredType] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   //console.log('Initialized with categories:', categories);
@@ -116,6 +120,9 @@ const ExpenseTracker = () => {
         // Check for exclude_from_budget tag
         const isExcluded = expenseLine.includes('meta_line::exclude_from_budget');
 
+        // Check for once_off tag
+        const isOnceOff = expenseLine.includes('meta_line::once_off');
+
         return {
           id: expenseId,
           date,
@@ -126,7 +133,8 @@ const ExpenseTracker = () => {
           lineIndex: index,
           sourceType: expenseSourceType,
           sourceName: expenseSourceName,
-          isExcluded
+          isExcluded,
+          isOnceOff
         };
       }).filter(expense => expense !== null);
     });
@@ -237,13 +245,16 @@ const ExpenseTracker = () => {
   }, [selectedType, searchQuery, showUnassignedOnly, expenses, sortConfig]);
 
   const calculateTotals = (expenseList) => {
-    // Calculate total expenses and excluded amount
+    // Calculate total expenses, excluded amount, and once-off total
     let total = 0;
     let excluded = 0;
+    let onceOff = 0;
     
     expenseList.forEach(expense => {
       if (expense.isExcluded) {
         excluded += expense.amount;
+      } else if (expense.isOnceOff) {
+        onceOff += expense.amount;
       } else {
         total += expense.amount;
       }
@@ -251,11 +262,12 @@ const ExpenseTracker = () => {
     
     setTotalExpenses(total);
     setExcludedFromBudget(excluded);
+    setOnceOffTotal(onceOff);
 
-    // Calculate type totals (excluding excluded expenses)
+    // Calculate type totals (excluding excluded and once-off expenses)
     const typeTotals = {};
     expenseList.forEach(expense => {
-      if (!expense.isExcluded) {
+      if (!expense.isExcluded && !expense.isOnceOff) {
         const type = expense.type;
         typeTotals[type] = (typeTotals[type] || 0) + expense.amount;
       }
@@ -630,6 +642,81 @@ const ExpenseTracker = () => {
     }
   };
 
+  const handleOnceOff = async (expenseId, isOnceOff) => {
+    console.log('handleOnceOff called with:', { expenseId, isOnceOff });
+    
+    // Get the line info from the expense line map
+    const lineInfo = expenseLineMap.get(expenseId);
+    if (!lineInfo) {
+      console.error('Line info not found for expense:', expenseId);
+      return;
+    }
+
+    const { noteId, lineIndex } = lineInfo;
+    console.log('Found line info:', { noteId, lineIndex });
+
+    // Find the original note
+    const originalNote = allNotes.find(note => note.id === noteId);
+    if (!originalNote) {
+      console.error('Original note not found:', noteId);
+      return;
+    }
+
+    // Split the note content into lines
+    const lines = originalNote.content.split('\n');
+    const expenseLine = lines[lineIndex];
+    
+    if (expenseLine) {
+      // Get the base content (without any meta_line tags)
+      const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
+      
+      // Extract all existing meta_line tags except once_off
+      const existingMetaTags = expenseLine.match(/meta_line::(?!once_off)[^:]+::[^\s]+/g) || [];
+      
+      // Create the new line with all tags
+      const newMetaTags = [
+        ...existingMetaTags,
+        ...(isOnceOff ? ['meta_line::once_off'] : [])
+      ];
+      
+      // Combine everything with proper spacing
+      const updatedLine = [baseContent, ...newMetaTags].join(' ');
+      lines[lineIndex] = updatedLine;
+
+      try {
+        const updatedContent = lines.join('\n');
+        await updateNoteById(noteId, updatedContent);
+        
+        // Update allNotes state
+        setAllNotes(prevNotes => 
+          prevNotes.map(note => 
+            note.id === noteId ? { ...note, content: updatedContent } : note
+          )
+        );
+
+        // Refresh the expenses
+        const refreshResponse = await loadAllNotes();
+        setAllNotes(refreshResponse.notes);
+        const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+        setExpenses(parsedExpenses);
+        setFilteredExpenses(parsedExpenses);
+        calculateTotals(parsedExpenses);
+        
+      } catch (error) {
+        console.error('Error updating note:', error);
+      }
+    }
+  };
+
+  const handleAmountHover = (event, type) => {
+    const rect = event.target.getBoundingClientRect();
+    setTooltipPosition({
+      x: rect.left - 300,
+      y: rect.top
+    });
+    setHoveredType(type);
+  };
+
   if (loading) {
     //console.log('Rendering loading state');
     return (
@@ -723,7 +810,7 @@ const ExpenseTracker = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow">
           <h2 className="text-lg font-semibold mb-2">Total Expenses</h2>
           <p className="text-2xl font-bold text-red-600">${Math.abs(totalExpenses).toFixed(2)}</p>
@@ -733,15 +820,66 @@ const ExpenseTracker = () => {
           <p className="text-2xl font-bold text-gray-600">${Math.abs(excludedFromBudget).toFixed(2)}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="text-lg font-semibold mb-2">Type Breakdown</h2>
+          <h2 className="text-lg font-semibold mb-2">Once Off Expenses</h2>
+          <p className="text-2xl font-bold text-blue-600">${Math.abs(onceOffTotal).toFixed(2)}</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h2 
+            className="text-lg font-semibold mb-2 cursor-pointer hover:text-blue-600"
+            onClick={() => setTypeBreakdownSort(prev => prev === 'desc' ? 'asc' : 'desc')}
+          >
+            Type Breakdown {typeBreakdownSort === 'desc' ? '↓' : '↑'}
+          </h2>
           <div className="space-y-1">
-            {Object.entries(typeTotals).map(([type, total]) => (
-              <div key={type} className="flex justify-between">
-                <span>{type}:</span>
-                <span className="font-medium">${Math.abs(total).toFixed(2)}</span>
+            {Object.entries(typeTotals)
+              .sort(([, a], [, b]) => {
+                const amountA = Math.abs(a);
+                const amountB = Math.abs(b);
+                return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
+              })
+              .map(([type, total]) => (
+                <div key={type} className="flex justify-between">
+                  <span>{type}:</span>
+                  <span 
+                    className="font-medium cursor-help"
+                    onMouseEnter={(e) => handleAmountHover(e, type)}
+                    onMouseLeave={() => setHoveredType(null)}
+                  >
+                    ${Math.abs(total).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            <div className="border-t border-gray-200 pt-1 mt-1">
+              <div className="flex justify-between font-bold">
+                <span>Total:</span>
+                <span>${Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0)).toFixed(2)}</span>
               </div>
-            ))}
+            </div>
           </div>
+          {hoveredType && (
+            <div 
+              className="absolute bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-10 w-[300px]"
+              style={{
+                left: `${tooltipPosition.x}px`,
+                top: `${tooltipPosition.y}px`,
+                transform: 'translateY(-50%)'
+              }}
+            >
+              <div className="text-sm">
+                <div className="font-semibold mb-1">{hoveredType} Details:</div>
+                <div className="space-y-1">
+                  {filteredExpenses
+                    .filter(expense => expense.type === hoveredType && !expense.isExcluded && !expense.isOnceOff)
+                    .map(expense => (
+                      <div key={expense.id} className="flex justify-between">
+                        <span className="text-gray-600 truncate">{expense.description}</span>
+                        <span className="font-medium ml-2">${Math.abs(expense.amount).toFixed(2)}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -779,6 +917,7 @@ const ExpenseTracker = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-4/12">Type</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Source</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Exclude</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Once Off</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12 cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('amount')}>
                 Amount {sortConfig.key === 'amount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -829,6 +968,14 @@ const ExpenseTracker = () => {
                       type="checkbox"
                       checked={expense.isExcluded}
                       onChange={(e) => handleExcludeFromBudget(expense.id, e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <input
+                      type="checkbox"
+                      checked={expense.isOnceOff}
+                      onChange={(e) => handleOnceOff(expense.id, e.target.checked)}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
                   </td>

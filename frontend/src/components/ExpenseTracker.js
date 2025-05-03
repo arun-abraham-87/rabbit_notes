@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, TrashIcon, PencilIcon, Cog6ToothIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, PencilIcon, Cog6ToothIcon, ArrowUpTrayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { loadAllNotes, updateNoteById } from '../utils/ApiUtils';
 import { Pie, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
@@ -50,7 +50,7 @@ const ExpenseTracker = () => {
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [chartType, setChartType] = useState('pie');
   const [hoveredTotal, setHoveredTotal] = useState(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [showBudgetDetails, setShowBudgetDetails] = useState(true);
   const [budgetAllocations, setBudgetAllocations] = useState({});
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -72,6 +72,8 @@ const ExpenseTracker = () => {
   const [showBudget, setShowBudget] = useState(false);
   const [showDataLoader, setShowDataLoader] = useState(false);
   const [budgetNote, setBudgetNote] = useState(null);
+  const [showBulkExclude, setShowBulkExclude] = useState(false);
+  const [isLoadStatusCollapsed, setIsLoadStatusCollapsed] = useState(true);
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   const months = [
@@ -1213,6 +1215,122 @@ const ExpenseTracker = () => {
     };
   }, [statusPopup, tagPopup]);
 
+  const handleBulkExclude = async () => {
+    if (selectedExpenses.size === 0) return;
+
+    try {
+      console.log('Starting bulk exclude for expenses:', Array.from(selectedExpenses));
+
+      // Create a map of note updates
+      const noteUpdates = new Map();
+
+      // Process each selected expense
+      for (const expenseId of selectedExpenses) {
+        const lineInfo = expenseLineMap.get(expenseId);
+        if (!lineInfo) {
+          console.error('Line info not found for expense:', expenseId);
+          continue;
+        }
+
+        const { noteId, lineIndex, content } = lineInfo;
+        console.log('Processing expense:', { expenseId, noteId, lineIndex });
+
+        // Get or create the note update entry
+        if (!noteUpdates.has(noteId)) {
+          const note = allNotes.find(n => n.id === noteId);
+          if (!note) {
+            console.error('Note not found:', noteId);
+            continue;
+          }
+          noteUpdates.set(noteId, {
+            content: note.content,
+            lines: note.content.split('\n'),
+            updatedLines: new Set()
+          });
+        }
+
+        const noteUpdate = noteUpdates.get(noteId);
+        const expenseLine = noteUpdate.lines[lineIndex];
+        
+        if (!expenseLine) {
+          console.error('No line found at index:', lineIndex);
+          continue;
+        }
+
+        console.log('Original line:', expenseLine);
+        
+        // Get the base content (without any meta_line tags)
+        const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
+        console.log('Base content:', baseContent);
+        
+        // Extract all existing meta_line tags except exclude_from_budget
+        const existingMetaTags = expenseLine.match(/meta_line::(?!exclude_from_budget)[^:]+::[^\s]+/g) || [];
+        console.log('Existing meta tags:', existingMetaTags);
+        
+        // Create the new line with all tags
+        const newMetaTags = [
+          ...existingMetaTags,
+          'meta_line::exclude_from_budget'
+        ];
+        console.log('New meta tags:', newMetaTags);
+        
+        // Combine everything with proper spacing
+        const updatedLine = [baseContent, ...newMetaTags].join(' ');
+        console.log('Updated line:', updatedLine);
+        
+        if (updatedLine !== expenseLine) {
+          noteUpdate.lines[lineIndex] = updatedLine;
+          noteUpdate.updatedLines.add(lineIndex);
+          console.log('Line marked for update at index:', lineIndex);
+        }
+      }
+
+      // Update each note that has changes
+      for (const [noteId, noteUpdate] of noteUpdates.entries()) {
+        if (noteUpdate.updatedLines.size > 0) {
+          console.log('Updating note:', noteId);
+          console.log('Updated lines:', Array.from(noteUpdate.updatedLines));
+          
+          const updatedContent = noteUpdate.lines.join('\n');
+          console.log('Updated content:', updatedContent);
+          
+          await updateNoteById(noteId, updatedContent);
+          console.log('Note updated successfully');
+          
+          // Update allNotes state
+          setAllNotes(prevNotes => 
+            prevNotes.map(n => 
+              n.id === noteId ? { ...n, content: updatedContent } : n
+            )
+          );
+        } else {
+          console.log('No changes to note:', noteId);
+        }
+      }
+
+      // Clear selection
+      setSelectedExpenses(new Set());
+      setShowBulkExclude(false);
+
+      // Refresh the expenses
+      console.log('Refreshing expenses...');
+      const refreshResponse = await loadAllNotes();
+      setAllNotes(refreshResponse.notes);
+      const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+      setExpenses(parsedExpenses);
+      setFilteredExpenses(parsedExpenses);
+      calculateTotals(parsedExpenses);
+      console.log('Bulk exclude completed successfully');
+
+    } catch (error) {
+      console.error('Error in bulk exclude:', error);
+      console.error('Error details:', {
+        selectedExpenses: Array.from(selectedExpenses),
+        error: error.message
+      });
+    }
+  };
+
   if (loading) {
     //console.log('Rendering loading state');
     return (
@@ -1319,8 +1437,43 @@ const ExpenseTracker = () => {
               onClick={() => handleBulkTypeChange(bulkType)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              Update Selected
+              Update Type
             </button>
+            <button
+              onClick={() => setShowBulkExclude(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              Exclude from Budget
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Exclude Confirmation Modal */}
+      {showBulkExclude && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <div className="flex items-center gap-3 mb-4">
+              <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />
+              <h2 className="text-xl font-semibold text-gray-900">Exclude Expenses</h2>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to exclude {selectedExpenses.size} expenses from the budget? This will remove them from budget calculations but they will still be visible in the list.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowBulkExclude(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkExclude}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Exclude Selected
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1430,44 +1583,63 @@ const ExpenseTracker = () => {
       </div>
 
       {/* Load Status Section */}
-      <div className="mb-6 bg-white p-4 rounded-lg shadow">
-        <h2 className="text-lg font-semibold mb-4">Load Status</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Transaction</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Transaction</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction Count</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loadStatus.map((status, index) => (
-                <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{status.sourceType}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{status.sourceName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{status.firstDate}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{status.lastDate}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{status.count}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">${status.debit.toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">${status.credit.toFixed(2)}</td>
-                </tr>
-              ))}
-              <tr className="bg-gray-50 font-bold">
-                <td colSpan="5" className="px-6 py-4 text-right text-sm text-gray-900">Total:</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
-                  ${loadStatus.reduce((sum, status) => sum + status.debit, 0).toFixed(2)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
-                  ${loadStatus.reduce((sum, status) => sum + status.credit, 0).toFixed(2)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <div className="mb-6">
+        <button
+          onClick={() => setIsLoadStatusCollapsed(!isLoadStatusCollapsed)}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-2"
+        >
+          <svg
+            className={`w-4 h-4 transform transition-transform ${isLoadStatusCollapsed ? 'rotate-90' : '-rotate-90'}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span>{isLoadStatusCollapsed ? 'Show Load Status' : 'Hide Load Status'}</span>
+        </button>
+        
+        <div className={`transition-all duration-300 ease-in-out ${isLoadStatusCollapsed ? 'max-h-0 overflow-hidden' : 'max-h-[2000px]'}`}>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h2 className="text-lg font-semibold mb-4">Load Status</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Transaction</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Transaction</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction Count</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {loadStatus.map((status, index) => (
+                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{status.sourceType}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{status.sourceName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{status.firstDate}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{status.lastDate}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{status.count}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">${status.debit.toFixed(2)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">${status.credit.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-gray-50 font-bold">
+                    <td colSpan="5" className="px-6 py-4 text-right text-sm text-gray-900">Total:</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
+                      ${loadStatus.reduce((sum, status) => sum + status.debit, 0).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                      ${loadStatus.reduce((sum, status) => sum + status.credit, 0).toFixed(2)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 

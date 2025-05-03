@@ -35,6 +35,7 @@ const ExpenseTracker = () => {
   const [showExcluded, setShowExcluded] = useState(false);
   const [showIncome, setShowIncome] = useState(false);
   const [showOnceOff, setShowOnceOff] = useState(false);
+  const [showHasTags, setShowHasTags] = useState(false);
   const [selectedExpenses, setSelectedExpenses] = useState(new Set());
   const [bulkType, setBulkType] = useState('Unassigned');
   const [expenseLineMap, setExpenseLineMap] = useState(new Map());
@@ -330,6 +331,7 @@ const ExpenseTracker = () => {
       const excludedMatch = !showExcluded || expense.isExcluded;
       const incomeMatch = !showIncome || expense.isIncome;
       const onceOffMatch = !showOnceOff || expense.isOnceOff;
+      const hasTagsMatch = !showHasTags || (expense.tags && expense.tags.length > 0);
 
       // Date filter
       const [day, month, year] = expense.date.split('/').map(Number);
@@ -338,14 +340,14 @@ const ExpenseTracker = () => {
       const monthMatch = expenseDate.getMonth() === selectedMonth;
       
       return typeMatch && searchMatch && unassignedMatch && excludedMatch && 
-             incomeMatch && onceOffMatch && yearMatch && monthMatch;
+             incomeMatch && onceOffMatch && yearMatch && monthMatch && hasTagsMatch;
     });
 
     const sortedAndFiltered = sortExpenses(filtered);
     setFilteredExpenses(sortedAndFiltered);
     calculateTotals(sortedAndFiltered);
   }, [selectedType, searchQuery, showUnassignedOnly, expenses, sortConfig, 
-      selectedYear, selectedMonth, showExcluded, showIncome, showOnceOff]);
+      selectedYear, selectedMonth, showExcluded, showIncome, showOnceOff, showHasTags]);
 
   const calculateTotals = (expenseList) => {
     // Calculate total expenses, excluded amount, once-off total, and income
@@ -1081,27 +1083,35 @@ const ExpenseTracker = () => {
   };
 
   const handleTagRemove = async (expenseId, tagToRemove) => {
-    // Get the line info from the expense line map
-    const lineInfo = expenseLineMap.get(expenseId);
-    if (!lineInfo) {
-      console.error('Line info not found for expense:', expenseId);
-      return;
-    }
-
-    const { noteId, lineIndex } = lineInfo;
-
-    // Find the original note
-    const originalNote = allNotes.find(note => note.id === noteId);
-    if (!originalNote) {
-      console.error('Original note not found:', noteId);
-      return;
-    }
-
-    // Split the note content into lines
-    const lines = originalNote.content.split('\n');
-    const expenseLine = lines[lineIndex];
+    console.log('Starting tag removal for expense:', expenseId, 'tag:', tagToRemove);
     
-    if (expenseLine) {
+    try {
+      // Get the line info from the expense line map
+      const lineInfo = expenseLineMap.get(expenseId);
+      if (!lineInfo) {
+        console.error('Line info not found for expense:', expenseId);
+        return;
+      }
+
+      const { noteId, lineIndex } = lineInfo;
+      console.log('Found line info:', { noteId, lineIndex });
+
+      // Find the original note
+      const originalNote = allNotes.find(note => note.id === noteId);
+      if (!originalNote) {
+        console.error('Original note not found:', noteId);
+        return;
+      }
+
+      // Split the note content into lines
+      const lines = originalNote.content.split('\n');
+      const expenseLine = lines[lineIndex];
+      
+      if (!expenseLine) {
+        console.error('Expense line not found at index:', lineIndex);
+        return;
+      }
+
       // Get the base content (without any meta_line tags)
       const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
       
@@ -1123,35 +1133,61 @@ const ExpenseTracker = () => {
       const updatedLine = [baseContent, ...newMetaTags].join(' ');
       lines[lineIndex] = updatedLine;
 
-      try {
-        const updatedContent = lines.join('\n');
-        await updateNoteById(noteId, updatedContent);
-        
-        // Update allNotes state
-        setAllNotes(prevNotes => 
-          prevNotes.map(note => 
-            note.id === noteId ? { ...note, content: updatedContent } : note
-          )
-        );
+      // Update the note content
+      const updatedContent = lines.join('\n');
+      console.log('Updating note content:', updatedContent);
 
-        // Update the local state
-        setExpenses(prevExpenses => 
-          prevExpenses.map(exp => 
-            exp.id === expenseId ? { ...exp, tags: newTags } : exp
-          )
-        );
+      // Save the updated note
+      await updateNoteById(noteId, updatedContent);
+      console.log('Note updated successfully');
 
-        // Refresh the expenses
-        const refreshResponse = await loadAllNotes();
-        setAllNotes(refreshResponse.notes);
-        const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
-        setExpenses(parsedExpenses);
-        setFilteredExpenses(parsedExpenses);
-        calculateTotals(parsedExpenses);
-        
-      } catch (error) {
-        console.error('Error updating note:', error);
+      // Update the local state immediately
+      const updatedNote = { ...originalNote, content: updatedContent };
+      const updatedNotes = allNotes.map(note => 
+        note.id === noteId ? updatedNote : note
+      );
+      setAllNotes(updatedNotes);
+
+      // Update the expenses state
+      const updatedExpenses = expenses.map(exp => 
+        exp.id === expenseId ? { ...exp, tags: newTags } : exp
+      );
+      setExpenses(updatedExpenses);
+      setFilteredExpenses(updatedExpenses);
+
+      // Update tag input if we're in the tag popup
+      if (tagPopup && tagPopup.id === expenseId) {
+        setTagInput(newTags.join(' '));
       }
+
+      // Refresh the expenses list
+      const refreshResponse = await loadAllNotes();
+      const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+      
+      // Update the expense line map
+      const newLineMap = new Map();
+      parsedExpenses.forEach(expense => {
+        const { noteId, lineIndex } = expenseLineMap.get(expense.id) || {};
+        if (noteId && lineIndex !== undefined) {
+          newLineMap.set(expense.id, { noteId, lineIndex });
+        }
+      });
+      setExpenseLineMap(newLineMap);
+
+      // Update the states with the refreshed data
+      setAllNotes(refreshResponse.notes);
+      setExpenses(parsedExpenses);
+      setFilteredExpenses(parsedExpenses);
+      calculateTotals(parsedExpenses);
+
+      console.log('Tag removal completed successfully');
+    } catch (error) {
+      console.error('Error in handleTagRemove:', error);
+      console.error('Error details:', {
+        expenseId,
+        tagToRemove,
+        error: error.message
+      });
     }
   };
 
@@ -1313,6 +1349,7 @@ const ExpenseTracker = () => {
                 setShowExcluded(false);
                 setShowIncome(false);
                 setShowOnceOff(false);
+                setShowHasTags(false);
               }}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
@@ -1356,6 +1393,15 @@ const ExpenseTracker = () => {
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <span className="text-sm font-medium text-gray-700">Once Off Only</span>
+          </label>
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={showHasTags}
+              onChange={(e) => setShowHasTags(e.target.checked)}
+              className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-700">Has Tags</span>
           </label>
         </div>
       </div>
@@ -2004,10 +2050,10 @@ const ExpenseTracker = () => {
         <div
           className="tag-popup fixed bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-10"
           style={{
-            left: `${tagPopup.x - 300}px`, // Move left by 300px (popup width)
+            left: `${tagPopup.x - 300}px`,
             top: `${tagPopup.y}px`,
             transform: 'translateY(-50%)',
-            width: '300px' // Set fixed width
+            width: '300px'
           }}
         >
           <div className="space-y-2">
@@ -2016,10 +2062,7 @@ const ExpenseTracker = () => {
                 <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                   {tag}
                   <button
-                    onClick={() => {
-                      const tags = tagInput.split(' ').filter(t => t !== tag);
-                      setTagInput(tags.join(' '));
-                    }}
+                    onClick={() => handleTagRemove(tagPopup.id, tag)}
                     className="ml-1 text-blue-600 hover:text-blue-800"
                   >
                     ×

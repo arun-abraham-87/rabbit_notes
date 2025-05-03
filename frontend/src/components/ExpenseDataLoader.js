@@ -193,8 +193,8 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
         const content = [
             ...formattedLines,
             'meta::expense',
-            `[[${selectedSourceType}]]`,
-            `[[${selectedSourceName}]]`
+            `meta::link::${selectedSourceType}`,
+            `meta::link::${selectedSourceName}`
         ].join('\n');
 
         let response;

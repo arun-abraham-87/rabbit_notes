@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { loadAllNotes, updateNoteById } from '../utils/ApiUtils';
+import { Pie } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const ExpenseTracker = () => {
   //console.log('ExpenseTracker component mounted');
@@ -810,77 +814,138 @@ const ExpenseTracker = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="text-lg font-semibold mb-2">Total Expenses</h2>
-          <p className="text-2xl font-bold text-red-600">${Math.abs(totalExpenses).toFixed(2)}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="text-lg font-semibold mb-2">Excluded from Budget</h2>
-          <p className="text-2xl font-bold text-gray-600">${Math.abs(excludedFromBudget).toFixed(2)}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="text-lg font-semibold mb-2">Once Off Expenses</h2>
-          <p className="text-2xl font-bold text-blue-600">${Math.abs(onceOffTotal).toFixed(2)}</p>
+          <h2 className="text-lg font-semibold mb-2">Budget Summary</h2>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Total Expenses</h3>
+              <p className="text-2xl font-bold text-red-600">${Math.abs(totalExpenses).toFixed(2)}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Excluded from Budget</h3>
+              <p className="text-2xl font-bold text-gray-600">${Math.abs(excludedFromBudget).toFixed(2)}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Once Off Expenses</h3>
+              <p className="text-2xl font-bold text-blue-600">${Math.abs(onceOffTotal).toFixed(2)}</p>
+            </div>
+          </div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h2 
             className="text-lg font-semibold mb-2 cursor-pointer hover:text-blue-600"
             onClick={() => setTypeBreakdownSort(prev => prev === 'desc' ? 'asc' : 'desc')}
           >
-            Type Breakdown {typeBreakdownSort === 'desc' ? '↓' : '↑'}
+            Type Distribution {typeBreakdownSort === 'desc' ? '↓' : '↑'}
           </h2>
-          <div className="space-y-1">
-            {Object.entries(typeTotals)
-              .sort(([, a], [, b]) => {
-                const amountA = Math.abs(a);
-                const amountB = Math.abs(b);
-                return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
-              })
-              .map(([type, total]) => (
-                <div key={type} className="flex justify-between">
-                  <span>{type}:</span>
-                  <span 
-                    className="font-medium cursor-help"
-                    onMouseEnter={(e) => handleAmountHover(e, type)}
-                    onMouseLeave={() => setHoveredType(null)}
-                  >
-                    ${Math.abs(total).toFixed(2)}
-                  </span>
-                </div>
-              ))}
-            <div className="border-t border-gray-200 pt-1 mt-1">
-              <div className="flex justify-between font-bold">
-                <span>Total:</span>
-                <span>${Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0)).toFixed(2)}</span>
+          <div className="h-64">
+            <Pie
+              data={{
+                labels: Object.keys(typeTotals),
+                datasets: [{
+                  data: Object.values(typeTotals).map(Math.abs),
+                  backgroundColor: [
+                    '#FF6384',
+                    '#36A2EB',
+                    '#FFCE56',
+                    '#4BC0C0',
+                    '#9966FF',
+                    '#FF9F40',
+                    '#8AC24A',
+                    '#FF6B6B',
+                    '#4A90E2',
+                    '#7ED321'
+                  ],
+                  borderWidth: 1
+                }]
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'right',
+                    labels: {
+                      boxWidth: 12,
+                      padding: 15
+                    }
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        const value = Math.abs(context.raw);
+                        const total = Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0));
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `${context.label}: $${value.toFixed(2)} (${percentage}%)`;
+                      }
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Type Breakdown Table */}
+      <div className="bg-white p-4 rounded-lg shadow mb-6">
+        <h2 
+          className="text-lg font-semibold mb-2 cursor-pointer hover:text-blue-600"
+          onClick={() => setTypeBreakdownSort(prev => prev === 'desc' ? 'asc' : 'desc')}
+        >
+          Type Breakdown {typeBreakdownSort === 'desc' ? '↓' : '↑'}
+        </h2>
+        <div className="space-y-1">
+          {Object.entries(typeTotals)
+            .sort(([, a], [, b]) => {
+              const amountA = Math.abs(a);
+              const amountB = Math.abs(b);
+              return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
+            })
+            .map(([type, total]) => (
+              <div key={type} className="flex justify-between">
+                <span>{type}:</span>
+                <span 
+                  className="font-medium cursor-help"
+                  onMouseEnter={(e) => handleAmountHover(e, type)}
+                  onMouseLeave={() => setHoveredType(null)}
+                >
+                  ${Math.abs(total).toFixed(2)}
+                </span>
+              </div>
+            ))}
+          <div className="border-t border-gray-200 pt-1 mt-1">
+            <div className="flex justify-between font-bold">
+              <span>Total:</span>
+              <span>${Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0)).toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+        {hoveredType && (
+          <div 
+            className="absolute bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-10 w-[300px]"
+            style={{
+              left: `${tooltipPosition.x}px`,
+              top: `${tooltipPosition.y}px`,
+              transform: 'translateY(-50%)'
+            }}
+          >
+            <div className="text-sm">
+              <div className="font-semibold mb-1">{hoveredType} Details:</div>
+              <div className="space-y-1">
+                {filteredExpenses
+                  .filter(expense => expense.type === hoveredType && !expense.isExcluded && !expense.isOnceOff)
+                  .map(expense => (
+                    <div key={expense.id} className="flex justify-between">
+                      <span className="text-gray-600 truncate">{expense.description}</span>
+                      <span className="font-medium ml-2">${Math.abs(expense.amount).toFixed(2)}</span>
+                    </div>
+                  ))}
               </div>
             </div>
           </div>
-          {hoveredType && (
-            <div 
-              className="absolute bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-10 w-[300px]"
-              style={{
-                left: `${tooltipPosition.x}px`,
-                top: `${tooltipPosition.y}px`,
-                transform: 'translateY(-50%)'
-              }}
-            >
-              <div className="text-sm">
-                <div className="font-semibold mb-1">{hoveredType} Details:</div>
-                <div className="space-y-1">
-                  {filteredExpenses
-                    .filter(expense => expense.type === hoveredType && !expense.isExcluded && !expense.isOnceOff)
-                    .map(expense => (
-                      <div key={expense.id} className="flex justify-between">
-                        <span className="text-gray-600 truncate">{expense.description}</span>
-                        <span className="font-medium ml-2">${Math.abs(expense.amount).toFixed(2)}</span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Expenses List */}

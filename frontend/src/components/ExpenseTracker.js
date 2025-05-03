@@ -54,10 +54,7 @@ const ExpenseTracker = () => {
   const [showBudgetDetails, setShowBudgetDetails] = useState(true);
   const [budgetAllocations, setBudgetAllocations] = useState({});
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const currentDate = new Date();
-    return currentDate.getMonth() === 0 ? 11 : currentDate.getMonth() - 1;
-  });
+  const [selectedMonths, setSelectedMonths] = useState(new Set([new Date().getMonth() === 0 ? 11 : new Date().getMonth() - 1]));
 
   // Add new state for load status
   const [loadStatus, setLoadStatus] = useState([]);
@@ -266,7 +263,7 @@ const ExpenseTracker = () => {
           lastDate: expense.date,
           count: 1,
           debit: expense.amount < 0 ? Math.abs(expense.amount) : 0,
-          credit: expense.amount > 0 ? expense.amount : 0
+          credit: expense.amount > 0 ? Math.abs(expense.amount) : 0
         });
       } else {
         const status = statusMap.get(key);
@@ -280,7 +277,7 @@ const ExpenseTracker = () => {
         if (expense.amount < 0) {
           status.debit += Math.abs(expense.amount);
         } else {
-          status.credit += expense.amount;
+          status.credit += Math.abs(expense.amount);
         }
       }
     });
@@ -294,8 +291,8 @@ const ExpenseTracker = () => {
     return [...expenses].sort((a, b) => {
       if (sortConfig.key === 'amount') {
         return sortConfig.direction === 'asc' 
-          ? a.amount - b.amount 
-          : b.amount - a.amount;
+          ? Math.abs(a.amount) - Math.abs(b.amount) 
+          : Math.abs(b.amount) - Math.abs(a.amount);
       } else if (sortConfig.key === 'date') {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
@@ -344,7 +341,7 @@ const ExpenseTracker = () => {
       const [day, month, year] = expense.date.split('/').map(Number);
       const expenseDate = new Date(year, month - 1, day); // month is 0-based in JavaScript Date
       const yearMatch = expenseDate.getFullYear() === selectedYear;
-      const monthMatch = expenseDate.getMonth() === selectedMonth;
+      const monthMatch = selectedMonths.has(expenseDate.getMonth());
       
       return typeMatch && searchMatch && unassignedMatch && excludedMatch && 
              incomeMatch && onceOffMatch && yearMatch && monthMatch && hasTagsMatch;
@@ -354,7 +351,7 @@ const ExpenseTracker = () => {
     setFilteredExpenses(sortedAndFiltered);
     calculateTotals(sortedAndFiltered);
   }, [selectedType, searchQuery, showUnassignedOnly, expenses, sortConfig, 
-      selectedYear, selectedMonth, showExcluded, showIncome, showOnceOff, showHasTags]);
+      selectedYear, selectedMonths, showExcluded, showIncome, showOnceOff, showHasTags]);
 
   const calculateTotals = (expenseList) => {
     // Calculate total expenses, excluded amount, once-off total, and income
@@ -365,13 +362,13 @@ const ExpenseTracker = () => {
     
     expenseList.forEach(expense => {
       if (expense.isIncome) {
-        income += expense.amount;
+        income += Math.abs(expense.amount);
       } else if (expense.isExcluded) {
-        excluded += expense.amount;
+        excluded += Math.abs(expense.amount);
       } else if (expense.isOnceOff) {
-        onceOff += expense.amount;
+        onceOff += Math.abs(expense.amount);
       } else {
-        total += expense.amount;
+        total += Math.abs(expense.amount);
       }
     });
     
@@ -387,12 +384,12 @@ const ExpenseTracker = () => {
       if (!expense.isExcluded && !expense.isOnceOff && !expense.isIncome) {
         // Calculate type totals
         const type = expense.type;
-        typeTotals[type] = (typeTotals[type] || 0) + expense.amount;
+        typeTotals[type] = (typeTotals[type] || 0) + Math.abs(expense.amount);
 
         // Calculate tag totals
         if (expense.tags && expense.tags.length > 0) {
           expense.tags.forEach(tag => {
-            tagTotals[tag] = (tagTotals[tag] || 0) + expense.amount;
+            tagTotals[tag] = (tagTotals[tag] || 0) + Math.abs(expense.amount);
           });
         }
       }
@@ -1386,9 +1383,19 @@ const ExpenseTracker = () => {
           {months.map((month, index) => (
             <button
               key={month}
-              onClick={() => setSelectedMonth(index)}
+              onClick={() => {
+                setSelectedMonths(prev => {
+                  const newSet = new Set(prev);
+                  if (newSet.has(index)) {
+                    newSet.delete(index);
+                  } else {
+                    newSet.add(index);
+                  }
+                  return newSet;
+                });
+              }}
               className={`px-4 py-2 rounded-md transition-colors ${
-                selectedMonth === index
+                selectedMonths.has(index)
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
@@ -1526,6 +1533,7 @@ const ExpenseTracker = () => {
                 setShowIncome(false);
                 setShowOnceOff(false);
                 setShowHasTags(false);
+                setSelectedMonths(new Set([new Date().getMonth() === 0 ? 11 : new Date().getMonth() - 1]));
               }}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
@@ -2165,7 +2173,7 @@ const ExpenseTracker = () => {
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-1/12">
-                    ${expense.amount.toFixed(2)}
+                    ${Math.abs(expense.amount).toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center gap-2">

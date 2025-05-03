@@ -1146,25 +1146,27 @@ const ExpenseTracker = () => {
                 className="space-y-4"
                 onMouseMove={handleMouseMove}
               >
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Income</h3>
-                  <p 
-                    className="text-2xl font-bold text-green-600 cursor-help"
-                    onMouseEnter={(e) => handleTotalHover(e, 'income')}
-                    onMouseLeave={() => setHoveredTotal(null)}
-                  >
-                    ${Math.abs(incomeTotal).toFixed(2)}
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Total Expenses</h3>
-                  <p className="text-2xl font-bold text-red-600">${Math.abs(totalExpenses).toFixed(2)}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Savings</h3>
-                  <p className={`text-2xl font-bold ${(incomeTotal - Math.abs(totalExpenses)) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${(incomeTotal - Math.abs(totalExpenses)).toFixed(2)}
-                  </p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Income</h3>
+                    <p 
+                      className="text-2xl font-bold text-green-600 cursor-help"
+                      onMouseEnter={(e) => handleTotalHover(e, 'income')}
+                      onMouseLeave={() => setHoveredTotal(null)}
+                    >
+                      ${Math.abs(incomeTotal).toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Total Expenses</h3>
+                    <p className="text-2xl font-bold text-red-600">${Math.abs(totalExpenses).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Savings</h3>
+                    <p className={`text-2xl font-bold ${(incomeTotal - Math.abs(totalExpenses)) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${(incomeTotal - Math.abs(totalExpenses)).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500">Excluded from Budget</h3>

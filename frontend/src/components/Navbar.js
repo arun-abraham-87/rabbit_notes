@@ -135,6 +135,16 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
               People
             </button>
           )}
+          {settings?.showNewsPage !== false && (
+            <button
+              onClick={() => setActivePage('news')}
+              className={`px-3 py-1 rounded-full border ${
+                activePage === 'news' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
+            >
+              News
+            </button>
+          )}
           <button
             onClick={() => setActivePage('manage-notes')}
             className={`p-2 rounded-full ${

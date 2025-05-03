@@ -635,6 +635,7 @@ const NotesMainContainer = ({
         >
             <div className="flex flex-col h-full">
                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
+                    
                     <UnacknowledgedMeetingsBanner 
                         meetings={unacknowledgedMeetings} 
                         onDismiss={handleDismissUnacknowledgedMeeting} 

@@ -11,6 +11,8 @@ import { loadTags, addNewTag, deleteTag, editTag } from '../utils/ApiUtils';
 import { loadNotes } from '../utils/ApiUtils';
 import { addNewNoteCommon } from '../utils/ApiUtils';
 import moment from 'moment';
+import StockPrice from './Stocks.js';
+import NewsFeed from './NewsFeed.js';
 
 const TagListing = () => {
   const [tagSearch, setTagSearch] = useState('');
@@ -356,6 +358,8 @@ const TagListing = () => {
           )}
         </div>
       )}
+      <StockPrice/>
+      <NewsFeed/>
     </div>
   );
 };

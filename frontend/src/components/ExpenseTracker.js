@@ -1403,6 +1403,16 @@ const ExpenseTracker = () => {
               {month}
             </button>
           ))}
+          <button
+            onClick={() => {
+              const currentMonth = new Date().getMonth();
+              const ytdMonths = new Set(Array.from({length: currentMonth + 1}, (_, i) => i));
+              setSelectedMonths(ytdMonths);
+            }}
+            className="px-4 py-2 rounded-md transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            YTD
+          </button>
         </div>
       </div>
 

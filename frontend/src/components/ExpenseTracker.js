@@ -705,6 +705,13 @@ const ExpenseTracker = () => {
           )
         );
 
+        // Update the local state
+        setExpenses(prevExpenses => 
+          prevExpenses.map(exp => 
+            exp.id === expenseId ? { ...exp, isExcluded: exclude } : exp
+          )
+        );
+
         // Refresh the expenses
         const refreshResponse = await loadAllNotes();
         setAllNotes(refreshResponse.notes);

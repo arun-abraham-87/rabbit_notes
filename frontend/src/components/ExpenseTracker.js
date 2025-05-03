@@ -1304,6 +1304,21 @@ const ExpenseTracker = () => {
               )}
             </div>
           </div>
+          <div className="flex items-end">
+            <button
+              onClick={() => {
+                setSelectedType('All');
+                setSearchQuery('');
+                setShowUnassignedOnly(false);
+                setShowExcluded(false);
+                setShowIncome(false);
+                setShowOnceOff(false);
+              }}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            >
+              Reset Filters
+            </button>
+          </div>
         </div>
         <div className="flex gap-6">
           <label className="flex items-center space-x-2">
@@ -1661,109 +1676,138 @@ const ExpenseTracker = () => {
               </label>
             </div>
             <div className="space-y-1">
-              {(breakdownView === 'type' ? Object.entries(typeTotals) : Object.entries(tagTotals))
-                .sort(([, a], [, b]) => {
-                  const amountA = Math.abs(a);
-                  const amountB = Math.abs(b);
-                  return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
-                })
-                .map(([key, total]) => {
-                  const currentDate = new Date();
-                  const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-                  const remainingDays = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
-                  const budget = breakdownView === 'type' ? (budgetAllocations[key] ?? 0) : 0;
-                  const remainingBudget = budget - Math.abs(total);
-                  const dailyAllowance = remainingBudget / remainingDays;
-
-                  return (
-                    <div key={key} className="flex flex-col gap-1">
-                      <div className="flex justify-between items-center">
-                        <span className="w-1/4">{key}:</span>
-                        {showBudgetDetails && breakdownView === 'type' && (
-                          <div className="flex-1 mx-4">
-                            <div 
-                              className="w-full bg-gray-200 rounded-full h-2.5 group hover:bg-gray-300 transition-colors duration-200 relative"
-                              onMouseEnter={(e) => handleAmountHover(e, key)}
-                              onMouseLeave={() => setHoveredType(null)}
-                            >
-                              {/* Budget allocation indicator */}
-                              {budget > 0 && (
-                                <div 
-                                  className="absolute h-2.5 border-r-2 border-dashed border-gray-400"
-                                  style={{ 
-                                    left: `${Math.min((budget / budget) * 100, 100)}%`,
-                                    transform: 'translateX(-50%)'
-                                  }}
-                                />
-                              )}
-                              <div 
-                                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                                style={{ 
-                                  width: budget === 0 ? '100%' : `${Math.min((Math.abs(total) / budget) * 100, 100)}%`,
-                                  backgroundColor: budget === 0 ? '#EF4444' : (Math.abs(total) > budget ? '#EF4444' : '#3B82F6')
-                                }}
-                              />
-                            </div>
-                          </div>
+              {breakdownView === 'type' ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Spent</th>
+                        {showBudgetDetails && (
+                          <>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Budget</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Daily Allowance</th>
+                            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+                          </>
                         )}
-                        <span 
-                          className={`font-medium ${showBudgetDetails && breakdownView === 'type' ? 'w-1/4' : 'w-3/4'} text-right`}
-                        >
-                          ${Math.abs(total).toFixed(2)}
-                          {showBudgetDetails && breakdownView === 'type' && (
-                            <span className="text-xs text-gray-500 ml-2">
-                              / ${budget.toFixed(2)}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      {showBudgetDetails && breakdownView === 'type' && (
-                        <div className="flex justify-between text-xs text-gray-500 pl-1/4 ml-4">
-                          <span>Daily Allowance: ${dailyAllowance.toFixed(2)}</span>
-                          <span>Remaining: ${remainingBudget.toFixed(2)}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              <div className="border-t border-gray-200 pt-1 mt-1">
-                <div className="flex justify-between font-bold">
-                  <span>Total:</span>
-                  <div className="flex items-center">
-                    <span>${Math.abs(Object.values(breakdownView === 'type' ? typeTotals : tagTotals).reduce((sum, total) => sum + total, 0)).toFixed(2)}</span>
-                    {showBudgetDetails && breakdownView === 'type' && (
-                      <span className="text-xs text-gray-500 ml-2">
-                        / ${Object.values(budgetAllocations).reduce((sum, budget) => sum + budget, 0).toFixed(2)}
-                      </span>
-                    )}
-                  </div>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {Object.entries(typeTotals)
+                        .sort(([, a], [, b]) => {
+                          const amountA = Math.abs(a);
+                          const amountB = Math.abs(b);
+                          return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
+                        })
+                        .map(([type, total]) => {
+                          const currentDate = new Date();
+                          const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+                          const remainingDays = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
+                          const budget = budgetAllocations[type] ?? 0;
+                          const remainingBudget = budget - Math.abs(total);
+                          const dailyAllowance = remainingBudget / remainingDays;
+                          const progress = budget === 0 ? 0 : (Math.abs(total) / budget) * 100;
+
+                          return (
+                            <tr key={type} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                <div 
+                                  className="cursor-help"
+                                  onMouseEnter={(e) => handleAmountHover(e, type)}
+                                  onMouseLeave={() => setHoveredType(null)}
+                                >
+                                  {type}
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium">
+                                ${Math.abs(total).toFixed(2)}
+                              </td>
+                              {showBudgetDetails && (
+                                <>
+                                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-500">
+                                    ${budget.toFixed(2)}
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right">
+                                    <span className={remainingBudget >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                      ${remainingBudget.toFixed(2)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-500">
+                                    ${dailyAllowance.toFixed(2)}
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap">
+                                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                      <div 
+                                        className="h-2.5 rounded-full transition-all duration-300"
+                                        style={{ 
+                                          width: `${Math.min(progress, 100)}%`,
+                                          backgroundColor: budget === 0 ? '#EF4444' : (Math.abs(total) > budget ? '#EF4444' : '#3B82F6')
+                                        }}
+                                      />
+                                    </div>
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      <tr className="bg-gray-50 font-bold">
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">Total</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right">
+                          ${Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0)).toFixed(2)}
+                        </td>
+                        {showBudgetDetails && (
+                          <>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right">
+                              ${Object.values(budgetAllocations).reduce((sum, budget) => sum + budget, 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right">
+                              ${(Object.values(budgetAllocations).reduce((sum, budget) => sum + budget, 0) - 
+                                 Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0))).toFixed(2)}
+                            </td>
+                            <td colSpan="2"></td>
+                          </>
+                        )}
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-              </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tag</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {Object.entries(tagTotals)
+                        .sort(([, a], [, b]) => {
+                          const amountA = Math.abs(a);
+                          const amountB = Math.abs(b);
+                          return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
+                        })
+                        .map(([tag, total]) => (
+                          <tr key={tag} className="hover:bg-gray-50">
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{tag}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium">
+                              ${Math.abs(total).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      <tr className="bg-gray-50 font-bold">
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">Total</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right">
+                          ${Math.abs(Object.values(tagTotals).reduce((sum, total) => sum + total, 0)).toFixed(2)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-            {hoveredType && breakdownView === 'type' && (
-              <div 
-                className="fixed bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-10 w-[300px]"
-                style={{
-                  left: `${tooltipPosition.x}px`,
-                  top: `${tooltipPosition.y}px`,
-                  transform: 'translateY(-50%)'
-                }}
-              >
-                <div className="text-sm">
-                  <div className="font-semibold mb-1">{hoveredType} Details:</div>
-                  <div className="space-y-1">
-                    {filteredExpenses
-                      .filter(expense => expense.type === hoveredType && !expense.isExcluded && !expense.isOnceOff)
-                      .map(expense => (
-                        <div key={expense.id} className="flex justify-between">
-                          <span className="text-gray-600 truncate">{expense.description}</span>
-                          <span className="font-medium ml-2">${Math.abs(expense.amount).toFixed(2)}</span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

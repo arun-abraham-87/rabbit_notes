@@ -28,6 +28,59 @@ const ExpenseTracker = () => {
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   //console.log('Initialized with categories:', categories);
 
+  const parseExpenses = (notes, typeMap) => {
+    const expenseNotes = notes.filter(note => 
+      note.content.includes('meta::expense') && 
+      !note.content.includes('meta::expense_type') &&
+      !note.content.includes('meta::expense_source_type') &&
+      !note.content.includes('meta::expense_source_name')
+    );
+
+    return expenseNotes.flatMap(note => {
+      // Split the content by newlines and filter out meta:: lines
+      const lines = note.content.split('\n').filter(line => 
+        line.trim() && !line.includes('meta::')
+      );
+
+      return lines.map((expenseLine, index) => {
+        // Check for meta_line::expense_type tag
+        const typeMatch = expenseLine.match(/meta_line::expense_type::([^\s]+)/);
+        let type = 'Unassigned';
+        
+        if (typeMatch) {
+          const typeNoteId = typeMatch[1];
+          type = typeMap.get(typeNoteId) || 'Unassigned';
+        }
+        
+        // Split the expense line by spaces (excluding the meta tag)
+        const cleanLine = expenseLine.replace(/meta_line::expense_type::[^\s]*\s*/, '');
+        const parts = cleanLine.trim().split(/\s+/);
+        
+        if (parts.length < 3) return null;
+
+        // First part is date, second is amount, rest is description
+        const date = parts[0];
+        const amount = parseFloat(parts[1]);
+        const description = parts.slice(2).join(' ');
+
+        if (description.includes('Credit Card')) {
+          console.log('===============================================');
+          console.log('Credit Card expense:', description);
+          console.log('===============================================');
+        }
+
+        return {
+          id: `${note.id}-${index}`,
+          date,
+          amount,
+          description,
+          type,
+          noteId: note.id
+        };
+      }).filter(expense => expense !== null);
+    });
+  };
+
   // Load expenses from notes
   useEffect(() => {
     //console.log('Starting to fetch expenses from notes');
@@ -56,60 +109,7 @@ const ExpenseTracker = () => {
         const types = ['Unassigned', ...Array.from(typeMap.values())];
         setExpenseTypes(types);
 
-        const expenseNotes = response.notes.filter(note => 
-          note.content.includes('meta::expense') && !note.content.includes('meta::expense_type')
-          && !note.content.includes('meta::expense_source_type')
-          && !note.content.includes('meta::expense_source_name')
-        );
-        //console.log('Found expense notes:', expenseNotes.length);
-
-        // Create a map of all notes for quick lookup
-        const notesMap = new Map(response.notes.map(note => [note.id, note]));
-        //console.log('Created notes map with size:', notesMap.size);
-
-        const parsedExpenses = expenseNotes.flatMap(note => {
-          // Split the content by newlines and filter out meta:: lines
-          const lines = note.content.split('\n').filter(line => 
-            line.trim() && !line.includes('meta::')
-          );
-
-          return lines.map((expenseLine, index) => {
-            // Check for meta_line::expense_type tag
-            const typeMatch = expenseLine.match(/meta_line::expense_type::([^\s]+)/);
-            let type = 'Unassigned';
-            
-            if (typeMatch) {
-              const typeNoteId = typeMatch[1];
-              type = typeMap.get(typeNoteId) || 'Unassigned';
-            }
-            
-            // Split the expense line by spaces (excluding the meta tag)
-            const cleanLine = expenseLine.replace(/meta_line::expense_type::[^\s]*\s*/, '');
-            const parts = cleanLine.trim().split(/\s+/);
-            
-            if (parts.length < 3) return null;
-
-            // First part is date, second is amount, rest is description
-            const date = parts[0];
-            const amount = parseFloat(parts[1]);
-            const description = parts.slice(2).join(' ');
-            if (description.includes('Credit Card')) {
-              console.log('===============================================');
-              console.log('Credit Card expense:', description);
-              console.log('===============================================');
-            }
-            return {
-              id: `${note.id}-${index}`,
-              date,
-              amount,
-              description,
-              type,
-              noteId: note.id
-            };
-          }).filter(expense => expense !== null);
-        });
-
-        //console.log('Final parsed expenses:', parsedExpenses);
+        const parsedExpenses = parseExpenses(response.notes, typeMap);
         setExpenses(parsedExpenses);
         setFilteredExpenses(parsedExpenses);
         calculateTotals(parsedExpenses);
@@ -305,61 +305,7 @@ const ExpenseTracker = () => {
       setAllNotes(refreshResponse.notes);
       
       // Re-parse expenses with the updated notes
-      const expenseNotes = refreshResponse.notes.filter(note => 
-        note.content.includes('meta::expense') && !note.content.includes('meta::expense_type')
-        && !note.content.includes('meta::expense_source_type')
-        && !note.content.includes('meta::expense_source_name')
-      );
-      console.log('Filtered expense notes:', expenseNotes.length);
-      
-      const notesMap = new Map(refreshResponse.notes.map(note => [note.id, note]));
-      console.log('Created notes map with size:', notesMap.size);
-      
-      const parsedExpenses = expenseNotes.flatMap(note => {
-        const lines = note.content.split('\n').filter(line => 
-          line.trim() && !line.includes('meta::')
-        );
-        console.log(`Processing note ${note.id} with ${lines.length} lines`);
-        
-        return lines.map((expenseLine, index) => {
-          const typeMatch = expenseLine.match(/meta_line::expense_type::([^\s]+)/);
-          let type = 'Unassigned';
-          
-          if (typeMatch) {
-            const typeNoteId = typeMatch[1];
-            const typeNote = notesMap.get(typeNoteId);
-            if (typeNote) {
-              const typeLine = typeNote.content.split('\n').find(line => !line.includes('meta::'));
-              type = typeLine?.trim() || 'Unassigned';
-            }
-          }
-          
-          // Get base content without meta_line tags
-          const cleanLine = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
-          const parts = cleanLine.split(/\s+/);
-          
-          if (parts.length < 3) return null;
-
-          const date = parts[0];
-          const amount = parseFloat(parts[1]);
-          const description = parts.slice(2).join(' ');
-          if (description.includes('Credit Card')) {
-            console.log('===============================================');
-            console.log('Credit Card expense:', description);
-            console.log('===============================================');
-          }
-          return {
-            id: `${note.id}-${index}`,
-            date,
-            amount,
-            description,
-            type,
-            noteId: note.id
-          };
-        }).filter(expense => expense !== null);
-      });
-
-      console.log('Setting new expenses:', parsedExpenses.length);
+      const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
       setExpenses(parsedExpenses);
       setFilteredExpenses(parsedExpenses);
       calculateTotals(parsedExpenses);

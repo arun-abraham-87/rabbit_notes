@@ -9,9 +9,7 @@ import moment from 'moment';
  * @returns {string} Relative time string (e.g., "2 hours ago", "in 3 days")
  */
 export const getAge = (dateString) => {
-    if (!dateString || (typeof dateString !== 'string' && typeof dateString.toString !== 'function')) {
-        return '';
-    }
+   
     return `${parseToMoment(dateString).fromNow()}`;
 }
 

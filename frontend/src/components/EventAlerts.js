@@ -176,7 +176,7 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
                   <div className="flex items-center gap-4 text-sm text-gray-500">
                     <div className="flex items-center gap-1">
                       <ClockIcon className="h-4 w-4" />
-                      <span>{getAge(occurrence.date.toLocaleString())}</span>
+                      <span>{getAge(occurrence.date)}</span>
                     </div>
                     {occurrence.event.recurrence !== 'none' && (
                       <span className="px-2 py-1 bg-red-50 text-red-600 rounded-full text-xs">

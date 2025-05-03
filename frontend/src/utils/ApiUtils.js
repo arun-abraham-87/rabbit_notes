@@ -227,3 +227,13 @@ export const defaultSettings = {
     events: 0
   }
 };
+
+export const createNote = async (content) => {
+    const response = await fetch(`${API_BASE_URL}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+    });
+    if (!response.ok) throw new Error('Failed to create note');
+    return await response.json();
+};

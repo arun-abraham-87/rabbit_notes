@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { XMarkIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
-import { updateNoteById } from '../utils/ApiUtils';
+import { XMarkIcon, ArrowUpTrayIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { updateNoteById, createNote } from '../utils/ApiUtils';
 
 const CSVEditor = ({ onClose, noteId }) => {
   const [data, setData] = useState([]);
@@ -9,6 +9,8 @@ const CSVEditor = ({ onClose, noteId }) => {
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [isDragging, setIsDragging] = useState(false);
   const [mergeColumns, setMergeColumns] = useState([]);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [savedCount, setSavedCount] = useState(0);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -26,17 +28,24 @@ const CSVEditor = ({ onClose, noteId }) => {
     
     const file = e.dataTransfer.files[0];
     if (file && file.type === 'text/csv') {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target.result;
-        const rows = text.split('\n').map(row => row.split(',').map(cell => cell.trim()));
-        
-        if (rows.length > 0) {
-          setHeaders(rows[0]);
-          setData(rows.slice(1));
-        }
-      };
-      reader.readAsText(file);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target.result;
+            // Split by newlines and filter out empty lines
+            const rows = text.split('\n')
+                .filter(row => row.trim().length > 0)
+                .map(row => row.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')));
+            
+            if (rows.length > 0) {
+                // Create generic headers based on the number of columns in the first row
+                const numColumns = rows[0].length;
+                const genericHeaders = Array.from({ length: numColumns }, (_, i) => `Column ${i + 1}`);
+                setHeaders(genericHeaders);
+                // Use all rows as data
+                setData(rows);
+            }
+        };
+        reader.readAsText(file);
     }
   }, []);
 
@@ -105,16 +114,38 @@ const CSVEditor = ({ onClose, noteId }) => {
 
   const handleSave = async () => {
     try {
-      const content = [
-        'meta::csv',
-        headers.join(','),
-        ...data.map(row => row.join(','))
-      ].join('\n');
+        // Save all rows without quotes
+        const formattedLines = data.map(row => 
+            row.map(cell => cell.replace(/^"|"$/g, '')).join(' ')
+        );
 
-      await updateNoteById(noteId, content);
-      onClose();
+        // Create content with meta::expense tag at the end
+        const content = [
+            ...formattedLines,
+            'meta::expense'
+        ].join('\n');
+
+        let response;
+        if (noteId) {
+            // Update existing note
+            response = await updateNoteById(noteId, content);
+        } else {
+            // Create new note
+            response = await createNote(content);
+        }
+
+        if (response) {
+            setSavedCount(formattedLines.length);
+            setShowSuccess(true);
+            setTimeout(() => {
+                setShowSuccess(false);
+                onClose();
+            }, 2000);
+        } else {
+            console.error('Failed to save note');
+        }
     } catch (error) {
-      console.error('Error saving CSV data:', error);
+        console.error('Error saving note:', error);
     }
   };
 
@@ -234,6 +265,21 @@ const CSVEditor = ({ onClose, noteId }) => {
           )}
         </div>
       </div>
+
+      {/* Success Popup */}
+      {showSuccess && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <CheckCircleIcon className="h-12 w-12 text-green-500" />
+            </div>
+            <h3 className="text-lg font-medium text-center mb-2">Success!</h3>
+            <p className="text-gray-600 text-center">
+              Successfully saved {savedCount} records.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

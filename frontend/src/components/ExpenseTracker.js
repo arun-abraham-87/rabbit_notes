@@ -36,7 +36,36 @@ const ExpenseTracker = () => {
       !note.content.includes('meta::expense_source_name')
     );
 
+    // Create a map of all notes for quick lookup
+    const notesMap = new Map(notes.map(note => [note.id, note]));
+
     return expenseNotes.flatMap(note => {
+      // Get linked notes
+      const linkedNotes = note.content
+        .split('\n')
+        .filter(line => line.includes('meta::link::'))
+        .map(line => {
+          const linkId = line.split('::')[2];
+          return notesMap.get(linkId);
+        })
+        .filter(linkedNote => linkedNote);
+
+      // Get expense source type from linked notes
+      const expenseSourceType = linkedNotes
+        .find(linkedNote => linkedNote.content.includes('meta::expense_source_type'))
+        ?.content
+        .split('\n')
+        .find(line => !line.includes('meta::'))
+        ?.trim() || '';
+
+      // Get expense source name from linked notes
+      const expenseSourceName = linkedNotes
+        .find(linkedNote => linkedNote.content.includes('meta::expense_source_name'))
+        ?.content
+        .split('\n')
+        .find(line => !line.includes('meta::'))
+        ?.trim() || '';
+
       // Split the content by newlines and filter out meta:: lines
       const lines = note.content.split('\n').filter(line => 
         line.trim() && !line.includes('meta::')
@@ -75,7 +104,9 @@ const ExpenseTracker = () => {
           amount,
           description,
           type,
-          noteId: note.id
+          noteId: note.id,
+          sourceType: expenseSourceType,
+          sourceName: expenseSourceName
         };
       }).filter(expense => expense !== null);
     });

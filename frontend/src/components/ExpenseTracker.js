@@ -488,10 +488,14 @@ const ExpenseTracker = () => {
       const existingMetaTags = expenseLine.match(/meta_line::(?!expense_type)[^:]+::[^\s]+/g) || [];
       console.log('Existing meta tags:', existingMetaTags);
       
+      // Check if the line has exclude_from_budget tag
+      const hasExcludeTag = expenseLine.includes('meta_line::exclude_from_budget');
+      
       // Create the new line with all tags
       const newMetaTags = [
         ...existingMetaTags,
-        `meta_line::expense_type::${typeNoteId}`
+        `meta_line::expense_type::${typeNoteId}`,
+        ...(hasExcludeTag ? ['meta_line::exclude_from_budget'] : [])
       ];
       console.log('New meta tags:', newMetaTags);
       

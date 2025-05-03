@@ -72,19 +72,51 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
     if (file && file.type === 'text/csv') {
         const reader = new FileReader();
         reader.onload = (event) => {
-            const text = event.target.result;
-            // Split by newlines and filter out empty lines
-            const rows = text.split('\n')
-                .filter(row => row.trim().length > 0)
-                .map(row => row.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')));
-            
-            if (rows.length > 0) {
-                // Create generic headers based on the number of columns in the first row
-                const numColumns = rows[0].length;
-                const genericHeaders = Array.from({ length: numColumns }, (_, i) => `Column ${i + 1}`);
-                setHeaders(genericHeaders);
-                // Use all rows as data
-                setData(rows);
+            try {
+                const text = event.target.result;
+                // Split by newlines and filter out empty lines
+                const rows = text.split('\n')
+                    .filter(row => row.trim().length > 0)
+                    .map(row => {
+                        // Handle quoted fields that may contain commas
+                        const cells = [];
+                        let currentCell = '';
+                        let inQuotes = false;
+                        
+                        for (let i = 0; i < row.length; i++) {
+                            const char = row[i];
+                            
+                            if (char === '"') {
+                                inQuotes = !inQuotes;
+                            } else if (char === ',' && !inQuotes) {
+                                cells.push(currentCell.trim());
+                                currentCell = '';
+                            } else {
+                                currentCell += char;
+                            }
+                        }
+                        cells.push(currentCell.trim());
+                        
+                        return cells.map(cell => cell.replace(/^"|"$/g, ''));
+                    });
+                
+                if (rows.length > 0) {
+                    // Validate that all rows have the same number of columns
+                    const numColumns = rows[0].length;
+                    const isValid = rows.every(row => row.length === numColumns);
+                    
+                    if (!isValid) {
+                        throw new Error('CSV file has inconsistent number of columns');
+                    }
+                    
+                    // Create generic headers based on the number of columns in the first row
+                    const genericHeaders = Array.from({ length: numColumns }, (_, i) => `Column ${i + 1}`);
+                    setHeaders(genericHeaders);
+                    setData(rows);
+                }
+            } catch (error) {
+                console.error('Error parsing CSV file:', error);
+                alert('Error parsing CSV file. Please ensure it is properly formatted.');
             }
         };
         reader.readAsText(file);
@@ -143,6 +175,23 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
       newSelected.add(index);
     }
     setSelectedColumns(newSelected);
+    
+    // Also add to merge columns when selecting
+    const newMerge = [...mergeColumns];
+    if (!newMerge.includes(index)) {
+      newMerge.push(index);
+      setMergeColumns(newMerge);
+    }
+  };
+
+  const handleColumnMergeSelect = (index) => {
+    const newMerge = [...mergeColumns];
+    if (newMerge.includes(index)) {
+      newMerge.splice(newMerge.indexOf(index), 1);
+    } else {
+      newMerge.push(index);
+    }
+    setMergeColumns(newMerge);
   };
 
   const handleDeleteSelectedColumns = () => {
@@ -156,25 +205,33 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
     setHeaders(newHeaders);
     setData(newData);
     setSelectedColumns(new Set());
+    setMergeColumns([]); // Also clear merge selection
   };
 
   const handleMergeColumns = () => {
-    if (mergeColumns.length < 2) return;
+    if (mergeColumns.length < 2) {
+      console.log('Not enough columns selected for merge:', mergeColumns);
+      return;
+    }
 
+    // Sort merge columns to ensure proper order
+    const sortedMergeColumns = [...mergeColumns].sort((a, b) => a - b);
+    
     const newHeaders = [...headers];
-    const mergedHeader = mergeColumns.map(i => headers[i]).join(' ');
-    newHeaders.splice(mergeColumns[0], mergeColumns.length, mergedHeader);
+    const mergedHeader = sortedMergeColumns.map(i => headers[i]).join(' ');
+    newHeaders.splice(sortedMergeColumns[0], sortedMergeColumns.length, mergedHeader);
 
     const newData = data.map(row => {
       const newRow = [...row];
-      const mergedCell = mergeColumns.map(i => row[i]).join(' ');
-      newRow.splice(mergeColumns[0], mergeColumns.length, mergedCell);
+      const mergedCell = sortedMergeColumns.map(i => row[i]).join(' ');
+      newRow.splice(sortedMergeColumns[0], sortedMergeColumns.length, mergedCell);
       return newRow;
     });
 
     setHeaders(newHeaders);
     setData(newData);
     setMergeColumns([]);
+    setSelectedColumns(new Set()); // Also clear selection
   };
 
   const handleSave = async () => {
@@ -220,6 +277,11 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
         console.error('Error saving note:', error);
     }
   };
+
+  // Add useEffect to debug mergeColumns state
+  useEffect(() => {
+    console.log('Current mergeColumns state:', mergeColumns);
+  }, [mergeColumns]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -309,9 +371,13 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
                   <button
                     onClick={handleMergeColumns}
                     disabled={mergeColumns.length < 2}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                    className={`px-4 py-2 text-white rounded-md ${
+                      mergeColumns.length >= 2 
+                        ? 'bg-blue-600 hover:bg-blue-700' 
+                        : 'bg-gray-400 cursor-not-allowed'
+                    }`}
                   >
-                    Merge Selected Columns
+                    Merge Selected Columns ({mergeColumns.length})
                   </button>
                   <button
                     onClick={handleSave}
@@ -322,65 +388,59 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Select
-                      </th>
-                      {headers.map((header, index) => (
-                        <th
-                          key={index}
-                          draggable
-                          onDragStart={() => handleColumnDragStart(index)}
-                          onDragOver={(e) => handleColumnDragOver(e, index)}
-                          onDrop={(e) => handleColumnDrop(e, index)}
-                          className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-move ${
-                            mergeColumns.includes(index) ? 'bg-blue-100' : ''
-                          } ${selectedColumns.has(index) ? 'bg-red-100' : ''}`}
-                          onClick={() => handleColumnSelect(index)}
-                          onDoubleClick={() => {
-                            const newMerge = [...mergeColumns];
-                            if (newMerge.includes(index)) {
-                              setMergeColumns(newMerge.filter(i => i !== index));
-                            } else {
-                              newMerge.push(index);
-                              setMergeColumns(newMerge);
-                            }
-                          }}
-                        >
-                          {header}
+              <div className="relative overflow-x-auto shadow-md sm:rounded-lg border border-gray-200">
+                <div className="inline-block min-w-full align-middle">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-white z-10 border-r border-gray-200">
+                          Select
                         </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {data.map((row, rowIndex) => (
-                      <tr
-                        key={rowIndex}
-                        className={selectedRows.has(rowIndex) ? 'bg-blue-50' : ''}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <input
-                            type="checkbox"
-                            checked={selectedRows.has(rowIndex)}
-                            onChange={() => handleRowSelect(rowIndex)}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          />
-                        </td>
-                        {row.map((cell, cellIndex) => (
-                          <td
-                            key={cellIndex}
-                            className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                        {headers.map((header, index) => (
+                          <th
+                            key={index}
+                            draggable
+                            onDragStart={() => handleColumnDragStart(index)}
+                            onDragOver={(e) => handleColumnDragOver(e, index)}
+                            onDrop={(e) => handleColumnDrop(e, index)}
+                            className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-move max-w-[50ch] break-words ${
+                              mergeColumns.includes(index) ? 'bg-blue-100' : ''
+                            } ${selectedColumns.has(index) ? 'bg-red-100' : ''}`}
+                            onClick={() => handleColumnSelect(index)}
+                            onDoubleClick={() => handleColumnMergeSelect(index)}
                           >
-                            {cell}
-                          </td>
+                            {header}
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {data.map((row, rowIndex) => (
+                        <tr
+                          key={rowIndex}
+                          className={selectedRows.has(rowIndex) ? 'bg-blue-50' : ''}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10 border-r border-gray-200">
+                            <input
+                              type="checkbox"
+                              checked={selectedRows.has(rowIndex)}
+                              onChange={() => handleRowSelect(rowIndex)}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                          </td>
+                          {row.map((cell, cellIndex) => (
+                            <td
+                              key={cellIndex}
+                              className="px-6 py-4 text-sm text-gray-500 max-w-[50ch] break-words"
+                            >
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </>
           )}

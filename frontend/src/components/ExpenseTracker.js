@@ -24,6 +24,10 @@ const ExpenseTracker = () => {
   const [allNotes, setAllNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [expenseTypeMap, setExpenseTypeMap] = useState(new Map());
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
+  const [selectedExpenses, setSelectedExpenses] = useState(new Set());
+  const [bulkType, setBulkType] = useState('Unassigned');
+  const [expenseLineMap, setExpenseLineMap] = useState(new Map());
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   //console.log('Initialized with categories:', categories);
@@ -39,7 +43,10 @@ const ExpenseTracker = () => {
     // Create a map of all notes for quick lookup
     const notesMap = new Map(notes.map(note => [note.id, note]));
 
-    return expenseNotes.flatMap(note => {
+    // Create a map to store expense lines
+    const lineMap = new Map();
+
+    const parsedExpenses = expenseNotes.flatMap(note => {
       // Get linked notes
       const linkedNotes = note.content
         .split('\n')
@@ -92,24 +99,33 @@ const ExpenseTracker = () => {
         const amount = parseFloat(parts[1]);
         const description = parts.slice(2).join(' ');
 
-        if (description.includes('Credit Card')) {
-          console.log('===============================================');
-          console.log('Credit Card expense:', description);
-          console.log('===============================================');
-        }
+        const expenseId = `${note.id}-${index}`;
+        
+        // Store the line in the map
+        lineMap.set(expenseId, {
+          noteId: note.id,
+          lineIndex: index,
+          content: expenseLine
+        });
 
         return {
-          id: `${note.id}-${index}`,
+          id: expenseId,
           date,
           amount,
           description,
           type,
           noteId: note.id,
+          lineIndex: index,
           sourceType: expenseSourceType,
           sourceName: expenseSourceName
         };
       }).filter(expense => expense !== null);
     });
+
+    // Update the expense line map
+    setExpenseLineMap(lineMap);
+
+    return parsedExpenses;
   };
 
   // Load expenses from notes
@@ -155,9 +171,8 @@ const ExpenseTracker = () => {
     fetchExpenses();
   }, []);
 
-  // Filter expenses when type or search query changes
+  // Filter expenses when type, search query, or unassigned filter changes
   useEffect(() => {
-    //console.log('Filtering expenses with type:', selectedType, 'and search:', searchQuery);
     const filtered = expenses.filter(expense => {
       // Type filter
       const typeMatch = selectedType === 'All' || expense.type === selectedType;
@@ -170,12 +185,14 @@ const ExpenseTracker = () => {
         expense.sourceType.toLowerCase().includes(searchLower) ||
         expense.sourceName.toLowerCase().includes(searchLower);
       
-      return typeMatch && searchMatch;
+      // Unassigned filter
+      const unassignedMatch = !showUnassignedOnly || expense.type === 'Unassigned';
+      
+      return typeMatch && searchMatch && unassignedMatch;
     });
-    //console.log('Filtered expenses:', filtered.length);
     setFilteredExpenses(filtered);
     calculateTotals(filtered);
-  }, [selectedType, searchQuery, expenses]);
+  }, [selectedType, searchQuery, showUnassignedOnly, expenses]);
 
   const calculateTotals = (expenseList) => {
     //console.log('Calculating totals for expenses:', expenseList);
@@ -355,6 +372,146 @@ const ExpenseTracker = () => {
     }
   };
 
+  const handleBulkTypeChange = async (newType) => {
+    if (selectedExpenses.size === 0) return;
+
+    try {
+      console.log('Starting bulk update for type:', newType);
+      console.log('Selected expenses:', Array.from(selectedExpenses));
+
+      // Find the type note for the new type
+      const typeNote = Array.from(expenseTypeMap.entries())
+        .find(([_, type]) => type === newType);
+      
+      if (!typeNote) {
+        console.error('Type note not found for type:', newType);
+        return;
+      }
+      const [typeNoteId] = typeNote;
+      console.log('Found type note ID:', typeNoteId);
+
+      // Create a map of note updates
+      const noteUpdates = new Map();
+
+      // Process each selected expense
+      for (const expenseId of selectedExpenses) {
+        const lineInfo = expenseLineMap.get(expenseId);
+        if (!lineInfo) {
+          console.error('Line info not found for expense:', expenseId);
+          continue;
+        }
+
+        const { noteId, lineIndex, content } = lineInfo;
+        console.log('Processing expense:', { expenseId, noteId, lineIndex });
+
+        // Get or create the note update entry
+        if (!noteUpdates.has(noteId)) {
+          const note = allNotes.find(n => n.id === noteId);
+          if (!note) {
+            console.error('Note not found:', noteId);
+            continue;
+          }
+          noteUpdates.set(noteId, {
+            content: note.content,
+            lines: note.content.split('\n'),
+            updatedLines: new Set()
+          });
+        }
+
+        const noteUpdate = noteUpdates.get(noteId);
+        const expenseLine = noteUpdate.lines[lineIndex];
+        
+        if (!expenseLine) {
+          console.error('No line found at index:', lineIndex);
+          continue;
+        }
+
+        console.log('Original line:', expenseLine);
+        
+        // Get the base content (without any meta_line tags)
+        const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
+        console.log('Base content:', baseContent);
+        
+        // Extract all existing meta_line tags except expense_type
+        const existingMetaTags = expenseLine.match(/meta_line::(?!expense_type)[^:]+::[^\s]+/g) || [];
+        console.log('Existing meta tags:', existingMetaTags);
+        
+        // Create the new line with all tags
+        const newMetaTags = [
+          ...existingMetaTags,
+          `meta_line::expense_type::${typeNoteId}`
+        ];
+        console.log('New meta tags:', newMetaTags);
+        
+        // Combine everything with proper spacing
+        const updatedLine = [baseContent, ...newMetaTags].join(' ');
+        console.log('Updated line:', updatedLine);
+        
+        if (updatedLine !== expenseLine) {
+          noteUpdate.lines[lineIndex] = updatedLine;
+          noteUpdate.updatedLines.add(lineIndex);
+          console.log('Line marked for update at index:', lineIndex);
+        }
+      }
+
+      // Update each note that has changes
+      for (const [noteId, noteUpdate] of noteUpdates.entries()) {
+        if (noteUpdate.updatedLines.size > 0) {
+          console.log('Updating note:', noteId);
+          console.log('Updated lines:', Array.from(noteUpdate.updatedLines));
+          
+          const updatedContent = noteUpdate.lines.join('\n');
+          console.log('Updated content:', updatedContent);
+          
+          await updateNoteById(noteId, updatedContent);
+          console.log('Note updated successfully');
+          
+          // Update allNotes state
+          setAllNotes(prevNotes => 
+            prevNotes.map(n => 
+              n.id === noteId ? { ...n, content: updatedContent } : n
+            )
+          );
+        } else {
+          console.log('No changes to note:', noteId);
+        }
+      }
+
+      // Clear selection
+      setSelectedExpenses(new Set());
+
+      // Refresh the expenses
+      console.log('Refreshing expenses...');
+      const refreshResponse = await loadAllNotes();
+      setAllNotes(refreshResponse.notes);
+      const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+      setExpenses(parsedExpenses);
+      setFilteredExpenses(parsedExpenses);
+      calculateTotals(parsedExpenses);
+      console.log('Bulk update completed successfully');
+
+    } catch (error) {
+      console.error('Error in bulk update:', error);
+      console.error('Error details:', {
+        selectedExpenses: Array.from(selectedExpenses),
+        newType,
+        error: error.message
+      });
+    }
+  };
+
+  const toggleExpenseSelection = (expenseId) => {
+    setSelectedExpenses(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(expenseId)) {
+        newSet.delete(expenseId);
+      } else {
+        newSet.add(expenseId);
+      }
+      return newSet;
+    });
+  };
+
   if (loading) {
     //console.log('Rendering loading state');
     return (
@@ -370,6 +527,32 @@ const ExpenseTracker = () => {
   return (
     <div className="p-4 w-full">
       <h1 className="text-2xl font-bold mb-6">Expense Tracker</h1>
+
+      {/* Bulk Update Controls */}
+      {selectedExpenses.size > 0 && (
+        <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-700">
+              {selectedExpenses.size} expenses selected
+            </span>
+            <select
+              value={bulkType}
+              onChange={(e) => setBulkType(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {expenseTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => handleBulkTypeChange(bulkType)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Update Selected
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-4 mb-6">
@@ -395,6 +578,17 @@ const ExpenseTracker = () => {
             placeholder="Search by description, type, source..."
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+        <div className="flex items-end">
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={showUnassignedOnly}
+              onChange={(e) => setShowUnassignedOnly(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-700">Show Unassigned Only</span>
+          </label>
         </div>
       </div>
 
@@ -422,6 +616,20 @@ const ExpenseTracker = () => {
         <table className="w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                <input
+                  type="checkbox"
+                  checked={selectedExpenses.size === filteredExpenses.length}
+                  onChange={() => {
+                    if (selectedExpenses.size === filteredExpenses.length) {
+                      setSelectedExpenses(new Set());
+                    } else {
+                      setSelectedExpenses(new Set(filteredExpenses.map(e => e.id)));
+                    }
+                  }}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Description</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-4/12">Type</th>
@@ -435,7 +643,15 @@ const ExpenseTracker = () => {
             {filteredExpenses.map((expense, index) => {
               //console.log('Rendering expense row:', expense);
               return (
-                <tr key={expense.id}>
+                <tr key={expense.id} className={selectedExpenses.has(expense.id) ? 'bg-blue-50' : ''}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
+                    <input
+                      type="checkbox"
+                      checked={selectedExpenses.has(expense.id)}
+                      onChange={() => toggleExpenseSelection(expense.id)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
                     {expense.date}
                   </td>

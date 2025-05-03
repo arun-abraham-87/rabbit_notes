@@ -253,16 +253,18 @@ const ExpenseTracker = () => {
     setExpenses(prev => prev.filter(expense => expense.id !== id));
   };
 
-  const handleTypeChange = async (expenseId, newType, lineIndex) => {
-    console.log('handleTypeChange called with:', { expenseId, newType, lineIndex });
+  const handleTypeChange = async (expenseId, newType) => {
+    console.log('handleTypeChange called with:', { expenseId, newType });
     
-    // Find the expense to get its noteId
-    const expense = expenses.find(e => e.id === expenseId);
-    console.log('Found expense:', expense);
-    if (!expense) {
-      console.error('Expense not found:', expenseId);
+    // Get the line info from the expense line map
+    const lineInfo = expenseLineMap.get(expenseId);
+    if (!lineInfo) {
+      console.error('Line info not found for expense:', expenseId);
       return;
     }
+
+    const { noteId, lineIndex } = lineInfo;
+    console.log('Found line info:', { noteId, lineIndex });
 
     // Find the type note that matches the selected type
     const typeNote = Array.from(expenseTypeMap.entries())
@@ -276,10 +278,10 @@ const ExpenseTracker = () => {
     console.log('Found type note:', typeNoteId);
 
     // Find the original note
-    const originalNote = allNotes.find(note => note.id === expense.noteId);
+    const originalNote = allNotes.find(note => note.id === noteId);
     console.log('Found original note:', originalNote);
     if (!originalNote) {
-      console.error('Original note not found:', expense.noteId);
+      console.error('Original note not found:', noteId);
       return;
     }
 
@@ -320,16 +322,16 @@ const ExpenseTracker = () => {
       
       // Update the note content
       console.log('Calling updateNoteById with:', {
-        noteId: expense.noteId,
+        noteId,
         content: updatedContent
       });
-      await updateNoteById(expense.noteId, updatedContent);
+      await updateNoteById(noteId, updatedContent);
       console.log('Note updated successfully');
       
       // Update allNotes state with the modified note
       setAllNotes(prevNotes => {
         const newNotes = prevNotes.map(note => 
-          note.id === expense.noteId 
+          note.id === noteId 
             ? { ...note, content: updatedContent }
             : note
         );
@@ -363,12 +365,11 @@ const ExpenseTracker = () => {
       console.error('Error details:', {
         expenseId,
         newType,
-        noteId: expense.noteId,
-        lineIndex: parseInt(expenseId.split('-')[1]),
+        noteId,
+        lineIndex,
         originalContent: originalNote.content,
         updatedContent: lines.join('\n')
       });
-      // Optionally show an error message to the user
     }
   };
 
@@ -571,13 +572,25 @@ const ExpenseTracker = () => {
         </div>
         <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700 mb-1">Search Expenses</label>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by description, type, source..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by description, type, source..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex items-end">
           <label className="flex items-center space-x-2">
@@ -661,8 +674,10 @@ const ExpenseTracker = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-4/12">
                     <select
                       value={expense.type || 'Unassigned'}
-                      onChange={(e) => handleTypeChange(expense.id, e.target.value, index)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      onChange={(e) => handleTypeChange(expense.id, e.target.value)}
+                      className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                        expense.type === 'Unassigned' ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     >
                       {expenseTypes.map(type => (
                         <option key={type} value={type}>{type}</option>

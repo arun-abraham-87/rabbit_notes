@@ -1691,12 +1691,22 @@ const ExpenseTracker = () => {
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Total Expenses</h3>
                     <p className="text-2xl font-bold text-red-600">${Math.abs(totalExpenses).toFixed(2)}</p>
+                    {incomeTotal > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {Math.round((Math.abs(totalExpenses) / incomeTotal) * 100)}% of income
+                      </p>
+                    )}
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Savings</h3>
                     <p className={`text-2xl font-bold ${(incomeTotal - Math.abs(totalExpenses)) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       ${(incomeTotal - Math.abs(totalExpenses)).toFixed(2)}
                     </p>
+                    {incomeTotal > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {Math.round(((incomeTotal - Math.abs(totalExpenses)) / incomeTotal) * 100)}% of income
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div>

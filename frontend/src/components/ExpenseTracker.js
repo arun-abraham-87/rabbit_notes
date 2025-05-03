@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { loadAllNotes, updateNoteById } from '../utils/ApiUtils';
-import { Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Pie, Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 const ExpenseTracker = () => {
   //console.log('ExpenseTracker component mounted');
@@ -41,6 +41,7 @@ const ExpenseTracker = () => {
   const [typeBreakdownSort, setTypeBreakdownSort] = useState('desc');
   const [hoveredType, setHoveredType] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [chartType, setChartType] = useState('pie');
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   //console.log('Initialized with categories:', categories);
@@ -833,57 +834,127 @@ const ExpenseTracker = () => {
           </div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <h2 
-            className="text-lg font-semibold mb-2 cursor-pointer hover:text-blue-600"
-            onClick={() => setTypeBreakdownSort(prev => prev === 'desc' ? 'asc' : 'desc')}
-          >
-            Type Distribution {typeBreakdownSort === 'desc' ? '↓' : '↑'}
-          </h2>
+          <div className="flex justify-between items-center mb-2">
+            <h2 
+              className="text-lg font-semibold cursor-pointer hover:text-blue-600"
+              onClick={() => setTypeBreakdownSort(prev => prev === 'desc' ? 'asc' : 'desc')}
+            >
+              Type Distribution {typeBreakdownSort === 'desc' ? '↓' : '↑'}
+            </h2>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">Pie</span>
+              <button
+                onClick={() => setChartType(prev => prev === 'pie' ? 'bar' : 'pie')}
+                className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200"
+              >
+                <span
+                  className={`${
+                    chartType === 'bar' ? 'translate-x-6' : 'translate-x-1'
+                  } inline-block h-4 w-4 transform rounded-full bg-white transition`}
+                />
+              </button>
+              <span className="text-sm text-gray-600">Bar</span>
+            </div>
+          </div>
           <div className="h-64">
-            <Pie
-              data={{
-                labels: Object.keys(typeTotals),
-                datasets: [{
-                  data: Object.values(typeTotals).map(Math.abs),
-                  backgroundColor: [
-                    '#FF6384',
-                    '#36A2EB',
-                    '#FFCE56',
-                    '#4BC0C0',
-                    '#9966FF',
-                    '#FF9F40',
-                    '#8AC24A',
-                    '#FF6B6B',
-                    '#4A90E2',
-                    '#7ED321'
-                  ],
-                  borderWidth: 1
-                }]
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    position: 'right',
-                    labels: {
-                      boxWidth: 12,
-                      padding: 15
-                    }
-                  },
-                  tooltip: {
-                    callbacks: {
-                      label: function(context) {
-                        const value = Math.abs(context.raw);
-                        const total = Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0));
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${context.label}: $${value.toFixed(2)} (${percentage}%)`;
+            {chartType === 'pie' ? (
+              <Pie
+                data={{
+                  labels: Object.keys(typeTotals),
+                  datasets: [{
+                    data: Object.values(typeTotals).map(Math.abs),
+                    backgroundColor: [
+                      '#FF6384',
+                      '#36A2EB',
+                      '#FFCE56',
+                      '#4BC0C0',
+                      '#9966FF',
+                      '#FF9F40',
+                      '#8AC24A',
+                      '#FF6B6B',
+                      '#4A90E2',
+                      '#7ED321'
+                    ],
+                    borderWidth: 1
+                  }]
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'right',
+                      labels: {
+                        boxWidth: 12,
+                        padding: 15
+                      }
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: function(context) {
+                          const value = Math.abs(context.raw);
+                          const total = Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0));
+                          const percentage = ((value / total) * 100).toFixed(1);
+                          return `${context.label}: $${value.toFixed(2)} (${percentage}%)`;
+                        }
                       }
                     }
                   }
-                }
-              }}
-            />
+                }}
+              />
+            ) : (
+              <Bar
+                data={{
+                  labels: Object.keys(typeTotals),
+                  datasets: [{
+                    label: 'Amount',
+                    data: Object.values(typeTotals).map(Math.abs),
+                    backgroundColor: [
+                      '#FF6384',
+                      '#36A2EB',
+                      '#FFCE56',
+                      '#4BC0C0',
+                      '#9966FF',
+                      '#FF9F40',
+                      '#8AC24A',
+                      '#FF6B6B',
+                      '#4A90E2',
+                      '#7ED321'
+                    ],
+                    borderWidth: 1
+                  }]
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      display: false
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: function(context) {
+                          const value = Math.abs(context.raw);
+                          const total = Math.abs(Object.values(typeTotals).reduce((sum, total) => sum + total, 0));
+                          const percentage = ((value / total) * 100).toFixed(1);
+                          return `$${value.toFixed(2)} (${percentage}%)`;
+                        }
+                      }
+                    }
+                  },
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      ticks: {
+                        callback: function(value) {
+                          return '$' + value.toFixed(2);
+                        }
+                      }
+                    }
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
       </div>

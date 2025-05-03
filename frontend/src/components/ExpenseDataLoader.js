@@ -2,11 +2,12 @@ import React, { useState, useCallback } from 'react';
 import { XMarkIcon, ArrowUpTrayIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, createNote } from '../utils/ApiUtils';
 
-const CSVEditor = ({ onClose, noteId }) => {
+const ExpenseDataLoader = ({ onClose, noteId }) => {
   const [data, setData] = useState([]);
   const [headers, setHeaders] = useState([]);
   const [draggedColumn, setDraggedColumn] = useState(null);
   const [selectedRows, setSelectedRows] = useState(new Set());
+  const [selectedColumns, setSelectedColumns] = useState(new Set());
   const [isDragging, setIsDragging] = useState(false);
   const [mergeColumns, setMergeColumns] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -91,6 +92,29 @@ const CSVEditor = ({ onClose, noteId }) => {
     const newData = data.filter((_, index) => !selectedRows.has(index));
     setData(newData);
     setSelectedRows(new Set());
+  };
+
+  const handleColumnSelect = (index) => {
+    const newSelected = new Set(selectedColumns);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedColumns(newSelected);
+  };
+
+  const handleDeleteSelectedColumns = () => {
+    if (selectedColumns.size === 0) return;
+
+    const newHeaders = headers.filter((_, index) => !selectedColumns.has(index));
+    const newData = data.map(row => 
+      row.filter((_, index) => !selectedColumns.has(index))
+    );
+
+    setHeaders(newHeaders);
+    setData(newData);
+    setSelectedColumns(new Set());
   };
 
   const handleMergeColumns = () => {
@@ -188,6 +212,13 @@ const CSVEditor = ({ onClose, noteId }) => {
                   Delete Selected Rows
                 </button>
                 <button
+                  onClick={handleDeleteSelectedColumns}
+                  disabled={selectedColumns.size === 0}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                >
+                  Delete Selected Columns
+                </button>
+                <button
                   onClick={handleMergeColumns}
                   disabled={mergeColumns.length < 2}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
@@ -218,8 +249,9 @@ const CSVEditor = ({ onClose, noteId }) => {
                           onDrop={(e) => handleColumnDrop(e, index)}
                           className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-move ${
                             mergeColumns.includes(index) ? 'bg-blue-100' : ''
-                          }`}
-                          onClick={() => {
+                          } ${selectedColumns.has(index) ? 'bg-red-100' : ''}`}
+                          onClick={() => handleColumnSelect(index)}
+                          onDoubleClick={() => {
                             const newMerge = [...mergeColumns];
                             if (newMerge.includes(index)) {
                               setMergeColumns(newMerge.filter(i => i !== index));
@@ -284,4 +316,4 @@ const CSVEditor = ({ onClose, noteId }) => {
   );
 };
 
-export default CSVEditor; 
+export default ExpenseDataLoader; 

@@ -4,7 +4,7 @@ import { loadAllNotes, updateNoteById } from '../utils/ApiUtils';
 import { Pie, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import Budget from './Budget';
-import CSVEditor from './CSVEditor';
+import ExpenseDataLoader from './ExpenseDataLoader';
 import ExpenseLoadStatus from './ExpenseLoadStatus';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -2361,7 +2361,7 @@ const ExpenseTracker = () => {
       {showBudget && <Budget onClose={() => setShowBudget(false)} />}
 
       {showDataLoader && (
-        <CSVEditor 
+        <ExpenseDataLoader 
           onClose={() => setShowDataLoader(false)} 
           noteId={budgetNote?.id} 
         />

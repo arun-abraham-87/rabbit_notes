@@ -161,6 +161,9 @@ const ExpenseTracker = () => {
         // Check for once_off tag
         const isOnceOff = expenseLine.includes('meta_line::once_off');
 
+        // Check for income tag
+        const isIncome = expenseLine.includes('meta_line::income');
+
         return {
           id: expenseId,
           date,
@@ -172,7 +175,8 @@ const ExpenseTracker = () => {
           sourceType: expenseSourceType,
           sourceName: expenseSourceName,
           isExcluded,
-          isOnceOff
+          isOnceOff,
+          isIncome
         };
       }).filter(expense => expense !== null);
     });
@@ -844,78 +848,83 @@ const ExpenseTracker = () => {
   };
 
   const handleStatusChange = async (expenseId, type, checked) => {
-    if (type === 'excluded') {
-      handleExcludeFromBudget(expenseId, checked);
-    } else if (type === 'onceOff') {
-      handleOnceOff(expenseId, checked);
-    } else if (type === 'income') {
-      // Get the line info from the expense line map
-      const lineInfo = expenseLineMap.get(expenseId);
-      if (!lineInfo) {
-        console.error('Line info not found for expense:', expenseId);
-        return;
-      }
+    // Get the line info from the expense line map
+    const lineInfo = expenseLineMap.get(expenseId);
+    if (!lineInfo) {
+      console.error('Line info not found for expense:', expenseId);
+      return;
+    }
 
-      const { noteId, lineIndex } = lineInfo;
-      console.log('Found line info:', { noteId, lineIndex });
+    const { noteId, lineIndex } = lineInfo;
+    console.log('Found line info:', { noteId, lineIndex });
 
-      // Find the original note
-      const originalNote = allNotes.find(note => note.id === noteId);
-      if (!originalNote) {
-        console.error('Original note not found:', noteId);
-        return;
-      }
+    // Find the original note
+    const originalNote = allNotes.find(note => note.id === noteId);
+    if (!originalNote) {
+      console.error('Original note not found:', noteId);
+      return;
+    }
 
-      // Split the note content into lines
-      const lines = originalNote.content.split('\n');
-      const expenseLine = lines[lineIndex];
+    // Split the note content into lines
+    const lines = originalNote.content.split('\n');
+    const expenseLine = lines[lineIndex];
+    
+    if (expenseLine) {
+      // Get the base content (without any meta_line tags)
+      const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
       
-      if (expenseLine) {
-        // Get the base content (without any meta_line tags)
-        const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
-        
-        // Extract all existing meta_line tags except income
-        const existingMetaTags = expenseLine.match(/meta_line::(?!income)[^:]+::[^\s]+/g) || [];
-        
-        // Create the new line with all tags
-        const newMetaTags = [
-          ...existingMetaTags,
-          ...(checked ? ['meta_line::income'] : [])
-        ];
-        
-        // Combine everything with proper spacing
-        const updatedLine = [baseContent, ...newMetaTags].join(' ');
-        lines[lineIndex] = updatedLine;
+      // Extract all existing meta_line tags except the one we're changing
+      const tagToRemove = type === 'excluded' ? 'exclude_from_budget' :
+                         type === 'onceOff' ? 'once_off' :
+                         type === 'income' ? 'income' : '';
+      
+      // Get all existing meta tags except expense_type
+      const existingMetaTags = expenseLine.match(/meta_line::(?!expense_type)[^:]+::[^\s]+/g) || [];
+      const filteredTags = existingMetaTags.filter(tag => !tag.includes(tagToRemove));
+      
+      // Create the new line with all tags
+      const newMetaTags = [
+        ...filteredTags,
+        ...(checked ? [`meta_line::${tagToRemove}`] : [])
+      ];
+      
+      // Combine everything with proper spacing
+      const updatedLine = [baseContent, ...newMetaTags].join(' ');
+      lines[lineIndex] = updatedLine;
 
-        try {
-          const updatedContent = lines.join('\n');
-          await updateNoteById(noteId, updatedContent);
-          
-          // Update allNotes state
-          setAllNotes(prevNotes => 
-            prevNotes.map(note => 
-              note.id === noteId ? { ...note, content: updatedContent } : note
-            )
-          );
+      try {
+        const updatedContent = lines.join('\n');
+        await updateNoteById(noteId, updatedContent);
+        
+        // Update allNotes state
+        setAllNotes(prevNotes => 
+          prevNotes.map(note => 
+            note.id === noteId ? { ...note, content: updatedContent } : note
+          )
+        );
 
-          // Update the local state
-          setExpenses(prevExpenses => 
-            prevExpenses.map(exp => 
-              exp.id === expenseId ? { ...exp, isIncome: checked } : exp
-            )
-          );
+        // Update the local state
+        setExpenses(prevExpenses => 
+          prevExpenses.map(exp => 
+            exp.id === expenseId ? { 
+              ...exp, 
+              isExcluded: type === 'excluded' ? checked : exp.isExcluded,
+              isOnceOff: type === 'onceOff' ? checked : exp.isOnceOff,
+              isIncome: type === 'income' ? checked : exp.isIncome
+            } : exp
+          )
+        );
 
-          // Refresh the expenses
-          const refreshResponse = await loadAllNotes();
-          setAllNotes(refreshResponse.notes);
-          const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
-          setExpenses(parsedExpenses);
-          setFilteredExpenses(parsedExpenses);
-          calculateTotals(parsedExpenses);
-          
-        } catch (error) {
-          console.error('Error updating note:', error);
-        }
+        // Refresh the expenses
+        const refreshResponse = await loadAllNotes();
+        setAllNotes(refreshResponse.notes);
+        const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+        setExpenses(parsedExpenses);
+        setFilteredExpenses(parsedExpenses);
+        calculateTotals(parsedExpenses);
+        
+      } catch (error) {
+        console.error('Error updating note:', error);
       }
     }
   };

@@ -62,6 +62,8 @@ const ExpenseTracker = () => {
   const [statusPopup, setStatusPopup] = useState(null);
   const [tagPopup, setTagPopup] = useState(null);
   const [tagInput, setTagInput] = useState('');
+  const [tagSuggestions, setTagSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   const months = [
@@ -951,6 +953,48 @@ const ExpenseTracker = () => {
       x: event.clientX,
       y: event.clientY
     });
+    // Get all unique tags from all expenses
+    const allTags = new Set();
+    expenses.forEach(exp => {
+      if (exp.tags) {
+        exp.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    setTagSuggestions(Array.from(allTags));
+  };
+
+  const handleTagInputChange = (e) => {
+    const value = e.target.value;
+    setTagInput(value);
+    
+    // Show suggestions if there's input
+    setShowSuggestions(value.trim().length > 0);
+    
+    // Filter suggestions based on input
+    const inputTags = value.split(' ').filter(tag => tag.trim());
+    const lastTag = inputTags[inputTags.length - 1] || '';
+    
+    const allTags = new Set();
+    expenses.forEach(exp => {
+      if (exp.tags) {
+        exp.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    
+    const filteredSuggestions = Array.from(allTags)
+      .filter(tag => 
+        tag.toLowerCase().includes(lastTag.toLowerCase()) && 
+        !inputTags.includes(tag)
+      );
+    
+    setTagSuggestions(filteredSuggestions);
+  };
+
+  const addTagFromSuggestion = (tag) => {
+    const currentTags = tagInput.split(' ').filter(t => t.trim());
+    currentTags[currentTags.length - 1] = tag;
+    setTagInput(currentTags.join(' ') + ' ');
+    setShowSuggestions(false);
   };
 
   const handleTagChange = async (expenseId, newTags) => {
@@ -981,6 +1025,81 @@ const ExpenseTracker = () => {
       
       // Extract all existing meta_line tags except tags
       const existingMetaTags = expenseLine.match(/meta_line::(?!tags)[^:]+::[^\s]+/g) || [];
+      
+      // Create the new line with all tags
+      const newMetaTags = [
+        ...existingMetaTags,
+        ...(newTags.length > 0 ? [`meta_line_tags::${newTags.join('||')}`] : [])
+      ];
+      
+      // Combine everything with proper spacing
+      const updatedLine = [baseContent, ...newMetaTags].join(' ');
+      lines[lineIndex] = updatedLine;
+
+      try {
+        const updatedContent = lines.join('\n');
+        await updateNoteById(noteId, updatedContent);
+        
+        // Update allNotes state
+        setAllNotes(prevNotes => 
+          prevNotes.map(note => 
+            note.id === noteId ? { ...note, content: updatedContent } : note
+          )
+        );
+
+        // Update the local state
+        setExpenses(prevExpenses => 
+          prevExpenses.map(exp => 
+            exp.id === expenseId ? { ...exp, tags: newTags } : exp
+          )
+        );
+
+        // Refresh the expenses
+        const refreshResponse = await loadAllNotes();
+        setAllNotes(refreshResponse.notes);
+        const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+        setExpenses(parsedExpenses);
+        setFilteredExpenses(parsedExpenses);
+        calculateTotals(parsedExpenses);
+        
+      } catch (error) {
+        console.error('Error updating note:', error);
+      }
+    }
+  };
+
+  const handleTagRemove = async (expenseId, tagToRemove) => {
+    // Get the line info from the expense line map
+    const lineInfo = expenseLineMap.get(expenseId);
+    if (!lineInfo) {
+      console.error('Line info not found for expense:', expenseId);
+      return;
+    }
+
+    const { noteId, lineIndex } = lineInfo;
+
+    // Find the original note
+    const originalNote = allNotes.find(note => note.id === noteId);
+    if (!originalNote) {
+      console.error('Original note not found:', noteId);
+      return;
+    }
+
+    // Split the note content into lines
+    const lines = originalNote.content.split('\n');
+    const expenseLine = lines[lineIndex];
+    
+    if (expenseLine) {
+      // Get the base content (without any meta_line tags)
+      const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
+      
+      // Extract all existing meta_line tags except tags
+      const existingMetaTags = expenseLine.match(/meta_line::(?!tags)[^:]+::[^\s]+/g) || [];
+      
+      // Get current tags and remove the specified tag
+      const tagsMatch = expenseLine.match(/meta_line_tags::([^\s]+)/);
+      const currentTags = tagsMatch ? tagsMatch[1].split('||') : [];
+      const newTags = currentTags.filter(tag => tag !== tagToRemove);
       
       // Create the new line with all tags
       const newMetaTags = [
@@ -1679,6 +1798,12 @@ const ExpenseTracker = () => {
                             className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                           >
                             {tag}
+                            <button
+                              onClick={() => handleTagRemove(expense.id, tag)}
+                              className="ml-1 text-blue-600 hover:text-blue-800"
+                            >
+                              ×
+                            </button>
                           </span>
                         ))}
                       </div>
@@ -1799,9 +1924,10 @@ const ExpenseTracker = () => {
         <div
           className="tag-popup fixed bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-10"
           style={{
-            left: `${tagPopup.x}px`,
+            left: `${tagPopup.x - 300}px`, // Move left by 300px (popup width)
             top: `${tagPopup.y}px`,
-            transform: 'translateY(-50%)'
+            transform: 'translateY(-50%)',
+            width: '300px' // Set fixed width
           }}
         >
           <div className="space-y-2">
@@ -1821,21 +1947,36 @@ const ExpenseTracker = () => {
                 </span>
               ))}
             </div>
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  const tags = tagInput.split(' ').filter(tag => tag.trim());
-                  handleTagChange(tagPopup.id, tags);
-                  setTagPopup(null);
-                }
-              }}
-              placeholder="Type tags and press Enter"
-              className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={handleTagInputChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const tags = tagInput.split(' ').filter(tag => tag.trim());
+                    handleTagChange(tagPopup.id, tags);
+                    setTagPopup(null);
+                  }
+                }}
+                placeholder="Type tags and press Enter"
+                className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              {showSuggestions && tagSuggestions.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                  {tagSuggestions.map((tag, index) => (
+                    <div
+                      key={index}
+                      onClick={() => addTagFromSuggestion(tag)}
+                      className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                    >
+                      {tag}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {

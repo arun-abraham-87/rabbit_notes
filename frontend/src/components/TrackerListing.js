@@ -5,14 +5,17 @@ import {
   XMarkIcon,
   ExclamationCircleIcon,
   CalendarIcon,
-  ClockIcon
+  ClockIcon,
+  PlusIcon
 } from '@heroicons/react/24/solid';
+import AddTracker from './AddTracker';
 
 const TrackerListing = () => {
   const [trackers, setTrackers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showAddTracker, setShowAddTracker] = useState(false);
   const [filterCadence, setFilterCadence] = useState('all');
   const [filterType, setFilterType] = useState('all');
 
@@ -54,6 +57,11 @@ const TrackerListing = () => {
     }
   };
 
+  const handleTrackerAdded = (newTracker) => {
+    setTrackers(prevTrackers => [...prevTrackers, newTracker]);
+    setShowAddTracker(false);
+  };
+
   const filteredTrackers = trackers.filter(tracker => {
     const matchesSearch = tracker.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          tracker.question.toLowerCase().includes(searchTerm.toLowerCase());
@@ -74,8 +82,34 @@ const TrackerListing = () => {
 
   return (
     <div className="w-full rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-      <h2 className="text-xl font-bold mb-4">Trackers</h2>
-      
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Trackers</h1>
+        <button
+          onClick={() => setShowAddTracker(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+        >
+          <PlusIcon className="h-5 w-5" />
+          Add Tracker
+        </button>
+      </div>
+
+      {showAddTracker && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Add New Tracker</h2>
+              <button
+                onClick={() => setShowAddTracker(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <AddTracker onTrackerAdded={handleTrackerAdded} />
+          </div>
+        </div>
+      )}
+
       {/* Error Message */}
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">

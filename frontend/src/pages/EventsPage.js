@@ -246,6 +246,14 @@ const EventsPage = ({ notes, onUpdate }) => {
 
   const handleEventUpdated = async (updatedNote) => {
     try {
+      // If the note content is empty, it means the note was deleted
+      if (!updatedNote.content) {
+        // Update the notes list by removing the deleted event
+        const updatedNotes = notes.filter(note => note.id !== updatedNote.id);
+        onUpdate(updatedNotes);
+        return;
+      }
+
       await updateNoteById(updatedNote.id, updatedNote.content);
       // Update the notes list by updating the edited event
       const updatedNotes = notes.map(note => 

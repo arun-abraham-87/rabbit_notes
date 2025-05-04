@@ -127,6 +127,12 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => 
     setEditingEvent(null);
   };
 
+  const handleDelete = async (deletedEvent) => {
+    // Update the parent component's state by removing the deleted event
+    onEventUpdated(deletedEvent);
+    setEditingEvent(null);
+  };
+
   const handleAddEvent = (newEvent) => {
     // Implementation of adding a new event
   };
@@ -287,6 +293,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => 
           note={editingEvent}
           onSave={handleEventUpdated}
           onCancel={() => setEditingEvent(null)}
+          onDelete={handleDelete}
           notes={notes}
         />
       )}

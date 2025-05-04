@@ -636,6 +636,265 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
   );
 };
 
+const formatDateString = (date) => {
+  // If date is already a string in YYYY-MM-DD format, return it
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
+
+  // Convert to Date object if it's a string
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+  // Ensure we have a valid Date object
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+    console.error('Invalid date:', date);
+    return '';
+  }
+
+  return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+};
+
+const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [], content = '') => {
+  // Ensure meetingTime is a Date object
+  const meetingDateObj = meetingTime instanceof Date ? meetingTime : new Date(meetingTime);
+  const now = new Date();
+  const meetingDate = formatDateString(meetingDateObj);
+  const todayStr = formatDateString(now);
+
+  // Extract all acknowledgment dates from meta tags and normalize to YYYY-MM-DD format
+  const ackDates = content
+    .split('\n')
+    .filter(line => line.trim().startsWith('meta::meeting_acknowledge::'))
+    .map(line => {
+      const dateStr = line.split('::')[2].trim();
+      return formatDateString(dateStr);
+    });
+
+  // For daily recurrence
+  if (recurrenceType.trim() === 'daily') {
+    // If today's meeting hasn't been acknowledged, return it
+    if (meetingDate === todayStr && !ackDates.includes(todayStr)) {
+      return meetingDateObj;
+    }
+
+    // Start from tomorrow's date
+    let currentDate = new Date(now);
+    currentDate.setDate(currentDate.getDate() + 1);
+    currentDate.setHours(meetingDateObj.getHours());
+    currentDate.setMinutes(meetingDateObj.getMinutes());
+    currentDate.setSeconds(meetingDateObj.getSeconds());
+
+    // Find the next unacknowledged date
+    while (true) {
+      const currentDateStr = formatDateString(currentDate);
+      if (!ackDates.includes(currentDateStr)) {
+        return currentDate;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  }
+
+  // For other recurrence types
+  const nextDate = new Date(meetingDateObj);
+
+  switch (recurrenceType) {
+    case 'weekly':
+      while (formatDateString(nextDate) <= todayStr || ackDates.includes(formatDateString(nextDate))) {
+        nextDate.setDate(nextDate.getDate() + 7);
+      }
+      break;
+    case 'monthly':
+      while (formatDateString(nextDate) <= todayStr || ackDates.includes(formatDateString(nextDate))) {
+        nextDate.setMonth(nextDate.getMonth() + 1);
+      }
+      break;
+    case 'yearly':
+      while (formatDateString(nextDate) <= todayStr || ackDates.includes(formatDateString(nextDate))) {
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+      }
+      break;
+    case 'custom':
+      if (selectedDays.length === 0) return null;
+
+      const currentDay = now.getDay();
+      const meetingDay = meetingDateObj.getDay();
+
+      let nextDay = null;
+      let minDiff = Infinity;
+
+      selectedDays.forEach(day => {
+        const dayIndex = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(day);
+        if (dayIndex === -1) return;
+
+        let diff = dayIndex - currentDay;
+        if (diff <= 0) diff += 7;
+
+        if (diff < minDiff) {
+          minDiff = diff;
+          nextDay = dayIndex;
+        }
+      });
+
+      if (nextDay === null) return null;
+
+      nextDate.setDate(now.getDate() + minDiff);
+      nextDate.setHours(meetingDateObj.getHours());
+      nextDate.setMinutes(meetingDateObj.getMinutes());
+
+      while (ackDates.includes(formatDateString(nextDate))) {
+        nextDate.setDate(nextDate.getDate() + 7);
+      }
+      break;
+    default:
+      return null;
+  }
+
+  return nextDate;
+};
+
+const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+
+  useEffect(() => {
+    const calculateUpcomingEvents = () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      const sevenDaysFromNow = new Date();
+      sevenDaysFromNow.setDate(today.getDate() + 7);
+      sevenDaysFromNow.setHours(23, 59, 59, 999); // End of the day
+
+      const eventNotes = notes.filter(note => note.content.includes('meta::event::'));
+      const upcoming = [];
+
+      eventNotes.forEach(note => {
+        const lines = note.content.split('\n');
+        const description = lines[0].trim();
+        const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+        const baseEventDate = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : null;
+        if (!baseEventDate) return;
+
+        const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
+        const recurrenceType = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : null;
+
+        const locationLine = lines.find(line => line.startsWith('event_location:'));
+        const location = locationLine ? locationLine.replace('event_location:', '').trim() : null;
+
+        try {
+          // Calculate next occurrence if it's a recurring event
+          const nextOccurrence = recurrenceType
+            ? calculateNextOccurrence(baseEventDate, recurrenceType, [], note.content)
+            : new Date(baseEventDate);
+
+          // If there's no next occurrence or invalid date, don't include the event
+          if (!nextOccurrence || !(nextOccurrence instanceof Date)) return;
+
+          // Only include events within the next 7 days
+          if (nextOccurrence >= today && nextOccurrence <= sevenDaysFromNow) {
+            upcoming.push({
+              id: note.id,
+              date: nextOccurrence,
+              description: description.replace('event_description:', '').trim(),
+              location,
+              isRecurring: !!recurrenceType,
+              recurrenceType,
+              baseEventDate
+            });
+          }
+        } catch (error) {
+          console.error('Error processing event:', error);
+        }
+      });
+
+      // Sort events by date
+      upcoming.sort((a, b) => a.date - b.date);
+      setUpcomingEvents(upcoming);
+    };
+
+    calculateUpcomingEvents();
+  }, [notes]);
+
+  return (
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+      <div 
+        className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <CalendarIcon className="h-6 w-6 text-blue-500" />
+            <h3 className="ml-3 text-lg font-semibold text-blue-800">
+              Upcoming Events ({upcomingEvents.length})
+            </h3>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+            className="text-blue-600 hover:text-blue-700 focus:outline-none"
+            aria-label={isExpanded ? "Collapse events" : "Expand events"}
+          >
+            {isExpanded ? (
+              <ChevronUpIcon className="h-5 w-5" />
+            ) : (
+              <ChevronDownIcon className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+      </div>
+      {isExpanded && (
+        <div className="divide-y divide-gray-100">
+          {upcomingEvents.length === 0 ? (
+            <div className="p-6 text-gray-500">
+              No events scheduled for the next 7 days.
+            </div>
+          ) : (
+            upcomingEvents.map((event, index) => (
+              <div key={index} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      <span>
+                        {event.date.toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                    <h4 className="text-lg font-medium text-gray-900">
+                      {event.description}
+                    </h4>
+                    {event.location && (
+                      <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                          <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                        </svg>
+                        <span>{event.location}</span>
+                      </div>
+                    )}
+                    {event.isRecurring && (
+                      <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                          <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                        </svg>
+                        <span>{event.recurrenceType.charAt(0).toUpperCase() + event.recurrenceType.slice(1)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(10);
@@ -899,7 +1158,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         events={events}
         setNotes={setNotes}
       >
-        <TrackerQuestionsAlert notes={notes} expanded={true} />
+        <UpcomingEventsAlert notes={notes} expanded={true} />
         <EventAlerts 
           events={events}
           expanded={true}
@@ -912,6 +1171,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
           expanded={true}
           onDismiss={handleDismissUnacknowledgedMeeting}
         />
+        <TrackerQuestionsAlert notes={notes} expanded={true} />
       </AlertsContainer>
       {children}
     </>

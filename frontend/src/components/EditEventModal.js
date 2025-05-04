@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUniqueTags } from '../utils/EventUtils';
+import { deleteNoteById } from '../utils/ApiUtils';
+import ConfirmationModal from './ConfirmationModal';
 
-const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, notes }) => {
+const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes }) => {
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -12,6 +14,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, notes })
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [tags, setTags] = useState('');
   const [tagInput, setTagInput] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const existingTags = getAllUniqueTags(notes || []);
 
@@ -134,6 +137,18 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, notes })
     setRecurrenceEndDate('');
     setTags('');
     setTagInput('');
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteNoteById(note.id);
+      // Only call onDelete if the deletion was successful
+      onDelete({ ...note, content: '' });
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      // Don't call onDelete if the deletion failed
+      onCancel();
+    }
   };
 
   // Close modal when clicking outside
@@ -371,22 +386,36 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, notes })
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end space-x-3">
+        <div className="mt-6 flex justify-between">
           <button
-            onClick={handleCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100"
           >
-            Cancel
+            Delete Event
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!description.trim() || !eventDate}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Save Changes
-          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={handleCancel}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!description.trim() || !eventDate}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Save Changes
+            </button>
+          </div>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 };

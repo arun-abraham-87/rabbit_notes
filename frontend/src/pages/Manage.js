@@ -639,74 +639,185 @@ const Manage = () => {
                   {matchingNotes.length > 0 && !regexError && (
                     <div className="mt-6">
                       <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                        Matching Notes
+                        Matching Notes (Preview)
                       </h2>
                       <div className="space-y-4">
-                        {matchingNotes.map((note) => (
-                          <div
-                            key={note.id}
-                            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-                          >
-                            <div className="text-sm text-gray-600 mb-2">
-                              Note ID: {note.id}
-                            </div>
-                            <div className="text-gray-800 whitespace-pre-wrap">
-                              {note.content.split('\n').map((line, index) => {
-                                if (useRegex) {
-                                  try {
-                                    const regex = new RegExp(searchText, 'g');
-                                    if (regex.test(line)) {
-                                      const parts = line.split(new RegExp(`(${searchText})`, 'g'));
-                                      return (
-                                        <div key={index} className="mb-1">
-                                          {parts.map((part, i) => (
-                                            <span
-                                              key={i}
-                                              className={
-                                                regex.test(part)
-                                                  ? 'bg-yellow-200'
-                                                  : ''
-                                              }
-                                            >
-                                              {part}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      );
-                                    }
-                                  } catch (e) {
-                                    return <div key={index} className="mb-1">{line}</div>;
-                                  }
-                                } else {
-                                  const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
-                                  let lineToShow = line;
-                                  let hasMatch = false;
+                        {matchingNotes.map((note) => {
+                          // Create a preview of the addition
+                          let previewContent = note.content;
+                          if (activeSubTab === 'add-end') {
+                            previewContent = note.content.trim() + '\n' + addText;
+                          } else {
+                            const lines = note.content.split('\n');
+                            const newLines = [];
+                            
+                            for (let i = 0; i < lines.length; i++) {
+                              const line = lines[i];
+                              let matches = false;
+                              
+                              if (useRegex) {
+                                const regex = new RegExp(searchText, 'g');
+                                matches = regex.test(line);
+                                regex.lastIndex = 0; // Reset regex state
+                              } else {
+                                matches = line.toLowerCase().includes(searchText.toLowerCase());
+                              }
 
-                                  searchTerms.forEach(term => {
-                                    if (line.toLowerCase().includes(term.toLowerCase())) {
-                                      hasMatch = true;
-                                      // Escape special characters for regex
-                                      const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                      const regex = new RegExp(`(${escapedTerm})`, 'gi');
-                                      lineToShow = lineToShow.replace(regex, '<span class="bg-yellow-200">$1</span>');
-                                    }
-                                  });
-
-                                  if (hasMatch) {
-                                    return (
-                                      <div 
-                                        key={index} 
-                                        className="mb-1"
-                                        dangerouslySetInnerHTML={{ __html: lineToShow }}
-                                      />
-                                    );
-                                  }
+                              if (matches) {
+                                if (activeSubTab === 'add-above') {
+                                  newLines.push(addText);
                                 }
-                                return <div key={index} className="mb-1">{line}</div>;
-                              })}
+                                newLines.push(line);
+                                if (activeSubTab === 'search-add') {
+                                  newLines.push(addText);
+                                }
+                              } else {
+                                newLines.push(line);
+                              }
+                            }
+                            
+                            previewContent = newLines.join('\n');
+                          }
+
+                          return (
+                            <div
+                              key={note.id}
+                              className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                            >
+                              <div className="text-sm text-gray-600 mb-2">
+                                Note ID: {note.id}
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                {/* Original Content */}
+                                <div>
+                                  <div className="text-sm font-medium text-gray-700 mb-2">Current:</div>
+                                  <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                                    {note.content.split('\n').map((line, index) => {
+                                      if (useRegex) {
+                                        try {
+                                          const regex = new RegExp(searchText, 'g');
+                                          if (regex.test(line)) {
+                                            const parts = line.split(new RegExp(`(${searchText})`, 'g'));
+                                            return (
+                                              <div key={index} className="mb-1">
+                                                {parts.map((part, i) => (
+                                                  <span
+                                                    key={i}
+                                                    className={
+                                                      regex.test(part)
+                                                        ? 'bg-yellow-200'
+                                                        : ''
+                                                    }
+                                                  >
+                                                    {part}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            );
+                                          }
+                                        } catch (e) {
+                                          return <div key={index} className="mb-1">{line}</div>;
+                                        }
+                                      } else {
+                                        const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+                                        let lineToShow = line;
+                                        let hasMatch = false;
+
+                                        searchTerms.forEach(term => {
+                                          if (line.toLowerCase().includes(term.toLowerCase())) {
+                                            hasMatch = true;
+                                            const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                            const regex = new RegExp(`(${escapedTerm})`, 'gi');
+                                            lineToShow = lineToShow.replace(regex, '<span class="bg-yellow-200">$1</span>');
+                                          }
+                                        });
+
+                                        if (hasMatch) {
+                                          return (
+                                            <div 
+                                              key={index} 
+                                              className="mb-1"
+                                              dangerouslySetInnerHTML={{ __html: lineToShow }}
+                                            />
+                                          );
+                                        }
+                                      }
+                                      return <div key={index} className="mb-1">{line}</div>;
+                                    })}
+                                  </div>
+                                </div>
+
+                                {/* Preview Content */}
+                                <div>
+                                  <div className="text-sm font-medium text-gray-700 mb-2">After Adding:</div>
+                                  <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                                    {previewContent.split('\n').map((line, index) => {
+                                      // Highlight the added text
+                                      if (line === addText) {
+                                        return (
+                                          <div key={index} className="mb-1">
+                                            <span className="bg-green-200">{line}</span>
+                                          </div>
+                                        );
+                                      }
+                                      
+                                      if (useRegex) {
+                                        try {
+                                          const regex = new RegExp(searchText, 'g');
+                                          if (regex.test(line)) {
+                                            const parts = line.split(new RegExp(`(${searchText})`, 'g'));
+                                            return (
+                                              <div key={index} className="mb-1">
+                                                {parts.map((part, i) => (
+                                                  <span
+                                                    key={i}
+                                                    className={
+                                                      regex.test(part)
+                                                        ? 'bg-yellow-200'
+                                                        : ''
+                                                    }
+                                                  >
+                                                    {part}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            );
+                                          }
+                                        } catch (e) {
+                                          return <div key={index} className="mb-1">{line}</div>;
+                                        }
+                                      } else {
+                                        const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+                                        let lineToShow = line;
+                                        let hasMatch = false;
+
+                                        searchTerms.forEach(term => {
+                                          if (line.toLowerCase().includes(term.toLowerCase())) {
+                                            hasMatch = true;
+                                            const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                            const regex = new RegExp(`(${escapedTerm})`, 'gi');
+                                            lineToShow = lineToShow.replace(regex, '<span class="bg-yellow-200">$1</span>');
+                                          }
+                                        });
+
+                                        if (hasMatch) {
+                                          return (
+                                            <div 
+                                              key={index} 
+                                              className="mb-1"
+                                              dangerouslySetInnerHTML={{ __html: lineToShow }}
+                                            />
+                                          );
+                                        }
+                                      }
+                                      return <div key={index} className="mb-1">{line}</div>;
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}

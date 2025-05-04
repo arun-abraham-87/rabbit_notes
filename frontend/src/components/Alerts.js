@@ -439,6 +439,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
 };
 
 const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [trackerQuestions, setTrackerQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
 
@@ -578,60 +579,95 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
 
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-      <div className="divide-y divide-gray-100">
-        {trackerQuestions.map((tracker) => (
-          <div key={`${tracker.id}-${tracker.date}`} className="p-6 hover:bg-gray-50 transition-colors duration-150">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-gray-900 mb-4">{tracker.question}</p>
-                <p className="text-sm text-gray-500">Date: {tracker.date}</p>
-              </div>
-              <div className="flex flex-col gap-2">
-                {tracker.type === 'Yes,No' ? (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleAnswer(tracker.id, 'Yes')}
-                      className={`px-4 py-2 rounded-lg ${
-                        answers[tracker.id] === 'Yes'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                      }`}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      onClick={() => handleAnswer(tracker.id, 'No')}
-                      className={`px-4 py-2 rounded-lg ${
-                        answers[tracker.id] === 'No'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                      }`}
-                    >
-                      No
-                    </button>
+      <div 
+        className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <DocumentTextIcon className="h-6 w-6 text-blue-500" />
+            <h3 className="ml-3 text-lg font-semibold text-blue-800">
+              Tracker Questions ({trackerQuestions.length})
+            </h3>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+            className="text-blue-600 hover:text-blue-700 focus:outline-none"
+            aria-label={isExpanded ? "Collapse questions" : "Expand questions"}
+          >
+            {isExpanded ? (
+              <ChevronUpIcon className="h-5 w-5" />
+            ) : (
+              <ChevronDownIcon className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+      </div>
+      {isExpanded && (
+        <div className="divide-y divide-gray-100">
+          {trackerQuestions.map((tracker) => (
+            <div key={`${tracker.id}-${tracker.date}`} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">
+                    {tracker.title}
+                  </h4>
+                  <p className="text-gray-600 mb-4">{tracker.question}</p>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <CalendarIcon className="h-4 w-4" />
+                    <span>{tracker.date}</span>
                   </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={answers[tracker.id] || ''}
-                      onChange={(e) => handleAnswer(tracker.id, e.target.value)}
-                      className="w-24 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Enter value"
-                    />
-                    <button
-                      onClick={() => handleAnswer(tracker.id, answers[tracker.id])}
-                      className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
-                    >
-                      <CheckIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  {tracker.type === 'Yes,No' ? (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleAnswer(tracker.id, 'Yes')}
+                        className={`px-4 py-2 rounded-lg ${
+                          answers[tracker.id] === 'Yes'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                        }`}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        onClick={() => handleAnswer(tracker.id, 'No')}
+                        className={`px-4 py-2 rounded-lg ${
+                          answers[tracker.id] === 'No'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                        }`}
+                      >
+                        No
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        value={answers[tracker.id] || ''}
+                        onChange={(e) => handleAnswer(tracker.id, e.target.value)}
+                        className="w-24 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter value"
+                      />
+                      <button
+                        onClick={() => handleAnswer(tracker.id, answers[tracker.id])}
+                        className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
+                      >
+                        <CheckIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -1152,27 +1188,29 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         pauseOnHover
         theme="light"
       />
-      <AlertsContainer 
-        expanded={true}
-        notes={notes} 
-        events={events}
-        setNotes={setNotes}
-      >
-        <UpcomingEventsAlert notes={notes} expanded={true} />
-        <EventAlerts 
-          events={events}
+      <div className="space-y-6">
+        <UpcomingEventsAlert notes={notes} expanded={false} />
+        <TrackerQuestionsAlert notes={notes} expanded={false} />
+        <AlertsContainer 
           expanded={true}
-        />
-        <CriticalTodosAlert notes={notes} expanded={true} />
-        <DeadlinePassedAlert notes={notes} expanded={true} />
-        <ReviewOverdueAlert notes={notes} expanded={true} />
-        <UnacknowledgedMeetingsAlert 
           notes={notes} 
-          expanded={true}
-          onDismiss={handleDismissUnacknowledgedMeeting}
-        />
-        <TrackerQuestionsAlert notes={notes} expanded={true} />
-      </AlertsContainer>
+          events={events}
+          setNotes={setNotes}
+        >
+          <EventAlerts 
+            events={events}
+            expanded={true}
+          />
+          <CriticalTodosAlert notes={notes} expanded={true} />
+          <DeadlinePassedAlert notes={notes} expanded={true} />
+          <ReviewOverdueAlert notes={notes} expanded={true} />
+          <UnacknowledgedMeetingsAlert 
+            notes={notes} 
+            expanded={true}
+            onDismiss={handleDismissUnacknowledgedMeeting}
+          />
+        </AlertsContainer>
+      </div>
       {children}
     </>
   );

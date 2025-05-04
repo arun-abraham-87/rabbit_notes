@@ -12,11 +12,13 @@ import {
 } from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
+import AddEventModal from './AddEventModal';
 
-const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated }) => {
+const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => {
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [rawNote, setRawNote] = useState(null);
+  const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
 
   // Function to calculate age in years, months, and days
   const calculateAge = (date) => {
@@ -123,6 +125,10 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated }) => {
   const handleEventUpdated = (updatedEvent) => {
     onEventUpdated(updatedEvent);
     setEditingEvent(null);
+  };
+
+  const handleAddEvent = (newEvent) => {
+    // Implementation of adding a new event
   };
 
   return (
@@ -281,6 +287,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated }) => {
           note={editingEvent}
           onSave={handleEventUpdated}
           onCancel={() => setEditingEvent(null)}
+          notes={notes}
         />
       )}
 
@@ -302,6 +309,16 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated }) => {
             </pre>
           </div>
         </div>
+      )}
+
+      {/* Add Event Modal */}
+      {isAddEventModalOpen && (
+        <AddEventModal
+          isOpen={isAddEventModalOpen}
+          onClose={() => setIsAddEventModalOpen(false)}
+          onAdd={handleAddEvent}
+          notes={notes}
+        />
       )}
     </div>
   );

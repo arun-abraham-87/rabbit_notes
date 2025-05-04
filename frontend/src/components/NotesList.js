@@ -1045,6 +1045,7 @@ const NotesList = ({
           addNotes(content);
           setShowAddEventModal(false);
         }}
+        notes={allNotes}
       />
 
       {editingMeetingNote && (

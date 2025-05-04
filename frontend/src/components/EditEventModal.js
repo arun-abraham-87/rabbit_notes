@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { getAllUniqueTags } from '../utils/EventUtils';
 
-const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit }) => {
+const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, notes }) => {
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -11,6 +12,8 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit }) => {
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [tags, setTags] = useState('');
   const [tagInput, setTagInput] = useState('');
+
+  const existingTags = getAllUniqueTags(notes || []);
 
   useEffect(() => {
     if (note) {
@@ -74,6 +77,14 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit }) => {
     const newTags = tags ? `${tags},${tagInput.trim()}` : tagInput.trim();
     setTags(newTags);
     setTagInput('');
+  };
+
+  const handleAddExistingTag = (tag) => {
+    if (!tags) {
+      setTags(tag);
+    } else if (!tags.split(',').includes(tag)) {
+      setTags(`${tags},${tag}`);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -302,6 +313,22 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Tags
             </label>
+            {existingTags.length > 0 && (
+              <div className="mb-2">
+                <p className="text-xs text-gray-500 mb-1">Existing tags:</p>
+                <div className="flex flex-wrap gap-1">
+                  {existingTags.map((tag, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleAddExistingTag(tag)}
+                      className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex gap-2">
               <input
                 type="text"

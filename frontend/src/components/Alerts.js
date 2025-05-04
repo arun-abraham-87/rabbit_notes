@@ -11,10 +11,11 @@ import {
   ClockIcon,
   CalendarIcon,
   DocumentTextIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  CheckIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
-import { updateNoteById, loadNotes, loadTags } from '../utils/ApiUtils';
+import { updateNoteById, loadNotes, loadTags, addNewNoteCommon } from '../utils/ApiUtils';
 import { getAge } from '../utils/DateUtils';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
 
@@ -437,6 +438,145 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
   );
 };
 
+const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
+  const [trackerQuestions, setTrackerQuestions] = useState([]);
+  const [answers, setAnswers] = useState({});
+
+  useEffect(() => {
+    const loadTrackerQuestions = () => {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+      const questions = notes
+        .filter(note => note.content.includes('meta::tracker'))
+        .map(note => {
+          const lines = note.content.split('\n');
+          const question = lines.find(line => line.startsWith('Question:'))?.replace('Question:', '').trim();
+          const type = lines.find(line => line.startsWith('Type:'))?.replace('Type:', '').trim();
+          const cadence = lines.find(line => line.startsWith('Cadence:'))?.replace('Cadence:', '').trim();
+          const days = lines.find(line => line.startsWith('Days:'))?.replace('Days:', '').trim()?.split(',') || [];
+
+          // Check if we need to ask this question based on cadence
+          const shouldAsk = checkShouldAsk(cadence, days, yesterday);
+          
+          if (shouldAsk) {
+            return {
+              id: note.id,
+              question,
+              type,
+              date: yesterdayStr
+            };
+          }
+          return null;
+        })
+        .filter(q => q !== null);
+
+      setTrackerQuestions(questions);
+    };
+
+    loadTrackerQuestions();
+  }, [notes]);
+
+  const checkShouldAsk = (cadence, days, date) => {
+    const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
+    
+    switch (cadence) {
+      case 'Daily':
+        return true;
+      case 'Weekly':
+        return days.includes(dayOfWeek);
+      case 'Monthly':
+        return date.getDate() === 1; // First day of month
+      case 'Yearly':
+        return date.getMonth() === 0 && date.getDate() === 1; // First day of year
+      default:
+        return false;
+    }
+  };
+
+  const handleAnswer = async (trackerId, answer) => {
+    try {
+      const tracker = trackerQuestions.find(q => q.id === trackerId);
+      if (!tracker) return;
+
+      // Create a new note with the answer
+      const answerContent = `Answer: ${answer}\nDate: ${tracker.date}\nmeta::link:${trackerId}\nmeta::tracker_answer`;
+      
+      const response = await addNewNoteCommon(answerContent);
+      if (response && response.id) {
+        setAnswers(prev => ({ ...prev, [trackerId]: answer }));
+        Alerts.success('Answer recorded successfully');
+      } else {
+        throw new Error('Failed to create answer note');
+      }
+    } catch (error) {
+      console.error('Error recording answer:', error);
+      Alerts.error('Failed to record answer');
+    }
+  };
+
+  if (trackerQuestions.length === 0) return null;
+
+  return (
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+      <div className="divide-y divide-gray-100">
+        {trackerQuestions.map((tracker) => (
+          <div key={tracker.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-gray-900 mb-4">{tracker.question}</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                {tracker.type === 'Yes,No' ? (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleAnswer(tracker.id, 'Yes')}
+                      className={`px-4 py-2 rounded-lg ${
+                        answers[tracker.id] === 'Yes'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      }`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => handleAnswer(tracker.id, 'No')}
+                      className={`px-4 py-2 rounded-lg ${
+                        answers[tracker.id] === 'No'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      }`}
+                    >
+                      No
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={answers[tracker.id] || ''}
+                      onChange={(e) => handleAnswer(tracker.id, e.target.value)}
+                      className="w-24 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter value"
+                    />
+                    <button
+                      onClick={() => handleAnswer(tracker.id, answers[tracker.id])}
+                      className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
+                    >
+                      <CheckIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(10);
@@ -700,6 +840,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         events={events}
         setNotes={setNotes}
       >
+        <TrackerQuestionsAlert notes={notes} expanded={true} />
         <EventAlerts 
           events={events}
           expanded={true}

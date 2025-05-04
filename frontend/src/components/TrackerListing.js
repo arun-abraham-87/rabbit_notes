@@ -63,8 +63,8 @@ const TrackerListing = () => {
   };
 
   const filteredTrackers = trackers.filter(tracker => {
-    const matchesSearch = tracker.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tracker.question.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (!tracker.title || tracker.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (!tracker.question || tracker.question.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCadence = filterCadence === 'all' || tracker.cadence === filterCadence;
     const matchesType = filterType === 'all' || tracker.type === filterType;
     return matchesSearch && matchesCadence && matchesType;

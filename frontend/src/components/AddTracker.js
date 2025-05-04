@@ -12,6 +12,11 @@ const AddTracker = ({ onTrackerAdded }) => {
   const [question, setQuestion] = useState('');
   const [type, setType] = useState('Yes,No');
   const [cadence, setCadence] = useState('Daily');
+  const [startDate, setStartDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState('');
   const [selectedDays, setSelectedDays] = useState({
     Monday: false,
     Tuesday: false,
@@ -52,7 +57,13 @@ const AddTracker = ({ onTrackerAdded }) => {
       let content = `Title: ${title}
 Question: ${question}
 Type: ${type}
-Cadence: ${cadence}`;
+Cadence: ${cadence}
+Start Date: ${startDate}`;
+
+      // Add end date if selected
+      if (endDate) {
+        content += `\nEnd Date: ${endDate}`;
+      }
 
       // Add selected days if weekly cadence
       if (cadence === 'Weekly') {
@@ -73,6 +84,8 @@ Cadence: ${cadence}`;
       setQuestion('');
       setType('Yes,No');
       setCadence('Daily');
+      setStartDate(new Date().toISOString().split('T')[0]);
+      setEndDate('');
       setSelectedDays({
         Monday: false,
         Tuesday: false,
@@ -178,6 +191,36 @@ Cadence: ${cadence}`;
           </select>
         </div>
 
+        {/* Start Date Input */}
+        <div>
+          <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
+            Start Date
+          </label>
+          <input
+            type="date"
+            id="startDate"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            required
+          />
+        </div>
+
+        {/* End Date Input */}
+        <div>
+          <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+            End Date (Optional)
+          </label>
+          <input
+            type="date"
+            id="endDate"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            min={startDate}
+          />
+        </div>
+
         {/* Week Days Selection - Only shown when cadence is Weekly */}
         {cadence === 'Weekly' && (
           <div>
@@ -212,6 +255,8 @@ Cadence: ${cadence}`;
               setQuestion('');
               setType('Yes,No');
               setCadence('Daily');
+              setStartDate(new Date().toISOString().split('T')[0]);
+              setEndDate('');
               setSelectedDays({
                 Monday: false,
                 Tuesday: false,

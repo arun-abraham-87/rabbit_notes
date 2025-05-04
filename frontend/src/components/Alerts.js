@@ -444,33 +444,70 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
 
   useEffect(() => {
     const loadTrackerQuestions = () => {
-      const yesterday = new Date();
+      const today = new Date();
+      const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-      const questions = notes
-        .filter(note => note.content.includes('meta::tracker'))
+      // Get all tracker answers
+      const trackerAnswers = notes
+        .filter(note => note.content.includes('meta::tracker_answer'))
         .map(note => {
           const lines = note.content.split('\n');
+          const answer = lines.find(line => line.startsWith('Answer:'))?.replace('Answer:', '').trim();
+          const date = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
+          const link = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
+          return { answer, date, link };
+        });
+
+      const questions = notes
+        .filter(note => note.content.includes('meta::tracker'))
+        .flatMap(note => {
+          const lines = note.content.split('\n');
+          const title = lines.find(line => line.startsWith('Title:'))?.replace('Title:', '').trim();
           const question = lines.find(line => line.startsWith('Question:'))?.replace('Question:', '').trim();
           const type = lines.find(line => line.startsWith('Type:'))?.replace('Type:', '').trim();
           const cadence = lines.find(line => line.startsWith('Cadence:'))?.replace('Cadence:', '').trim();
           const days = lines.find(line => line.startsWith('Days:'))?.replace('Days:', '').trim()?.split(',') || [];
+          const startDate = lines.find(line => line.startsWith('Start Date:'))?.replace('Start Date:', '').trim();
+          const endDate = lines.find(line => line.startsWith('End Date:'))?.replace('End Date:', '').trim();
 
-          // Check if we need to ask this question based on cadence
-          const shouldAsk = checkShouldAsk(cadence, days, yesterday);
+          // Calculate all dates that need questions
+          const datesToAsk = calculateDatesToAsk(startDate, endDate, cadence, days);
           
-          if (shouldAsk) {
+          // Filter dates that don't have answers
+          const unansweredDates = datesToAsk.filter(date => {
+            const dateStr = date.toISOString().split('T')[0];
+            return !trackerAnswers.some(answer => 
+              answer.link === note.id && answer.date === dateStr
+            );
+          });
+
+          // Create questions for unanswered dates
+          return unansweredDates.map(date => {
+            // Format the date for display
+            const formattedDate = date.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+            
+            // Create the date (age) combo
+            const dateAgeCombo = `${formattedDate} (${getAge(date)})`;
+            
+            // Replace #date# in question with the combo
+            const formattedQuestion = question.replace(/#date#/g, dateAgeCombo);
+            
             return {
               id: note.id,
-              question,
+              title,
+              question: formattedQuestion,
               type,
-              date: yesterdayStr
+              date: date.toISOString().split('T')[0]
             };
-          }
-          return null;
-        })
-        .filter(q => q !== null);
+          });
+        });
 
       setTrackerQuestions(questions);
     };
@@ -478,7 +515,23 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
     loadTrackerQuestions();
   }, [notes]);
 
-  const checkShouldAsk = (cadence, days, date) => {
+  const calculateDatesToAsk = (startDate, endDate, cadence, days) => {
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : new Date();
+    const dates = [];
+    let currentDate = new Date(start);
+
+    while (currentDate <= end) {
+      if (shouldAskOnDate(currentDate, cadence, days)) {
+        dates.push(new Date(currentDate));
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return dates;
+  };
+
+  const shouldAskOnDate = (date, cadence, days) => {
     const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
     
     switch (cadence) {
@@ -507,6 +560,11 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
       if (response && response.id) {
         setAnswers(prev => ({ ...prev, [trackerId]: answer }));
         Alerts.success('Answer recorded successfully');
+        // Reload questions to remove the answered one
+        const updatedQuestions = trackerQuestions.filter(q => 
+          !(q.id === trackerId && q.date === tracker.date)
+        );
+        setTrackerQuestions(updatedQuestions);
       } else {
         throw new Error('Failed to create answer note');
       }
@@ -522,10 +580,11 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
       <div className="divide-y divide-gray-100">
         {trackerQuestions.map((tracker) => (
-          <div key={tracker.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+          <div key={`${tracker.id}-${tracker.date}`} className="p-6 hover:bg-gray-50 transition-colors duration-150">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <p className="text-gray-900 mb-4">{tracker.question}</p>
+                <p className="text-sm text-gray-500">Date: {tracker.date}</p>
               </div>
               <div className="flex flex-col gap-2">
                 {tracker.type === 'Yes,No' ? (

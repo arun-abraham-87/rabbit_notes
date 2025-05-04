@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { loadNotes } from '../utils/ApiUtils';
+import { loadNotes, updateNoteById } from '../utils/ApiUtils';
 import {
   MagnifyingGlassIcon,
   XMarkIcon,
   ExclamationCircleIcon,
   CalendarIcon,
   ClockIcon,
-  PlusIcon
+  PlusIcon,
+  PencilIcon,
+  DocumentTextIcon,
+  EyeIcon
 } from '@heroicons/react/24/solid';
 import AddTracker from './AddTracker';
+import { getAge } from '../utils/DateUtils';
 
 const TrackerListing = () => {
   const [trackers, setTrackers] = useState([]);
@@ -16,8 +20,14 @@ const TrackerListing = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddTracker, setShowAddTracker] = useState(false);
+  const [editingTracker, setEditingTracker] = useState(null);
   const [filterCadence, setFilterCadence] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [trackerStats, setTrackerStats] = useState({});
+  const [showAnswers, setShowAnswers] = useState(null);
+  const [trackerAnswers, setTrackerAnswers] = useState({});
+  const [showRawNote, setShowRawNote] = useState(null);
+  const [rawNotes, setRawNotes] = useState({});
 
   useEffect(() => {
     loadTrackers();
@@ -27,16 +37,21 @@ const TrackerListing = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const notes = await loadNotes();
-      const trackerNotes = (Array.isArray(notes) ? notes : notes?.notes || [])
-        .filter(note => note.content && note.content.includes('meta::tracker'))
+      const response = await loadNotes();
+      const notes = Array.isArray(response) ? response : (response?.notes || []);
+      
+      const trackerNotes = notes
+        .filter(note => note.content && note.content.split('\n').some(line => line === 'meta::tracker'))
         .map(note => {
           const lines = note.content.split('\n');
           const title = lines.find(line => line.startsWith('Title:'))?.replace('Title:', '').trim();
           const question = lines.find(line => line.startsWith('Question:'))?.replace('Question:', '').trim();
           const type = lines.find(line => line.startsWith('Type:'))?.replace('Type:', '').trim();
           const cadence = lines.find(line => line.startsWith('Cadence:'))?.replace('Cadence:', '').trim();
-          const days = lines.find(line => line.startsWith('Days:'))?.replace('Days:', '').trim();
+          const daysStr = lines.find(line => line.startsWith('Days:'))?.replace('Days:', '').trim();
+          const days = daysStr ? daysStr.split(',').map(day => day.trim()) : [];
+          const startDate = lines.find(line => line.startsWith('Start Date:'))?.replace('Start Date:', '').trim();
+          const endDate = lines.find(line => line.startsWith('End Date:'))?.replace('End Date:', '').trim();
           
           return {
             id: note.id,
@@ -44,11 +59,54 @@ const TrackerListing = () => {
             question,
             type,
             cadence,
-            days: days ? days.split(',') : [],
+            days,
+            startDate,
+            endDate,
             createdAt: note.createdAt
           };
         });
       setTrackers(trackerNotes);
+
+      // Load tracker answers and calculate statistics
+      const answers = notes.filter(note => note.content.split('\n').some(line => line === 'meta::tracker_answer'));
+      const stats = {};
+      const answersByTracker = {};
+      const rawNotesByAnswer = {};
+      
+      answers.forEach(answer => {
+        const lines = answer.content.split('\n');
+        const link = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
+        const answerValue = lines.find(line => line.startsWith('Answer:'))?.replace('Answer:', '').trim();
+        const date = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
+        
+        if (link && answerValue && date) {
+          if (!stats[link]) {
+            stats[link] = { yes: 0, no: 0, total: 0 };
+          }
+          if (answerValue.toLowerCase() === 'yes') {
+            stats[link].yes++;
+          } else if (answerValue.toLowerCase() === 'no') {
+            stats[link].no++;
+          }
+          stats[link].total++;
+
+          if (!answersByTracker[link]) {
+            answersByTracker[link] = [];
+          }
+          const answerId = `${link}-${date}`;
+          answersByTracker[link].push({
+            id: answerId,
+            date,
+            answer: answerValue,
+            age: getAge(new Date(date))
+          });
+          rawNotesByAnswer[answerId] = answer.content;
+        }
+      });
+
+      setTrackerStats(stats);
+      setTrackerAnswers(answersByTracker);
+      setRawNotes(rawNotesByAnswer);
     } catch (err) {
       setError('Failed to load trackers. Please try again.');
       console.error('Error loading trackers:', err);
@@ -60,6 +118,37 @@ const TrackerListing = () => {
   const handleTrackerAdded = (newTracker) => {
     setTrackers(prevTrackers => [...prevTrackers, newTracker]);
     setShowAddTracker(false);
+  };
+
+  const handleTrackerUpdated = (updatedTracker) => {
+    setTrackers(prevTrackers => 
+      prevTrackers.map(tracker => 
+        tracker.id === updatedTracker.id ? updatedTracker : tracker
+      )
+    );
+    setEditingTracker(null);
+  };
+
+  const handleEditTracker = (tracker) => {
+    setEditingTracker(tracker);
+  };
+
+  const handleShowAnswers = (trackerId) => {
+    setShowAnswers(trackerId);
+  };
+
+  const handleShowRawNote = (answerId) => {
+    setShowRawNote(answerId);
+  };
+
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
   const filteredTrackers = trackers.filter(tracker => {
@@ -93,19 +182,28 @@ const TrackerListing = () => {
         </button>
       </div>
 
-      {showAddTracker && (
+      {(showAddTracker || editingTracker) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 max-w-lg w-full">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Add New Tracker</h2>
+              <h2 className="text-xl font-semibold">
+                {editingTracker ? 'Edit Tracker' : 'Add New Tracker'}
+              </h2>
               <button
-                onClick={() => setShowAddTracker(false)}
+                onClick={() => {
+                  setShowAddTracker(false);
+                  setEditingTracker(null);
+                }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 ✕
               </button>
             </div>
-            <AddTracker onTrackerAdded={handleTrackerAdded} />
+            <AddTracker 
+              onTrackerAdded={handleTrackerAdded}
+              onTrackerUpdated={handleTrackerUpdated}
+              editingTracker={editingTracker}
+            />
           </div>
         </div>
       )}
@@ -178,36 +276,171 @@ const TrackerListing = () => {
             )}
           </div>
         ) : (
-          filteredTrackers.map((tracker) => (
-            <div
-              key={tracker.id}
-              className="p-4 border rounded-lg hover:bg-gray-50 transition-colors duration-150"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-medium text-gray-900 mb-1">
-                    {tracker.title}
-                  </h3>
-                  <p className="text-gray-600 mb-2">{tracker.question}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <ClockIcon className="h-4 w-4" />
-                      <span>{tracker.type}</span>
+          filteredTrackers.map((tracker) => {
+            const stats = trackerStats[tracker.id] || { yes: 0, no: 0, total: 0 };
+            const yesPercentage = stats.total > 0 ? Math.round((stats.yes / stats.total) * 100) : 0;
+            const noPercentage = stats.total > 0 ? Math.round((stats.no / stats.total) * 100) : 0;
+
+            return (
+              <div
+                key={tracker.id}
+                className="p-4 border rounded-lg hover:bg-gray-50 transition-colors duration-150"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">
+                      {tracker.title}
+                    </h3>
+                    <p className="text-gray-600 mb-2">{tracker.question}</p>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>{tracker.type}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <CalendarIcon className="h-4 w-4" />
+                        <span>{tracker.cadence}</span>
+                        {tracker.days.length > 0 && (
+                          <span className="ml-1">({tracker.days.join(', ')})</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <CalendarIcon className="h-4 w-4" />
-                      <span>{tracker.cadence}</span>
-                      {tracker.days.length > 0 && (
-                        <span className="ml-1">({tracker.days.join(', ')})</span>
-                      )}
-                    </div>
+                    {tracker.type === 'Yes,No' && stats.total > 0 && (
+                      <div className="mt-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-green-500" 
+                              style={{ width: `${yesPercentage}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-gray-600">
+                            {yesPercentage}% Yes
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-red-500" 
+                              style={{ width: `${noPercentage}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-gray-600">
+                            {noPercentage}% No
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Total answers: {stats.total}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => handleEditTracker(tracker)}
+                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <PencilIcon className="h-5 w-5" />
+                    </button>
+                    {stats.total > 0 && (
+                      <button
+                        onClick={() => handleShowAnswers(tracker.id)}
+                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <DocumentTextIcon className="h-5 w-5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
+
+      {/* Answers Popup */}
+      {showAnswers && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Recent Answers</h2>
+              <button
+                onClick={() => setShowAnswers(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="overflow-auto max-h-[60vh]">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Answer</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">View</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {trackerAnswers[showAnswers]?.slice(-50).map((answer) => (
+                    <tr key={answer.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                        {formatDate(answer.date)}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(answer.date).toLocaleDateString('en-US', { weekday: 'long' })}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                        {answer.age}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm">
+                        <span className={`px-2 py-1 rounded-full ${
+                          answer.answer.toLowerCase() === 'yes' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {answer.answer}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => handleShowRawNote(answer.id)}
+                          className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Raw Note Popup */}
+      {showRawNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Raw Note</h2>
+              <button
+                onClick={() => setShowRawNote(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="overflow-auto max-h-[60vh]">
+              <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 p-4 rounded-lg">
+                {rawNotes[showRawNote]}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

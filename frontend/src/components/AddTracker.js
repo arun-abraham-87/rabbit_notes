@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { addNewNoteCommon } from '../utils/ApiUtils';
+import React, { useState, useEffect } from 'react';
+import { addNewNoteCommon, updateNoteById } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
 import {
   XMarkIcon,
@@ -7,7 +7,7 @@ import {
   ExclamationCircleIcon
 } from '@heroicons/react/24/solid';
 
-const AddTracker = ({ onTrackerAdded }) => {
+const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker }) => {
   const [title, setTitle] = useState('');
   const [question, setQuestion] = useState('');
   const [type, setType] = useState('Yes,No');
@@ -28,6 +28,37 @@ const AddTracker = ({ onTrackerAdded }) => {
   });
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Populate form fields when editing
+  useEffect(() => {
+    if (editingTracker) {
+      setTitle(editingTracker.title || '');
+      setQuestion(editingTracker.question || '');
+      setType(editingTracker.type || 'Yes,No');
+      setCadence(editingTracker.cadence || 'Daily');
+      setStartDate(editingTracker.startDate || new Date().toISOString().split('T')[0]);
+      setEndDate(editingTracker.endDate || '');
+      
+      // Set selected days for weekly cadence
+      if (editingTracker.days) {
+        const daysState = {
+          Monday: false,
+          Tuesday: false,
+          Wednesday: false,
+          Thursday: false,
+          Friday: false,
+          Saturday: false,
+          Sunday: false
+        };
+        editingTracker.days.forEach(day => {
+          if (daysState.hasOwnProperty(day)) {
+            daysState[day] = true;
+          }
+        });
+        setSelectedDays(daysState);
+      }
+    }
+  }, [editingTracker]);
 
   const handleDayChange = (day) => {
     setSelectedDays(prev => ({
@@ -76,36 +107,60 @@ Start Date: ${startDate}`;
 
       content += '\nmeta::tracker';
 
-      // Add the new note
-      await addNewNoteCommon(content, undefined, null);
-      
-      // Reset form
-      setTitle('');
-      setQuestion('');
-      setType('Yes,No');
-      setCadence('Daily');
-      setStartDate(new Date().toISOString().split('T')[0]);
-      setEndDate('');
-      setSelectedDays({
-        Monday: false,
-        Tuesday: false,
-        Wednesday: false,
-        Thursday: false,
-        Friday: false,
-        Saturday: false,
-        Sunday: false
-      });
-      
-      // Show success message
-      toast.success('Tracker added successfully');
-      
-      // Notify parent component
-      if (onTrackerAdded) {
-        onTrackerAdded();
+      if (editingTracker) {
+        // Update existing tracker
+        await updateNoteById(editingTracker.id, content);
+        onTrackerUpdated({
+          ...editingTracker,
+          title,
+          question,
+          type,
+          cadence,
+          startDate,
+          endDate,
+          days: cadence === 'Weekly' ? Object.entries(selectedDays)
+            .filter(([_, selected]) => selected)
+            .map(([day]) => day) : []
+        });
+        toast.success('Tracker updated successfully');
+      } else {
+        // Add new tracker
+        const response = await addNewNoteCommon(content, undefined, null);
+        onTrackerAdded({
+          id: response.id,
+          title,
+          question,
+          type,
+          cadence,
+          startDate,
+          endDate,
+          days: cadence === 'Weekly' ? Object.entries(selectedDays)
+            .filter(([_, selected]) => selected)
+            .map(([day]) => day) : [],
+          createdAt: new Date().toISOString()
+        });
+        toast.success('Tracker added successfully');
+        
+        // Only reset form when adding a new tracker
+        setTitle('');
+        setQuestion('');
+        setType('Yes,No');
+        setCadence('Daily');
+        setStartDate(new Date().toISOString().split('T')[0]);
+        setEndDate('');
+        setSelectedDays({
+          Monday: false,
+          Tuesday: false,
+          Wednesday: false,
+          Thursday: false,
+          Friday: false,
+          Saturday: false,
+          Sunday: false
+        });
       }
     } catch (err) {
-      setError('Failed to add tracker. Please try again.');
-      console.error('Error adding tracker:', err);
+      setError('Failed to save tracker. Please try again.');
+      console.error('Error saving tracker:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -113,7 +168,9 @@ Start Date: ${startDate}`;
 
   return (
     <div className="w-full rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-      <h2 className="text-xl font-bold mb-4">Add New Tracker</h2>
+      <h2 className="text-xl font-bold mb-4">
+        {editingTracker ? 'Edit Tracker' : 'Add New Tracker'}
+      </h2>
       
       {/* Error Message */}
       {error && (
@@ -285,12 +342,12 @@ Start Date: ${startDate}`;
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Adding...
+                {editingTracker ? 'Updating...' : 'Adding...'}
               </>
             ) : (
               <>
                 <CheckIcon className="h-5 w-5 inline-block mr-1" />
-                Add Tracker
+                {editingTracker ? 'Update Tracker' : 'Add Tracker'}
               </>
             )}
           </button>

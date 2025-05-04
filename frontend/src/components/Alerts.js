@@ -550,18 +550,26 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
     }
   };
 
-  const handleAnswer = async (trackerId, answer) => {
+  const handleAnswer = async (trackerId, answer, date) => {
     try {
       const tracker = trackerQuestions.find(q => q.id === trackerId);
       if (!tracker) return;
 
       // Create a new note with the answer
-      const answerContent = `Answer: ${answer}\nDate: ${tracker.date}\nmeta::link:${trackerId}\nmeta::tracker_answer`;
+      const answerContent = `Answer: ${answer}\nDate: ${date || tracker.date}\nrecorded_on_date: ${date || tracker.date}\nmeta::link:${trackerId}\nmeta::tracker_answer`;
       
       const response = await addNewNoteCommon(answerContent);
       if (response && response.id) {
-        setAnswers(prev => ({ ...prev, [trackerId]: answer }));
-        Alerts.success('Answer recorded successfully');
+        setAnswers(prev => ({ ...prev, [trackerId]: { value: answer, date: date || tracker.date } }));
+        toast.success('Answer recorded successfully', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        });
         // Reload questions to remove the answered one
         const updatedQuestions = trackerQuestions.filter(q => 
           !(q.id === trackerId && q.date === tracker.date)
@@ -572,22 +580,38 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
       }
     } catch (error) {
       console.error('Error recording answer:', error);
-      Alerts.error('Failed to record answer');
+      toast.error('Failed to record answer', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
     }
   };
 
-  const handleTimeAnswer = async (trackerId, time) => {
+  const handleTimeAnswer = async (trackerId, time, date) => {
     try {
       const tracker = trackerQuestions.find(q => q.id === trackerId);
       if (!tracker) return;
 
       // Create a new note with the time answer
-      const answerContent = `Answer: ${time}\nDate: ${tracker.date}\nmeta::link:${trackerId}\nmeta::tracker_answer`;
+      const answerContent = `Answer: ${time}\nDate: ${date || tracker.date}\nrecorded_on_date: ${date || tracker.date}\nmeta::link:${trackerId}\nmeta::tracker_answer`;
       
       const response = await addNewNoteCommon(answerContent);
       if (response && response.id) {
-        setTimeAnswers(prev => ({ ...prev, [trackerId]: time }));
-        Alerts.success('Time recorded successfully');
+        setTimeAnswers(prev => ({ ...prev, [trackerId]: { time, date: date || tracker.date } }));
+        toast.success('Time recorded successfully', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        });
         // Reload questions to remove the answered one
         const updatedQuestions = trackerQuestions.filter(q => 
           !(q.id === trackerId && q.date === tracker.date)
@@ -598,7 +622,15 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
       }
     } catch (error) {
       console.error('Error recording time:', error);
-      Alerts.error('Failed to record time');
+      toast.error('Failed to record time', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
     }
   };
 
@@ -649,10 +681,73 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {tracker.type === 'Yes,No' ? (
+                  {tracker.type.toLowerCase() === 'value_time' ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          value={timeAnswers[tracker.id]?.date || tracker.date}
+                          onChange={(e) => setTimeAnswers(prev => ({ ...prev, [tracker.id]: { ...prev[tracker.id], date: e.target.value } }))}
+                          className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="time"
+                          value={timeAnswers[tracker.id]?.time || ''}
+                          onChange={(e) => setTimeAnswers(prev => ({ ...prev, [tracker.id]: { ...prev[tracker.id], time: e.target.value } }))}
+                          className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                          onClick={() => handleTimeAnswer(tracker.id, timeAnswers[tracker.id]?.time, timeAnswers[tracker.id]?.date)}
+                          className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
+                        >
+                          <CheckIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleTimeAnswer(tracker.id, 'Not Known', timeAnswers[tracker.id]?.date)}
+                        className="w-full px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200"
+                      >
+                        Not Known
+                      </button>
+                    </div>
+                  ) : tracker.type.toLowerCase() === 'value' ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          value={answers[tracker.id]?.date || tracker.date}
+                          onChange={(e) => setAnswers(prev => ({ ...prev, [tracker.id]: { ...prev[tracker.id], date: e.target.value } }))}
+                          className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          value={answers[tracker.id]?.value || ''}
+                          onChange={(e) => setAnswers(prev => ({ ...prev, [tracker.id]: { ...prev[tracker.id], value: e.target.value } }))}
+                          className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter value"
+                        />
+                        <button
+                          onClick={() => handleAnswer(tracker.id, answers[tracker.id]?.value, answers[tracker.id]?.date)}
+                          className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
+                        >
+                          <CheckIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleAnswer(tracker.id, 'Not Known', answers[tracker.id]?.date)}
+                        className="w-full px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200"
+                      >
+                        Not Known
+                      </button>
+                    </div>
+                  ) : (
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleAnswer(tracker.id, 'Yes')}
+                        onClick={() => handleAnswer(tracker.id, 'Yes', answers[tracker.id]?.date)}
                         className={`px-4 py-2 rounded-lg ${
                           answers[tracker.id] === 'Yes'
                             ? 'bg-green-100 text-green-800'
@@ -662,7 +757,7 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
                         Yes
                       </button>
                       <button
-                        onClick={() => handleAnswer(tracker.id, 'No')}
+                        onClick={() => handleAnswer(tracker.id, 'No', answers[tracker.id]?.date)}
                         className={`px-4 py-2 rounded-lg ${
                           answers[tracker.id] === 'No'
                             ? 'bg-red-100 text-red-800'
@@ -670,45 +765,6 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
                         }`}
                       >
                         No
-                      </button>
-                    </div>
-                  ) : tracker.type.toLowerCase() === 'value_time' ? (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <input
-                          type="time"
-                          value={timeAnswers[tracker.id] || ''}
-                          onChange={(e) => setTimeAnswers(prev => ({ ...prev, [tracker.id]: e.target.value }))}
-                          className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <button
-                          onClick={() => handleTimeAnswer(tracker.id, timeAnswers[tracker.id])}
-                          className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
-                        >
-                          <CheckIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => handleTimeAnswer(tracker.id, 'Not Known')}
-                        className="w-full px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200"
-                      >
-                        Not Known
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        value={answers[tracker.id] || ''}
-                        onChange={(e) => handleAnswer(tracker.id, e.target.value)}
-                        className="w-24 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter value"
-                      />
-                      <button
-                        onClick={() => handleAnswer(tracker.id, answers[tracker.id])}
-                        className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
-                      >
-                        <CheckIcon className="h-5 w-5" />
                       </button>
                     </div>
                   )}

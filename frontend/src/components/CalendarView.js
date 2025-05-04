@@ -137,6 +137,42 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => 
     // Implementation of adding a new event
   };
 
+  // Function to extract event details from note content
+  const getEventDetails = (content) => {
+    const lines = content.split('\n');
+    
+    // Find the description
+    const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+    const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+    
+    // Find the event date
+    const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+    const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
+    
+    // Find recurring info
+    const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
+    const recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
+    
+    // Find meta information
+    const metaLine = lines.find(line => line.startsWith('meta::event::'));
+    const metaDate = metaLine ? metaLine.replace('meta::event::', '').trim() : '';
+
+    // Find tags
+    const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+    const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
+
+    // Calculate next occurrence for recurring events
+    let nextOccurrence = null;
+
+    return {
+      description,
+      dateTime,
+      recurrence,
+      metaDate,
+      tags
+    };
+  };
+
   return (
     <div className="space-y-8">
       {/* Alerts Section */}
@@ -239,6 +275,23 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => 
                                 day: 'numeric'
                               })}
                             </p>
+                            {/* Tags display */}
+                            {occurrence.event.tags && occurrence.event.tags.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {occurrence.event.tags.map(tag => (
+                                  <span
+                                    key={tag}
+                                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      occurrence.isToday 
+                                        ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                        : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                    }`}
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-start gap-2">

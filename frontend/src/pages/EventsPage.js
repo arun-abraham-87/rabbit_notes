@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { getFormattedDateWithAge } from '../utils/DateUtils';
-import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import EditEventModal from '../components/EditEventModal';
 import CalendarView from '../components/CalendarView';
@@ -24,6 +24,10 @@ const getEventDetails = (content) => {
   // Find meta information
   const metaLine = lines.find(line => line.startsWith('meta::event::'));
   const metaDate = metaLine ? metaLine.replace('meta::event::', '').trim() : '';
+
+  // Find tags
+  const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+  const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
 
   // Calculate next occurrence for recurring events
   let nextOccurrence = null;
@@ -90,11 +94,12 @@ const getEventDetails = (content) => {
     }
   }
 
-  return { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence };
+  return { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, tags };
 };
 
 const EventsPage = ({ notes, onUpdate }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTags, setSelectedTags] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
   const [deletingEvent, setDeletingEvent] = useState(null);
   const [viewMode, setViewMode] = useState('calendar');
@@ -105,12 +110,31 @@ const EventsPage = ({ notes, onUpdate }) => {
     days: []
   });
 
+  // Get all unique tags from events
+  const uniqueTags = useMemo(() => {
+    const tags = new Set();
+    notes
+      .filter(note => note.content.includes('meta::event::'))
+      .forEach(note => {
+        const { tags: eventTags } = getEventDetails(note.content);
+        eventTags.forEach(tag => tags.add(tag));
+      });
+    return Array.from(tags).sort();
+  }, [notes]);
+
   // Filter and group events
   const events = notes
     .filter(note => note.content.includes('meta::event::'))
     .filter(note => {
-      const { description } = getEventDetails(note.content);
-      return description.toLowerCase().includes(searchQuery.toLowerCase());
+      const { description, tags } = getEventDetails(note.content);
+      const matchesSearch = description.toLowerCase().includes(searchQuery.toLowerCase());
+      // If no tags are selected, show all events
+      if (selectedTags.length === 0) {
+        return matchesSearch;
+      }
+      // If tags are selected, show only events that have ALL selected tags
+      const matchesTags = selectedTags.every(tag => tags.includes(tag));
+      return matchesSearch && matchesTags;
     });
 
   // Calculate totals for different recurrence types
@@ -135,7 +159,7 @@ const EventsPage = ({ notes, onUpdate }) => {
       metaDate,
       nextOccurrence,
       lastOccurrence,
-      content: event.content // Add the full content to check for acknowledgments
+      content: event.content
     };
   });
 
@@ -208,6 +232,31 @@ const EventsPage = ({ notes, onUpdate }) => {
     }
   };
 
+  const handleTagClick = (tag) => {
+    setSelectedTags(prev => {
+      if (prev.includes(tag)) {
+        // Remove the tag if it's already selected
+        return prev.filter(t => t !== tag);
+      } else {
+        // Add the tag if it's not selected
+        return [...prev, tag];
+      }
+    });
+  };
+
+  const handleEventUpdated = async (updatedNote) => {
+    try {
+      await updateNoteById(updatedNote.id, updatedNote.content);
+      // Update the notes list by updating the edited event
+      const updatedNotes = notes.map(note => 
+        note.id === updatedNote.id ? { ...note, content: updatedNote.content } : note
+      );
+      onUpdate(updatedNotes);
+    } catch (error) {
+      console.error('Error updating event:', error);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -240,26 +289,47 @@ const EventsPage = ({ notes, onUpdate }) => {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+      {/* Search and Tag Filter */}
+      <div className="flex flex-col space-y-4">
+        <div className="flex items-center space-x-4">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full"
+            />
+          </div>
         </div>
-        <input
-          type="text"
-          placeholder="Search events..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="block w-full pl-10 pr-8 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center"
-          >
-            <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-          </button>
-        )}
+        
+        {/* Tag Pills */}
+        <div className="flex flex-wrap gap-2">
+          {uniqueTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => handleTagClick(tag)}
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
+                selectedTags.includes(tag)
+                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+          {selectedTags.length > 0 && (
+            <button
+              onClick={() => setSelectedTags([])}
+              className="px-3 py-1 rounded-full text-sm font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-200 border border-gray-200"
+            >
+              Clear All
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-5 gap-4 bg-white rounded-xl border p-4 shadow-sm">
@@ -290,12 +360,14 @@ const EventsPage = ({ notes, onUpdate }) => {
           <CalendarView 
             events={calendarEvents} 
             onAcknowledgeEvent={handleAcknowledgeEvent}
+            onEventUpdated={handleEventUpdated}
+            notes={notes}
           />
         </div>
       ) : (
         <div className="grid gap-4">
           {events.map((event) => {
-            const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
+            const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, tags } = getEventDetails(event.content);
             const eventDate = new Date(dateTime);
             const isToday = eventDate.toDateString() === new Date().toDateString();
             
@@ -335,6 +407,23 @@ const EventsPage = ({ notes, onUpdate }) => {
                             Next occurrence: {getFormattedDateWithAge(nextOccurrence)}
                           </p>
                         )}
+                      </div>
+                    )}
+                    {/* Tags display */}
+                    {tags.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {tags.map(tag => (
+                          <span
+                            key={tag}
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              isToday 
+                                ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                : 'bg-gray-100 text-gray-600 border border-gray-200'
+                            }`}
+                          >
+                            {tag}
+                          </span>
+                        ))}
                       </div>
                     )}
                   </div>

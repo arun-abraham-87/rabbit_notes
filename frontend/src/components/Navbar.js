@@ -77,15 +77,17 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
           >
             Notes
           </button>
-          <button
-            onClick={() => setActivePage('watch')}
-            className={`px-3 py-1 rounded-full border ${
-              activePage === 'watch' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-            } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-          >
-            Watch
-          </button>
-          {settings?.showTagsPage !== false && (
+          {settings?.navigation?.showWatchPage !== false && (
+            <button
+              onClick={() => setActivePage('watch')}
+              className={`px-3 py-1 rounded-full border ${
+                activePage === 'watch' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
+            >
+              Watch
+            </button>
+          )}
+          {settings?.navigation?.showTagsPage !== false && (
             <button
               onClick={() => setActivePage('tags')}
               className={`px-3 py-1 rounded-full border ${
@@ -95,7 +97,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
               Tags
             </button>
           )}
-          {settings?.showTodosPage !== false && (
+          {settings?.navigation?.showTodosPage !== false && (
             <button
               onClick={() => setActivePage('todos')}
               className={`px-3 py-1 rounded-full border ${
@@ -105,7 +107,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
               Todos
             </button>
           )}
-          {settings?.showJournalsPage !== false && (
+          {settings?.navigation?.showJournalsPage !== false && (
             <button
               onClick={() => setActivePage('journals')}
               className={`px-3 py-1 rounded-full border ${
@@ -115,7 +117,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
               Journals
             </button>
           )}
-          {settings?.showEventsPage !== false && (
+          {settings?.navigation?.showEventsPage !== false && (
             <button
               onClick={() => setActivePage('events')}
               className={`px-3 py-1 rounded-full border ${
@@ -125,7 +127,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
               Events
             </button>
           )}
-          {settings?.showPeoplePage !== false && (
+          {settings?.navigation?.showPeoplePage !== false && (
             <button
               onClick={() => setActivePage('people')}
               className={`px-3 py-1 rounded-full border ${
@@ -135,7 +137,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
               People
             </button>
           )}
-          {settings?.showNewsPage !== false && (
+          {settings?.navigation?.showNewsPage !== false && (
             <button
               onClick={() => setActivePage('news')}
               className={`px-3 py-1 rounded-full border ${
@@ -145,7 +147,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
               News
             </button>
           )}
-          {settings?.showExpensePage !== false && (
+          {settings?.navigation?.showExpensePage !== false && (
             <button
               onClick={() => setActivePage('expense')}
               className={`px-3 py-1 rounded-full border ${

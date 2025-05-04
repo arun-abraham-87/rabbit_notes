@@ -82,6 +82,16 @@ const defaultSettings = {
     todos: 0,
     meetings: 0,
     events: 0
+  },
+  navigation: {
+    showWatchPage: true,
+    showTagsPage: true,
+    showTodosPage: true,
+    showJournalsPage: true,
+    showEventsPage: true,
+    showPeoplePage: true,
+    showNewsPage: true,
+    showExpensePage: true
   }
 };
 
@@ -1236,6 +1246,147 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               </button>
             </div>
             <div className="space-y-4">
+              {/* Navigation Settings */}
+              <div className="pt-4 border-t border-gray-200">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Navigation</h3>
+                
+                {/* Watch Page Setting */}
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="showWatchPage"
+                    checked={unsavedSettings.navigation?.showWatchPage !== false}
+                    onChange={(e) => handleSettingChange('navigation', {
+                      ...unsavedSettings.navigation,
+                      showWatchPage: e.target.checked
+                    })}
+                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                  />
+                  <label htmlFor="showWatchPage" className="ml-3 block text-base text-gray-700">
+                    Show Watch page
+                  </label>
+                </div>
+
+                {/* Tags Page Setting */}
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="showTagsPage"
+                    checked={unsavedSettings.navigation?.showTagsPage !== false}
+                    onChange={(e) => handleSettingChange('navigation', {
+                      ...unsavedSettings.navigation,
+                      showTagsPage: e.target.checked
+                    })}
+                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                  />
+                  <label htmlFor="showTagsPage" className="ml-3 block text-base text-gray-700">
+                    Show Tags page
+                  </label>
+                </div>
+
+                {/* Todos Page Setting */}
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="showTodosPage"
+                    checked={unsavedSettings.navigation?.showTodosPage !== false}
+                    onChange={(e) => handleSettingChange('navigation', {
+                      ...unsavedSettings.navigation,
+                      showTodosPage: e.target.checked
+                    })}
+                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                  />
+                  <label htmlFor="showTodosPage" className="ml-3 block text-base text-gray-700">
+                    Show Todos page
+                  </label>
+                </div>
+
+                {/* Journals Page Setting */}
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="showJournalsPage"
+                    checked={unsavedSettings.navigation?.showJournalsPage !== false}
+                    onChange={(e) => handleSettingChange('navigation', {
+                      ...unsavedSettings.navigation,
+                      showJournalsPage: e.target.checked
+                    })}
+                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                  />
+                  <label htmlFor="showJournalsPage" className="ml-3 block text-base text-gray-700">
+                    Show Journals page
+                  </label>
+                </div>
+
+                {/* Events Page Setting */}
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="showEventsPage"
+                    checked={unsavedSettings.navigation?.showEventsPage !== false}
+                    onChange={(e) => handleSettingChange('navigation', {
+                      ...unsavedSettings.navigation,
+                      showEventsPage: e.target.checked
+                    })}
+                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                  />
+                  <label htmlFor="showEventsPage" className="ml-3 block text-base text-gray-700">
+                    Show Events page
+                  </label>
+                </div>
+
+                {/* People Page Setting */}
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="showPeoplePage"
+                    checked={unsavedSettings.navigation?.showPeoplePage !== false}
+                    onChange={(e) => handleSettingChange('navigation', {
+                      ...unsavedSettings.navigation,
+                      showPeoplePage: e.target.checked
+                    })}
+                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                  />
+                  <label htmlFor="showPeoplePage" className="ml-3 block text-base text-gray-700">
+                    Show People page
+                  </label>
+                </div>
+
+                {/* News Page Setting */}
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="showNewsPage"
+                    checked={unsavedSettings.navigation?.showNewsPage !== false}
+                    onChange={(e) => handleSettingChange('navigation', {
+                      ...unsavedSettings.navigation,
+                      showNewsPage: e.target.checked
+                    })}
+                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                  />
+                  <label htmlFor="showNewsPage" className="ml-3 block text-base text-gray-700">
+                    Show News page
+                  </label>
+                </div>
+
+                {/* Expense Page Setting */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="showExpensePage"
+                    checked={unsavedSettings.navigation?.showExpensePage !== false}
+                    onChange={(e) => handleSettingChange('navigation', {
+                      ...unsavedSettings.navigation,
+                      showExpensePage: e.target.checked
+                    })}
+                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
+                  />
+                  <label htmlFor="showExpensePage" className="ml-3 block text-base text-gray-700">
+                    Show Expense page
+                  </label>
+                </div>
+              </div>
+
               {/* Show Dates Setting */}
               <div className="flex items-center">
                 <input
@@ -1290,53 +1441,6 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                 <label htmlFor="excludeMeetingsByDefault" className="ml-3 block text-base text-gray-700">
                   Exclude meetings by default in new notes
                 </label>
-              </div>
-
-              {/* Page Visibility Settings */}
-              <div className="pt-4 border-t border-gray-200">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Page Visibility</h3>
-
-                {/* Show Todos Page Setting */}
-                <div className="flex items-center mb-2">
-                  <input
-                    type="checkbox"
-                    id="showTodosPage"
-                    checked={unsavedSettings.showTodosPage !== false}
-                    onChange={(e) => handleSettingChange('showTodosPage', e.target.checked)}
-                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
-                  />
-                  <label htmlFor="showTodosPage" className="ml-3 block text-base text-gray-700">
-                    Show Todos page
-                  </label>
-                </div>
-
-                {/* Show Tags Page Setting */}
-                <div className="flex items-center mb-2">
-                  <input
-                    type="checkbox"
-                    id="showTagsPage"
-                    checked={unsavedSettings.showTagsPage !== false}
-                    onChange={(e) => handleSettingChange('showTagsPage', e.target.checked)}
-                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
-                  />
-                  <label htmlFor="showTagsPage" className="ml-3 block text-base text-gray-700">
-                    Show Tags page
-                  </label>
-                </div>
-
-                {/* Show Journals Page Setting */}
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="showJournalsPage"
-                    checked={unsavedSettings.showJournalsPage !== false}
-                    onChange={(e) => handleSettingChange('showJournalsPage', e.target.checked)}
-                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-lg"
-                  />
-                  <label htmlFor="showJournalsPage" className="ml-3 block text-base text-gray-700">
-                    Show Journals page
-                  </label>
-                </div>
               </div>
 
               {/* Timezone Settings */}

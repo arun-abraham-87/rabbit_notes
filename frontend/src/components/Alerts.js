@@ -672,7 +672,7 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
                         No
                       </button>
                     </div>
-                  ) : tracker.type === 'value_time' ? (
+                  ) : tracker.type.toLowerCase() === 'value_time' ? (
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-2">
                         <input

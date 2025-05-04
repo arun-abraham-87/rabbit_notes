@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
 import { getFormattedDateWithAge } from '../utils/DateUtils';
-import { ChevronRightIcon, ChevronLeftIcon, CalendarIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/solid';
+import { 
+  ChevronRightIcon, 
+  ChevronLeftIcon, 
+  CalendarIcon, 
+  EyeIcon, 
+  EyeSlashIcon, 
+  PencilIcon,
+  XMarkIcon
+} from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
+import EditEventModal from './EditEventModal';
 
-const CalendarView = ({ events, onAcknowledgeEvent }) => {
+const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated }) => {
   const [showPastEvents, setShowPastEvents] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
 
   // Function to calculate age in years, months, and days
   const calculateAge = (date) => {
@@ -103,6 +113,15 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
     acc[month].push(occurrence);
     return acc;
   }, {});
+
+  const handleEditEvent = (event) => {
+    setEditingEvent(event);
+  };
+
+  const handleEventUpdated = (updatedEvent) => {
+    onEventUpdated(updatedEvent);
+    setEditingEvent(null);
+  };
 
   return (
     <div className="space-y-8">
@@ -208,15 +227,23 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
                             </p>
                           </div>
                         </div>
-                        {occurrence.event.recurrence !== 'none' && (
-                          <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
-                            occurrence.isPast 
-                              ? 'bg-gray-100 text-gray-500' 
-                              : 'bg-indigo-100 text-indigo-700'
-                          }`}>
-                            {occurrence.event.recurrence.charAt(0).toUpperCase() + occurrence.event.recurrence.slice(1)}
-                          </span>
-                        )}
+                        <div className="flex items-start gap-2">
+                          {occurrence.event.recurrence !== 'none' && (
+                            <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
+                              occurrence.isPast 
+                                ? 'bg-gray-100 text-gray-500' 
+                                : 'bg-indigo-100 text-indigo-700'
+                            }`}>
+                              {occurrence.event.recurrence.charAt(0).toUpperCase() + occurrence.event.recurrence.slice(1)}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleEditEvent(occurrence.event)}
+                            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <PencilIcon className="h-5 w-5" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Age information - only show for recurring events */}
@@ -235,6 +262,15 @@ const CalendarView = ({ events, onAcknowledgeEvent }) => {
           </div>
         );
       })}
+
+      {/* Edit Event Modal */}
+      {editingEvent && (
+        <EditEventModal
+          note={editingEvent}
+          onSave={handleEventUpdated}
+          onCancel={() => setEditingEvent(null)}
+        />
+      )}
     </div>
   );
 };

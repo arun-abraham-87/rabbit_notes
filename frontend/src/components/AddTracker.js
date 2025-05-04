@@ -225,7 +225,8 @@ Start Date: ${startDate}`;
             className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           >
             <option value="Yes,No">Yes/No</option>
-            <option value="Value">Value</option>
+            <option value="value">Value</option>
+            <option value="value_time">Time</option>
           </select>
         </div>
 

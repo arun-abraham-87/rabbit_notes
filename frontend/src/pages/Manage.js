@@ -71,7 +71,9 @@ const Manage = () => {
           } else {
             const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
             return total + searchTerms.reduce((termTotal, term) => {
-              const regex = new RegExp(term, 'gi');
+              // Escape special characters for regex
+              const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const regex = new RegExp(escapedTerm, 'gi');
               const termMatches = note.content.match(regex);
               return termTotal + (termMatches ? termMatches.length : 0);
             }, 0);
@@ -410,72 +412,159 @@ const Manage = () => {
                   {matchingNotes.length > 0 && !regexError && (
                     <div className="mt-6">
                       <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                        Matching Notes
+                        Matching Notes (Preview)
                       </h2>
                       <div className="space-y-4">
-                        {matchingNotes.map((note) => (
-                          <div
-                            key={note.id}
-                            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-                          >
-                            <div className="text-sm text-gray-600 mb-2">
-                              Note ID: {note.id}
-                            </div>
-                            <div className="text-gray-800 whitespace-pre-wrap">
-                              {note.content.split('\n').map((line, index) => {
-                                if (useRegex) {
-                                  try {
-                                    const regex = new RegExp(searchText, 'g');
-                                    if (regex.test(line)) {
-                                      const parts = line.split(new RegExp(`(${searchText})`, 'g'));
-                                      return (
-                                        <div key={index} className="mb-1">
-                                          {parts.map((part, i) => (
-                                            <span
-                                              key={i}
-                                              className={
-                                                regex.test(part)
-                                                  ? 'bg-yellow-200'
-                                                  : ''
-                                              }
-                                            >
-                                              {part}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      );
-                                    }
-                                  } catch (e) {
-                                    return <div key={index} className="mb-1">{line}</div>;
-                                  }
-                                } else {
-                                  const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
-                                  let lineToShow = line;
-                                  let hasMatch = false;
+                        {matchingNotes.map((note) => {
+                          // Create a preview of the replacement
+                          let previewContent = note.content;
+                          if (useRegex) {
+                            try {
+                              const regex = new RegExp(searchText, 'g');
+                              previewContent = note.content.replace(regex, replaceText);
+                            } catch (e) {
+                              previewContent = note.content;
+                            }
+                          } else {
+                            const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+                            searchTerms.forEach(term => {
+                              const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                              const regex = new RegExp(escapedTerm, 'gi');
+                              previewContent = previewContent.replace(regex, replaceText);
+                            });
+                          }
 
-                                  searchTerms.forEach(term => {
-                                    if (line.toLowerCase().includes(term.toLowerCase())) {
-                                      hasMatch = true;
-                                      const regex = new RegExp(`(${term})`, 'gi');
-                                      lineToShow = lineToShow.replace(regex, '<span class="bg-yellow-200">$1</span>');
-                                    }
-                                  });
+                          return (
+                            <div
+                              key={note.id}
+                              className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                            >
+                              <div className="text-sm text-gray-600 mb-2">
+                                Note ID: {note.id}
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                {/* Original Content */}
+                                <div>
+                                  <div className="text-sm font-medium text-gray-700 mb-2">Original:</div>
+                                  <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                                    {note.content.split('\n').map((line, index) => {
+                                      if (useRegex) {
+                                        try {
+                                          const regex = new RegExp(searchText, 'g');
+                                          if (regex.test(line)) {
+                                            const parts = line.split(new RegExp(`(${searchText})`, 'g'));
+                                            return (
+                                              <div key={index} className="mb-1">
+                                                {parts.map((part, i) => (
+                                                  <span
+                                                    key={i}
+                                                    className={
+                                                      regex.test(part)
+                                                        ? 'bg-yellow-200'
+                                                        : ''
+                                                    }
+                                                  >
+                                                    {part}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            );
+                                          }
+                                        } catch (e) {
+                                          return <div key={index} className="mb-1">{line}</div>;
+                                        }
+                                      } else {
+                                        const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+                                        let lineToShow = line;
+                                        let hasMatch = false;
 
-                                  if (hasMatch) {
-                                    return (
-                                      <div 
-                                        key={index} 
-                                        className="mb-1"
-                                        dangerouslySetInnerHTML={{ __html: lineToShow }}
-                                      />
-                                    );
-                                  }
-                                }
-                                return <div key={index} className="mb-1">{line}</div>;
-                              })}
+                                        searchTerms.forEach(term => {
+                                          if (line.toLowerCase().includes(term.toLowerCase())) {
+                                            hasMatch = true;
+                                            const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                            const regex = new RegExp(`(${escapedTerm})`, 'gi');
+                                            lineToShow = lineToShow.replace(regex, '<span class="bg-yellow-200">$1</span>');
+                                          }
+                                        });
+
+                                        if (hasMatch) {
+                                          return (
+                                            <div 
+                                              key={index} 
+                                              className="mb-1"
+                                              dangerouslySetInnerHTML={{ __html: lineToShow }}
+                                            />
+                                          );
+                                        }
+                                      }
+                                      return <div key={index} className="mb-1">{line}</div>;
+                                    })}
+                                  </div>
+                                </div>
+
+                                {/* Preview Content */}
+                                <div>
+                                  <div className="text-sm font-medium text-gray-700 mb-2">After Replacement:</div>
+                                  <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                                    {previewContent.split('\n').map((line, index) => {
+                                      // Highlight the replaced text
+                                      if (useRegex) {
+                                        try {
+                                          const regex = new RegExp(replaceText, 'g');
+                                          if (regex.test(line)) {
+                                            const parts = line.split(new RegExp(`(${replaceText})`, 'g'));
+                                            return (
+                                              <div key={index} className="mb-1">
+                                                {parts.map((part, i) => (
+                                                  <span
+                                                    key={i}
+                                                    className={
+                                                      regex.test(part)
+                                                        ? 'bg-green-200'
+                                                        : ''
+                                                    }
+                                                  >
+                                                    {part}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            );
+                                          }
+                                        } catch (e) {
+                                          return <div key={index} className="mb-1">{line}</div>;
+                                        }
+                                      } else {
+                                        const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+                                        let lineToShow = line;
+                                        let hasMatch = false;
+
+                                        searchTerms.forEach(term => {
+                                          if (line.toLowerCase().includes(replaceText.toLowerCase())) {
+                                            hasMatch = true;
+                                            const escapedTerm = replaceText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                            const regex = new RegExp(`(${escapedTerm})`, 'gi');
+                                            lineToShow = lineToShow.replace(regex, '<span class="bg-green-200">$1</span>');
+                                          }
+                                        });
+
+                                        if (hasMatch) {
+                                          return (
+                                            <div 
+                                              key={index} 
+                                              className="mb-1"
+                                              dangerouslySetInnerHTML={{ __html: lineToShow }}
+                                            />
+                                          );
+                                        }
+                                      }
+                                      return <div key={index} className="mb-1">{line}</div>;
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -582,40 +671,36 @@ const Manage = () => {
                                               {part}
                                             </span>
                                           ))}
-                                          {activeSubTab === 'add-end' && (
-                                            <div className="ml-4 text-gray-500 italic">
-                                              (Will add at end: {addText})
-                                            </div>
-                                          )}
                                         </div>
                                       );
                                     }
                                   } catch (e) {
                                     return <div key={index} className="mb-1">{line}</div>;
                                   }
-                                } else if (line.toLowerCase().includes(searchText.toLowerCase())) {
-                                  const parts = line.split(new RegExp(`(${searchText})`, 'gi'));
-                                  return (
-                                    <div key={index} className="mb-1">
-                                      {parts.map((part, i) => (
-                                        <span
-                                          key={i}
-                                          className={
-                                            part.toLowerCase() === searchText.toLowerCase()
-                                              ? 'bg-yellow-200'
-                                              : ''
-                                          }
-                                        >
-                                          {part}
-                                        </span>
-                                      ))}
-                                      {activeSubTab === 'add-end' && (
-                                        <div className="ml-4 text-gray-500 italic">
-                                          (Will add at end: {addText})
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
+                                } else {
+                                  const searchTerms = searchText.split(',').map(term => term.trim()).filter(term => term);
+                                  let lineToShow = line;
+                                  let hasMatch = false;
+
+                                  searchTerms.forEach(term => {
+                                    if (line.toLowerCase().includes(term.toLowerCase())) {
+                                      hasMatch = true;
+                                      // Escape special characters for regex
+                                      const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                      const regex = new RegExp(`(${escapedTerm})`, 'gi');
+                                      lineToShow = lineToShow.replace(regex, '<span class="bg-yellow-200">$1</span>');
+                                    }
+                                  });
+
+                                  if (hasMatch) {
+                                    return (
+                                      <div 
+                                        key={index} 
+                                        className="mb-1"
+                                        dangerouslySetInnerHTML={{ __html: lineToShow }}
+                                      />
+                                    );
+                                  }
                                 }
                                 return <div key={index} className="mb-1">{line}</div>;
                               })}

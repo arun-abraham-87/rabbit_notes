@@ -9,10 +9,34 @@ import {
   PlusIcon,
   PencilIcon,
   DocumentTextIcon,
-  EyeIcon
+  EyeIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/solid';
 import AddTracker from './AddTracker';
 import { getAge } from '../utils/DateUtils';
+import { Line, Pie } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+);
 
 const TrackerListing = () => {
   const [trackers, setTrackers] = useState([]);
@@ -28,6 +52,8 @@ const TrackerListing = () => {
   const [trackerAnswers, setTrackerAnswers] = useState({});
   const [showRawNote, setShowRawNote] = useState(null);
   const [rawNotes, setRawNotes] = useState({});
+  const [showGraph, setShowGraph] = useState(null);
+  const [graphData, setGraphData] = useState({});
 
   useEffect(() => {
     loadTrackers();
@@ -72,6 +98,7 @@ const TrackerListing = () => {
       const stats = {};
       const answersByTracker = {};
       const rawNotesByAnswer = {};
+      const graphDataByTracker = {};
       
       answers.forEach(answer => {
         const lines = answer.content.split('\n');
@@ -101,12 +128,42 @@ const TrackerListing = () => {
             age: getAge(new Date(date))
           });
           rawNotesByAnswer[answerId] = answer.content;
+
+          // Prepare graph data
+          if (!graphDataByTracker[link]) {
+            graphDataByTracker[link] = {
+              dates: [],
+              yesCounts: [],
+              noCounts: []
+            };
+          }
+          graphDataByTracker[link].dates.push(date);
+          graphDataByTracker[link].yesCounts.push(
+            answerValue.toLowerCase() === 'yes' ? 1 : 0
+          );
+          graphDataByTracker[link].noCounts.push(
+            answerValue.toLowerCase() === 'no' ? 1 : 0
+          );
         }
+      });
+
+      // Sort graph data by date
+      Object.keys(graphDataByTracker).forEach(trackerId => {
+        const { dates, yesCounts, noCounts } = graphDataByTracker[trackerId];
+        const sortedIndices = dates.map((_, i) => i)
+          .sort((a, b) => new Date(dates[a]) - new Date(dates[b]));
+        
+        graphDataByTracker[trackerId] = {
+          dates: sortedIndices.map(i => dates[i]),
+          yesCounts: sortedIndices.map(i => yesCounts[i]),
+          noCounts: sortedIndices.map(i => noCounts[i])
+        };
       });
 
       setTrackerStats(stats);
       setTrackerAnswers(answersByTracker);
       setRawNotes(rawNotesByAnswer);
+      setGraphData(graphDataByTracker);
     } catch (err) {
       setError('Failed to load trackers. Please try again.');
       console.error('Error loading trackers:', err);
@@ -141,6 +198,10 @@ const TrackerListing = () => {
     setShowRawNote(answerId);
   };
 
+  const handleShowGraph = (trackerId) => {
+    setShowGraph(trackerId);
+  };
+
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', {
@@ -149,6 +210,54 @@ const TrackerListing = () => {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const getLineChartData = (trackerId) => {
+    const data = graphData[trackerId];
+    if (!data) return null;
+
+    return {
+      labels: data.dates.map(date => new Date(date).toLocaleDateString()),
+      datasets: [
+        {
+          label: 'Yes',
+          data: data.yesCounts,
+          borderColor: 'rgb(34, 197, 94)',
+          backgroundColor: 'rgba(34, 197, 94, 0.5)',
+          tension: 0.1
+        },
+        {
+          label: 'No',
+          data: data.noCounts,
+          borderColor: 'rgb(239, 68, 68)',
+          backgroundColor: 'rgba(239, 68, 68, 0.5)',
+          tension: 0.1
+        }
+      ]
+    };
+  };
+
+  const getPieChartData = (trackerId) => {
+    const stats = trackerStats[trackerId];
+    if (!stats) return null;
+
+    return {
+      labels: ['Yes', 'No'],
+      datasets: [
+        {
+          data: [stats.yes, stats.no],
+          backgroundColor: [
+            'rgba(34, 197, 94, 0.5)',
+            'rgba(239, 68, 68, 0.5)'
+          ],
+          borderColor: [
+            'rgb(34, 197, 94)',
+            'rgb(239, 68, 68)'
+          ],
+          borderWidth: 1
+        }
+      ]
+    };
   };
 
   const filteredTrackers = trackers.filter(tracker => {
@@ -343,12 +452,20 @@ const TrackerListing = () => {
                       <PencilIcon className="h-5 w-5" />
                     </button>
                     {stats.total > 0 && (
-                      <button
-                        onClick={() => handleShowAnswers(tracker.id)}
-                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <DocumentTextIcon className="h-5 w-5" />
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleShowAnswers(tracker.id)}
+                          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <DocumentTextIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleShowGraph(tracker.id)}
+                          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <ChartBarIcon className="h-5 w-5" />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -437,6 +554,79 @@ const TrackerListing = () => {
               <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 p-4 rounded-lg">
                 {rawNotes[showRawNote]}
               </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Graph Popup */}
+      {showGraph && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Answer Statistics</h2>
+              <button
+                onClick={() => setShowGraph(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white p-4 rounded-lg shadow">
+                <h3 className="text-lg font-medium mb-4">Answer Trend</h3>
+                <div className="h-64">
+                  {getLineChartData(showGraph) && (
+                    <Line
+                      data={getLineChartData(showGraph)}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            position: 'top',
+                          },
+                          title: {
+                            display: true,
+                            text: 'Yes/No Answers Over Time'
+                          }
+                        },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: {
+                              stepSize: 1
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow">
+                <h3 className="text-lg font-medium mb-4">Answer Distribution</h3>
+                <div className="h-64">
+                  {getPieChartData(showGraph) && (
+                    <Pie
+                      data={getPieChartData(showGraph)}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            position: 'top',
+                          },
+                          title: {
+                            display: true,
+                            text: 'Overall Yes/No Distribution'
+                          }
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

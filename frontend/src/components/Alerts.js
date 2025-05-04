@@ -695,21 +695,21 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         theme="light"
       />
       <AlertsContainer 
-        expanded={expanded} 
+        expanded={true}
         notes={notes} 
         events={events}
         setNotes={setNotes}
       >
         <EventAlerts 
           events={events}
-          expanded={expanded}
+          expanded={true}
         />
-        <CriticalTodosAlert notes={notes} expanded={expanded} />
-        <DeadlinePassedAlert notes={notes} expanded={expanded} />
-        <ReviewOverdueAlert notes={notes} expanded={expanded} />
+        <CriticalTodosAlert notes={notes} expanded={true} />
+        <DeadlinePassedAlert notes={notes} expanded={true} />
+        <ReviewOverdueAlert notes={notes} expanded={true} />
         <UnacknowledgedMeetingsAlert 
           notes={notes} 
-          expanded={expanded}
+          expanded={true}
           onDismiss={handleDismissUnacknowledgedMeeting}
         />
       </AlertsContainer>

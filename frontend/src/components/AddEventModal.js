@@ -15,12 +15,28 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState('daily');
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [tags, setTags] = useState('');
+  const [tagInput, setTagInput] = useState('');
 
   if (!isOpen) return null;
 
   const formatDateWithNoonTime = (dateStr) => {
     if (!dateStr) return '';
     return `${dateStr}T12:00`;
+  };
+
+  const handleAddTag = () => {
+    if (!tagInput.trim()) return;
+    const newTags = tags ? `${tags},${tagInput.trim()}` : tagInput.trim();
+    setTags(newTags);
+    setTagInput('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
   };
 
   const handleSubmit = () => {
@@ -42,6 +58,11 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
       }
     }
     
+    // Add tags if any
+    if (tags) {
+      content += `\nevent_tags:${tags}`;
+    }
+    
     // Add meta information as the last lines
     content += `\nmeta::event::${new Date().toISOString()}`;
     
@@ -56,6 +77,8 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
     setIsRecurring(false);
     setRecurrenceType('daily');
     setRecurrenceEndDate('');
+    setTags('');
+    setTagInput('');
     onClose();
   };
 
@@ -203,6 +226,51 @@ const AddEventModal = ({ isOpen, onClose, onAdd }) => {
               </div>
             </>
           )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tags
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Add tags (press Enter)"
+              />
+              <button
+                onClick={handleAddTag}
+                className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Add
+              </button>
+            </div>
+            {tags && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {tags.split(',').map((tag, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                  >
+                    {tag}
+                    <button
+                      onClick={() => {
+                        const updatedTags = tags.split(',')
+                          .filter((_, i) => i !== index)
+                          .join(',');
+                        setTags(updatedTags);
+                      }}
+                      className="ml-1 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end space-x-3">

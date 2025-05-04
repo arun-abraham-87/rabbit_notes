@@ -5,12 +5,14 @@ import {
   PencilIcon,
   TrashIcon,
   CheckIcon,
-  ExclamationCircleIcon
+  ExclamationCircleIcon,
+  PlusIcon
 } from '@heroicons/react/24/solid';
 import { loadTags, addNewTag, deleteTag, editTag } from '../utils/ApiUtils';
 import { loadNotes } from '../utils/ApiUtils';
 import { addNewNoteCommon } from '../utils/ApiUtils';
 import moment from 'moment';
+import AddTracker from './AddTracker';
 
 const TagListing = () => {
   const [tagSearch, setTagSearch] = useState('');
@@ -26,6 +28,7 @@ const TagListing = () => {
   const [workstreamSearch, setWorkstreamSearch] = useState('');
   const [isCreatingWorkstream, setIsCreatingWorkstream] = useState(false);
   const [workstreamCreateError, setWorkstreamCreateError] = useState(null);
+  const [showAddTracker, setShowAddTracker] = useState(false);
 
   // Load tags on component mount
   useEffect(() => {
@@ -182,7 +185,25 @@ const TagListing = () => {
 
   return (
     <div className="w-full rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-      <h2 className="text-xl font-bold mb-4">Tags</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold">Tags</h2>
+        <button
+          onClick={() => setShowAddTracker(!showAddTracker)}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <PlusIcon className="h-5 w-5" />
+          {showAddTracker ? 'Hide Tracker Form' : 'Add New Tracker'}
+        </button>
+      </div>
+
+      {showAddTracker && (
+        <div className="mb-6">
+          <AddTracker onTrackerAdded={() => {
+            setShowAddTracker(false);
+            // You might want to refresh your trackers list here
+          }} />
+        </div>
+      )}
       
       {/* Error Message */}
       {error && (

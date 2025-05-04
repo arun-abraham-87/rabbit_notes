@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { loadNotes, updateNoteById } from '../utils/ApiUtils';
+import { loadNotes, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import {
   MagnifyingGlassIcon,
   XMarkIcon,
@@ -10,7 +10,8 @@ import {
   PencilIcon,
   DocumentTextIcon,
   EyeIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  TrashIcon
 } from '@heroicons/react/24/solid';
 import AddTracker from './AddTracker';
 import { getAge } from '../utils/DateUtils';
@@ -54,6 +55,8 @@ const TrackerListing = () => {
   const [rawNotes, setRawNotes] = useState({});
   const [showGraph, setShowGraph] = useState(null);
   const [graphData, setGraphData] = useState({});
+  const [deletingAnswerId, setDeletingAnswerId] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     loadTrackers();
@@ -120,14 +123,13 @@ const TrackerListing = () => {
           if (!answersByTracker[link]) {
             answersByTracker[link] = [];
           }
-          const answerId = `${link}-${date}`;
           answersByTracker[link].push({
-            id: answerId,
+            id: answer.id,
             date,
             answer: answerValue,
             age: getAge(new Date(date))
           });
-          rawNotesByAnswer[answerId] = answer.content;
+          rawNotesByAnswer[answer.id] = answer.content;
 
           // Prepare graph data
           if (!graphDataByTracker[link]) {
@@ -200,6 +202,47 @@ const TrackerListing = () => {
 
   const handleShowGraph = (trackerId) => {
     setShowGraph(trackerId);
+  };
+
+  const handleDeleteAnswer = async (answerId) => {
+    try {
+      await deleteNoteById(answerId);
+      // Remove the answer from the trackerAnswers state
+      const trackerId = Object.keys(trackerAnswers).find(tId => 
+        trackerAnswers[tId].some(answer => answer.id === answerId)
+      );
+      if (trackerId) {
+        setTrackerAnswers(prev => ({
+          ...prev,
+          [trackerId]: prev[trackerId].filter(answer => answer.id !== answerId)
+        }));
+        // Remove from rawNotes
+        setRawNotes(prev => {
+          const newRawNotes = { ...prev };
+          delete newRawNotes[answerId];
+          return newRawNotes;
+        });
+        // Update stats
+        const answer = trackerAnswers[trackerId].find(a => a.id === answerId);
+        if (answer) {
+          setTrackerStats(prev => {
+            const stats = { ...prev[trackerId] };
+            if (answer.answer.toLowerCase() === 'yes') {
+              stats.yes--;
+            } else if (answer.answer.toLowerCase() === 'no') {
+              stats.no--;
+            }
+            stats.total--;
+            return { ...prev, [trackerId]: stats };
+          });
+        }
+      }
+      setShowDeleteConfirm(false);
+      setDeletingAnswerId(null);
+    } catch (error) {
+      console.error('Error deleting answer:', error);
+      setError('Failed to delete answer. Please try again.');
+    }
   };
 
   const formatDate = (dateStr) => {
@@ -497,6 +540,7 @@ const TrackerListing = () => {
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Answer</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">View</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delete</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -528,10 +572,59 @@ const TrackerListing = () => {
                           <EyeIcon className="h-4 w-4" />
                         </button>
                       </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => {
+                            setDeletingAnswerId(answer.id);
+                            setShowDeleteConfirm(true);
+                          }}
+                          className="p-1 text-gray-500 hover:text-red-700 hover:bg-red-100 rounded-lg transition-colors"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Delete Answer</h2>
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeletingAnswerId(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <p className="text-gray-600 mb-6">Are you sure you want to delete this answer? This action cannot be undone.</p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeletingAnswerId(null);
+                }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteAnswer(deletingAnswerId)}
+                className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg transition-colors"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

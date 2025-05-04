@@ -442,6 +442,7 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [trackerQuestions, setTrackerQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
+  const [timeAnswers, setTimeAnswers] = useState({});
 
   useEffect(() => {
     const loadTrackerQuestions = () => {
@@ -575,6 +576,32 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
     }
   };
 
+  const handleTimeAnswer = async (trackerId, time) => {
+    try {
+      const tracker = trackerQuestions.find(q => q.id === trackerId);
+      if (!tracker) return;
+
+      // Create a new note with the time answer
+      const answerContent = `Answer: ${time}\nDate: ${tracker.date}\nmeta::link:${trackerId}\nmeta::tracker_answer`;
+      
+      const response = await addNewNoteCommon(answerContent);
+      if (response && response.id) {
+        setTimeAnswers(prev => ({ ...prev, [trackerId]: time }));
+        Alerts.success('Time recorded successfully');
+        // Reload questions to remove the answered one
+        const updatedQuestions = trackerQuestions.filter(q => 
+          !(q.id === trackerId && q.date === tracker.date)
+        );
+        setTrackerQuestions(updatedQuestions);
+      } else {
+        throw new Error('Failed to create time answer note');
+      }
+    } catch (error) {
+      console.error('Error recording time:', error);
+      Alerts.error('Failed to record time');
+    }
+  };
+
   if (trackerQuestions.length === 0) return null;
 
   return (
@@ -643,6 +670,29 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
                         }`}
                       >
                         No
+                      </button>
+                    </div>
+                  ) : tracker.type === 'value_time' ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="time"
+                          value={timeAnswers[tracker.id] || ''}
+                          onChange={(e) => setTimeAnswers(prev => ({ ...prev, [tracker.id]: e.target.value }))}
+                          className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                          onClick={() => handleTimeAnswer(tracker.id, timeAnswers[tracker.id])}
+                          className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
+                        >
+                          <CheckIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleTimeAnswer(tracker.id, 'Not Known')}
+                        className="w-full px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200"
+                      >
+                        Not Known
                       </button>
                     </div>
                   ) : (

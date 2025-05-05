@@ -86,6 +86,7 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
 
   const passedDeadlineTodos = notes.filter(note => {
     if (!note.content.includes('meta::todo::')) return false;
+    if (note.content.includes('meta::todo_completed')) return false;
     
     const endDateMatch = note.content.match(/meta::end_date::(\d{4}-\d{2}-\d{2})/);
     if (!endDateMatch) return false;
@@ -271,6 +272,9 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           <div className="divide-y divide-gray-100">
             {criticalTodos.map((todo) => {
               const content = todo.content.split('\n').filter(line => !line.trim().startsWith('meta::'))[0];
+              const endDateMatch = todo.content.match(/meta::end_date::([^\n]+)/);
+              const endDate = endDateMatch ? new Date(endDateMatch[1]) : null;
+              const isDeadlinePassed = endDate && endDate < new Date();
 
               return (
                 <div key={todo.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
@@ -279,6 +283,22 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       <h4 className="text-lg font-medium text-gray-900">
                         {content}
                       </h4>
+                      {endDate && (
+                        <div className={`flex items-center gap-2 text-sm mt-2 ${isDeadlinePassed ? 'text-red-600' : 'text-gray-500'}`}>
+                          <CalendarIcon className={`h-4 w-4 ${isDeadlinePassed ? 'text-red-600' : 'text-gray-500'}`} />
+                          <span>
+                            {isDeadlinePassed ? 'Deadline Passed: ' : 'Deadline: '}
+                            {endDate.toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <button

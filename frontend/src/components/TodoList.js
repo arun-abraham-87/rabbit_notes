@@ -38,6 +38,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [selectedDays, setSelectedDays] = useState([]);
   const [completedTodos, setCompletedTodos] = useState({});
   const [showRawNotes, setShowRawNotes] = useState({});
+  const [expandedNotes, setExpandedNotes] = useState({});
 
   // Function to clear all date filters
   const clearDateFilters = () => {
@@ -358,6 +359,28 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       return 0;
     });
 
+  // Group todos by priority
+  const groupedTodos = filteredTodos.reduce((acc, todo) => {
+    const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
+    const priority = tagMatch ? tagMatch[1].toLowerCase() : 'low';
+    if (!acc[priority]) {
+      acc[priority] = [];
+    }
+    acc[priority].push(todo);
+    return acc;
+  }, {});
+
+  // Priority order for display
+  const priorityOrder = ['critical', 'high', 'medium', 'low'];
+
+  // Priority header styles
+  const priorityHeaderStyles = {
+    critical: 'text-red-700 border-b-2 border-red-200',
+    high: 'text-rose-700 border-b-2 border-rose-200',
+    medium: 'text-amber-700 border-b-2 border-amber-200',
+    low: 'text-emerald-700 border-b-2 border-emerald-200'
+  };
+
   // Add new function to create todo
   const createTodo = async (content) => {
     const now = new Date();
@@ -434,6 +457,19 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       medium: 'bg-amber-50',
       low: 'bg-emerald-50'
     };
+
+    // Get content without meta tags
+    const content = todo.content
+      .split('\n')
+      .filter(line => !line.trim().startsWith('meta::'))
+      .join('\n')
+      .trim();
+
+    // Split content into lines
+    const contentLines = content.split('\n');
+    const isLongNote = contentLines.length > 5;
+    const isExpanded = expandedNotes[todo.id];
+    const displayLines = isExpanded ? contentLines : contentLines.slice(0, 5);
 
     return (
       <div
@@ -560,16 +596,8 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                 {todo.content}
               </pre>
             ) : (
-              (() => {
-                // Remove all meta tags from content
-                const content = todo.content
-                  .split('\n')
-                  .filter(line => !line.trim().startsWith('meta::'))
-                  .join('\n')
-                  .trim();
-
-                // Split content into lines to handle headings
-                return content.split('\n').map((line, lineIndex) => {
+              <>
+                {displayLines.map((line, lineIndex) => {
                   // Check for headings first
                   const h1Match = line.match(/^###(.+)###$/);
                   const h2Match = line.match(/^##(.+)##$/);
@@ -600,8 +628,16 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                       {parseNoteContent({ content: line, searchTerm: searchQuery })}
                     </div>
                   );
-                });
-              })()
+                })}
+                {isLongNote && (
+                  <button
+                    onClick={() => setExpandedNotes(prev => ({ ...prev, [todo.id]: !prev[todo.id] }))}
+                    className="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                  >
+                    {isExpanded ? 'Show less' : `Show ${contentLines.length - 5} more lines`}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -919,11 +955,26 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
             </div>
           </div>
 
-          {/* Todo Grid/List */}
-          <div className={`grid gap-4 flex-1 overflow-auto ${
-            viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
-          }`}>
-            {filteredTodos.map(renderTodoCard)}
+          {/* Todo Grid/List with Priority Sections */}
+          <div className="space-y-6">
+            {priorityOrder.map(priority => {
+              const todos = groupedTodos[priority] || [];
+              if (todos.length === 0) return null;
+
+              return (
+                <div key={priority} className="space-y-3">
+                  <div className={`flex items-center gap-2 py-2 ${priorityHeaderStyles[priority]}`}>
+                    <h2 className="text-lg font-semibold capitalize">{priority} Priority</h2>
+                    <span className="text-sm font-medium">({todos.length})</span>
+                  </div>
+                  <div className={`grid gap-4 ${
+                    viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
+                  }`}>
+                    {todos.map(renderTodoCard)}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Empty State */}

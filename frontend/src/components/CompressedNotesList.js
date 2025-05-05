@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import NoteContent from './NoteContent';
-import { XMarkIcon, CheckIcon, ClockIcon, PencilIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, CheckIcon, ClockIcon, PencilIcon, ChevronDownIcon, ChevronUpIcon, CodeBracketIcon } from '@heroicons/react/24/solid';
 import {
   formatTimeElapsed,
   getNoteCadence,
@@ -49,6 +49,8 @@ const CompressedNotesList = ({
   const [showCadenceSelector, setShowCadenceSelector] = useState(null);
   const [cadenceHours, setCadenceHours] = useState(24);
   const [cadenceMinutes, setCadenceMinutes] = useState(0);
+  const [expandedNotes, setExpandedNotes] = useState({});
+  const [showRawNotes, setShowRawNotes] = useState({});
 
   // Background check for review times and update time elapsed
   useEffect(() => {
@@ -128,145 +130,206 @@ const CompressedNotesList = ({
     }
   };
 
+  const toggleNoteExpansion = (noteId) => {
+    setExpandedNotes(prev => ({
+      ...prev,
+      [noteId]: !prev[noteId]
+    }));
+  };
+
+  const toggleRawView = (noteId) => {
+    setShowRawNotes(prev => ({
+      ...prev,
+      [noteId]: !prev[noteId]
+    }));
+  };
+
+  const getVisibleLines = (content) => {
+    const lines = content.split('\n');
+    return lines.length > 3 ? lines.slice(0, 3).join('\n') : content;
+  };
+
   return (
-    <div className="space-y-1">
-      {notes.map(note => (
-        <div
-          key={note.id}
-          onContextMenu={onContextMenu}
-          className={`p-1 rounded border relative group transition-all duration-300 ${
-            needsReviewState[note.id] 
-              ? 'border-2 border-red-500 bg-red-50' 
-              : 'bg-neutral-50 border-slate-400'
-          }`}
-        >
-          <NoteContent
-            note={note}
-            searchQuery={searchQuery}
-            duplicatedUrlColors={duplicatedUrlColors}
-            editingLine={editingLine}
-            setEditingLine={setEditingLine}
-            editedLineContent={editedLineContent}
-            setEditedLineContent={setEditedLineContent}
-            rightClickNoteId={rightClickNoteId}
-            rightClickIndex={rightClickIndex}
-            setRightClickNoteId={setRightClickNoteId}
-            setRightClickIndex={setRightClickIndex}
-            setRightClickPos={setRightClickPos}
-            editingInlineDate={editingInlineDate}
-            setEditingInlineDate={setEditingInlineDate}
-            handleInlineDateSelect={handleInlineDateSelect}
-            popupNoteText={popupNoteText}
-            setPopupNoteText={setPopupNoteText}
-            objList={objList}
-            addingLineNoteId={addingLineNoteId}
-            setAddingLineNoteId={setAddingLineNoteId}
-            newLineText={newLineText}
-            setNewLineText={setNewLineText}
-            newLineInputRef={newLineInputRef}
-            updateNote={updateNote}
-            compressedView={true}
-          />
-          {isWatchList && (
-            <div className="mt-2 flex items-center justify-between border-t pt-2">
-              <div className="text-xs text-gray-500 flex flex-col">
-                {needsReviewState[note.id] 
-                  ? 'Last review: ' + formatTimestamp(getLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
-                  : nextReviewTime[note.id]}
-                <div className="text-xs text-gray-400">
-                  {showCadenceSelector === note.id ? (
-                    <div className="flex items-center gap-2 bg-white p-2 rounded shadow">
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min="0"
-                          max="999"
-                          value={cadenceHours}
-                          onChange={(e) => setCadenceHours(parseInt(e.target.value) || 0)}
-                          className="w-12 px-1 py-0.5 border rounded text-sm"
-                          placeholder="Hours"
-                        />
-                        <span className="text-sm">h</span>
+    <div className="space-y-4">
+      {notes.map(note => {
+        const lines = note.content.split('\n');
+        const isLongNote = lines.length > 3;
+        const isExpanded = expandedNotes[note.id];
+        const isRawView = showRawNotes[note.id];
+        const displayContent = isLongNote && !isExpanded 
+          ? getVisibleLines(note.content)
+          : note.content;
+
+        return (
+          <div
+            key={note.id}
+            onContextMenu={onContextMenu}
+            className={`p-1 rounded border relative group transition-all duration-300 ${
+              needsReviewState[note.id] 
+                ? 'border-2 border-red-500 bg-red-50' 
+                : 'bg-neutral-50 border-slate-200'
+            }`}
+          >
+            {isRawView ? (
+              <pre className="whitespace-pre-wrap break-words p-4 bg-gray-50 rounded text-sm font-mono">
+                {note.content}
+              </pre>
+            ) : (
+              <NoteContent
+                note={{ ...note, content: displayContent }}
+                searchQuery={searchQuery}
+                duplicatedUrlColors={duplicatedUrlColors}
+                editingLine={editingLine}
+                setEditingLine={setEditingLine}
+                editedLineContent={editedLineContent}
+                setEditedLineContent={setEditedLineContent}
+                rightClickNoteId={rightClickNoteId}
+                rightClickIndex={rightClickIndex}
+                setRightClickNoteId={setRightClickNoteId}
+                setRightClickIndex={setRightClickIndex}
+                setRightClickPos={setRightClickPos}
+                editingInlineDate={editingInlineDate}
+                setEditingInlineDate={setEditingInlineDate}
+                handleInlineDateSelect={handleInlineDateSelect}
+                popupNoteText={popupNoteText}
+                setPopupNoteText={setPopupNoteText}
+                objList={objList}
+                addingLineNoteId={addingLineNoteId}
+                setAddingLineNoteId={setAddingLineNoteId}
+                newLineText={newLineText}
+                setNewLineText={setNewLineText}
+                newLineInputRef={newLineInputRef}
+                updateNote={updateNote}
+                compressedView={true}
+              />
+            )}
+            {isLongNote && !isRawView && (
+              <button
+                onClick={() => toggleNoteExpansion(note.id)}
+                className="w-full text-center py-1 text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1"
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUpIcon className="h-4 w-4" />
+                    <span>Show less</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDownIcon className="h-4 w-4" />
+                    <span>Show more ({lines.length - 3} more lines)</span>
+                  </>
+                )}
+              </button>
+            )}
+            {isWatchList && (
+              <div className="mt-2 flex items-center justify-between border-t pt-2">
+                <div className="text-xs text-gray-500 flex flex-col">
+                  {needsReviewState[note.id] 
+                    ? 'Last review: ' + formatTimestamp(getLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
+                    : nextReviewTime[note.id]}
+                  <div className="text-xs text-gray-400">
+                    {showCadenceSelector === note.id ? (
+                      <div className="flex items-center gap-2 bg-white p-2 rounded shadow">
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="0"
+                            max="999"
+                            value={cadenceHours}
+                            onChange={(e) => setCadenceHours(parseInt(e.target.value) || 0)}
+                            className="w-12 px-1 py-0.5 border rounded text-sm"
+                            placeholder="Hours"
+                          />
+                          <span className="text-sm">h</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="0"
+                            max="59"
+                            value={cadenceMinutes}
+                            onChange={(e) => setCadenceMinutes(parseInt(e.target.value) || 0)}
+                            className="w-12 px-1 py-0.5 border rounded text-sm"
+                            placeholder="Minutes"
+                          />
+                          <span className="text-sm">m</span>
+                        </div>
+                        <button
+                          onClick={() => handleCadenceChange(note.id)}
+                          className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
+                        >
+                          Set
+                        </button>
                       </div>
+                    ) : (
                       <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min="0"
-                          max="59"
-                          value={cadenceMinutes}
-                          onChange={(e) => setCadenceMinutes(parseInt(e.target.value) || 0)}
-                          className="w-12 px-1 py-0.5 border rounded text-sm"
-                          placeholder="Minutes"
-                        />
-                        <span className="text-sm">m</span>
+                        <span>Review every: {getNoteCadence(note.id).hours}h {getNoteCadence(note.id).minutes}m</span>
+                        <button
+                          onClick={() => {
+                            const cadence = getNoteCadence(note.id);
+                            setCadenceHours(cadence.hours);
+                            setCadenceMinutes(cadence.minutes);
+                            setShowCadenceSelector(note.id);
+                          }}
+                          className="p-0.5 text-gray-400 hover:text-gray-600"
+                          title="Set review cadence"
+                        >
+                          <ClockIcon className="h-3 w-3" />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleCadenceChange(note.id)}
-                        className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
-                      >
-                        Set
-                      </button>
-                    </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleRawView(note.id)}
+                    className="px-2 py-1 rounded-md bg-gray-50 text-gray-600 hover:bg-gray-100 flex items-center gap-1"
+                    title={isRawView ? "View formatted" : "View raw"}
+                  >
+                    <CodeBracketIcon className="h-4 w-4" />
+                    <span className="text-sm">{isRawView ? "View Formatted" : "View Raw"}</span>
+                  </button>
+                  <button
+                    onClick={() => onEdit && onEdit(note)}
+                    className="px-2 py-1 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-1"
+                    title="Edit note"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                    <span className="text-sm">Edit</span>
+                  </button>
+                  {needsReviewState[note.id] ? (
+                    <button
+                      onClick={() => handleReview(note.id)}
+                      className="px-2 py-1 rounded-md bg-green-50 text-green-600 hover:bg-green-100 flex items-center gap-1"
+                      title="Mark as reviewed"
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                      <span className="text-sm">Review</span>
+                    </button>
                   ) : (
-                    <div className="flex items-center gap-1">
-                      <span>Review every: {getNoteCadence(note.id).hours}h {getNoteCadence(note.id).minutes}m</span>
-                      <button
-                        onClick={() => {
-                          const cadence = getNoteCadence(note.id);
-                          setCadenceHours(cadence.hours);
-                          setCadenceMinutes(cadence.minutes);
-                          setShowCadenceSelector(note.id);
-                        }}
-                        className="p-0.5 text-gray-400 hover:text-gray-600"
-                        title="Set review cadence"
-                      >
-                        <ClockIcon className="h-3 w-3" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => onMarkForReview && onMarkForReview(note.id)}
+                      className="px-2 py-1 rounded-md bg-yellow-50 text-yellow-600 hover:bg-yellow-100 flex items-center gap-1"
+                      title="Mark for review"
+                    >
+                      <ClockIcon className="h-4 w-4" />
+                      <span className="text-sm">Mark for Review</span>
+                    </button>
                   )}
+                  <button
+                    onClick={() => handleUnfollow(note.id, note.content)}
+                    className="px-2 py-1 rounded-md bg-red-50 text-red-600 hover:bg-red-100 flex items-center gap-1"
+                    title="Unfollow note"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                    <span className="text-sm">Unfollow</span>
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => onEdit && onEdit(note)}
-                  className="px-2 py-1 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-1"
-                  title="Edit note"
-                >
-                  <PencilIcon className="h-4 w-4" />
-                  <span className="text-sm">Edit</span>
-                </button>
-                {needsReviewState[note.id] ? (
-                  <button
-                    onClick={() => handleReview(note.id)}
-                    className="px-2 py-1 rounded-md bg-green-50 text-green-600 hover:bg-green-100 flex items-center gap-1"
-                    title="Mark as reviewed"
-                  >
-                    <CheckIcon className="h-4 w-4" />
-                    <span className="text-sm">Review</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => onMarkForReview && onMarkForReview(note.id)}
-                    className="px-2 py-1 rounded-md bg-yellow-50 text-yellow-600 hover:bg-yellow-100 flex items-center gap-1"
-                    title="Mark for review"
-                  >
-                    <ClockIcon className="h-4 w-4" />
-                    <span className="text-sm">Mark for Review</span>
-                  </button>
-                )}
-                <button
-                  onClick={() => handleUnfollow(note.id, note.content)}
-                  className="px-2 py-1 rounded-md bg-red-50 text-red-600 hover:bg-red-100 flex items-center gap-1"
-                  title="Unfollow note"
-                >
-                  <XMarkIcon className="h-4 w-4" />
-                  <span className="text-sm">Unfollow</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };

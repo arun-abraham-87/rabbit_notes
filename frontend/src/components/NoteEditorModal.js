@@ -11,8 +11,8 @@ import NoteEditor from './NoteEditor';
 import { getSettings, defaultSettings, loadTags } from '../utils/ApiUtils';
 
 const NoteEditorModal = () => {
-  const { isOpen, initialContent, closeEditor } = useNoteEditor();
-  const { addNote } = useNotes();
+  const { isOpen, initialContent, mode, noteId, closeEditor } = useNoteEditor();
+  const { addNote, updateNote } = useNotes();
   const [settings, setSettings] = useState({});
   const [objList, setObjList] = useState([]);
   const [excludeEvents, setExcludeEvents] = useState(false);
@@ -139,7 +139,7 @@ const NoteEditorModal = () => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">New Note</h2>
+          <h2 className="text-xl font-semibold text-gray-800">{mode === 'edit' ? 'Edit Note' : 'New Note'}</h2>
           <button
             onClick={closeEditor}
             className="text-gray-500 hover:text-gray-700"
@@ -148,14 +148,18 @@ const NoteEditorModal = () => {
           </button>
         </div>
         <NoteEditor
-          isAddMode={true}
+          isAddMode={mode === 'add'}
           isModal={true}
+          note={mode === 'edit' ? { id: noteId, content: initialContent } : null}
           onSave={(content) => {
             console.log('Original content:', content);
             console.log('Selected meta tags:', selectedMetaTags);
             
+            // Handle both string content and note objects
+            const noteContent = typeof content === 'string' ? content : content.content;
+            
             // Ensure content ends with a newline
-            const contentWithNewline = content.endsWith('\n') ? content : content + '\n';
+            const contentWithNewline = noteContent.endsWith('\n') ? noteContent : noteContent + '\n';
             console.log('Content with newline:', contentWithNewline);
             
             // Append meta tags with newlines
@@ -164,8 +168,13 @@ const NoteEditorModal = () => {
               : contentWithNewline;
             console.log('Final content to save:', finalContent);
             
-            // Save the note with the combined content
-            addNote(finalContent);
+            if (mode === 'add') {
+              // Save the note with the combined content
+              addNote(finalContent);
+            } else {
+              // Update the existing note
+              updateNote(noteId, finalContent);
+            }
             closeEditor();
           }}
           addNote={addNote}
@@ -270,4 +279,4 @@ const NoteEditorModal = () => {
   );
 };
 
-export default NoteEditorModal; 
+export default NoteEditorModal;

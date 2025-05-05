@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import CompressedNotesList from './CompressedNotesList';
-import { ClockIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { useNoteEditor } from '../contexts/NoteEditorContext';
+import NoteEditorModal from './NoteEditorModal';
 
 const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
+  const { openEditor } = useNoteEditor();
+  const [editingNote, setEditingNote] = useState(null);
   const watchlistNotes = allNotes.filter(note => 
     note.content.includes('meta::watch')
   );
@@ -60,11 +64,8 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
         <h1 className="text-2xl font-semibold text-gray-900 mb-4">Watchlist</h1>
         
         {overdueNotes.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-2">
-              <ClockIcon className="h-5 w-5 text-red-500" />
-              <h2 className="text-lg font-semibold text-red-800">Needs Review ({overdueNotes.length})</h2>
-            </div>
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Overdue Notes</h2>
             <CompressedNotesList
               notes={overdueNotes}
               searchQuery=""
@@ -94,13 +95,19 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               isWatchList={true}
               getNoteAge={getDaysSinceAdded}
               refreshNotes={refreshNotes}
+              onReview={handleUnfollow}
+              onCadenceChange={handleUnfollow}
+              onEdit={(note) => {
+                openEditor(note.content, 'edit', note.id);
+                setEditingNote(note);
+              }}
             />
           </div>
         )}
 
         {activeNotes.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">Active Watch Items ({activeNotes.length})</h2>
+            <h2 className="text-xl font-semibold mb-4">Active Notes</h2>
             <CompressedNotesList
               notes={activeNotes}
               searchQuery=""
@@ -130,6 +137,12 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               isWatchList={true}
               getNoteAge={getDaysSinceAdded}
               refreshNotes={refreshNotes}
+              onReview={handleUnfollow}
+              onCadenceChange={handleUnfollow}
+              onEdit={(note) => {
+                openEditor(note.content, 'edit', note.id);
+                setEditingNote(note);
+              }}
             />
           </div>
         )}
@@ -138,6 +151,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
           <p className="text-gray-600">No notes tagged with meta::watch found.</p>
         )}
       </div>
+      <NoteEditorModal />
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import NoteContent from './NoteContent';
-import { XMarkIcon, CheckIcon, ClockIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, CheckIcon, ClockIcon, PencilIcon } from '@heroicons/react/24/solid';
 import {
   formatTimeElapsed,
   getNoteCadence,
@@ -39,7 +39,8 @@ const CompressedNotesList = ({
   updateNote,
   onContextMenu,
   isWatchList = false,
-  refreshNotes
+  refreshNotes,
+  onEdit
 }) => {
   const [needsReviewState, setNeedsReviewState] = useState({});
   const [timeElapsed, setTimeElapsed] = useState({});
@@ -224,6 +225,14 @@ const CompressedNotesList = ({
                   )}
                 </div>
               </div>
+              <button
+                onClick={() => onEdit && onEdit(note)}
+                className="px-2 py-1 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-1"
+                title="Edit note"
+              >
+                <PencilIcon className="h-4 w-4" />
+                <span className="text-sm">Edit</span>
+              </button>
               <button
                 onClick={() => handleReview(note.id)}
                 className={`px-2 py-1 rounded-md flex items-center gap-1 ${

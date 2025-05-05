@@ -7,6 +7,7 @@ export function NoteEditorProvider({ children }) {
   const [isOpen, setIsOpen] = useState(false);
   const [initialContent, setInitialContent] = useState('');
   const [mode, setMode] = useState('add'); // 'add' or 'edit'
+  const [noteId, setNoteId] = useState(null);
 
   // Add keyboard shortcut for opening note editor in add mode
   useHotkeys('meta+k', (e) => {
@@ -15,22 +16,25 @@ export function NoteEditorProvider({ children }) {
     setIsOpen(true);
     setInitialContent('');
     setMode('add');
+    setNoteId(null);
   }, {
     enableOnFormTags: true,
     keydown: true,
     keyup: false
   });
 
-  const openEditor = (content = '', mode = 'add') => {
+  const openEditor = (content = '', mode = 'add', id = null) => {
     setIsOpen(true);
     setInitialContent(content);
     setMode(mode);
+    setNoteId(id);
   };
 
   const closeEditor = () => {
     setIsOpen(false);
     setInitialContent('');
     setMode('add');
+    setNoteId(null);
   };
 
   return (
@@ -38,6 +42,7 @@ export function NoteEditorProvider({ children }) {
       isOpen,
       initialContent,
       mode,
+      noteId,
       openEditor,
       closeEditor
     }}>

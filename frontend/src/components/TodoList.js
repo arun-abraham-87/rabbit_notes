@@ -569,7 +569,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
 
         <div className="flex-1 p-3 overflow-auto relative">
           {/* Priority Buttons */}
-          <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
+          <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex items-center gap-1 z-10">
             <button
               onClick={() => setShowRawNotes(prev => ({ ...prev, [todo.id]: !prev[todo.id] }))}
               className={`p-1.5 rounded-full transition-all duration-200 ${

@@ -128,9 +128,17 @@ export const listJournals = async () => {
 
 // Tag Operations
 export const loadTags = async () => {
-    const response = await fetch(`${API_BASE_URL}/objects`);
-    if (!response.ok) throw new Error('Failed to fetch tags');
-    return await response.json();
+    try {
+        const response = await fetch(`${API_BASE_URL}/objects`);
+        if (!response.ok) {
+            console.warn('Failed to fetch tags, returning empty array');
+            return [];
+        }
+        return await response.json();
+    } catch (error) {
+        console.warn('Error fetching tags:', error);
+        return [];
+    }
 };
 
 export const getAllTags = async () => {

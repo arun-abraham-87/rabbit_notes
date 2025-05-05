@@ -393,8 +393,11 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           todoDate.toDateString() === getDateStringForDaysAgo(days)
         );
       })();
+
+      // Check priority filter
+      const matchesPriority = !priorityFilter || assignedPriority === priorityFilter;
       
-      return matchesSearch && isMetaTodo && !isCompleted && isTodayOrYesterday && isInLastXDays;
+      return matchesSearch && isMetaTodo && !isCompleted && isTodayOrYesterday && isInLastXDays && matchesPriority;
     })
     .sort((a, b) => {
       if (sortBy === 'priority') {

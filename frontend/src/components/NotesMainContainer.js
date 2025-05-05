@@ -11,7 +11,6 @@ import NextMeetingBanner from './NextMeetingBanner.js';
 import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner.js';
 import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
 import WatchList from './WatchList';
-import { AlertsProvider } from './Alerts';
 
 const checkForOngoingMeeting = (notes) => {
   if (!notes) return null;
@@ -626,92 +625,83 @@ const NotesMainContainer = ({
     ], [objList, workstreamSuggestions, peopleSuggestions]);
 
     return (
-        <AlertsProvider 
-            notes={allNotes} 
-            expanded={alertsExpanded}
-            events={eventsState}
-            onAcknowledgeEvent={handleAcknowledgeEvent}
-            setNotes={setNotes}
-        >
-            <div className="flex flex-col h-full">
-                <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
-                    
-                    <UnacknowledgedMeetingsBanner 
-                        meetings={unacknowledgedMeetings} 
-                        onDismiss={handleDismissUnacknowledgedMeeting} 
+        <div className="flex flex-col h-full">
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
+                <UnacknowledgedMeetingsBanner 
+                    meetings={unacknowledgedMeetings} 
+                    onDismiss={handleDismissUnacknowledgedMeeting} 
+                />
+                {ongoingMeeting && (
+                    <OngoingMeetingBanner
+                        meeting={ongoingMeeting}
+                        onDismiss={handleDismissMeeting}
                     />
-                    {ongoingMeeting && (
-                        <OngoingMeetingBanner
-                            meeting={ongoingMeeting}
-                            onDismiss={handleDismissMeeting}
-                        />
-                    )}
-                    <NextMeetingBanner meetings={meetings} notes={allNotes} />
-                    <div className="mt-4">
-                        {activePage === 'watch' ? (
-                            <WatchList allNotes={allNotes} />
-                        ) : (
-                            <>
-                                <DateSelectorBar
-                                    setNoteDate={handleDateChange}
-                                    defaultCollapsed={true}
-                                />
-                                <NoteEditor
-                                    objList={mergedObjList}
-                                    note={{ id: '', content: '' }}
-                                    text=""
-                                    addNote={addNote}
-                                    onSave={(note) => {
-                                        addNote(note.content);
-                                    }}
-                                    onCancel={() => {
+                )}
+                <NextMeetingBanner meetings={meetings} notes={allNotes} />
+                <div className="mt-4">
+                    {activePage === 'watch' ? (
+                        <WatchList allNotes={allNotes} />
+                    ) : (
+                        <>
+                            <DateSelectorBar
+                                setNoteDate={handleDateChange}
+                                defaultCollapsed={true}
+                            />
+                            <NoteEditor
+                                objList={mergedObjList}
+                                note={{ id: '', content: '' }}
+                                text=""
+                                addNote={addNote}
+                                onSave={(note) => {
+                                    addNote(note.content);
+                                }}
+                                onCancel={() => {
 //console.log("NoteEditor canceled");
-                                    }}
+                                }}
+                                searchQuery={searchQuery}
+                                setSearchQuery={setSearchQuery}
+                                isAddMode={true}
+                                settings={settings}
+                                onExcludeEventsChange={setExcludeEvents}
+                                onExcludeMeetingsChange={setExcludeMeetings}
+                                onDeadlinePassedChange={setShowDeadlinePassedFilter}
+                            />
+                            <InfoPanel 
+                                totals={totals} 
+                                grpbyViewChkd={checked} 
+                                enableGroupByView={setChecked}
+                                compressedView={compressedView}
+                                setCompressedView={setCompressedView}
+                            />
+                            {checked ? (
+                                <NotesListByDate
+                                    notes={filteredNotes}
+                                    searchQuery={searchQuery}
+                                    onWordClick={handleTagClick}
+                                    settings={settings}
+                                />
+                            ) : (
+                                <NotesList
+                                    objList={mergedObjList}
+                                    notes={filteredNotes}
+                                    allNotes={allNotes}
+                                    addNotes={addNote}
+                                    updateNoteCallback={updateNoteCallback}
+                                    updateTotals={setTotals}
+                                    objects={objects}
+                                    addObjects={addTag}
                                     searchQuery={searchQuery}
                                     setSearchQuery={setSearchQuery}
-                                    isAddMode={true}
+                                    onWordClick={handleTagClick}
                                     settings={settings}
-                                    onExcludeEventsChange={setExcludeEvents}
-                                    onExcludeMeetingsChange={setExcludeMeetings}
-                                    onDeadlinePassedChange={setShowDeadlinePassedFilter}
-                                />
-                                <InfoPanel 
-                                    totals={totals} 
-                                    grpbyViewChkd={checked} 
-                                    enableGroupByView={setChecked}
                                     compressedView={compressedView}
-                                    setCompressedView={setCompressedView}
                                 />
-                                {checked ? (
-                                    <NotesListByDate
-                                        notes={filteredNotes}
-                                        searchQuery={searchQuery}
-                                        onWordClick={handleTagClick}
-                                        settings={settings}
-                                    />
-                                ) : (
-                                    <NotesList
-                                        objList={mergedObjList}
-                                        notes={filteredNotes}
-                                        allNotes={allNotes}
-                                        addNotes={addNote}
-                                        updateNoteCallback={updateNoteCallback}
-                                        updateTotals={setTotals}
-                                        objects={objects}
-                                        addObjects={addTag}
-                                        searchQuery={searchQuery}
-                                        setSearchQuery={setSearchQuery}
-                                        onWordClick={handleTagClick}
-                                        settings={settings}
-                                        compressedView={compressedView}
-                                    />
-                                )}
-                            </>
-                        )}
-                    </div>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
-        </AlertsProvider>
+        </div>
     );
 };
 

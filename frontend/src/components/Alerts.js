@@ -12,7 +12,11 @@ import {
   CalendarIcon,
   DocumentTextIcon,
   ArrowPathIcon,
-  CheckIcon
+  CheckIcon,
+  CodeBracketIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  MinusIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon } from '../utils/ApiUtils';
@@ -170,6 +174,8 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showRawNote, setShowRawNote] = useState(false);
   const [selectedNote, setSelectedNote] = useState(null);
+  const [showPriorityPopup, setShowPriorityPopup] = useState(false);
+  const [noteToUpdate, setNoteToUpdate] = useState(null);
 
   const criticalTodos = notes.filter(note => {
     if (!note.content.includes('meta::todo::')) return false;
@@ -197,6 +203,37 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     } catch (error) {
       console.error('Error marking todo as completed:', error);
       Alerts.error('Failed to mark todo as completed');
+    }
+  };
+
+  const handleLowerPriority = (note) => {
+    setNoteToUpdate(note);
+    setShowPriorityPopup(true);
+  };
+
+  const handlePrioritySelect = async (priority) => {
+    if (!noteToUpdate) return;
+
+    try {
+      // Remove meta::critical and add the new priority
+      const updatedContent = noteToUpdate.content
+        .replace('meta::critical', '')
+        .trim() + `\nmeta::${priority}`;
+      
+      await updateNoteById(noteToUpdate.id, updatedContent);
+      
+      // Update the notes list immediately after successful update
+      const updatedNotes = notes.map(n => 
+        n.id === noteToUpdate.id ? { ...n, content: updatedContent } : n
+      );
+      setNotes(updatedNotes);
+      Alerts.success(`Priority changed to ${priority}`);
+    } catch (error) {
+      console.error('Error updating priority:', error);
+      Alerts.error('Failed to update priority');
+    } finally {
+      setShowPriorityPopup(false);
+      setNoteToUpdate(null);
     }
   };
 
@@ -243,20 +280,27 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                         {content}
                       </h4>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
                       <button
                         onClick={() => handleViewRawNote(todo)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+                        className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+                        title="View Raw Note"
                       >
-                        <DocumentTextIcon className="w-5 h-5" />
-                        View Raw Note
+                        <CodeBracketIcon className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleLowerPriority(todo)}
+                        className="flex items-center justify-center px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                        title="Lower Priority"
+                      >
+                        <ArrowTrendingDownIcon className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleMarkCompleted(todo)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                        className="flex items-center justify-center px-3 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                        title="Mark Completed"
                       >
                         <CheckCircleIcon className="w-5 h-5" />
-                        Mark Completed
                       </button>
                     </div>
                   </div>
@@ -284,6 +328,43 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
               <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">
                 {selectedNote.content}
               </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Priority Selection Popup */}
+      {showPriorityPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Select Priority</h3>
+              <button
+                onClick={() => setShowPriorityPopup(false)}
+                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => handlePrioritySelect('high')}
+                className="w-full px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150 flex items-center justify-center gap-2"
+              >
+                <ArrowTrendingUpIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => handlePrioritySelect('medium')}
+                className="w-full px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150 flex items-center justify-center gap-2"
+              >
+                <MinusIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => handlePrioritySelect('low')}
+                className="w-full px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150 flex items-center justify-center gap-2"
+              >
+                <ArrowTrendingDownIcon className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -1240,6 +1321,21 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
     setIsExpanded(!isExpanded);
   };
 
+  const handleCriticalTodosClick = (e) => {
+    e.stopPropagation();
+    window.location.href = '/#/todos';
+  };
+
+  const handleDeadlineMissedClick = (e) => {
+    e.stopPropagation();
+    window.location.href = '/#/todos';
+  };
+
+  const handleReviewOverdueClick = (e) => {
+    e.stopPropagation();
+    window.location.href = '/#/watch';
+  };
+
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-6 mx-4">
       <div 
@@ -1264,12 +1360,18 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
                 </span>
               )}
               {criticalTodos.length > 0 && (
-                <span className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium">
-                 Critical Todos: {criticalTodos.length}
+                <span 
+                  onClick={handleCriticalTodosClick}
+                  className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium cursor-pointer hover:bg-red-200 transition-colors duration-150"
+                >
+                  Critical Todos: {criticalTodos.length}
                 </span>
               )}
               {passedDeadlineTodos.length > 0 && (
-                <span className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium">
+                <span 
+                  onClick={handleDeadlineMissedClick}
+                  className="px-2 py-1 bg-red-100 text-red-800 rounded-md text-sm font-medium cursor-pointer hover:bg-red-200 transition-colors duration-150"
+                >
                   Deadline Missed: {passedDeadlineTodos.length}
                 </span>
               )}
@@ -1279,7 +1381,10 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
                 </span>
               )}
               {overdueNotes.length > 0 && (
-                <span className="px-2 py-1 bg-amber-100 text-amber-800 rounded-md text-sm font-medium">
+                <span 
+                  onClick={handleReviewOverdueClick}
+                  className="px-2 py-1 bg-amber-100 text-amber-800 rounded-md text-sm font-medium cursor-pointer hover:bg-amber-200 transition-colors duration-150"
+                >
                   Review Overdue: {overdueNotes.length}
                 </span>
               )}

@@ -1,37 +1,60 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, PlusIcon } from '@heroicons/react/24/solid';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
 
 const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null }) => {
   const [name, setName] = useState('');
-  const [role, setRole] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tagList, setTagList] = useState([]);
   const [tagError, setTagError] = useState('');
   const [tagFilter, setTagFilter] = useState('');
+  const [infoTypes, setInfoTypes] = useState([]);
+  const [infoValues, setInfoValues] = useState({});
+  const [newInfoType, setNewInfoType] = useState('');
+
+  // Get all unique info types from all notes
+  const suggestedInfoTypes = useMemo(() => {
+    const typeSet = new Set();
+    allNotes.forEach(note => {
+      const infoLines = note.content
+        .split('\n')
+        .filter(line => line.startsWith('meta::info::'))
+        .map(line => line.split('::')[2]);
+      infoLines.forEach(type => typeSet.add(type));
+    });
+    return Array.from(typeSet).sort();
+  }, [allNotes]);
 
   // Prefill fields if editing
   useEffect(() => {
     if (personNote) {
       const lines = personNote.content.split('\n');
       setName(lines[0] || '');
-      setRole(lines.find(line => line.startsWith('meta::person_role::'))?.split('::')[2] || '');
-      setEmail(lines.find(line => line.startsWith('meta::person_email::'))?.split('::')[2] || '');
-      setPhone(lines.find(line => line.startsWith('meta::person_phone::'))?.split('::')[2] || '');
       // Get tags from meta::tag lines
       const tagLines = lines.filter(line => line.startsWith('meta::tag::'));
       setTagList(tagLines.map(line => line.split('::')[2]));
+
+      // Get info types and values
+      const infoLines = lines.filter(line => line.startsWith('meta::info::'));
+      const types = new Set();
+      const values = {};
+      infoLines.forEach(line => {
+        const [_, __, type, value] = line.split('::');
+        types.add(type);
+        values[type] = value;
+      });
+      setInfoTypes(Array.from(types));
+      setInfoValues(values);
     } else {
       setName(''); 
-      setRole(''); 
-      setEmail(''); 
-      setPhone('');
       setTagList([]);
       setTagInput('');
+      setInfoTypes([]);
+      setInfoValues({});
     }
     setTagError('');
+    setTagFilter('');
+    setNewInfoType('');
   }, [personNote, isOpen]);
 
   // Get all unique tags from all notes
@@ -101,37 +124,42 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
     setTagList(tagList.filter(tag => tag !== tagToRemove));
   };
 
+  const handleAddInfoType = (type) => {
+    if (type && !infoTypes.includes(type)) {
+      setInfoTypes([...infoTypes, type]);
+      setInfoValues({ ...infoValues, [type]: '' });
+      setNewInfoType('');
+    }
+  };
+
+  const handleRemoveInfoType = (typeToRemove) => {
+    setInfoTypes(infoTypes.filter(type => type !== typeToRemove));
+    const newValues = { ...infoValues };
+    delete newValues[typeToRemove];
+    setInfoValues(newValues);
+  };
+
   const handleSubmit = async () => {
     if (!name.trim()) return;
     
     let content = `${name.trim()}\nmeta::person::${personNote ? personNote.content.split('\n').find(line => line.startsWith('meta::person::'))?.split('::')[2] : new Date().toISOString()}`;
-    
-    // Add role if provided
-    if (role.trim()) {
-      content += `\nmeta::person_role::${role.trim()}`;
-    }
-
-    // Add email if provided
-    if (email.trim()) {
-      content += `\nmeta::person_email::${email.trim()}`;
-    }
-
-    // Add phone if provided
-    if (phone.trim()) {
-      content += `\nmeta::person_phone::${phone.trim()}`;
-    }
 
     // Add tags
     tagList.forEach(tag => {
       content += `\nmeta::tag::${tag}`;
     });
 
+    // Add info types and values
+    infoTypes.forEach(type => {
+      if (infoValues[type]?.trim()) {
+        content += `\nmeta::info::${type}::${infoValues[type].trim()}`;
+      }
+    });
+
     try {
       if (personNote) {
-        // Edit mode
         await onEdit(personNote.id, content);
       } else {
-        // Add mode
         const newNote = await createNote(content);
         if (onAdd) {
           onAdd(newNote);
@@ -139,13 +167,13 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       }
       // Reset form
       setName('');
-      setRole('');
-      setEmail('');
-      setPhone('');
       setTagList([]);
       setTagInput('');
       setTagError('');
       setTagFilter('');
+      setInfoTypes([]);
+      setInfoValues({});
+      setNewInfoType('');
       onClose();
     } catch (error) {
       console.error('Error saving person:', error);
@@ -183,46 +211,86 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
             />
           </div>
 
-          {/* Role Input */}
+          {/* Info Types Section */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Role
-            </label>
-            <input
-              type="text"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter role (optional)"
-            />
-          </div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Additional Information
+              </label>
+            </div>
 
-          {/* Email Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter email (optional)"
-            />
-          </div>
+            {/* New Info Type Input */}
+            <div className="mb-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newInfoType}
+                  onChange={(e) => setNewInfoType(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newInfoType.trim()) {
+                      handleAddInfoType(newInfoType.trim());
+                    }
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter new info type"
+                />
+                <button
+                  onClick={() => handleAddInfoType(newInfoType.trim())}
+                  disabled={!newInfoType.trim()}
+                  className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
 
-          {/* Phone Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone
-            </label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter phone (optional)"
-            />
+            {/* Suggested Info Types */}
+            {suggestedInfoTypes.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-xs text-gray-500 mb-2">
+                  Suggested Info Types
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedInfoTypes
+                    .filter(type => !infoTypes.includes(type))
+                    .map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => handleAddInfoType(type)}
+                        className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                      >
+                        {type}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Info Type Inputs */}
+            <div className="space-y-3">
+              {infoTypes.map((type) => (
+                <div key={type} className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-500 mb-1">
+                      {type}
+                    </label>
+                    <input
+                      type="text"
+                      value={infoValues[type] || ''}
+                      onChange={(e) => setInfoValues({ ...infoValues, [type]: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder={`Enter ${type.toLowerCase()}`}
+                    />
+                  </div>
+                  <button
+                    onClick={() => handleRemoveInfoType(type)}
+                    className="mt-6 text-gray-400 hover:text-gray-600"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Tags Input */}

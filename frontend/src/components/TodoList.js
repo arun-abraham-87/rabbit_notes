@@ -13,7 +13,8 @@ import {
   ListBulletIcon,
   Squares2X2Icon,
   EllipsisHorizontalIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  CodeBracketIcon
 } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 import { getFormattedDateWithAge } from '../utils/DateUtils';
@@ -36,6 +37,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [showLastXDaysPopup, setShowLastXDaysPopup] = useState(false);
   const [selectedDays, setSelectedDays] = useState([]);
   const [completedTodos, setCompletedTodos] = useState({});
+  const [showRawNotes, setShowRawNotes] = useState({});
 
   // Function to clear all date filters
   const clearDateFilters = () => {
@@ -201,33 +203,21 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     const note = todos.find((todo) => todo.id === id);
     if (note) {
       const lines = note.content.split('\n');
-      const isCompleted = lines.some(line => line.trim().startsWith('meta::completed::'));
+      const isCompleted = lines.some(line => line.trim().startsWith('meta::todo_completed'));
       
       if (isCompleted) {
         // Remove completed status
         const updatedContent = lines
-          .filter(line => !line.trim().startsWith('meta::completed::'))
+          .filter(line => !line.trim().startsWith('meta::todo_completed'))
           .join('\n')
           .trim();
         await updateTodo(id, updatedContent);
         setCompletedTodos(prev => ({ ...prev, [id]: false }));
       } else {
-        // Remove todo and priority tags, add completed status
-        const updatedContent = lines
-          .filter(line => 
-            !line.trim().startsWith('meta::todo::') && 
-            !line.trim().startsWith('meta::high') && 
-            !line.trim().startsWith('meta::medium') && 
-            !line.trim().startsWith('meta::low') &&
-            !line.trim().startsWith('meta::critical') &&
-            !line.trim().startsWith('meta::priority_age::')
-          )
-          .join('\n')
-          .trim();
-        
+        // Add completed status with timestamp
         const timestamp = new Date().toISOString();
-        const finalContent = `${updatedContent}\nmeta::completed::${timestamp}`;
-        await updateTodo(id, finalContent);
+        const updatedContent = `${note.content}\nmeta::todo_completed`;
+        await updateTodo(id, updatedContent);
         setCompletedTodos(prev => ({ ...prev, [id]: true }));
       }
     }
@@ -325,6 +315,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
       const assignedPriority = priorities[todo.id] || tag;
       const isMetaTodo = todo.content.includes('meta::todo');
+      const isCompleted = todo.content.includes('meta::todo_completed');
       
       // Check if todo was added today or yesterday
       const isTodayOrYesterday = (() => {
@@ -349,7 +340,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         );
       })();
       
-      return matchesSearch && isMetaTodo && isTodayOrYesterday && isInLastXDays;
+      return matchesSearch && isMetaTodo && !isCompleted && isTodayOrYesterday && isInLastXDays;
     })
     .sort((a, b) => {
       if (sortBy === 'priority') {
@@ -430,7 +421,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
     const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
     const currentPriority = priorities[todo.id] || tag;
-    const isCompleted = todo.content.includes('meta::completed::');
+    const isCompleted = todo.content.includes('meta::todo_completed');
     
     const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
     const createdDate = todoDateMatch ? todoDateMatch[1] : todo.created_datetime;
@@ -489,6 +480,17 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         <div className="flex-1 p-3 overflow-auto relative">
           {/* Priority Buttons */}
           <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
+            <button
+              onClick={() => setShowRawNotes(prev => ({ ...prev, [todo.id]: !prev[todo.id] }))}
+              className={`p-1.5 rounded-full transition-all duration-200 ${
+                showRawNotes[todo.id]
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+              }`}
+              title={showRawNotes[todo.id] ? "Hide raw note" : "Show raw note"}
+            >
+              <CodeBracketIcon className="h-4 w-4" />
+            </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'critical')}
               className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${
@@ -553,48 +555,54 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           <div className={`text-sm whitespace-pre-wrap pr-32 ${
             'text-gray-800'
           }`}>
-            {(() => {
-              // Remove all meta tags from content
-              const content = todo.content
-                .split('\n')
-                .filter(line => !line.trim().startsWith('meta::'))
-                .join('\n')
-                .trim();
+            {showRawNotes[todo.id] ? (
+              <pre className="text-xs font-mono bg-gray-50 p-2 rounded overflow-x-auto">
+                {todo.content}
+              </pre>
+            ) : (
+              (() => {
+                // Remove all meta tags from content
+                const content = todo.content
+                  .split('\n')
+                  .filter(line => !line.trim().startsWith('meta::'))
+                  .join('\n')
+                  .trim();
 
-              // Split content into lines to handle headings
-              return content.split('\n').map((line, lineIndex) => {
-                // Check for headings first
-                const h1Match = line.match(/^###(.+)###$/);
-                const h2Match = line.match(/^##(.+)##$/);
+                // Split content into lines to handle headings
+                return content.split('\n').map((line, lineIndex) => {
+                  // Check for headings first
+                  const h1Match = line.match(/^###(.+)###$/);
+                  const h2Match = line.match(/^##(.+)##$/);
 
-                if (h1Match) {
+                  if (h1Match) {
+                    return (
+                      <h1 key={`line-${lineIndex}`} className={`text-xl font-bold mb-2 ${
+                        'text-gray-900'
+                      }`}>
+                        {parseNoteContent({ content: h1Match[1].trim(), searchTerm: searchQuery })}
+                      </h1>
+                    );
+                  }
+
+                  if (h2Match) {
+                    return (
+                      <h2 key={`line-${lineIndex}`} className={`text-lg font-semibold mb-2 ${
+                        'text-gray-800'
+                      }`}>
+                        {parseNoteContent({ content: h2Match[1].trim(), searchTerm: searchQuery })}
+                      </h2>
+                    );
+                  }
+
+                  // Process regular lines with URLs and search highlighting
                   return (
-                    <h1 key={`line-${lineIndex}`} className={`text-xl font-bold mb-2 ${
-                      'text-gray-900'
-                    }`}>
-                      {parseNoteContent({ content: h1Match[1].trim(), searchTerm: searchQuery })}
-                    </h1>
+                    <div key={`line-${lineIndex}`} className="mb-1">
+                      {parseNoteContent({ content: line, searchTerm: searchQuery })}
+                    </div>
                   );
-                }
-
-                if (h2Match) {
-                  return (
-                    <h2 key={`line-${lineIndex}`} className={`text-lg font-semibold mb-2 ${
-                      'text-gray-800'
-                    }`}>
-                      {parseNoteContent({ content: h2Match[1].trim(), searchTerm: searchQuery })}
-                    </h2>
-                  );
-                }
-
-                // Process regular lines with URLs and search highlighting
-                return (
-                  <div key={`line-${lineIndex}`} className="mb-1">
-                    {parseNoteContent({ content: line, searchTerm: searchQuery })}
-                  </div>
-                );
-              });
-            })()}
+                });
+              })()
+            )}
           </div>
         </div>
       </div>

@@ -166,65 +166,129 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
   );
 };
 
-const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true }) => {
+const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
+  const [showRawNote, setShowRawNote] = useState(false);
+  const [selectedNote, setSelectedNote] = useState(null);
 
   const criticalTodos = notes.filter(note => {
     if (!note.content.includes('meta::todo::')) return false;
+    if (note.content.includes('meta::todo_completed')) return false;
     return note.content.includes('meta::critical');
   });
 
   if (criticalTodos.length === 0) return null;
 
-  return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-      <div 
-        className="bg-red-50 px-6 py-4 border-b border-red-100 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
-            <h3 className="ml-3 text-lg font-semibold text-red-800">
-              Critical Todos ({criticalTodos.length})
-            </h3>
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(!isExpanded);
-            }}
-            className="text-red-600 hover:text-red-700 focus:outline-none"
-            aria-label={isExpanded ? "Collapse todos" : "Expand todos"}
-          >
-            {isExpanded ? (
-              <ChevronUpIcon className="h-5 w-5" />
-            ) : (
-              <ChevronDownIcon className="h-5 w-5" />
-            )}
-          </button>
-        </div>
-      </div>
-      {isExpanded && (
-        <div className="divide-y divide-gray-100">
-          {criticalTodos.map((todo) => {
-            const content = todo.content.split('\n').filter(line => !line.trim().startsWith('meta::'))[0];
+  const handleViewRawNote = (note) => {
+    setSelectedNote(note);
+    setShowRawNote(true);
+  };
 
-            return (
-              <div key={todo.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="text-lg font-medium text-gray-900">
-                      {content}
-                    </h4>
+  const handleMarkCompleted = async (note) => {
+    try {
+      const updatedContent = `${note.content}\nmeta::todo_completed`;
+      await updateNoteById(note.id, updatedContent);
+      // Update the notes list immediately after successful update
+      const updatedNotes = notes.map(n => 
+        n.id === note.id ? { ...n, content: updatedContent } : n
+      );
+      setNotes(updatedNotes);
+      Alerts.success('Todo marked as completed');
+    } catch (error) {
+      console.error('Error marking todo as completed:', error);
+      Alerts.error('Failed to mark todo as completed');
+    }
+  };
+
+  return (
+    <>
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+        <div 
+          className="bg-red-50 px-6 py-4 border-b border-red-100 cursor-pointer"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
+              <h3 className="ml-3 text-lg font-semibold text-red-800">
+                Critical Todos ({criticalTodos.length})
+              </h3>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+              className="text-red-600 hover:text-red-700 focus:outline-none"
+              aria-label={isExpanded ? "Collapse todos" : "Expand todos"}
+            >
+              {isExpanded ? (
+                <ChevronUpIcon className="h-5 w-5" />
+              ) : (
+                <ChevronDownIcon className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+        </div>
+        {isExpanded && (
+          <div className="divide-y divide-gray-100">
+            {criticalTodos.map((todo) => {
+              const content = todo.content.split('\n').filter(line => !line.trim().startsWith('meta::'))[0];
+
+              return (
+                <div key={todo.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="text-lg font-medium text-gray-900">
+                        {content}
+                      </h4>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => handleViewRawNote(todo)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+                      >
+                        <DocumentTextIcon className="w-5 h-5" />
+                        View Raw Note
+                      </button>
+                      <button
+                        onClick={() => handleMarkCompleted(todo)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                      >
+                        <CheckCircleIcon className="w-5 h-5" />
+                        Mark Completed
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Raw Note Popup */}
+      {showRawNote && selectedNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Raw Note Content</h3>
+              <button
+                onClick={() => setShowRawNote(false)}
+                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto">
+              <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">
+                {selectedNote.content}
+              </pre>
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
@@ -1325,7 +1389,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
             events={events}
             expanded={true}
           />
-          <CriticalTodosAlert notes={notes} expanded={true} />
+          <CriticalTodosAlert notes={notes} expanded={true} setNotes={setNotes} />
           <DeadlinePassedAlert notes={notes} expanded={true} />
           <ReviewOverdueAlert notes={notes} expanded={true} />
           <UnacknowledgedMeetingsAlert 

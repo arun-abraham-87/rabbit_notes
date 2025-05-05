@@ -33,19 +33,18 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [showStats, setShowStats] = useState(false);
   const [showToday, setShowToday] = useState(false);
   const [showYesterday, setShowYesterday] = useState(false);
-  const [showLastXDays, setShowLastXDays] = useState(false);
-  const [showLastXDaysPopup, setShowLastXDaysPopup] = useState(false);
-  const [selectedDays, setSelectedDays] = useState([]);
+  const [showHasDeadline, setShowHasDeadline] = useState(false);
   const [completedTodos, setCompletedTodos] = useState({});
   const [showRawNotes, setShowRawNotes] = useState({});
   const [expandedNotes, setExpandedNotes] = useState({});
+  const [showPriorityPopup, setShowPriorityPopup] = useState(false);
+  const [pendingTodoContent, setPendingTodoContent] = useState('');
 
   // Function to clear all date filters
   const clearDateFilters = () => {
     setShowToday(false);
     setShowYesterday(false);
-    setShowLastXDays(false);
-    setSelectedDays([]);
+    setShowHasDeadline(false);
   };
 
   // Function to handle date filter selection
@@ -58,8 +57,8 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
       case 'yesterday':
         setShowYesterday(true);
         break;
-      case 'lastXDays':
-        setShowLastXDaysPopup(true);
+      case 'hasDeadline':
+        setShowHasDeadline(true);
         break;
     }
   };
@@ -338,9 +337,10 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   // Calculate total todos and priority counts (only filtered by search)
   const { total, critical, high, medium, low } = todos.reduce(
     (acc, todo) => {
-      // Only count if it matches search and is a todo
+      // Only count if it matches search, is a todo, and is not completed
       if (todo.content.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          todo.content.includes('meta::todo')) {
+          todo.content.includes('meta::todo') &&
+          !todo.content.includes('meta::todo_completed')) {
         // Increment total
         acc.total++;
         
@@ -385,19 +385,10 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
         return false;
       })();
 
-      // Check if todo was added in selected last X days
-      const isInLastXDays = (() => {
-        if (!showLastXDays || selectedDays.length === 0) return true;
-        const todoDate = new Date(todo.created_datetime);
-        return selectedDays.some(days => 
-          todoDate.toDateString() === getDateStringForDaysAgo(days)
-        );
-      })();
-
-      // Check priority filter
-      const matchesPriority = !priorityFilter || assignedPriority === priorityFilter;
+      // Check if todo has deadline
+      const hasDeadline = !showHasDeadline || todo.content.includes('meta::end_date::');
       
-      return matchesSearch && isMetaTodo && !isCompleted && isTodayOrYesterday && isInLastXDays && matchesPriority;
+      return matchesSearch && isMetaTodo && !isCompleted && isTodayOrYesterday && hasDeadline;
     })
     .sort((a, b) => {
       if (sortBy === 'priority') {
@@ -451,7 +442,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   };
 
   // Add new function to create todo
-  const createTodo = async (content) => {
+  const createTodo = async (content, priority = 'low') => {
     const now = new Date();
     const isoTimestamp = now.toISOString();
     
@@ -467,7 +458,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     
     const formattedDate = `${day}/${month}/${year}, ${formattedHours}:${minutes}:${seconds} ${ampm}`;
     
-    const todoContent = `${content}\nmeta::todo::${isoTimestamp}\nmeta::low\nmeta::priority_age::${isoTimestamp}`;
+    const todoContent = `${content}\nmeta::todo::${isoTimestamp}\nmeta::${priority}\nmeta::priority_age::${isoTimestamp}`;
     
     try {
       const response = await fetch('http://localhost:5001/api/notes', {
@@ -501,12 +492,20 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     if (searchQuery.trim()) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        createTodo(searchQuery.trim());
+        setPendingTodoContent(searchQuery.trim());
+        setShowPriorityPopup(true);
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        createTodo(searchQuery.trim());
+        setPendingTodoContent(searchQuery.trim());
+        setShowPriorityPopup(true);
       }
     }
+  };
+
+  const handlePrioritySelect = (priority) => {
+    createTodo(pendingTodoContent, priority);
+    setShowPriorityPopup(false);
+    setPendingTodoContent('');
   };
 
   const renderTodoCard = (todo) => {
@@ -909,16 +908,16 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                         Yesterday's Todos
                       </button>
                       <button
-                        onClick={() => handleDateFilterClick('lastXDays')}
+                        onClick={() => handleDateFilterClick('hasDeadline')}
                         className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                          showLastXDays
+                          showHasDeadline
                             ? 'bg-indigo-100 text-indigo-700 font-medium'
                             : 'hover:bg-gray-100 text-gray-600'
                         }`}
                       >
-                        Last X Days
+                        Has Deadline
                       </button>
-                      {(showToday || showYesterday || showLastXDays) && (
+                      {(showToday || showYesterday || showHasDeadline) && (
                         <button
                           onClick={clearDateFilters}
                           className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
@@ -965,56 +964,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                       </div>
                     </div>
                   </div>
-
-                  {/* Last X Days Popup */}
-                  {showLastXDaysPopup && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                        <h3 className="text-lg font-medium mb-4">Select Days</h3>
-                        <div className="grid grid-cols-4 gap-2 mb-4">
-                          {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-                            <button
-                              key={day}
-                              onClick={() => {
-                                setSelectedDays(prev => 
-                                  prev.includes(day)
-                                    ? prev.filter(d => d !== day)
-                                    : [...prev, day]
-                                );
-                              }}
-                              className={`px-3 py-2 rounded-lg transition-all duration-200 ${
-                                selectedDays.includes(day)
-                                  ? 'bg-indigo-100 text-indigo-700 font-medium'
-                                  : 'hover:bg-gray-100 text-gray-600'
-                              }`}
-                            >
-                              {day} {day === 1 ? 'Day' : 'Days'} Ago
-                            </button>
-                          ))}
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => {
-                              setShowLastXDaysPopup(false);
-                              setSelectedDays([]);
-                            }}
-                            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShowLastXDaysPopup(false);
-                              setShowLastXDays(selectedDays.length > 0);
-                            }}
-                            className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                          >
-                            Apply
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -1076,6 +1025,52 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
               >
                 Undo
               </button>
+            </div>
+          )}
+
+          {/* Priority Selection Popup */}
+          {showPriorityPopup && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                <h3 className="text-lg font-medium mb-4">Select Priority</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    onClick={() => handlePrioritySelect('critical')}
+                    className="px-4 py-3 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-medium transition-all duration-200"
+                  >
+                    Critical
+                  </button>
+                  <button
+                    onClick={() => handlePrioritySelect('high')}
+                    className="px-4 py-3 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium transition-all duration-200"
+                  >
+                    High
+                  </button>
+                  <button
+                    onClick={() => handlePrioritySelect('medium')}
+                    className="px-4 py-3 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium transition-all duration-200"
+                  >
+                    Medium
+                  </button>
+                  <button
+                    onClick={() => handlePrioritySelect('low')}
+                    className="px-4 py-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium transition-all duration-200"
+                  >
+                    Low
+                  </button>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setShowPriorityPopup(false);
+                      setPendingTodoContent('');
+                    }}
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </>

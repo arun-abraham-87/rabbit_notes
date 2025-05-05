@@ -357,8 +357,8 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   };
 
   return (
-    <>
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+    <div className="w-1/2 pr-2">
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
         <div 
           className="bg-red-50 px-6 py-4 border-b border-red-100 cursor-pointer"
           onClick={() => setIsExpanded(!isExpanded)}
@@ -391,36 +391,34 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
             {criticalTodos.map((todo) => {
               return (
                 <div key={todo.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col">
                     <div className="flex-1">
-                      <h4 className="text-lg font-medium text-gray-900 mb-2">
+                      <h4 className="text-lg font-medium text-gray-900 mb-2 break-words">
                         {formatContent(todo.content)}
                       </h4>
-                      <div className="flex items-center gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleMarkCompleted(todo)}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
-                          >
-                            <CheckIcon className="w-5 h-5" />
-                            Mark Completed
-                          </button>
-                          <button
-                            onClick={() => handleLowerPriority(todo)}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
-                          >
-                            <ArrowTrendingDownIcon className="w-5 h-5" />
-                            Lower Priority
-                          </button>
-                          <button
-                            onClick={() => handleViewRawNote(todo)}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
-                          >
-                            <DocumentTextIcon className="w-5 h-5" />
-                            View Raw Note
-                          </button>
-                        </div>
-                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      <button
+                        onClick={() => handleMarkCompleted(todo)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                      >
+                        <CheckIcon className="w-5 h-5" />
+                        Mark Completed
+                      </button>
+                      <button
+                        onClick={() => handleLowerPriority(todo)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
+                      >
+                        <ArrowTrendingDownIcon className="w-5 h-5" />
+                        Lower Priority
+                      </button>
+                      <button
+                        onClick={() => handleViewRawNote(todo)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+                      >
+                        <DocumentTextIcon className="w-5 h-5" />
+                        View Raw Note
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -429,69 +427,93 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           </div>
         )}
       </div>
+    </div>
+  );
+};
 
-      {/* Raw Note Popup */}
-      {showRawNote && selectedNote && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Raw Note Content</h3>
-              <button
-                onClick={() => setShowRawNote(false)}
-                className="text-gray-400 hover:text-gray-500 focus:outline-none"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
+const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
+
+  const overdueNotes = notes.filter(note => {
+    if (!note.content.includes('meta::watch')) return false;
+    return checkNeedsReview(note.id);
+  });
+
+  if (overdueNotes.length === 0) return null;
+
+  return (
+    <div className="w-1/2 pl-2">
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
+        <div 
+          className="bg-amber-50 px-6 py-4 border-b border-amber-100 cursor-pointer"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <ClockIcon className="h-6 w-6 text-amber-500" />
+              <h3 className="ml-3 text-lg font-semibold text-amber-800">
+                Review Overdue ({overdueNotes.length})
+              </h3>
             </div>
-            <div className="p-4 overflow-auto">
-              <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">
-                {selectedNote.content}
-              </pre>
-            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+              className="text-amber-600 hover:text-amber-700 focus:outline-none"
+              aria-label={isExpanded ? "Collapse reviews" : "Expand reviews"}
+            >
+              {isExpanded ? (
+                <ChevronUpIcon className="h-5 w-5" />
+              ) : (
+                <ChevronDownIcon className="h-5 w-5" />
+              )}
+            </button>
           </div>
         </div>
-      )}
+        {isExpanded && (
+          <div className="divide-y divide-gray-100">
+            {overdueNotes.map((note) => {
+              const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+              const reviewTime = reviews[note.id];
+              const cadence = getNoteCadence(note.id);
+              const content = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'))[0];
 
-      {/* Priority Selection Popup */}
-      {showPriorityPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-96">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Select Priority</h3>
-              <button
-                onClick={() => setShowPriorityPopup(false)}
-                className="text-gray-400 hover:text-gray-500 focus:outline-none"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <button
-                onClick={() => handlePrioritySelect('high')}
-                className="w-full px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150 flex items-center justify-center gap-2"
-              >
-                <ArrowTrendingUpIcon className="w-5 h-5" />
-                High
-              </button>
-              <button
-                onClick={() => handlePrioritySelect('medium')}
-                className="w-full px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150 flex items-center justify-center gap-2"
-              >
-                <MinusIcon className="w-5 h-5" />
-                Medium
-              </button>
-              <button
-                onClick={() => handlePrioritySelect('low')}
-                className="w-full px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150 flex items-center justify-center gap-2"
-              >
-                <ArrowTrendingDownIcon className="w-5 h-5" />
-                Low
-              </button>
-            </div>
+              return (
+                <div key={note.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+                  <div className="flex flex-col">
+                    <div className="flex-1">
+                      <h4 className="text-lg font-medium text-gray-900 mb-2 break-words">
+                        {content}
+                      </h4>
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="h-4 w-4" />
+                          <span>Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="h-4 w-4" />
+                          <span>Review cadence: {cadence.hours}h {cadence.minutes}m</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      <button
+                        onClick={() => window.location.href = '/#/watch'}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                      >
+                        <ArrowPathIcon className="w-5 h-5" />
+                        Review Now
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
-      )}
-    </>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -618,90 +640,6 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
         </div>
       )}
     </>
-  );
-};
-
-const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
-  const [isExpanded, setIsExpanded] = useState(initialExpanded);
-
-  const overdueNotes = notes.filter(note => {
-    if (!note.content.includes('meta::watch')) return false;
-    return checkNeedsReview(note.id);
-  });
-
-  if (overdueNotes.length === 0) return null;
-
-  const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-      <div 
-        className="bg-amber-50 px-6 py-4 border-b border-amber-100 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <ClockIcon className="h-6 w-6 text-amber-500" />
-            <h3 className="ml-3 text-lg font-semibold text-amber-800">
-              Review Overdue ({overdueNotes.length})
-            </h3>
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(!isExpanded);
-            }}
-            className="text-amber-600 hover:text-amber-700 focus:outline-none"
-            aria-label={isExpanded ? "Collapse reviews" : "Expand reviews"}
-          >
-            {isExpanded ? (
-              <ChevronUpIcon className="h-5 w-5" />
-            ) : (
-              <ChevronDownIcon className="h-5 w-5" />
-            )}
-          </button>
-        </div>
-      </div>
-      {isExpanded && (
-        <div className="divide-y divide-gray-100">
-          {overdueNotes.map((note) => {
-            const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-            const reviewTime = reviews[note.id];
-            const cadence = getNoteCadence(note.id);
-            const content = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'))[0];
-
-            return (
-              <div key={note.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">
-                      {content}
-                    </h4>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <ClockIcon className="h-4 w-4" />
-                        <span>Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <ClockIcon className="h-4 w-4" />
-                        <span>Review cadence: {cadence.hours}h {cadence.minutes}m</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 };
 
@@ -1697,9 +1635,11 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
             events={events}
             expanded={true}
           />
-          <CriticalTodosAlert notes={notes} expanded={true} setNotes={setNotes} />
+          <div className="flex gap-4">
+            <CriticalTodosAlert notes={notes} expanded={true} setNotes={setNotes} />
+            <ReviewOverdueAlert notes={notes} expanded={true} />
+          </div>
           <DeadlinePassedAlert notes={notes} expanded={true} />
-          <ReviewOverdueAlert notes={notes} expanded={true} />
           <UnacknowledgedMeetingsAlert 
             notes={notes} 
             expanded={true}

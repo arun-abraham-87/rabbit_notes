@@ -1101,6 +1101,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
             upcoming.push({
               id: note.id,
               date: nextOccurrence,
+              originalDate: new Date(baseEventDate),
               description: description.replace('event_description:', '').trim(),
               location,
               isRecurring: !!recurrenceType,
@@ -1175,6 +1176,18 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
                     <h4 className="text-lg font-medium text-gray-900">
                       {event.description}
                     </h4>
+                    {event.isRecurring && event.originalDate && (
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>
+                          Original date: {event.originalDate.toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })} ({getAge(event.originalDate)})
+                        </span>
+                      </div>
+                    )}
                     {event.location && (
                       <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">

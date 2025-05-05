@@ -363,6 +363,12 @@ const NotesList = ({
 
       if (!isQuickPasteEnabled) return; // Only handle if quick paste is enabled
       
+      // Check if NoteEditorModal is visible or if cursor is focused on NoteEditor
+      const isModalVisible = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50') !== null;
+      const isNoteEditorFocused = document.activeElement?.closest('.note-editor') !== null;
+      
+      if (isModalVisible || isNoteEditorFocused) return; // Don't handle Cmd+V if modal is visible or NoteEditor is focused
+      
       if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
         e.preventDefault();
         try {

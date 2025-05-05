@@ -12,6 +12,7 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
   const [rawNoteModal, setRawNoteModal] = useState({ open: false, content: '' });
   const [editPersonModal, setEditPersonModal] = useState({ open: false, personNote: null });
   const [addPersonModal, setAddPersonModal] = useState({ open: false });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Use allNotes if provided, otherwise fallback to notes
   const allNotes = allNotesProp || notes;
@@ -38,6 +39,15 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
     // Apply tag filter
     if (selectedTags.length > 0) {
       filtered = filtered.filter(note => {
+        // Special case for "No Tags" filter
+        if (selectedTags.includes('no-tags')) {
+          const hasTags = note.content
+            .split('\n')
+            .some(line => line.startsWith('meta::tag::'));
+          return !hasTags;
+        }
+
+        // Regular tag filtering
         const noteTags = note.content
           .split('\n')
           .filter(line => line.startsWith('meta::tag::'))
@@ -70,6 +80,14 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
     });
     return grouped;
   }, [filteredNotes, allTags]);
+
+  // Add a function to count people without tags
+  const getPeopleWithoutTags = useMemo(() => {
+    return notes.filter(note => {
+      if (!note.content.includes('meta::person::')) return false;
+      return !note.content.split('\n').some(line => line.startsWith('meta::tag::'));
+    }).length;
+  }, [notes]);
 
   const clearFilters = () => {
     setSelectedTags([]);
@@ -131,6 +149,30 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
     if (typeof refreshNotes === 'function') {
       refreshNotes();
     }
+  };
+
+  // Handler for removing a tag from a person
+  const handleRemoveTag = async (noteId, tagToRemove) => {
+    try {
+      const note = notes.find(n => n.id === noteId);
+      if (!note) return;
+
+      const lines = note.content.split('\n');
+      const updatedLines = lines.filter(line => !line.startsWith(`meta::tag::${tagToRemove}`));
+      const updatedContent = updatedLines.join('\n');
+
+      await updateNoteById(noteId, updatedContent);
+      if (typeof refreshNotes === 'function') {
+        refreshNotes();
+      }
+    } catch (error) {
+      console.error('Error removing tag:', error);
+    }
+  };
+
+  // Update refresh handler to use local state
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1); // Force re-render by updating state
   };
 
   return (
@@ -205,6 +247,38 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
         </div>
       </div>
 
+      {/* Refresh Button */}
+      <div className="flex justify-center">
+        <button
+          onClick={handleRefresh}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+          title="Refresh list"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+          </svg>
+          Refresh List
+        </button>
+      </div>
+
+      {/* Untagged People Alert */}
+      {getPeopleWithoutTags > 0 && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                {getPeopleWithoutTags} {getPeopleWithoutTags === 1 ? 'person' : 'people'} {getPeopleWithoutTags === 1 ? 'has' : 'have'} no tags assigned.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tags Filter */}
       <div className="flex flex-wrap gap-4 items-center">
         <div>
@@ -229,6 +303,27 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
                 {tag}
               </button>
             ))}
+            <button
+              onClick={() => {
+                setSelectedTags(prev =>
+                  prev.includes('no-tags')
+                    ? prev.filter(t => t !== 'no-tags')
+                    : [...prev, 'no-tags']
+                );
+              }}
+              className={`px-2 py-1 text-sm rounded-md flex items-center gap-1 ${
+                selectedTags.includes('no-tags')
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <span>No Tags</span>
+              {getPeopleWithoutTags > 0 && (
+                <span className="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded-full">
+                  {getPeopleWithoutTags}
+                </span>
+              )}
+            </button>
           </div>
         </div>
         {(selectedTags.length > 0 || localSearchQuery) && (
@@ -324,6 +419,13 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
                                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
                               >
                                 {tag}
+                                <button
+                                  onClick={() => handleRemoveTag(note.id, tag)}
+                                  className="ml-1 text-indigo-600 hover:text-indigo-800"
+                                  title="Remove tag"
+                                >
+                                  <XMarkIcon className="h-3 w-3" />
+                                </button>
                               </span>
                             ))}
                           </div>
@@ -402,6 +504,13 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
                         className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
                       >
                         {tag}
+                        <button
+                          onClick={() => handleRemoveTag(note.id, tag)}
+                          className="ml-1 text-indigo-600 hover:text-indigo-800"
+                          title="Remove tag"
+                        >
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
                       </span>
                     ))}
                   </div>

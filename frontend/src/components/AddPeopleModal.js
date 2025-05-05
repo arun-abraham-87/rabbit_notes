@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/solid';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
 
@@ -10,6 +10,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
   const [tagInput, setTagInput] = useState('');
   const [tagList, setTagList] = useState([]);
   const [tagError, setTagError] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
 
   // Prefill fields if editing
   useEffect(() => {
@@ -32,6 +33,29 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
     }
     setTagError('');
   }, [personNote, isOpen]);
+
+  // Get all unique tags from all notes
+  const existingTags = useMemo(() => {
+    const tagSet = new Set();
+    allNotes
+      .filter(note => note.content.includes('meta::person::'))
+      .forEach(note => {
+        const tagLines = note.content
+          .split('\n')
+          .filter(line => line.startsWith('meta::tag::'))
+          .map(line => line.split('::')[2]);
+        tagLines.forEach(tag => tagSet.add(tag));
+      });
+    return Array.from(tagSet).sort();
+  }, [allNotes]);
+
+  // Filter existing tags based on input
+  const filteredExistingTags = useMemo(() => {
+    if (!tagFilter) return existingTags;
+    return existingTags.filter(tag => 
+      tag.toLowerCase().includes(tagFilter.toLowerCase())
+    );
+  }, [existingTags, tagFilter]);
 
   const validateTag = (tag) => {
     if (!tag.trim()) return false;
@@ -121,6 +145,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       setTagList([]);
       setTagInput('');
       setTagError('');
+      setTagFilter('');
       onClose();
     } catch (error) {
       console.error('Error saving person:', error);
@@ -244,6 +269,55 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
                 Press space or enter to add a tag. Backspace to remove the last tag.
               </p>
             </div>
+
+            {/* Existing Tags */}
+            {existingTags.length > 0 && (
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-gray-500">Existing tags:</p>
+                  <div className="relative w-32">
+                    <input
+                      type="text"
+                      value={tagFilter}
+                      onChange={(e) => setTagFilter(e.target.value)}
+                      placeholder="Filter tags..."
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    {tagFilter && (
+                      <button
+                        onClick={() => setTagFilter('')}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <XMarkIcon className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {filteredExistingTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        if (!tagList.includes(tag)) {
+                          setTagList([...tagList, tag]);
+                        }
+                      }}
+                      disabled={tagList.includes(tag)}
+                      className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium transition-colors ${
+                        tagList.includes(tag)
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+                {filteredExistingTags.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-2">No matching tags found</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

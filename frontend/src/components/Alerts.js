@@ -1334,11 +1334,13 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
 
   const criticalTodos = notes.filter(note => {
     if (!note.content.includes('meta::todo::')) return false;
+    if (note.content.includes('meta::todo_completed')) return false;
     return note.content.includes('meta::critical');
   });
 
   const passedDeadlineTodos = notes.filter(note => {
     if (!note.content.includes('meta::todo::')) return false;
+    if (note.content.includes('meta::todo_completed')) return false;
     
     const endDateMatch = note.content.match(/meta::end_date::(\d{4}-\d{2}-\d{2})/);
     if (!endDateMatch) return false;

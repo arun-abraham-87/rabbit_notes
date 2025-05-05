@@ -528,12 +528,18 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   };
 
   const saveNote = () => {
+    console.log('Saving note with lines:', lines);
+    
     // Remove empty lines from the end and trim all lines
     const trimmedLines = lines
       .map(line => line.text.trim()) // Trim each line
       .filter(text => text !== ''); // Remove empty lines
-
+    
+    console.log('Trimmed lines:', trimmedLines);
+    
+    // Join lines with newlines
     const merged = trimmedLines.join('\n');
+    console.log('Merged content:', merged);
     
     // Check if note is empty or only contains whitespace
     if (!merged || !merged.trim()) {
@@ -541,10 +547,17 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     }
     
     if (isAddMode) {
-      addNote(merged);
-      setLines([{ id: 'line-0', text: '', isTitle: false }]);
-      setUrlLabelSelection({ urlIndex: null, labelIndex: null });
-      onCancel();
+      if (isModal) {
+        // In modal mode, we pass the content to the parent's onSave handler
+        console.log('Passing content to modal:', merged);
+        onSave(merged);
+      } else {
+        // In non-modal mode, we use addNote directly
+        addNote(merged);
+        setLines([{ id: 'line-0', text: '', isTitle: false }]);
+        setUrlLabelSelection({ urlIndex: null, labelIndex: null });
+        onCancel();
+      }
     } else {
       // Update the note and trigger the callback
       updateNoteById(note.id, merged).then(() => {
@@ -1166,10 +1179,14 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           <button
             onClick={() => {
               const merged = lines.map(line => line.text).join('\n');
-              addNote(merged);
-              setLines([{ id: 'line-0', text: '', isTitle: false }]);
-              setUrlLabelSelection({ urlIndex: null, labelIndex: null });
-              onCancel();
+              if (isModal) {
+                onSave(merged);
+              } else {
+                addNote(merged);
+                setLines([{ id: 'line-0', text: '', isTitle: false }]);
+                setUrlLabelSelection({ urlIndex: null, labelIndex: null });
+                onCancel();
+              }
             }}
             className="px-3 py-1.5 rounded text-sm bg-gray-800 text-white hover:bg-gray-700 shadow-sm"
           >

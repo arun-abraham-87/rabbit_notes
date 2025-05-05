@@ -25,7 +25,8 @@ import {
   ClockIcon,
   ClipboardIcon,
   XMarkIcon,
-  UserPlusIcon
+  UserPlusIcon,
+  EyeIcon
 } from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
 import CompressedNotesList from './CompressedNotesList';
@@ -95,6 +96,8 @@ const NotesList = ({
   const textareaRef = useRef(null);
   const refreshButtonRef = useRef(null);
   const [showAddPeopleModal, setShowAddPeopleModal] = useState(false);
+  const [selectedPriority, setSelectedPriority] = useState(null);
+  const [isWatchSelected, setIsWatchSelected] = useState(false);
 
   // Update localStorage when quick paste state changes
   useEffect(() => {
@@ -408,11 +411,45 @@ const NotesList = ({
       const day = now.getDate().toString().padStart(2, '0');
       const noteDate = `${year}-${month}-${day}`;
 
+      // Format datetime for meta tags (dd/mm/yyyy, hh:mm am/pm)
+      const hours = now.getHours();
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'pm' : 'am';
+      const formattedHours = hours % 12 || 12;
+      const formattedDateTime = `${day}/${month}/${year}, ${formattedHours}:${minutes} ${ampm}`;
+
       // Get the first line from clipboard content
       const firstClipboardLine = pasteText.split('\n')[0].trim();
       
       // Create the note with textbox content and first line from clipboard
-      const noteContent = `${newNoteText.trim()}\n${firstClipboardLine}\nmeta::review_pending`;
+      let noteContent = `${newNoteText.trim()}\n${firstClipboardLine}`;
+      
+      // Add comments for selections
+      let comments = [];
+      if (selectedPriority) {
+        comments.push(`Marked as todo - priority ${selectedPriority}`);
+      }
+      if (isWatchSelected) {
+        comments.push('Added to watch list');
+      }
+      if (comments.length > 0) {
+        noteContent += '\n\n' + comments.join(', ');
+      }
+      
+      // Add todo meta tag if priority is selected
+      if (selectedPriority) {
+        noteContent += `\nmeta::todo::${formattedDateTime}`;
+        noteContent += `\nmeta::${selectedPriority}`;
+      }
+      
+      // Add watch meta tag if watch is selected
+      if (isWatchSelected) {
+        noteContent += `\nmeta::watch::${formattedDateTime}`;
+      }
+      
+      // Add review pending tag
+      noteContent += '\nmeta::review_pending';
+      
       const newNote = await addNewNoteCommon(noteContent, [], noteDate);
       
       // Refresh the notes list with the current search query and date
@@ -423,6 +460,8 @@ const NotesList = ({
       setShowPastePopup(false);
       setPasteText('');
       setNewNoteText('');
+      setSelectedPriority(null);
+      setIsWatchSelected(false);
       Alerts.success('Note created successfully');
     } catch (error) {
       console.error('Error creating note:', error);
@@ -1053,7 +1092,13 @@ const NotesList = ({
 
       {showPastePopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+          <div className={`bg-white rounded-lg p-6 w-full max-w-2xl ${
+            selectedPriority === 'critical' ? 'ring-4 ring-red-500' :
+            selectedPriority === 'high' ? 'ring-2 ring-orange-500' :
+            selectedPriority === 'medium' ? 'ring-2 ring-yellow-500' :
+            selectedPriority === 'low' ? 'ring-2 ring-green-500' :
+            'ring-1 ring-gray-200'
+          }`}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-800">Create New Note</h2>
               <button
@@ -1061,6 +1106,8 @@ const NotesList = ({
                   setShowPastePopup(false);
                   setPasteText('');
                   setNewNoteText('');
+                  setSelectedPriority(null);
+                  setIsWatchSelected(false);
                 }}
                 className="text-gray-500 hover:text-gray-700"
               >
@@ -1084,6 +1131,60 @@ const NotesList = ({
                   <pre className="whitespace-pre-wrap text-sm text-gray-600">{pasteText}</pre>
                 </div>
               </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsWatchSelected(!isWatchSelected)}
+                    className={`p-1 rounded-md ${isWatchSelected ? 'bg-indigo-100 text-indigo-600' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                    title="Watch"
+                  >
+                    <EyeIcon className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-700">Priority:</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setSelectedPriority(selectedPriority === 'critical' ? null : 'critical')}
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${selectedPriority === 'critical' ? 'bg-red-600 ring-2 ring-red-300 text-white' : 'bg-red-200 hover:bg-red-300 text-red-700'}`}
+                      title="Critical"
+                    >
+                      C
+                    </button>
+                    <button
+                      onClick={() => setSelectedPriority(selectedPriority === 'high' ? null : 'high')}
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${selectedPriority === 'high' ? 'bg-orange-600 ring-2 ring-orange-300 text-white' : 'bg-orange-200 hover:bg-orange-300 text-orange-700'}`}
+                      title="High"
+                    >
+                      H
+                    </button>
+                    <button
+                      onClick={() => setSelectedPriority(selectedPriority === 'medium' ? null : 'medium')}
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${selectedPriority === 'medium' ? 'bg-yellow-600 ring-2 ring-yellow-300 text-white' : 'bg-yellow-200 hover:bg-yellow-300 text-yellow-700'}`}
+                      title="Medium"
+                    >
+                      M
+                    </button>
+                    <button
+                      onClick={() => setSelectedPriority(selectedPriority === 'low' ? null : 'low')}
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${selectedPriority === 'low' ? 'bg-green-600 ring-2 ring-green-300 text-white' : 'bg-green-200 hover:bg-green-300 text-green-700'}`}
+                      title="Low"
+                    >
+                      L
+                    </button>
+                  </div>
+                </div>
+              </div>
+              {(selectedPriority || isWatchSelected) && (
+                <div className="text-sm text-gray-600 italic space-y-1">
+                  {selectedPriority && (
+                    <div>Marked as todo - priority {selectedPriority}</div>
+                  )}
+                  {isWatchSelected && (
+                    <div>Added to watch list</div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="mt-4 flex justify-end">
               <button

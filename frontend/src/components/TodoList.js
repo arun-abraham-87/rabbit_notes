@@ -426,6 +426,19 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     return acc;
   }, {});
 
+  // Sort todos within each priority group if date sorting is selected
+  if (sortBy === 'date' || sortBy === 'age') {
+    Object.keys(groupedTodos).forEach(priority => {
+      groupedTodos[priority].sort((a, b) => {
+        if (sortBy === 'date') {
+          return parseAusDate(b.created_datetime) - parseAusDate(a.created_datetime);
+        } else { // age
+          return parseAusDate(a.created_datetime) - parseAusDate(b.created_datetime);
+        }
+      });
+    });
+  }
+
   // Priority order for display
   const priorityOrder = ['critical', 'high', 'medium', 'low'];
 
@@ -508,6 +521,11 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     const priorityAge = getPriorityAge(todo.content);
     const deadlineInfo = getDeadlineInfo(todo.content);
 
+    // Calculate days open
+    const created = new Date(createdDate);
+    const now = new Date();
+    const daysOpen = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+
     const priorityColors = {
       critical: 'bg-rose-50 border-4 border-red-500',
       high: 'bg-rose-50',
@@ -537,38 +555,20 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           priorityColors[currentPriority]
         } ${isCompleted ? 'opacity-60' : ''}`}
       >
-        {/* Header - Only shown when showHeaders is true */}
-        {showHeaders && (
-          <div className={`flex items-center justify-between p-3 border-b ${
-            'bg-white/50'
-          }`}>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs font-medium text-gray-500`}>Created:</span>
-              <span className={`text-xs font-medium ${ageColorClass}`}>
-                {new Date(createdDate).toLocaleDateString()}
-              </span>
-              <span className="text-gray-300">•</span>
-              <span className={`text-xs font-medium ${ageColorClass}`}>
-                {getAgeLabel(createdDate)}
-              </span>
-              <span className="text-gray-300">•</span>
-              <span className={`text-xs font-medium`}>Status:</span>
-              <span className={`text-xs font-medium ${
-                currentPriority === 'high' ? 'text-rose-600' :
-                currentPriority === 'medium' ? 'text-amber-600' :
-                currentPriority === 'critical' ? 'text-red-600' :
-                'text-emerald-600'
-              }`}>
-                {currentPriority.charAt(0).toUpperCase() + currentPriority.slice(1)}
-              </span>
-              {priorityAge && (
-                <span className={`text-xs font-medium`}>
-                  (for {priorityAge})
-                </span>
-              )}
-            </div>
+        {/* Header - Always show */}
+        <div className={`flex items-center justify-between p-2 border-b ${
+          'bg-white/50'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-medium ${ageColorClass}`}>
+              {new Date(createdDate).toLocaleDateString()}
+            </span>
+            <span className="text-gray-300">•</span>
+            <span className={`text-xs font-medium ${ageColorClass}`}>
+              {daysOpen === 0 ? 'Opened today' : `Open for ${daysOpen} ${daysOpen === 1 ? 'day' : 'days'}`}
+            </span>
           </div>
-        )}
+        </div>
 
         <div className="flex-1 p-3 overflow-auto relative">
           {/* Priority Buttons */}
@@ -1022,24 +1022,34 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
 
           {/* Todo Grid/List with Priority Sections */}
           <div className="space-y-6">
-            {priorityOrder.map(priority => {
-              const todos = groupedTodos[priority] || [];
-              if (todos.length === 0) return null;
+            {sortBy === 'priority' ? (
+              // Grouped by priority view
+              priorityOrder.map(priority => {
+                const todos = groupedTodos[priority] || [];
+                if (todos.length === 0) return null;
 
-              return (
-                <div key={priority} className="space-y-3">
-                  <div className={`flex items-center gap-2 py-2 ${priorityHeaderStyles[priority]}`}>
-                    <h2 className="text-lg font-semibold capitalize">{priority} Priority</h2>
-                    <span className="text-sm font-medium">({todos.length})</span>
+                return (
+                  <div key={priority} className="space-y-3">
+                    <div className={`flex items-center gap-2 py-2 ${priorityHeaderStyles[priority]}`}>
+                      <h2 className="text-lg font-semibold capitalize">{priority} Priority</h2>
+                      <span className="text-sm font-medium">({todos.length})</span>
+                    </div>
+                    <div className={`grid gap-4 ${
+                      viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
+                    }`}>
+                      {todos.map(renderTodoCard)}
+                    </div>
                   </div>
-                  <div className={`grid gap-4 ${
-                    viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
-                  }`}>
-                    {todos.map(renderTodoCard)}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              // Flat list view for date/age sorting
+              <div className={`grid gap-4 ${
+                viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
+              }`}>
+                {filteredTodos.map(renderTodoCard)}
+              </div>
+            )}
           </div>
 
           {/* Empty State */}

@@ -16,7 +16,8 @@ import {
   CodeBracketIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  MinusIcon
+  MinusIcon,
+  PlusIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon } from '../utils/ApiUtils';
@@ -370,20 +371,32 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                 Critical Todos ({criticalTodos.length})
               </h3>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsExpanded(!isExpanded);
-              }}
-              className="text-red-600 hover:text-red-700 focus:outline-none"
-              aria-label={isExpanded ? "Collapse todos" : "Expand todos"}
-            >
-              {isExpanded ? (
-                <ChevronUpIcon className="h-5 w-5" />
-              ) : (
-                <ChevronDownIcon className="h-5 w-5" />
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.location.href = 'http://localhost:3000/#/todos';
+                }}
+                className="text-red-600 hover:text-red-700 focus:outline-none"
+                aria-label="Add new todo"
+              >
+                <PlusIcon className="h-5 w-5" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(!isExpanded);
+                }}
+                className="text-red-600 hover:text-red-700 focus:outline-none"
+                aria-label={isExpanded ? "Collapse todos" : "Expand todos"}
+              >
+                {isExpanded ? (
+                  <ChevronUpIcon className="h-5 w-5" />
+                ) : (
+                  <ChevronDownIcon className="h-5 w-5" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
         {isExpanded && (

@@ -1474,7 +1474,7 @@ const ExpenseTracker = () => {
 
   //console.log('Rendering main component with expenses:', expenses);
   return (
-    <div className="w-4/5 mx-auto px-4 py-8">
+    <div className="w-full px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Expense Tracker</h1>
         <div className="flex gap-2">

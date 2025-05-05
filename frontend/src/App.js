@@ -484,9 +484,11 @@ const AppContent = () => {
                     } />
                     <Route path="/expense" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
-                          <div className="min-h-screen bg-gray-50">
-                            <ExpenseTracker />
+                        <div className="max-w-[80%] mx-auto h-full">
+                          <div className="h-full w-full bg-gray-50">
+                            <div className="h-full w-full">
+                              <ExpenseTracker />
+                            </div>
                           </div>
                         </div>
                       </div>

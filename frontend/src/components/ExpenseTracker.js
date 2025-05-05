@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, TrashIcon, PencilIcon, Cog6ToothIcon, ArrowUpTrayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { loadAllNotes, updateNoteById } from '../utils/ApiUtils';
+import { loadAllNotes, updateNoteById, addNewNoteCommon } from '../utils/ApiUtils';
 import { Pie, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import Budget from './Budget';
 import ExpenseDataLoader from './ExpenseDataLoader';
 import ExpenseLoadStatus from './ExpenseLoadStatus';
+import { toast } from 'react-toastify';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -21,7 +22,8 @@ const ExpenseTracker = () => {
     description: '',
     amount: '',
     category: 'Food',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    note: '' // Add note field
   });
   const [editingId, setEditingId] = useState(null);
   const [totalExpenses, setTotalExpenses] = useState(0);
@@ -73,6 +75,9 @@ const ExpenseTracker = () => {
   const [showBulkExclude, setShowBulkExclude] = useState(false);
   const [isLoadStatusCollapsed, setIsLoadStatusCollapsed] = useState(true);
   const [showYearlyLoadStatus, setShowYearlyLoadStatus] = useState(false);
+
+  const [popupPosition, setPopupPosition] = useState(null);
+  const [popupText, setPopupText] = useState('');
 
   const categories = ['Food', 'Transportation', 'Entertainment', 'Bills', 'Shopping', 'Other'];
   const months = [
@@ -150,9 +155,13 @@ const ExpenseTracker = () => {
           const typeNoteId = typeMatch[1];
           type = typeMap.get(typeNoteId) || 'Unassigned';
         }
+
+        // Check for meta_line::description tag
+        const descriptionMatch = expenseLine.match(/meta_line::description::"([^"]+)"/);
+        const description = descriptionMatch ? descriptionMatch[1] : '';
         
-        // Split the expense line by spaces (excluding the meta tag)
-        const cleanLine = expenseLine.replace(/meta_line::expense_type::[^\s]*\s*/, '');
+        // Split the expense line by spaces (excluding the meta tags)
+        const cleanLine = expenseLine.replace(/meta_line::[^:]+::[^\s]*\s*/g, '');
         const parts = cleanLine.trim().split(/\s+/);
         
         if (parts.length < 3) return null;
@@ -160,7 +169,7 @@ const ExpenseTracker = () => {
         // First part is date, second is amount, rest is description
         const date = parts[0];
         const amount = parseFloat(parts[1]);
-        const description = parts.slice(2).join(' ');
+        const mainDescription = parts.slice(2).join(' ');
 
         const expenseId = `${note.id}-${index}`;
         
@@ -188,7 +197,8 @@ const ExpenseTracker = () => {
           id: expenseId,
           date,
           amount,
-          description,
+          description: mainDescription,
+          note: description,
           type,
           noteId: note.id,
           lineIndex: index,
@@ -428,7 +438,8 @@ const ExpenseTracker = () => {
       description: '',
       amount: '',
       category: 'Food',
-      date: new Date().toISOString().split('T')[0]
+      date: new Date().toISOString().split('T')[0],
+      note: '' // Reset note field
     });
   };
 
@@ -1334,6 +1345,102 @@ const ExpenseTracker = () => {
     }
   };
 
+  const handleNoteChange = async (expenseId, note) => {
+    try {
+      // Get the line info from the expense line map
+      const lineInfo = expenseLineMap.get(expenseId);
+      if (!lineInfo) {
+        console.error('Line info not found for expense:', expenseId);
+        toast.error('Failed to save note: Line info not found');
+        return;
+      }
+
+      const { noteId, lineIndex } = lineInfo;
+      console.log('Found line info:', { noteId, lineIndex });
+
+      // Find the original note
+      const originalNote = allNotes.find(note => note.id === noteId);
+      if (!originalNote) {
+        console.error('Original note not found:', noteId);
+        toast.error('Failed to save note: Original note not found');
+        return;
+      }
+
+      // Split the note content into lines
+      const lines = originalNote.content.split('\n');
+      const expenseLine = lines[lineIndex];
+      
+      if (expenseLine) {
+        // Get the base content (without any meta_line tags)
+        const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
+        
+        // Extract all existing meta_line tags except description
+        const existingMetaTags = expenseLine.match(/meta_line::(?!description)[^:]+::[^\s]+/g) || [];
+        
+        // Create the new line with all tags
+        const newMetaTags = [
+          ...existingMetaTags,
+          ...(note ? [`meta_line::description::${note}`] : [])
+        ];
+        
+        // Combine everything with proper spacing
+        const updatedLine = [baseContent, ...newMetaTags].join(' ');
+        lines[lineIndex] = updatedLine;
+
+        try {
+          const updatedContent = lines.join('\n');
+          await updateNoteById(noteId, updatedContent);
+          
+          // Update allNotes state
+          setAllNotes(prevNotes => 
+            prevNotes.map(note => 
+              note.id === noteId ? { ...note, content: updatedContent } : note
+            )
+          );
+
+          // Update the local state
+          setExpenses(prevExpenses => 
+            prevExpenses.map(exp => 
+              exp.id === expenseId ? { ...exp, note: note } : exp
+            )
+          );
+
+          // Refresh the expenses
+          const refreshResponse = await loadAllNotes();
+          setAllNotes(refreshResponse.notes);
+          const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+          setExpenses(parsedExpenses);
+          setFilteredExpenses(parsedExpenses);
+          calculateTotals(parsedExpenses);
+          
+          toast.success('Note saved successfully');
+        } catch (error) {
+          console.error('Error updating note:', error);
+          toast.error('Failed to save note: ' + error.message);
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleNoteChange:', error);
+      toast.error('Failed to save note: ' + error.message);
+    }
+  };
+
+  const handleIconClick = (event) => {
+    setPopupPosition({
+      x: event.clientX,
+      y: event.clientY
+    });
+    setPopupText('');
+  };
+
+  const handlePopupKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      // Save the text here
+      setPopupPosition(null);
+    }
+  };
+
   if (loading) {
     //console.log('Rendering loading state');
     return (
@@ -2133,36 +2240,48 @@ const ExpenseTracker = () => {
                 Amount {sortConfig.key === 'amount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredExpenses.map((expense, index) => {
-              return (
-                <tr key={expense.id} className={selectedExpenses.has(expense.id) ? 'bg-blue-50' : ''}>
+            {filteredExpenses.map((expense, index) => (
+              <React.Fragment key={expense.id}>
+                <tr 
+                  className={selectedExpenses.has(expense.id) ? 'bg-blue-50' : ''}
+                  data-expense-id={expense.id}
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
                     <input
                       type="checkbox"
                       checked={selectedExpenses.has(expense.id)}
                       onChange={() => toggleExpenseSelection(expense.id)}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      data-expense-checkbox={expense.id}
                     />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12" data-expense-date={expense.id}>
                     {expense.date}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 w-2/12">
+                  <td className="px-6 py-4 text-sm text-gray-900 w-2/12" data-expense-description={expense.id}>
                     <div className="truncate max-w-xs">{expense.description}</div>
+                    {expense.note && (
+                      <div className="text-xs text-gray-500 mt-1" data-expense-note={expense.id}>
+                        note: {expense.note}
+                      </div>
+                    )}
                     {expense.tags && expense.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {expense.tags.map((tag, index) => (
+                      <div className="flex flex-wrap gap-1 mt-1" data-expense-tags={expense.id}>
+                        {expense.tags.map((tag, tagIndex) => (
                           <span
-                            key={index}
+                            key={`${expense.id}-tag-${tagIndex}`}
                             className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                            data-tag-id={`${expense.id}-${tag}`}
                           >
                             {tag}
                             <button
                               onClick={() => handleTagRemove(expense.id, tag)}
                               className="ml-1 text-blue-600 hover:text-blue-800"
+                              data-tag-remove={`${expense.id}-${tag}`}
                             >
                               ×
                             </button>
@@ -2232,9 +2351,33 @@ const ExpenseTracker = () => {
                       </button>
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <button
+                      onClick={(e) => {
+                        const rect = e.target.getBoundingClientRect();
+                        setPopupPosition({
+                          x: rect.left + rect.width / 2,
+                          y: rect.top + rect.height / 2
+                        });
+                        setPopupText(expense.note || '');
+                      }}
+                      className="text-blue-600 hover:text-blue-900"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                  </td>
                 </tr>
-              );
-            })}
+                {expense.note && (
+                  <tr className="bg-gray-50">
+                    <td colSpan="8" className="px-6 py-2 text-sm text-gray-600">
+                      {expense.note}
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
           </tbody>
         </table>
       </div>
@@ -2373,6 +2516,59 @@ const ExpenseTracker = () => {
           onClose={() => setShowYearlyLoadStatus(false)}
         />
       )}
+
+      {popupPosition && (
+        <div
+          className="fixed bg-white p-4 rounded-lg shadow-lg border border-gray-200 z-50"
+          style={{
+            left: `${popupPosition.x}px`,
+            top: `${popupPosition.y}px`,
+            transform: 'translate(-50%, -50%)'
+          }}
+        >
+          <textarea
+            value={popupText}
+            onChange={(e) => setPopupText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                // Save the note here
+                setPopupPosition(null);
+              }
+            }}
+            placeholder="Enter note..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows={4}
+            autoFocus
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              onClick={() => setPopupPosition(null)}
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                // Save the note here
+                setPopupPosition(null);
+              }}
+              className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={handleIconClick}
+        className="fixed bottom-4 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
     </div>
   );
 };

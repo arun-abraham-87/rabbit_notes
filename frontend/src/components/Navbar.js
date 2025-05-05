@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import TimeZoneDisplay from './TimeZoneDisplay';
-import { ChevronDownIcon, Cog6ToothIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, Cog6ToothIcon, Bars3Icon } from '@heroicons/react/24/solid';
 
 const Navbar = ({ activePage, setActivePage, settings }) => {
   const [time, setTime] = useState(new Date());
   const [showTimezones, setShowTimezones] = useState(false);
   const [selectedTimezones, setSelectedTimezones] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -33,6 +34,34 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
     month: 'long',
     day: 'numeric'
   });
+
+  const navigationButtons = [
+    { id: 'dashboard', label: 'Dashboard', show: settings?.navigation?.showDashboardPage !== false },
+    { id: 'notes', label: 'Notes', show: true },
+    { id: 'watch', label: 'Watch', show: settings?.navigation?.showWatchPage !== false },
+    { id: 'tags', label: 'Tags', show: settings?.navigation?.showTagsPage !== false },
+    { id: 'todos', label: 'Todos', show: settings?.navigation?.showTodosPage !== false },
+    { id: 'journals', label: 'Journals', show: settings?.navigation?.showJournalsPage !== false },
+    { id: 'events', label: 'Events', show: settings?.navigation?.showEventsPage !== false },
+    { id: 'people', label: 'People', show: settings?.navigation?.showPeoplePage !== false },
+    { id: 'news', label: 'News', show: settings?.navigation?.showNewsPage !== false },
+    { id: 'expense', label: 'Expense', show: settings?.navigation?.showExpensePage !== false },
+    { id: 'trackers', label: 'Trackers', show: settings?.navigation?.showTrackersPage !== false },
+  ].filter(button => button.show);
+
+  const visibleButtons = navigationButtons.slice(0, 3);
+  const dropdownButtons = navigationButtons.slice(3);
+
+  const NavButton = ({ id, label }) => (
+    <button
+      onClick={() => setActivePage(id)}
+      className={`px-3 py-1 rounded-full border ${
+        activePage === id ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+      } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <nav className="border-b py-4 px-8 bg-background hover:shadow-sm transition-shadow">
@@ -69,114 +98,46 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
 
         {/* Right: Navigation Buttons */}
         <div className="flex items-center space-x-4">
-          {settings?.navigation?.showDashboardPage !== false && (
-            <button
-              onClick={() => setActivePage('dashboard')}
-              className={`px-3 py-1 rounded-full border ${
-                activePage === 'dashboard' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-            >
-              Dashboard
-            </button>
+          {/* Always visible first three buttons */}
+          <div className="flex items-center space-x-4">
+            {visibleButtons.map(button => (
+              <NavButton key={button.id} id={button.id} label={button.label} />
+            ))}
+          </div>
+          
+          {/* Dropdown menu for remaining buttons */}
+          {dropdownButtons.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="p-2 rounded-full text-gray-700 hover:bg-gray-100 transition"
+                title="More options"
+              >
+                <Bars3Icon className="h-5 w-5" />
+              </button>
+              
+              {showDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                  {dropdownButtons.map(button => (
+                    <button
+                      key={button.id}
+                      onClick={() => {
+                        setActivePage(button.id);
+                        setShowDropdown(false);
+                      }}
+                      className={`block w-full text-left px-4 py-2 text-sm ${
+                        activePage === button.id ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {button.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
-          <button
-            onClick={() => setActivePage('notes')}
-            className={`px-3 py-1 rounded-full border ${
-              activePage === 'notes' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-            } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-          >
-            Notes
-          </button>
-          {settings?.navigation?.showWatchPage !== false && (
-            <button
-              onClick={() => setActivePage('watch')}
-              className={`px-3 py-1 rounded-full border ${
-                activePage === 'watch' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-            >
-              Watch
-            </button>
-          )}
-          {settings?.navigation?.showTagsPage !== false && (
-            <button
-              onClick={() => setActivePage('tags')}
-              className={`px-3 py-1 rounded-full border ${
-                activePage === 'tags' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-            >
-              Tags
-            </button>
-          )}
-          {settings?.navigation?.showTodosPage !== false && (
-            <button
-              onClick={() => setActivePage('todos')}
-              className={`px-3 py-1 rounded-full border ${
-                activePage === 'todos' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-            >
-              Todos
-            </button>
-          )}
-          {settings?.navigation?.showJournalsPage !== false && (
-            <button
-              onClick={() => setActivePage('journals')}
-              className={`px-3 py-1 rounded-full border ${
-                activePage === 'journals' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-            >
-              Journals
-            </button>
-          )}
-          {settings?.navigation?.showEventsPage !== false && (
-            <button
-              onClick={() => setActivePage('events')}
-              className={`px-3 py-1 rounded-full border ${
-                activePage === 'events' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-            >
-              Events
-            </button>
-          )}
-          {settings?.navigation?.showPeoplePage !== false && (
-            <button
-              onClick={() => setActivePage('people')}
-              className={`px-3 py-1 rounded-full border ${
-                activePage === 'people' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-            >
-              People
-            </button>
-          )}
-          {settings?.navigation?.showNewsPage !== false && (
-            <button
-              onClick={() => setActivePage('news')}
-              className={`px-3 py-1 rounded-full border ${
-                activePage === 'news' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-            >
-              News
-            </button>
-          )}
-          {settings?.navigation?.showExpensePage !== false && (
-            <button
-              onClick={() => setActivePage('expense')}
-              className={`px-3 py-1 rounded-full border ${
-                activePage === 'expense' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-            >
-              Expense
-            </button>
-          )}
-          {settings?.navigation?.showTrackersPage !== false && (
-            <button
-              onClick={() => setActivePage('trackers')}
-              className={`px-3 py-1 rounded-full border ${
-                activePage === 'trackers' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
-              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
-            >
-              Trackers
-            </button>
-          )}
+
+          {/* Settings button */}
           <button
             onClick={() => setActivePage('manage-notes')}
             className={`p-2 rounded-full ${

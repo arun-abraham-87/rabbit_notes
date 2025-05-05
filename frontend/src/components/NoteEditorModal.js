@@ -11,14 +11,14 @@ import NoteEditor from './NoteEditor';
 import { getSettings, defaultSettings, loadTags } from '../utils/ApiUtils';
 
 const NoteEditorModal = () => {
-  const { isOpen, initialContent, mode, noteId, closeEditor } = useNoteEditor();
+  const { isOpen, initialContent, mode, noteId, metaTags, closeEditor } = useNoteEditor();
   const { addNote, updateNote } = useNotes();
   const [settings, setSettings] = useState({});
   const [objList, setObjList] = useState([]);
   const [excludeEvents, setExcludeEvents] = useState(false);
   const [excludeMeetings, setExcludeMeetings] = useState(false);
-  const [selectedMetaTags, setSelectedMetaTags] = useState([]);
-  const [showPriorityOptions, setShowPriorityOptions] = useState(false);
+  const [selectedMetaTags, setSelectedMetaTags] = useState(metaTags || []);
+  const [showPriorityOptions, setShowPriorityOptions] = useState(metaTags?.some(tag => tag.startsWith('meta::todo')) || false);
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -57,6 +57,12 @@ const NoteEditorModal = () => {
     loadSettings();
     fetchTags();
   }, []);
+
+  // Update selectedMetaTags when metaTags from context changes
+  useEffect(() => {
+    setSelectedMetaTags(metaTags || []);
+    setShowPriorityOptions(metaTags?.some(tag => tag.startsWith('meta::todo')) || false);
+  }, [metaTags]);
 
   const handleMetaTagClick = (tagType) => {
     const now = new Date();

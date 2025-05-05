@@ -19,8 +19,11 @@ import {
 import { parseNoteContent } from '../utils/TextUtils';
 import { getFormattedDateWithAge } from '../utils/DateUtils';
 import TodoStats from './TodoStats';
+import NoteEditorModal from './NoteEditorModal';
+import { useNoteEditor } from '../contexts/NoteEditorContext';
 
 const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => {
+  const { openEditor } = useNoteEditor();
   const [searchQuery, setSearchQuery] = useState('');
   const [priorities, setPriorities] = useState({});
   const [priorityFilter, setPriorityFilter] = useState(null);
@@ -573,6 +576,23 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           {/* Priority Buttons */}
           <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex items-center gap-1 z-10">
             <button
+              onClick={() => {
+                // Extract meta tags from the content
+                const lines = todo.content.split('\n');
+                const metaTags = lines.filter(line => line.trim().startsWith('meta::'));
+                const content = lines.filter(line => !line.trim().startsWith('meta::')).join('\n').trim();
+                
+                // Open editor with both content and meta tags
+                openEditor('edit', content, todo.id, metaTags);
+              }}
+              className={`p-1.5 rounded-full transition-all duration-200 ${
+                'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+              }`}
+              title="Edit note"
+            >
+              <PencilIcon className="h-4 w-4" />
+            </button>
+            <button
               onClick={() => setShowRawNotes(prev => ({ ...prev, [todo.id]: !prev[todo.id] }))}
               className={`p-1.5 rounded-full transition-all duration-200 ${
                 showRawNotes[todo.id]
@@ -1073,6 +1093,9 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
               </div>
             </div>
           )}
+
+          {/* Note Editor Modal */}
+          <NoteEditorModal />
         </>
       )}
     </div>

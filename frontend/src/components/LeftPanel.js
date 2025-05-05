@@ -436,6 +436,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       <div 
         className="fixed left-0 top-0 h-full w-2 bg-indigo-600 hover:bg-indigo-700 transition-colors z-40 cursor-pointer"
         onMouseEnter={() => setIsHovered(true)}
+        style={{ pointerEvents: 'auto' }}
       />
 
       {/* Main sliding panel */}
@@ -444,6 +445,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           isHovered ? 'w-80 opacity-100' : 'w-0 opacity-0'
         }`}
         onMouseLeave={() => setIsHovered(false)}
+        style={{ pointerEvents: isHovered ? 'auto' : 'none' }}
       >
         <div className={`w-80 h-full p-3 flex flex-col overflow-hidden transition-opacity duration-300 ${
           isHovered ? 'opacity-100' : 'opacity-0'

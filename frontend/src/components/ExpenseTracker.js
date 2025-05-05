@@ -328,6 +328,38 @@ const ExpenseTracker = () => {
     setSortConfig({ key, direction });
   };
 
+  const toggleExpenseSelection = (expenseId, event) => {
+    event.stopPropagation();
+    setSelectedExpenses(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(expenseId)) {
+        newSet.delete(expenseId);
+      } else {
+        newSet.add(expenseId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (event) => {
+    event.stopPropagation();
+    if (selectedExpenses.size === filteredExpenses.length) {
+      setSelectedExpenses(new Set());
+    } else {
+      setSelectedExpenses(new Set(filteredExpenses.map(e => e.id)));
+    }
+  };
+
+  const toggleCollapsed = (event) => {
+    event.stopPropagation();
+    setIsCollapsed(!isCollapsed);
+  };
+
+  const toggleLoadStatusCollapsed = (event) => {
+    event.stopPropagation();
+    setIsLoadStatusCollapsed(!isLoadStatusCollapsed);
+  };
+
   // Filter expenses when type, search query, unassigned filter, year, or month changes
   useEffect(() => {
     const filtered = expenses.filter(expense => {
@@ -701,18 +733,6 @@ const ExpenseTracker = () => {
         error: error.message
       });
     }
-  };
-
-  const toggleExpenseSelection = (expenseId) => {
-    setSelectedExpenses(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(expenseId)) {
-        newSet.delete(expenseId);
-      } else {
-        newSet.add(expenseId);
-      }
-      return newSet;
-    });
   };
 
   const handleExcludeFromBudget = async (expenseId, exclude) => {
@@ -1454,7 +1474,7 @@ const ExpenseTracker = () => {
 
   //console.log('Rendering main component with expenses:', expenses);
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="w-4/5 mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Expense Tracker</h1>
         <div className="flex gap-2">
@@ -2203,189 +2223,191 @@ const ExpenseTracker = () => {
 
       {/* Expenses List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                <input
-                  type="checkbox"
-                  checked={selectedExpenses.size === filteredExpenses.length}
-                  onChange={() => {
-                    if (selectedExpenses.size === filteredExpenses.length) {
-                      setSelectedExpenses(new Set());
-                    } else {
-                      setSelectedExpenses(new Set(filteredExpenses.map(e => e.id)));
-                    }
-                  }}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-              </th>
-              <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12 cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('date')}
-              >
-                Date {sortConfig.key === 'date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </th>
-              <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12 cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('description')}
-              >
-                Description {sortConfig.key === 'description' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-4/12">Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Source</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('amount')}>
-                Amount {sortConfig.key === 'amount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredExpenses.map((expense, index) => (
-              <React.Fragment key={expense.id}>
-                <tr 
-                  className={selectedExpenses.has(expense.id) ? 'bg-blue-50' : ''}
-                  data-expense-id={expense.id}
+        <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
+          <table className="w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0 z-10">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                  <input
+                    type="checkbox"
+                    checked={selectedExpenses.size === filteredExpenses.length}
+                    onChange={() => {
+                      if (selectedExpenses.size === filteredExpenses.length) {
+                        setSelectedExpenses(new Set());
+                      } else {
+                        setSelectedExpenses(new Set(filteredExpenses.map(e => e.id)));
+                      }
+                    }}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('date')}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
-                    <input
-                      type="checkbox"
-                      checked={selectedExpenses.has(expense.id)}
-                      onChange={() => toggleExpenseSelection(expense.id)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      data-expense-checkbox={expense.id}
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12" data-expense-date={expense.id}>
-                    {expense.date}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 w-2/12" data-expense-description={expense.id}>
-                    <div className="truncate max-w-xs">{expense.description}</div>
-                    {expense.note && (
-                      <div className="text-xs text-gray-500 mt-1" data-expense-note={expense.id}>
-                        note: {expense.note}
-                      </div>
-                    )}
-                    {expense.tags && expense.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1" data-expense-tags={expense.id}>
-                        {expense.tags.map((tag, tagIndex) => (
-                          <span
-                            key={`${expense.id}-tag-${tagIndex}`}
-                            className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                            data-tag-id={`${expense.id}-${tag}`}
-                          >
-                            {tag}
-                            <button
-                              onClick={() => handleTagRemove(expense.id, tag)}
-                              className="ml-1 text-blue-600 hover:text-blue-800"
-                              data-tag-remove={`${expense.id}-${tag}`}
+                  Date {sortConfig.key === 'date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('description')}
+                >
+                  Description {sortConfig.key === 'description' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-4/12">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Source</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12 cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('amount')}>
+                  Amount {sortConfig.key === 'amount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredExpenses.map((expense, index) => (
+                <React.Fragment key={expense.id}>
+                  <tr 
+                    className={selectedExpenses.has(expense.id) ? 'bg-blue-50' : ''}
+                    data-expense-id={expense.id}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
+                      <input
+                        type="checkbox"
+                        checked={selectedExpenses.has(expense.id)}
+                        onChange={() => toggleExpenseSelection(expense.id)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        data-expense-checkbox={expense.id}
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12" data-expense-date={expense.id}>
+                      {expense.date}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 w-2/12" data-expense-description={expense.id}>
+                      <div className="truncate max-w-xs">{expense.description}</div>
+                      {expense.note && (
+                        <div className="text-xs text-gray-500 mt-1" data-expense-note={expense.id}>
+                          note: {expense.note}
+                        </div>
+                      )}
+                      {expense.tags && expense.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1" data-expense-tags={expense.id}>
+                          {expense.tags.map((tag, tagIndex) => (
+                            <span
+                              key={`${expense.id}-tag-${tagIndex}`}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                              data-tag-id={`${expense.id}-${tag}`}
                             >
-                              ×
-                            </button>
-                          </span>
+                              {tag}
+                              <button
+                                onClick={() => handleTagRemove(expense.id, tag)}
+                                className="ml-1 text-blue-600 hover:text-blue-800"
+                                data-tag-remove={`${expense.id}-${tag}`}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-4/12">
+                      <select
+                        value={expense.type || 'Unassigned'}
+                        onChange={(e) => handleTypeChange(expense.id, e.target.value)}
+                        className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                          expense.type === 'Unassigned' ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      >
+                        {expenseTypes.map(type => (
+                          <option key={type} value={type}>{type}</option>
                         ))}
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-2/12">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{expense.sourceType}</span>
+                        <span className="text-gray-500 text-xs">{expense.sourceName}</span>
                       </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-4/12">
-                    <select
-                      value={expense.type || 'Unassigned'}
-                      onChange={(e) => handleTypeChange(expense.id, e.target.value)}
-                      className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                        expense.type === 'Unassigned' ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      {expenseTypes.map(type => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-2/12">
-                    <div className="flex flex-col">
-                      <span className="font-medium">{expense.sourceType}</span>
-                      <span className="text-gray-500 text-xs">{expense.sourceName}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
-                    <button
-                      onClick={(e) => handleStatusClick(e, expense.id)}
-                      className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 hover:bg-gray-50 ${
-                        expense.isIncome ? 'border-green-500 bg-green-50' :
-                        expense.isExcluded ? 'border-red-500 bg-red-50' :
-                        expense.isOnceOff ? 'border-blue-500 bg-blue-50' :
-                        'border-gray-300'
-                      }`}
-                    >
-                      {expense.isIncome ? 'Income' :
-                       expense.isExcluded ? 'Excluded' :
-                       expense.isOnceOff ? 'Once Off' : 'Normal'}
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-1/12">
-                    ${Math.abs(expense.amount).toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex items-center gap-2">
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
                       <button
-                        onClick={(e) => handleTagClick(e, expense.id)}
+                        onClick={(e) => handleStatusClick(e, expense.id)}
+                        className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 hover:bg-gray-50 ${
+                          expense.isIncome ? 'border-green-500 bg-green-50' :
+                          expense.isExcluded ? 'border-red-500 bg-red-50' :
+                          expense.isOnceOff ? 'border-blue-500 bg-blue-50' :
+                          'border-gray-300'
+                        }`}
+                      >
+                        {expense.isIncome ? 'Income' :
+                         expense.isExcluded ? 'Excluded' :
+                         expense.isOnceOff ? 'Once Off' : 'Normal'}
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-1/12">
+                      ${Math.abs(expense.amount).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => handleTagClick(e, expense.id)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleEdit(expense)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(expense.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <button
+                        onClick={(e) => {
+                          const rect = e.target.getBoundingClientRect();
+                          setPopupPosition({
+                            x: rect.left + rect.width / 2,
+                            y: rect.top + rect.height / 2
+                          });
+                          setPopupText(expense.note || '');
+                        }}
                         className="text-blue-600 hover:text-blue-900"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </button>
-                      <button
-                        onClick={() => handleEdit(expense)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(expense.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button
-                      onClick={(e) => {
-                        const rect = e.target.getBoundingClientRect();
-                        setPopupPosition({
-                          x: rect.left + rect.width / 2,
-                          y: rect.top + rect.height / 2
-                        });
-                        setPopupText(expense.note || '');
-                      }}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-                {expense.note && (
-                  <tr className="bg-gray-50">
-                    <td colSpan="8" className="px-6 py-2 text-sm text-gray-600">
-                      {expense.note}
                     </td>
                   </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+                  {expense.note && (
+                    <tr className="bg-gray-50">
+                      <td colSpan="8" className="px-6 py-2 text-sm text-gray-600">
+                        {expense.note}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Status Popup */}
       {statusPopup && (
         <div
-          className="status-popup fixed bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-10"
+          className="status-popup fixed bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-50"
           style={{
             left: `${statusPopup.x}px`,
             top: `${statusPopup.y}px`,
@@ -2427,7 +2449,7 @@ const ExpenseTracker = () => {
       {/* Tag Popup */}
       {tagPopup && (
         <div
-          className="tag-popup fixed bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-10"
+          className="tag-popup fixed bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-50"
           style={{
             left: `${tagPopup.x - 300}px`,
             top: `${tagPopup.y}px`,

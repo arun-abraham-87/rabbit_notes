@@ -90,12 +90,9 @@ const NotesList = ({
   const [editingMeetingNote, setEditingMeetingNote] = useState(null);
   const [editingEventNote, setEditingEventNote] = useState(null);
   const [showingNormalEventEditor, setShowingNormalEventEditor] = useState(false);
-  const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(10);
-  const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(true);
   const [showRefreshMenu, setShowRefreshMenu] = useState(false);
   const notesListRef = useRef(null);
   const textareaRef = useRef(null);
-  const autoRefreshIntervalRef = useRef(null);
   const refreshButtonRef = useRef(null);
   const [showAddPeopleModal, setShowAddPeopleModal] = useState(false);
 
@@ -103,37 +100,6 @@ const NotesList = ({
   useEffect(() => {
     localStorage.setItem('quickPasteEnabled', JSON.stringify(isQuickPasteEnabled));
   }, [isQuickPasteEnabled]);
-
-  // Auto refresh effect
-  useEffect(() => {
-    if (isAutoRefreshEnabled) {
-      autoRefreshIntervalRef.current = setInterval(() => {
-        setAutoRefreshCountdown(prev => {
-          if (prev <= 1) {
-            loadNotes(searchQuery, new Date().toISOString().split('T')[0])
-              .then(data => {
-                updateNoteCallback(data.notes || []);
-                updateTotals(data.totals || 0);
-              })
-              .catch(error => {
-                console.error('Error refreshing notes:', error);
-                Alerts.error('Failed to refresh notes');
-              });
-            return 10;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      setAutoRefreshCountdown(10);
-    }
-
-    return () => {
-      if (autoRefreshIntervalRef.current) {
-        clearInterval(autoRefreshIntervalRef.current);
-      }
-    };
-  }, [isAutoRefreshEnabled, searchQuery, updateNoteCallback, updateTotals]);
 
   // Close refresh menu when clicking outside
   useEffect(() => {
@@ -495,65 +461,27 @@ const NotesList = ({
             <UserPlusIcon className="h-5 w-5" />
             <span>Add People</span>
           </button>
-          <div className="relative" ref={refreshButtonRef}>
-            <button
-              onClick={() => {
-                if (showRefreshMenu) {
-                  setShowRefreshMenu(false);
-                } else {
-                  setShowRefreshMenu(true);
-                }
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
-              title={`Auto-refresh in ${autoRefreshCountdown}s`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-              </svg>
-              <span>Refresh ({autoRefreshCountdown}s)</span>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-            {showRefreshMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                <button
-                  onClick={() => {
-                    loadNotes(searchQuery, new Date().toISOString().split('T')[0])
-                      .then(data => {
-                        updateNoteCallback(data.notes || []);
-                        updateTotals(data.totals || 0);
-                        Alerts.success('Notes refreshed successfully');
-                        setShowRefreshMenu(false);
-                      })
-                      .catch(error => {
-                        console.error('Error refreshing notes:', error);
-                        Alerts.error('Failed to refresh notes');
-                      });
-                  }}
-                  className="flex items-center justify-between w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <span>Refresh Now</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                  </svg>
-                </button>
-                <div className="border-t border-gray-100"></div>
-                <label className="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer">
-                  <span>Auto Refresh</span>
-                  <input
-                    type="checkbox"
-                    checked={isAutoRefreshEnabled}
-                    onChange={(e) => {
-                      setIsAutoRefreshEnabled(e.target.checked);
-                      setShowRefreshMenu(false);
-                    }}
-                    className="form-checkbox h-4 w-4 text-indigo-600"
-                  />
-                </label>
-              </div>
-            )}
-          </div>
+          <button
+            onClick={() => {
+              loadNotes(searchQuery, new Date().toISOString().split('T')[0])
+                .then(data => {
+                  updateNoteCallback(data.notes || []);
+                  updateTotals(data.totals || 0);
+                  Alerts.success('Notes refreshed successfully');
+                })
+                .catch(error => {
+                  console.error('Error refreshing notes:', error);
+                  Alerts.error('Failed to refresh notes');
+                });
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm"
+            title="Refresh notes"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+            </svg>
+            <span>Refresh</span>
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm cursor-pointer">

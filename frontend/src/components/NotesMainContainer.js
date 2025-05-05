@@ -437,7 +437,6 @@ const NotesMainContainer = ({
 
     // Check for ongoing meetings periodically and schedule checks for upcoming meetings
     useEffect(() => {
-        let checkInterval;
         let upcomingMeetingTimeout;
 
         const checkMeetings = () => {
@@ -467,11 +466,7 @@ const NotesMainContainer = ({
         // Initial check
         checkMeetings();
 
-        // Check every 15 seconds
-        checkInterval = setInterval(checkMeetings, 15000);
-
         return () => {
-            clearInterval(checkInterval);
             if (upcomingMeetingTimeout) {
                 clearTimeout(upcomingMeetingTimeout);
             }

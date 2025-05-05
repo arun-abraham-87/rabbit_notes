@@ -346,131 +346,157 @@ const AppContent = () => {
                   <Routes>
                     <Route path="/" element={
                       <div className="h-full overflow-y-auto">
-                        <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
-                        <NotesMainContainer
-                          objList={objectList}
-                          notes={notes}
-                          allNotes={allNotes}
-                          addNote={addNote}
-                          setNotes={updateBothNotesLists}
-                          objects={objects}
-                          searchQuery={searchQuery}
-                          setSearchQuery={setSearchQuery}
-                          addTag={addTag}
-                          setNoteDate={setNoteDate}
-                          totals={totals}
-                          setTotals={setTotals}
-                          settings={settings}
-                        />
+                        <div className="max-w-[80%] mx-auto">
+                          <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
+                          <NotesMainContainer
+                            objList={objectList}
+                            notes={notes}
+                            allNotes={allNotes}
+                            addNote={addNote}
+                            setNotes={updateBothNotesLists}
+                            objects={objects}
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            addTag={addTag}
+                            setNoteDate={setNoteDate}
+                            totals={totals}
+                            setTotals={setTotals}
+                            settings={settings}
+                          />
+                        </div>
                       </div>
                     } />
                     <Route path="/notes" element={
                       <div className="h-full overflow-y-auto">
-                        <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
-                        <NotesMainContainer
-                          objList={objectList}
-                          notes={notes}
-                          allNotes={allNotes}
-                          addNote={addNote}
-                          setNotes={updateBothNotesLists}
-                          objects={objects}
-                          searchQuery={searchQuery}
-                          setSearchQuery={setSearchQuery}
-                          addTag={addTag}
-                          setNoteDate={setNoteDate}
-                          totals={totals}
-                          setTotals={setTotals}
-                          settings={settings}
-                        />
+                        <div className="max-w-[80%] mx-auto">
+                          <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
+                          <NotesMainContainer
+                            objList={objectList}
+                            notes={notes}
+                            allNotes={allNotes}
+                            addNote={addNote}
+                            setNotes={updateBothNotesLists}
+                            objects={objects}
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            addTag={addTag}
+                            setNoteDate={setNoteDate}
+                            totals={totals}
+                            setTotals={setTotals}
+                            settings={settings}
+                          />
+                        </div>
                       </div>
                     } />
                     <Route path="/watch" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                          <WatchList 
-                            allNotes={allNotes} 
-                            updateNote={updateNote} 
-                            refreshNotes={fetchAllNotes} 
-                          />
+                        <div className="max-w-[80%] mx-auto">
+                          <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                            <WatchList 
+                              allNotes={allNotes} 
+                              updateNote={updateNote} 
+                              refreshNotes={fetchAllNotes} 
+                            />
+                          </div>
                         </div>
                       </div>
                     } />
                     <Route path="/tags" element={
                       <div className="h-full overflow-y-auto">
-                        <TagListing objectList={objects} />
+                        <div className="max-w-[80%] mx-auto">
+                          <TagListing objectList={objects} />
+                        </div>
                       </div>
                     } />
                     <Route path="/todos" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                          <TodoList
-                            todos={todos}
-                            notes={notes}
-                            updateTodosCallback={setTodos}
-                            updateNoteCallBack={setNotes}
-                          />
+                        <div className="max-w-[80%] mx-auto">
+                          <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                            <TodoList
+                              todos={todos}
+                              notes={notes}
+                              updateTodosCallback={setTodos}
+                              updateNoteCallBack={setNotes}
+                            />
+                          </div>
                         </div>
                       </div>
                     } />
                     <Route path="/journals" element={
                       <div className="h-full overflow-y-auto">
-                        <Journals />
+                        <div className="max-w-[80%] mx-auto">
+                          <Journals />
+                        </div>
                       </div>
                     } />
                     <Route path="/manage-notes" element={
                       <div className="h-full overflow-y-auto">
-                        <Manage />
+                        <div className="max-w-[80%] mx-auto">
+                          <Manage />
+                        </div>
                       </div>
                     } />
                     <Route path="/events" element={
                       <div className="h-full overflow-y-auto">
-                        <EventsPage 
-                          notes={allNotes} 
-                          onUpdate={(updatedNotes) => {
-                            setAllNotes(updatedNotes);
-                            if (activePage === 'notes') {
-                              setNotes(updatedNotes);
-                            }
-                          }}
-                        />
+                        <div className="max-w-[80%] mx-auto">
+                          <EventsPage 
+                            notes={allNotes} 
+                            onUpdate={(updatedNotes) => {
+                              setAllNotes(updatedNotes);
+                              if (activePage === 'notes') {
+                                setNotes(updatedNotes);
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
                     } />
                     <Route path="/people" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                          <PeopleList 
-                            notes={allNotes}
-                            searchQuery={searchQuery}
-                            allNotes={allNotes}
-                          />
+                        <div className="max-w-[80%] mx-auto">
+                          <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                            <PeopleList 
+                              notes={allNotes}
+                              searchQuery={searchQuery}
+                              allNotes={allNotes}
+                            />
+                          </div>
                         </div>
                       </div>
                     } />
                     <Route path="/news" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="min-h-screen bg-gray-50">
-                          <News />
+                        <div className="max-w-[80%] mx-auto">
+                          <div className="min-h-screen bg-gray-50">
+                            <News />
+                          </div>
                         </div>
                       </div>
                     } />
                     <Route path="/dashboard" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="min-h-screen bg-gray-50">
-                          <Dashboard />
+                        <div className="max-w-[80%] mx-auto">
+                          <div className="min-h-screen bg-gray-50">
+                            <Dashboard />
+                          </div>
                         </div>
                       </div>
                     } />
                     <Route path="/expense" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="min-h-screen bg-gray-50">
-                          <ExpenseTracker />
+                        <div className="max-w-[80%] mx-auto">
+                          <div className="min-h-screen bg-gray-50">
+                            <ExpenseTracker />
+                          </div>
                         </div>
                       </div>
                     } />
                     <Route path="/trackers" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="min-h-screen bg-gray-50">
-                          <TrackerListing />
+                        <div className="max-w-[80%] mx-auto">
+                          <div className="min-h-screen bg-gray-50">
+                            <TrackerListing />
+                          </div>
                         </div>
                       </div>
                     } />

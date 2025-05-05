@@ -38,9 +38,9 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
   const navigationButtons = [
     { id: 'dashboard', label: 'Dashboard', show: settings?.navigation?.showDashboardPage !== false },
     { id: 'notes', label: 'Notes', show: true },
+    { id: 'todos', label: 'Todos', show: settings?.navigation?.showTodosPage !== false },
     { id: 'watch', label: 'Watch', show: settings?.navigation?.showWatchPage !== false },
     { id: 'tags', label: 'Tags', show: settings?.navigation?.showTagsPage !== false },
-    { id: 'todos', label: 'Todos', show: settings?.navigation?.showTodosPage !== false },
     { id: 'journals', label: 'Journals', show: settings?.navigation?.showJournalsPage !== false },
     { id: 'events', label: 'Events', show: settings?.navigation?.showEventsPage !== false },
     { id: 'people', label: 'People', show: settings?.navigation?.showPeoplePage !== false },
@@ -49,8 +49,8 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
     { id: 'trackers', label: 'Trackers', show: settings?.navigation?.showTrackersPage !== false },
   ].filter(button => button.show);
 
-  const visibleButtons = navigationButtons.slice(0, 3);
-  const dropdownButtons = navigationButtons.slice(3);
+  const visibleButtons = navigationButtons.slice(0, 4);
+  const dropdownButtons = navigationButtons.slice(4);
 
   const NavButton = ({ id, label }) => (
     <button
@@ -98,7 +98,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
 
         {/* Right: Navigation Buttons */}
         <div className="flex items-center space-x-4">
-          {/* Always visible first three buttons */}
+          {/* Always visible first four buttons */}
           <div className="flex items-center space-x-4">
             {visibleButtons.map(button => (
               <NavButton key={button.id} id={button.id} label={button.label} />

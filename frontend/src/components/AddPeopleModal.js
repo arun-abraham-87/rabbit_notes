@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon, PlusIcon, MinusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
-import { updateNoteById } from '../utils/ApiUtils';
+import { XMarkIcon } from '@heroicons/react/24/solid';
+import { createNote, updateNoteById } from '../utils/ApiUtils';
 
 const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null }) => {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [workstreamSearchTerm, setWorkstreamSearchTerm] = useState('');
-  const [selectedWorkstreams, setSelectedWorkstreams] = useState([]);
-  const [teamSearchTerm, setTeamSearchTerm] = useState('');
-  const [selectedTeams, setSelectedTeams] = useState([]);
+  const [tagInput, setTagInput] = useState('');
+  const [tagList, setTagList] = useState([]);
+  const [tagError, setTagError] = useState('');
 
   // Prefill fields if editing
   useEffect(() => {
@@ -20,58 +19,63 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       setRole(lines.find(line => line.startsWith('meta::person_role::'))?.split('::')[2] || '');
       setEmail(lines.find(line => line.startsWith('meta::person_email::'))?.split('::')[2] || '');
       setPhone(lines.find(line => line.startsWith('meta::person_phone::'))?.split('::')[2] || '');
-      // Linked workstreams and teams
-      const linkedIds = lines.filter(line => line.startsWith('meta::link::')).map(line => line.split('::')[2]);
-      setSelectedWorkstreams(
-        allNotes.filter(n => n.content.includes('meta::workstream') && linkedIds.includes(n.id)).map(n => n.id)
-      );
-      setSelectedTeams(
-        allNotes.filter(n => n.content.includes('meta::team') && linkedIds.includes(n.id)).map(n => n.id)
-      );
+      // Get tags from meta::tag lines
+      const tagLines = lines.filter(line => line.startsWith('meta::tag::'));
+      setTagList(tagLines.map(line => line.split('::')[2]));
     } else {
-      setName(''); setRole(''); setEmail(''); setPhone('');
-      setSelectedWorkstreams([]); setSelectedTeams([]);
-      setWorkstreamSearchTerm(''); setTeamSearchTerm('');
+      setName(''); 
+      setRole(''); 
+      setEmail(''); 
+      setPhone('');
+      setTagList([]);
+      setTagInput('');
     }
-  }, [personNote, isOpen, allNotes]);
+    setTagError('');
+  }, [personNote, isOpen]);
 
-  // Filter workstream notes based on search term
-  const filteredWorkstreams = allNotes.filter(note => {
-    if (!note.content.includes('meta::workstream')) return false;
-    if (!workstreamSearchTerm.trim()) return true;
+  const validateTag = (tag) => {
+    if (!tag.trim()) return false;
     
-    const searchLower = workstreamSearchTerm.toLowerCase();
-    const contentLower = note.content.toLowerCase();
+    // Check for special characters
+    const specialCharRegex = /[^a-zA-Z0-9\s-_]/;
+    if (specialCharRegex.test(tag)) {
+      setTagError('Tags can only contain letters, numbers, spaces, hyphens, and underscores');
+      return false;
+    }
     
-    // Search in first line (title) with higher priority
-    const firstLine = contentLower.split('\n')[0];
-    if (firstLine.includes(searchLower)) return true;
+    // Check for duplicates
+    if (tagList.includes(tag.trim())) {
+      setTagError('This tag already exists');
+      return false;
+    }
     
-    // Search in non-meta lines
-    const nonMetaLines = contentLower
-      .split('\n')
-      .filter(line => !line.startsWith('meta::'));
-    return nonMetaLines.some(line => line.includes(searchLower));
-  });
+    setTagError('');
+    return true;
+  };
 
-  // Filter team notes based on search term
-  const filteredTeams = allNotes.filter(note => {
-    if (!note.content.includes('meta::team')) return false;
-    if (!teamSearchTerm.trim()) return true;
-    
-    const searchLower = teamSearchTerm.toLowerCase();
-    const contentLower = note.content.toLowerCase();
-    
-    // Search in first line (title) with higher priority
-    const firstLine = contentLower.split('\n')[0];
-    if (firstLine.includes(searchLower)) return true;
-    
-    // Search in non-meta lines
-    const nonMetaLines = contentLower
-      .split('\n')
-      .filter(line => !line.startsWith('meta::'));
-    return nonMetaLines.some(line => line.includes(searchLower));
-  });
+  const handleTagInputChange = (e) => {
+    setTagInput(e.target.value);
+    setTagError('');
+  };
+
+  const handleTagInputKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const newTag = tagInput.trim();
+      
+      if (newTag && validateTag(newTag)) {
+        setTagList([...tagList, newTag]);
+        setTagInput('');
+      }
+    } else if (e.key === 'Backspace' && !tagInput && tagList.length > 0) {
+      // Remove last tag when backspace is pressed and input is empty
+      setTagList(tagList.slice(0, -1));
+    }
+  };
+
+  const removeTag = (tagToRemove) => {
+    setTagList(tagList.filter(tag => tag !== tagToRemove));
+  };
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
@@ -93,14 +97,9 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       content += `\nmeta::person_phone::${phone.trim()}`;
     }
 
-    // Add links to workstreams
-    selectedWorkstreams.forEach(workstreamId => {
-      content += `\nmeta::link::${workstreamId}`;
-    });
-
-    // Add links to teams
-    selectedTeams.forEach(teamId => {
-      content += `\nmeta::link::${teamId}`;
+    // Add tags
+    tagList.forEach(tag => {
+      content += `\nmeta::tag::${tag}`;
     });
 
     try {
@@ -109,39 +108,24 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
         await onEdit(personNote.id, content);
       } else {
         // Add mode
-        const newPersonNote = await onAdd(content);
-        
-      
+        const newNote = await createNote(content);
+        if (onAdd) {
+          onAdd(newNote);
+        }
       }
       // Reset form
       setName('');
       setRole('');
       setEmail('');
       setPhone('');
-      setSelectedWorkstreams([]);
-      setSelectedTeams([]);
-      setWorkstreamSearchTerm('');
-      setTeamSearchTerm('');
+      setTagList([]);
+      setTagInput('');
+      setTagError('');
       onClose();
     } catch (error) {
       console.error('Error saving person:', error);
+      throw error;
     }
-  };
-
-  const toggleWorkstream = (workstreamId) => {
-    setSelectedWorkstreams(prev =>
-      prev.includes(workstreamId)
-        ? prev.filter(id => id !== workstreamId)
-        : [...prev, workstreamId]
-    );
-  };
-
-  const toggleTeam = (teamId) => {
-    setSelectedTeams(prev =>
-      prev.includes(teamId)
-        ? prev.filter(id => id !== teamId)
-        : [...prev, teamId]
-    );
   };
 
   if (!isOpen) return null;
@@ -216,91 +200,49 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
             />
           </div>
 
-          {/* Teams */}
+          {/* Tags Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Teams
+              Tags
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={teamSearchTerm}
-                onChange={(e) => setTeamSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Search teams..."
-              />
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            </div>
-            <div className="mt-2 max-h-40 overflow-y-auto border rounded-md">
-              {filteredTeams.map(team => {
-                const isSelected = selectedTeams.includes(team.id);
-                const firstLine = team.content.split('\n')[0];
-                return (
-                  <div
-                    key={team.id}
-                    onClick={() => toggleTeam(team.id)}
-                    className={`p-2 cursor-pointer hover:bg-gray-50 flex items-center justify-between ${
-                      isSelected ? 'bg-blue-50' : ''
-                    }`}
+            <div className={`min-h-[42px] w-full px-3 py-2 border rounded-md focus-within:ring-2 focus-within:ring-blue-500 ${
+              tagError ? 'border-red-500' : 'border-gray-300'
+            }`}>
+              <div className="flex flex-wrap gap-2">
+                {tagList.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
                   >
-                    <span className="text-sm">{firstLine}</span>
-                    {isSelected && (
-                      <svg className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                );
-              })}
-              {filteredTeams.length === 0 && (
-                <div className="p-2 text-sm text-gray-500 text-center">
-                  No teams found
-                </div>
-              )}
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      className="ml-1 text-indigo-600 hover:text-indigo-800"
+                    >
+                      <XMarkIcon className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={handleTagInputChange}
+                  onKeyDown={handleTagInputKeyDown}
+                  className="flex-1 min-w-[120px] outline-none bg-transparent"
+                  placeholder={tagList.length === 0 ? "Type and press space or enter to add tags" : ""}
+                />
+              </div>
             </div>
-          </div>
-
-          {/* Workstreams */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Workstreams
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={workstreamSearchTerm}
-                onChange={(e) => setWorkstreamSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Search workstreams..."
-              />
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            </div>
-            <div className="mt-2 max-h-40 overflow-y-auto border rounded-md">
-              {filteredWorkstreams.map(workstream => {
-                const isSelected = selectedWorkstreams.includes(workstream.id);
-                const firstLine = workstream.content.split('\n')[0];
-                return (
-                  <div
-                    key={workstream.id}
-                    onClick={() => toggleWorkstream(workstream.id)}
-                    className={`p-2 cursor-pointer hover:bg-gray-50 flex items-center justify-between ${
-                      isSelected ? 'bg-blue-50' : ''
-                    }`}
-                  >
-                    <span className="text-sm">{firstLine}</span>
-                    {isSelected && (
-                      <svg className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                );
-              })}
-              {filteredWorkstreams.length === 0 && (
-                <div className="p-2 text-sm text-gray-500 text-center">
-                  No workstreams found
-                </div>
+            <div className="mt-1 flex flex-col gap-1">
+              {tagError && (
+                <p className="text-sm text-red-500">
+                  {tagError}
+                </p>
               )}
+              <p className="text-xs text-gray-400">
+                Press space or enter to add a tag. Backspace to remove the last tag.
+              </p>
             </div>
           </div>
         </div>
@@ -314,8 +256,8 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-            disabled={!name.trim()}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!name.trim() || !!tagError}
           >
             {personNote ? 'Save Changes' : 'Add Person'}
           </button>

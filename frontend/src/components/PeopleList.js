@@ -1,67 +1,48 @@
 import React, { useState, useMemo } from 'react';
-import { UserIcon, ViewColumnsIcon, Squares2X2Icon, FunnelIcon, XMarkIcon, UsersIcon, MagnifyingGlassIcon, PencilIcon } from '@heroicons/react/24/solid';
+import { UserIcon, ViewColumnsIcon, Squares2X2Icon, XMarkIcon, MagnifyingGlassIcon, PencilIcon, PlusIcon, TagIcon } from '@heroicons/react/24/solid';
 import { CodeBracketIcon } from '@heroicons/react/24/outline';
 import { parseNoteContent } from '../utils/TextUtils';
-import WorkstreamPeopleView from './WorkstreamPeopleView';
-import TeamPeopleView from './TeamPeopleView';
 import AddPeopleModal from './AddPeopleModal';
-import { updateNoteById } from '../utils/ApiUtils';
+import { updateNoteById, createNote } from '../utils/ApiUtils';
 
 const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }) => {
   const [viewMode, setViewMode] = useState('grid');
-  const [selectedWorkstreams, setSelectedWorkstreams] = useState([]);
-  const [selectedRoles, setSelectedRoles] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [rawNoteModal, setRawNoteModal] = useState({ open: false, content: '' });
   const [editPersonModal, setEditPersonModal] = useState({ open: false, personNote: null });
+  const [addPersonModal, setAddPersonModal] = useState({ open: false });
 
   // Use allNotes if provided, otherwise fallback to notes
   const allNotes = allNotesProp || notes;
 
-  // Get all workstreams from notes
-  const workstreams = useMemo(() => {
-    return notes
-      .filter(note => note.content.includes('meta::workstream'))
-      .map(note => ({
-        id: note.id,
-        name: note.content.split('\n')[0]
-      }));
-  }, [notes]);
-
-  // Get all unique roles from person notes
-  const roles = useMemo(() => {
-    const roleSet = new Set();
+  // Get all unique tags from person notes
+  const allTags = useMemo(() => {
+    const tagSet = new Set();
     notes
       .filter(note => note.content.includes('meta::person::'))
       .forEach(note => {
-        const roleMatch = note.content.match(/meta::person_role::([^\n]+)/);
-        if (roleMatch) {
-          roleSet.add(roleMatch[1]);
-        }
+        const tagLines = note.content
+          .split('\n')
+          .filter(line => line.startsWith('meta::tag::'))
+          .map(line => line.split('::')[2]);
+        tagLines.forEach(tag => tagSet.add(tag));
       });
-    return Array.from(roleSet);
+    return Array.from(tagSet).sort();
   }, [notes]);
 
   // Filter person notes based on selected filters
   const filteredNotes = useMemo(() => {
     let filtered = notes.filter(note => note.content.includes('meta::person::'));
 
-    // Apply workstream filter
-    if (selectedWorkstreams.length > 0) {
+    // Apply tag filter
+    if (selectedTags.length > 0) {
       filtered = filtered.filter(note => {
-        const linkedWorkstreams = note.content
+        const noteTags = note.content
           .split('\n')
-          .filter(line => line.startsWith('meta::link::'))
+          .filter(line => line.startsWith('meta::tag::'))
           .map(line => line.split('::')[2]);
-        return selectedWorkstreams.some(wsId => linkedWorkstreams.includes(wsId));
-      });
-    }
-
-    // Apply role filter
-    if (selectedRoles.length > 0) {
-      filtered = filtered.filter(note => {
-        const roleMatch = note.content.match(/meta::person_role::([^\n]+)/);
-        return roleMatch && selectedRoles.includes(roleMatch[1]);
+        return selectedTags.some(tag => noteTags.includes(tag));
       });
     }
 
@@ -73,11 +54,25 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
     }
 
     return filtered;
-  }, [notes, selectedWorkstreams, selectedRoles, localSearchQuery]);
+  }, [notes, selectedTags, localSearchQuery]);
+
+  // Group notes by tags for tag view
+  const notesByTag = useMemo(() => {
+    const grouped = {};
+    allTags.forEach(tag => {
+      grouped[tag] = filteredNotes.filter(note => {
+        const noteTags = note.content
+          .split('\n')
+          .filter(line => line.startsWith('meta::tag::'))
+          .map(line => line.split('::')[2]);
+        return noteTags.includes(tag);
+      });
+    });
+    return grouped;
+  }, [filteredNotes, allTags]);
 
   const clearFilters = () => {
-    setSelectedWorkstreams([]);
-    setSelectedRoles([]);
+    setSelectedTags([]);
     setLocalSearchQuery('');
   };
 
@@ -94,9 +89,7 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
 
   // Summary counts
   const totalPeople = notes.filter(note => note.content.includes('meta::person::')).length;
-  const totalTeams = notes.filter(note => note.content.includes('meta::team')).length;
-  const totalWorkstreams = notes.filter(note => note.content.includes('meta::workstream')).length;
-  const totalRoles = roles.length;
+  const totalTags = allTags.length;
 
   const getPersonInfo = (content) => {
     const lines = content.split('\n');
@@ -104,13 +97,37 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
     const role = lines.find(line => line.startsWith('meta::person_role::'))?.split('::')[2] || '';
     const email = lines.find(line => line.startsWith('meta::person_email::'))?.split('::')[2] || '';
     const phone = lines.find(line => line.startsWith('meta::person_phone::'))?.split('::')[2] || '';
-    return { name, role, email, phone };
+    const tags = lines
+      .filter(line => line.startsWith('meta::tag::'))
+      .map(line => line.split('::')[2]);
+    return { name, role, email, phone, tags };
   };
 
   // Handler for editing a person
   const handleEditPerson = async (id, content) => {
     await updateNoteById(id, content);
     setEditPersonModal({ open: false, personNote: null });
+    if (typeof refreshNotes === 'function') {
+      refreshNotes();
+    }
+  };
+
+  // Handler for adding a new person
+  const handleAddPerson = async (content) => {
+    try {
+      await createNote(content);
+      if (typeof refreshNotes === 'function') {
+        refreshNotes();
+      }
+    } catch (error) {
+      console.error('Error adding person:', error);
+      throw error;
+    }
+  };
+
+  // Handler for closing the add person modal
+  const handleCloseAddModal = () => {
+    setAddPersonModal({ open: false });
     if (typeof refreshNotes === 'function') {
       refreshNotes();
     }
@@ -123,6 +140,13 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
         <h1 className="text-2xl font-semibold text-gray-900">People</h1>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setAddPersonModal({ open: true })}
+            className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <PlusIcon className="h-5 w-5" />
+            <span>Add People</span>
+          </button>
+          <button
             onClick={() => setViewMode('grid')}
             className={`p-2 rounded-lg transition-all duration-200 ${
               viewMode === 'grid'
@@ -134,26 +158,15 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
             <Squares2X2Icon className="h-5 w-5" />
           </button>
           <button
-            onClick={() => setViewMode('workstream')}
+            onClick={() => setViewMode('tags')}
             className={`p-2 rounded-lg transition-all duration-200 ${
-              viewMode === 'workstream'
+              viewMode === 'tags'
                 ? 'bg-indigo-100 text-indigo-700'
                 : 'hover:bg-gray-100 text-gray-600'
             }`}
-            title="By Workstream"
+            title="By Tags"
           >
-            <ViewColumnsIcon className="h-5 w-5" />
-          </button>
-          <button
-            onClick={() => setViewMode('team')}
-            className={`p-2 rounded-lg transition-all duration-200 ${
-              viewMode === 'team'
-                ? 'bg-indigo-100 text-indigo-700'
-                : 'hover:bg-gray-100 text-gray-600'
-            }`}
-            title="By Team"
-          >
-            <UsersIcon className="h-5 w-5" />
+            <TagIcon className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -181,76 +194,44 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
       </div>
 
       {/* Summary Grid */}
-      <div className="grid grid-cols-4 gap-4 bg-white rounded-xl border p-4 shadow-sm">
+      <div className="grid grid-cols-2 gap-4 bg-white rounded-xl border p-4 shadow-sm">
         <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
           <div className="text-xs font-medium text-gray-500">Total</div>
           <div className="text-2xl font-bold text-gray-900">{totalPeople}</div>
         </div>
         <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
-          <div className="text-xs font-medium text-indigo-600">Workstreams</div>
-          <div className="text-2xl font-bold text-indigo-700">{totalWorkstreams}</div>
-        </div>
-        <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
-          <div className="text-xs font-medium text-indigo-600">Teams</div>
-          <div className="text-2xl font-bold text-indigo-700">{totalTeams}</div>
-        </div>
-        <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
-          <div className="text-xs font-medium text-indigo-600">Roles</div>
-          <div className="text-2xl font-bold text-indigo-700">{totalRoles}</div>
+          <div className="text-xs font-medium text-indigo-600">Tags</div>
+          <div className="text-2xl font-bold text-indigo-700">{totalTags}</div>
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Tags Filter */}
       <div className="flex flex-wrap gap-4 items-center">
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Workstreams</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Tags</h4>
           <div className="flex flex-wrap gap-2">
-            {workstreams.map(ws => (
+            {allTags.map(tag => (
               <button
-                key={ws.id}
+                key={tag}
                 onClick={() => {
-                  setSelectedWorkstreams(prev =>
-                    prev.includes(ws.id)
-                      ? prev.filter(id => id !== ws.id)
-                      : [...prev, ws.id]
+                  setSelectedTags(prev =>
+                    prev.includes(tag)
+                      ? prev.filter(t => t !== tag)
+                      : [...prev, tag]
                   );
                 }}
                 className={`px-2 py-1 text-sm rounded-md ${
-                  selectedWorkstreams.includes(ws.id)
+                  selectedTags.includes(tag)
                     ? 'bg-indigo-100 text-indigo-700'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {ws.name}
+                {tag}
               </button>
             ))}
           </div>
         </div>
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Roles</h4>
-          <div className="flex flex-wrap gap-2">
-            {roles.map(role => (
-              <button
-                key={role}
-                onClick={() => {
-                  setSelectedRoles(prev =>
-                    prev.includes(role)
-                      ? prev.filter(r => r !== role)
-                      : [...prev, role]
-                  );
-                }}
-                className={`px-2 py-1 text-sm rounded-md ${
-                  selectedRoles.includes(role)
-                    ? 'bg-indigo-100 text-indigo-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {role}
-              </button>
-            ))}
-          </div>
-        </div>
-        {(selectedWorkstreams.length > 0 || selectedRoles.length > 0) && (
+        {(selectedTags.length > 0 || localSearchQuery) && (
           <button
             onClick={clearFilters}
             className="text-sm text-indigo-600 hover:text-indigo-800 ml-2"
@@ -265,38 +246,124 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
         <div className="text-center py-12">
           <p className="text-gray-500">No people found</p>
         </div>
-      ) : viewMode === 'workstream' ? (
-        <WorkstreamPeopleView notes={filteredNotes} searchQuery={searchQuery} allNotes={allNotes} />
-      ) : viewMode === 'team' ? (
-        <TeamPeopleView notes={filteredNotes} searchQuery={searchQuery} allNotes={allNotes} />
+      ) : viewMode === 'tags' ? (
+        <div className="space-y-6">
+          {allTags.map(tag => {
+            const tagNotes = notesByTag[tag];
+            if (tagNotes.length === 0) return null;
+            
+            return (
+              <div key={tag} className="bg-white rounded-lg border p-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <TagIcon className="h-5 w-5 text-indigo-600" />
+                  {tag}
+                  <span className="text-sm text-gray-500">({tagNotes.length})</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {tagNotes.map(note => {
+                    const { name, role, email, phone, tags } = getPersonInfo(note.content);
+                    return (
+                      <div
+                        key={note.id}
+                        className="bg-white rounded-lg border p-6 shadow-sm flex flex-col hover:shadow-md transition-shadow h-full"
+                      >
+                        <div className="flex items-start gap-3 flex-grow">
+                          <div className="flex-shrink-0">
+                            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                              <UserIcon className="h-6 w-6 text-indigo-600" />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-medium text-gray-900 break-words">
+                              {parseNoteContent({ content: name, searchQuery }).map((element, idx) => (
+                                <React.Fragment key={idx}>{element}</React.Fragment>
+                              ))}
+                            </h3>
+                            {role && (
+                              <p className="text-sm text-gray-500 break-words mt-1">{role}</p>
+                            )}
+                            {email && (
+                              <a
+                                href={`mailto:${email}`}
+                                className="text-sm text-indigo-600 hover:text-indigo-800 break-words block mt-1"
+                              >
+                                {email}
+                              </a>
+                            )}
+                            {phone && (
+                              <a
+                                href={`tel:${phone}`}
+                                className="text-sm text-gray-600 hover:text-gray-800 break-words block mt-1"
+                              >
+                                {phone}
+                              </a>
+                            )}
+                          </div>
+                          <div className="flex-shrink-0 flex flex-col gap-1">
+                            <button
+                              className="p-1 rounded hover:bg-gray-100"
+                              title="Show raw note"
+                              onClick={() => setRawNoteModal({ open: true, content: note.content })}
+                            >
+                              <CodeBracketIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600" />
+                            </button>
+                            <button
+                              className="p-1 rounded hover:bg-gray-100"
+                              title="Edit person"
+                              onClick={() => setEditPersonModal({ open: true, personNote: note })}
+                            >
+                              <PencilIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600" />
+                            </button>
+                          </div>
+                        </div>
+                        {tags && tags.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1">
+                            {tags.map((tag, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredNotes.map(note => {
-            const { name, role, email, phone } = getPersonInfo(note.content);
+            const { name, role, email, phone, tags } = getPersonInfo(note.content);
             return (
               <div
                 key={note.id}
-                className="bg-white rounded-lg border p-6 shadow-sm flex flex-col gap-2 hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg border p-6 shadow-sm flex flex-col hover:shadow-md transition-shadow h-full"
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 flex-grow">
                   <div className="flex-shrink-0">
                     <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
                       <UserIcon className="h-6 w-6 text-indigo-600" />
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-medium text-gray-900 truncate">
+                    <h3 className="text-base font-medium text-gray-900 break-words">
                       {parseNoteContent({ content: name, searchQuery }).map((element, idx) => (
                         <React.Fragment key={idx}>{element}</React.Fragment>
                       ))}
                     </h3>
                     {role && (
-                      <p className="text-sm text-gray-500 truncate">{role}</p>
+                      <p className="text-sm text-gray-500 break-words mt-1">{role}</p>
                     )}
                     {email && (
                       <a
                         href={`mailto:${email}`}
-                        className="text-sm text-indigo-600 hover:text-indigo-800 truncate block"
+                        className="text-sm text-indigo-600 hover:text-indigo-800 break-words block mt-1"
                       >
                         {email}
                       </a>
@@ -304,27 +371,41 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
                     {phone && (
                       <a
                         href={`tel:${phone}`}
-                        className="text-sm text-gray-600 hover:text-gray-800 truncate block"
+                        className="text-sm text-gray-600 hover:text-gray-800 break-words block mt-1"
                       >
                         {phone}
                       </a>
                     )}
                   </div>
-                  <button
-                    className="ml-2 p-1 rounded hover:bg-gray-100"
-                    title="Show raw note"
-                    onClick={() => setRawNoteModal({ open: true, content: note.content })}
-                  >
-                    <CodeBracketIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600" />
-                  </button>
-                  <button
-                    className="ml-1 p-1 rounded hover:bg-gray-100"
-                    title="Edit person"
-                    onClick={() => setEditPersonModal({ open: true, personNote: note })}
-                  >
-                    <PencilIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600" />
-                  </button>
+                  <div className="flex-shrink-0 flex flex-col gap-1">
+                    <button
+                      className="p-1 rounded hover:bg-gray-100"
+                      title="Show raw note"
+                      onClick={() => setRawNoteModal({ open: true, content: note.content })}
+                    >
+                      <CodeBracketIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600" />
+                    </button>
+                    <button
+                      className="p-1 rounded hover:bg-gray-100"
+                      title="Edit person"
+                      onClick={() => setEditPersonModal({ open: true, personNote: note })}
+                    >
+                      <PencilIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600" />
+                    </button>
+                  </div>
                 </div>
+                {tags && tags.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -351,13 +432,28 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
         </div>
       )}
 
+      {/* Add Person Modal */}
+      {addPersonModal.open && (
+        <AddPeopleModal
+          isOpen={addPersonModal.open}
+          onClose={handleCloseAddModal}
+          allNotes={allNotes}
+          onAdd={handleAddPerson}
+        />
+      )}
+
       {/* Edit Person Modal */}
       {editPersonModal.open && (
         <AddPeopleModal
           isOpen={editPersonModal.open}
-          onClose={() => setEditPersonModal({ open: false, personNote: null })}
-          onEdit={handleEditPerson}
+          onClose={() => {
+            setEditPersonModal({ open: false, personNote: null });
+            if (typeof refreshNotes === 'function') {
+              refreshNotes();
+            }
+          }}
           allNotes={allNotes}
+          onEdit={handleEditPerson}
           personNote={editPersonModal.personNote}
         />
       )}

@@ -402,6 +402,15 @@ const NotesList = ({
         e.preventDefault();
         handlePasteSubmit();
       }
+      // Add Escape key handler
+      if (showPastePopup && e.key === 'Escape') {
+        e.preventDefault();
+        setShowPastePopup(false);
+        setPasteText('');
+        setNewNoteText('');
+        setSelectedPriority(null);
+        setIsWatchSelected(false);
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);

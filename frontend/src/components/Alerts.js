@@ -114,6 +114,60 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
     return diffDays;
   };
 
+  const formatContent = (content) => {
+    const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
+    const firstLine = lines[0]?.trim() || '';
+    const secondLine = lines[1]?.trim() || '';
+
+    // Check if first line is a URL
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const urlMatch = firstLine.match(urlRegex);
+    
+    if (urlMatch) {
+      const url = urlMatch[0];
+      // Check if there's custom text in markdown format [text](url)
+      const markdownMatch = firstLine.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+      
+      if (markdownMatch) {
+        // If markdown link found, use the custom text
+        const customText = markdownMatch[1];
+        const markdownUrl = markdownMatch[2];
+        return (
+          <>
+            <a
+              href={markdownUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              {customText}
+            </a>
+            {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+          </>
+        );
+      } else {
+        // No custom text, use hostname
+        const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
+        return (
+          <>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              {hostname}
+            </a>
+            {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+          </>
+        );
+      }
+    }
+
+    // If not a URL, just return the first line
+    return firstLine;
+  };
+
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
       <div 
@@ -148,7 +202,6 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
           {passedDeadlineTodos.map((todo) => {
             const endDateMatch = todo.content.match(/meta::end_date::(\d{4}-\d{2}-\d{2})/);
             const endDate = new Date(endDateMatch[1]);
-            const content = todo.content.split('\n').filter(line => !line.trim().startsWith('meta::'))[0];
             const overdueDays = getOverdueDays(endDate);
 
             return (
@@ -160,7 +213,7 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
                       <span>Deadline: {formatDate(endDate)}</span>
                     </div>
                     <h4 className="text-lg font-medium text-gray-900 mb-2">
-                      {content}
+                      {formatContent(todo.content)}
                     </h4>
                     <div className="flex items-center gap-4 text-sm">
                       <div className="flex items-center gap-1 text-rose-600 font-medium">
@@ -224,19 +277,22 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     if (!noteToUpdate) return;
 
     try {
-      // Remove meta::critical and add the new priority
-      const updatedContent = noteToUpdate.content
-        .replace('meta::critical', '')
-        .trim() + `\nmeta::${priority}`;
-      
+      // Remove existing priority tags
+      let updatedContent = noteToUpdate.content
+        .split('\n')
+        .filter(line => !line.includes('meta::priority::'))
+        .join('\n');
+
+      // Add new priority tag
+      updatedContent = `${updatedContent}\nmeta::priority::${priority}`;
+
       await updateNoteById(noteToUpdate.id, updatedContent);
-      
       // Update the notes list immediately after successful update
       const updatedNotes = notes.map(n => 
         n.id === noteToUpdate.id ? { ...n, content: updatedContent } : n
       );
       setNotes(updatedNotes);
-      Alerts.success(`Priority changed to ${priority}`);
+      Alerts.success('Priority updated successfully');
     } catch (error) {
       console.error('Error updating priority:', error);
       Alerts.error('Failed to update priority');
@@ -244,6 +300,60 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       setShowPriorityPopup(false);
       setNoteToUpdate(null);
     }
+  };
+
+  const formatContent = (content) => {
+    const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
+    const firstLine = lines[0]?.trim() || '';
+    const secondLine = lines[1]?.trim() || '';
+
+    // Check if first line is a URL
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const urlMatch = firstLine.match(urlRegex);
+    
+    if (urlMatch) {
+      const url = urlMatch[0];
+      // Check if there's custom text in markdown format [text](url)
+      const markdownMatch = firstLine.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+      
+      if (markdownMatch) {
+        // If markdown link found, use the custom text
+        const customText = markdownMatch[1];
+        const markdownUrl = markdownMatch[2];
+        return (
+          <>
+            <a
+              href={markdownUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              {customText}
+            </a>
+            {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+          </>
+        );
+      } else {
+        // No custom text, use hostname
+        const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
+        return (
+          <>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              {hostname}
+            </a>
+            {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+          </>
+        );
+      }
+    }
+
+    // If not a URL, just return the first line
+    return firstLine;
   };
 
   return (
@@ -279,57 +389,38 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         {isExpanded && (
           <div className="divide-y divide-gray-100">
             {criticalTodos.map((todo) => {
-              const content = todo.content.split('\n').filter(line => !line.trim().startsWith('meta::'))[0];
-              const endDateMatch = todo.content.match(/meta::end_date::([^\n]+)/);
-              const endDate = endDateMatch ? new Date(endDateMatch[1]) : null;
-              const isDeadlinePassed = endDate && endDate < new Date();
-
               return (
                 <div key={todo.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="text-lg font-medium text-gray-900">
-                        {content}
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">
+                        {formatContent(todo.content)}
                       </h4>
-                      {endDate && (
-                        <div className={`flex items-center gap-2 text-sm mt-2 ${isDeadlinePassed ? 'text-red-600' : 'text-gray-500'}`}>
-                          <CalendarIcon className={`h-4 w-4 ${isDeadlinePassed ? 'text-red-600' : 'text-gray-500'}`} />
-                          <span>
-                            {isDeadlinePassed ? 'Deadline Passed: ' : 'Deadline: '}
-                            {endDate.toLocaleDateString('en-US', {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleMarkCompleted(todo)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                          >
+                            <CheckIcon className="w-5 h-5" />
+                            Mark Completed
+                          </button>
+                          <button
+                            onClick={() => handleLowerPriority(todo)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
+                          >
+                            <ArrowTrendingDownIcon className="w-5 h-5" />
+                            Lower Priority
+                          </button>
+                          <button
+                            onClick={() => handleViewRawNote(todo)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+                          >
+                            <DocumentTextIcon className="w-5 h-5" />
+                            View Raw Note
+                          </button>
                         </div>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleViewRawNote(todo)}
-                        className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
-                        title="View Raw Note"
-                      >
-                        <CodeBracketIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleLowerPriority(todo)}
-                        className="flex items-center justify-center px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                        title="Lower Priority"
-                      >
-                        <ArrowTrendingDownIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleMarkCompleted(todo)}
-                        className="flex items-center justify-center px-3 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
-                        title="Mark Completed"
-                      >
-                        <CheckCircleIcon className="w-5 h-5" />
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -380,18 +471,21 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                 className="w-full px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150 flex items-center justify-center gap-2"
               >
                 <ArrowTrendingUpIcon className="w-5 h-5" />
+                High
               </button>
               <button
                 onClick={() => handlePrioritySelect('medium')}
                 className="w-full px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150 flex items-center justify-center gap-2"
               >
                 <MinusIcon className="w-5 h-5" />
+                Medium
               </button>
               <button
                 onClick={() => handlePrioritySelect('low')}
                 className="w-full px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150 flex items-center justify-center gap-2"
               >
                 <ArrowTrendingDownIcon className="w-5 h-5" />
+                Low
               </button>
             </div>
           </div>

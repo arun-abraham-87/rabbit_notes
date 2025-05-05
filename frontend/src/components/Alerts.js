@@ -802,7 +802,7 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
   if (trackerQuestions.length === 0) return null;
 
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden w-full">
       <div 
         className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -1122,7 +1122,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
   }, [notes]);
 
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden w-full">
       <div 
         className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -1357,7 +1357,7 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
   };
 
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-6 mx-4">
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-6 w-full">
       <div 
         className="bg-red-50 px-6 py-4 border-b border-red-100 cursor-pointer"
         onClick={handleTitleClick}
@@ -1501,7 +1501,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         pauseOnHover
         theme="light"
       />
-      <div className="space-y-6">
+      <div className="space-y-6 w-full">
         <UpcomingEventsAlert notes={notes} expanded={false} />
         <TrackerQuestionsAlert notes={notes} expanded={false} />
         <AlertsContainer 

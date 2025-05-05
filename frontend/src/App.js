@@ -27,6 +27,7 @@ import WatchList from './components/WatchList';
 import News from './components/News';
 import ExpenseTracker from './components/ExpenseTracker';
 import TrackerListing from './components/TrackerListing';
+import Dashboard from './components/Dashboard';
 
 
 // Helper to render first four pinned notes
@@ -429,6 +430,11 @@ const AppContent = () => {
                   <Route path="/news" element={
                     <div className="min-h-screen bg-gray-50">
                       <News />
+                    </div>
+                  } />
+                  <Route path="/dashboard" element={
+                    <div className="min-h-screen bg-gray-50">
+                      <Dashboard />
                     </div>
                   } />
                   <Route path="/expense" element={

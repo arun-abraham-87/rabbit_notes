@@ -69,6 +69,16 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
 
         {/* Right: Navigation Buttons */}
         <div className="flex items-center space-x-4">
+          {settings?.navigation?.showDashboardPage !== false && (
+            <button
+              onClick={() => setActivePage('dashboard')}
+              className={`px-3 py-1 rounded-full border ${
+                activePage === 'dashboard' ? 'bg-[rgb(31_41_55_/_var(--tw-bg-opacity,1))] text-white' : 'bg-white text-gray-700'
+              } hover:bg-[rgb(31_41_55_/_0.1)] transition`}
+            >
+              Dashboard
+            </button>
+          )}
           <button
             onClick={() => setActivePage('notes')}
             className={`px-3 py-1 rounded-full border ${

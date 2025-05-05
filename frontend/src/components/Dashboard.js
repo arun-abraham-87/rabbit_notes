@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Alerts } from './Alerts';
+import { AlertsProvider } from './Alerts';
 import { loadAllNotes } from '../utils/ApiUtils';
 
 const Dashboard = () => {
   const [notes, setNotes] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -11,6 +12,10 @@ const Dashboard = () => {
       try {
         const response = await loadAllNotes();
         setNotes(response.notes);
+        
+        // Extract events from notes
+        const eventNotes = response.notes.filter(note => note.content.includes('meta::event::'));
+        setEvents(eventNotes);
       } catch (error) {
         console.error('Error loading notes:', error);
       } finally {
@@ -39,10 +44,14 @@ const Dashboard = () => {
 
       {/* Alerts Section */}
       <div className="mb-8">
-        <Alerts notes={notes} />
+        <AlertsProvider 
+          notes={notes} 
+          events={events}
+          setNotes={setNotes}
+        >
+          {/* Additional dashboard content can be added here */}
+        </AlertsProvider>
       </div>
-
-      {/* Additional dashboard content can be added here */}
     </div>
   );
 };

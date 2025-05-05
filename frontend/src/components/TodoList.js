@@ -130,6 +130,59 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     return `${diffHours}h ${diffMinutes}m ago`;
   };
 
+  const getDeadlineInfo = (content) => {
+    const deadlineMatch = content.match(/meta::end_date::([^\n]+)/);
+    if (!deadlineMatch) return null;
+
+    const deadline = new Date(deadlineMatch[1]);
+    const now = new Date();
+    const diffMs = deadline - now;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    // Format the deadline date
+    const formattedDate = deadline.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    // Calculate time remaining
+    let timeRemaining;
+    if (diffDays > 0) {
+      timeRemaining = `${diffDays} day${diffDays !== 1 ? 's' : ''} left`;
+    } else if (diffHours > 0) {
+      timeRemaining = `${diffHours} hour${diffHours !== 1 ? 's' : ''} left`;
+    } else if (diffMinutes > 0) {
+      timeRemaining = `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} left`;
+    } else {
+      timeRemaining = 'Overdue';
+    }
+
+    // Determine color based on time remaining
+    let colorClass;
+    if (diffMs < 0) {
+      colorClass = 'text-red-600';
+    } else if (diffDays === 0) {
+      colorClass = 'text-amber-600';
+    } else if (diffDays <= 1) {
+      colorClass = 'text-orange-600';
+    } else {
+      colorClass = 'text-emerald-600';
+    }
+
+    return {
+      formattedDate,
+      timeRemaining,
+      colorClass,
+      isOverdue: diffMs < 0
+    };
+  };
+
   const getPriorityAge = (content) => {
     const match = content.match(/meta::priority_age::(.+)/);
     if (!match) return null;
@@ -450,6 +503,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     const createdDate = todoDateMatch ? todoDateMatch[1] : todo.created_datetime;
     const ageColorClass = getAgeClass(createdDate);
     const priorityAge = getPriorityAge(todo.content);
+    const deadlineInfo = getDeadlineInfo(todo.content);
 
     const priorityColors = {
       critical: 'bg-rose-50 border-4 border-red-500',
@@ -597,6 +651,14 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
               </pre>
             ) : (
               <>
+                {deadlineInfo && (
+                  <div className="mb-2 flex items-center gap-2">
+                    <ClockIcon className={`h-4 w-4 ${deadlineInfo.colorClass}`} />
+                    <span className={`text-sm font-medium ${deadlineInfo.colorClass}`}>
+                      {deadlineInfo.formattedDate} • {deadlineInfo.timeRemaining}
+                    </span>
+                  </div>
+                )}
                 {displayLines.map((line, lineIndex) => {
                   // Check for headings first
                   const h1Match = line.match(/^###(.+)###$/);

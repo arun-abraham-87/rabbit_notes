@@ -2,6 +2,22 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { XMarkIcon, PlusIcon } from '@heroicons/react/24/solid';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
 
+// Helper function to format date as dd/mm/yyyy
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+// Helper function to parse dd/mm/yyyy to yyyy-mm-dd for input
+const parseDate = (dateString) => {
+  if (!dateString) return '';
+  const [day, month, year] = dateString.split('/');
+  return `${year}-${month}-${day}`;
+};
+
 const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null }) => {
   const [name, setName] = useState('');
   const [tagInput, setTagInput] = useState('');
@@ -10,7 +26,9 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
   const [tagFilter, setTagFilter] = useState('');
   const [infoTypes, setInfoTypes] = useState([]);
   const [infoValues, setInfoValues] = useState({});
+  const [infoTypeTypes, setInfoTypeTypes] = useState({});
   const [newInfoType, setNewInfoType] = useState('');
+  const [newInfoTypeType, setNewInfoTypeType] = useState('text');
 
   // Get all unique info types from all notes
   const suggestedInfoTypes = useMemo(() => {
@@ -19,10 +37,16 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       const infoLines = note.content
         .split('\n')
         .filter(line => line.startsWith('meta::info::'))
-        .map(line => line.split('::')[2]);
-      infoLines.forEach(type => typeSet.add(type));
+        .map(line => {
+          const parts = line.split('::');
+          return {
+            name: parts[2],
+            type: parts[3] || 'text' // Default to text if type not specified
+          };
+        });
+      infoLines.forEach(({ name, type }) => typeSet.add(JSON.stringify({ name, type })));
     });
-    return Array.from(typeSet).sort();
+    return Array.from(typeSet).map(item => JSON.parse(item)).sort((a, b) => a.name.localeCompare(b.name));
   }, [allNotes]);
 
   // Prefill fields if editing
@@ -38,23 +62,33 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       const infoLines = lines.filter(line => line.startsWith('meta::info::'));
       const types = new Set();
       const values = {};
+      const typeTypes = {};
       infoLines.forEach(line => {
-        const [_, __, type, value] = line.split('::');
+        const [_, __, type, typeType, value] = line.split('::');
         types.add(type);
-        values[type] = value;
+        // Format date values for display
+        if (typeType === 'date') {
+          values[type] = formatDate(value);
+        } else {
+          values[type] = value;
+        }
+        typeTypes[type] = typeType || 'text';
       });
       setInfoTypes(Array.from(types));
       setInfoValues(values);
+      setInfoTypeTypes(typeTypes);
     } else {
       setName(''); 
       setTagList([]);
       setTagInput('');
       setInfoTypes([]);
       setInfoValues({});
+      setInfoTypeTypes({});
     }
     setTagError('');
     setTagFilter('');
     setNewInfoType('');
+    setNewInfoTypeType('text');
   }, [personNote, isOpen]);
 
   // Get all unique tags from all notes
@@ -124,19 +158,29 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
     setTagList(tagList.filter(tag => tag !== tagToRemove));
   };
 
-  const handleAddInfoType = (type) => {
+  const handleAddInfoType = (type, typeType = 'text') => {
     if (type && !infoTypes.includes(type)) {
       setInfoTypes([...infoTypes, type]);
-      setInfoValues({ ...infoValues, [type]: '' });
+      // Set default value based on type
+      let defaultValue = '';
+      if (typeType === 'date') {
+        defaultValue = formatDate(new Date());
+      }
+      setInfoValues({ ...infoValues, [type]: defaultValue });
+      setInfoTypeTypes({ ...infoTypeTypes, [type]: typeType });
       setNewInfoType('');
+      setNewInfoTypeType('text');
     }
   };
 
   const handleRemoveInfoType = (typeToRemove) => {
     setInfoTypes(infoTypes.filter(type => type !== typeToRemove));
     const newValues = { ...infoValues };
+    const newTypeTypes = { ...infoTypeTypes };
     delete newValues[typeToRemove];
+    delete newTypeTypes[typeToRemove];
     setInfoValues(newValues);
+    setInfoTypeTypes(newTypeTypes);
   };
 
   const handleSubmit = async () => {
@@ -152,7 +196,13 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
     // Add info types and values
     infoTypes.forEach(type => {
       if (infoValues[type]?.trim()) {
-        content += `\nmeta::info::${type}::${infoValues[type].trim()}`;
+        const typeType = infoTypeTypes[type];
+        let value = infoValues[type].trim();
+        // Convert date from dd/mm/yyyy to yyyy-mm-dd for storage
+        if (typeType === 'date') {
+          value = parseDate(value);
+        }
+        content += `\nmeta::info::${type}::${typeType}::${value}`;
       }
     });
 
@@ -173,11 +223,60 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       setTagFilter('');
       setInfoTypes([]);
       setInfoValues({});
+      setInfoTypeTypes({});
       setNewInfoType('');
+      setNewInfoTypeType('text');
       onClose();
     } catch (error) {
       console.error('Error saving person:', error);
       throw error;
+    }
+  };
+
+  const renderInfoTypeInput = (type) => {
+    const typeType = infoTypeTypes[type];
+    switch (typeType) {
+      case 'integer':
+        return (
+          <input
+            type="number"
+            value={infoValues[type] || ''}
+            onChange={(e) => setInfoValues({ ...infoValues, [type]: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={`Enter ${type.toLowerCase()}`}
+          />
+        );
+      case 'date':
+        return (
+          <input
+            type="text"
+            value={infoValues[type] || ''}
+            onChange={(e) => {
+              // Allow only numbers and forward slashes
+              const value = e.target.value.replace(/[^0-9/]/g, '');
+              // Format as dd/mm/yyyy
+              if (value.length === 2 && !value.includes('/')) {
+                setInfoValues({ ...infoValues, [type]: value + '/' });
+              } else if (value.length === 5 && value.split('/').length === 2) {
+                setInfoValues({ ...infoValues, [type]: value + '/' });
+              } else {
+                setInfoValues({ ...infoValues, [type]: value });
+              }
+            }}
+            placeholder="dd/mm/yyyy"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        );
+      default:
+        return (
+          <input
+            type="text"
+            value={infoValues[type] || ''}
+            onChange={(e) => setInfoValues({ ...infoValues, [type]: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={`Enter ${type.toLowerCase()}`}
+          />
+        );
     }
   };
 
@@ -228,14 +327,23 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
                   onChange={(e) => setNewInfoType(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && newInfoType.trim()) {
-                      handleAddInfoType(newInfoType.trim());
+                      handleAddInfoType(newInfoType.trim(), newInfoTypeType);
                     }
                   }}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter new info type"
                 />
+                <select
+                  value={newInfoTypeType}
+                  onChange={(e) => setNewInfoTypeType(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="text">Text</option>
+                  <option value="integer">Integer</option>
+                  <option value="date">Date</option>
+                </select>
                 <button
-                  onClick={() => handleAddInfoType(newInfoType.trim())}
+                  onClick={() => handleAddInfoType(newInfoType.trim(), newInfoTypeType)}
                   disabled={!newInfoType.trim()}
                   className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -252,14 +360,14 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {suggestedInfoTypes
-                    .filter(type => !infoTypes.includes(type))
-                    .map((type) => (
+                    .filter(({ name }) => !infoTypes.includes(name))
+                    .map(({ name, type }) => (
                       <button
-                        key={type}
-                        onClick={() => handleAddInfoType(type)}
+                        key={name}
+                        onClick={() => handleAddInfoType(name, type)}
                         className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                       >
-                        {type}
+                        {name} ({type})
                       </button>
                     ))}
                 </div>
@@ -272,15 +380,9 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
                 <div key={type} className="flex items-center gap-2">
                   <div className="flex-1">
                     <label className="block text-xs text-gray-500 mb-1">
-                      {type}
+                      {type} ({infoTypeTypes[type]})
                     </label>
-                    <input
-                      type="text"
-                      value={infoValues[type] || ''}
-                      onChange={(e) => setInfoValues({ ...infoValues, [type]: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder={`Enter ${type.toLowerCase()}`}
-                    />
+                    {renderInfoTypeInput(type)}
                   </div>
                   <button
                     onClick={() => handleRemoveInfoType(type)}

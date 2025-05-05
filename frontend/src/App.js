@@ -323,9 +323,9 @@ const AppContent = () => {
   }, []);
 
   return (
-    <SearchModalProvider notes={allNotes}>
-      <NotesProvider>
-        <NoteEditorProvider>
+    <NoteEditorProvider>
+      <SearchModalProvider notes={allNotes}>
+        <NotesProvider>
           <div className="App flex flex-col h-screen overflow-hidden">
             <Navbar activePage={activePage} setActivePage={(page) => navigate(`/${page}`)} settings={settings} />
             <div className="flex flex-1 overflow-hidden">
@@ -521,9 +521,9 @@ const AppContent = () => {
             />
             <NoteEditorModal />
           </div>
-        </NoteEditorProvider>
-      </NotesProvider>
-    </SearchModalProvider>
+        </NotesProvider>
+      </SearchModalProvider>
+    </NoteEditorProvider>
   );
 };
 

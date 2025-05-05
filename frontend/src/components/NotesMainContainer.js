@@ -213,11 +213,63 @@ const filterNotes = (notes, searchQuery, showDeadlinePassedFilter) => {
   
   const now = new Date();
   return notes.filter(note => {
+    // If no search query, only show notes from current day
+    if (!searchQuery || searchQuery.trim() === '') {
+      // Check if note is from current day
+      const lines = note.content.split('\n');
+      const isoDateStr = lines.find(line => /^\d{4}-\d{2}-\d{2}/.test(line));
+      const ddmmyyyyStr = lines.find(line => /^\d{2}\/\d{2}\/\d{4}/.test(line));
+      const createdDate = note.created_datetime ? note.created_datetime.split(',')[0] : null;
+      
+      const today = new Date();
+      const noteDate = isoDateStr || ddmmyyyyStr || createdDate;
+      
+      if (!noteDate) return true; // If no date found, show the note
+      
+      // Convert to YYYY-MM-DD format for comparison
+      let noteDateFormatted;
+      if (isoDateStr) {
+        noteDateFormatted = isoDateStr.split('T')[0];
+      } else if (ddmmyyyyStr) {
+        const [day, month, year] = ddmmyyyyStr.split('/');
+        noteDateFormatted = `${year}-${month}-${day}`;
+      } else if (createdDate) {
+        const [day, month, year] = createdDate.split('/');
+        noteDateFormatted = `${year}-${month}-${day}`;
+      }
+      
+      const todayFormatted = today.toISOString().split('T')[0];
+      const isFromToday = noteDateFormatted === todayFormatted;
+      
+      // Only apply deadline passed filter if needed
+      if (showDeadlinePassedFilter) {
+        const endDateMatch = note.content.match(/meta::end_date::([^\n]+)/);
+        if (!endDateMatch) return false;
+        
+        const endDate = new Date(endDateMatch[1]);
+        endDate.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+        
+        return endDate < today;
+      }
+      
+      return isFromToday;
+    }
+
+    // If search query exists, search across all dates
     const content = note.content.toLowerCase();
-    const searchWords = searchQuery.toLowerCase().split(' ').filter(word => word);
+    const searchTerm = searchQuery.toLowerCase().trim();
     
-    // Check if note matches all search words
-    const matchesSearch = searchWords.every(word => content.includes(word));
+    // Check if the search term matches in any of these fields
+    const contentMatch = content.includes(searchTerm);
+    const tagsMatch = note.tags && note.tags.some(tag => 
+      tag.toLowerCase().includes(searchTerm)
+    );
+    const eventMatch = note.event_description && 
+      note.event_description.toLowerCase().includes(searchTerm);
+    
+    const matchesSearch = contentMatch || tagsMatch || eventMatch;
+    
     if (!matchesSearch) return false;
 
     // Check for deadline passed filter
@@ -230,11 +282,9 @@ const filterNotes = (notes, searchQuery, showDeadlinePassedFilter) => {
       today.setHours(0, 0, 0, 0);
       endDate.setHours(0, 0, 0, 0);
       
-      // Only show notes with deadlines in the past
       return endDate < today;
     }
 
-    // For non-deadline passed filter, show all notes
     return true;
   });
 };

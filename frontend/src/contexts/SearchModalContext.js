@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import NoteSearchModal from '../components/NoteSearchModal';
+import { useNoteEditor } from './NoteEditorContext';
 
 const SearchModalContext = createContext();
 
 export const SearchModalProvider = ({ children, notes }) => {
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+    const { openEditor } = useNoteEditor();
 
     // Add Cmd+P shortcut to open search modal
     useHotkeys('meta+p', (e) => {
@@ -19,9 +21,11 @@ export const SearchModalProvider = ({ children, notes }) => {
         keyup: false
     });
 
-    const handleNoteSelect = (note) => {
+    const handleNoteSelect = (note, isEditMode = false) => {
         setIsSearchModalOpen(false);
-        // You can add additional logic here to handle the selected note
+        if (isEditMode) {
+            openEditor('edit', note.content, note.id);
+        }
     };
 
     return (

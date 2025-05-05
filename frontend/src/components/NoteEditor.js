@@ -219,15 +219,12 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   };
 
   const handleTextChange = (index, value) => {
-    //console.log("Text changed:", value);
-    //console.log("objList:", objList);
-    
     const updatedLines = [...lines];
     updatedLines[index].text = value;
     setLines(updatedLines);
     
-    // Update search query if this is the first line and in add mode
-    if (isAddMode && index === 0 && setSearchQuery) {
+    // Always update search query if setSearchQuery is provided
+    if (setSearchQuery) {
       setSearchQuery(value);
     }
 
@@ -240,24 +237,21 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     const match = value.trim().match(/(\S+)$/);
     if (match) {
       const filterText = match[1].toLowerCase();
-      //console.log("Filter text:", filterText);
 
       clearTimeout(throttleRef.current);
       throttleRef.current = setTimeout(() => {
         const filtered = objList.filter((tag) =>
           tag && tag.text && tag.text.toLowerCase().startsWith(filterText)
         );
-        //console.log("Filtered tags:", filtered);
 
         if (filtered.length > 0) {
           const textarea = textareasRef.current[index];
           if (textarea) {
             const rect = textarea.getBoundingClientRect();
             const coords = {
-              x: rect.left + window.scrollX + (textarea.selectionStart * 8), // Approximate character width
+              x: rect.left + window.scrollX + (textarea.selectionStart * 8),
               y: rect.bottom + window.scrollY
             };
-            //console.log("Setting popup position:", coords);
             setCursorPosition(coords);
             setFilteredTags(filtered.map(tag => tag.text));
             setShowPopup(true);

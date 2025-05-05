@@ -310,10 +310,25 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
               >
                 <div className="flex flex-col gap-2">
                   {/* Note Age */}
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <span className="bg-gray-100 px-2 py-0.5 rounded-full">
-                      Added {getAge(note.created_datetime)}
-                    </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <span className="bg-gray-100 px-2 py-0.5 rounded-full">
+                        Added {getAge(note.created_datetime)}
+                      </span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectNote(note, true); // Pass true to indicate edit mode
+                        onClose();
+                      }}
+                      className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-200"
+                      title="Edit note"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
                   </div>
 
                   {/* Note Content */}

@@ -170,10 +170,16 @@ const NoteEditorModal = () => {
             
             if (mode === 'add') {
               // Save the note with the combined content
-              addNote(finalContent);
+              addNote(finalContent).then(() => {
+                // Refresh notes after adding
+                window.dispatchEvent(new CustomEvent('refreshNotes'));
+              });
             } else {
               // Update the existing note
-              updateNote(noteId, finalContent);
+              updateNote(noteId, finalContent).then(() => {
+                // Refresh notes after updating
+                window.dispatchEvent(new CustomEvent('refreshNotes'));
+              });
             }
             closeEditor();
           }}

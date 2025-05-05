@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CompressedNotesList from './CompressedNotesList';
 import { ClockIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
@@ -10,6 +10,18 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
   const watchlistNotes = allNotes.filter(note => 
     note.content.includes('meta::watch')
   );
+
+  // Add event listener for refresh
+  useEffect(() => {
+    const handleRefresh = () => {
+      refreshNotes();
+    };
+
+    window.addEventListener('refreshNotes', handleRefresh);
+    return () => {
+      window.removeEventListener('refreshNotes', handleRefresh);
+    };
+  }, [refreshNotes]);
 
   const overdueNotes = watchlistNotes.filter(note => {
     // Check if note needs review based on its cadence

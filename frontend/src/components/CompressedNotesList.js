@@ -40,7 +40,8 @@ const CompressedNotesList = ({
   onContextMenu,
   isWatchList = false,
   refreshNotes,
-  onEdit
+  onEdit,
+  onMarkForReview
 }) => {
   const [needsReviewState, setNeedsReviewState] = useState({});
   const [timeElapsed, setTimeElapsed] = useState({});
@@ -136,7 +137,7 @@ const CompressedNotesList = ({
           className={`p-1 rounded border relative group transition-all duration-300 ${
             needsReviewState[note.id] 
               ? 'border-2 border-red-500 bg-red-50' 
-              : 'bg-neutral-50 border-slate-200'
+              : 'bg-neutral-50 border-slate-400'
           }`}
         >
           <NoteContent
@@ -167,8 +168,8 @@ const CompressedNotesList = ({
             compressedView={true}
           />
           {isWatchList && (
-            <div className="absolute top-1/2 -translate-y-1/2 right-2 flex items-center gap-2">
-              <div className="text-xs text-gray-500 mr-2 flex flex-col items-end">
+            <div className="mt-2 flex items-center justify-between border-t pt-2">
+              <div className="text-xs text-gray-500 flex flex-col">
                 {needsReviewState[note.id] 
                   ? 'Last review: ' + formatTimestamp(getLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
                   : nextReviewTime[note.id]}
@@ -225,34 +226,43 @@ const CompressedNotesList = ({
                   )}
                 </div>
               </div>
-              <button
-                onClick={() => onEdit && onEdit(note)}
-                className="px-2 py-1 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-1"
-                title="Edit note"
-              >
-                <PencilIcon className="h-4 w-4" />
-                <span className="text-sm">Edit</span>
-              </button>
-              <button
-                onClick={() => handleReview(note.id)}
-                className={`px-2 py-1 rounded-md flex items-center gap-1 ${
-                  isNoteReviewed(note.id)
-                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                    : 'bg-green-50 text-green-600 hover:bg-green-100'
-                }`}
-                title={isNoteReviewed(note.id) ? 'Update review timestamp' : 'Mark as reviewed'}
-              >
-                <CheckIcon className="h-4 w-4" />
-                <span className="text-sm">Review</span>
-              </button>
-              <button
-                onClick={() => handleUnfollow(note.id, note.content)}
-                className="px-2 py-1 rounded-md bg-red-50 text-red-600 hover:bg-red-100 flex items-center gap-1"
-                title="Unfollow note"
-              >
-                <XMarkIcon className="h-4 w-4" />
-                <span className="text-sm">Unfollow</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onEdit && onEdit(note)}
+                  className="px-2 py-1 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-1"
+                  title="Edit note"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                  <span className="text-sm">Edit</span>
+                </button>
+                {needsReviewState[note.id] ? (
+                  <button
+                    onClick={() => handleReview(note.id)}
+                    className="px-2 py-1 rounded-md bg-green-50 text-green-600 hover:bg-green-100 flex items-center gap-1"
+                    title="Mark as reviewed"
+                  >
+                    <CheckIcon className="h-4 w-4" />
+                    <span className="text-sm">Review</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onMarkForReview && onMarkForReview(note.id)}
+                    className="px-2 py-1 rounded-md bg-yellow-50 text-yellow-600 hover:bg-yellow-100 flex items-center gap-1"
+                    title="Mark for review"
+                  >
+                    <ClockIcon className="h-4 w-4" />
+                    <span className="text-sm">Mark for Review</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => handleUnfollow(note.id, note.content)}
+                  className="px-2 py-1 rounded-md bg-red-50 text-red-600 hover:bg-red-100 flex items-center gap-1"
+                  title="Unfollow note"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                  <span className="text-sm">Unfollow</span>
+                </button>
+              </div>
             </div>
           )}
         </div>

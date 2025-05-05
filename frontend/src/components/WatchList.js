@@ -23,6 +23,17 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
     };
   }, [refreshNotes]);
 
+  const handleMarkForReview = (noteId) => {
+    // Get current reviews from localStorage
+    const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+    // Delete the review entry for this note
+    delete reviews[noteId];
+    // Save back to localStorage
+    localStorage.setItem('noteReviews', JSON.stringify(reviews));
+    // Refresh the notes to update the UI
+    refreshNotes();
+  };
+
   const overdueNotes = watchlistNotes.filter(note => {
     // Check if note needs review based on its cadence
     const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
@@ -113,6 +124,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
                 openEditor(note.content, 'edit', note.id);
                 setEditingNote(note);
               }}
+              onMarkForReview={handleMarkForReview}
             />
           </div>
         )}
@@ -155,6 +167,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
                 openEditor(note.content, 'edit', note.id);
                 setEditingNote(note);
               }}
+              onMarkForReview={handleMarkForReview}
             />
           </div>
         )}

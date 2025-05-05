@@ -4,7 +4,7 @@ import NewsFeed from './NewsFeed';
 
 const News = () => {
   return (
-    <div className="p-4 max-w-4xl mx-auto">
+    <div className="p-4 w-full h-full">
       <StockPrice />
       <NewsFeed />
     </div>

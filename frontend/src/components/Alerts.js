@@ -107,6 +107,13 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
     });
   };
 
+  const getOverdueDays = (endDate) => {
+    const now = new Date();
+    const diffTime = Math.abs(now - endDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
       <div 
@@ -142,22 +149,23 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
             const endDateMatch = todo.content.match(/meta::end_date::(\d{4}-\d{2}-\d{2})/);
             const endDate = new Date(endDateMatch[1]);
             const content = todo.content.split('\n').filter(line => !line.trim().startsWith('meta::'))[0];
+            const overdueDays = getOverdueDays(endDate);
 
             return (
               <div key={todo.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                      <ClockIcon className="h-4 w-4" />
-                      <span>{formatDate(endDate)}</span>
+                      <CalendarIcon className="h-4 w-4" />
+                      <span>Deadline: {formatDate(endDate)}</span>
                     </div>
                     <h4 className="text-lg font-medium text-gray-900 mb-2">
                       {content}
                     </h4>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-4 text-sm">
+                      <div className="flex items-center gap-1 text-rose-600 font-medium">
                         <ClockIcon className="h-4 w-4" />
-                        <span>{getAge(endDate)}</span>
+                        <span>{overdueDays} {overdueDays === 1 ? 'day' : 'days'} overdue</span>
                       </div>
                     </div>
                   </div>

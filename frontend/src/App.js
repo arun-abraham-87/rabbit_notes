@@ -330,20 +330,18 @@ const AppContent = () => {
             <Navbar activePage={activePage} setActivePage={(page) => navigate(`/${page}`)} settings={settings} />
             <div className="flex flex-1 overflow-hidden">
               {/* Left panel */}
-              <div className="border-r flex-shrink-0 w-[300px] relative">
-                <div className="h-full overflow-hidden">
-                  <LeftPanel
-                    notes={allNotes}
-                    setNotes={setAllNotes}
-                    searchQuery={searchQuery}
-                    settings={settings}
-                    setSettings={setSettings}
-                  />
-                </div>
+              <div className="relative">
+                <LeftPanel
+                  notes={allNotes}
+                  setNotes={setAllNotes}
+                  searchQuery={searchQuery}
+                  settings={settings}
+                  setSettings={setSettings}
+                />
               </div>
 
               {/* Right panel: main content */}
-              <div className="flex-1 p-8 overflow-auto">
+              <div className="flex-1 overflow-hidden">
                 <Routes>
                   <Route path="/" element={
                     <>

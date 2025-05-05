@@ -237,6 +237,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const quickNoteInputRef = useRef(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [totals, setTotals] = useState(defaultSettings.totals);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
@@ -431,66 +432,150 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         </div>
       )}
 
-      <div className="w-full h-full bg-slate-50 p-3 flex flex-col overflow-hidden">
-        <div className="flex-1 space-y-2 overflow-y-auto overflow-x-hidden">
+      {/* Small visible panel */}
+      <div 
+        className="fixed left-0 top-0 h-full w-2 bg-indigo-600 hover:bg-indigo-700 transition-colors z-40 cursor-pointer"
+        onMouseEnter={() => setIsHovered(true)}
+      />
 
-          {/* custom right‑click menu */}
-          {showLinkMenu && (
-            <ul
-              className="absolute bg-white border rounded shadow"
-              style={{ top: linkMenuPos.y, left: linkMenuPos.x, zIndex: 1000 }}
-            >
-              <li
-                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                onClick={() => {
-                  setShowNoteModal(true);
-                  setShowLinkMenu(false);
-                }}
+      {/* Main sliding panel */}
+      <div 
+        className={`fixed left-0 top-0 h-full bg-slate-50 shadow-lg transition-all duration-300 ease-in-out z-30 ${
+          isHovered ? 'w-80 opacity-100' : 'w-0 opacity-0'
+        }`}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <div className={`w-80 h-full p-3 flex flex-col overflow-hidden transition-opacity duration-300 ${
+          isHovered ? 'opacity-100' : 'opacity-0'
+        }`}>
+          <div className="flex-1 space-y-2 overflow-y-auto overflow-x-hidden">
+            {/* custom right‑click menu */}
+            {showLinkMenu && (
+              <ul
+                className="absolute bg-white border rounded shadow"
+                style={{ top: linkMenuPos.y, left: linkMenuPos.x, zIndex: 1000 }}
               >
-                View Original Note
-              </li>
-            </ul>
-          )}
-
-          {/* Quick Links Section */}
-          <div
-            className="bg-white p-3 rounded-lg shadow-sm mb-3 max-w-full"
-            onMouseEnter={() => setActiveSection('quickLinks')}
-            onMouseLeave={() => !lockedSections.quickLinks && setActiveSection(null)}
-          >
-            <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
-              <span className="truncate flex-1">Quick Links</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLockedSections(prev => ({ ...prev, quickLinks: !prev.quickLinks }));
+                <li
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => {
+                    setShowNoteModal(true);
+                    setShowLinkMenu(false);
                   }}
-                  className="p-1 rounded hover:bg-indigo-100"
-                  title={lockedSections.quickLinks ? "Unlock section" : "Lock section open"}
                 >
-                  {lockedSections.quickLinks ? (
-                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+                  View Original Note
+                </li>
+              </ul>
+            )}
+
+            {/* Quick Links Section */}
+            <div
+              className="bg-white p-3 rounded-lg shadow-sm mb-3 max-w-full"
+              onMouseEnter={() => setActiveSection('quickLinks')}
+              onMouseLeave={() => !lockedSections.quickLinks && setActiveSection(null)}
+            >
+              <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
+                <span className="truncate flex-1">Quick Links</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLockedSections(prev => ({ ...prev, quickLinks: !prev.quickLinks }));
+                    }}
+                    className="p-1 rounded hover:bg-indigo-100"
+                    title={lockedSections.quickLinks ? "Unlock section" : "Lock section open"}
+                  >
+                    {lockedSections.quickLinks ? (
+                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                  {activeSection === 'quickLinks' || lockedSections.quickLinks ?
+                    <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" /> :
+                    <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                  }
+                </div>
+              </h2>
+              {(activeSection === 'quickLinks' || lockedSections.quickLinks) && (
+                <div className="space-y-1.5 w-full">
+                  {uniqueUrls.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No Quick Links</p>
                   ) : (
-                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                    </svg>
+                    uniqueUrls.map(({ url, label }, idx) => {
+                      let displayText = label || (() => {
+                        try { return new URL(url).hostname.replace(/^www\./, ''); }
+                        catch { return url; }
+                      })();
+                      return (
+                        <div
+                          key={url}
+                          onContextMenu={e => handleLinkContextMenu(e, url)}
+                          className={`flex items-center pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors w-full`}
+                        >
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 text-gray-700 hover:text-indigo-600 truncate text-sm min-w-0"
+                          >
+                            {displayText}
+                          </a>
+                          <button
+                            onClick={() => removeBookmarkFromNotes(url, notes, setNotes)}
+                            className="ml-2 text-gray-400 hover:text-red-500 focus:outline-none flex-shrink-0"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      );
+                    })
                   )}
-                </button>
-                {activeSection === 'quickLinks' || lockedSections.quickLinks ?
-                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" /> :
-                  <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
-                }
-              </div>
-            </h2>
-            {(activeSection === 'quickLinks' || lockedSections.quickLinks) && (
-              <div className="space-y-1.5 w-full">
-                {uniqueUrls.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No Quick Links</p>
+                </div>
+              )}
+            </div>
+
+            {/* Bookmarks Section */}
+            <div
+              className="bg-white p-3 rounded-lg shadow-sm mb-3"
+              onMouseEnter={() => setActiveSection('bookmarks')}
+              onMouseLeave={() => !lockedSections.bookmarks && setActiveSection(null)}
+            >
+              <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
+                <span>Bookmarks</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLockedSections(prev => ({ ...prev, bookmarks: !prev.bookmarks }));
+                    }}
+                    className="p-1 rounded hover:bg-indigo-100"
+                    title={lockedSections.bookmarks ? "Unlock section" : "Lock section open"}
+                  >
+                    {lockedSections.bookmarks ? (
+                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                  {activeSection === 'bookmarks' || lockedSections.bookmarks ?
+                    <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> :
+                    <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
+                  }
+                </div>
+              </h2>
+              {(activeSection === 'bookmarks' || lockedSections.bookmarks) && (
+                bookmarkedUrls.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No Bookmarks</p>
                 ) : (
-                  uniqueUrls.map(({ url, label }, idx) => {
+                  bookmarkedUrls.map(({ url, label }, idx) => {
                     let displayText = label || (() => {
                       try { return new URL(url).hostname.replace(/^www\./, ''); }
                       catch { return url; }
@@ -499,104 +584,35 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                       <div
                         key={url}
                         onContextMenu={e => handleLinkContextMenu(e, url)}
-                        className={`flex items-center pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors w-full`}
+                        className={`flex items-center mb-1.5 pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors`}
                       >
                         <a
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex-1 text-gray-700 hover:text-indigo-600 truncate text-sm min-w-0"
+                          className="flex-1 text-gray-700 hover:text-indigo-600 truncate text-sm"
                         >
                           {displayText}
                         </a>
-                        <button
-                          onClick={() => removeBookmarkFromNotes(url, notes, setNotes)}
-                          className="ml-2 text-gray-400 hover:text-red-500 focus:outline-none flex-shrink-0"
-                        >
-                          &times;
-                        </button>
                       </div>
                     );
                   })
-                )}
-              </div>
-            )}
+                )
+              )}
+            </div>
           </div>
 
-          {/* Bookmarks Section */}
-          <div
-            className="bg-white p-3 rounded-lg shadow-sm mb-3"
-            onMouseEnter={() => setActiveSection('bookmarks')}
-            onMouseLeave={() => !lockedSections.bookmarks && setActiveSection(null)}
-          >
-            <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
-              <span>Bookmarks</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLockedSections(prev => ({ ...prev, bookmarks: !prev.bookmarks }));
-                  }}
-                  className="p-1 rounded hover:bg-indigo-100"
-                  title={lockedSections.bookmarks ? "Unlock section" : "Lock section open"}
-                >
-                  {lockedSections.bookmarks ? (
-                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  ) : (
-                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                    </svg>
-                  )}
-                </button>
-                {activeSection === 'bookmarks' || lockedSections.bookmarks ?
-                  <ChevronDoubleUpIcon className="h-4 w-4 text-indigo-600" /> :
-                  <ChevronDoubleDownIcon className="h-4 w-4 text-indigo-600" />
-                }
-              </div>
-            </h2>
-            {(activeSection === 'bookmarks' || lockedSections.bookmarks) && (
-              bookmarkedUrls.length === 0 ? (
-                <p className="text-gray-500 text-sm">No Bookmarks</p>
-              ) : (
-                bookmarkedUrls.map(({ url, label }, idx) => {
-                  let displayText = label || (() => {
-                    try { return new URL(url).hostname.replace(/^www\./, ''); }
-                    catch { return url; }
-                  })();
-                  return (
-                    <div
-                      key={url}
-                      onContextMenu={e => handleLinkContextMenu(e, url)}
-                      className={`flex items-center mb-1.5 pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors`}
-                    >
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 text-gray-700 hover:text-indigo-600 truncate text-sm"
-                      >
-                        {displayText}
-                      </a>
-                    </div>
-                  );
-                })
-              )
-            )}
+          {/* Settings button at bottom */}
+          <div className="mt-3 pt-3 border-t border-gray-200 w-full">
+            <button
+              onClick={() => setShowSettings(true)}
+              className="w-full flex items-center justify-center p-2.5 bg-white hover:bg-indigo-50 rounded-lg text-gray-700 hover:text-indigo-600 transition-colors duration-150 shadow-sm"
+              title="Settings"
+            >
+              <Cog6ToothIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+              <span className="text-sm font-medium truncate">Settings</span>
+            </button>
           </div>
-        </div>
-
-        {/* Settings button at bottom */}
-        <div className="mt-3 pt-3 border-t border-gray-200 w-full">
-          <button
-            onClick={() => setShowSettings(true)}
-            className="w-full flex items-center justify-center p-2.5 bg-white hover:bg-indigo-50 rounded-lg text-gray-700 hover:text-indigo-600 transition-colors duration-150 shadow-sm"
-            title="Settings"
-          >
-            <Cog6ToothIcon className="h-5 w-5 mr-2 flex-shrink-0" />
-            <span className="text-sm font-medium truncate">Settings</span>
-          </button>
         </div>
       </div>
 

@@ -326,7 +326,7 @@ const AppContent = () => {
     <SearchModalProvider notes={allNotes}>
       <NotesProvider>
         <NoteEditorProvider>
-          <div className="App flex flex-col h-screen">
+          <div className="App flex flex-col h-screen overflow-hidden">
             <Navbar activePage={activePage} setActivePage={(page) => navigate(`/${page}`)} settings={settings} />
             <div className="flex flex-1 overflow-hidden">
               {/* Left panel */}
@@ -341,111 +341,141 @@ const AppContent = () => {
               </div>
 
               {/* Right panel: main content */}
-              <div className="flex-1 overflow-hidden">
-                <Routes>
-                  <Route path="/" element={
-                    <>
-                      <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
-                      <NotesMainContainer
-                        objList={objectList}
-                        notes={notes}
-                        allNotes={allNotes}
-                        addNote={addNote}
-                        setNotes={updateBothNotesLists}
-                        objects={objects}
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                        addTag={addTag}
-                        setNoteDate={setNoteDate}
-                        totals={totals}
-                        setTotals={setTotals}
-                        settings={settings}
-                      />
-                    </>
-                  } />
-                  <Route path="/notes" element={
-                    <>
-                      <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
-                      <NotesMainContainer
-                        objList={objectList}
-                        notes={notes}
-                        allNotes={allNotes}
-                        addNote={addNote}
-                        setNotes={updateBothNotesLists}
-                        objects={objects}
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                        addTag={addTag}
-                        setNoteDate={setNoteDate}
-                        totals={totals}
-                        setTotals={setTotals}
-                        settings={settings}
-                      />
-                    </>
-                  } />
-                  <Route path="/watch" element={
-                    <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                      <WatchList 
-                        allNotes={allNotes} 
-                        updateNote={updateNote} 
-                        refreshNotes={fetchAllNotes} 
-                      />
-                    </div>
-                  } />
-                  <Route path="/tags" element={<TagListing objectList={objects} />} />
-                  <Route path="/todos" element={
-                    <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                      <TodoList
-                        todos={todos}
-                        notes={notes}
-                        updateTodosCallback={setTodos}
-                        updateNoteCallBack={setNotes}
-                      />
-                    </div>
-                  } />
-                  <Route path="/journals" element={<Journals />} />
-                  <Route path="/manage-notes" element={<Manage />} />
-                  <Route path="/events" element={
-                    <EventsPage 
-                      notes={allNotes} 
-                      onUpdate={(updatedNotes) => {
-                        setAllNotes(updatedNotes);
-                        if (activePage === 'notes') {
-                          setNotes(updatedNotes);
-                        }
-                      }}
-                    />
-                  } />
-                  <Route path="/people" element={
-                    <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                      <PeopleList 
-                        notes={allNotes}
-                        searchQuery={searchQuery}
-                        allNotes={allNotes}
-                      />
-                    </div>
-                  } />
-                  <Route path="/news" element={
-                    <div className="min-h-screen bg-gray-50">
-                      <News />
-                    </div>
-                  } />
-                  <Route path="/dashboard" element={
-                    <div className="min-h-screen bg-gray-50">
-                      <Dashboard />
-                    </div>
-                  } />
-                  <Route path="/expense" element={
-                    <div className="min-h-screen bg-gray-50">
-                      <ExpenseTracker />
-                    </div>
-                  } />
-                  <Route path="/trackers" element={
-                    <div className="min-h-screen bg-gray-50">
-                      <TrackerListing />
-                    </div>
-                  } />
-                </Routes>
+              <div className="flex-1 overflow-y-auto">
+                <div className="h-full">
+                  <Routes>
+                    <Route path="/" element={
+                      <div className="h-full overflow-y-auto">
+                        <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
+                        <NotesMainContainer
+                          objList={objectList}
+                          notes={notes}
+                          allNotes={allNotes}
+                          addNote={addNote}
+                          setNotes={updateBothNotesLists}
+                          objects={objects}
+                          searchQuery={searchQuery}
+                          setSearchQuery={setSearchQuery}
+                          addTag={addTag}
+                          setNoteDate={setNoteDate}
+                          totals={totals}
+                          setTotals={setTotals}
+                          settings={settings}
+                        />
+                      </div>
+                    } />
+                    <Route path="/notes" element={
+                      <div className="h-full overflow-y-auto">
+                        <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
+                        <NotesMainContainer
+                          objList={objectList}
+                          notes={notes}
+                          allNotes={allNotes}
+                          addNote={addNote}
+                          setNotes={updateBothNotesLists}
+                          objects={objects}
+                          searchQuery={searchQuery}
+                          setSearchQuery={setSearchQuery}
+                          addTag={addTag}
+                          setNoteDate={setNoteDate}
+                          totals={totals}
+                          setTotals={setTotals}
+                          settings={settings}
+                        />
+                      </div>
+                    } />
+                    <Route path="/watch" element={
+                      <div className="h-full overflow-y-auto">
+                        <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                          <WatchList 
+                            allNotes={allNotes} 
+                            updateNote={updateNote} 
+                            refreshNotes={fetchAllNotes} 
+                          />
+                        </div>
+                      </div>
+                    } />
+                    <Route path="/tags" element={
+                      <div className="h-full overflow-y-auto">
+                        <TagListing objectList={objects} />
+                      </div>
+                    } />
+                    <Route path="/todos" element={
+                      <div className="h-full overflow-y-auto">
+                        <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                          <TodoList
+                            todos={todos}
+                            notes={notes}
+                            updateTodosCallback={setTodos}
+                            updateNoteCallBack={setNotes}
+                          />
+                        </div>
+                      </div>
+                    } />
+                    <Route path="/journals" element={
+                      <div className="h-full overflow-y-auto">
+                        <Journals />
+                      </div>
+                    } />
+                    <Route path="/manage-notes" element={
+                      <div className="h-full overflow-y-auto">
+                        <Manage />
+                      </div>
+                    } />
+                    <Route path="/events" element={
+                      <div className="h-full overflow-y-auto">
+                        <EventsPage 
+                          notes={allNotes} 
+                          onUpdate={(updatedNotes) => {
+                            setAllNotes(updatedNotes);
+                            if (activePage === 'notes') {
+                              setNotes(updatedNotes);
+                            }
+                          }}
+                        />
+                      </div>
+                    } />
+                    <Route path="/people" element={
+                      <div className="h-full overflow-y-auto">
+                        <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                          <PeopleList 
+                            notes={allNotes}
+                            searchQuery={searchQuery}
+                            allNotes={allNotes}
+                          />
+                        </div>
+                      </div>
+                    } />
+                    <Route path="/news" element={
+                      <div className="h-full overflow-y-auto">
+                        <div className="min-h-screen bg-gray-50">
+                          <News />
+                        </div>
+                      </div>
+                    } />
+                    <Route path="/dashboard" element={
+                      <div className="h-full overflow-y-auto">
+                        <div className="min-h-screen bg-gray-50">
+                          <Dashboard />
+                        </div>
+                      </div>
+                    } />
+                    <Route path="/expense" element={
+                      <div className="h-full overflow-y-auto">
+                        <div className="min-h-screen bg-gray-50">
+                          <ExpenseTracker />
+                        </div>
+                      </div>
+                    } />
+                    <Route path="/trackers" element={
+                      <div className="h-full overflow-y-auto">
+                        <div className="min-h-screen bg-gray-50">
+                          <TrackerListing />
+                        </div>
+                      </div>
+                    } />
+                  </Routes>
+                </div>
               </div>
             </div>
             <ToastContainer

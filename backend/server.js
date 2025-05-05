@@ -74,7 +74,9 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
         return false;
       }
 
-      const noteContent = (note.content || "").toLowerCase();
+      // Handle case where content might be an object
+      const noteContent = typeof note.content === 'object' ? note.content.content : note.content;
+      const noteContentLower = (noteContent || "").toLowerCase();
       const eventDescription = (note.event_description || "").toLowerCase();
       const noteTags = Array.isArray(note.tags)
         ? note.tags.map(tag => (tag || "").toLowerCase())
@@ -82,7 +84,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
 
       // Function to check if a word matches in any searchable field
       const wordMatchesInNote = (word) => {
-        const matchInContent = noteContent.includes(word);
+        const matchInContent = noteContentLower.includes(word);
         const matchInEvent = eventDescription.includes(word);
         const matchInTags = noteTags.some(tag => tag.includes(word));
         
@@ -104,7 +106,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
 
       if (matchesSearchQuery) {
         console.log('\nMatched Note:');
-        console.log('Content preview:', noteContent.substring(0, 50) + (noteContent.length > 50 ? '...' : ''));
+        console.log('Content preview:', noteContentLower.substring(0, 50) + (noteContentLower.length > 50 ? '...' : ''));
         if (eventDescription) console.log('Event:', eventDescription);
         if (noteTags.length > 0) console.log('Tags:', noteTags);
       }

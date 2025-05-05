@@ -415,6 +415,7 @@ const NotesMainContainer = ({
 
     // Filter notes for display based on selected date and exclude states
     const filteredNotes = useMemo(() => {
+      console.log('Filtered notes n:',notes.length);
         const filtered = notes.filter(note => {
             // First apply date filter if needed
             if (currentDate && !searchQuery) {
@@ -464,7 +465,7 @@ const NotesMainContainer = ({
 
             return true;
         });
-
+        console.log('Filtered notes:', filtered.lengthf);
         return filtered;
     }, [notes, currentDate, searchQuery, excludeEvents, excludeMeetings, showDeadlinePassedFilter]);
 

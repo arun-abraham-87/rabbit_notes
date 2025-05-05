@@ -225,6 +225,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     
     // Always update search query if setSearchQuery is provided
     if (setSearchQuery) {
+      console.log('Setting searchQuery in handleTextChange:', value);
       setSearchQuery(value);
     }
 
@@ -889,12 +890,18 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           className="w-full p-4 text-sm border border-gray-300 rounded-lg shadow-sm resize-none min-h-[200px] font-mono"
           value={lines.map(line => line.text).join('\n')}
           onChange={(e) => {
+            const timestamp = Date.now();
             const updatedLines = e.target.value.split('\n').map((text, index) => ({
-              id: `line-${index}-${Date.now()}`,
+              id: `line-${timestamp}-${index}`,
               text,
               isTitle: text.startsWith('##') && text.endsWith('##'),
             }));
             setLines(updatedLines);
+            // Update search query if in add mode
+            if (isAddMode && setSearchQuery) {
+              console.log('Setting searchQuery in textarea mode:', e.target.value);
+              setSearchQuery(e.target.value);
+            }
           }}
         />
       ) : (

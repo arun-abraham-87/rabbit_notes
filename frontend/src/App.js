@@ -237,7 +237,9 @@ const AppContent = () => {
   };
 
   const fetchNotes = async (searchText) => {
+    console.log('Fetching notes with searchText:', searchText,noteDate);
     const data = await loadNotes(searchText, noteDate)
+    console.log('Filtered notes q:', data.notes.length);
     setNotes(data.notes);
     setTotals(data.totals);
   };

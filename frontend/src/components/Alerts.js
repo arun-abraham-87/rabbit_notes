@@ -414,23 +414,23 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       <button
                         onClick={() => handleMarkCompleted(todo)}
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                        title="Mark Completed"
                       >
                         <CheckIcon className="w-5 h-5" />
-                        Mark Completed
                       </button>
                       <button
                         onClick={() => handleLowerPriority(todo)}
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
+                        title="Lower Priority"
                       >
                         <ArrowTrendingDownIcon className="w-5 h-5" />
-                        Lower Priority
                       </button>
                       <button
                         onClick={() => handleViewRawNote(todo)}
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+                        title="View Raw Note"
                       >
                         <DocumentTextIcon className="w-5 h-5" />
-                        View Raw Note
                       </button>
                     </div>
                   </div>

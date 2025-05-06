@@ -145,15 +145,23 @@ const CompressedNotesList = ({
   };
 
   const getVisibleLines = (content) => {
-    const lines = content.split('\n');
+    const lines = content.split('\n')
+      .filter(line => line.trim().length > 0)
+      .filter(line => !line.trim().startsWith('meta::'));
     return lines.length > 3 ? lines.slice(0, 3).join('\n') : content;
+  };
+
+  const getContentLines = (content) => {
+    return content.split('\n')
+      .filter(line => line.trim().length > 0)
+      .filter(line => !line.trim().startsWith('meta::'));
   };
 
   return (
     <div className="space-y-4">
       {notes.map(note => {
-        const lines = note.content.split('\n');
-        const isLongNote = lines.length > 3;
+        const contentLines = getContentLines(note.content);
+        const isLongNote = contentLines.length > 3;
         const isExpanded = expandedNotes[note.id];
         const isRawView = showRawNotes[note.id];
         const displayContent = isLongNote && !isExpanded 
@@ -216,7 +224,7 @@ const CompressedNotesList = ({
                 ) : (
                   <>
                     <ChevronDownIcon className="h-4 w-4" />
-                    <span>Show more ({lines.length - 3} more lines)</span>
+                    <span>Show more ({contentLines.length - 3} more lines)</span>
                   </>
                 )}
               </button>

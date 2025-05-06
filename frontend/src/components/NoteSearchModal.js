@@ -18,6 +18,7 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       setRecentSearches(getRecentSearches());
+      setSearchQuery('');
       if (inputRef.current) {
         inputRef.current.focus();
       }

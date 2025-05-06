@@ -84,6 +84,7 @@ const Alerts = {
 
 const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
+  const [expandedNotes, setExpandedNotes] = useState({});
 
   const passedDeadlineTodos = notes.filter(note => {
     if (!note.content.includes('meta::todo::')) return false;
@@ -99,6 +100,140 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
 
   if (passedDeadlineTodos.length === 0) return null;
 
+  const toggleNoteExpand = (noteId) => {
+    setExpandedNotes(prev => ({
+      ...prev,
+      [noteId]: !prev[noteId]
+    }));
+  };
+
+  const formatContent = (content) => {
+    const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
+    const firstLine = lines[0]?.trim() || '';
+    const secondLine = lines[1]?.trim() || '';
+    const remainingLines = lines.slice(2);
+
+    // Check if first line is a URL
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const firstLineUrlMatch = firstLine.match(urlRegex);
+    const secondLineUrlMatch = secondLine.match(urlRegex);
+    
+    // Function to format a URL line
+    const formatUrlLine = (line) => {
+      const urlMatch = line.match(urlRegex);
+      if (!urlMatch) return line;
+
+      const url = urlMatch[0];
+      const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+      
+      if (markdownMatch) {
+        const customText = markdownMatch[1];
+        const markdownUrl = markdownMatch[2];
+        return (
+          <a
+            href={markdownUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            {customText}
+          </a>
+        );
+      } else {
+        const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
+        return (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            {hostname}
+          </a>
+        );
+      }
+    };
+
+    // If first line is URL
+    if (firstLineUrlMatch) {
+      return (
+        <>
+          <div>{formatUrlLine(firstLine)}</div>
+          {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+          {remainingLines.length > 0 && (
+            <>
+              {expandedNotes[content] ? (
+                <div className="mt-2 text-gray-600">
+                  {remainingLines.map((line, index) => (
+                    <div key={index}>{line}</div>
+                  ))}
+                </div>
+              ) : null}
+              <button
+                onClick={() => toggleNoteExpand(content)}
+                className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+              >
+                {expandedNotes[content] ? 'Show less' : 'Show more'}
+              </button>
+            </>
+          )}
+        </>
+      );
+    }
+
+    // If second line is URL
+    if (secondLineUrlMatch) {
+      return (
+        <>
+          <div>{firstLine}</div>
+          <div className="mt-1 text-gray-600">{formatUrlLine(secondLine)}</div>
+          {remainingLines.length > 0 && (
+            <>
+              {expandedNotes[content] ? (
+                <div className="mt-2 text-gray-600">
+                  {remainingLines.map((line, index) => (
+                    <div key={index}>{line}</div>
+                  ))}
+                </div>
+              ) : null}
+              <button
+                onClick={() => toggleNoteExpand(content)}
+                className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+              >
+                {expandedNotes[content] ? 'Show less' : 'Show more'}
+              </button>
+            </>
+          )}
+        </>
+      );
+    }
+
+    // For regular content
+    if (lines.length > 1) {
+      return (
+        <>
+          <div>{firstLine}</div>
+          {expandedNotes[content] ? (
+            <div className="mt-2 text-gray-600">
+              {lines.slice(1).map((line, index) => (
+                <div key={index}>{line}</div>
+              ))}
+            </div>
+          ) : null}
+          <button
+            onClick={() => toggleNoteExpand(content)}
+            className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+          >
+            {expandedNotes[content] ? 'Show less' : 'Show more'}
+          </button>
+        </>
+      );
+    }
+
+    // If only one line
+    return firstLine;
+  };
+
   const formatDate = (date) => {
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -113,60 +248,6 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
     const diffTime = Math.abs(now - endDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
-  };
-
-  const formatContent = (content) => {
-    const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
-    const firstLine = lines[0]?.trim() || '';
-    const secondLine = lines[1]?.trim() || '';
-
-    // Check if first line is a URL
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const urlMatch = firstLine.match(urlRegex);
-    
-    if (urlMatch) {
-      const url = urlMatch[0];
-      // Check if there's custom text in markdown format [text](url)
-      const markdownMatch = firstLine.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
-      
-      if (markdownMatch) {
-        // If markdown link found, use the custom text
-        const customText = markdownMatch[1];
-        const markdownUrl = markdownMatch[2];
-        return (
-          <>
-            <a
-              href={markdownUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
-            >
-              {customText}
-            </a>
-            {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
-          </>
-        );
-      } else {
-        // No custom text, use hostname
-        const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
-        return (
-          <>
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
-            >
-              {hostname}
-            </a>
-            {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
-          </>
-        );
-      }
-    }
-
-    // If not a URL, just return the first line
-    return firstLine;
   };
 
   return (
@@ -200,13 +281,18 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
       </div>
       {isExpanded && (
         <div className="divide-y divide-gray-100">
-          {passedDeadlineTodos.map((todo) => {
+          {passedDeadlineTodos.map((todo, index) => {
             const endDateMatch = todo.content.match(/meta::end_date::(\d{4}-\d{2}-\d{2})/);
             const endDate = new Date(endDateMatch[1]);
             const overdueDays = getOverdueDays(endDate);
 
             return (
-              <div key={todo.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+              <div 
+                key={todo.id} 
+                className={`p-6 transition-colors duration-150 ${
+                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                } hover:bg-gray-100`}
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -240,6 +326,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [showPriorityPopup, setShowPriorityPopup] = useState(false);
   const [noteToUpdate, setNoteToUpdate] = useState(null);
   const [expandedNotes, setExpandedNotes] = useState({});
+  const [showAllTodos, setShowAllTodos] = useState(false);
 
   const criticalTodos = notes.filter(note => {
     if (!note.content.includes('meta::todo::')) return false;
@@ -248,6 +335,9 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   });
 
   if (criticalTodos.length === 0) return null;
+
+  const displayedTodos = showAllTodos ? criticalTodos : criticalTodos.slice(0, 3);
+  const hasMoreTodos = criticalTodos.length > 3;
 
   const handleViewRawNote = (note) => {
     setSelectedNote(note);
@@ -319,84 +409,100 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
 
     // Check if first line is a URL
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const urlMatch = firstLine.match(urlRegex);
+    const firstLineUrlMatch = firstLine.match(urlRegex);
+    const secondLineUrlMatch = secondLine.match(urlRegex);
     
-    if (urlMatch) {
+    // Function to format a URL line
+    const formatUrlLine = (line) => {
+      const urlMatch = line.match(urlRegex);
+      if (!urlMatch) return line;
+
       const url = urlMatch[0];
-      // Check if there's custom text in markdown format [text](url)
-      const markdownMatch = firstLine.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+      const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
       
       if (markdownMatch) {
-        // If markdown link found, use the custom text
         const customText = markdownMatch[1];
         const markdownUrl = markdownMatch[2];
         return (
-          <>
-            <a
-              href={markdownUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
-            >
-              {customText}
-            </a>
-            {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
-            {remainingLines.length > 0 && (
-              <>
-                {expandedNotes[content] ? (
-                  <div className="mt-2 text-gray-600">
-                    {remainingLines.map((line, index) => (
-                      <div key={index}>{line}</div>
-                    ))}
-                  </div>
-                ) : null}
-                <button
-                  onClick={() => toggleNoteExpand(content)}
-                  className="mt-1 text-sm text-blue-600 hover:text-blue-800"
-                >
-                  {expandedNotes[content] ? 'Show less' : 'Show more'}
-                </button>
-              </>
-            )}
-          </>
+          <a
+            href={markdownUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            {customText}
+          </a>
         );
       } else {
-        // No custom text, use hostname
         const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
         return (
-          <>
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
-            >
-              {hostname}
-            </a>
-            {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
-            {remainingLines.length > 0 && (
-              <>
-                {expandedNotes[content] ? (
-                  <div className="mt-2 text-gray-600">
-                    {remainingLines.map((line, index) => (
-                      <div key={index}>{line}</div>
-                    ))}
-                  </div>
-                ) : null}
-                <button
-                  onClick={() => toggleNoteExpand(content)}
-                  className="mt-1 text-sm text-blue-600 hover:text-blue-800"
-                >
-                  {expandedNotes[content] ? 'Show less' : 'Show more'}
-                </button>
-              </>
-            )}
-          </>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            {hostname}
+          </a>
         );
       }
+    };
+
+    // If first line is URL
+    if (firstLineUrlMatch) {
+      return (
+        <>
+          <div>{formatUrlLine(firstLine)}</div>
+          {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+          {remainingLines.length > 0 && (
+            <>
+              {expandedNotes[content] ? (
+                <div className="mt-2 text-gray-600">
+                  {remainingLines.map((line, index) => (
+                    <div key={index}>{line}</div>
+                  ))}
+                </div>
+              ) : null}
+              <button
+                onClick={() => toggleNoteExpand(content)}
+                className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+              >
+                {expandedNotes[content] ? 'Show less' : 'Show more'}
+              </button>
+            </>
+          )}
+        </>
+      );
     }
 
-    // If not a URL, handle regular content
+    // If second line is URL
+    if (secondLineUrlMatch) {
+      return (
+        <>
+          <div>{firstLine}</div>
+          <div className="mt-1 text-gray-600">{formatUrlLine(secondLine)}</div>
+          {remainingLines.length > 0 && (
+            <>
+              {expandedNotes[content] ? (
+                <div className="mt-2 text-gray-600">
+                  {remainingLines.map((line, index) => (
+                    <div key={index}>{line}</div>
+                  ))}
+                </div>
+              ) : null}
+              <button
+                onClick={() => toggleNoteExpand(content)}
+                className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+              >
+                {expandedNotes[content] ? 'Show less' : 'Show more'}
+              </button>
+            </>
+          )}
+        </>
+      );
+    }
+
+    // For regular content
     if (lines.length > 1) {
       return (
         <>
@@ -418,7 +524,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       );
     }
 
-    // If only one line, just return it
+    // If only one line
     return firstLine;
   };
 
@@ -466,9 +572,14 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         </div>
         {isExpanded && (
           <div className="divide-y divide-gray-100">
-            {criticalTodos.map((todo) => {
+            {displayedTodos.map((todo, index) => {
               return (
-                <div key={todo.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+                <div 
+                  key={todo.id} 
+                  className={`p-6 transition-colors duration-150 ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  } hover:bg-gray-100`}
+                >
                   <div className="flex flex-col">
                     <div className="flex-1">
                       <h4 className="text-lg font-medium text-gray-900 mb-2 break-words">
@@ -502,6 +613,16 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                 </div>
               );
             })}
+            {hasMoreTodos && (
+              <div className="p-4 bg-white">
+                <button
+                  onClick={() => setShowAllTodos(!showAllTodos)}
+                  className="w-full py-2 text-sm font-medium text-blue-600 hover:text-blue-800 focus:outline-none"
+                >
+                  {showAllTodos ? 'Show Less' : `Show ${criticalTodos.length - 3} More`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -511,6 +632,8 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
 
 const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
+  const [showAllNotes, setShowAllNotes] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState({});
 
   const overdueNotes = notes.filter(note => {
     if (!note.content.includes('meta::watch')) return false;
@@ -518,6 +641,143 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
   });
 
   if (overdueNotes.length === 0) return null;
+
+  const displayedNotes = showAllNotes ? overdueNotes : overdueNotes.slice(0, 3);
+  const hasMoreNotes = overdueNotes.length > 3;
+
+  const toggleNoteExpand = (noteId) => {
+    setExpandedNotes(prev => ({
+      ...prev,
+      [noteId]: !prev[noteId]
+    }));
+  };
+
+  const formatContent = (content) => {
+    const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
+    const firstLine = lines[0]?.trim() || '';
+    const secondLine = lines[1]?.trim() || '';
+    const remainingLines = lines.slice(2);
+
+    // Check if first line is a URL
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const firstLineUrlMatch = firstLine.match(urlRegex);
+    const secondLineUrlMatch = secondLine.match(urlRegex);
+    
+    // Function to format a URL line
+    const formatUrlLine = (line) => {
+      const urlMatch = line.match(urlRegex);
+      if (!urlMatch) return line;
+
+      const url = urlMatch[0];
+      const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+      
+      if (markdownMatch) {
+        const customText = markdownMatch[1];
+        const markdownUrl = markdownMatch[2];
+        return (
+          <a
+            href={markdownUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            {customText}
+          </a>
+        );
+      } else {
+        const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
+        return (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            {hostname}
+          </a>
+        );
+      }
+    };
+
+    // If first line is URL
+    if (firstLineUrlMatch) {
+      return (
+        <>
+          <div>{formatUrlLine(firstLine)}</div>
+          {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+          {remainingLines.length > 0 && (
+            <>
+              {expandedNotes[content] ? (
+                <div className="mt-2 text-gray-600">
+                  {remainingLines.map((line, index) => (
+                    <div key={index}>{line}</div>
+                  ))}
+                </div>
+              ) : null}
+              <button
+                onClick={() => toggleNoteExpand(content)}
+                className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+              >
+                {expandedNotes[content] ? 'Show less' : 'Show more'}
+              </button>
+            </>
+          )}
+        </>
+      );
+    }
+
+    // If second line is URL
+    if (secondLineUrlMatch) {
+      return (
+        <>
+          <div>{firstLine}</div>
+          <div className="mt-1 text-gray-600">{formatUrlLine(secondLine)}</div>
+          {remainingLines.length > 0 && (
+            <>
+              {expandedNotes[content] ? (
+                <div className="mt-2 text-gray-600">
+                  {remainingLines.map((line, index) => (
+                    <div key={index}>{line}</div>
+                  ))}
+                </div>
+              ) : null}
+              <button
+                onClick={() => toggleNoteExpand(content)}
+                className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+              >
+                {expandedNotes[content] ? 'Show less' : 'Show more'}
+              </button>
+            </>
+          )}
+        </>
+      );
+    }
+
+    // For regular content
+    if (lines.length > 1) {
+      return (
+        <>
+          <div>{firstLine}</div>
+          {expandedNotes[content] ? (
+            <div className="mt-2 text-gray-600">
+              {lines.slice(1).map((line, index) => (
+                <div key={index}>{line}</div>
+              ))}
+            </div>
+          ) : null}
+          <button
+            onClick={() => toggleNoteExpand(content)}
+            className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+          >
+            {expandedNotes[content] ? 'Show less' : 'Show more'}
+          </button>
+        </>
+      );
+    }
+
+    // If only one line
+    return firstLine;
+  };
 
   return (
     <div className="w-1/2 pl-2">
@@ -551,18 +811,22 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
         </div>
         {isExpanded && (
           <div className="divide-y divide-gray-100">
-            {overdueNotes.map((note) => {
+            {displayedNotes.map((note, index) => {
               const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
               const reviewTime = reviews[note.id];
               const cadence = getNoteCadence(note.id);
-              const content = note.content.split('\n').filter(line => !line.trim().startsWith('meta::'))[0];
 
               return (
-                <div key={note.id} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+                <div 
+                  key={note.id} 
+                  className={`p-6 transition-colors duration-150 ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  } hover:bg-gray-100`}
+                >
                   <div className="flex flex-col">
                     <div className="flex-1">
                       <h4 className="text-lg font-medium text-gray-900 mb-2 break-words">
-                        {content}
+                        {formatContent(note.content)}
                       </h4>
                       <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
@@ -588,6 +852,16 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
                 </div>
               );
             })}
+            {hasMoreNotes && (
+              <div className="p-4 bg-white">
+                <button
+                  onClick={() => setShowAllNotes(!showAllNotes)}
+                  className="w-full py-2 text-sm font-medium text-blue-600 hover:text-blue-800 focus:outline-none"
+                >
+                  {showAllNotes ? 'Show Less' : `Show ${overdueNotes.length - 3} More`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

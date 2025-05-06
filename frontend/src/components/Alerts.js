@@ -239,6 +239,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [selectedNote, setSelectedNote] = useState(null);
   const [showPriorityPopup, setShowPriorityPopup] = useState(false);
   const [noteToUpdate, setNoteToUpdate] = useState(null);
+  const [expandedNotes, setExpandedNotes] = useState({});
 
   const criticalTodos = notes.filter(note => {
     if (!note.content.includes('meta::todo::')) return false;
@@ -303,10 +304,18 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     }
   };
 
+  const toggleNoteExpand = (noteId) => {
+    setExpandedNotes(prev => ({
+      ...prev,
+      [noteId]: !prev[noteId]
+    }));
+  };
+
   const formatContent = (content) => {
     const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
     const firstLine = lines[0]?.trim() || '';
     const secondLine = lines[1]?.trim() || '';
+    const remainingLines = lines.slice(2);
 
     // Check if first line is a URL
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -332,6 +341,23 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
               {customText}
             </a>
             {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+            {remainingLines.length > 0 && (
+              <>
+                {expandedNotes[content] ? (
+                  <div className="mt-2 text-gray-600">
+                    {remainingLines.map((line, index) => (
+                      <div key={index}>{line}</div>
+                    ))}
+                  </div>
+                ) : null}
+                <button
+                  onClick={() => toggleNoteExpand(content)}
+                  className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  {expandedNotes[content] ? 'Show less' : 'Show more'}
+                </button>
+              </>
+            )}
           </>
         );
       } else {
@@ -348,12 +374,51 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
               {hostname}
             </a>
             {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+            {remainingLines.length > 0 && (
+              <>
+                {expandedNotes[content] ? (
+                  <div className="mt-2 text-gray-600">
+                    {remainingLines.map((line, index) => (
+                      <div key={index}>{line}</div>
+                    ))}
+                  </div>
+                ) : null}
+                <button
+                  onClick={() => toggleNoteExpand(content)}
+                  className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  {expandedNotes[content] ? 'Show less' : 'Show more'}
+                </button>
+              </>
+            )}
           </>
         );
       }
     }
 
-    // If not a URL, just return the first line
+    // If not a URL, handle regular content
+    if (lines.length > 1) {
+      return (
+        <>
+          <div>{firstLine}</div>
+          {expandedNotes[content] ? (
+            <div className="mt-2 text-gray-600">
+              {lines.slice(1).map((line, index) => (
+                <div key={index}>{line}</div>
+              ))}
+            </div>
+          ) : null}
+          <button
+            onClick={() => toggleNoteExpand(content)}
+            className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+          >
+            {expandedNotes[content] ? 'Show less' : 'Show more'}
+          </button>
+        </>
+      );
+    }
+
+    // If only one line, just return it
     return firstLine;
   };
 

@@ -107,6 +107,42 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
     }));
   };
 
+  const formatUrlLine = (line) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const urlMatch = line.match(urlRegex);
+    if (!urlMatch) return line;
+
+    const url = urlMatch[0];
+    const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+    
+    if (markdownMatch) {
+      const customText = markdownMatch[1];
+      const markdownUrl = markdownMatch[2];
+      return (
+        <a
+          href={markdownUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline hover:text-blue-800"
+        >
+          {customText}
+        </a>
+      );
+    } else {
+      const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
+      return (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline hover:text-blue-800"
+        >
+          {hostname}
+        </a>
+      );
+    }
+  };
+
   const formatContent = (content) => {
     const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
     const firstLine = lines[0]?.trim() || '';
@@ -117,42 +153,6 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const firstLineUrlMatch = firstLine.match(urlRegex);
     const secondLineUrlMatch = secondLine.match(urlRegex);
-    
-    // Function to format a URL line
-    const formatUrlLine = (line) => {
-      const urlMatch = line.match(urlRegex);
-      if (!urlMatch) return line;
-
-      const url = urlMatch[0];
-      const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
-      
-      if (markdownMatch) {
-        const customText = markdownMatch[1];
-        const markdownUrl = markdownMatch[2];
-        return (
-          <a
-            href={markdownUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline hover:text-blue-800"
-          >
-            {customText}
-          </a>
-        );
-      } else {
-        const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
-        return (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline hover:text-blue-800"
-          >
-            {hostname}
-          </a>
-        );
-      }
-    };
 
     // If first line is URL
     if (firstLineUrlMatch) {

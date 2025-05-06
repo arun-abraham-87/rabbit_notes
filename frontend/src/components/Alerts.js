@@ -17,7 +17,8 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   MinusIcon,
-  PlusIcon
+  PlusIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon } from '../utils/ApiUtils';
@@ -369,22 +370,29 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     if (!noteToUpdate) return;
 
     try {
-      // Remove existing priority tags
+      // Remove existing priority tags and critical tag
       let updatedContent = noteToUpdate.content
         .split('\n')
-        .filter(line => !line.includes('meta::priority::'))
+        .filter(line => !line.includes('meta::priority::') && !line.includes('meta::critical'))
         .join('\n');
 
       // Add new priority tag
       updatedContent = `${updatedContent}\nmeta::priority::${priority}`;
 
+      // If priority is not high, remove critical tag
+      if (priority !== 'high') {
+        updatedContent = updatedContent.replace('meta::critical', '');
+      }
+
       await updateNoteById(noteToUpdate.id, updatedContent);
+      
       // Update the notes list immediately after successful update
       const updatedNotes = notes.map(n => 
         n.id === noteToUpdate.id ? { ...n, content: updatedContent } : n
       );
       setNotes(updatedNotes);
-      Alerts.success('Priority updated successfully');
+      
+      Alerts.success(`Priority updated to ${priority}`);
     } catch (error) {
       console.error('Error updating priority:', error);
       Alerts.error('Failed to update priority');
@@ -528,6 +536,28 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     return firstLine;
   };
 
+  const handleAddToWatch = async (note) => {
+    try {
+      // Check if the note already has the watch tag
+      if (note.content.includes('meta::watch')) {
+        Alerts.info('Note is already being watched');
+        return;
+      }
+
+      const updatedContent = `${note.content}\nmeta::watch`;
+      await updateNoteById(note.id, updatedContent);
+      // Update the notes list immediately after successful update
+      const updatedNotes = notes.map(n => 
+        n.id === note.id ? { ...n, content: updatedContent } : n
+      );
+      setNotes(updatedNotes);
+      Alerts.success('Added to watch list');
+    } catch (error) {
+      console.error('Error adding to watch:', error);
+      Alerts.error('Failed to add to watch list');
+    }
+  };
+
   return (
     <div className="w-1/2 pr-2">
       <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
@@ -608,6 +638,17 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       >
                         <CodeBracketIcon className="w-5 h-5" />
                       </button>
+                      <button
+                        onClick={() => handleAddToWatch(todo)}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
+                          todo.content.includes('meta::watch')
+                            ? 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500'
+                            : 'text-blue-700 bg-blue-50 hover:bg-blue-100 focus:ring-blue-500'
+                        }`}
+                        title={todo.content.includes('meta::watch') ? 'Already Watching' : 'Add to Watch List'}
+                      >
+                        <EyeIcon className="w-5 h-5" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -626,6 +667,56 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           </div>
         )}
       </div>
+
+      {/* Priority Selection Popup */}
+      {showPriorityPopup && noteToUpdate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Select New Priority</h3>
+              <button
+                onClick={() => setShowPriorityPopup(false)}
+                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {['high', 'medium', 'low'].map((priority) => (
+                <button
+                  key={priority}
+                  onClick={() => handlePrioritySelect(priority)}
+                  className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-150"
+                >
+                  {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Raw Note Popup */}
+      {showRawNote && selectedNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Raw Note Content</h3>
+              <button
+                onClick={() => setShowRawNote(false)}
+                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto">
+              <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">
+                {selectedNote.content}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

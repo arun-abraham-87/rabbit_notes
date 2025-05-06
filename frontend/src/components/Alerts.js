@@ -410,10 +410,16 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   };
 
   const formatContent = (content) => {
-    const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
-    const firstLine = lines[0]?.trim() || '';
-    const secondLine = lines[1]?.trim() || '';
-    const remainingLines = lines.slice(2);
+    // Split content into lines, trim each line, and filter out empty lines
+    const lines = content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => !line.trim().startsWith('meta::'))
+      .filter(line => line.length > 0);
+
+    const firstLine = lines[0] || '';
+    const secondLine = lines[1] || '';
+    const remainingLines = lines.slice(2).filter(line => line.length > 0);
 
     // Check if first line is a URL
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -522,12 +528,14 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
               ))}
             </div>
           ) : null}
-          <button
-            onClick={() => toggleNoteExpand(content)}
-            className="mt-1 text-sm text-blue-600 hover:text-blue-800"
-          >
-            {expandedNotes[content] ? 'Show less' : 'Show more'}
-          </button>
+          {lines.length > 2 && (
+            <button
+              onClick={() => toggleNoteExpand(content)}
+              className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+            >
+              {expandedNotes[content] ? 'Show less' : 'Show more'}
+            </button>
+          )}
         </>
       );
     }
@@ -744,10 +752,16 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
   };
 
   const formatContent = (content) => {
-    const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
-    const firstLine = lines[0]?.trim() || '';
-    const secondLine = lines[1]?.trim() || '';
-    const remainingLines = lines.slice(2);
+    // Split content into lines, trim each line, and filter out empty lines
+    const lines = content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => !line.trim().startsWith('meta::'))
+      .filter(line => line.length > 0);
+
+    const firstLine = lines[0] || '';
+    const secondLine = lines[1] || '';
+    const remainingLines = lines.slice(2).filter(line => line.length > 0);
 
     // Check if first line is a URL
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -856,12 +870,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
               ))}
             </div>
           ) : null}
-          <button
-            onClick={() => toggleNoteExpand(content)}
-            className="mt-1 text-sm text-blue-600 hover:text-blue-800"
-          >
-            {expandedNotes[content] ? 'Show less' : 'Show more'}
-          </button>
+          {lines.length > 2 && (
+            <button
+              onClick={() => toggleNoteExpand(content)}
+              className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+            >
+              {expandedNotes[content] ? 'Show less' : 'Show more'}
+            </button>
+          )}
         </>
       );
     }

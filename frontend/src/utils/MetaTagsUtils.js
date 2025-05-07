@@ -1,21 +1,35 @@
 /**
- * Extracts all meta tags from note content
+ * Extracts and categorizes meta tags from note content.
+ * Meta tags are special markers in the note content that start with 'meta::' and provide
+ * additional metadata about the note.
+ * 
  * @param {string} content - The note content to extract tags from
  * @returns {Object} Object containing arrays of different types of meta tags:
  * {
- *   priority: string[],    // meta::high, meta::medium, meta::low
- *   todo: string[],        // meta::todo
- *   links: string[],       // meta::link::ID
- *   dates: string[],       // meta::end_date::DATE
- *   events: string[],      // meta::event::DATE
- *   meetings: string[],    // meta::meeting::DATE
- *   pins: string[],        // meta::pin::INDICES
- *   abbreviations: boolean[], // meta::abbreviation
- *   bookmarks: boolean[],    // meta::bookmark
- *   recurring: string[],    // meta::recurring::TYPE
- *   recurringEnd: string[], // meta::recurring_end::DATE
- *   other: string[]        // Any other meta:: tags
+ *   priority: string[],    // meta::high, meta::medium, meta::low - Priority levels for todos
+ *   todo: string[],        // meta::todo - Todo items with optional dates
+ *   links: string[],       // meta::link::ID - Links to other notes
+ *   dates: string[],       // meta::end_date::DATE - Due dates for todos
+ *   events: string[],      // meta::event::DATE - Calendar events
+ *   meetings: string[],    // meta::meeting::DATE - Scheduled meetings
+ *   pins: string[],        // meta::pin::INDICES - Pinned sections in the note
+ *   abbreviations: boolean[], // meta::abbreviation - Notes that are abbreviations
+ *   bookmarks: boolean[],    // meta::bookmark - Bookmarked notes
+ *   recurring: string[],    // meta::recurring::TYPE - Recurring events/todos
+ *   recurringEnd: string[], // meta::recurring_end::DATE - End date for recurring items
+ *   other: string[]        // Any other meta:: tags not explicitly handled
  * }
+ * 
+ * @example
+ * // Input note content:
+ * // "Meeting notes\nmeta::meeting::2024-03-20\nmeta::high\nmeta::todo::2024-03-21"
+ * // Returns:
+ * // {
+ * //   priority: ['high'],
+ * //   todo: ['2024-03-21'],
+ * //   meetings: ['2024-03-20'],
+ * //   // ... other arrays empty
+ * // }
  */
 export const extractMetaTags = (content) => {
   const lines = content.split('\n');

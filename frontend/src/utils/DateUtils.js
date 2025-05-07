@@ -13,7 +13,9 @@ const DATE_REGEX = /\b(\d{2})\/(\d{2})\/(\d{4})\b|\b(\d{2}) (Jan|Feb|Mar|Apr|May
  * @returns {string} Relative time string (e.g., "2 hours ago", "in 3 days")
  */
 export const getAge = (dateStrOrDateObj) => {
-  return `${parseToMoment(dateStrOrDateObj).fromNow()}`;
+  const dateObj = parseToMoment(dateStrOrDateObj);
+  if (!dateObj) return '';
+  return `${dateObj.fromNow()}`;
 }
 
 /**

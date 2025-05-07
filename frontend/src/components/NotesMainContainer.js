@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
 import NotesListByDate from './NotesListByDate.js';
-import DateSelectorBar from './DateSelectorBar.js';
-import TextEditor from './TextEditor.js'
 import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
 import NoteEditor from './NoteEditor.js';
@@ -480,11 +478,7 @@ const NotesMainContainer = ({
         setTotals(newTotals);
     }, [filteredNotes, setTotals]);
 
-    // Handle date selection
-    const handleDateChange = (date) => {
-        setCurrentDate(date);
-        setNoteDate(date);
-    };
+
 
     // Check for ongoing meetings periodically and schedule checks for upcoming meetings
     useEffect(() => {
@@ -689,10 +683,6 @@ const NotesMainContainer = ({
                         <WatchList allNotes={allNotes} />
                     ) : (
                         <>
-                            <DateSelectorBar
-                                setNoteDate={handleDateChange}
-                                defaultCollapsed={true}
-                            />
                             <NoteEditor
                                 objList={mergedObjList}
                                 note={{ id: '', content: '' }}

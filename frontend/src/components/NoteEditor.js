@@ -3,7 +3,7 @@ import { updateNoteById } from '../utils/ApiUtils';
 import NoteFilters from './NoteFilters';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 
-const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange, onExcludeMeetingsChange }) => {
+const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
   const initialLines = contentSource
     ? [
@@ -540,24 +540,16 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     if (!merged || !merged.trim()) {
       return;
     }
-    
+   console.log('isAddMode', isAddMode);
     if (isAddMode) {
-      if (isModal) {
-        // In modal mode, we pass the content to the parent's onSave handler
-        console.log('Passing content to modal:', merged);
-        onSave(merged);
-      } else {
-        // In non-modal mode, we use addNote directly
         addNote(merged);
         setLines([{ id: 'line-0', text: '', isTitle: false }]);
         setUrlLabelSelection({ urlIndex: null, labelIndex: null });
         onCancel();
-      }
+      //}
     } else {
-      // Update the note and trigger the callback
-      updateNoteById(note.id, merged).then(() => {
-        onSave({ ...note, content: merged });
-      });
+        onSave(merged);
+    //  });
     }
   };
 
@@ -575,7 +567,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         if (!hasContent) {
           return; // Don't do anything if all lines are empty
         }
-        
+       console.log('isAddMode', isAddMode);
         saveNote();
       }
     };
@@ -729,7 +721,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
             onClick={() => setIsTextMode(!isTextMode)}
             className="text-xs text-gray-500 hover:text-gray-700 underline"
           >
-            {isTextMode ? '🧩 Advanced Mode' : '✍️ Text Mode'}
+            {isTextMode ? 'Advanced Mode' : 'Text Mode'}
           </button>
         )}
         {pendingUrlIndex !== null && (
@@ -1180,14 +1172,10 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           <button
             onClick={() => {
               const merged = lines.map(line => line.text).join('\n');
-              if (isModal) {
-                onSave(merged);
-              } else {
                 addNote(merged);
                 setLines([{ id: 'line-0', text: '', isTitle: false }]);
                 setUrlLabelSelection({ urlIndex: null, labelIndex: null });
                 onCancel();
-              }
             }}
             className="px-3 py-1.5 rounded text-sm bg-gray-800 text-white hover:bg-gray-700 shadow-sm"
           >
@@ -1210,7 +1198,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
             }}
             className="px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
           >
-            Clear
+            Clear1
           </button>
         ) : (
           <button

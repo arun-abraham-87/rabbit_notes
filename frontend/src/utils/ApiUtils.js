@@ -15,7 +15,9 @@ export const addNewNoteCommon = async (content, tags, noteDate) => {
 };
 
 export const updateNoteById = async (id, updatedContent) => {
+    console.log('updatedContent', updatedContent);
     const reorderedContent = reorderMetaTags(updatedContent);
+    console.log('reorderedContent', reorderedContent);
     const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

@@ -18,7 +18,7 @@ import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroi
 import { parseNoteContent } from './utils/TextUtils';
 import { formatAndAgeDate } from './utils/DateUtils';
 
-import { addNewNoteCommon, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings, defaultSettings } from './utils/ApiUtils';
+import { createNote, addNewNoteCommon, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings, defaultSettings } from './utils/ApiUtils';
 import { SearchModalProvider } from './contexts/SearchModalContext';
 import { NoteEditorProvider, useNoteEditor } from './contexts/NoteEditorContext';
 import { NotesProvider, useNotes } from './contexts/NotesContext';
@@ -262,13 +262,15 @@ const AppContent = () => {
 
   const addNote = async (content, tags) => {
     try {
-      await addNewNoteCommon(content, tags, noteDate);
+      const response =await addNewNoteCommon(content, tags, noteDate);
       setSearchQuery('');
+      setNotes([response,...notes]);
+      setAllNotes([response,...allNotes]);
       // Use empty search query to fetch all notes after adding
-      await Promise.all([
-        fetchNotes(''),
-        fetchAllNotes()
-      ]);
+      //await Promise.all([
+       // fetchNotes(''),
+        //fetchAllNotes()
+      //]);
     } catch (error) {
       console.error('Error adding note:', error);
     }
@@ -520,7 +522,7 @@ const AppContent = () => {
               theme="light"
               closeButton={false}
             />
-            <NoteEditorModal />
+            <NoteEditorModal addNote={addNote} updateNote={updateNote} />
           </div>
         </NotesProvider>
       </SearchModalProvider>

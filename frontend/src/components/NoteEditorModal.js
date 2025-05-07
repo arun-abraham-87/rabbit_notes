@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  XMarkIcon, 
-  CheckCircleIcon, 
+import {
+  XMarkIcon,
+  CheckCircleIcon,
   EyeIcon,
   FlagIcon
 } from '@heroicons/react/24/solid';
@@ -10,13 +10,10 @@ import { useNotes } from '../contexts/NotesContext';
 import NoteEditor from './NoteEditor';
 import { getSettings, defaultSettings, loadTags } from '../utils/ApiUtils';
 
-const NoteEditorModal = () => {
+const NoteEditorModal = ({ addNote, updateNote }) => {
   const { isOpen, initialContent, mode, noteId, metaTags, closeEditor } = useNoteEditor();
-  const { addNote, updateNote } = useNotes();
   const [settings, setSettings] = useState({});
   const [objList, setObjList] = useState([]);
-  const [excludeEvents, setExcludeEvents] = useState(false);
-  const [excludeMeetings, setExcludeMeetings] = useState(false);
   const [selectedMetaTags, setSelectedMetaTags] = useState(metaTags || []);
   const [showPriorityOptions, setShowPriorityOptions] = useState(metaTags?.some(tag => tag.startsWith('meta::todo')) || false);
 
@@ -74,11 +71,11 @@ const NoteEditorModal = () => {
         // Toggle todo tag
         if (newTags.some(tag => tag.startsWith('meta::todo'))) {
           // Remove todo and all priority tags
-          newTags = newTags.filter(tag => 
-            !tag.startsWith('meta::todo') && 
-            !tag.startsWith('meta::critical') && 
-            !tag.startsWith('meta::high') && 
-            !tag.startsWith('meta::medium') && 
+          newTags = newTags.filter(tag =>
+            !tag.startsWith('meta::todo') &&
+            !tag.startsWith('meta::critical') &&
+            !tag.startsWith('meta::high') &&
+            !tag.startsWith('meta::medium') &&
             !tag.startsWith('meta::low')
           );
           setShowPriorityOptions(false);
@@ -98,10 +95,10 @@ const NoteEditorModal = () => {
           newTags = newTags.filter(tag => tag !== priorityTag);
         } else {
           // Remove any existing priority tags and add the new one
-          newTags = newTags.filter(tag => 
-            !tag.startsWith('meta::critical') && 
-            !tag.startsWith('meta::high') && 
-            !tag.startsWith('meta::medium') && 
+          newTags = newTags.filter(tag =>
+            !tag.startsWith('meta::critical') &&
+            !tag.startsWith('meta::high') &&
+            !tag.startsWith('meta::medium') &&
             !tag.startsWith('meta::low')
           );
           newTags.push(priorityTag);
@@ -139,6 +136,30 @@ const NoteEditorModal = () => {
     }
   };
 
+  const handleSave = (noteContent) => {
+    // Ensure content ends with a newline
+    const contentWithNewline = noteContent.endsWith('\n') ? noteContent : noteContent + '\n';
+    // Append meta tags with newlines
+    const finalContent = selectedMetaTags.length > 0
+      ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
+      : contentWithNewline;
+    console.log('finalContent', finalContent);
+    updateNote(noteId, finalContent)
+    closeEditor();
+  };
+
+  const handleAddNote = (noteContent) => {
+    // Ensure content ends with a newline
+    const contentWithNewline = noteContent.endsWith('\n') ? noteContent : noteContent + '\n';
+    // Append meta tags with newlines
+    const finalContent = selectedMetaTags.length > 0
+      ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
+      : contentWithNewline;
+    console.log('finalContent', finalContent);
+    addNote(finalContent);
+    closeEditor();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -157,39 +178,8 @@ const NoteEditorModal = () => {
           isAddMode={mode === 'add'}
           isModal={true}
           note={mode === 'edit' ? { id: noteId, content: initialContent } : null}
-          onSave={(content) => {
-            console.log('Original content:', content);
-            console.log('Selected meta tags:', selectedMetaTags);
-            
-            // Handle both string content and note objects
-            const noteContent = typeof content === 'string' ? content : content.content;
-            
-            // Ensure content ends with a newline
-            const contentWithNewline = noteContent.endsWith('\n') ? noteContent : noteContent + '\n';
-            console.log('Content with newline:', contentWithNewline);
-            
-            // Append meta tags with newlines
-            const finalContent = selectedMetaTags.length > 0 
-              ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
-              : contentWithNewline;
-            console.log('Final content to save:', finalContent);
-            
-            if (mode === 'add') {
-              // Save the note with the combined content
-              addNote(finalContent).then(() => {
-                // Refresh notes after adding
-                window.dispatchEvent(new CustomEvent('refreshNotes'));
-              });
-            } else {
-              // Update the existing note
-              updateNote(noteId, finalContent).then(() => {
-                // Refresh notes after updating
-                window.dispatchEvent(new CustomEvent('refreshNotes'));
-              });
-            }
-            closeEditor();
-          }}
-          addNote={addNote}
+          onSave={handleSave}
+          addNote={handleAddNote}
           onCancel={() => {
             setSelectedMetaTags([]);
             setShowPriorityOptions(false);
@@ -198,82 +188,68 @@ const NoteEditorModal = () => {
           text={initialContent}
           objList={objList}
           settings={settings}
-          onExcludeEventsChange={setExcludeEvents}
-          onExcludeMeetingsChange={setExcludeMeetings}
         />
         <div className="flex flex-col items-center gap-4 mt-4 p-2 border-t border-gray-200">
           <div className="flex items-center justify-center gap-4">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleMetaTagClick('todo')}
-                className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
-                  selectedMetaTags.some(tag => tag.startsWith('meta::todo')) ? 'bg-green-100' : ''
-                }`}
+                className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.some(tag => tag.startsWith('meta::todo')) ? 'bg-green-100' : ''
+                  }`}
                 title="Mark as Todo"
               >
-                <CheckCircleIcon className={`h-5 w-5 ${
-                  selectedMetaTags.some(tag => tag.startsWith('meta::todo')) ? 'text-green-600' : 'text-gray-500'
-                }`} />
+                <CheckCircleIcon className={`h-5 w-5 ${selectedMetaTags.some(tag => tag.startsWith('meta::todo')) ? 'text-green-600' : 'text-gray-500'
+                  }`} />
               </button>
               {showPriorityOptions && (
                 <>
                   <button
                     onClick={() => handleMetaTagClick('critical')}
-                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
-                      selectedMetaTags.includes('meta::critical') ? 'bg-red-100' : ''
-                    }`}
+                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.includes('meta::critical') ? 'bg-red-100' : ''
+                      }`}
                     title="Critical Priority"
                   >
-                    <FlagIcon className={`h-5 w-5 ${
-                      selectedMetaTags.includes('meta::critical') ? 'text-red-600' : 'text-red-400'
-                    }`} />
+                    <FlagIcon className={`h-5 w-5 ${selectedMetaTags.includes('meta::critical') ? 'text-red-600' : 'text-red-400'
+                      }`} />
                   </button>
                   <button
                     onClick={() => handleMetaTagClick('high')}
-                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
-                      selectedMetaTags.includes('meta::high') ? 'bg-orange-100' : ''
-                    }`}
+                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.includes('meta::high') ? 'bg-orange-100' : ''
+                      }`}
                     title="High Priority"
                   >
-                    <FlagIcon className={`h-5 w-5 ${
-                      selectedMetaTags.includes('meta::high') ? 'text-orange-600' : 'text-orange-400'
-                    }`} />
+                    <FlagIcon className={`h-5 w-5 ${selectedMetaTags.includes('meta::high') ? 'text-orange-600' : 'text-orange-400'
+                      }`} />
                   </button>
                   <button
                     onClick={() => handleMetaTagClick('medium')}
-                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
-                      selectedMetaTags.includes('meta::medium') ? 'bg-yellow-100' : ''
-                    }`}
+                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.includes('meta::medium') ? 'bg-yellow-100' : ''
+                      }`}
                     title="Medium Priority"
                   >
-                    <FlagIcon className={`h-5 w-5 ${
-                      selectedMetaTags.includes('meta::medium') ? 'text-yellow-600' : 'text-yellow-400'
-                    }`} />
+                    <FlagIcon className={`h-5 w-5 ${selectedMetaTags.includes('meta::medium') ? 'text-yellow-600' : 'text-yellow-400'
+                      }`} />
                   </button>
                   <button
                     onClick={() => handleMetaTagClick('low')}
-                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
-                      selectedMetaTags.includes('meta::low') ? 'bg-blue-100' : ''
-                    }`}
+                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.includes('meta::low') ? 'bg-blue-100' : ''
+                      }`}
                     title="Low Priority"
                   >
-                    <FlagIcon className={`h-5 w-5 ${
-                      selectedMetaTags.includes('meta::low') ? 'text-blue-600' : 'text-blue-400'
-                    }`} />
+                    <FlagIcon className={`h-5 w-5 ${selectedMetaTags.includes('meta::low') ? 'text-blue-600' : 'text-blue-400'
+                      }`} />
                   </button>
                 </>
               )}
             </div>
             <button
               onClick={() => handleMetaTagClick('watch')}
-              className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
-                selectedMetaTags.some(tag => tag.startsWith('meta::watch')) ? 'bg-purple-100' : ''
-              }`}
+              className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.some(tag => tag.startsWith('meta::watch')) ? 'bg-purple-100' : ''
+                }`}
               title="Add to Watch List"
             >
-              <EyeIcon className={`h-5 w-5 ${
-                selectedMetaTags.some(tag => tag.startsWith('meta::watch')) ? 'text-purple-600' : 'text-gray-500'
-              }`} />
+              <EyeIcon className={`h-5 w-5 ${selectedMetaTags.some(tag => tag.startsWith('meta::watch')) ? 'text-purple-600' : 'text-gray-500'
+                }`} />
             </button>
           </div>
 

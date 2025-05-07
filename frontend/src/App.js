@@ -15,8 +15,7 @@ import EventsPage from './pages/EventsPage';
 import PeopleList from './components/PeopleList';
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from './utils/TextUtils';
-import { formatAndAgeDate } from './utils/DateUtils';
-
+import { getAge } from './utils/DateUtils';
 import { createNote, addNewNoteCommon, addNewTag, loadNotes, loadAllNotes, loadTags, loadTodos, updateNoteById as updateNote, getSettings, defaultSettings } from './utils/ApiUtils';
 import { SearchModalProvider } from './contexts/SearchModalContext';
 import { NoteEditorProvider, useNoteEditor } from './contexts/NoteEditorContext';
@@ -172,7 +171,7 @@ const PinnedSection = ({ notes, onUnpin }) => {
                       key={`line-${lineIndex}`}
                       className={`mb-1 ${lineIndex === 0 ? 'font-medium' : 'text-gray-500'}`}
                     >
-                      {parseNoteContent({ content: formatAndAgeDate(line), searchTerm: '' }).map((element, idx) => (
+                      {parseNoteContent({ content: line, searchTerm: '' }).map((element, idx) => (
                         <React.Fragment key={idx}>{element}</React.Fragment>
                       ))}
                     </div>

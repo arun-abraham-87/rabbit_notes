@@ -176,7 +176,7 @@ export const renderLineWithClickableDates = (
 ) => {
   //////console.log("reached inner")
   //////console.log(line)
-  const textWithAges = formatAndAgeDate(line);
+  const textWithAges = line;
   const segments = textWithAges.split(clickableDateRegex);
   return segments.map((seg, i) => {
     if (clickableDateRegex.test(seg)) {

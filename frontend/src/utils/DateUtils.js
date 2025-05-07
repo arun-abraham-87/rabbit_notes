@@ -13,9 +13,8 @@ const DATE_REGEX = /\b(\d{2})\/(\d{2})\/(\d{4})\b|\b(\d{2}) (Jan|Feb|Mar|Apr|May
  * @returns {string} Relative time string (e.g., "2 hours ago", "in 3 days")
  */
 export const getAge = (dateStrOrDateObj) => {
-  const dateObj = parseToMoment(dateStrOrDateObj);
-  if (!dateObj) return '';
-  return `${dateObj.fromNow()}`;
+  const momentObj = parseToMoment(dateStrOrDateObj);
+  return momentObj ? momentObj.fromNow() : 'Invalid date';
 }
 
 /**
@@ -24,8 +23,8 @@ export const getAge = (dateStrOrDateObj) => {
  * @returns {string} Full name of the day (e.g., "Monday", "Tuesday")
  */
 export const getDayOfWeek = (dateStrOrDateObj) => {
-  const date = parseToMoment(dateStrOrDateObj);
-  return date.format('dddd');  // Get the full name of the day (e.g., Monday)
+  const momentObj = parseToMoment(dateStrOrDateObj);
+  return momentObj ? momentObj.format('dddd') : 'Invalid date';
 };
 
 /**
@@ -35,7 +34,8 @@ export const getDayOfWeek = (dateStrOrDateObj) => {
  * @returns {string} Formatted date string in "DD-MM-YYYY" format
  */
 export const getDateInDDMMYYYYFormat = (dateStrOrDateObj) => {
-    return parseToMoment(dateStrOrDateObj).format('DD-MM-YYYY');
+    const momentObj = parseToMoment(dateStrOrDateObj);
+    return momentObj ? momentObj.format('DD-MM-YYYY') : 'Invalid date';
 };
 
 /**
@@ -48,8 +48,10 @@ export const getDateInDDMMYYYYFormat = (dateStrOrDateObj) => {
  * @returns {string} Formatted date string with relative time (e.g., "25-12-2023 (2 days ago)")
  */
 export const getDateInDDMMYYYYFormatWithAgeInParentheses = (dateString) => {
-    const formattedDate = getDateInDDMMYYYYFormat(dateString);
-    return `${formattedDate} (${getAge})`;
+    const momentObj = parseToMoment(dateString);
+    if (!momentObj) return 'Invalid date';
+    const formattedDate = momentObj.format('DD-MM-YYYY');
+    return `${formattedDate} (${momentObj.fromNow()})`;
 };
 
 /**
@@ -57,7 +59,7 @@ export const getDateInDDMMYYYYFormatWithAgeInParentheses = (dateString) => {
  * @returns {string} Date string in format "YYYY-MM-DD" (e.g., "2023-12-25")
  */
 export const getTodaysDateInYYYYMMDDFormat = () => {
-  return moment.now().format('YYYY-MM-DD');
+  return moment().format('YYYY-MM-DD');
 };
 
 /**
@@ -67,7 +69,8 @@ export const getTodaysDateInYYYYMMDDFormat = () => {
  * @returns {string} Date string in format "YYYY-MM-DD" (e.g., "2023-12-26")
  */
 export const getNextOrPrevDateStr = (dateString, next) => {
-  return parseToMoment(dateString).add(next ? 1 : -1, 'days').format('YYYY-MM-DD');
+  const momentObj = parseToMoment(dateString);
+  return momentObj ? momentObj.add(next ? 1 : -1, 'days').format('YYYY-MM-DD') : 'Invalid date';
 };
 
 /**

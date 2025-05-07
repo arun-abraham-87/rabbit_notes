@@ -1,27 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import CompressedNotesList from './CompressedNotesList';
-import { ClockIcon, PencilIcon } from '@heroicons/react/24/outline';
-import { useNoteEditor } from '../contexts/NoteEditorContext';
-import NoteEditorModal from './NoteEditorModal';
+import { ClockIcon, PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import NoteEditor from './NoteEditor';
 
 const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
-  const { openEditor } = useNoteEditor();
   const [editingNote, setEditingNote] = useState(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const watchlistNotes = allNotes.filter(note => 
     note.content.includes('meta::watch')
   );
 
-  // Add event listener for refresh
-  useEffect(() => {
-    const handleRefresh = () => {
-      refreshNotes();
-    };
-
-    window.addEventListener('refreshNotes', handleRefresh);
-    return () => {
-      window.removeEventListener('refreshNotes', handleRefresh);
-    };
-  }, [refreshNotes]);
 
   const handleMarkForReview = (noteId) => {
     // Get current reviews from localStorage
@@ -81,6 +69,20 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
     return Math.ceil((now - watchDate) / (1000 * 60 * 60 * 24));
   };
 
+  const handleEdit = (note) => {
+    setEditingNote(note);
+    setIsEditorOpen(true);
+  };
+
+  const handleSave = (updatedNote) => {
+    console.log('updatedNote', updatedNote);
+    console.log('editingNote.id', editingNote.id);
+    updateNote(editingNote.id, updatedNote);
+    setIsEditorOpen(false);
+    setEditingNote(null);
+    refreshNotes();
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-4">
@@ -120,10 +122,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               refreshNotes={refreshNotes}
               onReview={handleUnfollow}
               onCadenceChange={handleUnfollow}
-              onEdit={(note) => {
-                openEditor(note.content, 'edit', note.id);
-                setEditingNote(note);
-              }}
+              onEdit={handleEdit}
               onMarkForReview={handleMarkForReview}
             />
           </div>
@@ -163,10 +162,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               refreshNotes={refreshNotes}
               onReview={handleUnfollow}
               onCadenceChange={handleUnfollow}
-              onEdit={(note) => {
-                openEditor(note.content, 'edit', note.id);
-                setEditingNote(note);
-              }}
+              onEdit={handleEdit}
               onMarkForReview={handleMarkForReview}
             />
           </div>
@@ -176,7 +172,35 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
           <p className="text-gray-600">No notes tagged with meta::watch found.</p>
         )}
       </div>
-      <NoteEditorModal />
+
+      {isEditorOpen && editingNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
+              <button
+                onClick={() => {
+                  setIsEditorOpen(false);
+                  setEditingNote(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <NoteEditor
+              isAddMode={false}
+              note={editingNote}
+              onSave={handleSave}
+              onCancel={() => {
+                setIsEditorOpen(false);
+                setEditingNote(null);
+              }}
+              objList={[]}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -2120,6 +2120,188 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
   );
 };
 
+const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
+  const [showAllReminders, setShowAllReminders] = useState(false);
+
+  const reminders = notes.filter(note => {
+    if (!note.content.includes('meta::reminder')) return false;
+    if (!note.content.includes('meta::watch')) return false;
+    return checkNeedsReview(note.id);
+  });
+
+  const displayedReminders = showAllReminders ? reminders : reminders.slice(0, 3);
+  const hasMoreReminders = reminders.length > 3;
+
+  const handleDismiss = async (note) => {
+    try {
+      // Remove the reminder tag
+      const updatedContent = note.content
+        .split('\n')
+        .filter(line => !line.trim().startsWith('meta::reminder'))
+        .join('\n')
+        .trim();
+      
+      await updateNoteById(note.id, updatedContent);
+      
+      // Update the notes list immediately
+      const updatedNotes = notes.map(n => 
+        n.id === note.id ? { ...n, content: updatedContent } : n
+      );
+      setNotes(updatedNotes);
+
+      Alerts.success('Reminder dismissed');
+    } catch (error) {
+      console.error('Error dismissing reminder:', error);
+      Alerts.error('Failed to dismiss reminder');
+    }
+  };
+
+  const handleSetCadence = async (note, hours) => {
+    try {
+      // Remove existing cadence tag if it exists
+      let updatedContent = note.content
+        .split('\n')
+        .filter(line => !line.includes('meta::cadence::'))
+        .join('\n');
+
+      // Add new cadence tag
+      updatedContent = `${updatedContent}\nmeta::cadence::${hours}h`;
+
+      // Update the note
+      await updateNoteById(note.id, updatedContent);
+      
+      // Update the notes list immediately
+      const updatedNotes = notes.map(n => 
+        n.id === note.id ? { ...n, content: updatedContent } : n
+      );
+      setNotes(updatedNotes);
+      
+      // Update the review time in localStorage
+      const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+      reviews[note.id] = new Date().toISOString();
+      localStorage.setItem('noteReviews', JSON.stringify(reviews));
+
+      // Update the cadence in localStorage
+      const cadences = JSON.parse(localStorage.getItem('noteReviewCadence') || '{}');
+      cadences[note.id] = { hours, minutes: 0 };
+      localStorage.setItem('noteReviewCadence', JSON.stringify(cadences));
+
+      Alerts.success(`Reminder cadence set to ${hours} hours`);
+    } catch (error) {
+      console.error('Error setting cadence:', error);
+      Alerts.error('Failed to set reminder cadence');
+    }
+  };
+
+  if (reminders.length === 0) return null;
+
+  return (
+    <div className="space-y-4 w-full">
+      {displayedReminders.map((note, index) => {
+        const firstLine = note.content.split('\n')[0].trim();
+        const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+        const reviewTime = reviews[note.id];
+        const cadence = getNoteCadence(note.id);
+
+        return (
+          <div 
+            key={note.id} 
+            className="bg-purple-50 border border-purple-100 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+          >
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ClockIcon className="h-5 w-5 text-purple-500" />
+                  <div>
+                    <h4 className="text-lg font-medium text-purple-900">
+                      {firstLine}
+                    </h4>
+                    <div className="flex items-center gap-4 text-sm text-purple-600 mt-1">
+                      <div className="flex items-center gap-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>Last reminded: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>Reminder cadence: {cadence.hours}h {cadence.minutes}m</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSetCadence(note, 1)}
+                      className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                      title="Set 1 hour cadence"
+                    >
+                      1h
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 2)}
+                      className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                      title="Set 2 hour cadence"
+                    >
+                      2h
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 4)}
+                      className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                      title="Set 4 hour cadence"
+                    >
+                      4h
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 6)}
+                      className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                      title="Set 6 hour cadence"
+                    >
+                      6h
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 12)}
+                      className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                      title="Set 12 hour cadence"
+                    >
+                      12h
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 24)}
+                      className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                      title="Set 24 hour cadence"
+                    >
+                      24h
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => handleDismiss(note)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                    title="Dismiss Reminder"
+                  >
+                    <XMarkIcon className="w-5 h-5" />
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {hasMoreReminders && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => setShowAllReminders(!showAllReminders)}
+            className="px-4 py-2 text-sm font-medium text-purple-600 hover:text-purple-800 focus:outline-none bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors duration-150"
+          >
+            {showAllReminders ? 'Show Less' : `Show ${reminders.length - 3} More`}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) => {
   const handleDismissUnacknowledgedMeeting = async (noteId) => {
     const note = notes.find(n => n.id === noteId);
@@ -2153,12 +2335,13 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         theme="light"
       />
       <div className="space-y-6 w-full">
-      <MeetingManager 
-                    allNotes={notes}
-                    setNotes={setNotes}
-                    searchQuery=''
-                    currentDate=''
-                />
+        <RemindersAlert notes={notes} expanded={true} setNotes={setNotes} />
+        <MeetingManager 
+          allNotes={notes}
+          setNotes={setNotes}
+          searchQuery=''
+          currentDate=''
+        />
         <UpcomingEventsAlert notes={notes} expanded={false} />
         <TrackerQuestionsAlert notes={notes} expanded={false} />
         <AlertsContainer 

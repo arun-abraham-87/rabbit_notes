@@ -2123,6 +2123,7 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
 const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showAllReminders, setShowAllReminders] = useState(false);
+  const [expandedDetails, setExpandedDetails] = useState({});
 
   const reminders = notes.filter(note => {
     if (!note.content.includes('meta::reminder')) return false;
@@ -2135,25 +2136,19 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
 
   const handleDismiss = async (note) => {
     try {
-      // Remove the reminder tag
-      const updatedContent = note.content
-        .split('\n')
-        .filter(line => !line.trim().startsWith('meta::reminder'))
-        .join('\n')
-        .trim();
+      // Update the review time in localStorage to reset the timer
+      const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+      reviews[note.id] = new Date().toISOString();
+      localStorage.setItem('noteReviews', JSON.stringify(reviews));
       
-      await updateNoteById(note.id, updatedContent);
-      
-      // Update the notes list immediately
-      const updatedNotes = notes.map(n => 
-        n.id === note.id ? { ...n, content: updatedContent } : n
-      );
+      // Update the notes list to trigger a re-render
+      const updatedNotes = notes.map(n => n);
       setNotes(updatedNotes);
 
-      Alerts.success('Reminder dismissed');
+      Alerts.success('Reminder reset');
     } catch (error) {
-      console.error('Error dismissing reminder:', error);
-      Alerts.error('Failed to dismiss reminder');
+      console.error('Error resetting reminder:', error);
+      Alerts.error('Failed to reset reminder');
     }
   };
 
@@ -2194,6 +2189,13 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
     }
   };
 
+  const toggleDetails = (noteId) => {
+    setExpandedDetails(prev => ({
+      ...prev,
+      [noteId]: !prev[noteId]
+    }));
+  };
+
   if (reminders.length === 0) return null;
 
   return (
@@ -2203,6 +2205,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
         const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
         const reviewTime = reviews[note.id];
         const cadence = getNoteCadence(note.id);
+        const isDetailsExpanded = expandedDetails[note.id];
 
         return (
           <div 
@@ -2212,21 +2215,33 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
             <div className="px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => toggleDetails(note.id)}
+                    className="text-purple-600 hover:text-purple-800 focus:outline-none"
+                  >
+                    {isDetailsExpanded ? (
+                      <ChevronUpIcon className="h-5 w-5" />
+                    ) : (
+                      <ChevronDownIcon className="h-5 w-5" />
+                    )}
+                  </button>
                   <ClockIcon className="h-5 w-5 text-purple-500" />
                   <div>
                     <h4 className="text-lg font-medium text-purple-900">
                       {firstLine}
                     </h4>
-                    <div className="flex items-center gap-4 text-sm text-purple-600 mt-1">
-                      <div className="flex items-center gap-1">
-                        <ClockIcon className="h-4 w-4" />
-                        <span>Last reminded: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
+                    {isDetailsExpanded && (
+                      <div className="mt-2 flex items-center gap-4 text-sm text-purple-600">
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="h-4 w-4" />
+                          <span>Last reminded: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="h-4 w-4" />
+                          <span>Reminder cadence: {cadence.hours}h {cadence.minutes}m</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <ClockIcon className="h-4 w-4" />
-                        <span>Reminder cadence: {cadence.hours}h {cadence.minutes}m</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

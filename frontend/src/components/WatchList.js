@@ -48,6 +48,16 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
     refreshNotes();
   };
 
+  const getLastReviewTime = (noteId) => {
+    const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+    return reviews[noteId] ? new Date(reviews[noteId]) : null;
+  };
+
+  const getReviewCadence = (noteId) => {
+    const cadences = JSON.parse(localStorage.getItem('noteReviewCadence') || '{}');
+    return cadences[noteId] || { hours: 24, minutes: 0 };
+  };
+
   const overdueNotes = watchlistNotes.filter(note => {
     // Skip notes with reminder tag
     if (note.content.includes('meta::reminder')) return false;
@@ -110,8 +120,6 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
   };
 
   const handleSave = (updatedNote) => {
-    console.log('updatedNote', updatedNote);
-    console.log('editingNote.id', editingNote.id);
     updateNote(editingNote.id, updatedNote);
     setIsEditorOpen(false);
     setEditingNote(null);
@@ -158,11 +166,13 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               isWatchList={true}
               getNoteAge={getDaysSinceAdded}
               refreshNotes={refreshNotes}
-              onReview={handleUnfollow}
-              onCadenceChange={handleUnfollow}
+              onReview={handleMarkForReview}
+              onCadenceChange={handleMarkForReview}
               onEdit={handleEdit}
               onMarkForReview={handleMarkForReview}
               onMarkAsReminder={handleMarkAsReminder}
+              getLastReviewTime={getLastReviewTime}
+              getReviewCadence={getReviewCadence}
             />
           </div>
         )}
@@ -199,11 +209,13 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               isWatchList={true}
               getNoteAge={getDaysSinceAdded}
               refreshNotes={refreshNotes}
-              onReview={handleUnfollow}
-              onCadenceChange={handleUnfollow}
+              onReview={handleMarkForReview}
+              onCadenceChange={handleMarkForReview}
               onEdit={handleEdit}
               onMarkForReview={handleMarkForReview}
               onMarkAsReminder={handleMarkAsReminder}
+              getLastReviewTime={getLastReviewTime}
+              getReviewCadence={getReviewCadence}
             />
           </div>
         )}
@@ -240,11 +252,13 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               isWatchList={true}
               getNoteAge={getDaysSinceAdded}
               refreshNotes={refreshNotes}
-              onReview={handleUnfollow}
-              onCadenceChange={handleUnfollow}
+              onReview={handleMarkForReview}
+              onCadenceChange={handleMarkForReview}
               onEdit={handleEdit}
               onMarkForReview={handleMarkForReview}
               onMarkAsReminder={handleMarkAsReminder}
+              getLastReviewTime={getLastReviewTime}
+              getReviewCadence={getReviewCadence}
             />
           </div>
         )}

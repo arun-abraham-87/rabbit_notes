@@ -62,14 +62,7 @@ const CompressedNotesList = ({
       let needsRefresh = false;
       
       notes.forEach(note => {
-        // Skip review checks for reminder notes
-        if (note.content.includes('meta::reminder')) {
-          newState[note.id] = false;
-          newTimeElapsed[note.id] = '';
-          newNextReviewTime[note.id] = '';
-          return;
-        }
-
+        // Remove the skip for reminder notes
         newState[note.id] = checkNeedsReview(note.id);
         const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
         newTimeElapsed[note.id] = formatTimeElapsed(reviews[note.id]);
@@ -247,7 +240,66 @@ const CompressedNotesList = ({
               <div className="mt-2 flex items-center justify-between border-t pt-2">
                 <div className="text-xs text-gray-500 flex flex-col">
                   {isReminder ? (
-                    <span className="text-purple-600">Reminder</span>
+                    <>
+                      <span className="text-purple-600">Reminder</span>
+                      <div className="text-xs text-gray-400">
+                        {needsReviewState[note.id] 
+                          ? 'Last review: ' + formatTimestamp(getLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
+                          : nextReviewTime[note.id]}
+                        <div className="text-xs text-gray-400">
+                          {showCadenceSelector === note.id ? (
+                            <div className="flex items-center gap-2 bg-white p-2 rounded shadow">
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="999"
+                                  value={cadenceHours}
+                                  onChange={(e) => setCadenceHours(parseInt(e.target.value) || 0)}
+                                  className="w-12 px-1 py-0.5 border rounded text-sm"
+                                  placeholder="Hours"
+                                />
+                                <span className="text-sm">h</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="59"
+                                  value={cadenceMinutes}
+                                  onChange={(e) => setCadenceMinutes(parseInt(e.target.value) || 0)}
+                                  className="w-12 px-1 py-0.5 border rounded text-sm"
+                                  placeholder="Minutes"
+                                />
+                                <span className="text-sm">m</span>
+                              </div>
+                              <button
+                                onClick={() => handleCadenceChange(note.id)}
+                                className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
+                              >
+                                Set
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <span>Review every: {getNoteCadence(note.id).hours}h {getNoteCadence(note.id).minutes}m</span>
+                              <button
+                                onClick={() => {
+                                  const cadence = getNoteCadence(note.id);
+                                  setCadenceHours(cadence.hours);
+                                  setCadenceMinutes(cadence.minutes);
+                                  setShowCadenceSelector(note.id);
+                                }}
+                                className="text-blue-500 hover:text-blue-700 underline text-sm"
+                                title="Set review cadence"
+                              >
+                                Set Cadence
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <>
                       {needsReviewState[note.id] 
@@ -297,10 +349,10 @@ const CompressedNotesList = ({
                                 setCadenceMinutes(cadence.minutes);
                                 setShowCadenceSelector(note.id);
                               }}
-                              className="p-0.5 text-gray-400 hover:text-gray-600"
+                              className="text-blue-500 hover:text-blue-700 underline text-sm"
                               title="Set review cadence"
                             >
-                              <ClockIcon className="h-3 w-3" />
+                              Set Cadence
                             </button>
                           </div>
                         )}
@@ -315,7 +367,6 @@ const CompressedNotesList = ({
                     title={isRawView ? "View formatted" : "View raw"}
                   >
                     <CodeBracketIcon className="h-4 w-4" />
-                    <span className="text-sm">{isRawView ? "View Formatted" : "View Raw"}</span>
                   </button>
                   <button
                     onClick={() => onEdit && onEdit(note)}
@@ -335,7 +386,7 @@ const CompressedNotesList = ({
                     title={isReminder ? "Remove reminder" : "Set as reminder"}
                   >
                     <BellIcon className="h-4 w-4" />
-                    <span className="text-sm">{isReminder ? "Reminder Set" : "Set Reminder"}</span>
+                    <span className="text-sm">{isReminder ? "UnMark As Reminder" : "Set As Reminder"}</span>
                   </button>
                   {!isReminder && (
                     <>
@@ -366,7 +417,7 @@ const CompressedNotesList = ({
                     title="Unfollow note"
                   >
                     <XMarkIcon className="h-4 w-4" />
-                    <span className="text-sm">Unfollow</span>
+                    <span className="text-sm">Un-Watch</span>
                   </button>
                 </div>
               </div>

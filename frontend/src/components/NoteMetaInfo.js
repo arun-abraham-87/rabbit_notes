@@ -1,6 +1,6 @@
 import React from 'react';
 import { updateNoteById as updateNote } from '../utils/ApiUtils';
-import { getDateAgeInYearsMonthsDays } from '../utils/DateUtils';
+import { getAge } from '../utils/DateUtils';
 
 /**
  * NoteTitle - renders todo/deadline info plus meeting/event inputs based on note metadata
@@ -27,15 +27,15 @@ export default function NoteTitle({
   let todoAgeNotice = '';
   if (todoDateMatch) {
     const todoDate = new Date(todoDateMatch[1]);
-    todoAgeNotice = `Open for: ${getDateAgeInYearsMonthsDays(todoDate, true)}`;
+    todoAgeNotice = `Open for: ${getAge(todoDate)}`;
   }
   if (parsedEndDate) {
     const now = new Date();
     const diffMs = parsedEndDate - now;
     if (diffMs > 0) {
-      endDateNotice = `Deadline in ${getDateAgeInYearsMonthsDays(parsedEndDate, false)}`;
+      endDateNotice = `Deadline in ${getAge(parsedEndDate)}`;
     } else {
-      endDateNotice = `Deadline passed ${getDateAgeInYearsMonthsDays(parsedEndDate, true)} ago`;
+      endDateNotice = `Deadline passed ${getAge(parsedEndDate)} ago`;
     }
   }
 

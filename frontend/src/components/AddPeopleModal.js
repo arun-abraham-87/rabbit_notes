@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { XMarkIcon, PlusIcon } from '@heroicons/react/24/solid';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
-import { getFormattedDateString } from '../utils/DateUtils';
+import { getDateInDDMMYYYYFormat } from '../utils/DateUtils';
 
 
 
@@ -148,7 +148,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       // Set default value based on type
       let defaultValue = '';
       if (typeType === 'date') {
-        defaultValue = getFormattedDateString(new Date());
+        defaultValue = getDateInDDMMYYYYFormat(new Date());
       }
       setInfoValues({ ...infoValues, [type]: defaultValue });
       setInfoTypeTypes({ ...infoTypeTypes, [type]: typeType });

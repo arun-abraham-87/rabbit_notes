@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { getFormattedDateWithAge } from '../utils/DateUtils';
+import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import EditEventModal from '../components/EditEventModal';
@@ -401,18 +401,18 @@ const EventsPage = ({ notes, onUpdate }) => {
                     <p className={`text-sm ${
                       isToday ? 'text-indigo-700' : 'text-gray-500'
                     }`}>
-                      {getFormattedDateWithAge(eventDate)}
+                      {getDateInDDMMYYYYFormatWithAgeInParentheses(eventDate)}
                     </p>
                     {recurrence !== 'none' && (
                       <div className="mt-1 space-y-1">
                         {lastOccurrence && (
                           <p className="text-xs text-gray-600">
-                            Last occurrence: {getFormattedDateWithAge(lastOccurrence)}
+                            Last occurrence: {getDateInDDMMYYYYFormatWithAgeInParentheses(lastOccurrence)}
                           </p>
                         )}
                         {nextOccurrence && (
                           <p className="text-xs text-indigo-600">
-                            Next occurrence: {getFormattedDateWithAge(nextOccurrence)}
+                            Next occurrence: {getDateInDDMMYYYYFormatWithAgeInParentheses(nextOccurrence)}
                           </p>
                         )}
                       </div>

@@ -16,7 +16,7 @@ import EditMeetingModal from './EditMeetingModal';
 import EditEventModal from './EditEventModal';
 import { updateNoteById, getSettings, updateSettings, addNewNoteCommon, loadAllNotes, loadNotes } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
-import { formatAndAgeDate, getAge, getFormattedDateString } from '../utils/DateUtils';
+import { formatAndAgeDate, getAge, getDateInDDMMYYYYFormat } from '../utils/DateUtils';
 import moment from 'moment';
 
 // Common timezones with their offsets and locations

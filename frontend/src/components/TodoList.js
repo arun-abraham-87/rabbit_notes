@@ -17,7 +17,7 @@ import {
   CodeBracketIcon
 } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
-import { getFormattedDateWithAge } from '../utils/DateUtils';
+import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import TodoStats from './TodoStats';
 import NoteEditorModal from './NoteEditorModal';
 import { useNoteEditor } from '../contexts/NoteEditorContext';

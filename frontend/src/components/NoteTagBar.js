@@ -1,5 +1,5 @@
 import React from 'react';
-import { extractMetaTags } from '../utils/DateUtils';
+import { extractMetaTags } from '../utils/MetaTagsUtils';
 import {
   XMarkIcon,
   ClockIcon,

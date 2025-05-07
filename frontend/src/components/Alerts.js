@@ -22,7 +22,7 @@ import {
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon, createNote } from '../utils/ApiUtils';
-import { getAge } from '../utils/DateUtils';
+import { getAge, getDateInDDMMYYYYFormat } from '../utils/DateUtils';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
 import NoteView from './NoteView';
 import { generateTrackerQuestions, createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
@@ -238,14 +238,7 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
     return firstLine;
   };
 
-  const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+
 
   const getOverdueDays = (endDate) => {
     const now = new Date();
@@ -301,7 +294,7 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
                       <CalendarIcon className="h-4 w-4" />
-                      <span>Deadline: {formatDate(endDate)}</span>
+                      <span>Deadline: {getDateInDDMMYYYYFormat(endDate)}</span>
                     </div>
                     <h4 className="text-lg font-medium text-gray-900 mb-2">
                       {formatContent(todo.content)}
@@ -978,14 +971,7 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
 
   if (unacknowledgedMeetings.length === 0) return null;
 
-  const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+
 
   const handleViewRawNote = (note) => {
     setSelectedNote(note);
@@ -1030,7 +1016,7 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
                     <div className="flex-1">
                       <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
                         <CalendarIcon className="h-4 w-4" />
-                        <span>{meetingTime ? formatDate(meetingTime) : 'No date'}</span>
+                        <span>{meetingTime ? getDateInDDMMYYYYFormat(meetingTime) : 'No date'}</span>
                       </div>
                       <h4 className="text-lg font-medium text-gray-900 mb-2">
                         {description}

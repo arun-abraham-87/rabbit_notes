@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getFormattedDateWithAge } from '../utils/DateUtils';
+import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { 
   ChevronRightIcon, 
   ChevronLeftIcon, 
@@ -250,7 +250,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => 
                             <p className={`text-sm ${
                               occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
                             }`}>
-                              {getFormattedDateWithAge(occurrence.date)}
+                              {getDateInDDMMYYYYFormatWithAgeInParentheses(occurrence.date)}
                             </p>
                             <div className="flex items-center gap-2">
                               {occurrence.isPast && (

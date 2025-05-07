@@ -658,15 +658,17 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       >
                         <CodeBracketIcon className="w-5 h-5" />
                       </button>
-                      {!todo.content.includes('meta::watch') && (
-                        <button
-                          onClick={() => handleAddToWatch(todo)}
-                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                          title="Add to Watch List"
-                        >
-                          <EyeIcon className="w-5 h-5" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleAddToWatch(todo)}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
+                          todo.content.includes('meta::watch')
+                            ? 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500'
+                            : 'text-blue-700 bg-blue-50 hover:bg-blue-100 focus:ring-blue-500'
+                        }`}
+                        title={todo.content.includes('meta::watch') ? 'Already Watching' : 'Add to Watch List'}
+                      >
+                        <EyeIcon className="w-5 h-5" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -783,6 +785,77 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const handleEditNote = (note) => {
     setSelectedNote(note);
     setShowNoteEditor(true);
+  };
+
+  const handleUnfollow = async (note) => {
+    try {
+      // Remove the entire line containing meta::watch
+      const updatedContent = note.content
+        .split('\n')
+        .filter(line => !line.trim().startsWith('meta::watch'))
+        .join('\n')
+        .trim();
+      
+      // Update the note
+      await updateNoteById(note.id, updatedContent);
+      
+      // Update the notes list immediately
+      const updatedNotes = notes.map(n => 
+        n.id === note.id ? { ...n, content: updatedContent } : n
+      );
+      setNotes(updatedNotes);
+
+      // Remove from localStorage
+      const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+      delete reviews[note.id];
+      localStorage.setItem('noteReviews', JSON.stringify(reviews));
+
+      const cadences = JSON.parse(localStorage.getItem('noteReviewCadence') || '{}');
+      delete cadences[note.id];
+      localStorage.setItem('noteReviewCadence', JSON.stringify(cadences));
+
+      Alerts.success('Note removed from watchlist');
+    } catch (error) {
+      console.error('Error unfollowing note:', error);
+      Alerts.error('Failed to remove from watchlist');
+    }
+  };
+
+  const handleSetCadence = async (note, hours) => {
+    try {
+      // Remove existing cadence tag if it exists
+      let updatedContent = note.content
+        .split('\n')
+        .filter(line => !line.includes('meta::cadence::'))
+        .join('\n');
+
+      // Add new cadence tag
+      updatedContent = `${updatedContent}\nmeta::cadence::${hours}h`;
+
+      // Update the note
+      await updateNoteById(note.id, updatedContent);
+      
+      // Update the notes list immediately
+      const updatedNotes = notes.map(n => 
+        n.id === note.id ? { ...n, content: updatedContent } : n
+      );
+      setNotes(updatedNotes);
+      
+      // Update the review time in localStorage
+      const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+      reviews[note.id] = new Date().toISOString();
+      localStorage.setItem('noteReviews', JSON.stringify(reviews));
+
+      // Update the cadence in localStorage
+      const cadences = JSON.parse(localStorage.getItem('noteReviewCadence') || '{}');
+      cadences[note.id] = { hours, minutes: 0 };
+      localStorage.setItem('noteReviewCadence', JSON.stringify(cadences));
+
+      Alerts.success(`Review cadence set to ${hours} hours`);
+    } catch (error) {
+      console.error('Error setting cadence:', error);
+      Alerts.error('Failed to set review cadence');
+    }
   };
 
   const formatContent = (content) => {
@@ -982,20 +1055,49 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                     </div>
                     <div className="flex flex-wrap gap-2 mt-4">
                       <button
-                        onClick={() => window.location.href = '/#/watch'}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                      >
-                        <ArrowPathIcon className="w-5 h-5" />
-                        Review Now
-                      </button>
-                      <button
                         onClick={() => handleEditNote(note)}
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
                         title="Edit Note"
                       >
                         <PencilIcon className="w-5 h-5" />
-                        Edit
                       </button>
+                      <button
+                        onClick={() => handleUnfollow(note)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                        title="Remove from watchlist"
+                      >
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSetCadence(note, 2)}
+                          className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                          title="Set 2 hour cadence"
+                        >
+                          2h
+                        </button>
+                        <button
+                          onClick={() => handleSetCadence(note, 6)}
+                          className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                          title="Set 6 hour cadence"
+                        >
+                          6h
+                        </button>
+                        <button
+                          onClick={() => handleSetCadence(note, 12)}
+                          className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                          title="Set 12 hour cadence"
+                        >
+                          12h
+                        </button>
+                        <button
+                          onClick={() => handleSetCadence(note, 24)}
+                          className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                          title="Set 24 hour cadence"
+                        >
+                          24h
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1014,37 +1116,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           </div>
         )}
       </div>
-
-      {showNoteEditor && selectedNote && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
-              <button
-                onClick={() => setShowNoteEditor(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <NoteEditor
-              note={selectedNote}
-              onSave={(updatedContent) => {
-                updateNoteById(selectedNote.id, updatedContent);
-                // Update the notes list immediately after successful update
-                const updatedNotes = notes.map(n => 
-                  n.id === selectedNote.id ? { ...n, content: updatedContent } : n
-                );
-              
-                setNotes(updatedNotes);
-                setShowNoteEditor(false);
-              }}
-              onCancel={() => setShowNoteEditor(false)}
-              objList={[]}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -1130,6 +1201,7 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
                       <button
                         onClick={() => handleViewRawNote(meeting)}
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+                        title="View Raw Note"
                       >
                         <CodeBracketIcon className="w-5 h-5" />
                       </button>

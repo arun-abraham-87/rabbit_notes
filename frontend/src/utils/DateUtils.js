@@ -44,7 +44,7 @@ export const parseAustralianDate = (dateStr) => {
  * @param {string} [stringval] - Optional string value (unused parameter)
  * @returns {string} Formatted date string in "DD-MM-YYYY" format
  */
-export const getFormattedDateString = (date, stringval) => {
+export const getFormattedDateString = (date) => {
   if (!date) return '';
 
   try {

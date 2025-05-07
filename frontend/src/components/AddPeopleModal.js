@@ -2,22 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { XMarkIcon, PlusIcon } from '@heroicons/react/24/solid';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
+import { getFormattedDateString } from '../utils/DateUtils';
 
-// Helper function to format date as dd/mm/yyyy
-const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
-};
 
-// Helper function to parse dd/mm/yyyy to yyyy-mm-dd for input
-const parseDate = (dateString) => {
-  if (!dateString) return '';
-  const [day, month, year] = dateString.split('/');
-  return `${year}-${month}-${day}`;
-};
 
 const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null, onDelete }) => {
   const [name, setName] = useState('');
@@ -68,19 +55,14 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       infoLines.forEach(line => {
         const [_, __, type, typeType, value] = line.split('::');
         types.add(type);
-        // Format date values for display
-        if (typeType === 'date') {
-          values[type] = formatDate(value);
-        } else {
-          values[type] = value;
-        }
+        values[type] = value;
         typeTypes[type] = typeType || 'text';
       });
       setInfoTypes(Array.from(types));
       setInfoValues(values);
       setInfoTypeTypes(typeTypes);
     } else {
-      setName(''); 
+      setName('');
       setTagList([]);
       setTagInput('');
       setInfoTypes([]);
@@ -111,27 +93,27 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
   // Filter existing tags based on input
   const filteredExistingTags = useMemo(() => {
     if (!tagFilter) return existingTags;
-    return existingTags.filter(tag => 
+    return existingTags.filter(tag =>
       tag.toLowerCase().includes(tagFilter.toLowerCase())
     );
   }, [existingTags, tagFilter]);
 
   const validateTag = (tag) => {
     if (!tag.trim()) return false;
-    
+
     // Check for special characters
     const specialCharRegex = /[^a-zA-Z0-9\s-_]/;
     if (specialCharRegex.test(tag)) {
       setTagError('Tags can only contain letters, numbers, spaces, hyphens, and underscores');
       return false;
     }
-    
+
     // Check for duplicates
     if (tagList.includes(tag.trim())) {
       setTagError('This tag already exists');
       return false;
     }
-    
+
     setTagError('');
     return true;
   };
@@ -145,7 +127,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       const newTag = tagInput.trim();
-      
+
       if (newTag && validateTag(newTag)) {
         setTagList([...tagList, newTag]);
         setTagInput('');
@@ -166,7 +148,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       // Set default value based on type
       let defaultValue = '';
       if (typeType === 'date') {
-        defaultValue = formatDate(new Date());
+        defaultValue = getFormattedDateString(new Date());
       }
       setInfoValues({ ...infoValues, [type]: defaultValue });
       setInfoTypeTypes({ ...infoTypeTypes, [type]: typeType });
@@ -187,7 +169,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
-    
+
     let content = `${name.trim()}\nmeta::person::${personNote ? personNote.content.split('\n').find(line => line.startsWith('meta::person::'))?.split('::')[2] : new Date().toISOString()}`;
 
     // Add tags
@@ -200,10 +182,6 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       if (infoValues[type]?.trim()) {
         const typeType = infoTypeTypes[type];
         let value = infoValues[type].trim();
-        // Convert date from dd/mm/yyyy to yyyy-mm-dd for storage
-        if (typeType === 'date') {
-          value = parseDate(value);
-        }
         content += `\nmeta::info::${type}::${typeType}::${value}`;
       }
     });
@@ -402,9 +380,8 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Tags
             </label>
-            <div className={`min-h-[42px] w-full px-3 py-2 border rounded-md focus-within:ring-2 focus-within:ring-blue-500 ${
-              tagError ? 'border-red-500' : 'border-gray-300'
-            }`}>
+            <div className={`min-h-[42px] w-full px-3 py-2 border rounded-md focus-within:ring-2 focus-within:ring-blue-500 ${tagError ? 'border-red-500' : 'border-gray-300'
+              }`}>
               <div className="flex flex-wrap gap-2">
                 {tagList.map((tag, index) => (
                   <span
@@ -475,11 +452,10 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
                         }
                       }}
                       disabled={tagList.includes(tag)}
-                      className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium transition-colors ${
-                        tagList.includes(tag)
+                      className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium transition-colors ${tagList.includes(tag)
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                        }`}
                     >
                       {tag}
                     </button>

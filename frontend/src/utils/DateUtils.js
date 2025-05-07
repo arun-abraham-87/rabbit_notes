@@ -5,6 +5,26 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const DATE_REGEX = /\b(\d{2})\/(\d{2})\/(\d{4})\b|\b(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g;
 
 /**
+ * Checks if a date string matches today's date
+ * Supports multiple date formats:
+ * 1. "YYYY-MM-DD"
+ * 2. "DD/MM/YYYY"
+ * 3. "DD-MM-YYYY"
+ * @param {string} dateString - The date string to check
+ * @returns {boolean} True if the date matches today, false otherwise
+ */
+export const isSameAsTodaysDate = (dateString) => {
+  if (!dateString) return false;
+  
+  const today = moment().format('YYYY-MM-DD');
+  const momentObj = parseToMoment(dateString);
+  
+  if (!momentObj) return false;
+  
+  return momentObj.format('YYYY-MM-DD') === today;
+};
+
+/**
  * Calculates the relative time from a given date string to now
  * Supports two formats:
  * 1. "DD/MM/YYYY, h:mm:ss a"

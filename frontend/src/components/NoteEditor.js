@@ -3,7 +3,7 @@ import { updateNoteById } from '../utils/ApiUtils';
 import NoteFilters from './NoteFilters';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 
-const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery, setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true }) => {
+const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
   const initialLines = contentSource
     ? [

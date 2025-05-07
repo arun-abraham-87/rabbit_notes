@@ -355,14 +355,12 @@ const AppContent = () => {
                             notes={notes}
                             allNotes={allNotes}
                             addNote={addNote}
-                            setNotes={updateBothNotesLists}
+                            setAllNotes={setAllNotes}
                             objects={objects}
                             searchQuery={searchQuery}
                             setSearchQuery={setSearchQuery}
                             addTag={addTag}
                             setNoteDate={setNoteDate}
-                            totals={totals}
-                            setTotals={setTotals}
                             settings={settings}
                           />
                         </div>
@@ -377,14 +375,12 @@ const AppContent = () => {
                             notes={notes}
                             allNotes={allNotes}
                             addNote={addNote}
-                            setNotes={updateBothNotesLists}
+                            setAllNotes={setAllNotes}
                             objects={objects}
                             searchQuery={searchQuery}
                             setSearchQuery={setSearchQuery}
                             addTag={addTag}
                             setNoteDate={setNoteDate}
-                            totals={totals}
-                            setTotals={setTotals}
                             settings={settings}
                           />
                         </div>

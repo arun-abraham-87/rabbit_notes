@@ -106,17 +106,17 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
   //console.log('-----------------------------------------------------------------------------')
   //console.log('processedContent', processedContent);
   if (processedContent.trim().startsWith("http:") || processedContent.trim().startsWith("https:")) {
-    //console.log('url', processedContent);
-    //console.log('url is a full url')
+    const url = processedContent.trim();
+    const hostname = new URL(url).hostname;
     let urlElement = (
       <a
         key={`url-${lineIndex}`}
-        href={processedContent.trim()}
+        href={url}
         target="_blank"
         rel="noopener noreferrer"
         className="text-blue-600 underline hover:text-blue-800"
       >
-        {processedContent.trim()}
+        {hostname}
       </a>
     );
     elements.push(urlElement);

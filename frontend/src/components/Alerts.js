@@ -89,9 +89,12 @@ const Alerts = {
   },
 };
 
-const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
+const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [expandedNotes, setExpandedNotes] = useState({});
+  const [showRawNote, setShowRawNote] = useState(false);
+  const [selectedNote, setSelectedNote] = useState(null);
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
 
   const passedDeadlineTodos = notes.filter(note => {
     if (!note.content.includes('meta::todo::')) return false;
@@ -112,6 +115,44 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
       ...prev,
       [noteId]: !prev[noteId]
     }));
+  };
+
+  const handleViewRawNote = (note) => {
+    setSelectedNote(note);
+    setShowRawNote(true);
+  };
+
+  const handleEditNote = (note) => {
+    setSelectedNote(note);
+    setShowNoteEditor(true);
+  };
+
+  const handleMarkCompleted = async (note) => {
+    try {
+      // Remove todo, priority, and deadline tags
+      const updatedContent = note.content
+        .split('\n')
+        .filter(line => {
+          const trimmedLine = line.trim();
+          return !trimmedLine.startsWith('meta::todo::') &&
+                 !trimmedLine.startsWith('meta::priority::') &&
+                 !trimmedLine.startsWith('meta::end_date::') &&
+                 !trimmedLine.startsWith('meta::critical');
+        })
+        .join('\n')
+        .trim();
+
+      await updateNoteById(note.id, updatedContent);
+      // Update the notes list immediately after successful update
+      const updatedNotes = notes.map(n => 
+        n.id === note.id ? { ...n, content: updatedContent } : n
+      );
+      setNotes(updatedNotes);
+      Alerts.success('Todo marked as completed');
+    } catch (error) {
+      console.error('Error marking todo as completed:', error);
+      Alerts.error('Failed to mark todo as completed');
+    }
   };
 
   const formatUrlLine = (line) => {
@@ -241,8 +282,6 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
     return firstLine;
   };
 
-
-
   const getOverdueDays = (endDate) => {
     const now = new Date();
     const diffTime = Math.abs(now - endDate);
@@ -309,10 +348,81 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true }) => {
                       </div>
                     </div>
                   </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => handleMarkCompleted(todo)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                      title="Mark as Completed"
+                    >
+                      <CheckIcon className="w-5 h-5" />
+                      Mark as Completed
+                    </button>
+                    <button
+                      onClick={() => handleEditNote(todo)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                      title="Edit Note"
+                    >
+                      <PencilIcon className="w-5 h-5" />
+                      Edit Note
+                    </button>
+                    <button
+                      onClick={() => handleViewRawNote(todo)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+                      title="View Raw Note"
+                    >
+                      <CodeBracketIcon className="w-5 h-5" />
+                      View Raw Note
+                    </button>
+                  </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {showRawNote && selectedNote && (
+        <NoteView
+          isOpen={showRawNote}
+          content={selectedNote.content}
+          onClose={() => setShowRawNote(false)}
+        />
+      )}
+
+      {/* Note Editor Modal */}
+      {showNoteEditor && selectedNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
+              <button
+                onClick={() => setShowNoteEditor(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <NoteEditor
+              note={selectedNote}
+              onSave={async (updatedContent) => {
+                try {
+                  await updateNoteById(selectedNote.id, updatedContent);
+                  // Update the notes list immediately after successful update
+                  const updatedNotes = notes.map(n => 
+                    n.id === selectedNote.id ? { ...n, content: updatedContent } : n
+                  );
+                  setNotes(updatedNotes);
+                  setShowNoteEditor(false);
+                  Alerts.success('Note updated successfully');
+                } catch (error) {
+                  console.error('Error updating note:', error);
+                  Alerts.error('Failed to update note');
+                }
+              }}
+              onCancel={() => setShowNoteEditor(false)}
+              objList={[]}
+            />
+          </div>
         </div>
       )}
     </div>
@@ -1200,6 +1310,43 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           </div>
         </div>
       )}
+
+      {/* Note Editor Modal */}
+      {showNoteEditor && selectedNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
+              <button
+                onClick={() => setShowNoteEditor(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <NoteEditor
+              note={selectedNote}
+              onSave={async (updatedContent) => {
+                try {
+                  await updateNoteById(selectedNote.id, updatedContent);
+                  // Update the notes list immediately after successful update
+                  const updatedNotes = notes.map(n => 
+                    n.id === selectedNote.id ? { ...n, content: updatedContent } : n
+                  );
+                  setNotes(updatedNotes);
+                  setShowNoteEditor(false);
+                  Alerts.success('Note updated successfully');
+                } catch (error) {
+                  console.error('Error updating note:', error);
+                  Alerts.error('Failed to update note');
+                }
+              }}
+              onCancel={() => setShowNoteEditor(false)}
+              objList={[]}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -2028,7 +2175,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
             <CriticalTodosAlert notes={notes} expanded={true} setNotes={setNotes} />
             <ReviewOverdueAlert notes={notes} expanded={true} setNotes={setNotes} />
           </div>
-          <DeadlinePassedAlert notes={notes} expanded={true} />
+          <DeadlinePassedAlert notes={notes} expanded={true} setNotes={setNotes} />
           <UnacknowledgedMeetingsAlert 
             notes={notes} 
             expanded={true}

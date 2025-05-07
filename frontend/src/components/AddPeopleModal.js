@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { XMarkIcon, PlusIcon } from '@heroicons/react/24/solid';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 // Helper function to format date as dd/mm/yyyy
 const formatDate = (dateString) => {
@@ -18,7 +19,7 @@ const parseDate = (dateString) => {
   return `${year}-${month}-${day}`;
 };
 
-const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null }) => {
+const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null, onDelete }) => {
   const [name, setName] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tagList, setTagList] = useState([]);
@@ -29,6 +30,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
   const [infoTypeTypes, setInfoTypeTypes] = useState({});
   const [newInfoType, setNewInfoType] = useState('');
   const [newInfoTypeType, setNewInfoTypeType] = useState('text');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Get all unique info types from all notes
   const suggestedInfoTypes = useMemo(() => {
@@ -492,6 +494,14 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
+          {personNote && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+            >
+              Delete
+            </button>
+          )}
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
@@ -507,6 +517,17 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
           </button>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={() => {
+          onDelete(personNote.id);
+          onClose();
+        }}
+        title="Delete Person"
+        message="Are you sure you want to delete this person? This action cannot be undone."
+      />
     </div>
   );
 };

@@ -4,7 +4,7 @@ import { CodeBracketIcon } from '@heroicons/react/24/outline';
 import { parseNoteContent } from '../utils/TextUtils';
 import AddPeopleModal from './AddPeopleModal';
 import NoteView from './NoteView';
-import { updateNoteById, createNote } from '../utils/ApiUtils';
+import { updateNoteById, createNote, deleteNoteById } from '../utils/ApiUtils';
 
 const PeopleList = ({allNotes, setAllNotes}) => {
 
@@ -14,6 +14,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const [rawNoteModal, setRawNoteModal] = useState({ open: false, content: '' });
   const [editPersonModal, setEditPersonModal] = useState({ open: false, personNote: null });
   const [addPersonModal, setAddPersonModal] = useState({ open: false });
+  const [deleteModal, setDeleteModal] = useState({ open: false, noteId: null, personName: '' });
 
 
   // Get all unique tags from person allNotes
@@ -135,6 +136,20 @@ const PeopleList = ({allNotes, setAllNotes}) => {
     setAllNotes(allNotes.map(note => note.id === id ? { ...note, content } : note));
     setEditPersonModal({ open: false, personNote: null });
   };
+
+  // Handler for deleting a person
+  const handleDeletePerson = async (id) => {
+    try {
+      await deleteNoteById(id);
+      setAllNotes(allNotes.filter(note => note.id !== id));
+      setEditPersonModal({ open: false, personNote: null });
+      setDeleteModal({ open: false, noteId: null, personName: '' });
+    } catch (error) {
+      console.error('Error deleting person:', error);
+    }
+  };
+
+
 
   // Handler for adding a new person
   const handleAddPerson = async (content) => {
@@ -465,9 +480,12 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           }}
           allNotes={allNotes}
           onEdit={handleEditPerson}
+          onDelete={handleDeletePerson}
           personNote={editPersonModal.personNote}
         />
       )}
+
+
     </div>
   );
 };

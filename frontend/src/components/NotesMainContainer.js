@@ -4,11 +4,9 @@ import NotesListByDate from './NotesListByDate.js';
 import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
 import NoteEditor from './NoteEditor.js';
-import OngoingMeetingBanner from './OngoingMeetingBanner.js';
-import NextMeetingBanner from './NextMeetingBanner.js';
-import UnacknowledgedMeetingsBanner from './UnacknowledgedMeetingsBanner.js';
-import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
+import MeetingManager from './MeetingManager.js';
 import WatchList from './WatchList';
+import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
 
 const checkForOngoingMeeting = (notes) => {
   if (!notes) return null;
@@ -310,7 +308,6 @@ const NotesMainContainer = ({
 }) => {
     const [checked, setChecked] = useState(false);
     const [compressedView, setCompressedView] = useState(false);
-    const [ongoingMeeting, setOngoingMeeting] = useState(null);
     const [currentDate, setCurrentDate] = useState(null);
     const [excludeEvents, setExcludeEvents] = useState(settings?.excludeEventsByDefault || false);
     const [excludeMeetings, setExcludeMeetings] = useState(settings?.excludeMeetingsByDefault || false);
@@ -321,26 +318,6 @@ const NotesMainContainer = ({
     const [alertsExpanded, setAlertsExpanded] = useState(false);
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [eventsState, setEventsState] = useState([]);
-
-    // Extract meetings from notes with null check
-    const meetings = useMemo(() => {
-        if (!Array.isArray(allNotes)) return [];
-        return allNotes.flatMap(note => {
-            if (!note?.content) return [];
-            if (note.content.split('\n').some(line => line.trim().startsWith('meta::meeting'))) {
-                const lines = note.content.split('\n');
-                const durationMatch = note.content.match(/meta::meeting_duration::(\d+)/);
-                const duration = durationMatch ? parseInt(durationMatch[1]) : null;
-                return [{ 
-                    id: note.id, 
-                    context: lines[0].trim(), 
-                    time: lines[1].trim(),
-                    duration: duration
-                }];
-            }
-            return [];
-        }).sort((a, b) => new Date(a.time) - new Date(b.time));
-    }, [allNotes]);
 
     // Extract events from notes with proper metadata
     const events = useMemo(() => {
@@ -385,7 +362,6 @@ const NotesMainContainer = ({
                 };
             });
         
-//console.log('Processed events:', processedEvents);
         return processedEvents;
     }, [allNotes]);
 
@@ -396,7 +372,6 @@ const NotesMainContainer = ({
 
     // Add debug logging
     useEffect(() => {
-//console.log('Events in NotesMainContainer:', events);
         const unacknowledged = events.filter(event => {
             const now = new Date();
             const april2025 = new Date('2025-04-01');
@@ -408,7 +383,6 @@ const NotesMainContainer = ({
                    eventDate < now && 
                    !event.content.includes(metaTag);
         });
-//console.log('Unacknowledged events:', unacknowledged);
     }, [events]);
 
     // Filter notes for display based on selected date and exclude states
@@ -478,46 +452,6 @@ const NotesMainContainer = ({
         setTotals(newTotals);
     }, [filteredNotes, setTotals]);
 
-
-
-    // Check for ongoing meetings periodically and schedule checks for upcoming meetings
-    useEffect(() => {
-        let upcomingMeetingTimeout;
-
-        const checkMeetings = () => {
-            // Use allNotes for meeting checks, not filtered notes
-            const meeting = checkForOngoingMeeting(allNotes);
-            setOngoingMeeting(meeting);
-
-            // If no ongoing meeting, check for upcoming meetings
-            if (!meeting) {
-                const nextMeeting = findNextMeeting(allNotes);
-                if (nextMeeting) {
-                    const timeUntilStart = nextMeeting.startTime - new Date();
-                    if (timeUntilStart > 0) {
-                        // Clear any existing timeout
-                        if (upcomingMeetingTimeout) {
-                            clearTimeout(upcomingMeetingTimeout);
-                        }
-                        // Set timeout to check again when the meeting starts
-                        upcomingMeetingTimeout = setTimeout(() => {
-                            checkMeetings();
-                        }, timeUntilStart);
-                    }
-                }
-            }
-        };
-
-        // Initial check
-        checkMeetings();
-
-        return () => {
-            if (upcomingMeetingTimeout) {
-                clearTimeout(upcomingMeetingTimeout);
-            }
-        };
-    }, [allNotes]); // Keep dependency on allNotes instead of filtered notes
-
     // Update overdue todos count when notes change
     useEffect(() => {
         setOverdueTodosCount(checkForOverdueTodos(allNotes));
@@ -554,48 +488,8 @@ const NotesMainContainer = ({
         }
     };
 
-    const handleDismissMeeting = async () => {
-        if (!ongoingMeeting) return;
-        
-        const note = notes.find(n => n.id === ongoingMeeting.id);
-        if (!note) return;
-        
-        // Add the dismissed tag
-        const updatedContent = `${note.content}\nmeta_detail::dismissed`;
-        
-        try {
-            await updateNoteById(note.id, updatedContent);
-            // Update the notes state to reflect the change
-            setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
-            // Clear the ongoing meeting state
-            setOngoingMeeting(null);
-        } catch (error) {
-            console.error('Error dismissing meeting:', error);
-        }
-    };
-
-    const unacknowledgedMeetings = useMemo(() => getUnacknowledgedPastMeetings(allNotes), [allNotes]);
-
-    const handleDismissUnacknowledgedMeeting = async (noteId) => {
-        const note = allNotes.find(n => n.id === noteId);
-        if (!note) return;
-        
-        // Add the acknowledged tag with timestamp
-        const ackLine = `meta::meeting_acknowledge::${new Date().toISOString()}`;
-        const updatedContent = `${note.content}\n${ackLine}`;
-        
-        try {
-            await updateNoteById(noteId, updatedContent);
-            // Update the notes state to reflect the change
-            setNotes(allNotes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
-        } catch (error) {
-            console.error('Error acknowledging meeting:', error);
-        }
-    };
-
     // Handle event acknowledgment
     const handleAcknowledgeEvent = async (noteId, year) => {
-//console.log('Acknowledging event:', noteId, year);
         const note = allNotes.find(n => n.id === noteId);
         if (!note) return;
         
@@ -609,7 +503,6 @@ const NotesMainContainer = ({
         try {
             const response = await updateNoteById(noteId, updatedContent);
             if (response && response.success) {
-//console.log('Event acknowledged successfully');
                 // Update the notes state to reflect the change
                 const updatedNotes = allNotes.map(n => 
                     n.id === noteId ? { ...n, content: updatedContent } : n
@@ -621,7 +514,6 @@ const NotesMainContainer = ({
                 // Force a refresh of the events by updating allNotes
                 const data = await loadNotes(searchQuery, currentDate);
                 if (data && data.notes) {
-//console.log('Refreshing notes data');
                     setNotes(data.notes);
                     setTotals(data.totals);
                     
@@ -667,17 +559,12 @@ const NotesMainContainer = ({
     return (
         <div className="flex flex-col h-full">
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
-                <UnacknowledgedMeetingsBanner 
-                    meetings={unacknowledgedMeetings} 
-                    onDismiss={handleDismissUnacknowledgedMeeting} 
+                <MeetingManager 
+                    allNotes={allNotes}
+                    setNotes={setNotes}
+                    searchQuery={searchQuery}
+                    currentDate={currentDate}
                 />
-                {ongoingMeeting && (
-                    <OngoingMeetingBanner
-                        meeting={ongoingMeeting}
-                        onDismiss={handleDismissMeeting}
-                    />
-                )}
-                <NextMeetingBanner meetings={meetings} notes={allNotes} />
                 <div className="mt-4">
                     {activePage === 'watch' ? (
                         <WatchList allNotes={allNotes} />
@@ -691,9 +578,7 @@ const NotesMainContainer = ({
                                 onSave={(note) => {
                                     addNote(note.content);
                                 }}
-                                onCancel={() => {
-//console.log("NoteEditor canceled");
-                                }}
+                                onCancel={() => {}}
                                 searchQuery={searchQuery}
                                 setSearchQuery={setSearchQuery}
                                 isAddMode={true}

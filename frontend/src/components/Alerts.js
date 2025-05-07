@@ -2124,6 +2124,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showAllReminders, setShowAllReminders] = useState(false);
   const [expandedDetails, setExpandedDetails] = useState({});
+  const [hoveredNote, setHoveredNote] = useState(null);
 
   const reminders = notes.filter(note => {
     if (!note.content.includes('meta::reminder')) return false;
@@ -2206,11 +2207,14 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
         const reviewTime = reviews[note.id];
         const cadence = getNoteCadence(note.id);
         const isDetailsExpanded = expandedDetails[note.id];
+        const isHovered = hoveredNote === note.id;
 
         return (
           <div 
             key={note.id} 
             className="bg-purple-50 border border-purple-100 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+            onMouseEnter={() => setHoveredNote(note.id)}
+            onMouseLeave={() => setHoveredNote(null)}
           >
             <div className="px-6 py-4">
               <div className="flex items-center justify-between">
@@ -2245,7 +2249,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex gap-2">
+                  <div className={`flex gap-2 transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
                     <button
                       onClick={() => handleSetCadence(note, 1)}
                       className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"

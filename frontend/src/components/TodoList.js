@@ -570,11 +570,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
               {daysOpen === 0 ? 'Opened today' : `Open for ${daysOpen} ${daysOpen === 1 ? 'day' : 'days'}`}
             </span>
           </div>
-        </div>
-
-        <div className="flex-1 p-3 overflow-auto relative">
-          {/* Priority Buttons */}
-          <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex items-center gap-1 z-10">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => {
                 // Extract meta tags from the content
@@ -663,8 +659,10 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
               )}
             </button>
           </div>
+        </div>
 
-          <div className={`text-sm whitespace-pre-wrap pr-32 ${
+        <div className="flex-1 p-3 overflow-auto relative">
+          <div className={`text-sm whitespace-pre-wrap ${
             'text-gray-800'
           }`}>
             {showRawNotes[todo.id] ? (
@@ -707,9 +705,32 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                   }
 
                   // Process regular lines with URLs and search highlighting
+                  const urlRegex = /(https?:\/\/[^\s]+)/g;
+                  const parts = line.split(urlRegex);
+                  
                   return (
                     <div key={`line-${lineIndex}`} className="mb-1">
-                      {parseNoteContent({ content: line, searchTerm: searchQuery })}
+                      {parts.map((part, i) => {
+                        if (part.match(urlRegex)) {
+                          try {
+                            const url = new URL(part);
+                            return (
+                              <a
+                                key={i}
+                                href={part}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                {url.hostname}
+                              </a>
+                            );
+                          } catch {
+                            return part;
+                          }
+                        }
+                        return parseNoteContent({ content: part, searchTerm: searchQuery });
+                      })}
                     </div>
                   );
                 })}

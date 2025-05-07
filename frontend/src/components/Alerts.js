@@ -764,6 +764,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [expandedNotes, setExpandedNotes] = useState({});
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [selectedNote, setSelectedNote] = useState(null);
+  const [showPriorityPopup, setShowPriorityPopup] = useState(false);
+  const [noteToConvert, setNoteToConvert] = useState(null);
 
   const overdueNotes = notes.filter(note => {
     if (!note.content.includes('meta::watch')) return false;
@@ -993,6 +995,43 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     return firstLine;
   };
 
+  const handleConvertToTodo = (note) => {
+    setNoteToConvert(note);
+    setShowPriorityPopup(true);
+  };
+
+  const handlePrioritySelect = async (priority) => {
+    if (!noteToConvert) return;
+
+    try {
+      // Add todo tag and priority tag
+      let updatedContent = `${noteToConvert.content}\nmeta::todo::`;
+      
+      // Add appropriate priority tag
+      if (priority === 'critical') {
+        updatedContent += '\nmeta::critical';
+      } else {
+        updatedContent += `\nmeta::${priority}`;
+      }
+
+      await updateNoteById(noteToConvert.id, updatedContent);
+      
+      // Update the notes list immediately
+      const updatedNotes = notes.map(n => 
+        n.id === noteToConvert.id ? { ...n, content: updatedContent } : n
+      );
+      setNotes(updatedNotes);
+      
+      Alerts.success(`Note converted to ${priority} priority todo`);
+    } catch (error) {
+      console.error('Error converting to todo:', error);
+      Alerts.error('Failed to convert to todo');
+    } finally {
+      setShowPriorityPopup(false);
+      setNoteToConvert(null);
+    }
+  };
+
   return (
     <div className="w-1/2 pl-2">
       <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
@@ -1068,6 +1107,15 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       >
                         <XMarkIcon className="w-5 h-5" />
                       </button>
+                      {!note.content.includes('meta::todo::') && (
+                        <button
+                          onClick={() => handleConvertToTodo(note)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                          title="Convert to Todo"
+                        >
+                          <CheckIcon className="w-5 h-5" />
+                        </button>
+                      )}
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleSetCadence(note, 2)}
@@ -1116,6 +1164,42 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           </div>
         )}
       </div>
+
+      {/* Priority Selection Popup */}
+      {showPriorityPopup && noteToConvert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Select Priority</h3>
+              <button
+                onClick={() => setShowPriorityPopup(false)}
+                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {['critical', 'high', 'medium', 'low'].map((priority) => (
+                <button
+                  key={priority}
+                  onClick={() => handlePrioritySelect(priority)}
+                  className={`w-full px-4 py-2 text-left text-sm font-medium rounded-lg transition-colors duration-150 ${
+                    priority === 'critical' 
+                      ? 'text-red-700 hover:bg-red-50' 
+                      : priority === 'high'
+                      ? 'text-orange-700 hover:bg-orange-50'
+                      : priority === 'medium'
+                      ? 'text-yellow-700 hover:bg-yellow-50'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

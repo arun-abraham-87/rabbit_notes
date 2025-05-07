@@ -24,6 +24,7 @@ import EventAlerts from './EventAlerts';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon } from '../utils/ApiUtils';
 import { getAge } from '../utils/DateUtils';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
+import NoteView from './NoteView';
 
 const Alerts = {
   success: (message) => {
@@ -704,26 +705,12 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         </div>
       )}
 
-      {/* Raw Note Popup */}
       {showRawNote && selectedNote && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Raw Note Content</h3>
-              <button
-                onClick={() => setShowRawNote(false)}
-                className="text-gray-400 hover:text-gray-500 focus:outline-none"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-4 overflow-auto">
-              <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">
-                {selectedNote.content}
-              </pre>
-            </div>
-          </div>
-        </div>
+        <NoteView
+          isOpen={showRawNote}
+          content={selectedNote.content}
+          onClose={() => setShowRawNote(false)}
+        />
       )}
     </div>
   );
@@ -1076,26 +1063,12 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
         )}
       </div>
 
-      {/* Raw Note Popup */}
       {showRawNote && selectedNote && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Raw Note Content</h3>
-              <button
-                onClick={() => setShowRawNote(false)}
-                className="text-gray-400 hover:text-gray-500 focus:outline-none"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-4 overflow-auto">
-              <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">
-                {selectedNote.content}
-              </pre>
-            </div>
-          </div>
-        </div>
+        <NoteView
+          isOpen={showRawNote}
+          content={selectedNote.content}
+          onClose={() => setShowRawNote(false)}
+        />
       )}
     </>
   );

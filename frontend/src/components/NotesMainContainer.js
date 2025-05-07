@@ -4,7 +4,6 @@ import NotesListByDate from './NotesListByDate.js';
 import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
 import NoteEditor from './NoteEditor.js';
-import MeetingManager from './MeetingManager.js';
 import WatchList from './WatchList';
 import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
 
@@ -476,56 +475,14 @@ const NotesMainContainer = ({
         setSearchQuery(tag);
     };
 
-    const updateNoteCallback = async (updatedNotes) => {
+    const handleNoteUpdate = async (noteId, updatedContent) => {
         try {
-            await setNotes(updatedNotes);
-            // Fetch fresh notes to ensure we have the latest data
+            await updateNoteById(noteId, updatedContent);
             const data = await loadNotes(searchQuery, currentDate);
             setNotes(data.notes);
             setTotals(data.totals);
         } catch (error) {
-            console.error('Error updating notes:', error);
-        }
-    };
-
-    // Handle event acknowledgment
-    const handleAcknowledgeEvent = async (noteId, year) => {
-        const note = allNotes.find(n => n.id === noteId);
-        if (!note) return;
-        
-        // Check if already acknowledged
-        const metaTag = `meta::acknowledged::${year}`;
-        if (note.content.includes(metaTag)) return;
-        
-        // Add the acknowledged tag with year
-        const updatedContent = `${note.content.trim()}\n${metaTag}`;
-        
-        try {
-            const response = await updateNoteById(noteId, updatedContent);
-            if (response && response.success) {
-                // Update the notes state to reflect the change
-                const updatedNotes = allNotes.map(n => 
-                    n.id === noteId ? { ...n, content: updatedContent } : n
-                );
-                
-                // Update both allNotes and notes state
-                setNotes(updatedNotes);
-                
-                // Force a refresh of the events by updating allNotes
-                const data = await loadNotes(searchQuery, currentDate);
-                if (data && data.notes) {
-                    setNotes(data.notes);
-                    setTotals(data.totals);
-                    
-                    // Force update events state
-                    const updatedEvents = eventsState.filter(event => event.id !== noteId);
-                    setEventsState(updatedEvents);
-                }
-            } else {
-                console.error('Failed to acknowledge event:', response);
-            }
-        } catch (error) {
-            console.error('Error acknowledging event:', error);
+            console.error('Error updating note:', error);
         }
     };
 
@@ -559,12 +516,7 @@ const NotesMainContainer = ({
     return (
         <div className="flex flex-col h-full">
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
-                <MeetingManager 
-                    allNotes={allNotes}
-                    setNotes={setNotes}
-                    searchQuery={searchQuery}
-                    currentDate={currentDate}
-                />
+
                 <div className="mt-4">
                     {activePage === 'watch' ? (
                         <WatchList allNotes={allNotes} />
@@ -607,7 +559,7 @@ const NotesMainContainer = ({
                                     notes={filteredNotes}
                                     allNotes={allNotes}
                                     addNotes={addNote}
-                                    updateNoteCallback={updateNoteCallback}
+                                    updateNoteCallback={handleNoteUpdate}
                                     updateTotals={setTotals}
                                     objects={objects}
                                     addObjects={addTag}

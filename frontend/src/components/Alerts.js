@@ -27,6 +27,7 @@ import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/wa
 import NoteView from './NoteView';
 import { generateTrackerQuestions, createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
 import TrackerQuestionCard from './TrackerQuestionCard';
+import MeetingManager from './MeetingManager.js';
 
 const Alerts = {
   success: (message) => {
@@ -1759,6 +1760,12 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         theme="light"
       />
       <div className="space-y-6 w-full">
+      <MeetingManager 
+                    allNotes={notes}
+                    setNotes={setNotes}
+                    searchQuery=''
+                    currentDate=''
+                />
         <UpcomingEventsAlert notes={notes} expanded={false} />
         <TrackerQuestionsAlert notes={notes} expanded={false} />
         <AlertsContainer 

@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertsProvider } from './Alerts';
 import { loadAllNotes } from '../utils/ApiUtils';
 
-const Dashboard = () => {
-  const [notes, setNotes] = useState([]);
+const Dashboard = ({notes,setNotes}) => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-
 import Navbar from './components/Navbar';
 import AddNoteBar from './components/NoteAddAndSearchBar.js';
 import NotesMainContainer from './components/NotesMainContainer.js';
@@ -480,7 +479,7 @@ const AppContent = () => {
                       <div className="h-full overflow-y-auto">
                         <div className="max-w-[80%] mx-auto">
                           <div className="min-h-screen bg-gray-50">
-                            <Dashboard />
+                            <Dashboard notes={allNotes} setNotes={setAllNotes} />
                           </div>
                         </div>
                       </div>

@@ -658,17 +658,15 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       >
                         <CodeBracketIcon className="w-5 h-5" />
                       </button>
-                      <button
-                        onClick={() => handleAddToWatch(todo)}
-                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
-                          todo.content.includes('meta::watch')
-                            ? 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500'
-                            : 'text-blue-700 bg-blue-50 hover:bg-blue-100 focus:ring-blue-500'
-                        }`}
-                        title={todo.content.includes('meta::watch') ? 'Already Watching' : 'Add to Watch List'}
-                      >
-                        <EyeIcon className="w-5 h-5" />
-                      </button>
+                      {!todo.content.includes('meta::watch') && (
+                        <button
+                          onClick={() => handleAddToWatch(todo)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                          title="Add to Watch List"
+                        >
+                          <EyeIcon className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -758,10 +756,12 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   );
 };
 
-const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
+const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showAllNotes, setShowAllNotes] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState({});
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [selectedNote, setSelectedNote] = useState(null);
 
   const overdueNotes = notes.filter(note => {
     if (!note.content.includes('meta::watch')) return false;
@@ -778,6 +778,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
       ...prev,
       [noteId]: !prev[noteId]
     }));
+  };
+
+  const handleEditNote = (note) => {
+    setSelectedNote(note);
+    setShowNoteEditor(true);
   };
 
   const formatContent = (content) => {
@@ -983,6 +988,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
                         <ArrowPathIcon className="w-5 h-5" />
                         Review Now
                       </button>
+                      <button
+                        onClick={() => handleEditNote(note)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                        title="Edit Note"
+                      >
+                        <PencilIcon className="w-5 h-5" />
+                        Edit
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1001,6 +1014,37 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true }) => {
           </div>
         )}
       </div>
+
+      {showNoteEditor && selectedNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
+              <button
+                onClick={() => setShowNoteEditor(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <NoteEditor
+              note={selectedNote}
+              onSave={(updatedContent) => {
+                updateNoteById(selectedNote.id, updatedContent);
+                // Update the notes list immediately after successful update
+                const updatedNotes = notes.map(n => 
+                  n.id === selectedNote.id ? { ...n, content: updatedContent } : n
+                );
+              
+                setNotes(updatedNotes);
+                setShowNoteEditor(false);
+              }}
+              onCancel={() => setShowNoteEditor(false)}
+              objList={[]}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1826,7 +1870,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
           />
           <div className="flex gap-4">
             <CriticalTodosAlert notes={notes} expanded={true} setNotes={setNotes} />
-            <ReviewOverdueAlert notes={notes} expanded={true} />
+            <ReviewOverdueAlert notes={notes} expanded={true} setNotes={setNotes} />
           </div>
           <DeadlinePassedAlert notes={notes} expanded={true} />
           <UnacknowledgedMeetingsAlert 

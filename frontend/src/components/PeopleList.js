@@ -5,7 +5,8 @@ import { parseNoteContent } from '../utils/TextUtils';
 import AddPeopleModal from './AddPeopleModal';
 import { updateNoteById, createNote } from '../utils/ApiUtils';
 
-const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }) => {
+const PeopleList = ({allNotes, setAllNotes}) => {
+
   const [viewMode, setViewMode] = useState('grid');
   const [selectedTags, setSelectedTags] = useState([]);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
@@ -14,13 +15,11 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
   const [addPersonModal, setAddPersonModal] = useState({ open: false });
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Use allNotes if provided, otherwise fallback to notes
-  const allNotes = allNotesProp || notes;
 
-  // Get all unique tags from person notes
+  // Get all unique tags from person allNotes
   const allTags = useMemo(() => {
     const tagSet = new Set();
-    notes
+    allNotes
       .filter(note => note.content.includes('meta::person::'))
       .forEach(note => {
         const tagLines = note.content
@@ -30,11 +29,11 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
         tagLines.forEach(tag => tagSet.add(tag));
       });
     return Array.from(tagSet).sort();
-  }, [notes]);
+  }, [allNotes]);
 
-  // Filter person notes based on selected filters
-  const filteredNotes = useMemo(() => {
-    let filtered = notes.filter(note => note.content.includes('meta::person::'));
+  // Filter person allNotes based on selected filters
+  const filteredallNotes = useMemo(() => {
+    let filtered = allNotes.filter(note => note.content.includes('meta::person::'));
 
     // Apply tag filter
     if (selectedTags.length > 0) {
@@ -64,13 +63,13 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
     }
 
     return filtered;
-  }, [notes, selectedTags, localSearchQuery]);
+  }, [allNotes, selectedTags, localSearchQuery]);
 
-  // Group notes by tags for tag view
-  const notesByTag = useMemo(() => {
+  // Group allNotes by tags for tag view
+  const allNotesByTag = useMemo(() => {
     const grouped = {};
     allTags.forEach(tag => {
-      grouped[tag] = filteredNotes.filter(note => {
+      grouped[tag] = filteredallNotes.filter(note => {
         const noteTags = note.content
           .split('\n')
           .filter(line => line.startsWith('meta::tag::'))
@@ -79,22 +78,22 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
       });
     });
     return grouped;
-  }, [filteredNotes, allTags]);
+  }, [filteredallNotes, allTags]);
 
   // Add a function to count people without tags
   const getPeopleWithoutTags = useMemo(() => {
-    return notes.filter(note => {
+    return allNotes.filter(note => {
       if (!note.content.includes('meta::person::')) return false;
       return !note.content.split('\n').some(line => line.startsWith('meta::tag::'));
     }).length;
-  }, [notes]);
+  }, [allNotes]);
 
   const clearFilters = () => {
     setSelectedTags([]);
     setLocalSearchQuery('');
   };
 
-  if (!notes || notes.length === 0) {
+  if (!allNotes || allNotes.length === 0) {
     return (
       <div className="p-6 space-y-6">
         <h1 className="text-2xl font-semibold text-gray-900">People</h1>
@@ -106,7 +105,7 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
   }
 
   // Summary counts
-  const totalPeople = notes.filter(note => note.content.includes('meta::person::')).length;
+  const totalPeople = allNotes.filter(note => note.content.includes('meta::person::')).length;
   const totalTags = allTags.length;
 
   const getPersonInfo = (content) => {
@@ -133,19 +132,17 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
   // Handler for editing a person
   const handleEditPerson = async (id, content) => {
     await updateNoteById(id, content);
+    setAllNotes(allNotes.map(note => note.id === id ? { ...note, content } : note));
     setEditPersonModal({ open: false, personNote: null });
-    if (typeof refreshNotes === 'function') {
-      refreshNotes();
-    }
   };
 
   // Handler for adding a new person
   const handleAddPerson = async (content) => {
     try {
-      await createNote(content);
-      if (typeof refreshNotes === 'function') {
-        refreshNotes();
-      }
+      const response = await createNote(content);
+      console.log('API Response:', response);
+      setAllNotes([...allNotes, response.content]);
+      return response;
     } catch (error) {
       console.error('Error adding person:', error);
       throw error;
@@ -155,15 +152,12 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
   // Handler for closing the add person modal
   const handleCloseAddModal = () => {
     setAddPersonModal({ open: false });
-    if (typeof refreshNotes === 'function') {
-      refreshNotes();
-    }
   };
 
   // Handler for removing a tag from a person
   const handleRemoveTag = async (noteId, tagToRemove) => {
     try {
-      const note = notes.find(n => n.id === noteId);
+      const note = allNotes.find(n => n.id === noteId);
       if (!note) return;
 
       const lines = note.content.split('\n');
@@ -171,9 +165,6 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
       const updatedContent = updatedLines.join('\n');
 
       await updateNoteById(noteId, updatedContent);
-      if (typeof refreshNotes === 'function') {
-        refreshNotes();
-      }
     } catch (error) {
       console.error('Error removing tag:', error);
     }
@@ -199,7 +190,7 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-base font-medium text-gray-900 break-words">
-              {parseNoteContent({ content: name, searchQuery }).map((element, idx) => (
+              {parseNoteContent({ content: name, searchQuery: "" }).map((element, idx) => (
                 <React.Fragment key={idx}>{element}</React.Fragment>
               ))}
             </h3>
@@ -435,25 +426,25 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
       </div>
 
       {/* People List */}
-      {filteredNotes.length === 0 ? (
+      {filteredallNotes.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-500">No people found</p>
         </div>
       ) : viewMode === 'tags' ? (
         <div className="space-y-6">
           {allTags.map(tag => {
-            const tagNotes = notesByTag[tag];
-            if (tagNotes.length === 0) return null;
+            const tagallNotes = allNotesByTag[tag];
+            if (tagallNotes.length === 0) return null;
             
             return (
               <div key={tag} className="bg-white rounded-lg border p-4">
                 <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
                   <TagIcon className="h-5 w-5 text-indigo-600" />
                   {tag}
-                  <span className="text-sm text-gray-500">({tagNotes.length})</span>
+                  <span className="text-sm text-gray-500">({tagallNotes.length})</span>
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {tagNotes.map(note => renderPersonCard(note))}
+                  {tagallNotes.map(note => renderPersonCard(note))}
                 </div>
               </div>
             );
@@ -461,7 +452,7 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredNotes.map(note => renderPersonCard(note))}
+          {filteredallNotes.map(note => renderPersonCard(note))}
         </div>
       )}
 
@@ -501,9 +492,6 @@ const PeopleList = ({ notes, searchQuery, allNotes: allNotesProp, refreshNotes }
           isOpen={editPersonModal.open}
           onClose={() => {
             setEditPersonModal({ open: false, personNote: null });
-            if (typeof refreshNotes === 'function') {
-              refreshNotes();
-            }
           }}
           allNotes={allNotes}
           onEdit={handleEditPerson}

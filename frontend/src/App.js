@@ -39,7 +39,7 @@ const PinnedSection = ({ notes, onUnpin }) => {
   });
 
   const pinned = (notes || []).filter(n => n.content.includes('meta::pin')).slice(0, 4);
-  
+
   // Save colors to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('pinnedCardColors', JSON.stringify(cardColors));
@@ -67,8 +67,8 @@ const PinnedSection = ({ notes, onUnpin }) => {
           // Gather the pinned lines (1-based indices)
           const pinnedLines = indices.map(i => contentLines[i - 1] || '');
           return (
-            <div 
-              key={note.id} 
+            <div
+              key={note.id}
               className="relative border rounded-lg p-4 shadow"
               style={{ backgroundColor: cardColors[note.id] || 'white' }}
               onContextMenu={(e) => {
@@ -104,7 +104,7 @@ const PinnedSection = ({ notes, onUnpin }) => {
                   title="Unpin note"
                 />
               </div>
-              <div 
+              <div
                 className="fixed hidden bg-white rounded-lg shadow-lg p-2 z-50 color-popup"
                 onMouseLeave={() => {
                   const popup = document.querySelector('.color-popup');
@@ -132,7 +132,7 @@ const PinnedSection = ({ notes, onUnpin }) => {
                         }
                       }}
                     >
-                      <div 
+                      <div
                         className="w-3 h-3 rounded-full border border-gray-300"
                         style={{ backgroundColor: color }}
                       />
@@ -169,8 +169,8 @@ const PinnedSection = ({ notes, onUnpin }) => {
 
                   // Process regular lines with URL parsing
                   return (
-                    <div 
-                      key={`line-${lineIndex}`} 
+                    <div
+                      key={`line-${lineIndex}`}
                       className={`mb-1 ${lineIndex === 0 ? 'font-medium' : 'text-gray-500'}`}
                     >
                       {parseNoteContent({ content: formatAndAgeDate(line), searchTerm: '' }).map((element, idx) => (
@@ -221,13 +221,13 @@ const AppContent = () => {
     try {
       // First update the notes list
       setNotes(updatedNotes);
-      
+
       // Then fetch fresh data to update both lists
       const [notesData, allNotesData] = await Promise.all([
         loadNotes(searchQuery, noteDate),
         loadAllNotes('', null)
       ]);
-      
+
       setNotes(notesData.notes);
       setAllNotes(allNotesData.notes);
       setTotals(notesData.totals);
@@ -237,7 +237,7 @@ const AppContent = () => {
   };
 
   const fetchNotes = async (searchText) => {
-    console.log('Fetching notes with searchText:', searchText,noteDate);
+    console.log('Fetching notes with searchText:', searchText, noteDate);
     const data = await loadNotes(searchText, noteDate)
     console.log('Filtered notes q:', data.notes.length);
     setNotes(data.notes);
@@ -394,10 +394,10 @@ const AppContent = () => {
                       <div className="h-full overflow-y-auto">
                         <div className="max-w-[80%] mx-auto">
                           <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                            <WatchList 
-                              allNotes={allNotes} 
-                              updateNote={updateNote} 
-                              refreshNotes={fetchAllNotes} 
+                            <WatchList
+                              allNotes={allNotes}
+                              updateNote={updateNote}
+                              refreshNotes={fetchAllNotes}
                             />
                           </div>
                         </div>
@@ -441,8 +441,8 @@ const AppContent = () => {
                     <Route path="/events" element={
                       <div className="h-full overflow-y-auto">
                         <div className="max-w-[80%] mx-auto">
-                          <EventsPage 
-                            notes={allNotes} 
+                          <EventsPage
+                            notes={allNotes}
                             onUpdate={(updatedNotes) => {
                               setAllNotes(updatedNotes);
                               if (activePage === 'notes') {
@@ -457,10 +457,9 @@ const AppContent = () => {
                       <div className="h-full overflow-y-auto">
                         <div className="max-w-[80%] mx-auto">
                           <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                            <PeopleList 
-                              notes={allNotes}
-                              searchQuery={searchQuery}
+                            <PeopleList
                               allNotes={allNotes}
+                              setAllNotes={setAllNotes}
                             />
                           </div>
                         </div>

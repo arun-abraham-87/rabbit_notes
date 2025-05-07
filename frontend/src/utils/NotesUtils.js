@@ -2,7 +2,7 @@
  * Searches for text within a note's content
  * @param {Object} note - The note object to search in
  * @param {string} searchText - The text to search for
- * @returns {boolean} - Returns true if searchText is found in note content, false otherwise
+ * @returns {boolean} - Returns true if all search terms are found in note content, false otherwise
  */
 export const searchInNote = (note, searchText) => {
     // Check if note or searchText is null/undefined
@@ -10,16 +10,24 @@ export const searchInNote = (note, searchText) => {
         return false;
     }
 
-    // Check if note.content exists and is an array
+    // Check if note.content exists
     if (!note.content) {
         return false;
     }
 
-    // Convert searchText to lowercase for case-insensitive search
-    const searchTextLower = searchText.toLowerCase();
+    // Split search text into individual terms and trim whitespace
+    const searchTerms = searchText.toLowerCase().split(/\s+/).filter(term => term.length > 0);
+    
+    // If no valid search terms, return false
+    if (searchTerms.length === 0) {
+        return false;
+    }
 
-    // Convert line to lowercase and check if it contains the search text
-    return note.content.toLowerCase().includes(searchTextLower);
+    // Convert note content to lowercase for case-insensitive search
+    const noteContent = note.content.toLowerCase();
+
+    // Check if all search terms are present in the note content
+    return searchTerms.every(term => noteContent.includes(term));
 };
 
 /**

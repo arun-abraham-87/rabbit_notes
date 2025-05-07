@@ -871,7 +871,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           </div>
         )}
       </div>
-      {isAddMode && !isModal && (
+      {/* {isAddMode && !isModal && (
         <div className="mb-4 flex flex-wrap gap-2 group relative">
           <NoteFilters
             setLines={setLines}
@@ -882,7 +882,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
             settings={settings}
           />
         </div>
-      )}
+      )} */}
       {isTextMode ? (
         <textarea
           className="w-full p-4 text-sm border border-gray-300 rounded-lg shadow-sm resize-none min-h-[200px] font-mono"

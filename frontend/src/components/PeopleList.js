@@ -13,7 +13,6 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const [rawNoteModal, setRawNoteModal] = useState({ open: false, content: '' });
   const [editPersonModal, setEditPersonModal] = useState({ open: false, personNote: null });
   const [addPersonModal, setAddPersonModal] = useState({ open: false });
-  const [refreshKey, setRefreshKey] = useState(0);
 
 
   // Get all unique tags from person allNotes
@@ -165,15 +164,12 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       const updatedContent = updatedLines.join('\n');
 
       await updateNoteById(noteId, updatedContent);
+      setAllNotes(allNotes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
     } catch (error) {
       console.error('Error removing tag:', error);
     }
   };
 
-  // Update refresh handler to use local state
-  const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1); // Force re-render by updating state
-  };
 
   const renderPersonCard = (note) => {
     const { name, role, email, phone, tags, metaInfo } = getPersonInfo(note.content);
@@ -334,20 +330,6 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           <div className="text-xs font-medium text-indigo-600">Tags</div>
           <div className="text-2xl font-bold text-indigo-700">{totalTags}</div>
         </div>
-      </div>
-
-      {/* Refresh Button */}
-      <div className="flex justify-center">
-        <button
-          onClick={handleRefresh}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
-          title="Refresh list"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-          </svg>
-          Refresh List
-        </button>
       </div>
 
       {/* Untagged People Alert */}

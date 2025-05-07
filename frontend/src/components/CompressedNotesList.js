@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import NoteContent from './NoteContent';
-import { XMarkIcon, CheckIcon, ClockIcon, PencilIcon, ChevronDownIcon, ChevronUpIcon, CodeBracketIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, CheckIcon, ClockIcon, PencilIcon, ChevronDownIcon, ChevronUpIcon, CodeBracketIcon, BellIcon } from '@heroicons/react/24/solid';
 import {
   formatTimeElapsed,
   getNoteCadence,
@@ -41,7 +41,8 @@ const CompressedNotesList = ({
   isWatchList = false,
   refreshNotes,
   onEdit,
-  onMarkForReview
+  onMarkForReview,
+  onMarkAsReminder
 }) => {
   const [needsReviewState, setNeedsReviewState] = useState({});
   const [timeElapsed, setTimeElapsed] = useState({});
@@ -61,6 +62,14 @@ const CompressedNotesList = ({
       let needsRefresh = false;
       
       notes.forEach(note => {
+        // Skip review checks for reminder notes
+        if (note.content.includes('meta::reminder')) {
+          newState[note.id] = false;
+          newTimeElapsed[note.id] = '';
+          newNextReviewTime[note.id] = '';
+          return;
+        }
+
         newState[note.id] = checkNeedsReview(note.id);
         const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
         newTimeElapsed[note.id] = formatTimeElapsed(reviews[note.id]);
@@ -168,13 +177,18 @@ const CompressedNotesList = ({
           ? getVisibleLines(note.content)
           : note.content;
 
+        // Check if note has reminder tag
+        const isReminder = note.content.includes('meta::reminder');
+
         return (
           <div
             key={note.id}
             onContextMenu={onContextMenu}
             className={`p-1 rounded border relative group transition-all duration-300 ${
-              needsReviewState[note.id] 
+              !isReminder && needsReviewState[note.id]
                 ? 'border-2 border-red-500 bg-red-50' 
+                : isReminder
+                ? 'border-2 border-purple-500 bg-purple-50'
                 : 'bg-neutral-50 border-slate-200'
             }`}
           >
@@ -232,61 +246,67 @@ const CompressedNotesList = ({
             {isWatchList && (
               <div className="mt-2 flex items-center justify-between border-t pt-2">
                 <div className="text-xs text-gray-500 flex flex-col">
-                  {needsReviewState[note.id] 
-                    ? 'Last review: ' + formatTimestamp(getLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
-                    : nextReviewTime[note.id]}
-                  <div className="text-xs text-gray-400">
-                    {showCadenceSelector === note.id ? (
-                      <div className="flex items-center gap-2 bg-white p-2 rounded shadow">
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            min="0"
-                            max="999"
-                            value={cadenceHours}
-                            onChange={(e) => setCadenceHours(parseInt(e.target.value) || 0)}
-                            className="w-12 px-1 py-0.5 border rounded text-sm"
-                            placeholder="Hours"
-                          />
-                          <span className="text-sm">h</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            min="0"
-                            max="59"
-                            value={cadenceMinutes}
-                            onChange={(e) => setCadenceMinutes(parseInt(e.target.value) || 0)}
-                            className="w-12 px-1 py-0.5 border rounded text-sm"
-                            placeholder="Minutes"
-                          />
-                          <span className="text-sm">m</span>
-                        </div>
-                        <button
-                          onClick={() => handleCadenceChange(note.id)}
-                          className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
-                        >
-                          Set
-                        </button>
+                  {isReminder ? (
+                    <span className="text-purple-600">Reminder</span>
+                  ) : (
+                    <>
+                      {needsReviewState[note.id] 
+                        ? 'Last review: ' + formatTimestamp(getLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
+                        : nextReviewTime[note.id]}
+                      <div className="text-xs text-gray-400">
+                        {showCadenceSelector === note.id ? (
+                          <div className="flex items-center gap-2 bg-white p-2 rounded shadow">
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                max="999"
+                                value={cadenceHours}
+                                onChange={(e) => setCadenceHours(parseInt(e.target.value) || 0)}
+                                className="w-12 px-1 py-0.5 border rounded text-sm"
+                                placeholder="Hours"
+                              />
+                              <span className="text-sm">h</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                max="59"
+                                value={cadenceMinutes}
+                                onChange={(e) => setCadenceMinutes(parseInt(e.target.value) || 0)}
+                                className="w-12 px-1 py-0.5 border rounded text-sm"
+                                placeholder="Minutes"
+                              />
+                              <span className="text-sm">m</span>
+                            </div>
+                            <button
+                              onClick={() => handleCadenceChange(note.id)}
+                              className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
+                            >
+                              Set
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span>Review every: {getNoteCadence(note.id).hours}h {getNoteCadence(note.id).minutes}m</span>
+                            <button
+                              onClick={() => {
+                                const cadence = getNoteCadence(note.id);
+                                setCadenceHours(cadence.hours);
+                                setCadenceMinutes(cadence.minutes);
+                                setShowCadenceSelector(note.id);
+                              }}
+                              className="p-0.5 text-gray-400 hover:text-gray-600"
+                              title="Set review cadence"
+                            >
+                              <ClockIcon className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <span>Review every: {getNoteCadence(note.id).hours}h {getNoteCadence(note.id).minutes}m</span>
-                        <button
-                          onClick={() => {
-                            const cadence = getNoteCadence(note.id);
-                            setCadenceHours(cadence.hours);
-                            setCadenceMinutes(cadence.minutes);
-                            setShowCadenceSelector(note.id);
-                          }}
-                          className="p-0.5 text-gray-400 hover:text-gray-600"
-                          title="Set review cadence"
-                        >
-                          <ClockIcon className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -305,24 +325,40 @@ const CompressedNotesList = ({
                     <PencilIcon className="h-4 w-4" />
                     <span className="text-sm">Edit</span>
                   </button>
-                  {needsReviewState[note.id] ? (
-                    <button
-                      onClick={() => handleReview(note.id)}
-                      className="px-2 py-1 rounded-md bg-green-50 text-green-600 hover:bg-green-100 flex items-center gap-1"
-                      title="Mark as reviewed"
-                    >
-                      <CheckIcon className="h-4 w-4" />
-                      <span className="text-sm">Review</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => onMarkForReview && onMarkForReview(note.id)}
-                      className="px-2 py-1 rounded-md bg-yellow-50 text-yellow-600 hover:bg-yellow-100 flex items-center gap-1"
-                      title="Mark for review"
-                    >
-                      <ClockIcon className="h-4 w-4" />
-                      <span className="text-sm">Mark for Review</span>
-                    </button>
+                  <button
+                    onClick={() => onMarkAsReminder && onMarkAsReminder(note.id)}
+                    className={`px-2 py-1 rounded-md flex items-center gap-1 ${
+                      isReminder 
+                        ? 'bg-purple-50 text-purple-600 hover:bg-purple-100' 
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                    title={isReminder ? "Remove reminder" : "Set as reminder"}
+                  >
+                    <BellIcon className="h-4 w-4" />
+                    <span className="text-sm">{isReminder ? "Reminder Set" : "Set Reminder"}</span>
+                  </button>
+                  {!isReminder && (
+                    <>
+                      {needsReviewState[note.id] ? (
+                        <button
+                          onClick={() => handleReview(note.id)}
+                          className="px-2 py-1 rounded-md bg-green-50 text-green-600 hover:bg-green-100 flex items-center gap-1"
+                          title="Mark as reviewed"
+                        >
+                          <CheckIcon className="h-4 w-4" />
+                          <span className="text-sm">Review</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onMarkForReview && onMarkForReview(note.id)}
+                          className="px-2 py-1 rounded-md bg-yellow-50 text-yellow-600 hover:bg-yellow-100 flex items-center gap-1"
+                          title="Mark for review"
+                        >
+                          <ClockIcon className="h-4 w-4" />
+                          <span className="text-sm">Mark for Review</span>
+                        </button>
+                      )}
+                    </>
                   )}
                   <button
                     onClick={() => handleUnfollow(note.id, note.content)}

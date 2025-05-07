@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CompressedNotesList from './CompressedNotesList';
-import { ClockIcon, PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, PencilIcon, XMarkIcon, BellIcon } from '@heroicons/react/24/outline';
 import NoteEditor from './NoteEditor';
 
 const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
@@ -10,6 +10,32 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
     note.content.includes('meta::watch')
   );
 
+  const handleMarkAsReminder = (noteId) => {
+    // Find the note
+    const note = allNotes.find(n => n.id === noteId);
+    if (!note) return;
+
+    // Check if note already has reminder tag
+    const hasReminder = note.content.includes('meta::reminder');
+    
+    let updatedContent;
+    if (hasReminder) {
+      // Remove the reminder tag
+      updatedContent = note.content
+        .split('\n')
+        .filter(line => !line.trim().startsWith('meta::reminder'))
+        .join('\n')
+        .trim();
+    } else {
+      // Add the reminder tag
+      updatedContent = note.content + '\nmeta::reminder';
+    }
+    
+    // Update the note
+    updateNote(noteId, updatedContent).then(() => {
+      refreshNotes();
+    });
+  };
 
   const handleMarkForReview = (noteId) => {
     // Get current reviews from localStorage
@@ -23,6 +49,9 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
   };
 
   const overdueNotes = watchlistNotes.filter(note => {
+    // Skip notes with reminder tag
+    if (note.content.includes('meta::reminder')) return false;
+    
     // Check if note needs review based on its cadence
     const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
     const reviewTime = reviews[note.id];
@@ -43,7 +72,13 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
     return now >= nextReviewDate;
   });
 
-  const activeNotes = watchlistNotes.filter(note => !overdueNotes.includes(note));
+  const activeNotes = watchlistNotes.filter(note => 
+    !overdueNotes.includes(note) && !note.content.includes('meta::reminder')
+  );
+
+  const reminderNotes = watchlistNotes.filter(note => 
+    note.content.includes('meta::reminder')
+  );
 
   const handleUnfollow = (noteId, content) => {
     // Remove the entire line containing meta::watch
@@ -88,6 +123,50 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
       <div className="p-4">
         <h1 className="text-2xl font-semibold text-gray-900 mb-4">Watchlist</h1>
         
+        {reminderNotes.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <BellIcon className="h-6 w-6 text-purple-500" />
+              Reminders
+            </h2>
+            <CompressedNotesList
+              notes={reminderNotes}
+              searchQuery=""
+              duplicatedUrlColors={{}}
+              editingLine={null}
+              setEditingLine={() => {}}
+              editedLineContent=""
+              setEditedLineContent={() => {}}
+              rightClickNoteId={null}
+              rightClickIndex={null}
+              setRightClickNoteId={() => {}}
+              setRightClickIndex={() => {}}
+              setRightClickPos={() => {}}
+              editingInlineDate={null}
+              setEditingInlineDate={() => {}}
+              handleInlineDateSelect={() => {}}
+              popupNoteText={null}
+              setPopupNoteText={() => {}}
+              objList={[]}
+              addingLineNoteId={null}
+              setAddingLineNoteId={() => {}}
+              newLineText=""
+              setNewLineText={() => {}}
+              newLineInputRef={null}
+              updateNote={handleUnfollow}
+              onContextMenu={() => {}}
+              isWatchList={true}
+              getNoteAge={getDaysSinceAdded}
+              refreshNotes={refreshNotes}
+              onReview={handleUnfollow}
+              onCadenceChange={handleUnfollow}
+              onEdit={handleEdit}
+              onMarkForReview={handleMarkForReview}
+              onMarkAsReminder={handleMarkAsReminder}
+            />
+          </div>
+        )}
+
         {overdueNotes.length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">Overdue Notes</h2>
@@ -124,6 +203,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               onCadenceChange={handleUnfollow}
               onEdit={handleEdit}
               onMarkForReview={handleMarkForReview}
+              onMarkAsReminder={handleMarkAsReminder}
             />
           </div>
         )}
@@ -164,6 +244,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               onCadenceChange={handleUnfollow}
               onEdit={handleEdit}
               onMarkForReview={handleMarkForReview}
+              onMarkAsReminder={handleMarkAsReminder}
             />
           </div>
         )}

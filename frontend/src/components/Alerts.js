@@ -2125,6 +2125,9 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
   const [showAllReminders, setShowAllReminders] = useState(false);
   const [expandedDetails, setExpandedDetails] = useState({});
   const [hoveredNote, setHoveredNote] = useState(null);
+  const [showCustomTime, setShowCustomTime] = useState(null);
+  const [customHours, setCustomHours] = useState('');
+  const [customMinutes, setCustomMinutes] = useState('');
 
   const reminders = notes.filter(note => {
     if (!note.content.includes('meta::reminder')) return false;
@@ -2153,7 +2156,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
     }
   };
 
-  const handleSetCadence = async (note, hours) => {
+  const handleSetCadence = async (note, hours, minutes = 0) => {
     try {
       // Remove existing cadence tag if it exists
       let updatedContent = note.content
@@ -2162,7 +2165,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
         .join('\n');
 
       // Add new cadence tag
-      updatedContent = `${updatedContent}\nmeta::cadence::${hours}h`;
+      updatedContent = `${updatedContent}\nmeta::cadence::${hours}h${minutes > 0 ? ` ${minutes}m` : ''}`;
 
       // Update the note
       await updateNoteById(note.id, updatedContent);
@@ -2180,14 +2183,29 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
 
       // Update the cadence in localStorage
       const cadences = JSON.parse(localStorage.getItem('noteReviewCadence') || '{}');
-      cadences[note.id] = { hours, minutes: 0 };
+      cadences[note.id] = { hours, minutes };
       localStorage.setItem('noteReviewCadence', JSON.stringify(cadences));
 
-      Alerts.success(`Reminder cadence set to ${hours} hours`);
+      Alerts.success(`Reminder cadence set to ${hours}h${minutes > 0 ? ` ${minutes}m` : ''}`);
+      setShowCustomTime(null);
+      setCustomHours('');
+      setCustomMinutes('');
     } catch (error) {
       console.error('Error setting cadence:', error);
       Alerts.error('Failed to set reminder cadence');
     }
+  };
+
+  const handleCustomTimeSubmit = (note) => {
+    const hours = parseInt(customHours) || 0;
+    const minutes = parseInt(customMinutes) || 0;
+    
+    if (hours === 0 && minutes === 0) {
+      Alerts.error('Please enter a valid time');
+      return;
+    }
+    
+    handleSetCadence(note, hours, minutes);
   };
 
   const toggleDetails = (noteId) => {
@@ -2208,6 +2226,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
         const cadence = getNoteCadence(note.id);
         const isDetailsExpanded = expandedDetails[note.id];
         const isHovered = hoveredNote === note.id;
+        const isCustomTimeOpen = showCustomTime === note.id;
 
         return (
           <div 
@@ -2292,6 +2311,13 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
                     >
                       24h
                     </button>
+                    <button
+                      onClick={() => setShowCustomTime(isCustomTimeOpen ? null : note.id)}
+                      className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                      title="Set custom cadence"
+                    >
+                      Custom
+                    </button>
                   </div>
                   <button
                     onClick={() => handleDismiss(note)}
@@ -2303,6 +2329,49 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
                   </button>
                 </div>
               </div>
+              {isCustomTimeOpen && (
+                <div className="mt-4 flex items-center gap-4 bg-purple-100 p-3 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      value={customHours}
+                      onChange={(e) => setCustomHours(e.target.value)}
+                      placeholder="Hours"
+                      className="w-20 px-3 py-2 text-sm border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <span className="text-purple-700">hours</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={customMinutes}
+                      onChange={(e) => setCustomMinutes(e.target.value)}
+                      placeholder="Minutes"
+                      className="w-20 px-3 py-2 text-sm border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <span className="text-purple-700">minutes</span>
+                  </div>
+                  <button
+                    onClick={() => handleCustomTimeSubmit(note)}
+                    className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                  >
+                    Set
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCustomTime(null);
+                      setCustomHours('');
+                      setCustomMinutes('');
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         );

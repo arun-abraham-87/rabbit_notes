@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
 import NoteFilters from './NoteFilters';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { debounce } from 'lodash';
 
 const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
@@ -218,16 +219,23 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     setDraggedId(null);
   };
 
+  const debouncedSetSearchQuery = useCallback(
+    debounce((value) => {
+      if (setSearchQuery) {
+        console.log('Setting searchQuery in handleTextChange:', value);
+        setSearchQuery(value);
+      }
+    }, 300),
+    [setSearchQuery]
+  );
+
   const handleTextChange = (index, value) => {
     const updatedLines = [...lines];
     updatedLines[index].text = value;
     setLines(updatedLines);
-    
-    // Always update search query if setSearchQuery is provided
-    if (setSearchQuery) {
-      console.log('Setting searchQuery in handleTextChange:', value);
-      setSearchQuery(value);
-    }
+
+    // Debounce the search query update
+    debouncedSetSearchQuery(value);
 
     // Handle tag suggestions
     if (value.trim().length === 0) {
@@ -872,8 +880,6 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
             setSearchQuery={setSearchQuery}
             searchQuery={searchQuery}
             settings={settings}
-            onExcludeEventsChange={onExcludeEventsChange}
-            onExcludeMeetingsChange={onExcludeMeetingsChange}
           />
         </div>
       )}

@@ -8,22 +8,21 @@ import WatchList from './WatchList';
 import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
 import { isSameAsTodaysDate } from '../utils/DateUtils';
 import { searchInNote, buildSuggestionsFromNotes } from '../utils/NotesUtils';
-
-const NotesMainContainer = ({ 
-    objList = [], 
-    allNotes = [], 
-    addNote, 
-    setAllNotes, 
-    objects = [], 
-    searchQuery = '', 
-    setSearchQuery, 
-    addTag, 
+import NoteFilters from './NoteFilters';
+const NotesMainContainer = ({
+    objList = [],
+    allNotes = [],
+    addNote,
+    setAllNotes,
+    objects = [],
+    searchQuery = '',
+    setSearchQuery,
+    addTag,
     settings = defaultSettings,
-    activePage = 'notes'
 }) => {
     const [checked, setChecked] = useState(false);
     const [compressedView, setCompressedView] = useState(false);
-    const [totals, setTotals] = useState({totals:0});
+    const [totals, setTotals] = useState({ totals: 0 });
     const [currentDate, setCurrentDate] = useState(null);
     const [excludeEvents, setExcludeEvents] = useState(settings?.excludeEventsByDefault || false);
     const [excludeMeetings, setExcludeMeetings] = useState(settings?.excludeMeetingsByDefault || false);
@@ -32,14 +31,14 @@ const NotesMainContainer = ({
 
     // Filter notes for display based on selected date and exclude states
     const filteredNotes = useMemo(() => {
-        const filtered= allNotes.filter(note => {
+        const filtered = allNotes.filter(note => {
             return (!searchQuery && isSameAsTodaysDate(note.created_datetime)) || searchInNote(note, searchQuery);
         });
-        setTotals({totals:filtered.length}); 
+        setTotals({ totals: filtered.length });
         return filtered;
-    }, [allNotes,searchQuery]);
+    }, [allNotes, searchQuery]);
 
-  
+
     const handleTagClick = (tag) => {
         setSearchQuery(tag);
     };
@@ -55,7 +54,7 @@ const NotesMainContainer = ({
     };
 
     // Build suggestions from allNotes
-    const mergedObjList = useMemo(() => 
+    const mergedObjList = useMemo(() =>
         buildSuggestionsFromNotes(allNotes, objList),
         [allNotes, objList]
     );
@@ -65,60 +64,42 @@ const NotesMainContainer = ({
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
 
                 <div className="mt-4">
-                    {activePage === 'watch' ? (
-                        <WatchList allNotes={allNotes} />
-                    ) : (
-                        <>
-                            <NoteEditor
-                                objList={mergedObjList}
-                                note={{ id: '', content: '' }}
-                                text=""
-                                addNote={addNote}
-                                onSave={(note) => {
-                                    addNote(note.content);
-                                }}
-                                onCancel={() => {}}
-                                searchQuery={searchQuery}
-                                setSearchQuery={setSearchQuery}
-                                isAddMode={true}
-                                settings={settings}
-                                onExcludeEventsChange={setExcludeEvents}
-                                onExcludeMeetingsChange={setExcludeMeetings}
-                                onDeadlinePassedChange={setShowDeadlinePassedFilter}
-                            />
-                            <InfoPanel 
-                                totals={totals} 
-                                grpbyViewChkd={checked} 
-                                enableGroupByView={setChecked}
-                                compressedView={compressedView}
-                                setCompressedView={setCompressedView}
-                            />
-                            {checked ? (
-                                <NotesListByDate
-                                    notes={filteredNotes}
-                                    searchQuery={searchQuery}
-                                    onWordClick={handleTagClick}
-                                    settings={settings}
-                                />
-                            ) : (
-                                <NotesList
-                                    objList={mergedObjList}
-                                    notes={filteredNotes}
-                                    allNotes={allNotes}
-                                    addNotes={addNote}
-                                    updateNoteCallback={handleNoteUpdate}
-                                    updateTotals={setTotals}
-                                    objects={objects}
-                                    addObjects={addTag}
-                                    searchQuery={searchQuery}
-                                    setSearchQuery={setSearchQuery}
-                                    onWordClick={handleTagClick}
-                                    settings={settings}
-                                    compressedView={compressedView}
-                                />
-                            )}
-                        </>
-                    )}
+                    <NoteEditor
+                        objList={mergedObjList}
+                        note={{ id: '', content: '' }}
+                        text=""
+                        addNote={addNote}
+                        
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                        isAddMode={true}
+                        settings={settings}
+                    />
+          {/* <NoteFilters
+            setLines={false}
+            setShowTodoSubButtons={false}
+            setActivePriority={false}
+            setSearchQuery={setSearchQuery}
+            searchQuery={searchQuery}
+            settings={settings}
+          /> */}
+                    <InfoPanel
+                        totals={totals}
+                    />
+                    <NotesList
+                        objList={mergedObjList}
+                        notes={filteredNotes}
+                        allNotes={allNotes}
+                        addNotes={addNote}
+                        updateNoteCallback={handleNoteUpdate}
+                        updateTotals={setTotals}
+                        objects={objects}
+                        addObjects={addTag}
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                        onWordClick={handleTagClick}
+                        settings={settings}
+                    />
                 </div>
             </div>
         </div>

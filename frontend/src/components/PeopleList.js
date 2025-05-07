@@ -3,6 +3,7 @@ import { UserIcon, ViewColumnsIcon, Squares2X2Icon, XMarkIcon, MagnifyingGlassIc
 import { CodeBracketIcon } from '@heroicons/react/24/outline';
 import { parseNoteContent } from '../utils/TextUtils';
 import AddPeopleModal from './AddPeopleModal';
+import NoteView from './NoteView';
 import { updateNoteById, createNote } from '../utils/ApiUtils';
 
 const PeopleList = ({allNotes, setAllNotes}) => {
@@ -438,25 +439,12 @@ const PeopleList = ({allNotes, setAllNotes}) => {
         </div>
       )}
 
-      {/* Raw Note Modal */}
-      {rawNoteModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative">
-            <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-              onClick={() => setRawNoteModal({ open: false, content: '' })}
-            >
-              <XMarkIcon className="h-6 w-6" />
-            </button>
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <CodeBracketIcon className="h-5 w-5 text-indigo-600" /> Raw Note
-            </h2>
-            <pre className="bg-gray-100 rounded p-4 text-xs overflow-x-auto whitespace-pre-wrap max-h-96">
-              {rawNoteModal.content}
-            </pre>
-          </div>
-        </div>
-      )}
+      {/* Note View Modal */}
+      <NoteView
+        isOpen={rawNoteModal.open}
+        content={rawNoteModal.content}
+        onClose={() => setRawNoteModal({ open: false, content: '' })}
+      />
 
       {/* Add Person Modal */}
       {addPersonModal.open && (

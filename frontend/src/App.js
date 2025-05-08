@@ -26,7 +26,8 @@ import News from './components/News';
 import ExpenseTracker from './components/ExpenseTracker';
 import TrackerListing from './components/TrackerListing';
 import Dashboard from './components/Dashboard';
-
+import TextPastePopup from './components/TextPastePopup';
+import { Alerts } from './components/Alerts';
 
 // Helper to render first four pinned notes
 const PinnedSection = ({ notes, onUnpin }) => {
@@ -198,9 +199,114 @@ const AppContent = () => {
   const [todos, setTodos] = useState([]);
   const [noteDate, setNoteDate] = useState(null);
   const [totals, setTotals] = useState(0);
+  const [showPastePopup, setShowPastePopup] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [newNoteText, setNewNoteText] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState(null);
+  const [isWatchSelected, setIsWatchSelected] = useState(false);
 
   // Get active page from URL hash
   const activePage = location.pathname.split('/')[1] || 'notes';
+
+  // Handle global Cmd+V (or Ctrl+V) event
+  useEffect(() => {
+    const handleKeyDown = async (e) => {
+      // Check if Cmd+V (Mac) or Ctrl+V (Windows/Linux) is pressed
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        // Check if quick paste is enabled
+        const isQuickPasteEnabled = localStorage.getItem('quickPasteEnabled') !== 'false';
+        if (!isQuickPasteEnabled) return;
+
+        // Check if we're not in an input or textarea
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        e.preventDefault();
+        try {
+          const text = await navigator.clipboard.readText();
+          if (text) {
+            setPasteText(text);
+            setNewNoteText('');
+            setSelectedPriority(null);
+            setIsWatchSelected(false);
+            setShowPastePopup(true);
+          }
+        } catch (err) {
+          console.error('Failed to read clipboard:', err);
+          Alerts.error('Failed to read clipboard content');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handlePasteSubmit = async () => {
+    try {
+      // Get current date in YYYY-MM-DD format
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const day = now.getDate().toString().padStart(2, '0');
+      const noteDate = `${year}-${month}-${day}`;
+
+      // Format datetime for meta tags (dd/mm/yyyy, hh:mm am/pm)
+      const hours = now.getHours();
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'pm' : 'am';
+      const formattedHours = hours % 12 || 12;
+      const formattedDateTime = `${day}/${month}/${year}, ${formattedHours}:${minutes} ${ampm}`;
+
+      // Get the first line from clipboard content
+      const firstClipboardLine = pasteText.split('\n')[0].trim();
+      
+      // Create the note with textbox content and first line from clipboard
+      let noteContent = `${newNoteText.trim()}\n${firstClipboardLine}`;
+      
+      // Add comments for selections
+      let comments = [];
+      if (selectedPriority) {
+        comments.push(`Marked as todo - priority ${selectedPriority}`);
+      }
+      if (isWatchSelected) {
+        comments.push('Added to watch list');
+      }
+      if (comments.length > 0) {
+        noteContent += '\n\n' + comments.join(', ');
+      }
+      
+      // Add todo meta tag if priority is selected
+      if (selectedPriority) {
+        noteContent += `\nmeta::todo::${formattedDateTime}`;
+        noteContent += `\nmeta::${selectedPriority}`;
+      }
+      
+      // Add watch meta tag if watch is selected
+      if (isWatchSelected) {
+        noteContent += `\nmeta::watch::${formattedDateTime}`;
+      }
+      
+      // Add review pending tag
+      noteContent += '\nmeta::review_pending';
+      
+      const newNote = await addNewNoteCommon(noteContent, [], noteDate);
+      
+      // Refresh the notes list with the current search query and date
+      const data = await loadNotes(searchQuery, noteDate);
+      setNotes(data.notes || []);
+      setTotals(data.totals || 0);
+      
+      setShowPastePopup(false);
+      setPasteText('');
+      setNewNoteText('');
+      setSelectedPriority(null);
+      setIsWatchSelected(false);
+      Alerts.success('Note created successfully');
+    } catch (error) {
+      console.error('Error creating note:', error);
+      Alerts.error('Failed to create note');
+    }
+  };
 
   // Save active page to localStorage
   useEffect(() => {
@@ -517,6 +623,26 @@ const AppContent = () => {
               closeButton={false}
             />
             <NoteEditorModal addNote={addNote} updateNote={updateNote} />
+            {showPastePopup && (
+              <TextPastePopup
+                isOpen={showPastePopup}
+                onClose={() => {
+                  setShowPastePopup(false);
+                  setPasteText('');
+                  setNewNoteText('');
+                  setSelectedPriority(null);
+                  setIsWatchSelected(false);
+                }}
+                newNoteText={newNoteText}
+                setNewNoteText={setNewNoteText}
+                pasteText={pasteText}
+                selectedPriority={selectedPriority}
+                setSelectedPriority={setSelectedPriority}
+                isWatchSelected={isWatchSelected}
+                setIsWatchSelected={setIsWatchSelected}
+                onSave={handlePasteSubmit}
+              />
+            )}
           </div>
         </NotesProvider>
       </SearchModalProvider>

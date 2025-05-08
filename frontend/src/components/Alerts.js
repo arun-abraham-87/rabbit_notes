@@ -31,6 +31,7 @@ import { generateTrackerQuestions, createTrackerAnswerNote } from '../utils/Trac
 import TrackerQuestionCard from './TrackerQuestionCard';
 import MeetingManager from './MeetingManager.js';
 import NoteEditor from './NoteEditor';
+import AddEventModal from './AddEventModal';
 
 const Alerts = {
   success: (message) => {
@@ -1634,6 +1635,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showPopup, setShowPopup] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
 
   useEffect(() => {
     const calculateUpcomingEvents = () => {
@@ -1709,7 +1711,19 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
               Upcoming Events ({upcomingEvents.length})
             </h3>
           </div>
-          <ChevronRightIcon className="h-5 w-5 text-blue-600" />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAddEventModal(true);
+              }}
+              className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors duration-150"
+              title="Add Event"
+            >
+              <PlusIcon className="h-5 w-5" />
+            </button>
+            <ChevronRightIcon className="h-5 w-5 text-blue-600" />
+          </div>
         </div>
       </div>
 
@@ -1792,14 +1806,30 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
           </div>
         </div>
       )}
+
+      {showAddEventModal && (
+        <AddEventModal
+          isOpen={showAddEventModal}
+          onClose={() => setShowAddEventModal(false)}
+          onAdd={(content) => {
+            // Add the event meta tag
+            const contentWithEvent = `${content}\nmeta::event::`;
+            addNewNoteCommon(contentWithEvent);
+            setShowAddEventModal(false);
+          }}
+          notes={notes}
+          isAddDeadline={false}
+        />
+      )}
     </>
   );
 };
 
-const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true }) => {
+const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNote }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showPopup, setShowPopup] = useState(false);
   const [deadlines, setDeadlines] = useState([]);
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
 
   useEffect(() => {
     const eventNotes = notes.filter(note => note.content.includes('meta::event_deadline'));
@@ -1840,7 +1870,19 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true }) => 
               Upcoming Deadlines ({deadlines.length})
             </h3>
           </div>
-          <ChevronRightIcon className="h-5 w-5 text-indigo-600" />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAddEventModal(true);
+              }}
+              className="p-1 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 rounded-full transition-colors duration-150"
+              title="Add Deadline"
+            >
+              <PlusIcon className="h-5 w-5" />
+            </button>
+            <ChevronRightIcon className="h-5 w-5 text-indigo-600" />
+          </div>
         </div>
       </div>
 
@@ -1888,6 +1930,21 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true }) => 
             </div>
           </div>
         </div>
+      )}
+
+      {showAddEventModal && (
+        <AddEventModal
+          isOpen={showAddEventModal}
+          onClose={() => setShowAddEventModal(false)}
+          onAdd={(content) => {
+            // Add the deadline meta tag
+            const contentWithDeadline = `${content}\nmeta::event_deadline`;
+            addNote(contentWithDeadline);
+            setShowAddEventModal(false);
+          }}
+          notes={notes}
+          isAddDeadline={true}
+        />
       )}
     </>
   );
@@ -2495,7 +2552,11 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         <RemindersAlert notes={notes} expanded={true} setNotes={setNotes} />
         <div className="flex gap-4">
           <div className="w-1/2">
-            <UpcomingDeadlinesAlert notes={notes} expanded={true} />
+            <UpcomingDeadlinesAlert 
+              notes={notes} 
+              expanded={true} 
+              addNote={addNewNoteCommon}
+            />
           </div>
           <div className="w-1/2">
             <UpcomingEventsAlert notes={notes} expanded={false} />

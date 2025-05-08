@@ -19,8 +19,8 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
     { id: 'trackers', label: 'Trackers', show: settings?.navigation?.showTrackersPage !== false },
   ].filter(button => button.show);
 
-  const visibleButtons = navigationButtons.slice(0, 4);
-  const dropdownButtons = navigationButtons.slice(4);
+  const visibleButtons = navigationButtons.slice(0, 8);
+  const dropdownButtons = navigationButtons.slice(8);
 
   const NavButton = ({ id, label }) => (
     <button

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
-import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
 import EditEventModal from '../components/EditEventModal';
 import CalendarView from '../components/CalendarView';
@@ -180,7 +180,21 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
     }
   };
 
- 
+  const handleToggleHidden = async (event) => {
+    const isHidden = event.content.includes('meta::event_hidden');
+    const updatedContent = isHidden
+      ? event.content.replace('\nmeta::event_hidden', '')
+      : event.content.trim() + '\nmeta::event_hidden';
+    
+    try {
+      await updateNoteById(event.id, updatedContent);
+      setAllNotes(allNotes.map(note => 
+        note.id === event.id ? { ...note, content: updatedContent } : note
+      ));
+    } catch (error) {
+      console.error('Error toggling event visibility:', error);
+    }
+  };
 
   const handleAcknowledgeEvent = async (eventId, year) => {
     const event = notes.find(note => note.id === eventId);
@@ -377,7 +391,19 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
                     <h3 className={`text-lg font-medium ${
                       isToday ? 'text-indigo-900' : 'text-gray-900'
                     }`}>
-                      {description}
+                      {event.content.includes('meta::event_hidden') ? (
+                        <div className="flex items-center gap-2">
+                          <span>XXXXXXXXXXXX</span>
+                          <button
+                            onClick={() => handleToggleHidden(event)}
+                            className="text-xs text-indigo-600 hover:text-indigo-700 underline"
+                          >
+                            Reveal
+                          </button>
+                        </div>
+                      ) : (
+                        description
+                      )}
                       {isToday && (
                         <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
                           Today
@@ -430,6 +456,19 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleHidden(event)}
+                        className={`p-1 ${
+                          isToday ? 'text-indigo-600 hover:text-indigo-700' : 'text-gray-500 hover:text-indigo-600'
+                        }`}
+                        title={event.content.includes('meta::event_hidden') ? "Show event" : "Hide event"}
+                      >
+                        {event.content.includes('meta::event_hidden') ? (
+                          <EyeSlashIcon className="h-5 w-5" />
+                        ) : (
+                          <EyeIcon className="h-5 w-5" />
+                        )}
+                      </button>
                       <button
                         onClick={() => handleEdit(event)}
                         className={`p-1 ${

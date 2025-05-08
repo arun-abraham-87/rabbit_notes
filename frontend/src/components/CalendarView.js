@@ -152,6 +152,15 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
     onEventUpdated(event.id,updatedContent);
   };
 
+  const handleToggleHidden = async (event) => {
+    const isHidden = event.content.includes('meta::event_hidden');
+    const updatedContent = isHidden
+      ? event.content.replace('\nmeta::event_hidden', '')
+      : event.content.trim() + '\nmeta::event_hidden';
+    
+    await onEventUpdated(event.id, updatedContent);
+  };
+
   // Function to extract event details from note content
   const getEventDetails = (content) => {
     const lines = content.split('\n');
@@ -254,7 +263,19 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                           <h3 className={`text-lg font-medium ${
                             occurrence.isToday ? 'text-indigo-900' : 'text-gray-900'
                           }`}>
-                            {occurrence.event.description}
+                            {occurrence.event.content.includes('meta::event_hidden') ? (
+                              <div className="flex items-center gap-2">
+                                <span>XXXXXXXXXXXX</span>
+                                <button
+                                  onClick={() => handleToggleHidden(occurrence.event)}
+                                  className="text-xs text-indigo-600 hover:text-indigo-700 underline"
+                                >
+                                  Reveal
+                                </button>
+                              </div>
+                            ) : (
+                              occurrence.event.description
+                            )}
                             {occurrence.isToday && (
                               <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
                                 Today
@@ -325,6 +346,21 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                             </span>
                           )}
                           <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleToggleHidden(occurrence.event)}
+                              className={`p-2 rounded-lg transition-colors ${
+                                occurrence.event.content.includes('meta::event_hidden')
+                                  ? 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                              }`}
+                              title={occurrence.event.content.includes('meta::event_hidden') ? "Show event" : "Hide event"}
+                            >
+                              {occurrence.event.content.includes('meta::event_hidden') ? (
+                                <EyeSlashIcon className="h-5 w-5" />
+                              ) : (
+                                <EyeIcon className="h-5 w-5" />
+                              )}
+                            </button>
                             <button
                               onClick={() => handleToggleDeadline(occurrence.event)}
                               className={`p-2 rounded-lg transition-colors ${

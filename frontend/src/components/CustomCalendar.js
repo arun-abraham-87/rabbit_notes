@@ -2,10 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { loadAllNotes } from '../utils/ApiUtils';
 
+const CustomTooltip = ({ event, currentDate }) => {
+  const originalDate = new Date(event.originalDate);
+  const today = new Date();
+  const age = today.getFullYear() - originalDate.getFullYear();
+  
+  // Calculate days difference
+  const diffTime = Math.abs(today - originalDate);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  return (
+    <div className="absolute z-50 bg-white p-3 rounded-lg shadow-lg border border-gray-200 min-w-[200px]">
+      <div className="text-sm font-medium text-gray-900 mb-1">{event.title}</div>
+      <div className="text-xs text-gray-600 space-y-1">
+        <div>Original Date: {originalDate.toLocaleDateString()}</div>
+        <div>Age: {age} years</div>
+        <div>Days from today: {diffDays}</div>
+      </div>
+    </div>
+  );
+};
+
 const CustomCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [events, setEvents] = useState([]);
+  const [showAnniversary, setShowAnniversary] = useState(false);
+  const [hoveredEvent, setHoveredEvent] = useState(null);
 
   // Fetch events from notes
   useEffect(() => {
@@ -21,26 +44,30 @@ const CustomCalendar = () => {
         const parsedEvents = eventNotes.map(note => {
           const lines = note.content.split('\n');
           const eventDateLine = lines.find(line => line.trim().startsWith('event_date:'));
-          console.log(eventDateLine);
-          const eventDate = eventDateLine ? new Date(eventDateLine.split(':')[1].trim().split("T")[0]) : null;
+          const originalDate = eventDateLine ? new Date(eventDateLine.split(':')[1].trim().split("T")[0]) : null;
+          const eventDate = originalDate ? new Date(originalDate) : null;
           
           // Get the first line as the event title and remove 'event_description:'
           const title = lines[0].trim().replace('event_description:', '').trim();
           
-          let obj= {
+          // If anniversary mode is on, set the year to current year
+          if (eventDate && showAnniversary) {
+            eventDate.setFullYear(currentYear);
+          }
+          
+          let obj = {
             id: note.id,
             title,
             date: eventDate,
+            originalDate: originalDate,
             content: note.content
           };
-          console.log(obj.date);
           return obj;
         }).filter(event => {
-          // Filter out events without valid dates and events not from current year
           if (!event.date) return false;
-          return event.date.getFullYear() === currentYear;
+          return showAnniversary ? true : event.date.getFullYear() === currentYear;
         });
-        console.log(parsedEvents.length);
+
         setEvents(parsedEvents);
       } catch (error) {
         console.error('Error fetching events:', error);
@@ -48,7 +75,7 @@ const CustomCalendar = () => {
     };
 
     fetchEvents();
-  }, []);
+  }, [showAnniversary]);
 
   const daysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -128,7 +155,7 @@ const CustomCalendar = () => {
         <div
           key={day}
           onClick={() => handleDateClick(date)}
-          className={`h-24 border border-gray-100 p-2 cursor-pointer transition-colors
+          className={`h-24 border border-gray-100 p-2 cursor-pointer transition-colors relative
             ${isCurrentDay ? 'bg-blue-50 border-2 border-black' : 'hover:bg-gray-50'}
             ${isCurrentSelected ? 'ring-2 ring-blue-500' : ''}
             ${date.getDay() === 0 || date.getDay() === 6 ? 'bg-yellow-50' : ''}
@@ -139,15 +166,32 @@ const CustomCalendar = () => {
             {isCurrentDay && <span className="ml-1 text-xs text-blue-500">Today</span>}
           </div>
           <div className="mt-1 space-y-1">
-            {dayEvents.map(event => (
-              <div
-                key={event.id}
-                className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded truncate"
-                title={event.title}
-              >
-                {event.title}
-              </div>
-            ))}
+            {dayEvents.map(event => {
+              const originalDate = new Date(event.originalDate);
+              const today = new Date();
+              const age = today.getFullYear() - originalDate.getFullYear();
+              const diffTime = Math.abs(today - originalDate);
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+              return (
+                <div
+                  key={event.id}
+                  className="group relative"
+                >
+                  <div className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded truncate">
+                    {event.title}
+                  </div>
+                  <div className="hidden group-hover:block absolute z-50 left-0 top-full mt-1 bg-white p-3 rounded-lg shadow-lg border border-gray-200 min-w-[200px]">
+                    <div className="text-sm font-medium text-gray-900 mb-1">{event.title}</div>
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <div>Original Date: {originalDate.toLocaleDateString()}</div>
+                      <div>Age: {age} years</div>
+                      <div>Days from today: {diffDays}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       );
@@ -171,6 +215,18 @@ const CustomCalendar = () => {
             >
               Today
             </button>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="showAnniversary"
+                checked={showAnniversary}
+                onChange={(e) => setShowAnniversary(e.target.checked)}
+                className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              />
+              <label htmlFor="showAnniversary" className="text-sm text-gray-700">
+                Show Anniversary
+              </label>
+            </div>
           </div>
           <div className="flex space-x-2">
             <button

@@ -293,10 +293,7 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true, setNotes
 
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-      <div 
-        className="bg-rose-50 px-6 py-4 border-b border-rose-100 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <div className="bg-rose-50 px-6 py-4 border-b border-rose-100 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <ExclamationCircleIcon className="h-6 w-6 text-rose-500" />
@@ -1468,10 +1465,7 @@ const TrackerQuestionsAlert = ({ notes, expanded: initialExpanded = true }) => {
 
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden w-full">
-      <div 
-        className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <DocumentTextIcon className="h-6 w-6 text-blue-500" />
@@ -1737,36 +1731,35 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
 
   return (
     <>
-      <div 
-        className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors duration-150"
-        onClick={() => setShowPopup(true)}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <CalendarIcon className="h-6 w-6 text-blue-500" />
-            <div className="ml-3">
-              <h3 className="text-lg font-semibold text-blue-800">
-                Upcoming Events ({upcomingEvents.length})
-              </h3>
-              {eventIndicators && (
-                <div className="text-blue-600 font-normal mt-1">
-                  {eventIndicators}
-                </div>
-              )}
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+        <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors duration-150" onClick={() => setShowPopup(true)}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <CalendarIcon className="h-6 w-6 text-blue-500" />
+              <div className="ml-3">
+                <h3 className="text-lg font-semibold text-blue-800">
+                  Upcoming Events ({upcomingEvents.length})
+                </h3>
+                {eventIndicators && (
+                  <div className="text-blue-600 font-normal mt-1">
+                    {eventIndicators}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowAddEventModal(true);
-              }}
-              className="px-3 py-1 text-blue-600 hover:text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors duration-150"
-              title="Add Event"
-            >
-              <PlusIcon className="h-5 w-5" />
-            </button>
-            <ChevronRightIcon className="h-5 w-5 text-blue-600" />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAddEventModal(true);
+                }}
+                className="px-3 py-1 text-blue-600 hover:text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors duration-150"
+                title="Add Event"
+              >
+                <PlusIcon className="h-5 w-5" />
+              </button>
+              <ChevronRightIcon className="h-5 w-5 text-blue-600" />
+            </div>
           </div>
         </div>
       </div>
@@ -1934,29 +1927,28 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
 
   return (
     <>
-      <div 
-        className="bg-indigo-50 px-6 py-4 border-b border-indigo-100 cursor-pointer hover:bg-indigo-100 transition-colors duration-150"
-        onClick={() => setShowPopup(true)}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <ClockIcon className="h-6 w-6 text-indigo-500" />
-            <h3 className="ml-3 text-lg font-semibold text-indigo-800">
-              Upcoming Deadlines ({deadlines.length})
-            </h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowAddEventModal(true);
-              }}
-              className="px-3 py-1 text-indigo-600 hover:text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors duration-150"
-              title="Add Deadline"
-            >
-              <PlusIcon className="h-5 w-5" />
-            </button>
-            <ChevronRightIcon className="h-5 w-5 text-indigo-600" />
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+        <div className="bg-indigo-50 px-6 py-4 border-b border-indigo-100 cursor-pointer hover:bg-indigo-100 transition-colors duration-150" onClick={() => setShowPopup(true)}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <ClockIcon className="h-6 w-6 text-indigo-500" />
+              <h3 className="ml-3 text-lg font-semibold text-indigo-800">
+                Upcoming Deadlines ({deadlines.length})
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAddEventModal(true);
+                }}
+                className="px-3 py-1 text-indigo-600 hover:text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors duration-150"
+                title="Add Deadline"
+              >
+                <PlusIcon className="h-5 w-5" />
+              </button>
+              <ChevronRightIcon className="h-5 w-5 text-indigo-600" />
+            </div>
           </div>
         </div>
       </div>
@@ -2205,10 +2197,7 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
 
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-6 w-full">
-      <div 
-        className="bg-red-50 px-6 py-4 border-b border-red-100 cursor-pointer"
-        onClick={handleTitleClick}
-      >
+      <div className="bg-red-50 px-6 py-4 border-b border-red-100 cursor-pointer" onClick={handleTitleClick}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -2427,7 +2416,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
         return (
           <div 
             key={note.id} 
-            className="bg-purple-100 border border-purple-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+            className="bg-white shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200"
             onMouseEnter={() => setHoveredNote(note.id)}
             onMouseLeave={() => setHoveredNote(null)}
           >
@@ -2602,7 +2591,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
         <div className="flex justify-center">
           <button
             onClick={() => setShowAllReminders(!showAllReminders)}
-            className="px-4 py-2 text-sm font-medium text-purple-600 hover:text-purple-800 focus:outline-none bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors duration-150"
+            className="px-4 py-2 text-sm font-medium text-purple-600 hover:text-purple-800 focus:outline-none bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
           >
             {showAllReminders ? 'Show Less' : `Show ${reminders.length - 3} More`}
           </button>

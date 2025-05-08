@@ -330,7 +330,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     const list = [];
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
     notes.forEach(note => {
-      if (note.content.split('\n').some(line => line.trim().startsWith('meta::quick_links'))) {
+      if (note?.content && note.content.split('\n').some(line => line.trim().startsWith('meta::quick_links'))) {
         linkRegex.lastIndex = 0;
         let match;
         while ((match = linkRegex.exec(note.content)) !== null) {
@@ -352,7 +352,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     const list = [];
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
     notes.forEach(note => {
-      if (note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark'))) {
+      if (note?.content && note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark'))) {
         linkRegex.lastIndex = 0;
         let match;
         while ((match = linkRegex.exec(note.content)) !== null) {

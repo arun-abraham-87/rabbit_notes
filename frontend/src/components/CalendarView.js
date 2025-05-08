@@ -15,7 +15,7 @@ import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
 import AddEventModal from './AddEventModal';
 
-const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => {
+const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddEvent }) => {
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [rawNote, setRawNote] = useState(null);
@@ -124,7 +124,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => 
   };
 
   const handleEventUpdated = (updatedEvent) => {
-    onEventUpdated(updatedEvent);
+    onEventUpdated(editingEvent.id, updatedEvent);
     setEditingEvent(null);
   };
 
@@ -151,8 +151,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => 
     }
     
     // Update the event
-    const updatedEvent = { ...event, content: updatedContent };
-    onEventUpdated(updatedEvent);
+    onEventUpdated(event.id,updatedContent);
   };
 
   // Function to extract event details from note content
@@ -410,7 +409,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => 
         <AddEventModal
           isOpen={isAddEventModalOpen}
           onClose={() => setIsAddEventModalOpen(false)}
-          onAdd={handleAddEvent}
+          onSave={onAddEvent}
           notes={notes}
         />
       )}

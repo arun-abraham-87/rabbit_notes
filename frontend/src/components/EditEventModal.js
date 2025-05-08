@@ -124,7 +124,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
     // Add meta information as the last lines
     content += `\nmeta::event::${new Date().toISOString()}`;
     
-    onSave({ ...note, content });
+    onSave(content);
 
     // Reset form
     setDescription('');

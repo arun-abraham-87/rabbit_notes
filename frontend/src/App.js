@@ -545,12 +545,8 @@ const AppContent = () => {
                         <div className="max-w-[80%] mx-auto">
                           <EventsPage
                             notes={allNotes}
-                            onUpdate={(updatedNotes) => {
-                              setAllNotes(updatedNotes);
-                              if (activePage === 'notes') {
-                                setNotes(updatedNotes);
-                              }
-                            }}
+                            setAllNotes={setAllNotes}
+                            allNotes={allNotes}
                           />
                         </div>
                       </div>

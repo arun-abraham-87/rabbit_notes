@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon } from '@heroicons/react/24/outline';
-import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
 import EditEventModal from '../components/EditEventModal';
 import CalendarView from '../components/CalendarView';
 import AddEventModal from '../components/AddEventModal';
@@ -98,7 +98,7 @@ const getEventDetails = (content) => {
   return { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, tags };
 };
 
-const EventsPage = ({ notes, onUpdate }) => {
+const EventsPage = ({ notes,allNotes, setAllNotes }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -180,9 +180,9 @@ const EventsPage = ({ notes, onUpdate }) => {
     try {
       await deleteNoteById(deletingEvent.id);
       // Update the notes list by removing the deleted event
-      const updatedNotes = notes.filter(note => note.id !== deletingEvent.id);
+     // const updatedNotes = notes.filter(note => note.id !== deletingEvent.id);
       // Call the onUpdate prop directly
-      onUpdate(updatedNotes);
+      //onUpdate(updatedNotes);
       setDeletingEvent(null);
     } catch (error) {
       console.error('Error deleting event:', error);
@@ -191,13 +191,13 @@ const EventsPage = ({ notes, onUpdate }) => {
 
   const handleSave = async (updatedNote) => {
     try {
-      await updateNoteById(updatedNote.id, updatedNote.content);
-      // Update the notes list by updating the edited event
-      const updatedNotes = notes.map(note => 
-        note.id === updatedNote.id ? { ...note, content: updatedNote.content } : note
-      );
-      onUpdate(updatedNotes);
-      setEditingEvent(null);
+      // await updateNoteById(updatedNote.id, updatedNote.content);
+      // // Update the notes list by updating the edited event
+      // const updatedNotes = notes.map(note => 
+      //   note.id === updatedNote.id ? { ...note, content: updatedNote.content } : note
+      // );
+      // onUpdate(updatedNotes);
+      // setEditingEvent(null);
     } catch (error) {
       console.error('Error updating event:', error);
     }
@@ -218,20 +218,20 @@ const EventsPage = ({ notes, onUpdate }) => {
     // Add the meta tag to the content
     const updatedContent = event.content.trim() + '\n' + metaTag;
 
-    try {
-      // Update the note with the new content
-      await updateNoteById(eventId, updatedContent);
+    // try {
+    //   // Update the note with the new content
+    //   await updateNoteById(eventId, updatedContent);
       
-      // Update the notes array with the new content
-      const updatedNotes = notes.map(note => 
-        note.id === eventId ? { ...note, content: updatedContent } : note
-      );
+    //   // Update the notes array with the new content
+    //   const updatedNotes = notes.map(note => 
+    //     note.id === eventId ? { ...note, content: updatedContent } : note
+    //   );
       
-      // Pass the updated notes array to onUpdate
-      onUpdate(updatedNotes);
-    } catch (error) {
-      console.error('Error acknowledging event:', error);
-    }
+    //   // Pass the updated notes array to onUpdate
+    //   onUpdate(updatedNotes);
+    // } catch (error) {
+    //   console.error('Error acknowledging event:', error);
+    // }
   };
 
   const handleTagClick = (tag) => {
@@ -246,43 +246,21 @@ const EventsPage = ({ notes, onUpdate }) => {
     });
   };
 
-  const handleEventUpdated = async (updatedNote) => {
-    try {
-      // If the note content is empty, it means the note was deleted
-      if (!updatedNote.content) {
-        // Update the notes list by removing the deleted event
-        const updatedNotes = notes.filter(note => note.id !== updatedNote.id);
-        onUpdate(updatedNotes);
-        return;
-      }
-
-      await updateNoteById(updatedNote.id, updatedNote.content);
-      // Update the notes list by updating the edited event
-      const updatedNotes = notes.map(note => 
-        note.id === updatedNote.id ? { ...note, content: updatedNote.content } : note
-      );
-      onUpdate(updatedNotes);
-    } catch (error) {
-      console.error('Error updating event:', error);
-    }
+  const handleEventUpdated = async (id, updatedNote) => {
+    await updateNoteById(id, updatedNote);
+    setAllNotes(allNotes.map(note => note.id === id ? { ...note, content: updatedNote } : note));
+    setIsAddEventModalOpen(false);
   };
 
   const handleAddEvent = async (content) => {
     try {
-      // Create a new note with the event content
-      const newNote = {
-        id: Date.now().toString(), // Temporary ID
-        content: content,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      // Add the new note to the notes array
-      const updatedNotes = [...notes, newNote];
-      onUpdate(updatedNotes);
-      setIsAddEventModalOpen(false);
+      const response = await createNote(content);
+      console.log('API Response:', response);
+      setAllNotes([...allNotes, response.content]);
+      return response;
     } catch (error) {
       console.error('Error adding event:', error);
+      throw error;
     }
   };
 
@@ -513,14 +491,7 @@ const EventsPage = ({ notes, onUpdate }) => {
         notes={notes}
       />
 
-      {/* Edit Event Modal */}
-      {editingEvent && (
-        <EditEventModal
-          note={editingEvent}
-          onSave={handleSave}
-          onCancel={() => setEditingEvent(null)}
-        />
-      )}
+     
 
       {/* Delete Confirmation Modal */}
       {deletingEvent && (

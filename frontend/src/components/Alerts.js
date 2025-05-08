@@ -20,7 +20,8 @@ import {
   PlusIcon,
   EyeIcon,
   PencilIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  BellIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon, createNote } from '../utils/ApiUtils';
@@ -2477,7 +2478,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
                       <ChevronDownIcon className="h-5 w-5" />
                     )}
                   </button>
-                  <ClockIcon className="h-5 w-5 text-purple-700" />
+                  <BellIcon className="h-5 w-5 text-purple-700" />
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="text-lg font-medium text-purple-900">
@@ -2512,11 +2513,11 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
                     {isDetailsExpanded && (
                       <div className="mt-2 flex items-center gap-4 text-sm text-purple-700">
                         <div className="flex items-center gap-1">
-                          <ClockIcon className="h-4 w-4" />
+                          <BellIcon className="h-4 w-4" />
                           <span>Last reminded: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <ClockIcon className="h-4 w-4" />
+                          <BellIcon className="h-4 w-4" />
                           <span>Reminder cadence: {cadence.hours}h {cadence.minutes}m</span>
                         </div>
                       </div>

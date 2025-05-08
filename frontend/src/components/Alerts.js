@@ -1642,6 +1642,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
       const upcoming = [];
       let hasTodayEvent = false;
       let hasTomorrowEvent = false;
+      let nextEventDays = null;
 
       eventNotes.forEach(note => {
         const lines = note.content.split('\n');
@@ -1677,6 +1678,10 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
             hasTodayEvent = true;
           } else if (eventDate.getTime() === tomorrow.getTime()) {
             hasTomorrowEvent = true;
+          } else if (!nextEventDays || eventDate < new Date(nextEventDays.date)) {
+            const diffTime = Math.abs(eventDate - today);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            nextEventDays = { date: eventDate, days: diffDays };
           }
 
           // Only include events within the next 7 days
@@ -1705,6 +1710,8 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
         setEventIndicators('(Event Today)');
       } else if (hasTomorrowEvent) {
         setEventIndicators('(Event Tomorrow)');
+      } else if (nextEventDays) {
+        setEventIndicators(`(Next Event in ${nextEventDays.days} days)`);
       } else {
         setEventIndicators('');
       }
@@ -1885,10 +1892,16 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
   const [deadlines, setDeadlines] = useState([]);
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [revealedDeadlines, setRevealedDeadlines] = useState({});
+  const [deadlineIndicators, setDeadlineIndicators] = useState('');
 
   useEffect(() => {
     const eventNotes = notes.filter(note => note.content.includes('meta::event_deadline'));
     const upcoming = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+    let hasTodayDeadline = false;
+    let hasTomorrowDeadline = false;
+    let nextDeadlineDays = null;
 
     eventNotes.forEach(note => {
       const lines = note.content.split('\n');
@@ -1898,6 +1911,22 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
       const isHidden = note.content.includes('meta::event_hidden');
       
       if (eventDate) {
+        const deadlineDate = new Date(eventDate);
+        deadlineDate.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        // Check if deadline is today or tomorrow
+        if (deadlineDate.getTime() === today.getTime()) {
+          hasTodayDeadline = true;
+        } else if (deadlineDate.getTime() === tomorrow.getTime()) {
+          hasTomorrowDeadline = true;
+        } else if (!nextDeadlineDays || deadlineDate < new Date(nextDeadlineDays.date)) {
+          const diffTime = Math.abs(deadlineDate - today);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          nextDeadlineDays = { date: deadlineDate, days: diffDays };
+        }
+
         upcoming.push({
           id: note.id,
           date: new Date(eventDate),
@@ -1906,6 +1935,19 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
         });
       }
     });
+
+    // Set deadline indicators
+    if (hasTodayDeadline && hasTomorrowDeadline) {
+      setDeadlineIndicators('(Deadlines Today & Tomorrow)');
+    } else if (hasTodayDeadline) {
+      setDeadlineIndicators('(Deadline Today)');
+    } else if (hasTomorrowDeadline) {
+      setDeadlineIndicators('(Deadline Tomorrow)');
+    } else if (nextDeadlineDays) {
+      setDeadlineIndicators(`(Next Deadline in ${nextDeadlineDays.days} days)`);
+    } else {
+      setDeadlineIndicators('');
+    }
 
     // Sort by date
     upcoming.sort((a, b) => a.date - b.date);
@@ -1928,9 +1970,16 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center">
               <ClockIcon className="h-6 w-6 text-blue-500" />
-              <h3 className="ml-3 text-lg font-semibold text-blue-800">
-                Upcoming Deadlines ({deadlines.length})
-              </h3>
+              <div className="ml-3">
+                <h3 className="text-lg font-semibold text-blue-800">
+                  Upcoming Deadlines ({deadlines.length})
+                </h3>
+                {deadlineIndicators && (
+                  <div className="text-blue-600 font-normal mt-1">
+                    {deadlineIndicators}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button

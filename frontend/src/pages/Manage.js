@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { loadAllNotes, updateNoteById, listJournals, loadJournal } from '../utils/ApiUtils';
+import { loadAllNotes, updateNoteById, listJournals, loadJournal, createNote } from '../utils/ApiUtils';
 import JSZip from 'jszip';
 
 const Manage = () => {
@@ -259,7 +259,12 @@ const Manage = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success('Export completed successfully!');
+      // Create backup note
+      const backupDateTime = new Date().toISOString();
+      const backupNoteContent = `Backup Performed\nmeta::backup_date::${backupDateTime}`;
+      await createNote(backupNoteContent);
+
+      toast.success('Backup Performed');
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Error during export: ' + error.message);

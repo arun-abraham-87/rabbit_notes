@@ -1636,6 +1636,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [showPopup, setShowPopup] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [revealedEvents, setRevealedEvents] = useState({});
 
   useEffect(() => {
     const calculateUpcomingEvents = () => {
@@ -1661,6 +1662,8 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
         const locationLine = lines.find(line => line.startsWith('event_location:'));
         const location = locationLine ? locationLine.replace('event_location:', '').trim() : null;
 
+        const isHidden = note.content.includes('meta::event_hidden');
+
         try {
           // Calculate next occurrence if it's a recurring event
           const nextOccurrence = recurrenceType
@@ -1680,7 +1683,8 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
               location,
               isRecurring: !!recurrenceType,
               recurrenceType,
-              baseEventDate
+              baseEventDate,
+              isHidden
             });
           }
         } catch (error) {
@@ -1695,6 +1699,13 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
 
     calculateUpcomingEvents();
   }, [notes]);
+
+  const toggleEventVisibility = (eventId) => {
+    setRevealedEvents(prev => ({
+      ...prev,
+      [eventId]: !prev[eventId]
+    }));
+  };
 
   if (upcomingEvents.length === 0) return null;
 
@@ -1752,9 +1763,20 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="text-lg font-medium text-gray-900">
-                          {event.description}
-                        </h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-lg font-medium text-gray-900">
+                            {event.isHidden && !revealedEvents[event.id] ? 'XXXXXXXXX' : event.description}
+                          </h4>
+                          {event.isHidden && (
+                            <button
+                              onClick={() => toggleEventVisibility(event.id)}
+                              className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                              title={revealedEvents[event.id] ? "Hide description" : "Reveal description"}
+                            >
+                              <EyeIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                           <CalendarIcon className="h-4 w-4" />
                           <span>
@@ -1830,6 +1852,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
   const [showPopup, setShowPopup] = useState(false);
   const [deadlines, setDeadlines] = useState([]);
   const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [revealedDeadlines, setRevealedDeadlines] = useState({});
 
   useEffect(() => {
     const eventNotes = notes.filter(note => note.content.includes('meta::event_deadline'));
@@ -1840,12 +1863,14 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
       const description = lines[0].trim();
       const eventDateLine = lines.find(line => line.startsWith('event_date:'));
       const eventDate = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : null;
+      const isHidden = note.content.includes('meta::event_hidden');
       
       if (eventDate) {
         upcoming.push({
           id: note.id,
           date: new Date(eventDate),
-          description: description.replace('event_description:', '').trim()
+          description: description.replace('event_description:', '').trim(),
+          isHidden
         });
       }
     });
@@ -1854,6 +1879,13 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
     upcoming.sort((a, b) => a.date - b.date);
     setDeadlines(upcoming);
   }, [notes]);
+
+  const toggleDeadlineVisibility = (deadlineId) => {
+    setRevealedDeadlines(prev => ({
+      ...prev,
+      [deadlineId]: !prev[deadlineId]
+    }));
+  };
 
   if (deadlines.length === 0) return null;
 
@@ -1906,9 +1938,20 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="text-lg font-medium text-gray-900">
-                        {deadline.description}
-                      </h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-lg font-medium text-gray-900">
+                          {deadline.isHidden && !revealedDeadlines[deadline.id] ? 'XXXXXXXXX' : deadline.description}
+                        </h4>
+                        {deadline.isHidden && (
+                          <button
+                            onClick={() => toggleDeadlineVisibility(deadline.id)}
+                            className="text-indigo-600 hover:text-indigo-800 focus:outline-none"
+                            title={revealedDeadlines[deadline.id] ? "Hide description" : "Reveal description"}
+                          >
+                            <EyeIcon className="h-5 w-5" />
+                          </button>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                         <CalendarIcon className="h-4 w-4" />
                         <span>

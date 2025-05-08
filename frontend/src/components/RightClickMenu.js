@@ -77,6 +77,7 @@ export default function RightClickMenu({
             const arr = note.content.split('\n');
             setEditedLineContent(arr[lineIndex]);
             setEditingLine({ noteId, lineIndex });
+            console.log({ noteId, lineIndex });
           }}
         >
           Edit

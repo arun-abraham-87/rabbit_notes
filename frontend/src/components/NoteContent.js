@@ -42,6 +42,13 @@ export default function NoteContent({
     const contentLines = parseNoteContent({ content: rawLines.join('\n'), searchTerm: searchQuery });
     const indentFlags = getIndentFlags(contentLines);
 
+    if (editingLine.noteId === note.id      ) {
+    console.log('editing line', editingLine);
+    console.log('note id:', note.id);
+    console.log('editingLine type:', typeof editingLine.noteId, typeof editingLine.lineIndex);
+    console.log('note.id type:', typeof note.id);
+    }
+    
     if (!Array.isArray(contentLines) || contentLines.length === 0) {
         return '<div>1234</div>';
     }
@@ -99,7 +106,7 @@ export default function NoteContent({
                     const isH1 = lineContent.startsWith('<h1>') && lineContent.endsWith('</h1>');
                     const isH2 = lineContent.startsWith('<h2>') && lineContent.endsWith('</h2>');
                     const headingContent = isH1 ? lineContent.slice(4, -5) : isH2 ? lineContent.slice(4, -5) : lineContent;
-
+                
                     return (
                         <div
                             key={idx}
@@ -120,88 +127,100 @@ export default function NoteContent({
                                     ''
                                 }`}
                         >
-                            {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
-                                <InlineEditor
-                                    text={editedLineContent}
-                                    setText={setEditedLineContent}
-                                    onSave={(newText) => {
-                                        const lines = note.content.split('\n');
-                                        // Preserve heading markers when saving
-                                        if (isH1) {
-                                            lines[idx] = `###${newText}###`;
-                                        } else if (isH2) {
-                                            lines[idx] = `##${newText}##`;
-                                        } else {
-                                            lines[idx] = newText;
+                            {(() => {
+                                const shouldShow = editingLine.noteId === note.id && editingLine.lineIndex === idx;
+                                console.log('Inline editor debug:', {
+                                    editingLineNoteId: editingLine.noteId,
+                                    currentNoteId: note.id,
+                                    editingLineIndex: editingLine.lineIndex,
+                                    currentIndex: idx,
+                                    noteIdMatch: editingLine.noteId === note.id,
+                                    lineIndexMatch: editingLine.lineIndex === idx,
+                                    shouldShow
+                                });
+                                return shouldShow ? (
+                                    <InlineEditor
+                                        text={editedLineContent}
+                                        setText={setEditedLineContent}
+                                        onSave={(newText) => {
+                                            const lines = note.content.split('\n');
+                                            // Preserve heading markers when saving
+                                            if (isH1) {
+                                                lines[idx] = `###${newText}###`;
+                                            } else if (isH2) {
+                                                lines[idx] = `##${newText}##`;
+                                            } else {
+                                                lines[idx] = newText;
+                                            }
+                                            updateNote(note.id, lines.join('\n'));
+                                            setEditingLine({ noteId: null, lineIndex: null });
+                                        }}
+                                        onCancel={() =>
+                                            setEditingLine({ noteId: null, lineIndex: null })
                                         }
-                                        updateNote(note.id, lines.join('\n'));
-                                        setEditingLine({ noteId: null, lineIndex: null });
-                                    }}
-                                    onCancel={() =>
-                                        setEditingLine({ noteId: null, lineIndex: null })
-                                    }
-                                />
-                            ) : (
-                                <>
-                                    {(indentFlags[idx] || isListItem) && !isH1 && !isH2 && (
-                                        <span className="mr-2 text-3xl self-start leading-none">
-                                            •
+                                    />
+                                ) : (
+                                    <>
+                                        {(indentFlags[idx] || isListItem) && !isH1 && !isH2 && (
+                                            <span className="mr-2 text-3xl self-start leading-none">
+                                                •
+                                            </span>
+                                        )}
+                                        <span className="flex-1">
+                                            {renderLineWithClickableDates(
+                                                headingContent,
+                                                note,
+                                                idx,
+                                                isListItem,
+                                                searchQuery,
+                                                parseNoteContent,
+                                                setEditingInlineDate,
+                                                handleInlineDateSelect
+                                            )}
                                         </span>
-                                    )}
-                                    <span className="flex-1">
-                                        {renderLineWithClickableDates(
-                                            headingContent,
-                                            note,
-                                            idx,
-                                            isListItem,
-                                            searchQuery,
-                                            parseNoteContent,
-                                            setEditingInlineDate,
-                                            handleInlineDateSelect
-                                        )}
-                                    </span>
-                                    {editingInlineDate.noteId === note.id &&
-                                        editingInlineDate.lineIndex === idx && (
-                                            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-                                                <div className="bg-white p-4 rounded shadow-md">
-                                                    <input
-                                                        type="date"
-                                                        value={(() => {
-                                                            const orig = editingInlineDate.originalDate;
-                                                            if (orig.includes('/')) {
-                                                                const [day, month, year] = orig.split('/');
-                                                                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                        {editingInlineDate.noteId === note.id &&
+                                            editingInlineDate.lineIndex === idx && (
+                                                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                                                    <div className="bg-white p-4 rounded shadow-md">
+                                                        <input
+                                                            type="date"
+                                                            value={(() => {
+                                                                const orig = editingInlineDate.originalDate;
+                                                                if (orig.includes('/')) {
+                                                                    const [day, month, year] = orig.split('/');
+                                                                    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                                                }
+                                                                const [day, mon, year] = orig.split(' ');
+                                                                const months = [
+                                                                    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                                                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                                                                ];
+                                                                const mm = (months.indexOf(mon) + 1).toString().padStart(2, '0');
+                                                                return `${year}-${mm}-${day.padStart(2, '0')}`;
+                                                            })()}
+                                                            onChange={(e) =>
+                                                                handleInlineDateSelect(
+                                                                    editingInlineDate.noteId,
+                                                                    editingInlineDate.lineIndex,
+                                                                    e.target.value
+                                                                )
                                                             }
-                                                            const [day, mon, year] = orig.split(' ');
-                                                            const months = [
-                                                                'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                                                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-                                                            ];
-                                                            const mm = (months.indexOf(mon) + 1).toString().padStart(2, '0');
-                                                            return `${year}-${mm}-${day.padStart(2, '0')}`;
-                                                        })()}
-                                                        onChange={(e) =>
-                                                            handleInlineDateSelect(
-                                                                editingInlineDate.noteId,
-                                                                editingInlineDate.lineIndex,
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        className="border border-gray-300 rounded px-3 py-2 text-sm"
-                                                    />
-                                                    <button
-                                                        onClick={() =>
-                                                            setEditingInlineDate({ noteId: null, lineIndex: null, originalDate: '' })
-                                                        }
-                                                        className="ml-2 text-sm text-red-500 hover:underline"
-                                                    >
-                                                        Cancel
-                                                    </button>
+                                                            className="border border-gray-300 rounded px-3 py-2 text-sm"
+                                                        />
+                                                        <button
+                                                            onClick={() =>
+                                                                setEditingInlineDate({ noteId: null, lineIndex: null, originalDate: '' })
+                                                            }
+                                                            className="ml-2 text-sm text-red-500 hover:underline"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                </>
-                            )}
+                                            )}
+                                    </>
+                                );
+                            })()}
                         </div>
                     );
                 })}

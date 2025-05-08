@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import TimeZoneDisplay from './TimeZoneDisplay';
 import { ChevronDownIcon, Cog6ToothIcon, Bars3Icon } from '@heroicons/react/24/solid';
+import QuickPasteToggle from './QuickPasteToggle';
 
 const Navbar = ({ activePage, setActivePage, settings }) => {
   const [time, setTime] = useState(new Date());
@@ -136,6 +137,9 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
               )}
             </div>
           )}
+
+          {/* Quick Paste Toggle */}
+          <QuickPasteToggle />
 
           {/* Settings button */}
           <button

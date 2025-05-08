@@ -302,7 +302,7 @@ export const exportAllNotes = async () => {
 
     // Create backup note
     const backupDateTime = new Date().toISOString();
-    const backupNoteContent = `Backup Performed\nmeta::backup_date::${backupDateTime}`;
+    const backupNoteContent = `Backup Performed\nmeta::notes_backup_date::${backupDateTime}`;
     await createNote(backupNoteContent);
 
     return true;

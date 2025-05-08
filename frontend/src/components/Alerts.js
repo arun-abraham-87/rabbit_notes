@@ -24,7 +24,7 @@ import {
   BellIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
-import { updateNoteById, loadNotes, loadTags, addNewNoteCommon, createNote } from '../utils/ApiUtils';
+import { updateNoteById, loadNotes, loadTags, addNewNoteCommon, createNote, exportAllNotes } from '../utils/ApiUtils';
 import { getAge, getDateInDDMMYYYYFormat, getDiffInDays } from '../utils/DateUtils';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
 import NoteView from './NoteView';
@@ -2648,9 +2648,10 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
 
 const BackupAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
+  const [countdown, setCountdown] = useState(0);
+  const [isBackingUp, setIsBackingUp] = useState(false);
 
   const backupNotes = notes.filter(note => note.content.includes('meta::notes_backup_date::'));
-  console.log(backupNotes.length);
   if (backupNotes.length === 0) return null;
 
   // Find the most recent backup date
@@ -2661,13 +2662,37 @@ const BackupAlert = ({ notes, expanded: initialExpanded = true }) => {
     const backupDate = new Date(backupDateMatch[1]);
     return !latest || backupDate > latest ? backupDate : latest;
   }, null);
-    console.log('lastBackupDate',lastBackupDate);
+
   if (!lastBackupDate) return null;
 
   const now = new Date();
   const diffDays = getDiffInDays(now, lastBackupDate);
-console.log('diffDays',diffDays);
   if (diffDays <= 1) return null;
+
+  const startBackup = async () => {
+    setIsBackingUp(true);
+    setCountdown(10);
+    
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          exportAllNotes()
+            .then(() => {
+              setIsBackingUp(false);
+              setCountdown(0);
+            })
+            .catch(error => {
+              console.error('Backup failed:', error);
+              setIsBackingUp(false);
+              setCountdown(0);
+            });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
@@ -2701,10 +2726,23 @@ console.log('diffDays',diffDays);
             <CalendarIcon className="h-4 w-4" />
             <span>Last backup: {lastBackupDate.toLocaleString()}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-red-600">
+          <div className="flex items-center gap-2 text-sm text-red-600 mb-4">
             <ExclamationCircleIcon className="h-4 w-4" />
             <span>Backup is overdue by {diffDays} days</span>
           </div>
+          {isBackingUp ? (
+            <div className="flex items-center gap-2 text-sm text-blue-600">
+              <ArrowPathIcon className="h-4 w-4 animate-spin" />
+              <span>Backing up in {countdown} seconds...</span>
+            </div>
+          ) : (
+            <button
+              onClick={startBackup}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+            >
+              Start Backup
+            </button>
+          )}
         </div>
       )}
     </div>

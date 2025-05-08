@@ -21,20 +21,20 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
   useEffect(() => {
     if (note) {
       const lines = note.content.split('\n');
-      
+
       // Find the description
       const descriptionLine = lines.find(line => line.startsWith('event_description:'));
       if (descriptionLine) {
         setDescription(descriptionLine.replace('event_description:', '').trim());
       }
-      
+
       // Find the event date
       const eventDateLine = lines.find(line => line.startsWith('event_date:'));
       if (eventDateLine) {
         const dateStr = eventDateLine.replace('event_date:', '').trim();
         setEventDate(dateStr.split('T')[0]);
       }
-      
+
       // Find end date if exists
       const endDateLine = lines.find(line => line.startsWith('event_end_date:'));
       if (endDateLine) {
@@ -42,7 +42,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
         setEndDate(dateStr.split('T')[0]);
         setShowEndDate(true);
       }
-      
+
       // Parse location
       const locationLine = lines.find(line => line.startsWith('event_location:'));
       if (locationLine) {
@@ -99,10 +99,10 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
 
   const handleSubmit = () => {
     if (!description.trim() || !eventDate) return;
-    
+
     let content = `event_description:${description.trim()}\n`;
     content += `event_date:${formatDateWithNoonTime(eventDate)}`;
-    
+
     if (showEndDate && endDate) {
       content += `\nevent_end_date:${formatDateWithNoonTime(endDate)}`;
     }
@@ -115,15 +115,15 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
         content += `\nevent_recurring_end:${recurrenceEndDate}`;
       }
     }
-    
+
     // Add tags if any
     if (tags) {
       content += `\nevent_tags:${tags}`;
     }
-    
+
     // Add meta information as the last lines
     content += `\nmeta::event::${new Date().toISOString()}`;
-    
+
     onSave(content);
 
     // Reset form
@@ -184,7 +184,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
     setRecurrenceEndDate('');
     setTags('');
     setTagInput('');
-    
+
     // Call the onCancel prop
     if (typeof onCancel === 'function') {
       onCancel();
@@ -192,7 +192,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       onClick={handleBackdropClick}
     >
@@ -206,7 +206,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
             Switch to Normal Edit
           </button>
         </div>
-        
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

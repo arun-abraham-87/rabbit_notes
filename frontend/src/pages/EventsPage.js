@@ -235,7 +235,7 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
     try {
       const response = await createNote(content);
       console.log('API Response:', response);
-      setAllNotes([...allNotes, response.content]);
+      setAllNotes(prevNotes => [...prevNotes, response]); // Add the entire response object
       return response;
     } catch (error) {
       console.error('Error adding event:', error);
@@ -463,13 +463,13 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
         </div>
       )}
 
-      {/* Add Event Modal */}
-      <AddEventModal
+     {/* Add Event Modal */}
+     <AddEventModal
         isOpen={isAddEventModalOpen}
         onClose={() => setIsAddEventModalOpen(false)}
         onAdd={handleAddEvent}
         notes={notes}
-      />
+      /> 
 
      
 

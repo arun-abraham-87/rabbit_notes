@@ -251,7 +251,7 @@ const NoteFooter = ({
         {/* Left side - Created date */}
         {showCreatedDate && (
           <span className="text-gray-400">
-            Created: {getDateInDDMMYYYYFormat(note.created_datetime)}({getAge(getDateInDDMMYYYYFormat(note.created_datetime))})
+            Created: {getDateInDDMMYYYYFormat(note.created_datetime)}({getAge(note.created_datetime)})
           </span>
         )}
       </div>

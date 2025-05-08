@@ -454,7 +454,7 @@ const AppContent = () => {
                   <Routes>
                     <Route path="/" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
                           <NotesMainContainer
                             objList={objectList}
@@ -474,7 +474,7 @@ const AppContent = () => {
                     } />
                     <Route path="/notes" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
                           <NotesMainContainer
                             objList={objectList}
@@ -494,7 +494,7 @@ const AppContent = () => {
                     } />
                     <Route path="/watch" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
                             <WatchList
                               allNotes={allNotes}
@@ -507,14 +507,14 @@ const AppContent = () => {
                     } />
                     <Route path="/tags" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <TagListing objectList={objects} />
                         </div>
                       </div>
                     } />
                     <Route path="/todos" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
                             <TodoList
                               todos={todos}
@@ -528,33 +528,32 @@ const AppContent = () => {
                     } />
                     <Route path="/journals" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <Journals />
                         </div>
                       </div>
                     } />
                     <Route path="/manage-notes" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <Manage />
                         </div>
                       </div>
                     } />
                     <Route path="/events" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <EventsPage
                             notes={allNotes}
                             setAllNotes={setAllNotes}
                             allNotes={allNotes}
-                            
                           />
                         </div>
                       </div>
                     } />
                     <Route path="/people" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
                             <PeopleList
                               allNotes={allNotes}
@@ -566,7 +565,7 @@ const AppContent = () => {
                     } />
                     <Route path="/news" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <div className="min-h-screen bg-gray-50">
                             <News />
                           </div>
@@ -575,7 +574,7 @@ const AppContent = () => {
                     } />
                     <Route path="/dashboard" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <div className="min-h-screen bg-gray-50">
                             <Dashboard notes={allNotes} setNotes={setAllNotes} />
                           </div>
@@ -584,7 +583,7 @@ const AppContent = () => {
                     } />
                     <Route path="/expense" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto h-full">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto h-full">
                           <div className="h-full w-full bg-gray-50">
                             <div className="h-full w-full">
                               <ExpenseTracker />
@@ -595,7 +594,7 @@ const AppContent = () => {
                     } />
                     <Route path="/trackers" element={
                       <div className="h-full overflow-y-auto">
-                        <div className="max-w-[80%] mx-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <div className="min-h-screen bg-gray-50">
                             <TrackerListing />
                           </div>

@@ -845,6 +845,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
 
   const overdueNotes = notes.filter(note => {
     if (!note.content.includes('meta::watch')) return false;
+    if (note.content.includes('meta::reminder')) return false;
     return checkNeedsReview(note.id);
   });
 
@@ -1901,6 +1902,7 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
   // Calculate overdue notes
   const overdueNotes = notes.filter(note => {
     if (!note.content.includes('meta::watch')) return false;
+    if (note.content.includes('meta::reminder')) return false;
     return checkNeedsReview(note.id);
   });
 

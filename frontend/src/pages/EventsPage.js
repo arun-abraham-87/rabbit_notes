@@ -293,7 +293,7 @@ const EventsPage = ({ notes, onUpdate }) => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsAddEventModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <PlusIcon className="h-5 w-5" />
             <span>Add Event</span>

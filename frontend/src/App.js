@@ -547,6 +547,7 @@ const AppContent = () => {
                             notes={allNotes}
                             setAllNotes={setAllNotes}
                             allNotes={allNotes}
+                            
                           />
                         </div>
                       </div>

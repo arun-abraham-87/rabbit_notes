@@ -15,7 +15,7 @@ import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
 import AddEventModal from './AddEventModal';
 
-const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddEvent }) => {
+const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddEvent,onDelete }) => {
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [rawNote, setRawNote] = useState(null);
@@ -128,10 +128,8 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
     setEditingEvent(null);
   };
 
-  const handleDelete = async (deletedEvent) => {
-    // Update the parent component's state by removing the deleted event
-    onEventUpdated(deletedEvent);
-    setEditingEvent(null);
+  const handleDelete = async (deletedId) => {
+    onDelete(deletedId);
   };
 
   const handleAddEvent = (newEvent) => {

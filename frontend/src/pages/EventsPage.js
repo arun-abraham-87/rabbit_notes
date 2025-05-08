@@ -116,7 +116,7 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
   const uniqueTags = useMemo(() => {
     const tags = new Set();
     notes
-      .filter(note => note.content.includes('meta::event::'))
+      .filter(note => note?.content && note.content.includes('meta::event::'))
       .forEach(note => {
         const { tags: eventTags } = getEventDetails(note.content);
         eventTags.forEach(tag => tags.add(tag));
@@ -126,7 +126,7 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
 
   // Filter and group events
   const events = notes
-    .filter(note => note.content.includes('meta::event::'))
+    .filter(note => note?.content && note.content.includes('meta::event::'))
     .filter(note => {
       const { description, tags } = getEventDetails(note.content);
       const matchesSearch = description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -179,10 +179,7 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
 
     try {
       await deleteNoteById(deletingEvent.id);
-      // Update the notes list by removing the deleted event
-     // const updatedNotes = notes.filter(note => note.id !== deletingEvent.id);
-      // Call the onUpdate prop directly
-      //onUpdate(updatedNotes);
+      await setAllNotes(allNotes.filter(note => note.id !== deletingEvent.id));
       setDeletingEvent(null);
     } catch (error) {
       console.error('Error deleting event:', error);
@@ -376,6 +373,7 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
             onAcknowledgeEvent={handleAcknowledgeEvent}
             onEventUpdated={handleEventUpdated}
             notes={notes}
+            onDelete={handleDelete}
           />
         </div>
       ) : (

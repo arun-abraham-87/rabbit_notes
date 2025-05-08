@@ -1732,8 +1732,8 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
   return (
     <>
       <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-        <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors duration-150" onClick={() => setShowPopup(true)}>
-          <div className="flex items-center justify-between">
+        <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors duration-150 h-[88px] flex items-center" onClick={() => setShowPopup(true)}>
+          <div className="flex items-center justify-between w-full">
             <div className="flex items-center">
               <CalendarIcon className="h-6 w-6 text-blue-500" />
               <div className="ml-3">
@@ -1762,108 +1762,107 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
             </div>
           </div>
         </div>
-      </div>
-
-      {showPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">Upcoming Events</h2>
-              <button
-                onClick={() => setShowPopup(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              {upcomingEvents.length === 0 ? (
-                <div className="p-4 text-gray-500">
-                  No events scheduled for the next 7 days.
-                </div>
-              ) : (
-                upcomingEvents.map((event) => (
-                  <div 
-                    key={event.id}
-                    className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-lg font-medium text-gray-900">
-                            {event.isHidden && !revealedEvents[event.id] ? 'XXXXXXXXX' : event.description}
-                          </h4>
-                          {event.isHidden && (
-                            <button
-                              onClick={() => toggleEventVisibility(event.id)}
-                              className="text-blue-600 hover:text-blue-800 focus:outline-none"
-                              title={revealedEvents[event.id] ? "Hide description" : "Reveal description"}
-                            >
-                              <EyeIcon className="h-5 w-5" />
-                            </button>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                          <ClockIcon className="h-4 w-4" />
-                          <span>
-                            {event.date.toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                          <CalendarIcon className="h-4 w-4" />
-                          <span>
-                            {event.date.toLocaleDateString('en-US', {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                          </span>
-                          <span className="text-blue-600 font-medium">
-                            ({getAge(event.date)})
-                          </span>
-                        </div>
-                        {event.isRecurring && event.originalDate && (
+        {showPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800">Upcoming Events</h2>
+                <button
+                  onClick={() => setShowPopup(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                {upcomingEvents.length === 0 ? (
+                  <div className="p-4 text-gray-500">
+                    No events scheduled for the next 7 days.
+                  </div>
+                ) : (
+                  upcomingEvents.map((event) => (
+                    <div 
+                      key={event.id}
+                      className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-lg font-medium text-gray-900">
+                              {event.isHidden && !revealedEvents[event.id] ? 'XXXXXXXXX' : event.description}
+                            </h4>
+                            {event.isHidden && (
+                              <button
+                                onClick={() => toggleEventVisibility(event.id)}
+                                className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                                title={revealedEvents[event.id] ? "Hide description" : "Reveal description"}
+                              >
+                                <EyeIcon className="h-5 w-5" />
+                              </button>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                             <ClockIcon className="h-4 w-4" />
                             <span>
-                              Original date: {event.originalDate.toLocaleDateString('en-US', {
+                              {event.date.toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                            <CalendarIcon className="h-4 w-4" />
+                            <span>
+                              {event.date.toLocaleDateString('en-US', {
+                                weekday: 'long',
                                 year: 'numeric',
                                 month: 'long',
                                 day: 'numeric'
-                              })} ({getAge(event.originalDate)})
+                              })}
+                            </span>
+                            <span className="text-blue-600 font-medium">
+                              ({getAge(event.date)})
                             </span>
                           </div>
-                        )}
-                        {event.location && (
-                          <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                              <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                            </svg>
-                            <span>{event.location}</span>
-                          </div>
-                        )}
-                        {event.isRecurring && (
-                          <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                              <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                            </svg>
-                            <span>{event.recurrenceType.charAt(0).toUpperCase() + event.recurrenceType.slice(1)}</span>
-                          </div>
-                        )}
+                          {event.isRecurring && event.originalDate && (
+                            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                              <ClockIcon className="h-4 w-4" />
+                              <span>
+                                Original date: {event.originalDate.toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })} ({getAge(event.originalDate)})
+                              </span>
+                            </div>
+                          )}
+                          {event.location && (
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                              </svg>
+                              <span>{event.location}</span>
+                            </div>
+                          )}
+                          {event.isRecurring && (
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                              </svg>
+                              <span>{event.recurrenceType.charAt(0).toUpperCase() + event.recurrenceType.slice(1)}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {showAddEventModal && (
         <AddEventModal
@@ -1928,11 +1927,11 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
   return (
     <>
       <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-        <div className="bg-indigo-50 px-6 py-4 border-b border-indigo-100 cursor-pointer hover:bg-indigo-100 transition-colors duration-150" onClick={() => setShowPopup(true)}>
-          <div className="flex items-center justify-between">
+        <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors duration-150 h-[88px] flex items-center" onClick={() => setShowPopup(true)}>
+          <div className="flex items-center justify-between w-full">
             <div className="flex items-center">
-              <ClockIcon className="h-6 w-6 text-indigo-500" />
-              <h3 className="ml-3 text-lg font-semibold text-indigo-800">
+              <ClockIcon className="h-6 w-6 text-blue-500" />
+              <h3 className="ml-3 text-lg font-semibold text-blue-800">
                 Upcoming Deadlines ({deadlines.length})
               </h3>
             </div>
@@ -1942,83 +1941,82 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                   e.stopPropagation();
                   setShowAddEventModal(true);
                 }}
-                className="px-3 py-1 text-indigo-600 hover:text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors duration-150"
+                className="px-3 py-1 text-blue-600 hover:text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors duration-150"
                 title="Add Deadline"
               >
                 <PlusIcon className="h-5 w-5" />
               </button>
-              <ChevronRightIcon className="h-5 w-5 text-indigo-600" />
+              <ChevronRightIcon className="h-5 w-5 text-blue-600" />
             </div>
           </div>
         </div>
-      </div>
-
-      {showPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">Upcoming Deadlines</h2>
-              <button
-                onClick={() => setShowPopup(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              {deadlines.map((deadline) => (
-                <div 
-                  key={deadline.id}
-                  className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150"
+        {showPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800">Upcoming Deadlines</h2>
+                <button
+                  onClick={() => setShowPopup(false)}
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-lg font-medium text-gray-900">
-                          {deadline.isHidden && !revealedDeadlines[deadline.id] ? 'XXXXXXXXX' : deadline.description}
-                        </h4>
-                        {deadline.isHidden && (
-                          <button
-                            onClick={() => toggleDeadlineVisibility(deadline.id)}
-                            className="text-indigo-600 hover:text-indigo-800 focus:outline-none"
-                            title={revealedDeadlines[deadline.id] ? "Hide description" : "Reveal description"}
-                          >
-                            <EyeIcon className="h-5 w-5" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                        <ClockIcon className="h-4 w-4" />
-                        <span>
-                          {deadline.date.toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                        <CalendarIcon className="h-4 w-4" />
-                        <span>
-                          {deadline.date.toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </span>
-                        <span className="text-indigo-600 font-medium">
-                          ({getAge(deadline.date)})
-                        </span>
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                {deadlines.map((deadline) => (
+                  <div 
+                    key={deadline.id}
+                    className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-lg font-medium text-gray-900">
+                            {deadline.isHidden && !revealedDeadlines[deadline.id] ? 'XXXXXXXXX' : deadline.description}
+                          </h4>
+                          {deadline.isHidden && (
+                            <button
+                              onClick={() => toggleDeadlineVisibility(deadline.id)}
+                              className="text-indigo-600 hover:text-indigo-800 focus:outline-none"
+                              title={revealedDeadlines[deadline.id] ? "Hide description" : "Reveal description"}
+                            >
+                              <EyeIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                          <ClockIcon className="h-4 w-4" />
+                          <span>
+                            {deadline.date.toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                          <CalendarIcon className="h-4 w-4" />
+                          <span>
+                            {deadline.date.toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </span>
+                          <span className="text-indigo-600 font-medium">
+                            ({getAge(deadline.date)})
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {showAddEventModal && (
         <AddEventModal

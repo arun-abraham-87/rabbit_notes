@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { XMarkIcon, EyeIcon } from '@heroicons/react/24/solid';
 
 const TextPastePopup = ({
@@ -12,8 +12,42 @@ const TextPastePopup = ({
   isWatchSelected,
   setIsWatchSelected,
   onSave,
-  textareaRef
 }) => {
+  const textareaRef = useRef(null);
+
+  // Auto focus and clear textarea when popup opens
+  useEffect(() => {
+    if (isOpen) {
+      setNewNoteText('');
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
+    }
+  }, [isOpen, setNewNoteText]);
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isOpen) return;
+
+      // Handle Cmd+Enter (or Ctrl+Enter) to save
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        onSave();
+        return;
+      }
+
+      // Handle Escape to close
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onSave, onClose]);
+
   if (!isOpen) return null;
 
   return (

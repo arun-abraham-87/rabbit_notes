@@ -19,7 +19,8 @@ import {
   MinusIcon,
   PlusIcon,
   EyeIcon,
-  PencilIcon
+  PencilIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon, createNote } from '../utils/ApiUtils';
@@ -430,13 +431,11 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true, setNotes
 };
 
 const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
-  const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showRawNote, setShowRawNote] = useState(false);
   const [selectedNote, setSelectedNote] = useState(null);
   const [showPriorityPopup, setShowPriorityPopup] = useState(false);
   const [noteToUpdate, setNoteToUpdate] = useState(null);
   const [expandedNotes, setExpandedNotes] = useState({});
-  const [showAllTodos, setShowAllTodos] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
 
   const criticalTodos = notes.filter(note => {
@@ -446,9 +445,6 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   });
 
   if (criticalTodos.length === 0) return null;
-
-  const displayedTodos = showAllTodos ? criticalTodos : criticalTodos.slice(0, 3);
-  const hasMoreTodos = criticalTodos.length > 3;
 
   const handleViewRawNote = (note) => {
     setSelectedNote(note);
@@ -684,10 +680,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   return (
     <div className="w-1/2 pr-2">
       <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
-        <div 
-          className="bg-red-50 px-6 py-4 border-b border-red-100 cursor-pointer"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
+        <div className="bg-red-50 px-6 py-4 border-b border-red-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
@@ -706,96 +699,70 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
               >
                 <PlusIcon className="h-5 w-5" />
               </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExpanded(!isExpanded);
-                }}
-                className="text-red-600 hover:text-red-700 focus:outline-none"
-                aria-label={isExpanded ? "Collapse todos" : "Expand todos"}
-              >
-                {isExpanded ? (
-                  <ChevronUpIcon className="h-5 w-5" />
-                ) : (
-                  <ChevronDownIcon className="h-5 w-5" />
-                )}
-              </button>
             </div>
           </div>
         </div>
-        {isExpanded && (
-          <div className="divide-y divide-gray-100">
-            {displayedTodos.map((todo, index) => {
-              return (
-                <div 
-                  key={todo.id} 
-                  className={`p-6 transition-colors duration-150 ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                  } hover:bg-gray-100`}
-                >
-                  <div className="flex flex-col">
-                    <div className="flex-1">
-                      <h4 className="text-lg font-medium text-gray-900 mb-2 break-words">
-                        {formatContent(todo.content)}
-                      </h4>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      <button
-                        onClick={() => handleMarkCompleted(todo)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
-                        title="Mark Completed"
-                      >
-                        <CheckIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleLowerPriority(todo)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
-                        title="Lower Priority"
-                      >
-                        <ArrowTrendingDownIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleEditNote(todo)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                        title="Edit Note"
-                      >
-                        <PencilIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleViewRawNote(todo)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
-                        title="View Raw Note"
-                      >
-                        <CodeBracketIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleAddToWatch(todo)}
-                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
-                          todo.content.includes('meta::watch')
-                            ? 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500'
-                            : 'text-blue-700 bg-blue-50 hover:bg-blue-100 focus:ring-blue-500'
-                        }`}
-                        title={todo.content.includes('meta::watch') ? 'Already Watching' : 'Add to Watch List'}
-                      >
-                        <EyeIcon className="w-5 h-5" />
-                      </button>
-                    </div>
+        <div className="divide-y divide-gray-100">
+          {criticalTodos.map((todo, index) => {
+            return (
+              <div 
+                key={todo.id} 
+                className={`p-6 transition-colors duration-150 ${
+                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                } hover:bg-gray-100`}
+              >
+                <div className="flex flex-col">
+                  <div className="flex-1">
+                    <h4 className="text-lg font-medium text-gray-900 mb-2 break-words">
+                      {formatContent(todo.content)}
+                    </h4>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <button
+                      onClick={() => handleMarkCompleted(todo)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                      title="Mark Completed"
+                    >
+                      <CheckIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleLowerPriority(todo)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
+                      title="Lower Priority"
+                    >
+                      <ArrowTrendingDownIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleEditNote(todo)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                      title="Edit Note"
+                    >
+                      <PencilIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleViewRawNote(todo)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+                      title="View Raw Note"
+                    >
+                      <CodeBracketIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleAddToWatch(todo)}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
+                        todo.content.includes('meta::watch')
+                          ? 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500'
+                          : 'text-blue-700 bg-blue-50 hover:bg-blue-100 focus:ring-blue-500'
+                      }`}
+                      title={todo.content.includes('meta::watch') ? 'Already Watching' : 'Add to Watch List'}
+                    >
+                      <EyeIcon className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
-              );
-            })}
-            {hasMoreTodos && (
-              <div className="p-4 bg-white">
-                <button
-                  onClick={() => setShowAllTodos(!showAllTodos)}
-                  className="w-full py-2 text-sm font-medium text-blue-600 hover:text-blue-800 focus:outline-none"
-                >
-                  {showAllTodos ? 'Show Less' : `Show ${criticalTodos.length - 3} More`}
-                </button>
               </div>
-            )}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
 
       {/* Priority Selection Popup */}
@@ -869,7 +836,6 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
 };
 
 const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
-  const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showAllNotes, setShowAllNotes] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState({});
   const [showNoteEditor, setShowNoteEditor] = useState(false);
@@ -883,9 +849,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   });
 
   if (overdueNotes.length === 0) return null;
-
-  const displayedNotes = showAllNotes ? overdueNotes : overdueNotes.slice(0, 3);
-  const hasMoreNotes = overdueNotes.length > 3;
 
   const toggleNoteExpand = (noteId) => {
     setExpandedNotes(prev => ({
@@ -1145,10 +1108,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   return (
     <div className="w-1/2 pl-2">
       <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
-        <div 
-          className="bg-amber-50 px-6 py-4 border-b border-amber-100 cursor-pointer"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
+        <div className="bg-amber-50 px-6 py-4 border-b border-amber-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <ClockIcon className="h-6 w-6 text-amber-500" />
@@ -1156,123 +1116,97 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                 Review Overdue ({overdueNotes.length})
               </h3>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsExpanded(!isExpanded);
-              }}
-              className="text-amber-600 hover:text-amber-700 focus:outline-none"
-              aria-label={isExpanded ? "Collapse reviews" : "Expand reviews"}
-            >
-              {isExpanded ? (
-                <ChevronUpIcon className="h-5 w-5" />
-              ) : (
-                <ChevronDownIcon className="h-5 w-5" />
-              )}
-            </button>
           </div>
         </div>
-        {isExpanded && (
-          <div className="divide-y divide-gray-100">
-            {displayedNotes.map((note, index) => {
-              const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-              const reviewTime = reviews[note.id];
-              const cadence = getNoteCadence(note.id);
+        <div className="divide-y divide-gray-100">
+          {overdueNotes.map((note, index) => {
+            const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+            const reviewTime = reviews[note.id];
+            const cadence = getNoteCadence(note.id);
 
-              return (
-                <div 
-                  key={note.id} 
-                  className={`p-6 transition-colors duration-150 ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                  } hover:bg-gray-100`}
-                >
-                  <div className="flex flex-col">
-                    <div className="flex-1">
-                      <h4 className="text-lg font-medium text-gray-900 mb-2 break-words">
-                        {formatContent(note.content)}
-                      </h4>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <ClockIcon className="h-4 w-4" />
-                          <span>Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <ClockIcon className="h-4 w-4" />
-                          <span>Review cadence: {cadence.hours}h {cadence.minutes}m</span>
-                        </div>
+            return (
+              <div 
+                key={note.id} 
+                className={`p-6 transition-colors duration-150 ${
+                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                } hover:bg-gray-100`}
+              >
+                <div className="flex flex-col">
+                  <div className="flex-1">
+                    <h4 className="text-lg font-medium text-gray-900 mb-2 break-words">
+                      {formatContent(note.content)}
+                    </h4>
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
                       </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      <button
-                        onClick={() => handleEditNote(note)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                        title="Edit Note"
-                      >
-                        <PencilIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleUnfollow(note)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                        title="Remove from watchlist"
-                      >
-                        <XMarkIcon className="w-5 h-5" />
-                      </button>
-                      {!note.content.includes('meta::todo::') && (
-                        <button
-                          onClick={() => handleConvertToTodo(note)}
-                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
-                          title="Convert to Todo"
-                        >
-                          <CheckIcon className="w-5 h-5" />
-                        </button>
-                      )}
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleSetCadence(note, 2)}
-                          className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set 2 hour cadence"
-                        >
-                          2h
-                        </button>
-                        <button
-                          onClick={() => handleSetCadence(note, 6)}
-                          className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set 6 hour cadence"
-                        >
-                          6h
-                        </button>
-                        <button
-                          onClick={() => handleSetCadence(note, 12)}
-                          className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set 12 hour cadence"
-                        >
-                          12h
-                        </button>
-                        <button
-                          onClick={() => handleSetCadence(note, 24)}
-                          className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set 24 hour cadence"
-                        >
-                          24h
-                        </button>
+                      <div className="flex items-center gap-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>Review cadence: {cadence.hours}h {cadence.minutes}m</span>
                       </div>
                     </div>
                   </div>
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <button
+                      onClick={() => handleEditNote(note)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                      title="Edit Note"
+                    >
+                      <PencilIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleUnfollow(note)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                      title="Remove from watchlist"
+                    >
+                      <XMarkIcon className="w-5 h-5" />
+                    </button>
+                    {!note.content.includes('meta::todo::') && (
+                      <button
+                        onClick={() => handleConvertToTodo(note)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                        title="Convert to Todo"
+                      >
+                        <CheckIcon className="w-5 h-5" />
+                      </button>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleSetCadence(note, 2)}
+                        className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                        title="Set 2 hour cadence"
+                      >
+                        2h
+                      </button>
+                      <button
+                        onClick={() => handleSetCadence(note, 6)}
+                        className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                        title="Set 6 hour cadence"
+                      >
+                        6h
+                      </button>
+                      <button
+                        onClick={() => handleSetCadence(note, 12)}
+                        className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                        title="Set 12 hour cadence"
+                      >
+                        12h
+                      </button>
+                      <button
+                        onClick={() => handleSetCadence(note, 24)}
+                        className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                        title="Set 24 hour cadence"
+                      >
+                        24h
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              );
-            })}
-            {hasMoreNotes && (
-              <div className="p-4 bg-white">
-                <button
-                  onClick={() => setShowAllNotes(!showAllNotes)}
-                  className="w-full py-2 text-sm font-medium text-blue-600 hover:text-blue-800 focus:outline-none"
-                >
-                  {showAllNotes ? 'Show Less' : `Show ${overdueNotes.length - 3} More`}
-                </button>
               </div>
-            )}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
 
       {/* Priority Selection Popup */}
@@ -1697,6 +1631,7 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
 
 const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
+  const [showPopup, setShowPopup] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
 
   useEffect(() => {
@@ -1758,11 +1693,13 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
     calculateUpcomingEvents();
   }, [notes]);
 
+  if (upcomingEvents.length === 0) return null;
+
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden w-full">
+    <>
       <div 
-        className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
+        className="bg-blue-50 px-6 py-4 border-b border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors duration-150"
+        onClick={() => setShowPopup(true)}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -1771,83 +1708,187 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
               Upcoming Events ({upcomingEvents.length})
             </h3>
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(!isExpanded);
-            }}
-            className="text-blue-600 hover:text-blue-700 focus:outline-none"
-            aria-label={isExpanded ? "Collapse events" : "Expand events"}
-          >
-            {isExpanded ? (
-              <ChevronUpIcon className="h-5 w-5" />
-            ) : (
-              <ChevronDownIcon className="h-5 w-5" />
-            )}
-          </button>
+          <ChevronRightIcon className="h-5 w-5 text-blue-600" />
         </div>
       </div>
-      {isExpanded && (
-        <div className="divide-y divide-gray-100">
-          {upcomingEvents.length === 0 ? (
-            <div className="p-6 text-gray-500">
-              No events scheduled for the next 7 days.
+
+      {showPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Upcoming Events</h2>
+              <button
+                onClick={() => setShowPopup(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
             </div>
-          ) : (
-            upcomingEvents.map((event, index) => (
-              <div key={index} className="p-6 hover:bg-gray-50 transition-colors duration-150">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                      <CalendarIcon className="h-4 w-4" />
-                      <span>
-                        {event.date.toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </span>
+            <div className="space-y-4">
+              {upcomingEvents.length === 0 ? (
+                <div className="p-4 text-gray-500">
+                  No events scheduled for the next 7 days.
+                </div>
+              ) : (
+                upcomingEvents.map((event) => (
+                  <div 
+                    key={event.id}
+                    className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="text-lg font-medium text-gray-900">
+                          {event.description}
+                        </h4>
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                          <CalendarIcon className="h-4 w-4" />
+                          <span>
+                            {event.date.toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </span>
+                          <span className="text-blue-600 font-medium">
+                            ({getAge(event.date)})
+                          </span>
+                        </div>
+                        {event.isRecurring && event.originalDate && (
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                            <ClockIcon className="h-4 w-4" />
+                            <span>
+                              Original date: {event.originalDate.toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })} ({getAge(event.originalDate)})
+                            </span>
+                          </div>
+                        )}
+                        {event.location && (
+                          <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                              <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                            </svg>
+                            <span>{event.location}</span>
+                          </div>
+                        )}
+                        {event.isRecurring && (
+                          <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                              <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                            </svg>
+                            <span>{event.recurrenceType.charAt(0).toUpperCase() + event.recurrenceType.slice(1)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <h4 className="text-lg font-medium text-gray-900">
-                      {event.description}
-                    </h4>
-                    {event.isRecurring && event.originalDate && (
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true }) => {
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
+  const [showPopup, setShowPopup] = useState(false);
+  const [deadlines, setDeadlines] = useState([]);
+
+  useEffect(() => {
+    const eventNotes = notes.filter(note => note.content.includes('meta::event_deadline'));
+    const upcoming = [];
+
+    eventNotes.forEach(note => {
+      const lines = note.content.split('\n');
+      const description = lines[0].trim();
+      const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+      const eventDate = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : null;
+      
+      if (eventDate) {
+        upcoming.push({
+          id: note.id,
+          date: new Date(eventDate),
+          description: description.replace('event_description:', '').trim()
+        });
+      }
+    });
+
+    // Sort by date
+    upcoming.sort((a, b) => a.date - b.date);
+    setDeadlines(upcoming);
+  }, [notes]);
+
+  if (deadlines.length === 0) return null;
+
+  return (
+    <>
+      <div 
+        className="bg-indigo-50 px-6 py-4 border-b border-indigo-100 cursor-pointer hover:bg-indigo-100 transition-colors duration-150"
+        onClick={() => setShowPopup(true)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <ClockIcon className="h-6 w-6 text-indigo-500" />
+            <h3 className="ml-3 text-lg font-semibold text-indigo-800">
+              Upcoming Deadlines ({deadlines.length})
+            </h3>
+          </div>
+          <ChevronRightIcon className="h-5 w-5 text-indigo-600" />
+        </div>
+      </div>
+
+      {showPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Upcoming Deadlines</h2>
+              <button
+                onClick={() => setShowPopup(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              {deadlines.map((deadline) => (
+                <div 
+                  key={deadline.id}
+                  className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="text-lg font-medium text-gray-900">
+                        {deadline.description}
+                      </h4>
                       <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                        <ClockIcon className="h-4 w-4" />
+                        <CalendarIcon className="h-4 w-4" />
                         <span>
-                          Original date: {event.originalDate.toLocaleDateString('en-US', {
+                          {deadline.date.toLocaleDateString('en-US', {
+                            weekday: 'long',
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
-                          })} ({getAge(event.originalDate)})
+                          })}
+                        </span>
+                        <span className="text-indigo-600 font-medium">
+                          ({getAge(deadline.date)})
                         </span>
                       </div>
-                    )}
-                    {event.location && (
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                          <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                        </svg>
-                        <span>{event.location}</span>
-                      </div>
-                    )}
-                    {event.isRecurring && (
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                          <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                        </svg>
-                        <span>{event.recurrenceType.charAt(0).toUpperCase() + event.recurrenceType.slice(1)}</span>
-                      </div>
-                    )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))}
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
@@ -2450,13 +2491,20 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
       />
       <div className="space-y-6 w-full">
         <RemindersAlert notes={notes} expanded={true} setNotes={setNotes} />
+        <div className="flex gap-4">
+          <div className="w-1/2">
+            <UpcomingDeadlinesAlert notes={notes} expanded={true} />
+          </div>
+          <div className="w-1/2">
+            <UpcomingEventsAlert notes={notes} expanded={false} />
+          </div>
+        </div>
         <MeetingManager 
           allNotes={notes}
           setNotes={setNotes}
           searchQuery=''
           currentDate=''
         />
-        <UpcomingEventsAlert notes={notes} expanded={false} />
         <TrackerQuestionsAlert notes={notes} expanded={false} />
         <AlertsContainer 
           expanded={true}

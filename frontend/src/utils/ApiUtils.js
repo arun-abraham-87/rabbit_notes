@@ -1,4 +1,5 @@
 import { reorderMetaTags } from './TextUtils';
+import JSZip from 'jszip';
 
 // API Base URL
 const API_BASE_URL = 'http://localhost:5001/api';
@@ -246,4 +247,67 @@ export const createNote = async (content) => {
     });
     if (!response.ok) throw new Error('Failed to create note');
     return await response.json();
+};
+
+export const exportAllNotes = async () => {
+  try {
+    // Create a new ZIP file
+    const zip = new JSZip();
+    
+    // Create folders for notes and journals
+    const notesFolder = zip.folder('notes');
+    const journalsFolder = zip.folder('journals');
+
+    // Fetch all notes and journals metadata
+    const [notesData, journalsMetadata] = await Promise.all([
+      loadAllNotes('', null),
+      listJournals()
+    ]);
+
+    // Add notes to the ZIP
+    notesData.notes.forEach((note, index) => {
+      const fileName = `note_${note.id || index}.txt`;
+      notesFolder.file(fileName, note.content);
+    });
+
+    // Load and add each journal's full content to the ZIP
+    for (const journal of journalsMetadata) {
+      try {
+        const fullJournal = await loadJournal(journal.date);
+        if (fullJournal) {
+          const fileName = `journal_${journal.date}.txt`;
+          journalsFolder.file(fileName, fullJournal.content);
+        }
+      } catch (error) {
+        console.error(`Error loading journal ${journal.date}:`, error);
+      }
+    }
+
+    // Generate the ZIP file
+    const content = await zip.generateAsync({ type: 'blob' });
+
+    // Create a download link
+    const url = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rabbit_notes_export_${new Date().toISOString().split('T')[0]}.zip`;
+    
+    // Trigger the download
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Create backup note
+    const backupDateTime = new Date().toISOString();
+    const backupNoteContent = `Backup Performed\nmeta::backup_date::${backupDateTime}`;
+    await createNote(backupNoteContent);
+
+    return true;
+  } catch (error) {
+    console.error('Export error:', error);
+    throw new Error('Error during export: ' + error.message);
+  }
 };

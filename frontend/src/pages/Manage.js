@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { loadAllNotes, updateNoteById, listJournals, loadJournal, createNote } from '../utils/ApiUtils';
+import { loadAllNotes, updateNoteById, listJournals, loadJournal, createNote, exportAllNotes } from '../utils/ApiUtils';
 import JSZip from 'jszip';
 
 const Manage = () => {
@@ -210,63 +210,9 @@ const Manage = () => {
 
   const handleExport = async () => {
     try {
-      // Create a new ZIP file
-      const zip = new JSZip();
-      
-      // Create folders for notes and journals
-      const notesFolder = zip.folder('notes');
-      const journalsFolder = zip.folder('journals');
-
-      // Fetch all notes and journals metadata
-      const [notesData, journalsMetadata] = await Promise.all([
-        loadAllNotes('', null),
-        listJournals()
-      ]);
-
-      // Add notes to the ZIP
-      notesData.notes.forEach((note, index) => {
-        const fileName = `note_${note.id || index}.txt`;
-        notesFolder.file(fileName, note.content);
-      });
-
-      // Load and add each journal's full content to the ZIP
-      for (const journal of journalsMetadata) {
-        try {
-          const fullJournal = await loadJournal(journal.date);
-          if (fullJournal) {
-            const fileName = `journal_${journal.date}.txt`;
-            journalsFolder.file(fileName, fullJournal.content);
-          }
-        } catch (error) {
-          console.error(`Error loading journal ${journal.date}:`, error);
-        }
-      }
-
-      // Generate the ZIP file
-      const content = await zip.generateAsync({ type: 'blob' });
-
-      // Create a download link
-      const url = URL.createObjectURL(content);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `rabbit_notes_export_${new Date().toISOString().split('T')[0]}.zip`;
-      
-      // Trigger the download
-      document.body.appendChild(a);
-      a.click();
-      
-      // Clean up
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      // Create backup note
-      const backupDateTime = new Date().toISOString();
-      const backupNoteContent = `Backup Performed\nmeta::backup_date::${backupDateTime}`;
-      await createNote(backupNoteContent);
-
+      await exportAllNotes();
       toast.success('Backup Performed');
     } catch (error) {
-      console.error('Export error:', error);
       toast.error('Error during export: ' + error.message);
     }
   };

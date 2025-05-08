@@ -8,7 +8,8 @@ import {
   EyeSlashIcon, 
   PencilIcon,
   XMarkIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  FlagIcon
 } from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
@@ -137,6 +138,23 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => 
     // Implementation of adding a new event
   };
 
+  const handleToggleDeadline = async (event) => {
+    const hasDeadline = event.content.includes('meta::event_deadline');
+    let updatedContent;
+    
+    if (hasDeadline) {
+      // Remove the deadline tag
+      updatedContent = event.content.replace('\nmeta::event_deadline', '');
+    } else {
+      // Add the deadline tag
+      updatedContent = event.content.trim() + '\nmeta::event_deadline';
+    }
+    
+    // Update the event
+    const updatedEvent = { ...event, content: updatedContent };
+    onEventUpdated(updatedEvent);
+  };
+
   // Function to extract event details from note content
   const getEventDetails = (content) => {
     const lines = content.split('\n');
@@ -245,6 +263,11 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => 
                                 Today
                               </span>
                             )}
+                            {occurrence.event.content.includes('meta::event_deadline') && (
+                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                Deadline
+                              </span>
+                            )}
                           </h3>
                           <div className="flex flex-col gap-1">
                             <p className={`text-sm ${
@@ -305,6 +328,17 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes }) => 
                             </span>
                           )}
                           <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleToggleDeadline(occurrence.event)}
+                              className={`p-2 rounded-lg transition-colors ${
+                                occurrence.event.content.includes('meta::event_deadline')
+                                  ? 'text-red-500 hover:text-red-600 hover:bg-red-50'
+                                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                              }`}
+                              title={occurrence.event.content.includes('meta::event_deadline') ? "Remove deadline" : "Mark as deadline"}
+                            >
+                              <FlagIcon className="h-5 w-5" />
+                            </button>
                             <button
                               onClick={() => setRawNote(occurrence.event)}
                               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"

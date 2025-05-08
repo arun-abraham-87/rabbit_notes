@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
-import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import EditEventModal from '../components/EditEventModal';
 import CalendarView from '../components/CalendarView';
+import AddEventModal from '../components/AddEventModal';
 
 // Function to extract event details from note content
 const getEventDetails = (content) => {
@@ -103,6 +104,7 @@ const EventsPage = ({ notes, onUpdate }) => {
   const [editingEvent, setEditingEvent] = useState(null);
   const [deletingEvent, setDeletingEvent] = useState(null);
   const [viewMode, setViewMode] = useState('calendar');
+  const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     description: '',
     dateTime: '',
@@ -265,11 +267,37 @@ const EventsPage = ({ notes, onUpdate }) => {
     }
   };
 
+  const handleAddEvent = async (content) => {
+    try {
+      // Create a new note with the event content
+      const newNote = {
+        id: Date.now().toString(), // Temporary ID
+        content: content,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      // Add the new note to the notes array
+      const updatedNotes = [...notes, newNote];
+      onUpdate(updatedNotes);
+      setIsAddEventModalOpen(false);
+    } catch (error) {
+      console.error('Error adding event:', error);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Events</h1>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsAddEventModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <PlusIcon className="h-5 w-5" />
+            <span>Add Event</span>
+          </button>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setViewMode('list')}
@@ -476,6 +504,14 @@ const EventsPage = ({ notes, onUpdate }) => {
           )}
         </div>
       )}
+
+      {/* Add Event Modal */}
+      <AddEventModal
+        isOpen={isAddEventModalOpen}
+        onClose={() => setIsAddEventModalOpen(false)}
+        onAdd={handleAddEvent}
+        notes={notes}
+      />
 
       {/* Edit Event Modal */}
       {editingEvent && (

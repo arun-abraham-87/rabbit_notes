@@ -17,6 +17,8 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
     { id: 'news', label: 'News', show: settings?.navigation?.showNewsPage !== false },
     { id: 'expense', label: 'Expense', show: settings?.navigation?.showExpensePage !== false },
     { id: 'trackers', label: 'Trackers', show: settings?.navigation?.showTrackersPage !== false },
+    { id: 'metro', label: 'Metro', show: settings?.navigation?.showMetroPage !== false },
+    { id: 'calendar', label: 'Calendar', show: settings?.navigation?.showCalendarPage !== false },
   ].filter(button => button.show);
 
   const visibleButtons = navigationButtons.slice(0, 8);

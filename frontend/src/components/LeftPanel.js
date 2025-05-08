@@ -91,7 +91,9 @@ const defaultSettings = {
     showEventsPage: true,
     showPeoplePage: true,
     showNewsPage: true,
-    showExpensePage: true
+    showExpensePage: true,
+    showMetroPage: true,
+    showCalendarPage: true
   }
 };
 

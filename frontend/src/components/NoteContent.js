@@ -38,15 +38,19 @@ export default function NoteContent({
     compressedView = false,
     updateNote
 }) {
+    if (!note) {
+        return null;
+    }
+
     const rawLines = getRawLines(note.content);
     const contentLines = parseNoteContent({ content: rawLines.join('\n'), searchTerm: searchQuery });
     const indentFlags = getIndentFlags(contentLines);
 
-    if (editingLine.noteId === note.id      ) {
-    console.log('editing line', editingLine);
-    console.log('note id:', note.id);
-    console.log('editingLine type:', typeof editingLine.noteId, typeof editingLine.lineIndex);
-    console.log('note.id type:', typeof note.id);
+    if (editingLine?.noteId === note.id) {
+        console.log('editing line', editingLine);
+        console.log('note id:', note.id);
+        console.log('editingLine type:', typeof editingLine.noteId, typeof editingLine.lineIndex);
+        console.log('note.id type:', typeof note.id);
     }
     
     if (!Array.isArray(contentLines) || contentLines.length === 0) {
@@ -89,7 +93,8 @@ export default function NoteContent({
                 <input
                     type="date"
                     value={(() => {
-                        const orig = editingInlineDate.originalDate;
+                        const orig = editingInlineDate?.originalDate;
+                        if (!orig) return '';
                         if (orig.includes('/')) {
                             const [day, month, year] = orig.split('/');
                             return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
@@ -103,8 +108,8 @@ export default function NoteContent({
                         return `${year}-${mm}-${day.padStart(2, '0')}`;
                     })()}
                     onChange={(e) => handleInlineDateSelect(
-                        editingInlineDate.noteId,
-                        editingInlineDate.lineIndex,
+                        editingInlineDate?.noteId,
+                        editingInlineDate?.lineIndex,
                         e.target.value
                     )}
                     className="border border-gray-300 rounded px-3 py-2 text-sm"
@@ -121,7 +126,7 @@ export default function NoteContent({
 
     const renderLine = (line, idx) => {
         if (React.isValidElement(line)) {
-            if (editingLine.noteId === note.id && editingLine.lineIndex === idx) {
+            if (editingLine?.noteId === note.id && editingLine?.lineIndex === idx) {
                 return renderInlineEditor(idx, false, false);
             }
             return React.cloneElement(line, {
@@ -165,7 +170,7 @@ export default function NoteContent({
                         isH2 ? 'text-lg font-semibold text-purple-700' : ''
                     }`}
             >
-                {editingLine.noteId === note.id && editingLine.lineIndex === idx ? (
+                {editingLine?.noteId === note.id && editingLine?.lineIndex === idx ? (
                     renderInlineEditor(idx, isH1, isH2)
                 ) : (
                     <>
@@ -184,7 +189,7 @@ export default function NoteContent({
                                 handleInlineDateSelect
                             )}
                         </span>
-                        {editingInlineDate.noteId === note.id && editingInlineDate.lineIndex === idx && renderDatePicker(idx)}
+                        {editingInlineDate?.noteId === note.id && editingInlineDate?.lineIndex === idx && renderDatePicker(idx)}
                     </>
                 )}
             </div>

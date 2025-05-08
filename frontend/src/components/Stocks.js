@@ -14,8 +14,18 @@ const StockPrice = () => {
   const [apiCalls, setApiCalls] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [shares, setShares] = useState(0);
+  const [shares, setShares] = useState(() => {
+    const savedShares = localStorage.getItem('stockShares');
+    return savedShares ? parseInt(savedShares, 10) : 100;
+  });
+  const [multiplier, setMultiplier] = useState(() => {
+    const savedMultiplier = localStorage.getItem('stockMultiplier');
+    return savedMultiplier ? parseFloat(savedMultiplier) : 1.0;
+  });
   const [totalValue, setTotalValue] = useState(0);
+  const [showPopup, setShowPopup] = useState(false);
+  const [tempValue, setTempValue] = useState('');
+  const [editingField, setEditingField] = useState(null); // 'shares' or 'multiplier'
 
   // Initialize or update API call count
   useEffect(() => {
@@ -197,12 +207,40 @@ const StockPrice = () => {
     fetchData();
   }, []);
 
-  // Update total value when price or shares change
+  // Update total value when price, shares, or multiplier changes
   useEffect(() => {
     if (price !== null) {
-      setTotalValue(shares * price);
+      setTotalValue(shares * price * multiplier);
     }
-  }, [price, shares]);
+  }, [price, shares, multiplier]);
+
+  // Save values to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('stockShares', shares.toString());
+  }, [shares]);
+
+  useEffect(() => {
+    localStorage.setItem('stockMultiplier', multiplier.toString());
+  }, [multiplier]);
+
+  const handleValueSubmit = (e) => {
+    e.preventDefault();
+    const newValue = parseFloat(tempValue);
+    if (!isNaN(newValue) && newValue > 0) {
+      if (editingField === 'shares') {
+        setShares(Math.floor(newValue)); // Ensure integer for shares
+      } else {
+        setMultiplier(newValue);
+      }
+      setShowPopup(false);
+    }
+  };
+
+  const openEditPopup = (field, value) => {
+    setEditingField(field);
+    setTempValue(value.toString());
+    setShowPopup(true);
+  };
 
   if (loading) {
     return (
@@ -281,23 +319,65 @@ const StockPrice = () => {
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-600">Number of Shares (X)</label>
-              <input
-                type="number"
-                value={shares}
-                onChange={(e) => setShares(Number(e.target.value))}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div>
               <p className="text-sm text-gray-600">Calculation</p>
               <p className="text-lg font-mono">
-                {shares} × ${price?.toFixed(2)} = ${totalValue.toFixed(2)}
+                <span 
+                  className="cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => openEditPopup('shares', shares)}
+                >
+                  {shares}
+                </span>
+                {' × $'}{price?.toFixed(2)}
+                {' × '}
+                <span 
+                  className="cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => openEditPopup('multiplier', multiplier)}
+                >
+                  {multiplier.toFixed(2)}
+                </span>
+                {' = $'}{totalValue.toFixed(2)}
               </p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Popup for editing values */}
+      {showPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl">
+            <h3 className="text-lg font-bold mb-4">
+              Edit {editingField === 'shares' ? 'Number of Shares' : 'Multiplier'}
+            </h3>
+            <form onSubmit={handleValueSubmit}>
+              <input
+                type="number"
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+                className="w-full p-2 border rounded mb-4"
+                min="0.01"
+                step={editingField === 'shares' ? "1" : "0.01"}
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPopup(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

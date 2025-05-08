@@ -129,12 +129,14 @@ const CustomCalendar = () => {
           key={day}
           onClick={() => handleDateClick(date)}
           className={`h-24 border border-gray-100 p-2 cursor-pointer transition-colors
-            ${isCurrentDay ? 'bg-blue-50' : 'hover:bg-gray-50'}
+            ${isCurrentDay ? 'bg-blue-50 border-2 border-black' : 'hover:bg-gray-50'}
             ${isCurrentSelected ? 'ring-2 ring-blue-500' : ''}
+            ${date.getDay() === 0 || date.getDay() === 6 ? 'bg-yellow-50' : ''}
           `}
         >
           <div className={`text-sm font-medium ${isCurrentDay ? 'text-blue-600' : 'text-gray-900'}`}>
             {day}
+            {isCurrentDay && <span className="ml-1 text-xs text-blue-500">Today</span>}
           </div>
           <div className="mt-1 space-y-1">
             {dayEvents.map(event => (

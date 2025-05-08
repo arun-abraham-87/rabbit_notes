@@ -331,7 +331,7 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true, setNotes
                   index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                 } hover:bg-gray-100`}
               >
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
                       <CalendarIcon className="h-4 w-4" />
@@ -347,30 +347,27 @@ const DeadlinePassedAlert = ({ notes, expanded: initialExpanded = true, setNotes
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex justify-end gap-2 mt-4">
                     <button
                       onClick={() => handleMarkCompleted(todo)}
-                      className="px-4 py-2 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                      className="p-2 text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
                       title="Mark as Completed"
                     >
                       <CheckIcon className="w-5 h-5" />
-                      Mark as Completed
                     </button>
                     <button
                       onClick={() => handleEditNote(todo)}
-                      className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                      className="p-2 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
                       title="Edit Note"
                     >
                       <PencilIcon className="w-5 h-5" />
-                      Edit Note
                     </button>
                     <button
                       onClick={() => handleViewRawNote(todo)}
-                      className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+                      className="p-2 text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
                       title="View Raw Note"
                     >
                       <CodeBracketIcon className="w-5 h-5" />
-                      View Raw Note
                     </button>
                   </div>
                 </div>

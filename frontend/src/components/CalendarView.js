@@ -91,12 +91,52 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
     return occurrences;
   };
 
+  // Function to extract event details from note content
+  const getEventDetails = (content) => {
+    const lines = content.split('\n');
+    
+    // Find the description
+    const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+    const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+    
+    // Find the event date
+    const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+    const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
+    
+    // Find recurring info
+    const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
+    const recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
+    
+    // Find meta information
+    const metaLine = lines.find(line => line.startsWith('meta::event::'));
+    const metaDate = metaLine ? metaLine.replace('meta::event::', '').trim() : '';
+
+    // Find tags
+    const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+    const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
+
+    // Calculate next occurrence for recurring events
+    let nextOccurrence = null;
+
+    return {
+      description,
+      dateTime,
+      recurrence,
+      metaDate,
+      tags
+    };
+  };
+
   // Get all event occurrences for the current year
   const allOccurrences = events.flatMap(event => {
     const occurrences = getEventOccurrences(event);
+    const eventDetails = getEventDetails(event.content);
     return occurrences.map(date => ({
       date,
-      event: event,
+      event: {
+        ...event,
+        tags: eventDetails.tags
+      },
       isToday: date.toDateString() === new Date().toDateString(),
       isPast: date < new Date() && !(date.toDateString() === new Date().toDateString()),
       age: calculateAge(event.dateTime)
@@ -159,42 +199,6 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
       : event.content.trim() + '\nmeta::event_hidden';
     
     await onEventUpdated(event.id, updatedContent);
-  };
-
-  // Function to extract event details from note content
-  const getEventDetails = (content) => {
-    const lines = content.split('\n');
-    
-    // Find the description
-    const descriptionLine = lines.find(line => line.startsWith('event_description:'));
-    const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
-    
-    // Find the event date
-    const eventDateLine = lines.find(line => line.startsWith('event_date:'));
-    const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
-    
-    // Find recurring info
-    const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
-    const recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
-    
-    // Find meta information
-    const metaLine = lines.find(line => line.startsWith('meta::event::'));
-    const metaDate = metaLine ? metaLine.replace('meta::event::', '').trim() : '';
-
-    // Find tags
-    const tagsLine = lines.find(line => line.startsWith('event_tags:'));
-    const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
-
-    // Calculate next occurrence for recurring events
-    let nextOccurrence = null;
-
-    return {
-      description,
-      dateTime,
-      recurrence,
-      metaDate,
-      tags
-    };
   };
 
   return (

@@ -20,8 +20,7 @@ const getEventDetails = (content) => {
   
   // Find recurring info
   const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
-  const recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
-  
+  let recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
   // Find meta information
   const metaLine = lines.find(line => line.startsWith('meta::event::'));
   const metaDate = metaLine ? metaLine.replace('meta::event::', '').trim() : '';
@@ -33,7 +32,10 @@ const getEventDetails = (content) => {
   // Calculate next occurrence for recurring events
   let nextOccurrence = null;
   let lastOccurrence = null;
-  if (recurrence !== 'none' && dateTime) {
+  if (recurrence === 'none') {
+  recurrence="yearly"
+  }
+  else if (recurrence !== 'none' && dateTime) {
     const eventDate = new Date(dateTime);
     const now = new Date();
     

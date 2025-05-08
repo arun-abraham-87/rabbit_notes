@@ -2648,7 +2648,6 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
 
 const BackupAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
-  const [countdown, setCountdown] = useState(0);
   const [isBackingUp, setIsBackingUp] = useState(false);
 
   const backupNotes = notes.filter(note => note.content.includes('meta::notes_backup_date::'));
@@ -2671,27 +2670,13 @@ const BackupAlert = ({ notes, expanded: initialExpanded = true }) => {
 
   const startBackup = async () => {
     setIsBackingUp(true);
-    setCountdown(10);
-    
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          exportAllNotes()
-            .then(() => {
-              setIsBackingUp(false);
-              setCountdown(0);
-            })
-            .catch(error => {
-              console.error('Backup failed:', error);
-              setIsBackingUp(false);
-              setCountdown(0);
-            });
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    try {
+      await exportAllNotes();
+    } catch (error) {
+      console.error('Backup failed:', error);
+    } finally {
+      setIsBackingUp(false);
+    }
   };
 
   return (
@@ -2733,7 +2718,7 @@ const BackupAlert = ({ notes, expanded: initialExpanded = true }) => {
           {isBackingUp ? (
             <div className="flex items-center gap-2 text-sm text-blue-600">
               <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              <span>Backing up in {countdown} seconds...</span>
+              <span>Backing up...</span>
             </div>
           ) : (
             <button

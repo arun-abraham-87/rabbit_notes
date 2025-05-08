@@ -1717,7 +1717,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
                 e.stopPropagation();
                 setShowAddEventModal(true);
               }}
-              className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors duration-150"
+              className="px-3 py-1 text-blue-600 hover:text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors duration-150"
               title="Add Event"
             >
               <PlusIcon className="h-5 w-5" />
@@ -1876,7 +1876,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                 e.stopPropagation();
                 setShowAddEventModal(true);
               }}
-              className="p-1 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 rounded-full transition-colors duration-150"
+              className="px-3 py-1 text-indigo-600 hover:text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors duration-150"
               title="Add Deadline"
             >
               <PlusIcon className="h-5 w-5" />

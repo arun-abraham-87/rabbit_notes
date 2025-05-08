@@ -1107,11 +1107,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   return (
     <div className="w-1/2 pl-2">
       <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
-        <div className="bg-amber-50 px-6 py-4 border-b border-amber-100">
+        <div className="bg-red-50 px-6 py-4 border-b border-red-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <ClockIcon className="h-6 w-6 text-amber-500" />
-              <h3 className="ml-3 text-base font-semibold text-amber-800">
+              <ClockIcon className="h-6 w-6 text-red-500" />
+              <h3 className="ml-3 text-base font-semibold text-red-800">
                 Review Overdue ({overdueNotes.length})
               </h3>
             </div>

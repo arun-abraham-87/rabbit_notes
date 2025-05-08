@@ -225,20 +225,6 @@ export default function NoteContent({
                     );
                 })}
             </div>
-            {popupNoteText === note.id && (
-                <div className="mt-2">
-                    <NoteEditor
-                        objList={objList}
-                        text={note.content}
-                        note={note}
-                        onCancel={() => setPopupNoteText(null)}
-                        onSave={(updatedNote) => {
-                            updateNote(updatedNote.id, updatedNote.content);
-                            setPopupNoteText(null);
-                        }}
-                    />
-                </div>
-            )}
             {!compressedView && (
                 <button
                     onClick={() => {

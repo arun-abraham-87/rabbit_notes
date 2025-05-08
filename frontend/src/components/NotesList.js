@@ -3,7 +3,7 @@ import { Alerts } from './Alerts';
 
 import ConfirmationModal from './ConfirmationModal';
 import { updateNoteById, deleteNoteById, addNewNoteCommon, loadNotes } from '../utils/ApiUtils';
-import { findDuplicatedUrls} from '../utils/genUtils';
+import { findDuplicatedUrls } from '../utils/genUtils';
 
 import RightClickMenu from './RightClickMenu';
 import EndDatePickerModal from './EndDatePickerModal';
@@ -26,19 +26,19 @@ import AddPeopleModal from './AddPeopleModal';
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
 
 const NotesList = ({
-    objList,
-    notes,
-    allNotes,
-    addNotes,
-    updateNoteCallback,
-    updateTotals,
-    objects,
-    addObjects,
-    searchQuery,
-    setSearchQuery,
-    onWordClick,
-    settings,
-    activePage = 'notes'
+  objList,
+  notes,
+  allNotes,
+  addNotes,
+  updateNoteCallback,
+  updateTotals,
+  objects,
+  addObjects,
+  searchQuery,
+  setSearchQuery,
+  onWordClick,
+  settings,
+  activePage = 'notes'
 }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
@@ -103,18 +103,6 @@ const NotesList = ({
     openModal();
   };
 
-  const updateNote = async (id, updatedContent) => {
-    try {
-      await updateNoteById(id, updatedContent);
-      // Update the notes list immediately after successful update
-      const updatedNotes = notes.map(note => 
-        note.id === id ? { ...note, content: updatedContent } : note
-      );
-      updateNoteCallback(updatedNotes);
-    } catch (error) {
-      console.error('Error updating note:', error);
-    }
-  };
 
   const handleEndDateSelect = (noteId, date) => {
     const updatedNotes = notes.map(note => {
@@ -140,7 +128,7 @@ const NotesList = ({
     const noteToUpdate = notes.find(n => n.id === noteId);
     const lines = noteToUpdate.content.split('\n');
     lines[lineIndex] = lines[lineIndex].replace(editingInlineDate.originalDate, dateStr);
-    updateNote(noteId, lines.join('\n'));
+    updateNoteCallback(noteId, lines.join('\n'));
     setEditingInlineDate({ noteId: null, lineIndex: null, originalDate: '' });
   };
 
@@ -158,7 +146,7 @@ const NotesList = ({
     if (selection && selection.toString().trim()) {
       const range = selection.getRangeAt(0);
       const container = range.commonAncestorContainer;
-      
+
       // Check if the selection is within our component
       if (!notesListRef.current?.contains(container)) {
         return;
@@ -166,15 +154,15 @@ const NotesList = ({
 
       const rect = range.getBoundingClientRect();
       setSelectedText(selection.toString().trim());
-      
+
       // Calculate position relative to the viewport
       const viewportX = rect.left;
       const viewportY = rect.top;
-      
+
       // Add scroll offset to get the absolute position
       const x = viewportX + window.scrollX;
       const y = viewportY + window.scrollY;
-      
+
       // Position the popup above the selected text with some offset
       setPopupPosition({
         x: x,
@@ -358,10 +346,10 @@ const NotesList = ({
 
       // Get the first line from clipboard content
       const firstClipboardLine = pasteText.split('\n')[0].trim();
-      
+
       // Create the note with textbox content and first line from clipboard
       let noteContent = `${newNoteText.trim()}\n${firstClipboardLine}`;
-      
+
       // Add comments for selections
       let comments = [];
       if (selectedPriority) {
@@ -373,28 +361,28 @@ const NotesList = ({
       if (comments.length > 0) {
         noteContent += '\n\n' + comments.join(', ');
       }
-      
+
       // Add todo meta tag if priority is selected
       if (selectedPriority) {
         noteContent += `\nmeta::todo::${formattedDateTime}`;
         noteContent += `\nmeta::${selectedPriority}`;
       }
-      
+
       // Add watch meta tag if watch is selected
       if (isWatchSelected) {
         noteContent += `\nmeta::watch::${formattedDateTime}`;
       }
-      
+
       // Add review pending tag
       noteContent += '\nmeta::review_pending';
-      
+
       const newNote = await addNewNoteCommon(noteContent, [], noteDate);
-      
+
       // Refresh the notes list with the current search query and date
       const data = await loadNotes(searchQuery, noteDate);
       updateNoteCallback(data.notes || []);
       updateTotals(data.totals || 0);
-      
+
       setShowPastePopup(false);
       setPasteText('');
       setNewNoteText('');
@@ -435,7 +423,7 @@ const NotesList = ({
           </button>
         </div>
       )}
-    
+
       {/* Only show pinned section when on notes page */}
       {activePage === 'notes' ? (
         <>
@@ -469,7 +457,7 @@ const NotesList = ({
                     newLineText={newLineText}
                     setNewLineText={setNewLineText}
                     newLineInputRef={newLineInputRef}
-                    updateNote={updateNote}
+                    updateNote={updateNoteCallback}
                     urlToNotesMap={urlToNotesMap}
                     updateNoteCallback={updateNoteCallback}
                     showCreatedDate={settings.showCreatedDate || false}
@@ -497,9 +485,6 @@ const NotesList = ({
 
           {/* Regular notes section */}
           <div className="space-y-4">
-            {safeNotes.filter(note => !note.pinned).length > 0 && (
-              <h2 className="text-lg font-semibold text-gray-900">Other Notes</h2>
-            )}
             <div className="grid grid-cols-1 gap-4">
               {safeNotes.filter(note => !note.pinned).map(note => (
                 <NoteCard
@@ -527,7 +512,7 @@ const NotesList = ({
                   newLineText={newLineText}
                   setNewLineText={setNewLineText}
                   newLineInputRef={newLineInputRef}
-                  updateNote={updateNote}
+                  updateNote={updateNoteCallback}
                   urlToNotesMap={urlToNotesMap}
                   updateNoteCallback={updateNoteCallback}
                   showCreatedDate={settings.showCreatedDate || false}
@@ -581,7 +566,7 @@ const NotesList = ({
               newLineText={newLineText}
               setNewLineText={setNewLineText}
               newLineInputRef={newLineInputRef}
-              updateNote={updateNote}
+              updateNote={updateNoteCallback}
               urlToNotesMap={urlToNotesMap}
               updateNoteCallback={updateNoteCallback}
               showCreatedDate={settings.showCreatedDate || false}
@@ -639,8 +624,8 @@ const NotesList = ({
               if (!lines.includes(tag)) lines.push(tag);
               return lines.join('\n');
             };
-            updateNote(fromId, addTag(source.content, toId));
-            updateNote(toId, addTag(target.content, fromId));
+            updateNoteCallback(fromId, addTag(source.content, toId));
+            updateNoteCallback(toId, addTag(target.content, fromId));
             setLinkPopupVisible(false);
             setLinkingNoteId(null);
             setLinkSearchTerm('');
@@ -667,7 +652,7 @@ const NotesList = ({
           lineIndex={rightClickIndex}
           pos={rightClickPos}
           notes={allNotes}
-          updateNote={updateNote}
+          updateNote={updateNoteCallback}
           setRightClickText={setRightClickText}
           setEditedLineContent={setEditedLineContent}
           setEditingLine={setEditingLine}
@@ -690,7 +675,7 @@ const NotesList = ({
         <EditMeetingModal
           note={editingMeetingNote}
           onSave={(updatedNote) => {
-            updateNote(editingMeetingNote.id, updatedNote.content);
+            updateNoteCallback(editingMeetingNote.id, updatedNote.content);
             setEditingMeetingNote(null);
           }}
           onCancel={() => setEditingMeetingNote(null)}
@@ -711,7 +696,7 @@ const NotesList = ({
               <NoteEditor
                 note={editingEventNote}
                 onSave={(updatedNote) => {
-                  updateNote(updatedNote.id, updatedNote.content);
+                  updateNoteCallback(updatedNote.id, updatedNote.content);
                   setEditingEventNote(null);
                   setShowingNormalEventEditor(false);
                 }}
@@ -728,9 +713,9 @@ const NotesList = ({
             note={editingEventNote}
             onClose={() => setEditingEventNote(null)}
             onSave={(updatedNote) => {
-              updateNote(updatedNote.id, updatedNote.content);
+              updateNoteCallback(updatedNote.id, updatedNote.content);
               // Update the notes list immediately after successful update
-              const updatedNotes = notes.map(note => 
+              const updatedNotes = notes.map(note =>
                 note.id === updatedNote.id ? { ...note, content: updatedNote.content } : note
               );
               updateNoteCallback(updatedNotes);
@@ -743,60 +728,34 @@ const NotesList = ({
       )}
 
       {popupNoteText && (
-        <div className="mt-4 mb-4 bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
-            <button
-              onClick={() => setPopupNoteText(null)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <XMarkIcon className="h-6 w-6" />
-            </button>
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
+              <button
+                onClick={() => setPopupNoteText(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <NoteEditor
+              isAddMode={false}
+              note={notes.find(n => n.id === popupNoteText)}
+              onSave={(updatedNote) => {
+                updateNoteCallback(popupNoteText, updatedNote);
+                setPopupNoteText(null);
+              }}
+              onCancel={() => setPopupNoteText(null)}
+              objList={objList}
+            />
           </div>
-          <NoteEditor
-            note={notes.find(n => n.id === popupNoteText)}
-            onSave={(updatedNote) => {
-              updateNote(updatedNote.id, updatedNote.content);
-              setPopupNoteText(null);
-            }}
-            onCancel={() => setPopupNoteText(null)}
-            objList={objList}
-          />
         </div>
       )}
 
-      {showPastePopup && (
-        <TextPastePopup
-          isOpen={showPastePopup}
-          onClose={() => {
-            setShowPastePopup(false);
-            setPasteText('');
-            setNewNoteText('');
-            setSelectedPriority(null);
-            setIsWatchSelected(false);
-          }}
-          newNoteText={newNoteText}
-          setNewNoteText={setNewNoteText}
-          pasteText={pasteText}
-          selectedPriority={selectedPriority}
-          setSelectedPriority={setSelectedPriority}
-          isWatchSelected={isWatchSelected}
-          setIsWatchSelected={setIsWatchSelected}
-          onSave={handlePasteSubmit}
-          textareaRef={textareaRef}
-        />
-      )}
-
-      <AddPeopleModal
-        isOpen={showAddPeopleModal}
-        onClose={() => setShowAddPeopleModal(false)}
-        onAdd={async (content) => {
-          const newNote = await addNotes(content);
-          setShowAddPeopleModal(false);
-          return newNote;
-        }}
-        allNotes={allNotes || notes}
-      />
+  
+     
+  
 
     </div>
   );

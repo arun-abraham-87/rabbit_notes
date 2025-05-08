@@ -141,9 +141,14 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
 
   const handleDelete = async () => {
     try {
+      // Only call onDelete if the deletion was successful
       onDelete(note.id);
+      setShowDeleteConfirm(false);
+      onCancel();
+
     } catch (error) {
       console.error('Error deleting event:', error);
+      // Don't call onDelete if the deletion failed
       onCancel();
     }
   };

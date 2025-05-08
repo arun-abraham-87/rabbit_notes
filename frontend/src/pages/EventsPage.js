@@ -170,35 +170,17 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
   };
 
   const handleDelete = async (eventId) => {
-    const eventToDelete = notes.find(note => note.id === eventId);
-    setDeletingEvent(eventToDelete);
-  };
-
-  const confirmDelete = async () => {
+    const deletingEvent = notes.find(note => note.id === eventId);
     if (!deletingEvent) return;
-
     try {
       await deleteNoteById(deletingEvent.id);
       await setAllNotes(allNotes.filter(note => note.id !== deletingEvent.id));
-      setDeletingEvent(null);
     } catch (error) {
       console.error('Error deleting event:', error);
     }
   };
 
-  const handleSave = async (updatedNote) => {
-    try {
-      // await updateNoteById(updatedNote.id, updatedNote.content);
-      // // Update the notes list by updating the edited event
-      // const updatedNotes = notes.map(note => 
-      //   note.id === updatedNote.id ? { ...note, content: updatedNote.content } : note
-      // );
-      // onUpdate(updatedNotes);
-      // setEditingEvent(null);
-    } catch (error) {
-      console.error('Error updating event:', error);
-    }
-  };
+ 
 
   const handleAcknowledgeEvent = async (eventId, year) => {
     const event = notes.find(note => note.id === eventId);
@@ -491,34 +473,7 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
 
      
 
-      {/* Delete Confirmation Modal */}
-      {deletingEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <div className="flex items-center gap-3 mb-4">
-              <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />
-              <h2 className="text-xl font-semibold text-gray-900">Delete Event</h2>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete this event? This action cannot be undone.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setDeletingEvent(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+    
     </div>
   );
 };

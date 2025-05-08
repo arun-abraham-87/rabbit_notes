@@ -93,6 +93,13 @@ export const getNextOrPrevDateStr = (dateString, next) => {
   return momentObj ? momentObj.add(next ? 1 : -1, 'days').format('YYYY-MM-DD') : 'Invalid date';
 };
 
+//function to get diff in positive numbers passed two dates
+export const getDiffInDays = (date1, date2) => {
+  date1=parseToMoment(date1);
+  date2=parseToMoment(date2);
+  return Math.abs(date1.diff(date2, 'days'));
+}
+
 /**
  * Attempts to parse a date string using common formats and returns a moment object
  * Supports:

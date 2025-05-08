@@ -25,7 +25,7 @@ import {
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon, createNote } from '../utils/ApiUtils';
-import { getAge, getDateInDDMMYYYYFormat } from '../utils/DateUtils';
+import { getAge, getDateInDDMMYYYYFormat, getDiffInDays } from '../utils/DateUtils';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
 import NoteView from './NoteView';
 import { generateTrackerQuestions, createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
@@ -2646,6 +2646,71 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
   );
 };
 
+const BackupAlert = ({ notes, expanded: initialExpanded = true }) => {
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
+
+  const backupNotes = notes.filter(note => note.content.includes('meta::notes_backup_date::'));
+  console.log(backupNotes.length);
+  if (backupNotes.length === 0) return null;
+
+  // Find the most recent backup date
+  const lastBackupDate = backupNotes.reduce((latest, note) => {
+    const backupDateMatch = note.content.match(/meta::notes_backup_date::([^T]+)T/);
+    if (!backupDateMatch) return latest;
+    console.log('backupDateMatch',backupDateMatch[1]);
+    const backupDate = new Date(backupDateMatch[1]);
+    return !latest || backupDate > latest ? backupDate : latest;
+  }, null);
+    console.log('lastBackupDate',lastBackupDate);
+  if (!lastBackupDate) return null;
+
+  const now = new Date();
+  const diffDays = getDiffInDays(now, lastBackupDate);
+console.log('diffDays',diffDays);
+  if (diffDays <= 1) return null;
+
+  return (
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+      <div className="bg-red-50 px-6 py-4 border-b border-red-100 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
+            <h3 className="ml-3 text-base font-semibold text-red-800">
+              Backup Overdue ({diffDays} days)
+            </h3>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+            className="text-red-600 hover:text-red-700 focus:outline-none"
+            aria-label={isExpanded ? "Collapse backup alert" : "Expand backup alert"}
+          >
+            {isExpanded ? (
+              <ChevronUpIcon className="h-5 w-5" />
+            ) : (
+              <ChevronDownIcon className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+      </div>
+      {isExpanded && (
+        <div className="p-6">
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+            <CalendarIcon className="h-4 w-4" />
+            <span>Last backup: {lastBackupDate.toLocaleString()}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-red-600">
+            <ExclamationCircleIcon className="h-4 w-4" />
+            <span>Backup is overdue by {diffDays} days</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) => {
   const handleDismissUnacknowledgedMeeting = async (noteId) => {
     const note = notes.find(n => n.id === noteId);
@@ -2679,6 +2744,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         theme="light"
       />
       <div className="space-y-6 w-full">
+        <BackupAlert notes={notes} expanded={true} />
         <RemindersAlert notes={notes} expanded={true} setNotes={setNotes} />
         <div className="flex gap-4">
           <div className="w-1/2">

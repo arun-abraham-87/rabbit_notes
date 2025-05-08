@@ -217,19 +217,6 @@ const StockPrice = () => {
 
   return (
     <div className="space-y-4">
-      {/* API Usage Card */}
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
-        <InformationCircleIcon className="h-5 w-5 text-blue-500" />
-        <div>
-          <p className="text-sm text-blue-700">
-            API calls today: <span className="font-semibold">{apiCalls}</span>
-          </p>
-          <p className="text-xs text-blue-600">
-            Resets daily at midnight
-          </p>
-        </div>
-      </div>
-
       {/* Stock Price Card */}
       <div className="p-4 rounded-md bg-gray-100 shadow-md w-fit">
         <div className="flex justify-between items-center mb-2">

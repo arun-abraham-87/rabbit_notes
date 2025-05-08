@@ -259,7 +259,7 @@ export default function RightClickMenu({
           className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
           onClick={() => {
             const arr = note.content.split('\n');
-            arr.splice(lineIndex, 0, '');
+            arr.splice(lineIndex, 0, ' ');
             updateNote(noteId, arr.join('\n'));
           }}
         >
@@ -269,7 +269,7 @@ export default function RightClickMenu({
           className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
           onClick={() => {
             const arr = note.content.split('\n');
-            arr.splice(lineIndex + 1, 0, '');
+            arr.splice(lineIndex + 1, 0, ' ');
             updateNote(noteId, arr.join('\n'));
           }}
         >

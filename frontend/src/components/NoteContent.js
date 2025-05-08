@@ -6,7 +6,6 @@ import {
     parseNoteContent
 } from '../utils/TextUtils';
 import { renderLineWithClickableDates, getIndentFlags, getRawLines } from '../utils/genUtils';
-import { updateNoteById as updateNote } from '../utils/ApiUtils';
 
 /**
  * NoteContent - renders the body of a note, including headings, lines, inline editors,
@@ -36,7 +35,8 @@ export default function NoteContent({
     newLineText,
     setNewLineText,
     newLineInputRef,
-    compressedView = false
+    compressedView = false,
+    updateNote
 }) {
     const rawLines = getRawLines(note.content);
     const contentLines = parseNoteContent({ content: rawLines.join('\n'), searchTerm: searchQuery });
@@ -59,6 +59,25 @@ export default function NoteContent({
                 {contentLines.map((line, idx) => {
                     // Check if line is a React element
                     if (React.isValidElement(line)) {
+                        // If we're editing this line, show the inline editor
+                        if (editingLine.noteId === note.id && editingLine.lineIndex === idx) {
+                            return (
+                                <InlineEditor
+                                    key={idx}
+                                    text={editedLineContent}
+                                    setText={setEditedLineContent}
+                                    onSave={(newText) => {
+                                        const lines = note.content.split('\n');
+                                        lines[idx] = newText;
+                                        updateNote(note.id, lines.join('\n'));
+                                        setEditingLine({ noteId: null, lineIndex: null });
+                                    }}
+                                    onCancel={() =>
+                                        setEditingLine({ noteId: null, lineIndex: null })
+                                    }
+                                />
+                            );
+                        }
                         // If it's already a React element, just render it with the right click handler
                         const elementWithProps = React.cloneElement(line, {
                             key: idx,

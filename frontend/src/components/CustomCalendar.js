@@ -21,23 +21,26 @@ const CustomCalendar = () => {
         const parsedEvents = eventNotes.map(note => {
           const lines = note.content.split('\n');
           const eventDateLine = lines.find(line => line.trim().startsWith('event_date:'));
-          const eventDate = eventDateLine ? new Date(eventDateLine.split(':')[1].trim()) : null;
+          console.log(eventDateLine);
+          const eventDate = eventDateLine ? new Date(eventDateLine.split(':')[1].trim().split("T")[0]) : null;
           
           // Get the first line as the event title and remove 'event_description:'
           const title = lines[0].trim().replace('event_description:', '').trim();
           
-          return {
+          let obj= {
             id: note.id,
             title,
             date: eventDate,
             content: note.content
           };
+          console.log(obj.date);
+          return obj;
         }).filter(event => {
           // Filter out events without valid dates and events not from current year
           if (!event.date) return false;
           return event.date.getFullYear() === currentYear;
         });
-
+        console.log(parsedEvents.length);
         setEvents(parsedEvents);
       } catch (error) {
         console.error('Error fetching events:', error);

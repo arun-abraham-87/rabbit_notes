@@ -705,11 +705,11 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
             return (
               <div 
                 key={todo.id} 
-                className={`p-6 transition-colors duration-150 ${
+                className={`p-6 transition-colors duration-150 min-h-[160px] ${
                   index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                 } hover:bg-gray-100`}
               >
-                <div className="flex flex-col">
+                <div className="flex flex-col h-full">
                   <div className="flex-1">
                     <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
                       {formatContent(todo.content)}
@@ -1126,11 +1126,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
             return (
               <div 
                 key={note.id} 
-                className={`p-6 transition-colors duration-150 ${
+                className={`p-6 transition-colors duration-150 min-h-[160px] ${
                   index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                 } hover:bg-gray-100`}
               >
-                <div className="flex flex-col">
+                <div className="flex flex-col h-full">
                   <div className="flex-1">
                     <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
                       {formatContent(note.content)}

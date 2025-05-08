@@ -1637,6 +1637,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [revealedEvents, setRevealedEvents] = useState({});
+  const [eventIndicators, setEventIndicators] = useState('');
 
   useEffect(() => {
     const calculateUpcomingEvents = () => {
@@ -1648,6 +1649,8 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
 
       const eventNotes = notes.filter(note => note.content.includes('meta::event::'));
       const upcoming = [];
+      let hasTodayEvent = false;
+      let hasTomorrowEvent = false;
 
       eventNotes.forEach(note => {
         const lines = note.content.split('\n');
@@ -1673,6 +1676,18 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
           // If there's no next occurrence or invalid date, don't include the event
           if (!nextOccurrence || !(nextOccurrence instanceof Date)) return;
 
+          // Check if event is today or tomorrow
+          const eventDate = new Date(nextOccurrence);
+          eventDate.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+
+          if (eventDate.getTime() === today.getTime()) {
+            hasTodayEvent = true;
+          } else if (eventDate.getTime() === tomorrow.getTime()) {
+            hasTomorrowEvent = true;
+          }
+
           // Only include events within the next 7 days
           if (nextOccurrence >= today && nextOccurrence <= sevenDaysFromNow) {
             upcoming.push({
@@ -1691,6 +1706,17 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
           console.error('Error processing event:', error);
         }
       });
+
+      // Set event indicators
+      if (hasTodayEvent && hasTomorrowEvent) {
+        setEventIndicators('(Events Today & Tomorrow)');
+      } else if (hasTodayEvent) {
+        setEventIndicators('(Event Today)');
+      } else if (hasTomorrowEvent) {
+        setEventIndicators('(Event Tomorrow)');
+      } else {
+        setEventIndicators('');
+      }
 
       // Sort events by date
       upcoming.sort((a, b) => a.date - b.date);
@@ -1718,9 +1744,16 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <CalendarIcon className="h-6 w-6 text-blue-500" />
-            <h3 className="ml-3 text-lg font-semibold text-blue-800">
-              Upcoming Events ({upcomingEvents.length})
-            </h3>
+            <div className="ml-3">
+              <h3 className="text-lg font-semibold text-blue-800">
+                Upcoming Events ({upcomingEvents.length})
+              </h3>
+              {eventIndicators && (
+                <div className="text-blue-600 font-normal mt-1">
+                  {eventIndicators}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -1776,6 +1809,16 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
                               <EyeIcon className="h-5 w-5" />
                             </button>
                           )}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                          <ClockIcon className="h-4 w-4" />
+                          <span>
+                            {event.date.toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                           <CalendarIcon className="h-4 w-4" />
@@ -1951,6 +1994,16 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                             <EyeIcon className="h-5 w-5" />
                           </button>
                         )}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>
+                          {deadline.date.toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                         <CalendarIcon className="h-4 w-4" />

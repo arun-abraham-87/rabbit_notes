@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { loadAllNotes } from '../utils/ApiUtils';
-import { InformationCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { InformationCircleIcon, ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 const SYMBOL = 'XYZ'; // e.g., Apple Inc.
 
@@ -13,6 +13,9 @@ const StockPrice = () => {
   const [loading, setLoading] = useState(true);
   const [apiCalls, setApiCalls] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [shares, setShares] = useState(0);
+  const [totalValue, setTotalValue] = useState(0);
 
   // Initialize or update API call count
   useEffect(() => {
@@ -194,6 +197,13 @@ const StockPrice = () => {
     fetchData();
   }, []);
 
+  // Update total value when price or shares change
+  useEffect(() => {
+    if (price !== null) {
+      setTotalValue(shares * price);
+    }
+  }, [price, shares]);
+
   if (loading) {
     return (
       <div className="p-4 rounded-md bg-gray-100 shadow-md w-fit">
@@ -217,33 +227,98 @@ const StockPrice = () => {
 
   return (
     <div className="space-y-4">
-      {/* Stock Price Card */}
-      <div className="p-4 rounded-md bg-gray-100 shadow-md w-fit">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-bold">{SYMBOL} Stock Price</h2>
+      <div className="relative w-64 h-40">
+        {/* Front of card */}
+        <div 
+          className={`absolute w-full h-full p-4 rounded-md bg-gray-100 shadow-md transition-all duration-500 ${
+            isFlipped ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
+        >
+          <div className="mb-2">
+            <h2 className="text-lg font-bold">{SYMBOL} Stock Price</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <p className="text-green-700 text-xl">${price?.toFixed(2)}</p>
+            <button 
+              className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+              title="Refresh price"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRefresh();
+              }}
+              disabled={isRefreshing}
+            >
+              <ArrowPathIcon className={`h-5 w-5 text-gray-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+          <div className="mt-2 text-xs text-gray-600">
+            <p>API Calls Today: {apiCalls}</p>
+            <p>Last Updated: {new Date(JSON.parse(localStorage.getItem('stockPriceData') || '{"timestamp":0}').timestamp).toLocaleString()}</p>
+          </div>
           <button 
-            className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-            title="Refresh price"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
+            className="absolute top-2 right-2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+            onClick={() => setIsFlipped(true)}
           >
-            <ArrowPathIcon className={`h-5 w-5 text-gray-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <InformationCircleIcon className="h-5 w-5 text-gray-600" />
           </button>
         </div>
-        {error ? (
-          <p className="text-red-600">NO API Key</p>
-        ) : (
-          <>
-            <p className="text-green-700 text-xl">${price?.toFixed(2)}</p>
-            <div className="mt-2 text-xs text-gray-600">
-              <p>API Calls Today: {apiCalls}</p>
-              <p>Last Updated: {new Date(JSON.parse(localStorage.getItem('stockPriceData') || '{"timestamp":0}').timestamp).toLocaleString()}</p>
+
+        {/* Back of card */}
+        <div 
+          className={`absolute w-full h-full p-4 rounded-md bg-gray-100 shadow-md transition-all duration-500 ${
+            isFlipped ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold">Total Assets</h2>
+            <button 
+              className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+              onClick={() => setIsFlipped(false)}
+              title="Flip back"
+            >
+              <XMarkIcon className="h-5 w-5 text-gray-600" />
+            </button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-600">Number of Shares (X)</label>
+              <input
+                type="number"
+                value={shares}
+                onChange={(e) => setShares(Number(e.target.value))}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
             </div>
-          </>
-        )}
+            <div>
+              <p className="text-sm text-gray-600">Calculation</p>
+              <p className="text-lg font-mono">
+                {shares} × ${price?.toFixed(2)} = ${totalValue.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 export default StockPrice;
+
+// Add these styles to your CSS
+const styles = `
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+`;

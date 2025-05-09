@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { listJournals, loadJournal } from '../utils/ApiUtils';
-import { format, isWithinInterval, startOfDay, endOfDay, parseISO, startOfMonth, differenceInDays } from 'date-fns';
-import { FunnelIcon, XMarkIcon, BookOpenIcon, CalendarIcon, ClockIcon, EyeIcon, XCircleIcon } from '@heroicons/react/24/solid';
+import { format, isWithinInterval, startOfDay, endOfDay, parseISO, startOfMonth, differenceInDays, getMonth } from 'date-fns';
+import { FunnelIcon, XMarkIcon, BookOpenIcon, CalendarIcon, ClockIcon, EyeIcon, XCircleIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
 
 const JournalList = ({ onEditJournal, onNewJournal, initialJournals, onJournalsUpdate }) => {
   // Get default date range (start of current month to today)
@@ -22,6 +22,8 @@ const JournalList = ({ onEditJournal, onNewJournal, initialJournals, onJournalsU
   const [selectedJournal, setSelectedJournal] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(null);
+  const [expandedYear, setExpandedYear] = useState(null);
 
   useEffect(() => {
     setJournals(initialJournals);
@@ -265,19 +267,90 @@ const JournalList = ({ onEditJournal, onNewJournal, initialJournals, onJournalsU
             }, {})
           )
             .sort(([yearA], [yearB]) => Number(yearB) - Number(yearA))
-            .map(([year, count]) => (
-              <div key={year} className="p-4 rounded-lg bg-white border border-slate-200 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-[rgb(31_41_55_/_0.1)] rounded-full">
-                    <CalendarIcon className="h-5 w-5 text-[rgb(31_41_55)]" />
+            .map(([year, count]) => {
+              const isSelected = selectedYear === Number(year);
+              const isExpanded = expandedYear === Number(year);
+              
+              // Calculate monthly breakdown
+              const monthlyBreakdown = journals.reduce((acc, journal) => {
+                if (journal.preview?.trim()) {
+                  const journalDate = new Date(journal.date);
+                  if (journalDate.getFullYear() === Number(year)) {
+                    const month = getMonth(journalDate);
+                    acc[month] = (acc[month] || 0) + 1;
+                  }
+                }
+                return acc;
+              }, {});
+
+              return (
+                <div key={year}>
+                  <div 
+                    className={`p-4 rounded-lg bg-white border border-slate-200 shadow-sm cursor-pointer transition-all ${
+                      isSelected ? 'ring-2 ring-[rgb(31_41_55)]' : 'hover:shadow-md'
+                    }`}
+                    onClick={() => {
+                      setSelectedYear(isSelected ? null : Number(year));
+                      setExpandedYear(isExpanded ? null : Number(year));
+                      if (!isSelected) {
+                        setFilters(prev => ({
+                          ...prev,
+                          dateRange: {
+                            start: `${year}-01-01`,
+                            end: `${year}-12-31`
+                          }
+                        }));
+                      } else {
+                        setFilters(prev => ({
+                          ...prev,
+                          dateRange: defaultDateRange
+                        }));
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-[rgb(31_41_55_/_0.1)] rounded-full">
+                          <CalendarIcon className="h-5 w-5 text-[rgb(31_41_55)]" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">{year}</p>
+                          <p className="text-2xl font-bold text-gray-900">{count}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedYear(isExpanded ? null : Number(year));
+                        }}
+                        className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                      >
+                        {isExpanded ? (
+                          <ChevronUpIcon className="h-5 w-5 text-gray-500" />
+                        ) : (
+                          <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">{year}</p>
-                    <p className="text-2xl font-bold text-gray-900">{count}</p>
-                  </div>
+                  
+                  {/* Monthly Breakdown */}
+                  {isExpanded && (
+                    <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <h3 className="text-sm font-medium text-gray-700 mb-3">Monthly Breakdown</h3>
+                      <div className="grid grid-cols-3 gap-2">
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <div key={i} className="text-center p-2 bg-white rounded border border-gray-200">
+                            <p className="text-xs text-gray-500">{format(new Date(2000, i), 'MMM')}</p>
+                            <p className="text-sm font-semibold text-gray-900">{monthlyBreakdown[i] || 0}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
         </div>
       </div>
 

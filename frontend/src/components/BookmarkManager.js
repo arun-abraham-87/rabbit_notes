@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { createNote } from '../utils/ApiUtils';
 
 const WebsitePreview = ({ url, isVisible }) => {
@@ -717,6 +717,140 @@ const PinVerificationModal = ({ isOpen, onClose, onVerify }) => {
   );
 };
 
+const BookmarkEdit = ({ isOpen, onClose, bookmark, onSave }) => {
+  const [title, setTitle] = useState(bookmark?.title || '');
+  const [url, setUrl] = useState(bookmark?.url || '');
+  const [folderPath, setFolderPath] = useState(bookmark?.folderPath || '');
+  const [isHidden, setIsHidden] = useState(bookmark?.isHidden || false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (bookmark) {
+      setTitle(bookmark.title || '');
+      setUrl(bookmark.url || '');
+      setFolderPath(bookmark.folderPath || '');
+      setIsHidden(bookmark.isHidden || false);
+    }
+  }, [bookmark]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!url.trim()) {
+      setError('URL is required');
+      return;
+    }
+
+    try {
+      const updatedBookmark = {
+        ...bookmark,
+        title: title.trim(),
+        url: url.trim(),
+        folderPath: folderPath.trim(),
+        isHidden
+      };
+
+      await onSave(updatedBookmark);
+      onClose();
+    } catch (err) {
+      setError('Failed to save bookmark: ' + err.message);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-700">Edit Bookmark</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700">{error}</p>
+            </div>
+          )}
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+              Title
+            </label>
+            <input
+              type="text"
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter bookmark title"
+            />
+          </div>
+          <div>
+            <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-1">
+              URL
+            </label>
+            <input
+              type="url"
+              id="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter URL"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="folderPath" className="block text-sm font-medium text-gray-700 mb-1">
+              Folder Path
+            </label>
+            <input
+              type="text"
+              id="folderPath"
+              value={folderPath}
+              onChange={(e) => setFolderPath(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter folder path"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="isHidden"
+              checked={isHidden}
+              onChange={(e) => setIsHidden(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="isHidden" className="text-sm text-gray-700">
+              Mark as hidden
+            </label>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const BookmarkManager = ({ allNotes }) => {
   const [bookmarks, setBookmarks] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -746,6 +880,7 @@ const BookmarkManager = ({ allNotes }) => {
   const [groupByMonth, setGroupByMonth] = useState(false);
   const [isLoadTextModalOpen, setIsLoadTextModalOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [editingBookmark, setEditingBookmark] = useState(null);
 
   // Load web bookmarks from notes
   useEffect(() => {
@@ -1152,6 +1287,30 @@ const BookmarkManager = ({ allNotes }) => {
     }
   }, [bookmarks]);
 
+  const handleSaveBookmark = async (updatedBookmark) => {
+    try {
+      const content = [
+        `title:${updatedBookmark.title}`,
+        `url:${updatedBookmark.url}`,
+        `create_date:${updatedBookmark.dateAdded ? updatedBookmark.dateAdded.toISOString() : new Date().toISOString()}`,
+        'meta::web_bookmark',
+        updatedBookmark.isHidden ? 'meta::bookmark_hidden' : '',
+        '', // Empty line to separate meta from content
+        updatedBookmark.folderPath ? `Folder: ${updatedBookmark.folderPath}` : ''
+      ].filter(line => line).join('\n');
+
+      await createNote(content);
+      
+      // Update the bookmarks list
+      setBookmarks(prev => prev.map(b => 
+        b.id === updatedBookmark.id ? updatedBookmark : b
+      ));
+    } catch (error) {
+      console.error('Error updating bookmark:', error);
+      throw error;
+    }
+  };
+
   const renderBookmarkCard = (bookmark, index) => {
     const isPreviewable = isPreviewableUrl(bookmark.url);
     const count = bookmarkCounts[bookmark.url] || 0;
@@ -1211,6 +1370,13 @@ const BookmarkManager = ({ allNotes }) => {
               {bookmark.dateAdded.toLocaleDateString()}
             </div>
           )}
+          <button
+            onClick={() => setEditingBookmark(bookmark)}
+            className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+            title="Edit bookmark"
+          >
+            <PencilIcon className="h-4 w-4 text-gray-600" />
+          </button>
           {isPreviewable && !shouldMask && (
             <div
               className="w-8 h-8 flex items-center justify-center bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors"
@@ -1697,6 +1863,13 @@ const BookmarkManager = ({ allNotes }) => {
         isOpen={isPinModalOpen}
         onClose={() => setIsPinModalOpen(false)}
         onVerify={handlePinVerify}
+      />
+
+      <BookmarkEdit
+        isOpen={!!editingBookmark}
+        onClose={() => setEditingBookmark(null)}
+        bookmark={editingBookmark}
+        onSave={handleSaveBookmark}
       />
     </div>
   );

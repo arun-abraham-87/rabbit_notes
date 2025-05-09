@@ -1839,7 +1839,6 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
               >
                 <PlusIcon className="h-5 w-5" />
               </button>
-              <ChevronRightIcon className="h-5 w-5 text-blue-600" />
             </div>
           </div>
         </div>
@@ -2069,7 +2068,6 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
               >
                 <PlusIcon className="h-5 w-5" />
               </button>
-              <ChevronRightIcon className="h-5 w-5 text-blue-600" />
             </div>
           </div>
         </div>

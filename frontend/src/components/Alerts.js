@@ -609,38 +609,28 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     
     // Function to format a URL line
     const formatUrlLine = (line) => {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
       const urlMatch = line.match(urlRegex);
       if (!urlMatch) return line;
 
       const url = urlMatch[0];
       const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
       
-      if (markdownMatch) {
-        const customText = markdownMatch[1];
-        const markdownUrl = markdownMatch[2];
-        return (
-          <a
-            href={markdownUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline hover:text-blue-800"
-          >
-            {customText}
-          </a>
-        );
-      } else {
-        const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
-        return (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline hover:text-blue-800"
-          >
-            {hostname}
-          </a>
-        );
-      }
+      // Always use "Link" as the text, regardless of markdown or plain URL
+      return (
+        <a
+          href={markdownMatch ? markdownMatch[2] : url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
+            <path fillRule="evenodd" d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z" clipRule="evenodd" />
+            <path fillRule="evenodd" d="M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z" clipRule="evenodd" />
+          </svg>
+          Link
+        </a>
+      );
     };
 
     // If first line is URL
@@ -1023,38 +1013,28 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     
     // Function to format a URL line
     const formatUrlLine = (line) => {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
       const urlMatch = line.match(urlRegex);
       if (!urlMatch) return line;
 
       const url = urlMatch[0];
       const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
       
-      if (markdownMatch) {
-        const customText = markdownMatch[1];
-        const markdownUrl = markdownMatch[2];
-        return (
-          <a
-            href={markdownUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline hover:text-blue-800"
-          >
-            {customText}
-          </a>
-        );
-      } else {
-        const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
-        return (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline hover:text-blue-800"
-          >
-            {hostname}
-          </a>
-        );
-      }
+      // Always use "Link" as the text, regardless of markdown or plain URL
+      return (
+        <a
+          href={markdownMatch ? markdownMatch[2] : url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
+            <path fillRule="evenodd" d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z" clipRule="evenodd" />
+            <path fillRule="evenodd" d="M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z" clipRule="evenodd" />
+          </svg>
+          Link
+        </a>
+      );
     };
 
     // If first line is URL
@@ -1705,6 +1685,61 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [revealedEvents, setRevealedEvents] = useState({});
   const [eventIndicators, setEventIndicators] = useState('');
 
+  // Add the typewriter animation style
+  useEffect(() => {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+      @keyframes typewriter {
+        0% {
+          opacity: 0;
+        }
+        5% {
+          opacity: 1;
+        }
+        95% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      .typewriter-text {
+        display: inline-block;
+        font-weight: 600;
+        color: rgb(239, 68, 68);
+      }
+      .typewriter-text span {
+        display: inline-block;
+        opacity: 0;
+        animation: typewriter 3s infinite;
+      }
+      .typewriter-text span:nth-child(1) { animation-delay: 0s; }
+      .typewriter-text span:nth-child(2) { animation-delay: 0.1s; }
+      .typewriter-text span:nth-child(3) { animation-delay: 0.2s; }
+      .typewriter-text span:nth-child(4) { animation-delay: 0.3s; }
+      .typewriter-text span:nth-child(5) { animation-delay: 0.4s; }
+      .typewriter-text span:nth-child(6) { animation-delay: 0.5s; }
+      .typewriter-text span:nth-child(7) { animation-delay: 0.6s; }
+      .typewriter-text span:nth-child(8) { animation-delay: 0.7s; }
+      .typewriter-text span:nth-child(9) { animation-delay: 0.8s; }
+      .typewriter-text span:nth-child(10) { animation-delay: 0.9s; }
+      .typewriter-text span:nth-child(11) { animation-delay: 1s; }
+      .typewriter-text span:nth-child(12) { animation-delay: 1.1s; }
+      .typewriter-text span:nth-child(13) { animation-delay: 1.2s; }
+      .typewriter-text span:nth-child(14) { animation-delay: 1.3s; }
+      .typewriter-text span:nth-child(15) { animation-delay: 1.4s; }
+      .typewriter-text span:nth-child(16) { animation-delay: 1.5s; }
+      .typewriter-text span:nth-child(17) { animation-delay: 1.6s; }
+      .typewriter-text span:nth-child(18) { animation-delay: 1.7s; }
+      .typewriter-text span:nth-child(19) { animation-delay: 1.8s; }
+      .typewriter-text span:nth-child(20) { animation-delay: 1.9s; }
+    `;
+    document.head.appendChild(styleSheet);
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
+
   useEffect(() => {
     const calculateUpcomingEvents = () => {
       const today = new Date();
@@ -1780,7 +1815,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
         }
       });
 
-      // Set event indicators
+      // Set event indicators with animation class for today/tomorrow events
       if (hasTodayEvent && hasTomorrowEvent) {
         setEventIndicators('(Events Today & Tomorrow)');
       } else if (hasTodayEvent) {
@@ -1820,6 +1855,19 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
 
   if (upcomingEvents.length === 0) return null;
 
+  const renderAnimatedText = (text) => {
+    if (!text) return null;
+    // Replace spaces with non-breaking spaces to ensure they're preserved in the animation
+    const processedText = text.replace(/ /g, '\u00A0');
+    return (
+      <div className="typewriter-text">
+        {processedText.split('').map((char, index) => (
+          <span key={index}>{char}</span>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="bg-white shadow-lg rounded-lg overflow-hidden">
@@ -1832,8 +1880,11 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
                   Upcoming Events ({upcomingEvents.length})
                 </h3>
                 {eventIndicators && (
-                  <div className="text-blue-600 font-normal mt-1">
-                    {eventIndicators}
+                  <div className="mt-1">
+                    {eventIndicators.includes('Today') || eventIndicators.includes('Tomorrow') 
+                      ? renderAnimatedText(eventIndicators)
+                      : <span className="text-blue-600">{eventIndicators}</span>
+                    }
                   </div>
                 )}
               </div>
@@ -2576,12 +2627,71 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
     }));
   };
 
+  const formatReminderContent = (content) => {
+    const lines = content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    const firstLine = lines[0] || '';
+    const secondLine = lines[1] || '';
+
+    // Function to check if a line contains a URL
+    const hasUrl = (line) => {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      return urlRegex.test(line);
+    };
+
+    // Function to format a URL line
+    const formatUrlLine = (line) => {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const urlMatch = line.match(urlRegex);
+      if (!urlMatch) return line;
+
+      const url = urlMatch[0];
+      const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+      
+      return (
+        <a
+          href={markdownMatch ? markdownMatch[2] : url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
+            <path fillRule="evenodd" d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z" clipRule="evenodd" />
+            <path fillRule="evenodd" d="M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z" clipRule="evenodd" />
+          </svg>
+          Link
+        </a>
+      );
+    };
+
+    // If first line has URL
+    if (hasUrl(firstLine)) {
+      return (
+        <div className="text-lg font-medium text-purple-900">
+          {secondLine && <span className="mr-2">{secondLine}</span>}
+          {formatUrlLine(firstLine)}
+        </div>
+      );
+    }
+    
+    // If second line has URL
+    if (hasUrl(secondLine)) {
+      return (
+        <div className="text-lg font-medium text-purple-900">
+          <span className="mr-2">{firstLine}</span>
+          {formatUrlLine(secondLine)}
+        </div>
+      );
+    }
+
+    // If no URL in first two lines, return first line
+    return <div className="text-lg font-medium text-purple-900">{firstLine}</div>;
+  };
+
   if (reminders.length === 0) return null;
 
   return (
     <div className="space-y-4 w-full">
       {displayedReminders.map((note, index) => {
-        const firstLine = note.content.split('\n')[0].trim();
         const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
         const reviewTime = reviews[note.id];
         const cadence = getNoteCadence(note.id);
@@ -2611,34 +2721,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
                   </button>
                   <BellIcon className="h-5 w-5 text-purple-700" style={bellVibrateStyle} />
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-lg font-medium text-purple-900">
-                        {(() => {
-                          const firstLine = note.content.split('\n')[0].trim();
-                          const markdownMatch = firstLine.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
-                          
-                          if (markdownMatch) {
-                            const customText = markdownMatch[1];
-                            const url = markdownMatch[2];
-                            return (
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-purple-700 hover:text-purple-900 hover:underline inline-flex items-center gap-1"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                  <path fillRule="evenodd" d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z" clipRule="evenodd" />
-                                  <path fillRule="evenodd" d="M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z" clipRule="evenodd" />
-                                </svg>
-                                {customText}
-                              </a>
-                            );
-                          }
-                          return firstLine;
-                        })()}
-                      </h4>
-                    </div>
+                    {formatReminderContent(note.content)}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

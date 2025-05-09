@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/solid';
-import { loadAllNotes, updateNoteById ,deleteNoteById} from '../utils/ApiUtils';
-
+import { loadAllNotes, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import EditEventModal from './EditEventModal';
 
 const CalendarStats = ({ currentDate }) => {
@@ -132,7 +131,6 @@ const CustomCalendar = ({ allNotes }) => {
   const [events, setEvents] = useState([]);
   const [showAnniversary, setShowAnniversary] = useState(false);
   const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, date: null, event: null });
-
   const [editingEventNote, setEditingEventNote] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showDatePopup, setShowDatePopup] = useState(false);
@@ -141,8 +139,7 @@ const CustomCalendar = ({ allNotes }) => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const data = await loadAllNotes('', null);
-        const eventNotes = data.notes.filter(note => 
+        const eventNotes = allNotes.filter(note => 
           note.content.split('\n').some(line => line.trim().startsWith('event_date:'))
         );
 
@@ -179,7 +176,7 @@ const CustomCalendar = ({ allNotes }) => {
     };
 
     fetchEvents();
-  }, [showAnniversary]);
+  }, [allNotes, showAnniversary]);
 
   const daysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -223,6 +220,7 @@ const CustomCalendar = ({ allNotes }) => {
   };
 
   const isSelected = (date) => {
+    if (!selectedDate) return false;
     return date.getDate() === selectedDate.getDate() &&
       date.getMonth() === selectedDate.getMonth() &&
       date.getFullYear() === selectedDate.getFullYear();
@@ -265,7 +263,7 @@ const CustomCalendar = ({ allNotes }) => {
   };
 
   const handleEventClick = (e, event) => {
-    e.stopPropagation(); // Prevent the day cell click from triggering
+    e.stopPropagation();
     setSelectedEvent(event);
   };
 
@@ -512,14 +510,6 @@ const CustomCalendar = ({ allNotes }) => {
                 </div>
               )}
               <div className="flex justify-end space-x-3 mt-4">
-                <button
-                  onClick={() => {
-                    setShowDatePopup(false);
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
-                >
-                  Add Event
-                </button>
                 <button
                   onClick={handleCloseDatePopup}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"

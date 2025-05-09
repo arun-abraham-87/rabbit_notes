@@ -166,6 +166,7 @@ const CustomCalendar = () => {
     return [];
   });
   const [isTempEventModalOpen, setIsTempEventModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [tempEventForm, setTempEventForm] = useState({ name: '', date: '', endDate: '' });
 
   // Save temp events to localStorage when changed
@@ -191,23 +192,46 @@ const CustomCalendar = () => {
     e.preventDefault();
     if (!tempEventForm.name || !tempEventForm.date) return;
     
-    const newEvent = { ...tempEventForm, id: Date.now() };
-    console.log('Adding new temp event:', newEvent);
-    
-    setTempEvents(prev => {
-      const updatedEvents = [...prev, newEvent];
-      console.log('Updated temp events:', updatedEvents);
-      // Immediately save to localStorage
-      try {
-        localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
-      } catch (error) {
-        console.error('Error saving temp events to localStorage:', error);
-      }
-      return updatedEvents;
-    });
+    if (isEditMode) {
+      setTempEvents(prev => {
+        const updatedEvents = prev.map(ev => 
+          ev.id === tempEventForm.id ? tempEventForm : ev
+        );
+        try {
+          localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
+        } catch (error) {
+          console.error('Error saving temp events to localStorage:', error);
+        }
+        return updatedEvents;
+      });
+    } else {
+      const newEvent = { ...tempEventForm, id: Date.now() };
+      setTempEvents(prev => {
+        const updatedEvents = [...prev, newEvent];
+        try {
+          localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
+        } catch (error) {
+          console.error('Error saving temp events to localStorage:', error);
+        }
+        return updatedEvents;
+      });
+    }
     
     setTempEventForm({ name: '', date: '', endDate: '' });
     setIsTempEventModalOpen(false);
+    setIsEditMode(false);
+  };
+
+  const handleEditTempEvent = (event) => {
+    setTempEventForm(event);
+    setIsEditMode(true);
+    setIsTempEventModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setTempEventForm({ name: '', date: '', endDate: '' });
+    setIsTempEventModalOpen(false);
+    setIsEditMode(false);
   };
 
   const handleDeleteTempEvent = (id) => {
@@ -422,7 +446,20 @@ const CustomCalendar = () => {
                 {ev.endDate && (
                   <div className="text-xs text-gray-500">to {new Date(ev.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</div>
                 )}
-                <button onClick={() => handleDeleteTempEvent(ev.id)} className="mt-2 text-xs text-red-500 hover:underline self-end">Delete</button>
+                <div className="flex gap-2 mt-2 self-end">
+                  <button 
+                    onClick={() => handleEditTempEvent(ev)} 
+                    className="text-xs text-blue-500 hover:underline"
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteTempEvent(ev.id)} 
+                    className="text-xs text-red-500 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -432,23 +469,54 @@ const CustomCalendar = () => {
       {isTempEventModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
-            <h2 className="text-lg font-semibold mb-4">Add Temp Event</h2>
+            <h2 className="text-lg font-semibold mb-4">{isEditMode ? 'Edit Temp Event' : 'Add Temp Event'}</h2>
             <form onSubmit={handleTempEventSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Event Name</label>
-                <input type="text" name="name" value={tempEventForm.name} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" required />
+                <input 
+                  type="text" 
+                  name="name" 
+                  value={tempEventForm.name} 
+                  onChange={handleTempEventInput} 
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
+                  required 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Event Start Date</label>
-                <input type="date" name="date" value={tempEventForm.date} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" required />
+                <input 
+                  type="date" 
+                  name="date" 
+                  value={tempEventForm.date} 
+                  onChange={handleTempEventInput} 
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
+                  required 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Event End Date (optional)</label>
-                <input type="date" name="endDate" value={tempEventForm.endDate} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                <input 
+                  type="date" 
+                  name="endDate" 
+                  value={tempEventForm.endDate} 
+                  onChange={handleTempEventInput} 
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
+                />
               </div>
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setIsTempEventModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded-md text-gray-700">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
+                <button 
+                  type="button" 
+                  onClick={handleCloseModal} 
+                  className="px-4 py-2 bg-gray-200 rounded-md text-gray-700"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                >
+                  {isEditMode ? 'Save Changes' : 'Save'}
+                </button>
               </div>
             </form>
           </div>

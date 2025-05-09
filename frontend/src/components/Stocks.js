@@ -14,6 +14,7 @@ const StockPrice = () => {
   const [apiCalls, setApiCalls] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [marketStatus, setMarketStatus] = useState('');
   const [shares, setShares] = useState(() => {
     const savedShares = localStorage.getItem('stockShares');
     return savedShares ? parseInt(savedShares, 10) : 100;
@@ -223,6 +224,55 @@ const StockPrice = () => {
     localStorage.setItem('stockMultiplier', multiplier.toString());
   }, [multiplier]);
 
+  // Add this function to check market status
+  const checkMarketStatus = () => {
+    const now = new Date();
+    const etTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const day = etTime.getDay();
+    const hour = etTime.getHours();
+    const minute = etTime.getMinutes();
+    
+    // Check if it's a weekday (0 is Sunday, 6 is Saturday)
+    if (day === 0 || day === 6) {
+      const nextOpenDay = day === 0 ? 1 : 1; // Monday
+      const daysUntilOpen = (nextOpenDay + 7 - day) % 7;
+      setMarketStatus(`Market Closed (Weekend) - Opens in ${daysUntilOpen} days`);
+      return;
+    }
+    
+    // Convert current time to minutes for easier comparison
+    const currentTimeInMinutes = hour * 60 + minute;
+    const marketOpenTime = 9 * 60; // 9:00 AM
+    const marketCloseTime = 16 * 60; // 4:00 PM
+    
+    if (currentTimeInMinutes >= marketOpenTime && currentTimeInMinutes < marketCloseTime) {
+      const minutesUntilClose = marketCloseTime - currentTimeInMinutes;
+      const hoursUntilClose = Math.floor(minutesUntilClose / 60);
+      const remainingMinutes = minutesUntilClose % 60;
+      setMarketStatus(`Market Open - Closes in ${hoursUntilClose}h ${remainingMinutes}m`);
+    } else {
+      let minutesUntilOpen;
+      if (currentTimeInMinutes < marketOpenTime) {
+        // Market opens later today
+        minutesUntilOpen = marketOpenTime - currentTimeInMinutes;
+      } else {
+        // Market opens tomorrow
+        minutesUntilOpen = (24 * 60 - currentTimeInMinutes) + marketOpenTime;
+      }
+      const hoursUntilOpen = Math.floor(minutesUntilOpen / 60);
+      const remainingMinutes = minutesUntilOpen % 60;
+      setMarketStatus(`Market Closed - Opens in ${hoursUntilOpen}h ${remainingMinutes}m`);
+    }
+  };
+
+  // Add market status check to useEffect
+  useEffect(() => {
+    checkMarketStatus();
+    // Update market status every minute
+    const interval = setInterval(checkMarketStatus, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleValueSubmit = (e) => {
     e.preventDefault();
     const newValue = parseFloat(tempValue);
@@ -292,6 +342,9 @@ const StockPrice = () => {
           <div className="mt-2 text-xs text-gray-600">
             <p>API Calls Today: {apiCalls}</p>
             <p>Last Updated: {new Date(JSON.parse(localStorage.getItem('stockPriceData') || '{"timestamp":0}').timestamp).toLocaleString()}</p>
+            <p className={`mt-1 ${marketStatus.includes('Open') ? 'text-green-600' : 'text-red-600'}`}>
+              {marketStatus}
+            </p>
           </div>
           <button 
             className="absolute top-2 right-2 p-1 hover:bg-gray-200 rounded-full transition-colors"

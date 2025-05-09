@@ -259,8 +259,29 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                       : occurrence.isToday 
                         ? 'border-2 border-indigo-500 bg-indigo-50 shadow-md'
                         : 'bg-white border-gray-200'
-                  } shadow-sm`}>
-                    <div className="space-y-3">
+                  } shadow-sm flex`}>
+                    {/* Days indicator */}
+                    <div className={`flex flex-col items-center justify-center min-w-[80px] mr-4 rounded-l-lg ${
+                      occurrence.isPast 
+                        ? 'bg-gray-200 text-gray-600' 
+                        : occurrence.isToday 
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-blue-500 text-white'
+                    }`}>
+                      <div className="text-2xl font-bold">
+                        {occurrence.isPast 
+                          ? Math.ceil((new Date() - occurrence.date) / (1000 * 60 * 60 * 24))
+                          : occurrence.isToday 
+                            ? 0
+                            : Math.ceil((occurrence.date - new Date()) / (1000 * 60 * 60 * 24))
+                        }
+                      </div>
+                      <div className="text-xs font-medium">
+                        {occurrence.isPast ? 'DAYS AGO' : 'DAYS TO'}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 space-y-3">
                       {/* Event description and date row */}
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">

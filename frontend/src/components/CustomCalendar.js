@@ -23,6 +23,128 @@ const CustomTooltip = ({ event, currentDate }) => {
   );
 };
 
+const CalendarStats = ({ currentDate }) => {
+  const today = new Date();
+  const endOfYear = new Date(today.getFullYear(), 11, 31);
+  const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  
+  // Calculate days until end of year
+  const daysUntilEndOfYear = Math.ceil((endOfYear - today) / (1000 * 60 * 60 * 24));
+  
+  // Calculate weeks until end of year
+  const weeksUntilEndOfYear = Math.ceil(daysUntilEndOfYear / 7);
+  
+  // Calculate days until end of month
+  const daysUntilEndOfMonth = Math.ceil((endOfMonth - today) / (1000 * 60 * 60 * 24));
+  
+  // Calculate months left
+  const monthsLeft = 12 - today.getMonth();
+
+  // Calculate days completed in year
+  const startOfYear = new Date(today.getFullYear(), 0, 1);
+  const daysCompleted = Math.ceil((today - startOfYear) / (1000 * 60 * 60 * 24));
+  const totalDaysInYear = 365 + (today.getFullYear() % 4 === 0 ? 1 : 0); // Account for leap year
+  const daysCompletedPercentage = Math.round((daysCompleted / totalDaysInYear) * 100);
+
+  // Calculate months with 5 weeks
+  const getMonthsWith5Weeks = () => {
+    const monthsWith5Weeks = [];
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    // Start from current month
+    for (let month = today.getMonth(); month < 12; month++) {
+      const firstDay = new Date(today.getFullYear(), month, 1);
+      const lastDay = new Date(today.getFullYear(), month + 1, 0);
+      const firstWeek = Math.ceil(firstDay.getDate() / 7);
+      const lastWeek = Math.ceil(lastDay.getDate() / 7);
+      
+      if (firstWeek + lastWeek > 5) {
+        monthsWith5Weeks.push(monthNames[month]);
+      }
+    }
+    return monthsWith5Weeks;
+  };
+
+  const monthsWith5Weeks = getMonthsWith5Weeks();
+
+  // Calculate days until next salary
+  const getNextSalaryDate = () => {
+    const currentDay = today.getDate();
+    const nextSalary = new Date(today);
+    
+    if (currentDay >= 15) {
+      // If we're past the 15th, get the 15th of next month
+      nextSalary.setMonth(nextSalary.getMonth() + 1);
+    }
+    nextSalary.setDate(15);
+    return nextSalary;
+  };
+
+  const nextSalaryDate = getNextSalaryDate();
+  const daysUntilSalary = Math.ceil((nextSalaryDate - today) / (1000 * 60 * 60 * 24));
+
+  return (
+    <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <h3 className="text-lg font-semibold text-gray-900 mb-3">Time Statistics</h3>
+      
+      {/* Months Stats Row */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="bg-white p-3 rounded-lg shadow-sm">
+          <div className="text-sm text-gray-500">Months Left in Year</div>
+          <div className="text-2xl font-bold text-blue-600">{monthsLeft}</div>
+        </div>
+        <div className="bg-white p-3 rounded-lg shadow-sm">
+          <div className="text-sm text-gray-500">5-Week Months Remaining</div>
+          <div className="text-sm font-medium text-blue-600 mt-1">
+            {monthsWith5Weeks.length > 0 ? (
+              monthsWith5Weeks.join(', ')
+            ) : (
+              'None'
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Days Stats Row */}
+      <div className="grid grid-cols-4 gap-4 mb-4">
+        <div className="bg-white p-3 rounded-lg shadow-sm">
+          <div className="text-sm text-gray-500">Days Until Year End</div>
+          <div className="text-2xl font-bold text-blue-600">{daysUntilEndOfYear}</div>
+        </div>
+        <div className="bg-white p-3 rounded-lg shadow-sm">
+          <div className="text-sm text-gray-500">Weeks Until Year End</div>
+          <div className="text-2xl font-bold text-blue-600">{weeksUntilEndOfYear}</div>
+        </div>
+        <div className="bg-white p-3 rounded-lg shadow-sm">
+          <div className="text-sm text-gray-500">Days Until Month End</div>
+          <div className="text-2xl font-bold text-blue-600">{daysUntilEndOfMonth}</div>
+        </div>
+        <div className="bg-white p-3 rounded-lg shadow-sm">
+          <div className="text-sm text-gray-500">Days Completed</div>
+          <div className="text-2xl font-bold text-blue-600">{daysCompleted}</div>
+          <div className="text-xs text-gray-500 mt-1">
+            {daysCompletedPercentage}% of year
+          </div>
+        </div>
+      </div>
+
+      {/* Salary Stats Row */}
+      <div>
+        <div className="bg-white p-3 rounded-lg shadow-sm">
+          <div className="text-sm text-gray-500">Days Until Next Salary</div>
+          <div className="text-2xl font-bold text-green-600">{daysUntilSalary}</div>
+          <div className="text-xs text-gray-500 mt-1">
+            Next salary date: {nextSalaryDate.toLocaleDateString()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CustomCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -264,6 +386,9 @@ const CustomCalendar = () => {
           {renderCalendarDays()}
         </div>
       </div>
+
+      {/* Calendar Stats */}
+      <CalendarStats currentDate={currentDate} />
     </div>
   );
 };

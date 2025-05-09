@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon } from '@heroicons/react/24/outline';
+import { createNote } from '../utils/ApiUtils';
 
 const WebsitePreview = ({ url, isVisible }) => {
   const [isUnavailable, setIsUnavailable] = useState(false);
@@ -166,6 +167,7 @@ const BookmarkManager = () => {
   const [selectedYear, setSelectedYear] = useState(null);
   const [expandedYears, setExpandedYears] = useState(new Set());
   const [showDuplicates, setShowDuplicates] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [bookmarkCounts, setBookmarkCounts] = useState(() => {
     const savedCounts = localStorage.getItem('bookmarkCounts');
     return savedCounts ? JSON.parse(savedCounts) : {};
@@ -175,6 +177,42 @@ const BookmarkManager = () => {
     url: null,
     position: { x: 0, y: 0 }
   });
+
+  // Load web bookmarks from notes
+  useEffect(() => {
+    const loadWebBookmarks = async () => {
+      try {
+        const response = await fetch('/api/notes');
+        const allNotes = await response.json();
+        
+        const webBookmarks = allNotes
+          .filter(note => note.content.includes('meta::web_bookmark'))
+          .map(note => {
+            const lines = note.content.split('\n');
+            const title = lines.find(line => line.startsWith('title:'))?.slice(6) || '';
+            const url = lines.find(line => line.startsWith('url:'))?.slice(4) || '';
+            const createDate = lines.find(line => line.startsWith('create_date:'))?.slice(12);
+            const folderPath = lines.find(line => line.startsWith('Folder:'))?.slice(7) || 'Uncategorized';
+
+            return {
+              title,
+              url,
+              dateAdded: createDate ? new Date(createDate) : null,
+              folderPath,
+              icon: null // We don't store icons in notes
+            };
+          });
+
+        setBookmarks(webBookmarks);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error loading web bookmarks:', error);
+        setIsLoading(false);
+      }
+    };
+
+    loadWebBookmarks();
+  }, []);
 
   // Save counts to localStorage whenever they change
   useEffect(() => {
@@ -437,6 +475,37 @@ const BookmarkManager = () => {
     });
   }, []);
 
+  const saveBookmarksAsNotes = useCallback(async () => {
+    try {
+      const notes = bookmarks.map(bookmark => {
+        const content = [
+          `title:${bookmark.title || bookmark.url}`,
+          `url:${bookmark.url}`,
+          `create_date:${bookmark.dateAdded ? bookmark.dateAdded.toISOString() : new Date().toISOString()}`,
+          'meta::web_bookmark',
+          '', // Empty line to separate meta from content
+          bookmark.folderPath ? `Folder: ${bookmark.folderPath}` : ''
+        ].join('\n');
+
+        return {
+          content,
+          tags: ['web_bookmark'],
+          folder: bookmark.folderPath || 'Uncategorized'
+        };
+      });
+
+      // Save each note using createNote from apiUtils
+      for (const note of notes) {
+        await createNote(note.content);
+      }
+
+      alert(`Successfully saved ${notes.length} bookmarks as notes!`);
+    } catch (error) {
+      console.error('Error saving bookmarks as notes:', error);
+      alert('Error saving bookmarks as notes. Please try again.');
+    }
+  }, [bookmarks]);
+
   const renderBookmarkCard = (bookmark, index) => {
     const isPreviewable = isPreviewableUrl(bookmark.url);
     const count = bookmarkCounts[bookmark.url] || 0;
@@ -505,9 +574,22 @@ const BookmarkManager = () => {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-700">Bookmarks</h2>
+        {bookmarks.length > 0 && (
+          <button
+            onClick={saveBookmarksAsNotes}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <DocumentPlusIcon className="h-5 w-5" />
+            Save as Notes
+          </button>
+        )}
       </div>
 
-      {bookmarks.length > 0 && (
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+      ) : bookmarks.length > 0 ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg shadow-sm p-4">
@@ -619,89 +701,120 @@ const BookmarkManager = () => {
               </div>
             </div>
           </div>
-        </>
-      )}
 
-      <div
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-          isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-        }`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <BookmarkIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-        <p className="text-gray-600 mb-2">Drag and drop your Chrome bookmarks file here</p>
-        <p className="text-sm text-gray-500">The file should be named "bookmarks.html"</p>
-      </div>
+          <div className="mt-4">
+            <div className="mb-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search bookmarks (space-separated words)..."
+                  className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    title="Clear search"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+              {searchQuery.trim() && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Searching for: {searchQuery.split(/\s+/).filter(word => word.length > 0).join(', ')}
+                </p>
+              )}
+            </div>
 
-      {bookmarks.length > 0 && (
-        <div className="mt-4">
-          <div className="mb-4">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search bookmarks (space-separated words)..."
-                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-              {searchQuery && (
+            {(selectedHostname || selectedYear) && (
+              <div className="mb-4 flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-700">Showing bookmarks:</span>
+                  {selectedHostname && (
+                    <span className="text-sm font-medium text-blue-700">from {selectedHostname}</span>
+                  )}
+                  {selectedHostname && selectedYear && (
+                    <span className="text-sm text-gray-700">and</span>
+                  )}
+                  {selectedYear && (
+                    <span className="text-sm font-medium text-blue-700">from {selectedYear}</span>
+                  )}
+                </div>
                 <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-                  title="Clear search"
+                  onClick={() => {
+                    setSelectedHostname(null);
+                    setSelectedYear(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
                 >
                   <XMarkIcon className="h-5 w-5" />
                 </button>
-              )}
-            </div>
-            {searchQuery.trim() && (
-              <p className="text-sm text-gray-500 mt-1">
-                Searching for: {searchQuery.split(/\s+/).filter(word => word.length > 0).join(', ')}
-              </p>
-            )}
-          </div>
-
-          {(selectedHostname || selectedYear) && (
-            <div className="mb-4 flex items-center justify-between bg-blue-50 p-3 rounded-lg">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-700">Showing bookmarks:</span>
-                {selectedHostname && (
-                  <span className="text-sm font-medium text-blue-700">from {selectedHostname}</span>
-                )}
-                {selectedHostname && selectedYear && (
-                  <span className="text-sm text-gray-700">and</span>
-                )}
-                {selectedYear && (
-                  <span className="text-sm font-medium text-blue-700">from {selectedYear}</span>
-                )}
               </div>
-              <button
-                onClick={() => {
-                  setSelectedHostname(null);
-                  setSelectedYear(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
-            </div>
-          )}
+            )}
 
-          <h3 className="text-md font-medium text-gray-700 mb-3">
-            {filteredBookmarks.length === bookmarks.length 
-              ? `All Bookmarks (${bookmarks.length})`
-              : `Filtered Bookmarks (${filteredBookmarks.length} of ${bookmarks.length})`
-            }
-          </h3>
-          
-          <div className="space-y-6">
-            <div className="flex justify-end">
-              <button
-                onClick={() => {
-                  const allYears = Object.entries(
+            <h3 className="text-md font-medium text-gray-700 mb-3">
+              {filteredBookmarks.length === bookmarks.length 
+                ? `All Bookmarks (${bookmarks.length})`
+                : `Filtered Bookmarks (${filteredBookmarks.length} of ${bookmarks.length})`
+              }
+            </h3>
+            
+            <div className="space-y-6">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    const allYears = Object.entries(
+                      filteredBookmarks.reduce((groups, bookmark) => {
+                        const year = bookmark.dateAdded ? bookmark.dateAdded.getFullYear() : 'No Date';
+                        if (!groups[year]) {
+                          groups[year] = [];
+                        }
+                        groups[year].push(bookmark);
+                        return groups;
+                      }, {})
+                    ).map(([year]) => year);
+                    setExpandedYears(new Set(allYears));
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <ChevronRightIcon className="h-4 w-4 text-gray-500" />
+                  Expand All
+                </button>
+              </div>
+
+              {showDuplicates ? (
+                <div className="space-y-6">
+                  {groupedDuplicates?.map((group, groupIndex) => (
+                    <div key={`${group.type}-${group.value}`} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                      <div className="bg-gray-50 p-4 border-b">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {group.type === 'url' ? 'Duplicate URL' : 'Duplicate Title'}
+                            </h3>
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {group.count} {group.count === 1 ? 'occurrence' : 'occurrences'}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-sm text-gray-600 break-all">
+                          {group.value}
+                        </div>
+                      </div>
+                      <div className="divide-y">
+                        {group.bookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {Object.entries(
                     filteredBookmarks.reduce((groups, bookmark) => {
                       const year = bookmark.dateAdded ? bookmark.dateAdded.getFullYear() : 'No Date';
                       if (!groups[year]) {
@@ -710,94 +823,62 @@ const BookmarkManager = () => {
                       groups[year].push(bookmark);
                       return groups;
                     }, {})
-                  ).map(([year]) => year);
-                  setExpandedYears(new Set(allYears));
-                }}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <ChevronRightIcon className="h-4 w-4 text-gray-500" />
-                Expand All
-              </button>
+                  )
+                  .sort(([yearA], [yearB]) => {
+                    if (yearA === 'No Date') return 1;
+                    if (yearB === 'No Date') return -1;
+                    return parseInt(yearB) - parseInt(yearA);
+                  })
+                  .map(([year, yearBookmarks]) => (
+                    <div key={year} className="space-y-2">
+                      <div 
+                        className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                        onClick={() => toggleYear(year)}
+                      >
+                        <ChevronRightIcon 
+                          className={`h-5 w-5 text-orange-500 transition-transform ${
+                            expandedYears.has(year) ? 'transform rotate-90' : ''
+                          }`} 
+                        />
+                        <CalendarIcon className="h-5 w-5 text-orange-500" />
+                        <h4 className="text-lg font-semibold text-gray-700">
+                          {year === 'No Date' ? 'No Date' : year}
+                          <span className="ml-2 text-sm font-normal text-gray-500">
+                            ({yearBookmarks.length} {yearBookmarks.length === 1 ? 'bookmark' : 'bookmarks'})
+                          </span>
+                        </h4>
+                      </div>
+                      {expandedYears.has(year) && (
+                        <div className="space-y-2 pl-8">
+                          {yearBookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {showDuplicates ? (
-              <div className="space-y-6">
-                {groupedDuplicates?.map((group, groupIndex) => (
-                  <div key={`${group.type}-${group.value}`} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div className="bg-gray-50 p-4 border-b">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {group.type === 'url' ? 'Duplicate URL' : 'Duplicate Title'}
-                          </h3>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {group.count} {group.count === 1 ? 'occurrence' : 'occurrences'}
-                        </span>
-                      </div>
-                      <div className="mt-2 text-sm text-gray-600 break-all">
-                        {group.value}
-                      </div>
-                    </div>
-                    <div className="divide-y">
-                      {group.bookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {Object.entries(
-                  filteredBookmarks.reduce((groups, bookmark) => {
-                    const year = bookmark.dateAdded ? bookmark.dateAdded.getFullYear() : 'No Date';
-                    if (!groups[year]) {
-                      groups[year] = [];
-                    }
-                    groups[year].push(bookmark);
-                    return groups;
-                  }, {})
-                )
-                .sort(([yearA], [yearB]) => {
-                  if (yearA === 'No Date') return 1;
-                  if (yearB === 'No Date') return -1;
-                  return parseInt(yearB) - parseInt(yearA);
-                })
-                .map(([year, yearBookmarks]) => (
-                  <div key={year} className="space-y-2">
-                    <div 
-                      className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
-                      onClick={() => toggleYear(year)}
-                    >
-                      <ChevronRightIcon 
-                        className={`h-5 w-5 text-orange-500 transition-transform ${
-                          expandedYears.has(year) ? 'transform rotate-90' : ''
-                        }`} 
-                      />
-                      <CalendarIcon className="h-5 w-5 text-orange-500" />
-                      <h4 className="text-lg font-semibold text-gray-700">
-                        {year === 'No Date' ? 'No Date' : year}
-                        <span className="ml-2 text-sm font-normal text-gray-500">
-                          ({yearBookmarks.length} {yearBookmarks.length === 1 ? 'bookmark' : 'bookmarks'})
-                        </span>
-                      </h4>
-                    </div>
-                    {expandedYears.has(year) && (
-                      <div className="space-y-2 pl-8">
-                        {yearBookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+            {filteredBookmarks.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No bookmarks match your search
               </div>
             )}
           </div>
-
-          {filteredBookmarks.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No bookmarks match your search
-            </div>
-          )}
+        </>
+      ) : (
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+          }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <BookmarkIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-600 mb-2">No bookmarks found in notes</p>
+          <p className="text-sm text-gray-500 mb-4">Drag and drop your Chrome bookmarks file here to import them</p>
+          <p className="text-sm text-gray-500">The file should be named "bookmarks.html"</p>
         </div>
       )}
 

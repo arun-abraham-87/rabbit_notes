@@ -1,11 +1,23 @@
 import React, { useState, useCallback } from 'react';
 import { XMarkIcon, ArrowUpTrayIcon, CheckIcon } from '@heroicons/react/24/solid';
 import { saveJournal } from '../utils/ApiUtils';
-import { format } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 const JournalPreviewCard = ({ date, content, onSelect, isSelected }) => {
   const previewContent = content.length > 150 ? content.substring(0, 150) + '...' : content;
   const wordCount = content.split(/\s+/).filter(Boolean).length;
+
+  // Try to parse and format the date, fallback to raw date if parsing fails
+  let displayDate = date;
+  try {
+    const parsedDate = parseISO(date);
+    if (isValid(parsedDate)) {
+      displayDate = format(parsedDate, 'dd-MM-yyyy');
+    }
+  } catch (error) {
+    // Keep the original date if parsing fails
+    console.warn('Failed to parse date:', date);
+  }
 
   return (
     <div 
@@ -16,7 +28,7 @@ const JournalPreviewCard = ({ date, content, onSelect, isSelected }) => {
     >
       <div className="flex justify-between items-start mb-2">
         <div>
-          <h4 className="font-medium text-gray-900">{date}</h4>
+          <h4 className="font-medium text-gray-900">{displayDate}</h4>
           <p className="text-sm text-gray-500">{wordCount} words</p>
         </div>
         {isSelected && <CheckIcon className="h-5 w-5 text-blue-500" />}
@@ -84,9 +96,25 @@ const LoadJournalsModal = ({ isOpen, onClose, onJournalsLoaded }) => {
             return null;
           }
           
-          // Ignore position 0, use position 1 as date, combine rest as content
+          // Ignore position 0, use position 1 as date
           const date = parts[1].trim().replace(/'/g, ''); // Remove quotes
-          const content = parts.slice(2).join(',').trim(); // Combine remaining parts
+          
+          // Extract content between single quotes
+          const remainingText = parts.slice(2).join(',');
+          const contentMatch = remainingText.match(/'([^']*)'/);
+          const content = contentMatch ? contentMatch[1] : remainingText.trim();
+          
+          // Try to parse the date, if it fails, return null
+          try {
+            const parsedDate = parseISO(date);
+            if (!isValid(parsedDate)) {
+              console.warn('Invalid date:', date);
+              return null;
+            }
+          } catch (error) {
+            console.warn('Failed to parse date:', date);
+            return null;
+          }
           
           return {
             date,

@@ -975,6 +975,18 @@ const BookmarkManager = ({ allNotes }) => {
       });
     }
 
+    // Sort by created date (newest first)
+    filtered.sort((a, b) => {
+      const dateA = a.dateAdded || new Date(a.created_datetime);
+      const dateB = b.dateAdded || new Date(b.created_datetime);
+      return dateB - dateA;
+    });
+
+    // If no filters are applied, show only the first 100 bookmarks
+    if (!searchQuery.trim() && !selectedHostname && !selectedYear && selectedMonth === null) {
+      filtered = filtered.slice(0, 100);
+    }
+
     return filtered;
   }, [bookmarks, searchQuery, selectedHostname, selectedYear, selectedMonth]);
 
@@ -1135,6 +1147,100 @@ const BookmarkManager = ({ allNotes }) => {
     setSelectedMonth(null);
     setSelectedHostname(null);
   }, []);
+
+  const renderBookmarkList = () => {
+    if (showDuplicates) {
+      return (
+        <div className="space-y-6">
+          {groupedDuplicates?.map((group, groupIndex) => (
+            <div key={`${group.type}-${group.value}`} className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="bg-gray-50 p-4 border-b">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {group.type === 'url' ? 'Duplicate URL' : 'Duplicate Title'}
+                    </h3>
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    {group.count} {group.count === 1 ? 'occurrence' : 'occurrences'}
+                  </span>
+                </div>
+                <div className="mt-2 text-sm text-gray-600 break-all">
+                  {group.value}
+                </div>
+              </div>
+              <div className="divide-y">
+                {group.bookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // If any grouping filter is active, show grouped view
+    if (selectedYear || selectedMonth !== null) {
+      return (
+        <div className="space-y-6">
+          {Object.entries(
+            filteredBookmarks.reduce((groups, bookmark) => {
+              const year = bookmark.dateAdded ? bookmark.dateAdded.getFullYear() : 'No Date';
+              const month = groupByMonth && bookmark.dateAdded ? bookmark.dateAdded.getMonth() : null;
+              const key = month !== null ? `${year}-${month}` : year;
+              if (!groups[key]) {
+                groups[key] = [];
+              }
+              groups[key].push(bookmark);
+              return groups;
+            }, {})
+          )
+            .sort(([keyA], [keyB]) => {
+              if (keyA === 'No Date') return 1;
+              if (keyB === 'No Date') return -1;
+              return keyB.localeCompare(keyA);
+            })
+            .map(([key, yearBookmarks]) => (
+              <div key={key} className="space-y-2">
+                <div 
+                  className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                  onClick={() => toggleYear(key)}
+                >
+                  <ChevronRightIcon 
+                    className={`h-5 w-5 text-orange-500 transition-transform ${
+                      expandedYears.has(key) ? 'transform rotate-90' : ''
+                    }`} 
+                  />
+                  <CalendarIcon className="h-5 w-5 text-orange-500" />
+                  <h4 className="text-lg font-semibold text-gray-700">
+                    {key === 'No Date' ? 'No Date' : (
+                      key.includes('-') 
+                        ? `${new Date(2000, parseInt(key.split('-')[1]), 1).toLocaleString('default', { month: 'long' })} ${key.split('-')[0]}`
+                        : key
+                    )}
+                    <span className="ml-2 text-sm font-normal text-gray-500">
+                      ({yearBookmarks.length} {yearBookmarks.length === 1 ? 'bookmark' : 'bookmarks'})
+                    </span>
+                  </h4>
+                </div>
+                {expandedYears.has(key) && (
+                  <div className="space-y-2 pl-8">
+                    {yearBookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
+                  </div>
+                )}
+              </div>
+            ))}
+        </div>
+      );
+    }
+
+    // Default ungrouped view
+    return (
+      <div className="space-y-2">
+        {filteredBookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -1402,108 +1508,15 @@ const BookmarkManager = ({ allNotes }) => {
                 ? `All Bookmarks (${bookmarks.length})`
                 : `Filtered Bookmarks (${filteredBookmarks.length} of ${bookmarks.length})`
               }
+              {!searchQuery.trim() && !selectedHostname && !selectedYear && selectedMonth === null && (
+                <span className="text-sm text-gray-500 ml-2">
+                  (showing most recent 100)
+                </span>
+              )}
             </h3>
             
             <div className="space-y-6">
-              <div className="flex justify-end">
-                <button
-                  onClick={() => {
-                    const allYears = Object.entries(
-                      filteredBookmarks.reduce((groups, bookmark) => {
-                        const year = bookmark.dateAdded ? bookmark.dateAdded.getFullYear() : 'No Date';
-                        if (!groups[year]) {
-                          groups[year] = [];
-                        }
-                        groups[year].push(bookmark);
-                        return groups;
-                      }, {})
-                    ).map(([year]) => year);
-                    setExpandedYears(new Set(allYears));
-                  }}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <ChevronRightIcon className="h-4 w-4 text-gray-500" />
-                  Expand All
-                </button>
-              </div>
-
-              {showDuplicates ? (
-                <div className="space-y-6">
-                  {groupedDuplicates?.map((group, groupIndex) => (
-                    <div key={`${group.type}-${group.value}`} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                      <div className="bg-gray-50 p-4 border-b">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {group.type === 'url' ? 'Duplicate URL' : 'Duplicate Title'}
-                            </h3>
-                          </div>
-                          <span className="text-sm text-gray-500">
-                            {group.count} {group.count === 1 ? 'occurrence' : 'occurrences'}
-                          </span>
-                        </div>
-                        <div className="mt-2 text-sm text-gray-600 break-all">
-                          {group.value}
-                        </div>
-                      </div>
-                      <div className="divide-y">
-                        {group.bookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {Object.entries(
-                    filteredBookmarks.reduce((groups, bookmark) => {
-                      const year = bookmark.dateAdded ? bookmark.dateAdded.getFullYear() : 'No Date';
-                      const month = groupByMonth && bookmark.dateAdded ? bookmark.dateAdded.getMonth() : null;
-                      const key = month !== null ? `${year}-${month}` : year;
-                      if (!groups[key]) {
-                        groups[key] = [];
-                      }
-                      groups[key].push(bookmark);
-                      return groups;
-                    }, {})
-                  )
-                  .sort(([keyA], [keyB]) => {
-                    if (keyA === 'No Date') return 1;
-                    if (keyB === 'No Date') return -1;
-                    return keyB.localeCompare(keyA);
-                  })
-                  .map(([key, yearBookmarks]) => (
-                    <div key={key} className="space-y-2">
-                      <div 
-                        className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
-                        onClick={() => toggleYear(key)}
-                      >
-                        <ChevronRightIcon 
-                          className={`h-5 w-5 text-orange-500 transition-transform ${
-                            expandedYears.has(key) ? 'transform rotate-90' : ''
-                          }`} 
-                        />
-                        <CalendarIcon className="h-5 w-5 text-orange-500" />
-                        <h4 className="text-lg font-semibold text-gray-700">
-                          {key === 'No Date' ? 'No Date' : (
-                            key.includes('-') 
-                              ? `${new Date(2000, parseInt(key.split('-')[1]), 1).toLocaleString('default', { month: 'long' })} ${key.split('-')[0]}`
-                              : key
-                          )}
-                          <span className="ml-2 text-sm font-normal text-gray-500">
-                            ({yearBookmarks.length} {yearBookmarks.length === 1 ? 'bookmark' : 'bookmarks'})
-                          </span>
-                        </h4>
-                      </div>
-                      {expandedYears.has(key) && (
-                        <div className="space-y-2 pl-8">
-                          {yearBookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              {renderBookmarkList()}
             </div>
 
             {filteredBookmarks.length === 0 && (

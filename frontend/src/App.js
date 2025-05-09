@@ -616,7 +616,7 @@ const AppContent = () => {
                       <div className="h-full overflow-y-auto">
                         <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <div className="min-h-screen bg-gray-50 p-4">
-                            <BookmarkManager />
+                            <BookmarkManager allNotes={allNotes} />
                           </div>
                         </div>
                       </div>

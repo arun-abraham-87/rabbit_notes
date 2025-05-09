@@ -159,7 +159,7 @@ const YouTubePreview = ({ url, isVisible, position }) => {
   );
 };
 
-const BookmarkManager = () => {
+const BookmarkManager = ({ allNotes }) => {
   const [bookmarks, setBookmarks] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -180,11 +180,14 @@ const BookmarkManager = () => {
 
   // Load web bookmarks from notes
   useEffect(() => {
-    const loadWebBookmarks = async () => {
+    const loadWebBookmarks = () => {
       try {
-        const response = await fetch('/api/notes');
-        const allNotes = await response.json();
-        
+        if (!allNotes || !Array.isArray(allNotes)) {
+          console.error('allNotes is not a valid array:', allNotes);
+          setIsLoading(false);
+          return;
+        }
+
         const webBookmarks = allNotes
           .filter(note => note.content.includes('meta::web_bookmark'))
           .map(note => {
@@ -195,11 +198,13 @@ const BookmarkManager = () => {
             const folderPath = lines.find(line => line.startsWith('Folder:'))?.slice(7) || 'Uncategorized';
 
             return {
+              id: note.id,
               title,
               url,
-              dateAdded: createDate ? new Date(createDate) : null,
+              dateAdded: createDate ? new Date(createDate) : new Date(note.created_datetime),
               folderPath,
-              icon: null // We don't store icons in notes
+              icon: null, // We don't store icons in notes
+              created_datetime: note.created_datetime
             };
           });
 
@@ -212,7 +217,7 @@ const BookmarkManager = () => {
     };
 
     loadWebBookmarks();
-  }, []);
+  }, [allNotes]);
 
   // Save counts to localStorage whenever they change
   useEffect(() => {

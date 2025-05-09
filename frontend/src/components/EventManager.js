@@ -16,7 +16,7 @@ const EventManager = ({ selectedDate, onClose, onEventAdded, notes, setNotes, ev
     return [];
   });
 
-  const [isModalOpen, setIsModalOpen] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   
   // Format date to YYYY-MM-DD without timezone conversion
@@ -47,6 +47,7 @@ const EventManager = ({ selectedDate, onClose, onEventAdded, notes, setNotes, ev
         endDate: ''
       });
       setIsEditMode(true);
+      setIsModalOpen(true);
     } else {
       setEventForm({
         name: '',
@@ -157,7 +158,21 @@ const EventManager = ({ selectedDate, onClose, onEventAdded, notes, setNotes, ev
   return (
     <div className="flex flex-col gap-2 mb-6 bg-gray-50 rounded-xl">
       <div className="flex justify-between items-center mb-2">
-        {/* Remove the old button from here */}
+        <h2 className="text-lg font-semibold text-gray-900">Events</h2>
+        <button
+          onClick={() => {
+            setEventForm({
+              name: '',
+              date: selectedDate ? formatDate(selectedDate) : formatDate(new Date()),
+              endDate: ''
+            });
+            setIsEditMode(false);
+            setIsModalOpen(true);
+          }}
+          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+        >
+          <PlusIcon className="h-5 w-5" />
+        </button>
       </div>
       <div className="flex flex-wrap gap-3 items-start">
         {events.map(ev => {
@@ -190,12 +205,6 @@ const EventManager = ({ selectedDate, onClose, onEventAdded, notes, setNotes, ev
             </div>
           );
         })}
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-transparent text-gray-600 p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 h-8 w-8 flex items-center justify-center self-start mt-3"
-        >
-          <PlusIcon className="h-5 w-5" />
-        </button>
       </div>
 
       {/* Event Modal */}

@@ -429,7 +429,7 @@ const CustomCalendar = () => {
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-lg border border-indigo-700"
           >
             <PlusIcon className="h-5 w-5" />
-            Add Temp Event
+            Add Event
           </button>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -469,7 +469,7 @@ const CustomCalendar = () => {
       {isTempEventModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
-            <h2 className="text-lg font-semibold mb-4">{isEditMode ? 'Edit Temp Event' : 'Add Temp Event'}</h2>
+            <h2 className="text-lg font-semibold mb-4">{isEditMode ? 'Edit Event' : 'Add Event'}</h2>
             <form onSubmit={handleTempEventSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Event Name</label>

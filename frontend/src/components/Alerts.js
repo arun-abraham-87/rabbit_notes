@@ -2611,7 +2611,103 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
                     </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDismiss(note)}
+                    className="px-3 py-1 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                    title="Dismiss"
+                  >
+                    <CheckIcon className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
+              {isDetailsExpanded && (
+                <div className="mt-4 pl-8 space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <ClockIcon className="h-4 w-4" />
+                    <span>Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <ClockIcon className="h-4 w-4" />
+                    <span>Review cadence: {cadence.hours}h {cadence.minutes}m</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleSetCadence(note, 1)}
+                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                    >
+                      1h
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 2)}
+                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                    >
+                      2h
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 4)}
+                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                    >
+                      4h
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 6)}
+                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                    >
+                      6h
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 12)}
+                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                    >
+                      12h
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 24)}
+                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                    >
+                      24h
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 72)}
+                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                    >
+                      3d
+                    </button>
+                    <button
+                      onClick={() => handleSetCadence(note, 168)}
+                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                    >
+                      7d
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={customHours}
+                      onChange={(e) => setCustomHours(e.target.value)}
+                      placeholder="Hours"
+                      className="w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      min="0"
+                    />
+                    <input
+                      type="number"
+                      value={customMinutes}
+                      onChange={(e) => setCustomMinutes(e.target.value)}
+                      placeholder="Minutes"
+                      className="w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      min="0"
+                      max="59"
+                    />
+                    <button
+                      onClick={() => handleCustomTimeSubmit(note)}
+                      className="px-3 py-1 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                    >
+                      Set Custom
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );

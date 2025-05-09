@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 const WebsitePreview = ({ url, isVisible }) => {
   const [isUnavailable, setIsUnavailable] = useState(false);
@@ -140,6 +140,7 @@ const BookmarkManager = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedHostname, setSelectedHostname] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
+  const [expandedYears, setExpandedYears] = useState(new Set());
   const [previewState, setPreviewState] = useState({
     isVisible: false,
     url: null,
@@ -313,6 +314,18 @@ const BookmarkManager = () => {
     return url.includes('youtube.com') || url.includes('youtu.be') || url.startsWith('http');
   };
 
+  const toggleYear = useCallback((year) => {
+    setExpandedYears(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(year)) {
+        newSet.delete(year);
+      } else {
+        newSet.add(year);
+      }
+      return newSet;
+    });
+  }, []);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -443,9 +456,18 @@ const BookmarkManager = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search bookmarks (space-separated words)..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                  title="Clear search"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              )}
             </div>
             {searchQuery.trim() && (
               <p className="text-sm text-gray-500 mt-1">
@@ -488,6 +510,28 @@ const BookmarkManager = () => {
           </h3>
           
           <div className="space-y-6">
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  const allYears = Object.entries(
+                    filteredBookmarks.reduce((groups, bookmark) => {
+                      const year = bookmark.dateAdded ? bookmark.dateAdded.getFullYear() : 'No Date';
+                      if (!groups[year]) {
+                        groups[year] = [];
+                      }
+                      groups[year].push(bookmark);
+                      return groups;
+                    }, {})
+                  ).map(([year]) => year);
+                  setExpandedYears(new Set(allYears));
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <ChevronRightIcon className="h-4 w-4 text-gray-500" />
+                Expand All
+              </button>
+            </div>
+
             {Object.entries(
               filteredBookmarks.reduce((groups, bookmark) => {
                 const year = bookmark.dateAdded ? bookmark.dateAdded.getFullYear() : 'No Date';
@@ -505,7 +549,15 @@ const BookmarkManager = () => {
             })
             .map(([year, yearBookmarks]) => (
               <div key={year} className="space-y-2">
-                <div className="flex items-center gap-2 mb-2">
+                <div 
+                  className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                  onClick={() => toggleYear(year)}
+                >
+                  <ChevronRightIcon 
+                    className={`h-5 w-5 text-orange-500 transition-transform ${
+                      expandedYears.has(year) ? 'transform rotate-90' : ''
+                    }`} 
+                  />
                   <CalendarIcon className="h-5 w-5 text-orange-500" />
                   <h4 className="text-lg font-semibold text-gray-700">
                     {year === 'No Date' ? 'No Date' : year}
@@ -514,63 +566,65 @@ const BookmarkManager = () => {
                     </span>
                   </h4>
                 </div>
-                <div className="space-y-2 pl-8">
-                  {yearBookmarks.map((bookmark, index) => {
-                    const isPreviewable = isPreviewableUrl(bookmark.url);
-                    
-                    return (
-                      <div
-                        key={index}
-                        className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        {bookmark.icon && (
-                          <img
-                            src={bookmark.icon}
-                            alt=""
-                            className="w-4 h-4"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <a
-                            href={bookmark.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 truncate block"
-                          >
-                            {bookmark.title || bookmark.url}
-                          </a>
-                          <p className="text-sm text-gray-500 truncate">{bookmark.url}</p>
-                          {bookmark.folderPath && (
-                            <p className="text-xs text-gray-400 mt-1">
-                              <FolderIcon className="h-3 w-3 inline mr-1" />
-                              {bookmark.folderPath}
-                            </p>
+                {expandedYears.has(year) && (
+                  <div className="space-y-2 pl-8">
+                    {yearBookmarks.map((bookmark, index) => {
+                      const isPreviewable = isPreviewableUrl(bookmark.url);
+                      
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          {bookmark.icon && (
+                            <img
+                              src={bookmark.icon}
+                              alt=""
+                              className="w-4 h-4"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
                           )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {bookmark.dateAdded && (
-                            <div className="text-xs text-gray-400">
-                              {bookmark.dateAdded.toLocaleDateString()}
-                            </div>
-                          )}
-                          {isPreviewable && (
-                            <div
-                              className="w-8 h-8 flex items-center justify-center bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors"
-                              onMouseEnter={(e) => handleMouseEnter(e, bookmark.url)}
-                              onMouseLeave={handleMouseLeave}
-                              title="Preview"
+                          <div className="flex-1 min-w-0">
+                            <a
+                              href={bookmark.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 truncate block"
                             >
-                              <PlayIcon className="h-4 w-4 text-white" />
-                            </div>
-                          )}
+                              {bookmark.title || bookmark.url}
+                            </a>
+                            <p className="text-sm text-gray-500 truncate">{bookmark.url}</p>
+                            {bookmark.folderPath && (
+                              <p className="text-xs text-gray-400 mt-1">
+                                <FolderIcon className="h-3 w-3 inline mr-1" />
+                                {bookmark.folderPath}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {bookmark.dateAdded && (
+                              <div className="text-xs text-gray-400">
+                                {bookmark.dateAdded.toLocaleDateString()}
+                              </div>
+                            )}
+                            {isPreviewable && (
+                              <div
+                                className="w-8 h-8 flex items-center justify-center bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors"
+                                onMouseEnter={(e) => handleMouseEnter(e, bookmark.url)}
+                                onMouseLeave={handleMouseLeave}
+                                title="Preview"
+                              >
+                                <PlayIcon className="h-4 w-4 text-white" />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>

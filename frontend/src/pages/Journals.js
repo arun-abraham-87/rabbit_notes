@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import JournalList from '../components/JournalList';
 import JournalEditor from '../components/JournalEditor';
 import JournalStats from '../components/JournalStats';
-import { ChartBarIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import LoadJournalsModal from '../components/LoadJournalsModal';
+import { ChartBarIcon, XMarkIcon, ArrowUpTrayIcon } from '@heroicons/react/24/solid';
 import { listJournals } from '../utils/ApiUtils';
 
 const Journals = () => {
@@ -10,6 +11,7 @@ const Journals = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [journals, setJournals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showLoadModal, setShowLoadModal] = useState(false);
 
   useEffect(() => {
     loadJournals();
@@ -54,7 +56,15 @@ const Journals = () => {
     <div className="min-h-screen">
       {currentView === 'list' && (
         <>
-          <div className="flex justify-end p-4">
+          <div className="flex justify-end p-4 gap-2">
+            <button
+              onClick={() => setShowLoadModal(true)}
+              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+              title="Load Journals"
+            >
+              <ArrowUpTrayIcon className="h-5 w-5" />
+              <span>Load Journals</span>
+            </button>
             <button
               onClick={() => setCurrentView('stats')}
               className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
@@ -114,6 +124,12 @@ const Journals = () => {
           <JournalStats journals={journals} />
         </>
       )}
+
+      <LoadJournalsModal
+        isOpen={showLoadModal}
+        onClose={() => setShowLoadModal(false)}
+        onJournalsLoaded={loadJournals}
+      />
     </div>
   );
 };

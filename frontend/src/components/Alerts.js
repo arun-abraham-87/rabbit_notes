@@ -21,7 +21,8 @@ import {
   EyeIcon,
   PencilIcon,
   ChevronRightIcon,
-  BellIcon
+  BellIcon,
+  FireIcon
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon, createNote, exportAllNotes } from '../utils/ApiUtils';
@@ -679,7 +680,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         <div className="bg-red-50 px-6 py-4 border-b border-red-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
+              <FireIcon className="h-6 w-6 text-red-500" />
               <h3 className="ml-3 text-base font-semibold text-red-800">
                 Critical Todos ({criticalTodos.length})
               </h3>

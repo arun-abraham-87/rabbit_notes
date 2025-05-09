@@ -94,24 +94,18 @@ const EventManager = () => {
   };
 
   return (
-    <div className="flex flex-col gap-2 mb-6 bg-indigo-50 border-2 border-indigo-300 rounded-xl p-4 shadow-lg">
+    <div className="flex flex-col gap-2 mb-6 bg-gray-50 rounded-xl">
       <div className="flex justify-between items-center mb-2">
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-lg border border-indigo-700"
-        >
-          <PlusIcon className="h-5 w-5" />
-          Add Event
-        </button>
+        {/* Remove the old button from here */}
       </div>
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 items-start">
         {events.map(ev => {
           const eventDate = new Date(ev.date + 'T' + (ev.start || '00:00'));
           const now = new Date();
           const daysLeft = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
           return (
             <div key={ev.id} className="flex flex-col items-start bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs">
-              <div className="text-2xl font-bold text-indigo-600">{daysLeft > 0 ? daysLeft : 0}</div>
+              <div className="text-2xl font-bold text-gray-600">{daysLeft > 0 ? daysLeft : 0}</div>
               <div className="text-xs text-gray-400 -mt-1 mb-1">days</div>
               <div className="font-medium text-gray-900 truncate w-full">{ev.name}</div>
               <div className="text-sm text-gray-500">{new Date(ev.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
@@ -135,6 +129,12 @@ const EventManager = () => {
             </div>
           );
         })}
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="bg-transparent text-gray-600 p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 h-8 w-8 flex items-center justify-center self-start mt-3"
+        >
+          <PlusIcon className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Event Modal */}
@@ -185,7 +185,7 @@ const EventManager = () => {
                 </button>
                 <button 
                   type="submit" 
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
                 >
                   {isEditMode ? 'Save Changes' : 'Save'}
                 </button>

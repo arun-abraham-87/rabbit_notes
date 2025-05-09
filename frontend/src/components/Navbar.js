@@ -16,6 +16,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
     { id: 'expense', label: 'Expense', show: settings?.navigation?.showExpensePage !== false },
     { id: 'trackers', label: 'Trackers', show: settings?.navigation?.showTrackersPage !== false },
     { id: 'calendar', label: 'Calendar', show: settings?.navigation?.showCalendarPage !== false },
+    { id: 'bookmarks', label: 'Bookmarks', show: settings?.navigation?.showBookmarksPage !== false },
   ].filter(button => button.show);
 
   const NavButton = ({ id, label }) => (

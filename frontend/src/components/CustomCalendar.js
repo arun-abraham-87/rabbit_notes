@@ -151,36 +151,78 @@ const CustomCalendar = () => {
   const [events, setEvents] = useState([]);
   const [showAnniversary, setShowAnniversary] = useState(false);
   const [hoveredEvent, setHoveredEvent] = useState(null);
-  // Temp event tracking state
-  const [tempEvents, setTempEvents] = useState([]);
+  const [tempEvents, setTempEvents] = useState(() => {
+    try {
+      const stored = localStorage.getItem('tempEvents');
+      console.log('Initial load from localStorage:', stored);
+      if (stored && stored !== '[]') {
+        const parsed = JSON.parse(stored);
+        console.log('Parsed initial events:', parsed);
+        return Array.isArray(parsed) ? parsed : [];
+      }
+    } catch (error) {
+      console.error('Error loading initial temp events:', error);
+    }
+    return [];
+  });
   const [isTempEventModalOpen, setIsTempEventModalOpen] = useState(false);
   const [tempEventForm, setTempEventForm] = useState({ name: '', date: '', endDate: '' });
 
-  // Load temp events from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('tempEvents');
-    if (stored) setTempEvents(JSON.parse(stored));
-  }, []);
   // Save temp events to localStorage when changed
   useEffect(() => {
-    localStorage.setItem('tempEvents', JSON.stringify(tempEvents));
+    if (tempEvents.length > 0) {
+      console.log('Saving temp events to localStorage:', tempEvents);
+      try {
+        const serialized = JSON.stringify(tempEvents);
+        console.log('Serialized data being saved:', serialized);
+        localStorage.setItem('tempEvents', serialized);
+      } catch (error) {
+        console.error('Error saving temp events to localStorage:', error);
+      }
+    }
   }, [tempEvents]);
+
   const handleTempEventInput = (e) => {
     const { name, value } = e.target;
     setTempEventForm(f => ({ ...f, [name]: value }));
   };
+
   const handleTempEventSubmit = (e) => {
     e.preventDefault();
     if (!tempEventForm.name || !tempEventForm.date) return;
-    setTempEvents(prev => [
-      ...prev,
-      { ...tempEventForm, id: Date.now() }
-    ]);
+    
+    const newEvent = { ...tempEventForm, id: Date.now() };
+    console.log('Adding new temp event:', newEvent);
+    
+    setTempEvents(prev => {
+      const updatedEvents = [...prev, newEvent];
+      console.log('Updated temp events:', updatedEvents);
+      // Immediately save to localStorage
+      try {
+        localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
+      } catch (error) {
+        console.error('Error saving temp events to localStorage:', error);
+      }
+      return updatedEvents;
+    });
+    
     setTempEventForm({ name: '', date: '', endDate: '' });
     setIsTempEventModalOpen(false);
   };
+
   const handleDeleteTempEvent = (id) => {
-    setTempEvents(prev => prev.filter(ev => ev.id !== id));
+    console.log('Deleting temp event with id:', id);
+    setTempEvents(prev => {
+      const updatedEvents = prev.filter(ev => ev.id !== id);
+      console.log('Updated temp events after deletion:', updatedEvents);
+      // Immediately save to localStorage
+      try {
+        localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
+      } catch (error) {
+        console.error('Error saving temp events to localStorage:', error);
+      }
+      return updatedEvents;
+    });
   };
 
   // Fetch events from notes

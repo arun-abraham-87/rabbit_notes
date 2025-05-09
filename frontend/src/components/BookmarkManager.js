@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { createNote } from '../utils/ApiUtils';
 
 const WebsitePreview = ({ url, isVisible }) => {
@@ -209,6 +209,380 @@ const LoadBookmarksModal = ({ isOpen, onClose, onDrop }) => {
   );
 };
 
+const LoadBookmarksTextModal = ({ isOpen, onClose, allNotes }) => {
+  const [text, setText] = useState('');
+  const [error, setError] = useState(null);
+  const [parsedNotes, setParsedNotes] = useState([]);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [duplicates, setDuplicates] = useState([]);
+  const [showDuplicates, setShowDuplicates] = useState(false);
+  const [loadWithoutDuplicates, setLoadWithoutDuplicates] = useState(false);
+  const [markAsHidden, setMarkAsHidden] = useState(false);
+
+  const validateUrl = (url) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const parseUrl = (url) => {
+    // Remove trailing slash if present
+    url = url.replace(/\/$/, '');
+    
+    // Handle Instagram URLs
+    if (url.startsWith('https://www.instagram.com/')) {
+      const parts = url.split('/');
+      const username = parts[parts.length - 1];
+      return `instagram:${username}`;
+    }
+
+    // Handle other URLs
+    let processedUrl = url
+      .replace(/^https?:\/\//, '') // Remove http(s)://
+      .replace(/_/g, '/') // Replace underscores with slashes
+      .replace(/[^a-zA-Z0-9\/]/g, '_'); // Replace special characters with underscore
+
+    return processedUrl;
+  };
+
+  const handleSubmit = () => {
+    setError(null);
+    setDuplicates([]);
+    setLoadWithoutDuplicates(false);
+    const lines = text.split('\n').filter(line => line.trim());
+    
+    if (lines.length === 0) {
+      setError('Please enter at least one URL');
+      return;
+    }
+
+    // Get existing bookmarks from allNotes
+    const existingBookmarks = allNotes
+      .filter(note => note.content.includes('meta::web_bookmark'))
+      .map(note => {
+        const lines = note.content.split('\n');
+        const url = lines.find(line => line.startsWith('url:'))?.slice(4) || '';
+        return url.toLowerCase();
+      });
+
+    const notes = [];
+    const invalidUrls = [];
+    const urlMap = new Map(); // To track duplicates
+    const titleMap = new Map(); // To track title duplicates
+    const existingDuplicates = []; // To track duplicates with existing bookmarks
+
+    lines.forEach(line => {
+      const url = line.trim();
+      if (!validateUrl(url)) {
+        invalidUrls.push(url);
+      } else {
+        const title = parseUrl(url);
+        const normalizedUrl = url.toLowerCase();
+        
+        // Check for URL duplicates in the input
+        if (urlMap.has(normalizedUrl)) {
+          urlMap.get(normalizedUrl).count++;
+        } else {
+          urlMap.set(normalizedUrl, { url, count: 1 });
+        }
+
+        // Check for title duplicates in the input
+        if (titleMap.has(title)) {
+          titleMap.get(title).count++;
+        } else {
+          titleMap.set(title, { title, count: 1 });
+        }
+
+        // Check for duplicates with existing bookmarks
+        if (existingBookmarks.includes(normalizedUrl)) {
+          existingDuplicates.push({
+            type: 'existing',
+            value: url,
+            count: 1
+          });
+        }
+
+        notes.push({
+          url,
+          title,
+          isHidden: markAsHidden
+        });
+      }
+    });
+
+    if (invalidUrls.length > 0) {
+      setError(`Invalid URLs found:\n${invalidUrls.join('\n')}`);
+      return;
+    }
+
+    // Find duplicates in the input
+    const inputDuplicates = [];
+    urlMap.forEach((value, key) => {
+      if (value.count > 1) {
+        inputDuplicates.push({
+          type: 'url',
+          value: value.url,
+          count: value.count
+        });
+      }
+    });
+
+    titleMap.forEach((value, key) => {
+      if (value.count > 1) {
+        inputDuplicates.push({
+          type: 'title',
+          value: value.title,
+          count: value.count
+        });
+      }
+    });
+
+    // Combine all duplicates
+    const allDuplicates = [...inputDuplicates, ...existingDuplicates];
+    setDuplicates(allDuplicates);
+    setParsedNotes(notes);
+    setShowDuplicates(true);
+  };
+
+  const handleContinue = () => {
+    setShowDuplicates(false);
+    if (loadWithoutDuplicates) {
+      // Filter out duplicates
+      const duplicateUrls = new Set(duplicates.map(d => d.value.toLowerCase()));
+      const filteredNotes = parsedNotes.filter(note => !duplicateUrls.has(note.url.toLowerCase()));
+      setParsedNotes(filteredNotes);
+    }
+    setShowConfirmation(true);
+  };
+
+  const handleConfirm = async () => {
+    try {
+      for (const note of parsedNotes) {
+        const content = [
+          `title:${note.title}`,
+          `url:${note.url}`,
+          `create_date:${new Date().toISOString()}`,
+          'meta::web_bookmark',
+          note.isHidden ? 'meta::bookmark_hidden' : '',
+          '', // Empty line to separate meta from content
+        ].filter(line => line).join('\n');
+
+        await createNote(content);
+      }
+      onClose();
+    } catch (error) {
+      setError('Error creating notes: ' + error.message);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  if (showDuplicates) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-700">Duplicate Check</h3>
+            <button
+              onClick={() => {
+                setShowDuplicates(false);
+                setDuplicates([]);
+                setParsedNotes([]);
+                setLoadWithoutDuplicates(false);
+              }}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="space-y-4">
+            {duplicates.length > 0 ? (
+              <>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h4 className="text-yellow-800 font-medium mb-2">Found {duplicates.length} duplicates:</h4>
+                  <div className="space-y-2">
+                    {duplicates.map((dup, index) => (
+                      <div key={index} className="text-sm text-yellow-700">
+                        {dup.type === 'url' ? 'URL' : dup.type === 'title' ? 'Title' : 'Existing'} duplicate: "{dup.value}" {dup.type === 'existing' ? '(already exists in notes)' : `(${dup.count} occurrences)`}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <input
+                    type="checkbox"
+                    id="loadWithoutDuplicates"
+                    checked={loadWithoutDuplicates}
+                    onChange={(e) => setLoadWithoutDuplicates(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="loadWithoutDuplicates" className="text-sm text-gray-700">
+                    Load without duplicates ({parsedNotes.length - duplicates.length} unique URLs)
+                  </label>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      setShowDuplicates(false);
+                      setDuplicates([]);
+                      setParsedNotes([]);
+                      setLoadWithoutDuplicates(false);
+                    }}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleContinue}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    {loadWithoutDuplicates ? 'Load Without Duplicates' : 'Continue Anyway'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-green-700">No duplicates found!</p>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      setShowDuplicates(false);
+                      setDuplicates([]);
+                      setParsedNotes([]);
+                      setLoadWithoutDuplicates(false);
+                    }}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleContinue}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (showConfirmation) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-700">Confirm Notes Creation</h3>
+            <button
+              onClick={() => {
+                setShowConfirmation(false);
+                setParsedNotes([]);
+                setDuplicates([]);
+                setLoadWithoutDuplicates(false);
+              }}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="space-y-4">
+            <div className="max-h-96 overflow-y-auto">
+              {parsedNotes.map((note, index) => (
+                <div key={index} className="p-3 bg-gray-50 rounded-lg mb-2">
+                  <div className="font-medium text-gray-900">{note.title}</div>
+                  <div className="text-sm text-gray-500 break-all">{note.url}</div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowConfirmation(false);
+                  setParsedNotes([]);
+                  setDuplicates([]);
+                  setLoadWithoutDuplicates(false);
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Create {parsedNotes.length} Notes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-700">Load Bookmarks from Text</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        <div className="space-y-4">
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 whitespace-pre-line">{error}</p>
+            </div>
+          )}
+          <div className="flex items-center gap-2 mb-2">
+            <input
+              type="checkbox"
+              id="markAsHidden"
+              checked={markAsHidden}
+              onChange={(e) => setMarkAsHidden(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="markAsHidden" className="text-sm text-gray-700">
+              Mark bookmarks as hidden
+            </label>
+          </div>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Paste your bookmarks text here (one URL per line)..."
+            className="w-full h-96 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Submit
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SummaryModal = ({ isOpen, onClose, newBookmarks, existingCount, onConfirm }) => {
   if (!isOpen) return null;
 
@@ -274,9 +648,12 @@ const BookmarkManager = ({ allNotes }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedHostname, setSelectedHostname] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(null);
   const [expandedYears, setExpandedYears] = useState(new Set());
   const [showDuplicates, setShowDuplicates] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isWebStatsExpanded, setIsWebStatsExpanded] = useState(false);
+  const [isYearlyStatsExpanded, setIsYearlyStatsExpanded] = useState(false);
   const [bookmarkCounts, setBookmarkCounts] = useState(() => {
     const savedCounts = localStorage.getItem('bookmarkCounts');
     return savedCounts ? JSON.parse(savedCounts) : {};
@@ -290,6 +667,8 @@ const BookmarkManager = ({ allNotes }) => {
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [newBookmarks, setNewBookmarks] = useState([]);
   const [duplicateCount, setDuplicateCount] = useState(0);
+  const [groupByMonth, setGroupByMonth] = useState(false);
+  const [isLoadTextModalOpen, setIsLoadTextModalOpen] = useState(false);
 
   // Load web bookmarks from notes
   useEffect(() => {
@@ -309,6 +688,7 @@ const BookmarkManager = ({ allNotes }) => {
             const url = lines.find(line => line.startsWith('url:'))?.slice(4) || '';
             const createDate = lines.find(line => line.startsWith('create_date:'))?.slice(12);
             const folderPath = lines.find(line => line.startsWith('Folder:'))?.slice(7) || 'Uncategorized';
+            const isHidden = note.content.includes('meta::bookmark_hidden');
 
             return {
               id: note.id,
@@ -317,7 +697,8 @@ const BookmarkManager = ({ allNotes }) => {
               dateAdded: createDate ? new Date(createDate) : new Date(note.created_datetime),
               folderPath,
               icon: null, // We don't store icons in notes
-              created_datetime: note.created_datetime
+              created_datetime: note.created_datetime,
+              isHidden
             };
           });
 
@@ -459,20 +840,38 @@ const BookmarkManager = ({ allNotes }) => {
       .map(([folder, count]) => ({ folder, count }));
   }, [bookmarks]);
 
-  // Calculate yearly statistics
+  // Calculate yearly and monthly statistics
   const yearlyStats = useMemo(() => {
     const yearCounts = bookmarks.reduce((acc, bookmark) => {
       if (bookmark.dateAdded) {
         const year = bookmark.dateAdded.getFullYear();
-        acc[year] = (acc[year] || 0) + 1;
+        if (!acc[year]) {
+          acc[year] = {
+            count: 0,
+            months: {}
+          };
+        }
+        acc[year].count++;
+
+        if (groupByMonth) {
+          const month = bookmark.dateAdded.getMonth();
+          if (!acc[year].months[month]) {
+            acc[year].months[month] = 0;
+          }
+          acc[year].months[month]++;
+        }
       }
       return acc;
     }, {});
 
     return Object.entries(yearCounts)
-      .sort(([a], [b]) => b - a) // Sort years in descending order
-      .map(([year, count]) => ({ year, count }));
-  }, [bookmarks]);
+      .sort(([a], [b]) => b - a)
+      .map(([year, data]) => ({
+        year,
+        count: data.count,
+        months: data.months
+      }));
+  }, [bookmarks, groupByMonth]);
 
   // Calculate duplicate bookmarks
   const duplicateStats = useMemo(() => {
@@ -522,7 +921,7 @@ const BookmarkManager = ({ allNotes }) => {
     };
   }, [bookmarks]);
 
-  // Filter bookmarks based on search, selected hostname, selected year, and duplicates
+  // Filter bookmarks based on search, selected hostname, selected year, selected month, and duplicates
   const filteredBookmarks = useMemo(() => {
     let filtered = bookmarks;
 
@@ -538,12 +937,21 @@ const BookmarkManager = ({ allNotes }) => {
       });
     }
 
-    // Filter by selected year
-    if (selectedYear) {
+    // Filter by selected year and month
+    if (selectedYear || selectedMonth !== null) {
       filtered = filtered.filter(bookmark => {
         if (!bookmark.dateAdded) return false;
         const bookmarkYear = bookmark.dateAdded.getFullYear();
-        return bookmarkYear === parseInt(selectedYear);
+        const bookmarkMonth = bookmark.dateAdded.getMonth();
+        
+        if (selectedYear && selectedMonth !== null) {
+          return bookmarkYear === parseInt(selectedYear) && bookmarkMonth === selectedMonth;
+        } else if (selectedYear) {
+          return bookmarkYear === parseInt(selectedYear);
+        } else if (selectedMonth !== null) {
+          return bookmarkMonth === selectedMonth;
+        }
+        return false;
       });
     }
 
@@ -568,7 +976,7 @@ const BookmarkManager = ({ allNotes }) => {
     }
 
     return filtered;
-  }, [bookmarks, searchQuery, selectedHostname, selectedYear]);
+  }, [bookmarks, searchQuery, selectedHostname, selectedYear, selectedMonth]);
 
   // Get grouped duplicates for display
   const groupedDuplicates = useMemo(() => {
@@ -658,6 +1066,7 @@ const BookmarkManager = ({ allNotes }) => {
   const renderBookmarkCard = (bookmark, index) => {
     const isPreviewable = isPreviewableUrl(bookmark.url);
     const count = bookmarkCounts[bookmark.url] || 0;
+    const isHidden = bookmark.isHidden;
     
     return (
       <div
@@ -682,9 +1091,11 @@ const BookmarkManager = ({ allNotes }) => {
             className="text-blue-600 hover:text-blue-800 truncate block"
             onClick={() => incrementCount(bookmark.url)}
           >
-            {bookmark.title || bookmark.url}
+            {isHidden ? 'XXXXXXXXXXXXXXXXXX' : (bookmark.title || bookmark.url)}
           </a>
-          <p className="text-sm text-gray-500 truncate">{bookmark.url}</p>
+          <p className="text-sm text-gray-500 truncate">
+            {isHidden ? 'XXXXXXXXXXXXXXXXXX' : bookmark.url}
+          </p>
           {bookmark.folderPath && (
             <p className="text-xs text-gray-400 mt-1">
               <FolderIcon className="h-3 w-3 inline mr-1" />
@@ -704,7 +1115,7 @@ const BookmarkManager = ({ allNotes }) => {
               {bookmark.dateAdded.toLocaleDateString()}
             </div>
           )}
-          {isPreviewable && (
+          {isPreviewable && !isHidden && (
             <div
               className="w-8 h-8 flex items-center justify-center bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors"
               onMouseEnter={(e) => handleMouseEnter(e, bookmark.url)}
@@ -719,11 +1130,24 @@ const BookmarkManager = ({ allNotes }) => {
     );
   };
 
+  const clearFilters = useCallback(() => {
+    setSelectedYear(null);
+    setSelectedMonth(null);
+    setSelectedHostname(null);
+  }, []);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-700">Bookmarks</h2>
         <div className="flex gap-2">
+          <button
+            onClick={() => setIsLoadTextModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            <DocumentTextIcon className="h-5 w-5" />
+            Load Bookmarks (Text)
+          </button>
           <button
             onClick={() => setIsLoadModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -731,15 +1155,6 @@ const BookmarkManager = ({ allNotes }) => {
             <ArrowUpTrayIcon className="h-5 w-5" />
             Load Bookmarks
           </button>
-          {bookmarks.length > 0 && (
-            <button
-              onClick={saveBookmarksAsNotes}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <DocumentPlusIcon className="h-5 w-5" />
-              Save as Notes
-            </button>
-          )}
         </div>
       </div>
 
@@ -795,69 +1210,132 @@ const BookmarkManager = ({ allNotes }) => {
 
           {yearlyStats.length > 0 && (
             <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="flex items-center justify-between mb-3">
+              <div 
+                className="flex items-center justify-between mb-3 cursor-pointer"
+                onClick={() => setIsYearlyStatsExpanded(!isYearlyStatsExpanded)}
+              >
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="h-5 w-5 text-orange-500" />
                   <h3 className="text-md font-medium text-gray-700">Bookmarks by Year</h3>
                 </div>
-                {selectedYear && (
+                <div className="flex items-center gap-2">
+                  {(selectedYear || selectedMonth !== null) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearFilters();
+                      }}
+                      className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                      Clear filters
+                    </button>
+                  )}
                   <button
-                    onClick={() => setSelectedYear(null)}
-                    className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                  >
-                    <XMarkIcon className="h-4 w-4" />
-                    Clear year filter
-                  </button>
-                )}
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {yearlyStats.map(({ year, count }) => (
-                  <div
-                    key={year}
-                    onClick={() => setSelectedYear(selectedYear === year ? null : year)}
-                    className={`bg-gray-50 rounded-lg p-3 cursor-pointer transition-colors ${
-                      selectedYear === year
-                        ? 'bg-orange-100 border-2 border-orange-500'
-                        : 'hover:bg-gray-100'
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setGroupByMonth(!groupByMonth);
+                    }}
+                    className={`text-sm px-3 py-1 rounded-lg transition-colors ${
+                      groupByMonth 
+                        ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    <div className="text-sm font-medium text-gray-500">{year}</div>
-                    <div className="text-xl font-semibold text-gray-900">{count}</div>
-                  </div>
-                ))}
+                    {groupByMonth ? 'Show by Year' : 'Show by Month'}
+                  </button>
+                  <ChevronRightIcon 
+                    className={`h-5 w-5 text-gray-500 transition-transform ${
+                      isYearlyStatsExpanded ? 'transform rotate-90' : ''
+                    }`} 
+                  />
+                </div>
               </div>
+              {isYearlyStatsExpanded && (
+                <div className="space-y-4">
+                  {yearlyStats.map(({ year, count, months }) => (
+                    <div key={year} className="space-y-2">
+                      <div
+                        onClick={() => setSelectedYear(selectedYear === year ? null : year)}
+                        className={`bg-gray-50 rounded-lg p-3 cursor-pointer transition-colors ${
+                          selectedYear === year
+                            ? 'bg-orange-100 border-2 border-orange-500'
+                            : 'hover:bg-gray-100'
+                        }`}
+                      >
+                        <div className="text-sm font-medium text-gray-500">{year}</div>
+                        <div className="text-xl font-semibold text-gray-900">{count}</div>
+                      </div>
+                      {groupByMonth && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pl-4">
+                          {Object.entries(months)
+                            .sort(([a], [b]) => b - a)
+                            .map(([month, monthCount]) => (
+                              <div
+                                key={month}
+                                onClick={() => setSelectedMonth(selectedMonth === parseInt(month) ? null : parseInt(month))}
+                                className={`bg-gray-50 rounded-lg p-2 cursor-pointer transition-colors ${
+                                  selectedMonth === parseInt(month)
+                                    ? 'bg-orange-100 border-2 border-orange-500'
+                                    : 'hover:bg-gray-100'
+                                }`}
+                              >
+                                <div className="text-xs font-medium text-gray-500">
+                                  {new Date(2000, month, 1).toLocaleString('default', { month: 'short' })}
+                                </div>
+                                <div className="text-lg font-semibold text-gray-900">{monthCount}</div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div 
+              className="flex items-center justify-between mb-3 cursor-pointer"
+              onClick={() => setIsWebStatsExpanded(!isWebStatsExpanded)}
+            >
               <div className="flex items-center gap-2">
                 <ChartBarIcon className="h-5 w-5 text-gray-500" />
                 <h3 className="text-md font-medium text-gray-700">Website Statistics</h3>
               </div>
-              <span className="text-sm text-gray-500">{hostnameStats.length} unique websites</span>
-            </div>
-            <div className="max-h-[300px] overflow-y-auto">
-              <div className="space-y-2">
-                {hostnameStats.map(({ hostname, count }, index) => (
-                  <div
-                    key={hostname}
-                    onClick={() => setSelectedHostname(hostname)}
-                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
-                      selectedHostname === hostname
-                        ? 'bg-blue-50 hover:bg-blue-100'
-                        : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-500">{index + 1}.</span>
-                      <span className="text-sm text-gray-700">{hostname}</span>
-                    </div>
-                    <span className="text-sm text-gray-500">{count} bookmarks</span>
-                  </div>
-                ))}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">{hostnameStats.length} unique websites</span>
+                <ChevronRightIcon 
+                  className={`h-5 w-5 text-gray-500 transition-transform ${
+                    isWebStatsExpanded ? 'transform rotate-90' : ''
+                  }`} 
+                />
               </div>
             </div>
+            {isWebStatsExpanded && (
+              <div className="max-h-[300px] overflow-y-auto">
+                <div className="space-y-2">
+                  {hostnameStats.map(({ hostname, count }, index) => (
+                    <div
+                      key={hostname}
+                      onClick={() => setSelectedHostname(hostname)}
+                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                        selectedHostname === hostname
+                          ? 'bg-blue-50 hover:bg-blue-100'
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-500">{index + 1}.</span>
+                        <span className="text-sm text-gray-700">{hostname}</span>
+                      </div>
+                      <span className="text-sm text-gray-500">{count} bookmarks</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mt-4">
@@ -888,7 +1366,7 @@ const BookmarkManager = ({ allNotes }) => {
               )}
             </div>
 
-            {(selectedHostname || selectedYear) && (
+            {(selectedHostname || selectedYear || selectedMonth) && (
               <div className="mb-4 flex items-center justify-between bg-blue-50 p-3 rounded-lg">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-700">Showing bookmarks:</span>
@@ -901,11 +1379,16 @@ const BookmarkManager = ({ allNotes }) => {
                   {selectedYear && (
                     <span className="text-sm font-medium text-blue-700">from {selectedYear}</span>
                   )}
+                  {selectedHostname && selectedMonth !== null && (
+                    <span className="text-sm text-gray-700">and</span>
+                  )}
+                  {selectedMonth !== null && (
+                    <span className="text-sm font-medium text-blue-700">from {selectedMonth}</span>
+                  )}
                 </div>
                 <button
                   onClick={() => {
-                    setSelectedHostname(null);
-                    setSelectedYear(null);
+                    clearFilters();
                   }}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -975,38 +1458,44 @@ const BookmarkManager = ({ allNotes }) => {
                   {Object.entries(
                     filteredBookmarks.reduce((groups, bookmark) => {
                       const year = bookmark.dateAdded ? bookmark.dateAdded.getFullYear() : 'No Date';
-                      if (!groups[year]) {
-                        groups[year] = [];
+                      const month = groupByMonth && bookmark.dateAdded ? bookmark.dateAdded.getMonth() : null;
+                      const key = month !== null ? `${year}-${month}` : year;
+                      if (!groups[key]) {
+                        groups[key] = [];
                       }
-                      groups[year].push(bookmark);
+                      groups[key].push(bookmark);
                       return groups;
                     }, {})
                   )
-                  .sort(([yearA], [yearB]) => {
-                    if (yearA === 'No Date') return 1;
-                    if (yearB === 'No Date') return -1;
-                    return parseInt(yearB) - parseInt(yearA);
+                  .sort(([keyA], [keyB]) => {
+                    if (keyA === 'No Date') return 1;
+                    if (keyB === 'No Date') return -1;
+                    return keyB.localeCompare(keyA);
                   })
-                  .map(([year, yearBookmarks]) => (
-                    <div key={year} className="space-y-2">
+                  .map(([key, yearBookmarks]) => (
+                    <div key={key} className="space-y-2">
                       <div 
                         className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
-                        onClick={() => toggleYear(year)}
+                        onClick={() => toggleYear(key)}
                       >
                         <ChevronRightIcon 
                           className={`h-5 w-5 text-orange-500 transition-transform ${
-                            expandedYears.has(year) ? 'transform rotate-90' : ''
+                            expandedYears.has(key) ? 'transform rotate-90' : ''
                           }`} 
                         />
                         <CalendarIcon className="h-5 w-5 text-orange-500" />
                         <h4 className="text-lg font-semibold text-gray-700">
-                          {year === 'No Date' ? 'No Date' : year}
+                          {key === 'No Date' ? 'No Date' : (
+                            key.includes('-') 
+                              ? `${new Date(2000, parseInt(key.split('-')[1]), 1).toLocaleString('default', { month: 'long' })} ${key.split('-')[0]}`
+                              : key
+                          )}
                           <span className="ml-2 text-sm font-normal text-gray-500">
                             ({yearBookmarks.length} {yearBookmarks.length === 1 ? 'bookmark' : 'bookmarks'})
                           </span>
                         </h4>
                       </div>
-                      {expandedYears.has(year) && (
+                      {expandedYears.has(key) && (
                         <div className="space-y-2 pl-8">
                           {yearBookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
                         </div>
@@ -1044,6 +1533,12 @@ const BookmarkManager = ({ allNotes }) => {
         isOpen={isLoadModalOpen}
         onClose={() => setIsLoadModalOpen(false)}
         onDrop={handleDrop}
+      />
+
+      <LoadBookmarksTextModal
+        isOpen={isLoadTextModalOpen}
+        onClose={() => setIsLoadTextModalOpen(false)}
+        allNotes={allNotes}
       />
 
       <SummaryModal

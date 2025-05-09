@@ -2368,38 +2368,24 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">({autoRefreshCountdown}s)</span>
-              <input
-                type="checkbox"
-                checked={isAutoRefreshEnabled}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  setIsAutoRefreshEnabled(e.target.checked);
-                }}
-                className="form-checkbox h-4 w-4 text-indigo-600"
-                onClick={(e) => e.stopPropagation()}
-              />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  loadNotes('', new Date().toISOString().split('T')[0])
-                    .then(data => {
-                      if (data && data.notes) {
-                        setNotes(data.notes);
-                        setAutoRefreshCountdown(10);
-                      }
-                    })
-                    .catch(error => {
-                      console.error('Error refreshing alerts:', error);
-                    });
-                }}
-                className="text-gray-600 hover:text-gray-800 focus:outline-none transition-transform duration-200 hover:scale-110 active:scale-95"
-                title="Refresh alerts"
-              >
-                <ArrowPathIcon className="h-5 w-5" />
-              </button>
-            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                loadNotes('', new Date().toISOString().split('T')[0])
+                  .then(data => {
+                    if (data && data.notes) {
+                      setNotes(data.notes);
+                    }
+                  })
+                  .catch(error => {
+                    console.error('Error refreshing alerts:', error);
+                  });
+              }}
+              className="text-gray-600 hover:text-gray-800 focus:outline-none transition-transform duration-200 hover:scale-110 active:scale-95"
+              title="Refresh alerts"
+            >
+              <ArrowPathIcon className="h-5 w-5" />
+            </button>
             <button
               onClick={(e) => {
                 e.stopPropagation();

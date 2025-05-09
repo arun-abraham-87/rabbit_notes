@@ -1,28 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/solid';
-import { loadAllNotes } from '../utils/ApiUtils';
-import EventManager from './EventManager';
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/solid';
+import { loadAllNotes, updateNoteById ,deleteNoteById} from '../utils/ApiUtils';
 
-const CustomTooltip = ({ event, currentDate }) => {
-  const originalDate = new Date(event.originalDate);
-  const today = new Date();
-  const age = today.getFullYear() - originalDate.getFullYear();
-  
-  // Calculate days difference
-  const diffTime = Math.abs(today - originalDate);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  return (
-    <div className="absolute z-50 bg-white p-3 rounded-lg shadow-lg border border-gray-200 min-w-[200px]">
-      <div className="text-sm font-medium text-gray-900 mb-1">{event.title}</div>
-      <div className="text-xs text-gray-600 space-y-1">
-        <div>Original Date: {originalDate.toLocaleDateString()}</div>
-        <div>Age: {age} years</div>
-        <div>Days from today: {diffDays}</div>
-      </div>
-    </div>
-  );
-};
+import EditEventModal from './EditEventModal';
 
 const CalendarStats = ({ currentDate }) => {
   const today = new Date();
@@ -146,16 +126,18 @@ const CalendarStats = ({ currentDate }) => {
   );
 };
 
-const CustomCalendar = ({ notes, setNotes }) => {
+const CustomCalendar = ({ allNotes }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [events, setEvents] = useState([]);
   const [showAnniversary, setShowAnniversary] = useState(false);
-  const [hoveredEvent, setHoveredEvent] = useState(null);
   const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, date: null, event: null });
-  const [showEventManager, setShowEventManager] = useState(false);
 
-  // Fetch events from notes
+  const [editingEventNote, setEditingEventNote] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [showDatePopup, setShowDatePopup] = useState(false);
+
+  // Fetch events from allNotes
   useEffect(() => {
     const fetchEvents = async () => {
       try {
@@ -230,6 +212,7 @@ const CustomCalendar = ({ notes, setNotes }) => {
 
   const handleDateClick = (date) => {
     setSelectedDate(date);
+    setShowDatePopup(true);
   };
 
   const isToday = (date) => {
@@ -272,27 +255,31 @@ const CustomCalendar = ({ notes, setNotes }) => {
   const handleAddEvent = (e) => {
     e.preventDefault();
     setSelectedDate(contextMenu.date);
-    setShowEventManager(true);
     setContextMenu({ show: false, x: 0, y: 0 });
   };
 
   const handleEditEvent = (e) => {
     e.preventDefault();
-    setSelectedDate(contextMenu.date);
-    setShowEventManager(true);
+    setEditingEventNote(contextMenu.event);
     setContextMenu({ show: false, x: 0, y: 0, date: null, event: null });
   };
 
   const handleEventClick = (e, event) => {
     e.stopPropagation(); // Prevent the day cell click from triggering
-    setSelectedDate(new Date(event.date));
-    setContextMenu({
-      show: true,
-      x: e.clientX,
-      y: e.clientY,
-      date: new Date(event.date),
-      event: event
-    });
+    setSelectedEvent(event);
+  };
+
+  const handleCloseEventPopup = () => {
+    setSelectedEvent(null);
+  };
+
+  const handleCloseDatePopup = () => {
+    setShowDatePopup(false);
+  };
+
+  const handleEditEventFromDatePopup = (event) => {
+    setShowDatePopup(false);
+    setEditingEventNote(event);
   };
 
   // Add event listener for closing context menu when clicking outside
@@ -345,15 +332,19 @@ const CustomCalendar = ({ notes, setNotes }) => {
           </div>
           <div className="mt-1 space-y-1">
             {dayEvents.map(event => {
+              const originalDate = new Date(event.originalDate);
+              const today = new Date();
+              const age = today.getFullYear() - originalDate.getFullYear();
+              const diffTime = Math.abs(today - originalDate);
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
               return (
                 <div
                   key={event.id}
-                  className="group relative"
                   onClick={(e) => handleEventClick(e, event)}
+                  className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded truncate cursor-pointer hover:bg-blue-200"
                 >
-                  <div className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded truncate cursor-pointer hover:bg-blue-200">
-                    {event.title}
-                  </div>
+                  {event.title}
                 </div>
               );
             })}
@@ -367,56 +358,32 @@ const CustomCalendar = ({ notes, setNotes }) => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-      {showEventManager && (
-        <EventManager 
-          selectedDate={selectedDate}
-          onClose={() => setShowEventManager(false)}
-          onEventAdded={() => {
-            setShowEventManager(false);
-            // Refresh events
-            const fetchEvents = async () => {
-              try {
-                const data = await loadAllNotes('', null);
-                const eventNotes = data.notes.filter(note => 
-                  note.content.split('\n').some(line => line.trim().startsWith('event_date:'))
-                );
+      
 
-                const currentYear = new Date().getFullYear();
-
-                const parsedEvents = eventNotes.map(note => {
-                  const lines = note.content.split('\n');
-                  const eventDateLine = lines.find(line => line.trim().startsWith('event_date:'));
-                  const originalDate = eventDateLine ? new Date(eventDateLine.split(':')[1].trim().split("T")[0]) : null;
-                  const eventDate = originalDate ? new Date(originalDate) : null;
-                  
-                  const title = lines[0].trim().replace('event_description:', '').trim();
-                  
-                  if (eventDate && showAnniversary) {
-                    eventDate.setFullYear(currentYear);
-                  }
-                  
-                  return {
-                    id: note.id,
-                    title,
-                    date: eventDate,
-                    originalDate: originalDate,
-                    content: note.content
-                  };
-                }).filter(event => {
-                  if (!event.date) return false;
-                  return showAnniversary ? true : event.date.getFullYear() === currentYear;
-                });
-
-                setEvents(parsedEvents);
-              } catch (error) {
-                console.error('Error fetching events:', error);
-              }
-            };
-            fetchEvents();
+      {editingEventNote && (
+        <EditEventModal
+          note={editingEventNote}
+          onClose={() => setEditingEventNote(null)}
+          onSave={async (updatedNote) => {
+            try {
+              // Update the note in the backend
+              await updateNoteById(editingEventNote.id, updatedNote);
+              
+              allNotes = allNotes.map(note =>
+                note.id === editingEventNote.id ? { ...note, content: updatedNote } : note
+              );
+              setEditingEventNote(null);
+              
+            } catch (error) {
+              console.error('Error updating event:', error);
+            }
           }}
-          notes={notes}
-          setNotes={setNotes}
-          eventToEdit={contextMenu.event}
+          onCancel={() => setEditingEventNote(null)}
+          onSwitchToNormalEdit={() => setEditingEventNote(null)}
+          onDelete={async () => {
+            await deleteNoteById(editingEventNote.id);
+            setEditingEventNote(null);
+          }}
         />
       )}
       
@@ -427,27 +394,17 @@ const CustomCalendar = ({ notes, setNotes }) => {
           style={{ 
             top: contextMenu.y, 
             left: contextMenu.x,
-            minWidth: '200px'
+            minWidth: '150px'
           }}
         >
           {contextMenu.event ? (
-            <>
-              <div className="px-4 py-2 border-b border-gray-200">
-                <div className="text-sm font-medium text-gray-900 mb-1">{contextMenu.event.title}</div>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <div>Original Date: {new Date(contextMenu.event.originalDate).toLocaleDateString()}</div>
-                  <div>Age: {new Date().getFullYear() - new Date(contextMenu.event.originalDate).getFullYear()} years</div>
-                  <div>Days from today: {Math.ceil(Math.abs(new Date() - new Date(contextMenu.event.originalDate)) / (1000 * 60 * 60 * 24))}</div>
-                </div>
-              </div>
-              <button
-                onClick={handleEditEvent}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-              >
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Edit Event
-              </button>
-            </>
+            <button
+              onClick={handleEditEvent}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Edit Event
+            </button>
           ) : (
             <button
               onClick={handleAddEvent}
@@ -457,6 +414,121 @@ const CustomCalendar = ({ notes, setNotes }) => {
               Add Event
             </button>
           )}
+        </div>
+      )}
+
+      {/* Event Details Popup */}
+      {selectedEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">{selectedEvent.title}</h2>
+              <button
+                onClick={handleCloseEventPopup}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <PlusIcon className="h-5 w-5 transform rotate-45" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="text-sm text-gray-600">
+                <div className="font-medium mb-2">Event Details:</div>
+                <div>Original Date: {new Date(selectedEvent.originalDate).toLocaleDateString()}</div>
+                <div>Age: {new Date().getFullYear() - new Date(selectedEvent.originalDate).getFullYear()} years</div>
+                <div>Days from today: {Math.ceil(Math.abs(new Date() - new Date(selectedEvent.originalDate)) / (1000 * 60 * 60 * 24))}</div>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setSelectedEvent(null);
+                    setEditingEventNote(selectedEvent);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
+                >
+                  Edit Event
+                </button>
+                <button
+                  onClick={handleCloseEventPopup}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Date Events Popup */}
+      {showDatePopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Events for {selectedDate.toLocaleDateString()}
+              </h2>
+              <button
+                onClick={handleCloseDatePopup}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <PlusIcon className="h-5 w-5 transform rotate-45" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              {getEventsForDate(selectedDate).length > 0 ? (
+                <div className="space-y-3">
+                  {getEventsForDate(selectedDate).map(event => {
+                    const originalDate = new Date(event.originalDate);
+                    const today = new Date();
+                    const age = today.getFullYear() - originalDate.getFullYear();
+                    const diffTime = Math.abs(today - originalDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    return (
+                      <div key={event.id} className="bg-gray-50 p-3 rounded-lg">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="font-medium text-gray-900">{event.title}</h3>
+                            <div className="text-sm text-gray-600 mt-1">
+                              <div>Original Date: {originalDate.toLocaleDateString()}</div>
+                              <div>Age: {age} years</div>
+                              <div>Days from today: {diffDays}</div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleEditEventFromDatePopup(event)}
+                            className="ml-3 p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                          >
+                            <PencilIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-4">
+                  No events for this date
+                </div>
+              )}
+              <div className="flex justify-end space-x-3 mt-4">
+                <button
+                  onClick={() => {
+                    setShowDatePopup(false);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
+                >
+                  Add Event
+                </button>
+                <button
+                  onClick={handleCloseDatePopup}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

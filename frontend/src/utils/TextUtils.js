@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import LinkPreview from '../components/LinkPreview';
+import LinkWithPreview from '../components/LinkWithPreview';
 
 /**
  * Comprehensive function to parse and format note content
@@ -103,89 +105,17 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
   let isBold = false;
   let isItalic = false;
 
-  //console.log('-----------------------------------------------------------------------------')
-  //console.log('processedContent', processedContent);
   if (processedContent.trim().startsWith("http:") || processedContent.trim().startsWith("https:")) {
     const url = processedContent.trim();
     const hostname = new URL(url).hostname;
+    
     let urlElement = (
-      <a
-        key={`url-${lineIndex}`}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-blue-600 underline hover:text-blue-800"
-      >
+      <LinkWithPreview key={`url-${lineIndex}`} url={url}>
         {hostname}
-      </a>
+      </LinkWithPreview>
     );
     elements.push(urlElement);
-  } else if ((processedContent.includes("http:") || processedContent.includes("https:")) && !processedContent.startsWith("[") && !processedContent.trim().startsWith("http")) {
-    //console.log('URL embedded in text');
-    // Find the URL portion
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const url = processedContent.match(urlRegex)[0];
-    // Extract hostname: everything between protocol and first slash or end
-    const hostname = url.replace(/^https?:\/\//, '').split('/')[0];
-    
-    // Check if there's custom text in markdown format [text](url)
-    const markdownMatch = processedContent.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
-    if (markdownMatch) {
-      // If markdown link found, replace the entire [text](url) with clickable link
-      const customText = markdownMatch[1];
-      const markdownUrl = markdownMatch[2];
-      const beforeLink = processedContent.slice(0, processedContent.indexOf('[')).trim();
-      const afterLink = processedContent.slice(processedContent.indexOf(')') + 1).trim();
-      
-      if (beforeLink) {
-        elements.push(beforeLink + ' ');
-      }
-      
-      let urlElement = (
-        <a
-          key={`url-${lineIndex}`}
-          href={markdownUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline hover:text-blue-800"
-        >
-          {customText}
-        </a>
-      );
-      elements.push(urlElement);
-      
-      if (afterLink) {
-        elements.push(' ' + afterLink);
-      }
-    } else {
-      // Handle regular URL
-      const parts = processedContent.split(url);
-      const beforeUrl = parts[0].trim();
-      const afterUrl = parts[1] ? parts[1].trim() : '';
-      
-      if (beforeUrl) {
-        elements.push(beforeUrl + ' ');
-      }
-      
-      let urlElement = (
-        <a
-          key={`url-${lineIndex}`}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline hover:text-blue-800"
-        >
-          {hostname}
-        </a>
-      );
-      elements.push(urlElement);
-      
-      if (afterUrl) {
-        elements.push(' ' + afterUrl);
-      }
-    }
   } else if ((processedContent.includes("http:") || processedContent.includes("https:")) && processedContent.startsWith("[")) {
-    //console.log('Url has custom text');
     // Extract the custom text and URL
     const textMatch = processedContent.match(/\[([^\]]+)\]/);
     const urlMatch = processedContent.match(/\((https?:\/\/[^\s)]+)\)/);
@@ -195,23 +125,13 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
       const url = urlMatch[1];
       
       let urlElement = (
-        <a
-          key={`url-${lineIndex}`}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline hover:text-blue-800"
-        >
+        <LinkWithPreview key={`url-${lineIndex}`} url={url}>
           {customText}
-        </a>
+        </LinkWithPreview>
       );
       elements.push(urlElement);
     }
   } else {
-
-    //console.log('-----------------------------------------------------------------------------')
-
-
     for (let i = 0; i < processedContent.length; i++) {
       const char = processedContent[i];
       const nextChar = processedContent[i + 1];
@@ -251,28 +171,6 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
           urlEnd++;
         }
         const url = processedContent.slice(i, urlEnd);
-        //const display = parseUrl(url);
-
-        // let urlElement = (
-        //   <a
-        //     key={`url-${lineIndex}-${i}`}
-        //     href={url}
-        //     target="_blank"
-        //     rel="noopener noreferrer"
-        //     className="text-blue-600 underline hover:text-blue-800"
-        //   >
-        //     {display}
-        //   </a>
-        // );
-
-        // if (isBold) {
-        //   urlElement = <strong key={`bold-${lineIndex}-${i}`}>{urlElement}</strong>;
-        // }
-        // if (isItalic) {
-        //   urlElement = <em key={`italic-${lineIndex}-${i}`}>{urlElement}</em>;
-        // }
-
-        //elements.push(urlElement);
         i = urlEnd - 1;
         continue;
       }
@@ -280,6 +178,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
       currentText += char;
     }
   }
+
   // Add any remaining text
   if (currentText) {
     let textElement = highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-end`);

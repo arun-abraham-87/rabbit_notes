@@ -1,13 +1,19 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 const WebsitePreview = ({ url, isVisible }) => {
   const [isUnavailable, setIsUnavailable] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   if (!isVisible) return null;
 
   const handleIframeError = () => {
     setIsUnavailable(true);
+    setIsLoading(false);
+  };
+
+  const handleIframeLoad = () => {
+    setIsLoading(false);
   };
 
   if (isUnavailable) {
@@ -53,6 +59,11 @@ const WebsitePreview = ({ url, isVisible }) => {
         height: '360px'
       }}
     >
+      {isLoading && (
+        <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      )}
       <iframe
         width="640"
         height="360"
@@ -60,6 +71,7 @@ const WebsitePreview = ({ url, isVisible }) => {
         title="Website preview"
         frameBorder="0"
         onError={handleIframeError}
+        onLoad={handleIframeLoad}
         sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
       />
     </div>
@@ -68,6 +80,7 @@ const WebsitePreview = ({ url, isVisible }) => {
 
 const YouTubePreview = ({ url, isVisible, position }) => {
   const [isUnavailable, setIsUnavailable] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   if (!isVisible) return null;
 
@@ -83,6 +96,11 @@ const YouTubePreview = ({ url, isVisible, position }) => {
 
   const handleIframeError = () => {
     setIsUnavailable(true);
+    setIsLoading(false);
+  };
+
+  const handleIframeLoad = () => {
+    setIsLoading(false);
   };
 
   if (isUnavailable) {
@@ -120,6 +138,11 @@ const YouTubePreview = ({ url, isVisible, position }) => {
         height: '360px'
       }}
     >
+      {isLoading && (
+        <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+        </div>
+      )}
       <iframe
         width="640"
         height="360"
@@ -129,6 +152,7 @@ const YouTubePreview = ({ url, isVisible, position }) => {
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
         onError={handleIframeError}
+        onLoad={handleIframeLoad}
       />
     </div>
   );
@@ -141,11 +165,28 @@ const BookmarkManager = () => {
   const [selectedHostname, setSelectedHostname] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
   const [expandedYears, setExpandedYears] = useState(new Set());
+  const [showDuplicates, setShowDuplicates] = useState(false);
+  const [bookmarkCounts, setBookmarkCounts] = useState(() => {
+    const savedCounts = localStorage.getItem('bookmarkCounts');
+    return savedCounts ? JSON.parse(savedCounts) : {};
+  });
   const [previewState, setPreviewState] = useState({
     isVisible: false,
     url: null,
     position: { x: 0, y: 0 }
   });
+
+  // Save counts to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('bookmarkCounts', JSON.stringify(bookmarkCounts));
+  }, [bookmarkCounts]);
+
+  const incrementCount = useCallback((url) => {
+    setBookmarkCounts(prev => ({
+      ...prev,
+      [url]: (prev[url] || 0) + 1
+    }));
+  }, []);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -246,7 +287,55 @@ const BookmarkManager = () => {
       .map(([year, count]) => ({ year, count }));
   }, [bookmarks]);
 
-  // Filter bookmarks based on search, selected hostname, and selected year
+  // Calculate duplicate bookmarks
+  const duplicateStats = useMemo(() => {
+    const urlMap = new Map();
+    const titleMap = new Map();
+
+    bookmarks.forEach(bookmark => {
+      // Check URL duplicates
+      const url = bookmark.url.toLowerCase();
+      if (!urlMap.has(url)) {
+        urlMap.set(url, []);
+      }
+      urlMap.get(url).push(bookmark);
+
+      // Check title duplicates
+      const title = bookmark.title?.toLowerCase();
+      if (title) {
+        if (!titleMap.has(title)) {
+          titleMap.set(title, []);
+        }
+        titleMap.get(title).push(bookmark);
+      }
+    });
+
+    const duplicateUrls = Array.from(urlMap.entries())
+      .filter(([_, bookmarks]) => bookmarks.length > 1)
+      .map(([url, bookmarks]) => ({
+        type: 'url',
+        value: url,
+        count: bookmarks.length,
+        bookmarks
+      }));
+
+    const duplicateTitles = Array.from(titleMap.entries())
+      .filter(([_, bookmarks]) => bookmarks.length > 1)
+      .map(([title, bookmarks]) => ({
+        type: 'title',
+        value: title,
+        count: bookmarks.length,
+        bookmarks
+      }));
+
+    return {
+      urlDuplicates: duplicateUrls,
+      titleDuplicates: duplicateTitles,
+      totalDuplicates: duplicateUrls.length + duplicateTitles.length
+    };
+  }, [bookmarks]);
+
+  // Filter bookmarks based on search, selected hostname, selected year, and duplicates
   const filteredBookmarks = useMemo(() => {
     let filtered = bookmarks;
 
@@ -294,6 +383,28 @@ const BookmarkManager = () => {
     return filtered;
   }, [bookmarks, searchQuery, selectedHostname, selectedYear]);
 
+  // Get grouped duplicates for display
+  const groupedDuplicates = useMemo(() => {
+    if (!showDuplicates) return null;
+
+    const groups = [
+      ...duplicateStats.urlDuplicates.map(group => ({
+        type: 'url',
+        value: group.value,
+        count: group.count,
+        bookmarks: group.bookmarks
+      })),
+      ...duplicateStats.titleDuplicates.map(group => ({
+        type: 'title',
+        value: group.value,
+        count: group.count,
+        bookmarks: group.bookmarks
+      }))
+    ].sort((a, b) => b.count - a.count);
+
+    return groups;
+  }, [showDuplicates, duplicateStats]);
+
   const handleMouseEnter = useCallback((e, url) => {
     setPreviewState({
       isVisible: true,
@@ -326,6 +437,70 @@ const BookmarkManager = () => {
     });
   }, []);
 
+  const renderBookmarkCard = (bookmark, index) => {
+    const isPreviewable = isPreviewableUrl(bookmark.url);
+    const count = bookmarkCounts[bookmark.url] || 0;
+    
+    return (
+      <div
+        key={index}
+        className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
+      >
+        {bookmark.icon && (
+          <img
+            src={bookmark.icon}
+            alt=""
+            className="w-4 h-4"
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
+          />
+        )}
+        <div className="flex-1 min-w-0">
+          <a
+            href={bookmark.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 truncate block"
+            onClick={() => incrementCount(bookmark.url)}
+          >
+            {bookmark.title || bookmark.url}
+          </a>
+          <p className="text-sm text-gray-500 truncate">{bookmark.url}</p>
+          {bookmark.folderPath && (
+            <p className="text-xs text-gray-400 mt-1">
+              <FolderIcon className="h-3 w-3 inline mr-1" />
+              {bookmark.folderPath}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {count > 0 && (
+            <div className="flex flex-col items-center bg-blue-50 px-3 py-1 rounded-lg">
+              <span className="text-2xl font-bold text-blue-600">{count}</span>
+              <span className="text-xs text-blue-500">visits</span>
+            </div>
+          )}
+          {bookmark.dateAdded && (
+            <div className="text-xs text-gray-400">
+              {bookmark.dateAdded.toLocaleDateString()}
+            </div>
+          )}
+          {isPreviewable && (
+            <div
+              className="w-8 h-8 flex items-center justify-center bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors"
+              onMouseEnter={(e) => handleMouseEnter(e, bookmark.url)}
+              onMouseLeave={handleMouseLeave}
+              title="Preview"
+            >
+              <PlayIcon className="h-4 w-4 text-white" />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -356,12 +531,25 @@ const BookmarkManager = () => {
               </div>
               <p className="text-2xl font-semibold text-gray-900">{hostnameStats.length}</p>
             </div>
-            <div className="bg-white rounded-lg shadow-sm p-4">
+            <div 
+              className={`bg-white rounded-lg shadow-sm p-4 cursor-pointer transition-colors ${
+                showDuplicates ? 'bg-red-50 border-2 border-red-500' : 'hover:bg-gray-50'
+              }`}
+              onClick={() => setShowDuplicates(!showDuplicates)}
+            >
               <div className="flex items-center gap-2 mb-2">
-                <CalendarIcon className="h-5 w-5 text-orange-500" />
-                <h3 className="text-md font-medium text-gray-700">Years Active</h3>
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
+                <h3 className="text-md font-medium text-gray-700">Duplicate Bookmarks</h3>
               </div>
-              <p className="text-2xl font-semibold text-gray-900">{yearlyStats.length}</p>
+              <p className="text-2xl font-semibold text-gray-900">{duplicateStats.totalDuplicates}</p>
+              {duplicateStats.totalDuplicates > 0 && (
+                <div className="mt-2 text-sm text-gray-500">
+                  {duplicateStats.urlDuplicates.length} URL duplicates
+                  {duplicateStats.titleDuplicates.length > 0 && (
+                    <span>, {duplicateStats.titleDuplicates.length} title duplicates</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -532,101 +720,77 @@ const BookmarkManager = () => {
               </button>
             </div>
 
-            {Object.entries(
-              filteredBookmarks.reduce((groups, bookmark) => {
-                const year = bookmark.dateAdded ? bookmark.dateAdded.getFullYear() : 'No Date';
-                if (!groups[year]) {
-                  groups[year] = [];
-                }
-                groups[year].push(bookmark);
-                return groups;
-              }, {})
-            )
-            .sort(([yearA], [yearB]) => {
-              if (yearA === 'No Date') return 1;
-              if (yearB === 'No Date') return -1;
-              return parseInt(yearB) - parseInt(yearA);
-            })
-            .map(([year, yearBookmarks]) => (
-              <div key={year} className="space-y-2">
-                <div 
-                  className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
-                  onClick={() => toggleYear(year)}
-                >
-                  <ChevronRightIcon 
-                    className={`h-5 w-5 text-orange-500 transition-transform ${
-                      expandedYears.has(year) ? 'transform rotate-90' : ''
-                    }`} 
-                  />
-                  <CalendarIcon className="h-5 w-5 text-orange-500" />
-                  <h4 className="text-lg font-semibold text-gray-700">
-                    {year === 'No Date' ? 'No Date' : year}
-                    <span className="ml-2 text-sm font-normal text-gray-500">
-                      ({yearBookmarks.length} {yearBookmarks.length === 1 ? 'bookmark' : 'bookmarks'})
-                    </span>
-                  </h4>
-                </div>
-                {expandedYears.has(year) && (
-                  <div className="space-y-2 pl-8">
-                    {yearBookmarks.map((bookmark, index) => {
-                      const isPreviewable = isPreviewableUrl(bookmark.url);
-                      
-                      return (
-                        <div
-                          key={index}
-                          className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                        >
-                          {bookmark.icon && (
-                            <img
-                              src={bookmark.icon}
-                              alt=""
-                              className="w-4 h-4"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <a
-                              href={bookmark.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 truncate block"
-                            >
-                              {bookmark.title || bookmark.url}
-                            </a>
-                            <p className="text-sm text-gray-500 truncate">{bookmark.url}</p>
-                            {bookmark.folderPath && (
-                              <p className="text-xs text-gray-400 mt-1">
-                                <FolderIcon className="h-3 w-3 inline mr-1" />
-                                {bookmark.folderPath}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {bookmark.dateAdded && (
-                              <div className="text-xs text-gray-400">
-                                {bookmark.dateAdded.toLocaleDateString()}
-                              </div>
-                            )}
-                            {isPreviewable && (
-                              <div
-                                className="w-8 h-8 flex items-center justify-center bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors"
-                                onMouseEnter={(e) => handleMouseEnter(e, bookmark.url)}
-                                onMouseLeave={handleMouseLeave}
-                                title="Preview"
-                              >
-                                <PlayIcon className="h-4 w-4 text-white" />
-                              </div>
-                            )}
-                          </div>
+            {showDuplicates ? (
+              <div className="space-y-6">
+                {groupedDuplicates?.map((group, groupIndex) => (
+                  <div key={`${group.type}-${group.value}`} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div className="bg-gray-50 p-4 border-b">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {group.type === 'url' ? 'Duplicate URL' : 'Duplicate Title'}
+                          </h3>
                         </div>
-                      );
-                    })}
+                        <span className="text-sm text-gray-500">
+                          {group.count} {group.count === 1 ? 'occurrence' : 'occurrences'}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-sm text-gray-600 break-all">
+                        {group.value}
+                      </div>
+                    </div>
+                    <div className="divide-y">
+                      {group.bookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="space-y-6">
+                {Object.entries(
+                  filteredBookmarks.reduce((groups, bookmark) => {
+                    const year = bookmark.dateAdded ? bookmark.dateAdded.getFullYear() : 'No Date';
+                    if (!groups[year]) {
+                      groups[year] = [];
+                    }
+                    groups[year].push(bookmark);
+                    return groups;
+                  }, {})
+                )
+                .sort(([yearA], [yearB]) => {
+                  if (yearA === 'No Date') return 1;
+                  if (yearB === 'No Date') return -1;
+                  return parseInt(yearB) - parseInt(yearA);
+                })
+                .map(([year, yearBookmarks]) => (
+                  <div key={year} className="space-y-2">
+                    <div 
+                      className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                      onClick={() => toggleYear(year)}
+                    >
+                      <ChevronRightIcon 
+                        className={`h-5 w-5 text-orange-500 transition-transform ${
+                          expandedYears.has(year) ? 'transform rotate-90' : ''
+                        }`} 
+                      />
+                      <CalendarIcon className="h-5 w-5 text-orange-500" />
+                      <h4 className="text-lg font-semibold text-gray-700">
+                        {year === 'No Date' ? 'No Date' : year}
+                        <span className="ml-2 text-sm font-normal text-gray-500">
+                          ({yearBookmarks.length} {yearBookmarks.length === 1 ? 'bookmark' : 'bookmarks'})
+                        </span>
+                      </h4>
+                    </div>
+                    {expandedYears.has(year) && (
+                      <div className="space-y-2 pl-8">
+                        {yearBookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {filteredBookmarks.length === 0 && (

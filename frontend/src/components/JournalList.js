@@ -251,6 +251,36 @@ const JournalList = ({ onEditJournal, onNewJournal, initialJournals, onJournalsU
         </div>
       </div>
 
+      {/* Year-wise Statistics */}
+      <div className="mx-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-700 mb-4">Journals by Year</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Object.entries(
+            journals.reduce((acc, journal) => {
+              if (journal.preview?.trim()) {
+                const year = new Date(journal.date).getFullYear();
+                acc[year] = (acc[year] || 0) + 1;
+              }
+              return acc;
+            }, {})
+          )
+            .sort(([yearA], [yearB]) => Number(yearB) - Number(yearA))
+            .map(([year, count]) => (
+              <div key={year} className="p-4 rounded-lg bg-white border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-[rgb(31_41_55_/_0.1)] rounded-full">
+                    <CalendarIcon className="h-5 w-5 text-[rgb(31_41_55)]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">{year}</p>
+                    <p className="text-2xl font-bold text-gray-900">{count}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
+
       {/* Alert for Last Entry */}
       {journals.some(j => j.preview?.trim()) && 
         differenceInDays(

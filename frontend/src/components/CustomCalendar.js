@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/solid';
 import { loadAllNotes } from '../utils/ApiUtils';
 
 const CustomTooltip = ({ event, currentDate }) => {
@@ -151,6 +151,37 @@ const CustomCalendar = () => {
   const [events, setEvents] = useState([]);
   const [showAnniversary, setShowAnniversary] = useState(false);
   const [hoveredEvent, setHoveredEvent] = useState(null);
+  // Temp event tracking state
+  const [tempEvents, setTempEvents] = useState([]);
+  const [isTempEventModalOpen, setIsTempEventModalOpen] = useState(false);
+  const [tempEventForm, setTempEventForm] = useState({ name: '', date: '', start: '', end: '' });
+
+  // Load temp events from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('tempEvents');
+    if (stored) setTempEvents(JSON.parse(stored));
+  }, []);
+  // Save temp events to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem('tempEvents', JSON.stringify(tempEvents));
+  }, [tempEvents]);
+  const handleTempEventInput = (e) => {
+    const { name, value } = e.target;
+    setTempEventForm(f => ({ ...f, [name]: value }));
+  };
+  const handleTempEventSubmit = (e) => {
+    e.preventDefault();
+    if (!tempEventForm.name || !tempEventForm.date || !tempEventForm.start) return;
+    setTempEvents(prev => [
+      ...prev,
+      { ...tempEventForm, id: Date.now() }
+    ]);
+    setTempEventForm({ name: '', date: '', start: '', end: '' });
+    setIsTempEventModalOpen(false);
+  };
+  const handleDeleteTempEvent = (id) => {
+    setTempEvents(prev => prev.filter(ev => ev.id !== id));
+  };
 
   // Fetch events from notes
   useEffect(() => {
@@ -324,6 +355,66 @@ const CustomCalendar = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      {/* Temp Event Cards Section - visually highlighted */}
+      <div className="flex flex-col gap-2 mb-6 bg-indigo-50 border-2 border-indigo-300 rounded-xl p-4 shadow-lg">
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-lg font-semibold text-indigo-800">Temp Event Tracking</h2>
+          <button
+            onClick={() => setIsTempEventModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-lg border border-indigo-700"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Add Temp Event
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {tempEvents.map(ev => {
+            const eventDate = new Date(ev.date + 'T' + (ev.start || '00:00'));
+            const now = new Date();
+            const daysLeft = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+            return (
+              <div key={ev.id} className="flex flex-col items-start bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs">
+                <div className="text-2xl font-bold text-indigo-600">{daysLeft > 0 ? daysLeft : 0}</div>
+                <div className="text-xs text-gray-400 -mt-1 mb-1">days</div>
+                <div className="font-medium text-gray-900 truncate w-full">{ev.name}</div>
+                <div className="text-sm text-gray-500">{new Date(ev.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
+                <div className="text-xs text-gray-500">{ev.start}{ev.end && ` - ${ev.end}`}</div>
+                <button onClick={() => handleDeleteTempEvent(ev.id)} className="mt-2 text-xs text-red-500 hover:underline self-end">Delete</button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {/* Temp Event Modal */}
+      {isTempEventModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+            <h2 className="text-lg font-semibold mb-4">Add Temp Event</h2>
+            <form onSubmit={handleTempEventSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Event Name</label>
+                <input type="text" name="name" value={tempEventForm.name} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Event Date</label>
+                <input type="date" name="date" value={tempEventForm.date} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Start Time</label>
+                <input type="time" name="start" value={tempEventForm.start} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">End Time (optional)</label>
+                <input type="time" name="end" value={tempEventForm.end} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setIsTempEventModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded-md text-gray-700">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Calendar Header */}
       <div className="bg-white p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">

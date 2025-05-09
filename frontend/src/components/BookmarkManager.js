@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { createNote } from '../utils/ApiUtils';
 
 const WebsitePreview = ({ url, isVisible }) => {
@@ -159,6 +159,115 @@ const YouTubePreview = ({ url, isVisible, position }) => {
   );
 };
 
+const LoadBookmarksModal = ({ isOpen, onClose, onDrop }) => {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    onDrop(e);
+  }, [onDrop]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-700">Load Bookmarks</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+          }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <ArrowUpTrayIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-600 mb-2">Drag and drop your Chrome bookmarks file here</p>
+          <p className="text-sm text-gray-500">The file should be named "bookmarks.html"</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SummaryModal = ({ isOpen, onClose, newBookmarks, existingCount, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-700">Import Summary</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Found {newBookmarks.length} new bookmarks to import
+            {existingCount > 0 && (
+              <span className="text-gray-500"> ({existingCount} duplicates skipped)</span>
+            )}
+          </p>
+          <div className="max-h-96 overflow-y-auto">
+            {newBookmarks.map((bookmark, index) => (
+              <div key={index} className="p-2 hover:bg-gray-50 rounded">
+                <div className="font-medium text-gray-900">{bookmark.title}</div>
+                <div className="text-sm text-gray-500">{bookmark.url}</div>
+                {bookmark.folderPath && (
+                  <div className="text-xs text-gray-400 mt-1">
+                    <FolderIcon className="h-3 w-3 inline mr-1" />
+                    {bookmark.folderPath}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                onConfirm(newBookmarks);
+                onClose();
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Import {newBookmarks.length} Bookmarks
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const BookmarkManager = ({ allNotes }) => {
   const [bookmarks, setBookmarks] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -177,6 +286,10 @@ const BookmarkManager = ({ allNotes }) => {
     url: null,
     position: { x: 0, y: 0 }
   });
+  const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [newBookmarks, setNewBookmarks] = useState([]);
+  const [duplicateCount, setDuplicateCount] = useState(0);
 
   // Load web bookmarks from notes
   useEffect(() => {
@@ -242,9 +355,6 @@ const BookmarkManager = ({ allNotes }) => {
   }, []);
 
   const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setIsDragging(false);
-
     const file = e.dataTransfer.files[0];
     if (!file || file.type !== 'text/html') {
       alert('Please drop a valid Chrome bookmarks HTML file');
@@ -258,7 +368,6 @@ const BookmarkManager = ({ allNotes }) => {
       const bookmarkElements = doc.querySelectorAll('a');
       
       const parsedBookmarks = Array.from(bookmarkElements).map(link => {
-        // Get the folder path by traversing up the DOM tree
         const folderPath = [];
         let parent = link.parentElement;
         while (parent && parent.tagName === 'DL') {
@@ -278,10 +387,45 @@ const BookmarkManager = ({ allNotes }) => {
         };
       });
 
-      setBookmarks(parsedBookmarks);
+      // Compare with existing bookmarks
+      const existingUrls = new Set(bookmarks.map(b => b.url));
+      const duplicates = parsedBookmarks.filter(b => existingUrls.has(b.url));
+      const uniqueNewBookmarks = parsedBookmarks.filter(b => !existingUrls.has(b.url));
+
+      setNewBookmarks(uniqueNewBookmarks);
+      setDuplicateCount(duplicates.length);
+      setIsLoadModalOpen(false);
+      setIsSummaryModalOpen(true);
     };
 
     reader.readAsText(file);
+  }, [bookmarks]);
+
+  const handleImportConfirm = useCallback(async (bookmarksToImport) => {
+    try {
+      // Save each bookmark as a note
+      for (const bookmark of bookmarksToImport) {
+        const content = [
+          `title:${bookmark.title || bookmark.url}`,
+          `url:${bookmark.url}`,
+          `create_date:${bookmark.dateAdded ? bookmark.dateAdded.toISOString() : new Date().toISOString()}`,
+          'meta::web_bookmark',
+          '', // Empty line to separate meta from content
+          bookmark.folderPath ? `Folder: ${bookmark.folderPath}` : ''
+        ].join('\n');
+
+        await createNote(content);
+      }
+
+      // Update the bookmarks list
+      setBookmarks(prev => [...prev, ...bookmarksToImport]);
+      
+      // Show success message
+      alert(`Successfully imported ${bookmarksToImport.length} bookmarks as notes!`);
+    } catch (error) {
+      console.error('Error saving bookmarks as notes:', error);
+      alert('Error saving bookmarks as notes. Please try again.');
+    }
   }, []);
 
   // Calculate all hostnames
@@ -579,15 +723,24 @@ const BookmarkManager = ({ allNotes }) => {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-700">Bookmarks</h2>
-        {bookmarks.length > 0 && (
+        <div className="flex gap-2">
           <button
-            onClick={saveBookmarksAsNotes}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => setIsLoadModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
           >
-            <DocumentPlusIcon className="h-5 w-5" />
-            Save as Notes
+            <ArrowUpTrayIcon className="h-5 w-5" />
+            Load Bookmarks
           </button>
-        )}
+          {bookmarks.length > 0 && (
+            <button
+              onClick={saveBookmarksAsNotes}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <DocumentPlusIcon className="h-5 w-5" />
+              Save as Notes
+            </button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -886,6 +1039,20 @@ const BookmarkManager = ({ allNotes }) => {
           <p className="text-sm text-gray-500">The file should be named "bookmarks.html"</p>
         </div>
       )}
+
+      <LoadBookmarksModal
+        isOpen={isLoadModalOpen}
+        onClose={() => setIsLoadModalOpen(false)}
+        onDrop={handleDrop}
+      />
+
+      <SummaryModal
+        isOpen={isSummaryModalOpen}
+        onClose={() => setIsSummaryModalOpen(false)}
+        newBookmarks={newBookmarks}
+        existingCount={duplicateCount}
+        onConfirm={handleImportConfirm}
+      />
 
       {previewState.isVisible && (
         isYouTubeUrl(previewState.url) ? (

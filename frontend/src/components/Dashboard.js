@@ -5,6 +5,7 @@ import { ChevronDownIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay';
 import StockPrice from './Stocks';
 import BookmarkedLinks from './BookmarkedLinks';
+import EventManager from './EventManager';
 
 const Dashboard = ({notes,setNotes}) => {
   const [events, setEvents] = useState([]);
@@ -97,7 +98,8 @@ const Dashboard = ({notes,setNotes}) => {
                 )}
               </div>
             </div>
-            <StockPrice />
+            <EventManager />
+          <StockPrice />
           </div>
           <BookmarkedLinks notes={notes} />
         </div>

@@ -154,7 +154,7 @@ const CustomCalendar = () => {
   // Temp event tracking state
   const [tempEvents, setTempEvents] = useState([]);
   const [isTempEventModalOpen, setIsTempEventModalOpen] = useState(false);
-  const [tempEventForm, setTempEventForm] = useState({ name: '', date: '', start: '', end: '' });
+  const [tempEventForm, setTempEventForm] = useState({ name: '', date: '', endDate: '' });
 
   // Load temp events from localStorage on mount
   useEffect(() => {
@@ -171,12 +171,12 @@ const CustomCalendar = () => {
   };
   const handleTempEventSubmit = (e) => {
     e.preventDefault();
-    if (!tempEventForm.name || !tempEventForm.date || !tempEventForm.start) return;
+    if (!tempEventForm.name || !tempEventForm.date) return;
     setTempEvents(prev => [
       ...prev,
       { ...tempEventForm, id: Date.now() }
     ]);
-    setTempEventForm({ name: '', date: '', start: '', end: '' });
+    setTempEventForm({ name: '', date: '', endDate: '' });
     setIsTempEventModalOpen(false);
   };
   const handleDeleteTempEvent = (id) => {
@@ -358,7 +358,6 @@ const CustomCalendar = () => {
       {/* Temp Event Cards Section - visually highlighted */}
       <div className="flex flex-col gap-2 mb-6 bg-indigo-50 border-2 border-indigo-300 rounded-xl p-4 shadow-lg">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-semibold text-indigo-800">Temp Event Tracking</h2>
           <button
             onClick={() => setIsTempEventModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-lg border border-indigo-700"
@@ -378,7 +377,9 @@ const CustomCalendar = () => {
                 <div className="text-xs text-gray-400 -mt-1 mb-1">days</div>
                 <div className="font-medium text-gray-900 truncate w-full">{ev.name}</div>
                 <div className="text-sm text-gray-500">{new Date(ev.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
-                <div className="text-xs text-gray-500">{ev.start}{ev.end && ` - ${ev.end}`}</div>
+                {ev.endDate && (
+                  <div className="text-xs text-gray-500">to {new Date(ev.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</div>
+                )}
                 <button onClick={() => handleDeleteTempEvent(ev.id)} className="mt-2 text-xs text-red-500 hover:underline self-end">Delete</button>
               </div>
             );
@@ -396,16 +397,12 @@ const CustomCalendar = () => {
                 <input type="text" name="name" value={tempEventForm.name} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Event Date</label>
+                <label className="block text-sm font-medium text-gray-700">Event Start Date</label>
                 <input type="date" name="date" value={tempEventForm.date} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Start Time</label>
-                <input type="time" name="start" value={tempEventForm.start} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">End Time (optional)</label>
-                <input type="time" name="end" value={tempEventForm.end} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+                <label className="block text-sm font-medium text-gray-700">Event End Date (optional)</label>
+                <input type="date" name="endDate" value={tempEventForm.endDate} onChange={handleTempEventInput} className="mt-1 block w-full border border-gray-300 rounded-md p-2" />
               </div>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setIsTempEventModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded-md text-gray-700">Cancel</button>

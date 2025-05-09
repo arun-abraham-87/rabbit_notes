@@ -146,12 +146,14 @@ const CalendarStats = ({ currentDate }) => {
   );
 };
 
-const CustomCalendar = () => {
+const CustomCalendar = ({ notes, setNotes }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [events, setEvents] = useState([]);
   const [showAnniversary, setShowAnniversary] = useState(false);
   const [hoveredEvent, setHoveredEvent] = useState(null);
+  const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, date: null, event: null });
+  const [showEventManager, setShowEventManager] = useState(false);
 
   // Fetch events from notes
   useEffect(() => {
@@ -170,22 +172,19 @@ const CustomCalendar = () => {
           const originalDate = eventDateLine ? new Date(eventDateLine.split(':')[1].trim().split("T")[0]) : null;
           const eventDate = originalDate ? new Date(originalDate) : null;
           
-          // Get the first line as the event title and remove 'event_description:'
           const title = lines[0].trim().replace('event_description:', '').trim();
           
-          // If anniversary mode is on, set the year to current year
           if (eventDate && showAnniversary) {
             eventDate.setFullYear(currentYear);
           }
           
-          let obj = {
+          return {
             id: note.id,
             title,
             date: eventDate,
             originalDate: originalDate,
             content: note.content
           };
-          return obj;
         }).filter(event => {
           if (!event.date) return false;
           return showAnniversary ? true : event.date.getFullYear() === currentYear;
@@ -255,6 +254,61 @@ const CustomCalendar = () => {
     });
   };
 
+  const handleContextMenu = (e, date, event = null) => {
+    e.preventDefault();
+    setContextMenu({
+      show: true,
+      x: e.clientX,
+      y: e.clientY,
+      date: date,
+      event: event
+    });
+  };
+
+  const handleContextMenuClose = () => {
+    setContextMenu({ show: false, x: 0, y: 0, date: null, event: null });
+  };
+
+  const handleAddEvent = (e) => {
+    e.preventDefault();
+    setSelectedDate(contextMenu.date);
+    setShowEventManager(true);
+    setContextMenu({ show: false, x: 0, y: 0 });
+  };
+
+  const handleEditEvent = (e) => {
+    e.preventDefault();
+    setSelectedDate(contextMenu.date);
+    setShowEventManager(true);
+    setContextMenu({ show: false, x: 0, y: 0, date: null, event: null });
+  };
+
+  const handleEventClick = (e, event) => {
+    e.stopPropagation(); // Prevent the day cell click from triggering
+    setSelectedDate(new Date(event.date));
+    setContextMenu({
+      show: true,
+      x: e.clientX,
+      y: e.clientY,
+      date: new Date(event.date),
+      event: event
+    });
+  };
+
+  // Add event listener for closing context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (contextMenu.show) {
+        handleContextMenuClose();
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [contextMenu.show]);
+
   const renderCalendarDays = () => {
     const days = [];
     const totalDays = daysInMonth(currentDate);
@@ -278,6 +332,7 @@ const CustomCalendar = () => {
         <div
           key={day}
           onClick={() => handleDateClick(date)}
+          onContextMenu={(e) => handleContextMenu(e, date)}
           className={`h-24 border border-gray-100 p-2 cursor-pointer transition-colors relative
             ${isCurrentDay ? 'bg-blue-50 border-2 border-black' : 'hover:bg-gray-50'}
             ${isCurrentSelected ? 'ring-2 ring-blue-500' : ''}
@@ -300,8 +355,9 @@ const CustomCalendar = () => {
                 <div
                   key={event.id}
                   className="group relative"
+                  onClick={(e) => handleEventClick(e, event)}
                 >
-                  <div className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded truncate">
+                  <div className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded truncate cursor-pointer hover:bg-blue-200">
                     {event.title}
                   </div>
                   <div className="hidden group-hover:block absolute z-50 left-0 top-full mt-1 bg-white p-3 rounded-lg shadow-lg border border-gray-200 min-w-[200px]">
@@ -325,8 +381,89 @@ const CustomCalendar = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-      <EventManager />
+      {showEventManager && (
+        <EventManager 
+          selectedDate={selectedDate}
+          onClose={() => setShowEventManager(false)}
+          onEventAdded={() => {
+            setShowEventManager(false);
+            // Refresh events
+            const fetchEvents = async () => {
+              try {
+                const data = await loadAllNotes('', null);
+                const eventNotes = data.notes.filter(note => 
+                  note.content.split('\n').some(line => line.trim().startsWith('event_date:'))
+                );
+
+                const currentYear = new Date().getFullYear();
+
+                const parsedEvents = eventNotes.map(note => {
+                  const lines = note.content.split('\n');
+                  const eventDateLine = lines.find(line => line.trim().startsWith('event_date:'));
+                  const originalDate = eventDateLine ? new Date(eventDateLine.split(':')[1].trim().split("T")[0]) : null;
+                  const eventDate = originalDate ? new Date(originalDate) : null;
+                  
+                  const title = lines[0].trim().replace('event_description:', '').trim();
+                  
+                  if (eventDate && showAnniversary) {
+                    eventDate.setFullYear(currentYear);
+                  }
+                  
+                  return {
+                    id: note.id,
+                    title,
+                    date: eventDate,
+                    originalDate: originalDate,
+                    content: note.content
+                  };
+                }).filter(event => {
+                  if (!event.date) return false;
+                  return showAnniversary ? true : event.date.getFullYear() === currentYear;
+                });
+
+                setEvents(parsedEvents);
+              } catch (error) {
+                console.error('Error fetching events:', error);
+              }
+            };
+            fetchEvents();
+          }}
+          notes={notes}
+          setNotes={setNotes}
+          eventToEdit={contextMenu.event}
+        />
+      )}
       
+      {/* Context Menu */}
+      {contextMenu.show && (
+        <div 
+          className="fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
+          style={{ 
+            top: contextMenu.y, 
+            left: contextMenu.x,
+            minWidth: '150px'
+          }}
+        >
+          {contextMenu.event ? (
+            <button
+              onClick={handleEditEvent}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Edit Event
+            </button>
+          ) : (
+            <button
+              onClick={handleAddEvent}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add Event
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Calendar Header */}
       <div className="bg-white p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">

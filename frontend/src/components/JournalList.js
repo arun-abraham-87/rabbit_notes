@@ -32,7 +32,7 @@ const JournalList = ({ onEditJournal, onNewJournal, initialJournals, onJournalsU
   const formatDate = (dateString) => {
     try {
       const date = new Date(dateString);
-      return format(date, 'MMMM d, yyyy');
+      return format(date, 'MMMM d, yyyy • EEEE');
     } catch (error) {
       return dateString;
     }
@@ -443,9 +443,11 @@ const JournalList = ({ onEditJournal, onNewJournal, initialJournals, onJournalsU
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg w-[90%] max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {formatDate(selectedJournal.date)}
-              </h2>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {formatDate(selectedJournal.date)}
+                </h2>
+              </div>
               <button
                 onClick={() => {
                   setViewModalOpen(false);

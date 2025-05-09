@@ -1993,6 +1993,16 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
   const [revealedDeadlines, setRevealedDeadlines] = useState({});
   const [deadlineIndicators, setDeadlineIndicators] = useState('');
 
+  const getDaysUntilDeadline = (deadlineDate) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(deadlineDate);
+    deadline.setHours(0, 0, 0, 0);
+    const diffTime = deadline - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   useEffect(() => {
     const eventNotes = notes.filter(note => note.content.includes('meta::event_deadline'));
     const upcoming = [];
@@ -2107,55 +2117,68 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                 </button>
               </div>
               <div className="space-y-4">
-                {deadlines.map((deadline) => (
-                  <div 
-                    key={deadline.id}
-                    className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150"
-                  >
-                    <div className="flex items-start justify-between">
+                {deadlines.map((deadline) => {
+                  const daysUntil = getDaysUntilDeadline(deadline.date);
+                  return (
+                    <div 
+                      key={deadline.id}
+                      className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150 flex"
+                    >
+                      <div className="flex flex-col items-center justify-center min-w-[80px] bg-indigo-100 rounded-l-lg -m-4 mr-4">
+                        <div className="text-3xl font-bold text-indigo-700">
+                          {daysUntil}
+                        </div>
+                        <div className="text-sm text-indigo-600 font-medium">
+                          {daysUntil === 1 ? 'day' : 'days'}
+                        </div>
+                      </div>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-lg font-medium text-gray-900">
-                            {deadline.isHidden && !revealedDeadlines[deadline.id] ? 'XXXXXXXXX' : deadline.description}
-                          </h4>
-                          {deadline.isHidden && (
-                            <button
-                              onClick={() => toggleDeadlineVisibility(deadline.id)}
-                              className="text-indigo-600 hover:text-indigo-800 focus:outline-none"
-                              title={revealedDeadlines[deadline.id] ? "Hide description" : "Reveal description"}
-                            >
-                              <EyeIcon className="h-5 w-5" />
-                            </button>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                          <ClockIcon className="h-4 w-4" />
-                          <span>
-                            {deadline.date.toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                          <CalendarIcon className="h-4 w-4" />
-                          <span>
-                            {deadline.date.toLocaleDateString('en-US', {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                          </span>
-                          <span className="text-indigo-600 font-medium">
-                            ({getAge(deadline.date)})
-                          </span>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-lg font-medium text-gray-900">
+                                {deadline.isHidden && !revealedDeadlines[deadline.id] ? 'XXXXXXXXX' : deadline.description}
+                              </h4>
+                              {deadline.isHidden && (
+                                <button
+                                  onClick={() => toggleDeadlineVisibility(deadline.id)}
+                                  className="text-indigo-600 hover:text-indigo-800 focus:outline-none"
+                                  title={revealedDeadlines[deadline.id] ? "Hide description" : "Reveal description"}
+                                >
+                                  <EyeIcon className="h-5 w-5" />
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                              <ClockIcon className="h-4 w-4" />
+                              <span>
+                                {deadline.date.toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                              <CalendarIcon className="h-4 w-4" />
+                              <span>
+                                {deadline.date.toLocaleDateString('en-US', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                              <span className="text-indigo-600 font-medium">
+                                ({getAge(deadline.date)})
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

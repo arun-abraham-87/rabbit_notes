@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import { createNote } from '../utils/ApiUtils';
 
 const WebsitePreview = ({ url, isVisible }) => {
@@ -642,6 +642,81 @@ const SummaryModal = ({ isOpen, onClose, newBookmarks, existingCount, onConfirm 
   );
 };
 
+const PinVerificationModal = ({ isOpen, onClose, onVerify }) => {
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (pin === '0000') {
+      onVerify(true);
+      setPin('');
+      setError('');
+      onClose();
+    } else {
+      setError('Incorrect PIN');
+      setPin('');
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-700">Enter PIN</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-1">
+              Enter PIN to view hidden bookmarks
+            </label>
+            <div className="relative">
+              <input
+                type="password"
+                id="pin"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter PIN"
+                maxLength={4}
+                pattern="[0-9]*"
+                inputMode="numeric"
+              />
+              <LockClosedIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            </div>
+            {error && (
+              <p className="mt-2 text-sm text-red-600">{error}</p>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Verify
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const BookmarkManager = ({ allNotes }) => {
   const [bookmarks, setBookmarks] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -654,6 +729,7 @@ const BookmarkManager = ({ allNotes }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isWebStatsExpanded, setIsWebStatsExpanded] = useState(false);
   const [isYearlyStatsExpanded, setIsYearlyStatsExpanded] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
   const [bookmarkCounts, setBookmarkCounts] = useState(() => {
     const savedCounts = localStorage.getItem('bookmarkCounts');
     return savedCounts ? JSON.parse(savedCounts) : {};
@@ -669,6 +745,7 @@ const BookmarkManager = ({ allNotes }) => {
   const [duplicateCount, setDuplicateCount] = useState(0);
   const [groupByMonth, setGroupByMonth] = useState(false);
   const [isLoadTextModalOpen, setIsLoadTextModalOpen] = useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
 
   // Load web bookmarks from notes
   useEffect(() => {
@@ -1079,6 +1156,7 @@ const BookmarkManager = ({ allNotes }) => {
     const isPreviewable = isPreviewableUrl(bookmark.url);
     const count = bookmarkCounts[bookmark.url] || 0;
     const isHidden = bookmark.isHidden;
+    const shouldMask = isHidden && !showHidden;
     
     return (
       <div
@@ -1096,17 +1174,23 @@ const BookmarkManager = ({ allNotes }) => {
           />
         )}
         <div className="flex-1 min-w-0">
-          <a
-            href={bookmark.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 truncate block"
-            onClick={() => incrementCount(bookmark.url)}
-          >
-            {isHidden ? 'XXXXXXXXXXXXXXXXXX' : (bookmark.title || bookmark.url)}
-          </a>
+          {shouldMask ? (
+            <div className="text-gray-400 truncate cursor-not-allowed">
+              XXXXXXXXXXXXXXXXXX
+            </div>
+          ) : (
+            <a
+              href={bookmark.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 truncate block"
+              onClick={() => incrementCount(bookmark.url)}
+            >
+              {bookmark.title || bookmark.url}
+            </a>
+          )}
           <p className="text-sm text-gray-500 truncate">
-            {isHidden ? 'XXXXXXXXXXXXXXXXXX' : bookmark.url}
+            {shouldMask ? 'XXXXXXXXXXXXXXXXXX' : bookmark.url}
           </p>
           {bookmark.folderPath && (
             <p className="text-xs text-gray-400 mt-1">
@@ -1127,7 +1211,7 @@ const BookmarkManager = ({ allNotes }) => {
               {bookmark.dateAdded.toLocaleDateString()}
             </div>
           )}
-          {isPreviewable && !isHidden && (
+          {isPreviewable && !shouldMask && (
             <div
               className="w-8 h-8 flex items-center justify-center bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors"
               onMouseEnter={(e) => handleMouseEnter(e, bookmark.url)}
@@ -1240,6 +1324,20 @@ const BookmarkManager = ({ allNotes }) => {
         {filteredBookmarks.map((bookmark, index) => renderBookmarkCard(bookmark, index))}
       </div>
     );
+  };
+
+  const handleShowHiddenClick = () => {
+    if (!showHidden) {
+      setIsPinModalOpen(true);
+    } else {
+      setShowHidden(false);
+    }
+  };
+
+  const handlePinVerify = (success) => {
+    if (success) {
+      setShowHidden(true);
+    }
   };
 
   return (
@@ -1503,17 +1601,35 @@ const BookmarkManager = ({ allNotes }) => {
               </div>
             )}
 
-            <h3 className="text-md font-medium text-gray-700 mb-3">
-              {filteredBookmarks.length === bookmarks.length 
-                ? `All Bookmarks (${bookmarks.length})`
-                : `Filtered Bookmarks (${filteredBookmarks.length} of ${bookmarks.length})`
-              }
-              {!searchQuery.trim() && !selectedHostname && !selectedYear && selectedMonth === null && (
-                <span className="text-sm text-gray-500 ml-2">
-                  (showing most recent 100)
-                </span>
-              )}
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-md font-medium text-gray-700">
+                {filteredBookmarks.length === bookmarks.length 
+                  ? `All Bookmarks (${bookmarks.length})`
+                  : `Filtered Bookmarks (${filteredBookmarks.length} of ${bookmarks.length})`
+                }
+                {!searchQuery.trim() && !selectedHostname && !selectedYear && selectedMonth === null && (
+                  <span className="text-sm text-gray-500 ml-2">
+                    (showing most recent 100)
+                  </span>
+                )}
+              </h3>
+              <button
+                onClick={handleShowHiddenClick}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                {showHidden ? (
+                  <>
+                    <EyeSlashIcon className="h-5 w-5" />
+                    Hide Hidden Bookmarks
+                  </>
+                ) : (
+                  <>
+                    <EyeIcon className="h-5 w-5" />
+                    Show Hidden Bookmarks
+                  </>
+                )}
+              </button>
+            </div>
             
             <div className="space-y-6">
               {renderBookmarkList()}
@@ -1576,6 +1692,12 @@ const BookmarkManager = ({ allNotes }) => {
           />
         )
       )}
+
+      <PinVerificationModal
+        isOpen={isPinModalOpen}
+        onClose={() => setIsPinModalOpen(false)}
+        onVerify={handlePinVerify}
+      />
     </div>
   );
 };

@@ -435,6 +435,79 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [expandedNotes, setExpandedNotes] = useState({});
   const [showNoteEditor, setShowNoteEditor] = useState(false);
 
+  // Add burning animation styles
+  useEffect(() => {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+      @keyframes burning {
+        0% { 
+          transform: scale(1) rotate(-3deg); 
+          filter: drop-shadow(0 0 2px rgba(255, 0, 0, 0.5)) drop-shadow(0 0 4px rgba(255, 165, 0, 0.3));
+          color: rgb(255, 0, 0);
+        }
+        10% { 
+          transform: scale(1.1) rotate(2deg); 
+          filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.7)) drop-shadow(0 0 8px rgba(255, 165, 0, 0.5));
+          color: rgb(255, 69, 0);
+        }
+        20% { 
+          transform: scale(0.95) rotate(-2deg); 
+          filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(255, 165, 0, 0.4));
+          color: rgb(255, 140, 0);
+        }
+        30% { 
+          transform: scale(1.05) rotate(1deg); 
+          filter: drop-shadow(0 0 5px rgba(255, 0, 0, 0.8)) drop-shadow(0 0 10px rgba(255, 165, 0, 0.6));
+          color: rgb(255, 0, 0);
+        }
+        40% { 
+          transform: scale(0.98) rotate(-1deg); 
+          filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(255, 165, 0, 0.4));
+          color: rgb(255, 69, 0);
+        }
+        50% { 
+          transform: scale(1.1) rotate(2deg); 
+          filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.7)) drop-shadow(0 0 8px rgba(255, 165, 0, 0.5));
+          color: rgb(255, 140, 0);
+        }
+        60% { 
+          transform: scale(0.95) rotate(-2deg); 
+          filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(255, 165, 0, 0.4));
+          color: rgb(255, 0, 0);
+        }
+        70% { 
+          transform: scale(1.05) rotate(1deg); 
+          filter: drop-shadow(0 0 5px rgba(255, 0, 0, 0.8)) drop-shadow(0 0 10px rgba(255, 165, 0, 0.6));
+          color: rgb(255, 69, 0);
+        }
+        80% { 
+          transform: scale(0.98) rotate(-1deg); 
+          filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(255, 165, 0, 0.4));
+          color: rgb(255, 140, 0);
+        }
+        90% { 
+          transform: scale(1.1) rotate(2deg); 
+          filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.7)) drop-shadow(0 0 8px rgba(255, 165, 0, 0.5));
+          color: rgb(255, 0, 0);
+        }
+        100% { 
+          transform: scale(1) rotate(-3deg); 
+          filter: drop-shadow(0 0 2px rgba(255, 0, 0, 0.5)) drop-shadow(0 0 4px rgba(255, 165, 0, 0.3));
+          color: rgb(255, 69, 0);
+        }
+      }
+      .burning-icon {
+        animation: burning 1.5s ease-in-out infinite;
+        transform-origin: center;
+        will-change: transform, filter, color;
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
+
   const criticalTodos = notes.filter(note => {
     if (!note.content.includes('meta::todo::')) return false;
     if (note.content.includes('meta::todo_completed')) return false;
@@ -680,7 +753,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         <div className="bg-red-50 px-6 py-4 border-b border-red-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <FireIcon className="h-6 w-6 text-red-500" />
+              <FireIcon className="h-6 w-6 text-red-500 burning-icon" />
               <h3 className="ml-3 text-base font-semibold text-red-800">
                 Critical Todos ({criticalTodos.length})
               </h3>

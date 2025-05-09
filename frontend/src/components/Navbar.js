@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
-import { ChevronDownIcon, Cog6ToothIcon, Bars3Icon } from '@heroicons/react/24/solid';
+import React from 'react';
+import { Cog6ToothIcon } from '@heroicons/react/24/solid';
 import QuickPasteToggle from './QuickPasteToggle';
 
 const Navbar = ({ activePage, setActivePage, settings }) => {
-  const [showDropdown, setShowDropdown] = useState(false);
-
   const navigationButtons = [
     { id: 'dashboard', label: 'Dashboard', show: settings?.navigation?.showDashboardPage !== false },
     { id: 'notes', label: 'Notes', show: true },
@@ -17,12 +15,8 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
     { id: 'news', label: 'News', show: settings?.navigation?.showNewsPage !== false },
     { id: 'expense', label: 'Expense', show: settings?.navigation?.showExpensePage !== false },
     { id: 'trackers', label: 'Trackers', show: settings?.navigation?.showTrackersPage !== false },
-    { id: 'metro', label: 'Metro', show: settings?.navigation?.showMetroPage !== false },
     { id: 'calendar', label: 'Calendar', show: settings?.navigation?.showCalendarPage !== false },
   ].filter(button => button.show);
-
-  const visibleButtons = navigationButtons.slice(0, 8);
-  const dropdownButtons = navigationButtons.slice(8);
 
   const NavButton = ({ id, label }) => (
     <button
@@ -48,44 +42,12 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
 
         {/* Right: Navigation Buttons */}
         <div className="flex items-center space-x-4">
-          {/* Always visible first four buttons */}
-          <div className="flex items-center space-x-4">
-            {visibleButtons.map(button => (
+          {/* All navigation buttons */}
+          <div className="flex items-center space-x-4 overflow-x-auto">
+            {navigationButtons.map(button => (
               <NavButton key={button.id} id={button.id} label={button.label} />
             ))}
           </div>
-          
-          {/* Dropdown menu for remaining buttons */}
-          {dropdownButtons.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="p-2 rounded-full text-gray-700 hover:bg-gray-100 transition"
-                title="More options"
-              >
-                <Bars3Icon className="h-5 w-5" />
-              </button>
-              
-              {showDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                  {dropdownButtons.map(button => (
-                    <button
-                      key={button.id}
-                      onClick={() => {
-                        setActivePage(button.id);
-                        setShowDropdown(false);
-                      }}
-                      className={`block w-full text-left px-4 py-2 text-sm ${
-                        activePage === button.id ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {button.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Quick Paste Toggle */}
           <QuickPasteToggle />

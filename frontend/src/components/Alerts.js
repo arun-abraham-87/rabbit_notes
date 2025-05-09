@@ -1680,9 +1680,11 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
           } else if (eventDate.getTime() === tomorrow.getTime()) {
             hasTomorrowEvent = true;
           } else if (!nextEventDays || eventDate < new Date(nextEventDays.date)) {
-            const diffTime = Math.abs(eventDate - today);
+            const diffTime = eventDate - today;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            nextEventDays = { date: eventDate, days: diffDays };
+            if (diffDays > 0) { // Only consider future events
+              nextEventDays = { date: eventDate, days: diffDays };
+            }
           }
 
           // Only include events within the next 7 days

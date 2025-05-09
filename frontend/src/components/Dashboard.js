@@ -4,6 +4,7 @@ import { loadAllNotes } from '../utils/ApiUtils';
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay';
 import StockPrice from './Stocks';
+import BookmarkedLinks from './BookmarkedLinks';
 
 const Dashboard = ({notes,setNotes}) => {
   const [events, setEvents] = useState([]);
@@ -72,30 +73,33 @@ const Dashboard = ({notes,setNotes}) => {
     <div className="container mx-auto px-4 py-8">
       {/* Date and Time Section */}
       <div className="mb-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold mb-4">{formattedDate}</h1>
-            <div
-              className="relative group"
-              onMouseEnter={() => setShowTimezones(true)}
-              onMouseLeave={() => setShowTimezones(false)}
-            >
-              <div className="flex items-center gap-4 cursor-pointer">
-                <div className="text-base font-medium">{formattedTime}</div>
-                <div className="flex items-center gap-1 text-sm text-gray-500">
-                  <span>🇦🇺</span>
-                  <span>AEST</span>
-                  <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold mb-4">{formattedDate}</h1>
+              <div
+                className="relative group"
+                onMouseEnter={() => setShowTimezones(true)}
+                onMouseLeave={() => setShowTimezones(false)}
+              >
+                <div className="flex items-center gap-4 cursor-pointer">
+                  <div className="text-base font-medium">{formattedTime}</div>
+                  <div className="flex items-center gap-1 text-sm text-gray-500">
+                    <span>🇦🇺</span>
+                    <span>AEST</span>
+                    <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                  </div>
                 </div>
+                {showTimezones && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
+                    <TimeZoneDisplay selectedTimezones={selectedTimezones} />
+                  </div>
+                )}
               </div>
-              {showTimezones && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
-                  <TimeZoneDisplay selectedTimezones={selectedTimezones} />
-                </div>
-              )}
             </div>
+            <StockPrice />
           </div>
-          <StockPrice />
+          <BookmarkedLinks notes={notes} />
         </div>
       </div>
 

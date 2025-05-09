@@ -345,12 +345,6 @@ const CustomCalendar = ({ notes, setNotes }) => {
           </div>
           <div className="mt-1 space-y-1">
             {dayEvents.map(event => {
-              const originalDate = new Date(event.originalDate);
-              const today = new Date();
-              const age = today.getFullYear() - originalDate.getFullYear();
-              const diffTime = Math.abs(today - originalDate);
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
               return (
                 <div
                   key={event.id}
@@ -359,14 +353,6 @@ const CustomCalendar = ({ notes, setNotes }) => {
                 >
                   <div className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded truncate cursor-pointer hover:bg-blue-200">
                     {event.title}
-                  </div>
-                  <div className="hidden group-hover:block absolute z-50 left-0 top-full mt-1 bg-white p-3 rounded-lg shadow-lg border border-gray-200 min-w-[200px]">
-                    <div className="text-sm font-medium text-gray-900 mb-1">{event.title}</div>
-                    <div className="text-xs text-gray-600 space-y-1">
-                      <div>Original Date: {originalDate.toLocaleDateString()}</div>
-                      <div>Age: {age} years</div>
-                      <div>Days from today: {diffDays}</div>
-                    </div>
                   </div>
                 </div>
               );
@@ -441,17 +427,27 @@ const CustomCalendar = ({ notes, setNotes }) => {
           style={{ 
             top: contextMenu.y, 
             left: contextMenu.x,
-            minWidth: '150px'
+            minWidth: '200px'
           }}
         >
           {contextMenu.event ? (
-            <button
-              onClick={handleEditEvent}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Edit Event
-            </button>
+            <>
+              <div className="px-4 py-2 border-b border-gray-200">
+                <div className="text-sm font-medium text-gray-900 mb-1">{contextMenu.event.title}</div>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <div>Original Date: {new Date(contextMenu.event.originalDate).toLocaleDateString()}</div>
+                  <div>Age: {new Date().getFullYear() - new Date(contextMenu.event.originalDate).getFullYear()} years</div>
+                  <div>Days from today: {Math.ceil(Math.abs(new Date() - new Date(contextMenu.event.originalDate)) / (1000 * 60 * 60 * 24))}</div>
+                </div>
+              </div>
+              <button
+                onClick={handleEditEvent}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Edit Event
+              </button>
+            </>
           ) : (
             <button
               onClick={handleAddEvent}

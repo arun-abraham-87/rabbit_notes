@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon, PencilIcon } from '@heroicons/react/24/outline';
-import { createNote } from '../utils/ApiUtils';
+import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
 const WebsitePreview = ({ url, isVisible }) => {
   const [isUnavailable, setIsUnavailable] = useState(false);
@@ -851,6 +851,51 @@ const BookmarkEdit = ({ isOpen, onClose, bookmark, onSave }) => {
   );
 };
 
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, bookmark }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-700">Delete Bookmark</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <ExclamationTriangleIcon className="h-6 w-6 text-red-500 mb-2" />
+            <p className="text-red-700">
+              Are you sure you want to delete this bookmark?
+            </p>
+            <p className="text-sm text-red-600 mt-2">
+              {bookmark?.title || bookmark?.url}
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const BookmarkManager = ({ allNotes }) => {
   const [bookmarks, setBookmarks] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -881,6 +926,7 @@ const BookmarkManager = ({ allNotes }) => {
   const [isLoadTextModalOpen, setIsLoadTextModalOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState(null);
+  const [deletingBookmark, setDeletingBookmark] = useState(null);
 
   // Load web bookmarks from notes
   useEffect(() => {
@@ -1299,7 +1345,8 @@ const BookmarkManager = ({ allNotes }) => {
         updatedBookmark.folderPath ? `Folder: ${updatedBookmark.folderPath}` : ''
       ].filter(line => line).join('\n');
 
-      await createNote(content);
+      // Update the existing note instead of creating a new one
+      await updateNoteById(updatedBookmark.id, content);
       
       // Update the bookmarks list
       setBookmarks(prev => prev.map(b => 
@@ -1308,6 +1355,17 @@ const BookmarkManager = ({ allNotes }) => {
     } catch (error) {
       console.error('Error updating bookmark:', error);
       throw error;
+    }
+  };
+
+  const handleDeleteBookmark = async (bookmark) => {
+    try {
+      await deleteNoteById(bookmark.id);
+      setBookmarks(prev => prev.filter(b => b.id !== bookmark.id));
+      setDeletingBookmark(null);
+    } catch (error) {
+      console.error('Error deleting bookmark:', error);
+      alert('Failed to delete bookmark. Please try again.');
     }
   };
 
@@ -1376,6 +1434,13 @@ const BookmarkManager = ({ allNotes }) => {
             title="Edit bookmark"
           >
             <PencilIcon className="h-4 w-4 text-gray-600" />
+          </button>
+          <button
+            onClick={() => setDeletingBookmark(bookmark)}
+            className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg cursor-pointer hover:bg-red-100 transition-colors"
+            title="Delete bookmark"
+          >
+            <TrashIcon className="h-4 w-4 text-red-600" />
           </button>
           {isPreviewable && !shouldMask && (
             <div
@@ -1870,6 +1935,13 @@ const BookmarkManager = ({ allNotes }) => {
         onClose={() => setEditingBookmark(null)}
         bookmark={editingBookmark}
         onSave={handleSaveBookmark}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={!!deletingBookmark}
+        onClose={() => setDeletingBookmark(null)}
+        onConfirm={() => handleDeleteBookmark(deletingBookmark)}
+        bookmark={deletingBookmark}
       />
     </div>
   );

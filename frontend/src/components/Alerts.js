@@ -1808,6 +1808,16 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
     }));
   };
 
+  const getDaysUntilEvent = (eventDate) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const event = new Date(eventDate);
+    event.setHours(0, 0, 0, 0);
+    const diffTime = event - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   if (upcomingEvents.length === 0) return null;
 
   return (
@@ -1860,83 +1870,96 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
                     No events scheduled for the next 7 days.
                   </div>
                 ) : (
-                  upcomingEvents.map((event) => (
-                    <div 
-                      key={event.id}
-                      className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150"
-                    >
-                      <div className="flex items-start justify-between">
+                  upcomingEvents.map((event) => {
+                    const daysUntil = getDaysUntilEvent(event.date);
+                    return (
+                      <div 
+                        key={event.id}
+                        className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150 flex"
+                      >
+                        <div className="flex flex-col items-center justify-center min-w-[80px] bg-blue-100 rounded-l-lg -m-4 mr-4">
+                          <div className="text-3xl font-bold text-blue-700">
+                            {daysUntil}
+                          </div>
+                          <div className="text-sm text-blue-600 font-medium">
+                            {daysUntil === 1 ? 'day' : 'days'}
+                          </div>
+                        </div>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-lg font-medium text-gray-900">
-                              {event.isHidden && !revealedEvents[event.id] ? 'XXXXXXXXX' : event.description}
-                            </h4>
-                            {event.isHidden && (
-                              <button
-                                onClick={() => toggleEventVisibility(event.id)}
-                                className="text-blue-600 hover:text-blue-800 focus:outline-none"
-                                title={revealedEvents[event.id] ? "Hide description" : "Reveal description"}
-                              >
-                                <EyeIcon className="h-5 w-5" />
-                              </button>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                            <ClockIcon className="h-4 w-4" />
-                            <span>
-                              {event.date.toLocaleTimeString('en-US', {
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true
-                              })}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                            <CalendarIcon className="h-4 w-4" />
-                            <span>
-                              {event.date.toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </span>
-                            <span className="text-blue-600 font-medium">
-                              ({getAge(event.date)})
-                            </span>
-                          </div>
-                          {event.isRecurring && event.originalDate && (
-                            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                              <ClockIcon className="h-4 w-4" />
-                              <span>
-                                Original date: {event.originalDate.toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })} ({getAge(event.originalDate)})
-                              </span>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-lg font-medium text-gray-900">
+                                  {event.isHidden && !revealedEvents[event.id] ? 'XXXXXXXXX' : event.description}
+                                </h4>
+                                {event.isHidden && (
+                                  <button
+                                    onClick={() => toggleEventVisibility(event.id)}
+                                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                                    title={revealedEvents[event.id] ? "Hide description" : "Reveal description"}
+                                  >
+                                    <EyeIcon className="h-5 w-5" />
+                                  </button>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                                <ClockIcon className="h-4 w-4" />
+                                <span>
+                                  {event.date.toLocaleTimeString('en-US', {
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  })}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                                <CalendarIcon className="h-4 w-4" />
+                                <span>
+                                  {event.date.toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}
+                                </span>
+                                <span className="text-blue-600 font-medium">
+                                  ({getAge(event.date)})
+                                </span>
+                              </div>
+                              {event.isRecurring && event.originalDate && (
+                                <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                                  <ClockIcon className="h-4 w-4" />
+                                  <span>
+                                    Original date: {event.originalDate.toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })} ({getAge(event.originalDate)})
+                                  </span>
+                                </div>
+                              )}
+                              {event.location && (
+                                <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                    <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                                  </svg>
+                                  <span>{event.location}</span>
+                                </div>
+                              )}
+                              {event.isRecurring && (
+                                <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                                  </svg>
+                                  <span>{event.recurrenceType.charAt(0).toUpperCase() + event.recurrenceType.slice(1)}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {event.location && (
-                            <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                                <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                              </svg>
-                              <span>{event.location}</span>
-                            </div>
-                          )}
-                          {event.isRecurring && (
-                            <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                              </svg>
-                              <span>{event.recurrenceType.charAt(0).toUpperCase() + event.recurrenceType.slice(1)}</span>
-                            </div>
-                          )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -2830,7 +2853,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         pauseOnHover
         theme="light"
       />
-      <div className="space-y-6 w-full">
+      <div className="space-y-4 w-full">
         <BackupAlert notes={notes} expanded={true} />
         <RemindersAlert notes={notes} expanded={true} setNotes={setNotes} />
         <div className="flex gap-4">

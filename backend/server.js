@@ -4,6 +4,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const settingsRouter = require('./routes/settings');
 const journalsRouter = require('./routes/journals');
+const metroRoutes = require('./routes/metro');
 
 const app = express();
 app.use(express.json());
@@ -17,6 +18,7 @@ app.use(cors({
 // Mount routers
 app.use('/api/settings', settingsRouter);
 app.use('/api/journals', journalsRouter);
+app.use('/api/metro', metroRoutes);
 
 const NOTES_DIR = './notes';
 if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);
@@ -652,7 +654,7 @@ app.post('/api/images', upload.single('image'), (req, res) => {
   res.status(200).json({ message: 'Image uploaded successfully.', filename: req.file.filename });
 });
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, '0.0.0.0', (err) => {
   if (err) {
     console.error('Error starting server:', err);

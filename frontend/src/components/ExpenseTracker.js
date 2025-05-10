@@ -89,7 +89,7 @@ const ExpenseTracker = ({ allNotes, setAllNotes }) => {
   ////console.log
 
   const parseExpenses = (notes, typeMap) => {
-    //console.log
+    console.log('notes', notes.length);
     
     const expenseNotes = notes.filter(note => {
       const isExpenseNote = note.content.includes('meta::expense') && 

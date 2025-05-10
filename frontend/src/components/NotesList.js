@@ -485,8 +485,82 @@ const NotesList = ({
 
           {/* Regular notes section */}
           <div className="space-y-4">
+            {safeNotes.filter(note => !note.pinned).length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                {searchQuery ? (
+                  <p>No matching notes found for "{searchQuery}"</p>
+                ) : (
+                  <p>No notes found</p>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {safeNotes.filter(note => !note.pinned).map(note => (
+                  <NoteCard
+                    key={note.id}
+                    note={note}
+                    searchQuery={searchQuery}
+                    duplicatedUrlColors={duplicatedUrlColors}
+                    editingLine={editingLine}
+                    setEditingLine={setEditingLine}
+                    editedLineContent={editedLineContent}
+                    setEditedLineContent={setEditedLineContent}
+                    rightClickNoteId={rightClickNoteId}
+                    rightClickIndex={rightClickIndex}
+                    setRightClickNoteId={setRightClickNoteId}
+                    setRightClickIndex={setRightClickIndex}
+                    setRightClickPos={setRightClickPos}
+                    editingInlineDate={editingInlineDate}
+                    setEditingInlineDate={setEditingInlineDate}
+                    handleInlineDateSelect={handleInlineDateSelect}
+                    popupNoteText={popupNoteText}
+                    setPopupNoteText={setPopupNoteText}
+                    objList={objList}
+                    addingLineNoteId={addingLineNoteId}
+                    setAddingLineNoteId={setAddingLineNoteId}
+                    newLineText={newLineText}
+                    setNewLineText={setNewLineText}
+                    newLineInputRef={newLineInputRef}
+                    updateNote={updateNoteCallback}
+                    urlToNotesMap={urlToNotesMap}
+                    updateNoteCallback={updateNoteCallback}
+                    showCreatedDate={settings.showCreatedDate || false}
+                    setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
+                    handleDelete={handleDelete}
+                    setLinkingNoteId={setLinkingNoteId}
+                    setLinkSearchTerm={setLinkSearchTerm}
+                    setLinkPopupVisible={setLinkPopupVisible}
+                    selectedNotes={selectedNotes}
+                    toggleNoteSelection={toggleNoteSelection}
+                    allNotes={allNotes}
+                    onNavigate={scrollToNote}
+                    onContextMenu={handleContextMenu}
+                    isMeetingNote={isMeetingNote}
+                    isEventNote={isEventNote}
+                    setEditingMeetingNote={setEditingMeetingNote}
+                    setEditingEventNote={setEditingEventNote}
+                    duplicateUrlNoteIds={duplicateUrlNoteIds}
+                    duplicateWithinNoteIds={duplicateWithinNoteIds}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        // When not on notes page, render all notes without pinned/unpinned sections
+        <>
+          {safeNotes.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              {searchQuery ? (
+                <p>No matching notes found for "{searchQuery}"</p>
+              ) : (
+                <p>No notes found</p>
+              )}
+            </div>
+          ) : (
             <div className="grid grid-cols-1 gap-4">
-              {safeNotes.filter(note => !note.pinned).map(note => (
+              {safeNotes.map(note => (
                 <NoteCard
                   key={note.id}
                   note={note}
@@ -535,60 +609,8 @@ const NotesList = ({
                 />
               ))}
             </div>
-          </div>
+          )}
         </>
-      ) : (
-        // When not on notes page, render all notes without pinned/unpinned sections
-        <div className="grid grid-cols-1 gap-4">
-          {safeNotes.map(note => (
-            <NoteCard
-              key={note.id}
-              note={note}
-              searchQuery={searchQuery}
-              duplicatedUrlColors={duplicatedUrlColors}
-              editingLine={editingLine}
-              setEditingLine={setEditingLine}
-              editedLineContent={editedLineContent}
-              setEditedLineContent={setEditedLineContent}
-              rightClickNoteId={rightClickNoteId}
-              rightClickIndex={rightClickIndex}
-              setRightClickNoteId={setRightClickNoteId}
-              setRightClickIndex={setRightClickIndex}
-              setRightClickPos={setRightClickPos}
-              editingInlineDate={editingInlineDate}
-              setEditingInlineDate={setEditingInlineDate}
-              handleInlineDateSelect={handleInlineDateSelect}
-              popupNoteText={popupNoteText}
-              setPopupNoteText={setPopupNoteText}
-              objList={objList}
-              addingLineNoteId={addingLineNoteId}
-              setAddingLineNoteId={setAddingLineNoteId}
-              newLineText={newLineText}
-              setNewLineText={setNewLineText}
-              newLineInputRef={newLineInputRef}
-              updateNote={updateNoteCallback}
-              urlToNotesMap={urlToNotesMap}
-              updateNoteCallback={updateNoteCallback}
-              showCreatedDate={settings.showCreatedDate || false}
-              setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
-              handleDelete={handleDelete}
-              setLinkingNoteId={setLinkingNoteId}
-              setLinkSearchTerm={setLinkSearchTerm}
-              setLinkPopupVisible={setLinkPopupVisible}
-              selectedNotes={selectedNotes}
-              toggleNoteSelection={toggleNoteSelection}
-              allNotes={allNotes}
-              onNavigate={scrollToNote}
-              onContextMenu={handleContextMenu}
-              isMeetingNote={isMeetingNote}
-              isEventNote={isEventNote}
-              setEditingMeetingNote={setEditingMeetingNote}
-              setEditingEventNote={setEditingEventNote}
-              duplicateUrlNoteIds={duplicateUrlNoteIds}
-              duplicateWithinNoteIds={duplicateWithinNoteIds}
-            />
-          ))}
-        </div>
       )}
 
       <ConfirmationModal

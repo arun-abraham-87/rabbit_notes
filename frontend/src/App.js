@@ -30,6 +30,7 @@ import TextPastePopup from './components/TextPastePopup';
 import { Alerts } from './components/Alerts';
 import CustomCalendar from './components/CustomCalendar';
 import BookmarkManager from './components/BookmarkManager';
+import { initializeSearchIndex, searchNotes, addNoteToIndex, updateNoteInIndex, removeNoteFromIndex } from './utils/SearchUtils';
 
 // Helper to render first four pinned notes
 const PinnedSection = ({ notes, onUnpin, updateNote }) => {
@@ -337,6 +338,9 @@ const AppContent = () => {
       setNotes(notesData.notes);
       setAllNotes(allNotesData.notes);
       setTotals(notesData.totals);
+      
+      // Update search index
+      initializeSearchIndex(allNotesData.notes);
     } catch (error) {
       console.error('Error updating notes:', error);
     }
@@ -344,10 +348,17 @@ const AppContent = () => {
 
   const fetchNotes = async (searchText) => {
     console.log('Fetching notes with searchText:', searchText, noteDate);
-    const data = await loadNotes(searchText, noteDate)
-    console.log('Filtered notes q:', data.notes.length);
-    setNotes(data.notes);
-    setTotals(data.totals);
+    if (searchText) {
+      // Use MiniSearch for in-memory search
+      const searchResults = searchNotes(searchText);
+      setNotes(searchResults);
+      setTotals(searchResults.length);
+    } else {
+      // Use API for unfiltered notes
+      const data = await loadNotes(searchText, noteDate);
+      setNotes(data.notes);
+      setTotals(data.totals);
+    }
   };
 
   const fetchAllNotes = async () => {
@@ -368,15 +379,12 @@ const AppContent = () => {
 
   const addNote = async (content, tags) => {
     try {
-      const response =await addNewNoteCommon(content, tags, noteDate);
+      const response = await addNewNoteCommon(content, tags, noteDate);
       setSearchQuery('');
-      setNotes([response,...notes]);
-      setAllNotes([response,...allNotes]);
-      // Use empty search query to fetch all notes after adding
-      //await Promise.all([
-       // fetchNotes(''),
-        //fetchAllNotes()
-      //]);
+      setNotes([response, ...notes]);
+      setAllNotes([response, ...allNotes]);
+      // Add to search index
+      addNoteToIndex(response);
     } catch (error) {
       console.error('Error adding note:', error);
     }
@@ -431,6 +439,11 @@ const AppContent = () => {
     };
     loadSettings();
   }, []);
+
+  // Initialize search index when allNotes changes
+  useEffect(() => {
+    initializeSearchIndex(allNotes);
+  }, [allNotes]);
 
   return (
     <NoteEditorProvider>

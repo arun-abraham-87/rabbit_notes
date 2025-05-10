@@ -2044,6 +2044,74 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
   const [revealedDeadlines, setRevealedDeadlines] = useState({});
   const [deadlineIndicators, setDeadlineIndicators] = useState('');
 
+  // Add the typewriter animation style
+  useEffect(() => {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+      @keyframes typewriter {
+        0% {
+          opacity: 0;
+        }
+        5% {
+          opacity: 1;
+        }
+        95% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      .typewriter-text {
+        display: inline-block;
+        font-weight: 600;
+        color: rgb(239, 68, 68);
+      }
+      .typewriter-text span {
+        display: inline-block;
+        opacity: 0;
+        animation: typewriter 3s infinite;
+      }
+      .typewriter-text span:nth-child(1) { animation-delay: 0s; }
+      .typewriter-text span:nth-child(2) { animation-delay: 0.1s; }
+      .typewriter-text span:nth-child(3) { animation-delay: 0.2s; }
+      .typewriter-text span:nth-child(4) { animation-delay: 0.3s; }
+      .typewriter-text span:nth-child(5) { animation-delay: 0.4s; }
+      .typewriter-text span:nth-child(6) { animation-delay: 0.5s; }
+      .typewriter-text span:nth-child(7) { animation-delay: 0.6s; }
+      .typewriter-text span:nth-child(8) { animation-delay: 0.7s; }
+      .typewriter-text span:nth-child(9) { animation-delay: 0.8s; }
+      .typewriter-text span:nth-child(10) { animation-delay: 0.9s; }
+      .typewriter-text span:nth-child(11) { animation-delay: 1s; }
+      .typewriter-text span:nth-child(12) { animation-delay: 1.1s; }
+      .typewriter-text span:nth-child(13) { animation-delay: 1.2s; }
+      .typewriter-text span:nth-child(14) { animation-delay: 1.3s; }
+      .typewriter-text span:nth-child(15) { animation-delay: 1.4s; }
+      .typewriter-text span:nth-child(16) { animation-delay: 1.5s; }
+      .typewriter-text span:nth-child(17) { animation-delay: 1.6s; }
+      .typewriter-text span:nth-child(18) { animation-delay: 1.7s; }
+      .typewriter-text span:nth-child(19) { animation-delay: 1.8s; }
+      .typewriter-text span:nth-child(20) { animation-delay: 1.9s; }
+    `;
+    document.head.appendChild(styleSheet);
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
+
+  const renderAnimatedText = (text) => {
+    if (!text) return null;
+    // Replace spaces with non-breaking spaces to ensure they're preserved in the animation
+    const processedText = text.replace(/ /g, '\u00A0');
+    return (
+      <div className="typewriter-text">
+        {processedText.split('').map((char, index) => (
+          <span key={index}>{char}</span>
+        ))}
+      </div>
+    );
+  };
+
   const getDaysUntilDeadline = (deadlineDate) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -2135,8 +2203,11 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                   Upcoming Deadlines ({deadlines.length})
                 </h3>
                 {deadlineIndicators && (
-                  <div className="text-blue-600 font-normal mt-1">
-                    {deadlineIndicators}
+                  <div className="mt-1">
+                    {deadlineIndicators.includes('Today') || deadlineIndicators.includes('Tomorrow') 
+                      ? renderAnimatedText(deadlineIndicators)
+                      : <span className="text-blue-600">{deadlineIndicators}</span>
+                    }
                   </div>
                 )}
               </div>

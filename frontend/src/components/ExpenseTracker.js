@@ -148,19 +148,28 @@ const ExpenseTracker = () => {
       );
 
       return lines.map((expenseLine, index) => {
-        // Check for meta_line::expense_type tag
-        const typeMatch = expenseLine.match(/meta_line::expense_type::([^\s]+)/);
+        // Extract all meta_line tags
+        const metaTags = {};
+        const metaLineMatches = expenseLine.match(/meta_line::([^:]+)::([^\s]+)/g) || [];
+        metaLineMatches.forEach(match => {
+          const [_, tag, value] = match.match(/meta_line::([^:]+)::([^\s]+)/);
+          metaTags[tag] = value;
+        });
+
+        // Get expense type
         let type = 'Unassigned';
-        
-        if (typeMatch) {
-          const typeNoteId = typeMatch[1];
-          type = typeMap.get(typeNoteId) || 'Unassigned';
+        if (metaTags.expense_type) {
+          type = typeMap.get(metaTags.expense_type) || 'Unassigned';
         }
 
-        // Check for meta_line::description tag with angle brackets
-        const descriptionMatch = expenseLine.match(/meta_line::description::<([^>]+)>/);
-        const description = descriptionMatch ? descriptionMatch[1] : '';
-        
+        // Get description
+        const description = metaTags.description ? 
+          metaTags.description.replace(/^<|>$/g, '') : '';
+
+        // Get tags
+        const tags = metaTags.tags ? 
+          metaTags.tags.replace(/^<|>$/g, '').split(',') : [];
+
         // Split the expense line by spaces (excluding the meta tags)
         const cleanLine = expenseLine.replace(/meta_line::[^:]+::[^\s]*\s*/g, '');
         const parts = cleanLine.trim().split(/\s+/);
@@ -190,10 +199,6 @@ const ExpenseTracker = () => {
         // Check for income tag
         const isIncome = expenseLine.includes('meta_line::income');
 
-        // Check for tags with new format
-        const tagsMatch = expenseLine.match(/meta_line::tags::<([^>]+)>/);
-        const tags = tagsMatch ? tagsMatch[1].split(',') : [];
-
         return {
           id: expenseId,
           date,
@@ -208,7 +213,8 @@ const ExpenseTracker = () => {
           isExcluded,
           isOnceOff,
           isIncome,
-          tags
+          tags,
+          metaTags // Store all meta tags for display
         };
       }).filter(expense => expense !== null);
     });
@@ -2279,7 +2285,6 @@ const ExpenseTracker = () => {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  console.log('Tag remove button clicked:', { expenseId: expense.id, tag });
                                   handleTagRemove(expense.id, tag);
                                 }}
                                 className="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
@@ -2291,6 +2296,14 @@ const ExpenseTracker = () => {
                           ))}
                         </div>
                       )}
+                      {/* Display all meta tags */}
+                      <div className="text-xs text-gray-400 mt-1">
+                        {Object.entries(expense.metaTags || {}).map(([key, value]) => (
+                          <span key={key} className="mr-2">
+                            {key}: {value}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-4/12">
                       <select

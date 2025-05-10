@@ -156,8 +156,8 @@ const ExpenseTracker = () => {
           type = typeMap.get(typeNoteId) || 'Unassigned';
         }
 
-        // Check for meta_line::description tag
-        const descriptionMatch = expenseLine.match(/meta_line::description::([^\s]+)/);
+        // Check for meta_line::description tag with angle brackets
+        const descriptionMatch = expenseLine.match(/meta_line::description::<([^>]+)>/);
         const description = descriptionMatch ? descriptionMatch[1] : '';
         
         // Split the expense line by spaces (excluding the meta tags)
@@ -1408,7 +1408,7 @@ const ExpenseTracker = () => {
         // Create the new line with all tags
         const newMetaTags = [
           ...existingMetaTags,
-          ...(note ? [`meta_line::description::${note}`] : []),
+          ...(note ? [`meta_line::description::<${note}>`] : []),
           ...(callOrgMatch ? [`call.org::${callOrgMatch[1]}`] : [])
         ];
         
@@ -2308,8 +2308,14 @@ const ExpenseTracker = () => {
                             >
                               {tag}
                               <button
-                                onClick={() => handleTagRemove(expense.id, tag)}
-                                className="ml-1 text-blue-600 hover:text-blue-800"
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log('Tag remove button clicked:', { expenseId: expense.id, tag });
+                                  handleTagRemove(expense.id, tag);
+                                }}
+                                className="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
                                 data-tag-remove={`${expense.id}-${tag}`}
                               >
                                 ×
@@ -2399,13 +2405,6 @@ const ExpenseTracker = () => {
                       </button>
                     </td>
                   </tr>
-                  {expense.note && (
-                    <tr className="bg-gray-50">
-                      <td colSpan="8" className="px-6 py-2 text-sm text-gray-600">
-                        {expense.note}
-                      </td>
-                    </tr>
-                  )}
                 </React.Fragment>
               ))}
             </tbody>

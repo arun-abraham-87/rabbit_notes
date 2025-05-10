@@ -12,7 +12,7 @@ import { set_expense_type_in_mlt, set_exclude_from_budget_in_mlt, set_once_off_i
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
-const ExpenseTracker = () => {
+const ExpenseTracker = ({ allNotes, setAllNotes }) => {
   ////console.log
   
   const [expenses, setExpenses] = useState([]);
@@ -35,7 +35,6 @@ const ExpenseTracker = () => {
   const [typeTotals, setTypeTotals] = useState({});
   const [loading, setLoading] = useState(true);
   const [editingExpense, setEditingExpense] = useState(null);
-  const [allNotes, setAllNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [expenseTypeMap, setExpenseTypeMap] = useState(new Map());
   const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
@@ -102,6 +101,7 @@ const ExpenseTracker = () => {
       return isExpenseNote;
     });
 
+    console.log('expenseNotes', expenseNotes.length);
     //console.log
 
     // Parse budget allocations
@@ -169,12 +169,12 @@ const ExpenseTracker = () => {
         
         if (metaLineMatch) {
           // Create a mock mlt object with the meta_line data
-          const tagType = metaLineMatch[1];
-          const tagValue = metaLineMatch[2];
+          // const tagType = metaLineMatch[1];
+          // const tagValue = metaLineMatch[2];
           
-          // Create a properly formatted mlt string
-          mlt = `mlt::"${tagType}|${tagValue}|||false|false"`;
-          params = get_all_params(mlt);
+          // // Create a properly formatted mlt string
+          // mlt = `mlt::"${tagType}|${tagValue}|||false|false"`;
+          // params = get_all_params(mlt);
         }
 
         // Get expense type from meta_line tag if it exists
@@ -193,11 +193,11 @@ const ExpenseTracker = () => {
         const tags = mlt ? get_tags(mlt) : [];
 
         // Split the expense line by spaces (excluding the meta tags)
-        const cleanLine = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/, '').trim();
+        const cleanLine = expenseLine//.replace(/meta_line::[^:]+::[^\s]+\s*/, '').trim();
         const parts = cleanLine.trim().split(/\s+/);
         
-        if (parts.length < 3) {
-          //console.log
+      if (parts.length < 3) {
+          console.log('parts', parts);
           return null;
         }
 
@@ -257,13 +257,13 @@ const ExpenseTracker = () => {
     const fetchExpenses = async () => {
       try {
         ////console.log
-        const response = await loadAllNotes();
+        //const response = await loadAllNotes();
         ////console.log
-        setAllNotes(response.notes);
+        //setAllNotes(response.notes);
 
         // Create expense type map
         const typeMap = new Map();
-        const typeNotes = response.notes.filter(note => 
+        const typeNotes = allNotes.filter(note => 
           note.content.includes('meta::expense_type')
         );
 
@@ -279,9 +279,10 @@ const ExpenseTracker = () => {
         const types = ['Unassigned', ...Array.from(typeMap.values())];
         setExpenseTypes(types);
 
-        const parsedExpenses = parseExpenses(response.notes, typeMap);
+        const parsedExpenses = parseExpenses(allNotes, typeMap);
         setExpenses(parsedExpenses);
         setFilteredExpenses(parsedExpenses);
+        console.log('parsedExpenses', parsedExpenses.length);
         calculateTotals(parsedExpenses);
       } catch (error) {
         console.error('Error loading expenses:', error);

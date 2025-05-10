@@ -7,6 +7,14 @@ const tag_type_description = "DESCRIPTION"
 const tag_type_tags = "TAGS"
 const tag_type_once_off = "ONCE_OFF"
 
+const tag_type_expense_default = "Unassigned"
+const tag_type_income_default = "false"
+const tag_type_exclude_from_budget_default = "false"
+const tag_type_description_default = ""
+const tag_type_tags_default = ""
+const tag_type_once_off_default = "false"
+
+
 export const extract_mlt_from_line = (line) => {
     const match = line.match(/mlt::"[^"]+"/);
     const mlt = match ? match[0] : null; // match[0] returns the full match including mlt:: and quotes
@@ -83,6 +91,7 @@ export const get_expense_type = (mlt_line) => {
 
 export const set_value_in_mlt = (mlt_line, type, value) => {
     const params = get_all_params(mlt_line);
+    console.log('params', params);
     if (type === tag_type_expense) {
         params.tag_type_expense = value;
     } else if (type === tag_type_income) {
@@ -141,13 +150,14 @@ export const set_description_in_mlt = async (note_content, note_id, line_index, 
 export const set_expense_type_in_mlt = async (note_content, note_id, line_index, expense_type) => {
     let line = get_line_from_note(note_content, line_index);
     let mlt_line = extract_mlt_from_line(line);
+    if (!mlt_line) {
+        mlt_line = get_basic_mlt();
+    }
 
     // If no mlt exists, create a new one with default values
-    if (!mlt_line) {
-        mlt_line = `mlt::"${expense_type}|||false|false"`;
-    } else {
-        mlt_line = set_value_in_mlt(mlt_line, tag_type_expense, expense_type);
-    }
+   
+    mlt_line = set_value_in_mlt(mlt_line, tag_type_expense, expense_type);
+    
 
     let replaced_line = replace_mlt_in_line(line, mlt_line);
     let replaced_note_content = replace_line_in_note(note_content, line_index, replaced_line);
@@ -159,7 +169,7 @@ export const set_expense_type_in_mlt = async (note_content, note_id, line_index,
 
 export const set_income_in_mlt = async (note_content, note_id, line_index, income) => {
     let line = get_line_from_note(note_content, line_index);
-    let mlt_line = extract_mlt_from_line(line);
+    let mlt_line = line_has_mlt(line) ? extract_mlt_from_line(line) : get_basic_mlt();
     mlt_line = set_value_in_mlt(mlt_line, tag_type_income, income);
     let replaced_line = replace_mlt_in_line(line, mlt_line);
     let replaced_note_content = replace_line_in_note(note_content, line_index, replaced_line);
@@ -194,7 +204,7 @@ export const set_once_off_in_mlt = async (note_content, note_id, line_index, onc
 }
 
 export const get_basic_mlt = () => {
-    return `mlt::"null|false|null|null|false|false"`;
+    return `mlt::"${tag_type_expense_default}|${tag_type_income_default}|${tag_type_description_default}|${tag_type_tags_default}|${tag_type_exclude_from_budget_default}|${tag_type_once_off_default}"`;
 }
 
 export const set_tags_in_mlt = async (note_content, note_id, line_index, tags) => {

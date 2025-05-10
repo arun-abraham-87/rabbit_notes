@@ -32,7 +32,7 @@ import CustomCalendar from './components/CustomCalendar';
 import BookmarkManager from './components/BookmarkManager';
 
 // Helper to render first four pinned notes
-const PinnedSection = ({ notes, onUnpin }) => {
+const PinnedSection = ({ notes, onUnpin, updateNote }) => {
   const [cardColors, setCardColors] = useState(() => {
     // Load saved colors from localStorage
     const savedColors = localStorage.getItem('pinnedCardColors');
@@ -457,7 +457,7 @@ const AppContent = () => {
                     <Route path="/" element={
                       <div className="h-full overflow-y-auto">
                         <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
+                          <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} updateNote={updateNote} />
                           <NotesMainContainer
                             objList={objectList}
                             notes={notes}
@@ -477,7 +477,7 @@ const AppContent = () => {
                     <Route path="/notes" element={
                       <div className="h-full overflow-y-auto">
                         <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} />
+                          <PinnedSection notes={allNotes} onUnpin={fetchAllNotes} updateNote={updateNote} />
                           <NotesMainContainer
                             objList={objectList}
                             notes={notes}
@@ -588,7 +588,7 @@ const AppContent = () => {
                         <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto h-full">
                           <div className="h-full w-full bg-gray-50">
                             <div className="h-full w-full">
-                              <ExpenseTracker />
+                              <ExpenseTracker allNotes={allNotes} />
                             </div>
                           </div>
                         </div>

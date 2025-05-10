@@ -190,9 +190,9 @@ const ExpenseTracker = () => {
         // Check for income tag
         const isIncome = expenseLine.includes('meta_line::income');
 
-        // Check for tags
-        const tagsMatch = expenseLine.match(/meta_line_tags::([^\s]+)/);
-        const tags = tagsMatch ? tagsMatch[1].split('||') : [];
+        // Check for tags with new format
+        const tagsMatch = expenseLine.match(/meta_line::tags::<([^>]+)>/);
+        const tags = tagsMatch ? tagsMatch[1].split(',') : [];
 
         return {
           id: expenseId,
@@ -1062,7 +1062,7 @@ const ExpenseTracker = () => {
       
       // Use addOrReplaceMetaLineTag to update the tags
       const updatedLine = newTags.length > 0 ? 
-        addOrReplaceMetaLineTag(baseContent, 'tags', newTags.join('||')) :
+        addOrReplaceMetaLineTag(baseContent, 'tags', `<${newTags.join(',')}>`) :
         baseContent;
       
       lines[lineIndex] = updatedLine;
@@ -1136,14 +1136,14 @@ const ExpenseTracker = () => {
       const existingMetaTags = expenseLine.match(/meta_line::(?!tags)[^:]+::[^\s]+/g) || [];
       
       // Get current tags and remove the specified tag
-      const tagsMatch = expenseLine.match(/meta_line_tags::([^\s]+)/);
-      const currentTags = tagsMatch ? tagsMatch[1].split('||') : [];
+      const tagsMatch = expenseLine.match(/meta_line::tags::<([^>]+)>/);
+      const currentTags = tagsMatch ? tagsMatch[1].split(',') : [];
       const newTags = currentTags.filter(tag => tag !== tagToRemove);
       
       // Create the new line with all tags
       const newMetaTags = [
         ...existingMetaTags,
-        ...(newTags.length > 0 ? [`meta_line_tags::${newTags.join('||')}`] : [])
+        ...(newTags.length > 0 ? [`meta_line::tags::<${newTags.join(',')}>`] : [])
       ];
       
       // Combine everything with proper spacing

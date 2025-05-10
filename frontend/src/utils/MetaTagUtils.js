@@ -67,6 +67,42 @@ export const addMetaTagAtLine = (content, lineIndex, metaTag, value) => {
   return lines.join('\n').trim();
 };
 
+/**
+ * Add or replace a meta line tag at the end of a given line
+ * @param {string} line - The line to modify
+ * @param {string} metaTag - The meta tag type to add/replace (e.g., 'watch', 'priority', 'todo')
+ * @param {string} value - The value to set for the meta tag
+ * @returns {string} The line with the meta line tag added or replaced
+ */
+export const addOrReplaceMetaLineTag = (line, metaTag, value) => {
+  // Split the line into parts by meta_line:: to separate content and meta tags
+  const parts = line.split('meta_line::');
+  const content = parts[0].trim();
+  
+  // Process existing meta tags
+  const otherMetaTags = [];
+  for (let i = 1; i < parts.length; i++) {
+    const metaPart = parts[i];
+    // Find the first occurrence of '::' to separate type from value
+    const typeEndIndex = metaPart.indexOf('::');
+    if (typeEndIndex === -1) continue; // Skip invalid meta tags
+    
+    const type = metaPart.substring(0, typeEndIndex);
+    // The value is everything after the second '::' until the next meta_line:: or end
+    const value = metaPart.substring(typeEndIndex + 2);
+    
+    // Only keep meta tags that aren't the one we're replacing
+    if (type !== metaTag) {
+      otherMetaTags.push(`meta_line::${type}::${value}`);
+    }
+  }
+  
+  // Add the new meta tag
+  const newMetaTag = `meta_line::${metaTag}::${value}`;
+  
+  // Combine everything back together
+  return [content, ...otherMetaTags, newMetaTag].join(' ').trim();
+};
 
 /**
  * Extracts and categorizes meta tags from note content.

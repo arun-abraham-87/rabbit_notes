@@ -7,6 +7,7 @@ import Budget from './Budget';
 import ExpenseDataLoader from './ExpenseDataLoader';
 import ExpenseLoadStatus from './ExpenseLoadStatus';
 import { toast } from 'react-toastify';
+import { addOrReplaceMetaLineTag } from '../utils/MetaTagUtils';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -529,27 +530,9 @@ const ExpenseTracker = () => {
       const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
       console.log('Base content:', baseContent);
       
-      // Extract all existing meta_line tags except expense_type
-      const existingMetaTags = expenseLine.match(/meta_line::(?!expense_type)[^:]+::[^\s]+/g) || [];
-      console.log('Existing meta tags:', existingMetaTags);
-      
-      // Check if the line has exclude_from_budget tag
-      const hasExcludeTag = expenseLine.includes('meta_line::exclude_from_budget');
-      
-      // Create the new line with all tags
-      const newMetaTags = [
-        ...existingMetaTags,
-        `meta_line::expense_type::${typeNoteId}`,
-        ...(hasExcludeTag ? ['meta_line::exclude_from_budget'] : [])
-      ];
-      console.log('New meta tags:', newMetaTags);
-      
-      // Combine everything with proper spacing
-      const updatedLine = [baseContent, ...newMetaTags].join(' ');
-      console.log('Updated line with new meta tags:', updatedLine);
-      console.log('=== NEW UPDATED LINE ===');
-      console.log(updatedLine);
-      console.log('=== END NEW UPDATED LINE ===');
+      // Use addOrReplaceMetaLineTag to update the expense type
+      const updatedLine = addOrReplaceMetaLineTag(baseContent, 'expense_type', typeNoteId);
+      console.log('Updated line:', updatedLine);
       
       lines[lineIndex] = updatedLine;
       console.log('Updated lines array:', lines);
@@ -950,23 +933,16 @@ const ExpenseTracker = () => {
       // Get the base content (without any meta_line tags)
       const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
       
-      // Extract all existing meta_line tags except the one we're changing
-      const tagToRemove = type === 'excluded' ? 'exclude_from_budget' :
-                         type === 'onceOff' ? 'once_off' :
-                         type === 'income' ? 'income' : '';
+      // Map the type to the correct meta tag
+      const metaTag = type === 'excluded' ? 'exclude_from_budget' :
+                     type === 'onceOff' ? 'once_off' :
+                     type === 'income' ? 'income' : '';
       
-      // Get all existing meta tags except expense_type
-      const existingMetaTags = expenseLine.match(/meta_line::(?!expense_type)[^:]+::[^\s]+/g) || [];
-      const filteredTags = existingMetaTags.filter(tag => !tag.includes(tagToRemove));
+      // Use addOrReplaceMetaLineTag to update the status
+      const updatedLine = checked ? 
+        addOrReplaceMetaLineTag(baseContent, metaTag, '') :
+        baseContent;
       
-      // Create the new line with all tags
-      const newMetaTags = [
-        ...filteredTags,
-        ...(checked ? [`meta_line::${tagToRemove}`] : [])
-      ];
-      
-      // Combine everything with proper spacing
-      const updatedLine = [baseContent, ...newMetaTags].join(' ');
       lines[lineIndex] = updatedLine;
 
       try {
@@ -1084,17 +1060,11 @@ const ExpenseTracker = () => {
       // Get the base content (without any meta_line tags)
       const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
       
-      // Extract all existing meta_line tags except tags
-      const existingMetaTags = expenseLine.match(/meta_line::(?!tags)[^:]+::[^\s]+/g) || [];
+      // Use addOrReplaceMetaLineTag to update the tags
+      const updatedLine = newTags.length > 0 ? 
+        addOrReplaceMetaLineTag(baseContent, 'tags', newTags.join('||')) :
+        baseContent;
       
-      // Create the new line with all tags
-      const newMetaTags = [
-        ...existingMetaTags,
-        ...(newTags.length > 0 ? [`meta_line_tags::${newTags.join('||')}`] : [])
-      ];
-      
-      // Combine everything with proper spacing
-      const updatedLine = [baseContent, ...newMetaTags].join(' ');
       lines[lineIndex] = updatedLine;
 
       try {
@@ -1178,6 +1148,7 @@ const ExpenseTracker = () => {
       
       // Combine everything with proper spacing
       const updatedLine = [baseContent, ...newMetaTags].join(' ');
+      console.log('Updated line:', updatedLine);
       lines[lineIndex] = updatedLine;
 
       // Update the note content
@@ -1399,22 +1370,18 @@ const ExpenseTracker = () => {
         // Get the base content (without any meta_line tags)
         const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
         
-        // Extract all existing meta_line tags except description
-        const existingMetaTags = expenseLine.match(/meta_line::(?!description)[^:]+::[^\s]+/g) || [];
-        
         // Check for call.org references
         const callOrgMatch = expenseLine.match(/call\.org::([^\s]+)/);
         
-        // Create the new line with all tags
-        const newMetaTags = [
-          ...existingMetaTags,
-          ...(note ? [`meta_line::description::<${note}>`] : []),
-          ...(callOrgMatch ? [`call.org::${callOrgMatch[1]}`] : [])
-        ];
+        // Use addOrReplaceMetaLineTag to update the description
+        let updatedLine = note ? 
+          addOrReplaceMetaLineTag(baseContent, 'description', `<${note}>`) :
+          baseContent;
         
-        // Combine everything with proper spacing
-        const updatedLine = [baseContent, ...newMetaTags].join(' ');
-        console.log('Updated line:', updatedLine);
+        // Add back call.org reference if it exists
+        if (callOrgMatch) {
+          updatedLine = `${updatedLine} call.org::${callOrgMatch[1]}`;
+        }
         
         lines[lineIndex] = updatedLine;
 

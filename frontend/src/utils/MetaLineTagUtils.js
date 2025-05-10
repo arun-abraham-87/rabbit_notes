@@ -17,8 +17,8 @@ export const add_mlt_to_line = (line,mlt) => {
 }
 
 export const replace_mlt_in_line = (line,new_mlt) => {
-    const mlt_line = extract_mlt_from_line(line);
-    return line.replace(mlt_line,new_mlt);
+    const base_content = line.replace(/mlt::[^"]+"/, '').trim();
+    return `${base_content} ${new_mlt}`;
 }
 
 export const get_all_params = (mlt_line) => {
@@ -98,9 +98,8 @@ export const set_value_in_mlt = (mlt_line,type,value) => {
     return get_mlt_from_params(params);
 }
 
-
 export const add_tag_to_mlt = (mlt_line,tag_value) => {
-    tags= get_tags(mlt_line);
+    const tags = get_tags(mlt_line);
     if (!tags.includes(tag_value)) {
         tags.push(tag_value);
     }
@@ -108,25 +107,23 @@ export const add_tag_to_mlt = (mlt_line,tag_value) => {
 }
 
 export const remove_tag_from_mlt = (mlt_line,tag_value) => {
-    tags= get_tags(mlt_line);
+    const tags = get_tags(mlt_line);
     if (tags.includes(tag_value)) {
         tags.splice(tags.indexOf(tag_value),1);
     }
     return set_value_in_mlt(mlt_line,tag_type_tags,tags.join('||'));
 }
 
-export const get_line_from_note = (note,line_index) => {
-    const lines = note.split('\n');
+export const get_line_from_note = (note_content, line_index) => {
+    const lines = note_content.split('\n');
     return lines[line_index];
 }
 
-export const replace_line_in_note = (note,line_index,line) => {
-    const lines = note.split('\n');
-    lines[line_index] = line;
+export const replace_line_in_note = (note_content, line_index, new_line) => {
+    const lines = note_content.split('\n');
+    lines[line_index] = new_line;
     return lines.join('\n');
 }
-
-
 
 export const set_description_in_mlt = async (note_content,note_id,line_index,description) => {
     let line = get_line_from_note(note_content,line_index);
@@ -140,14 +137,21 @@ export const set_description_in_mlt = async (note_content,note_id,line_index,des
     return replaced_note_content;
 }
 
-export const set_expense_type_in_mlt = async (note_content,note_id,line_index,expense_type) => {
-    let line = get_line_from_note(note_content,line_index);
+export const set_expense_type_in_mlt = async (note_content, note_id, line_index, expense_type) => {
+    let line = get_line_from_note(note_content, line_index);
     let mlt_line = extract_mlt_from_line(line);
-    mlt_line =set_value_in_mlt(mlt_line,tag_type_expense,expense_type);
-    let replaced_line = replace_mlt_in_line(line,mlt_line);
-    let replaced_note_content = replace_line_in_note(note_content,line_index,replaced_line);
+    
+    // If no mlt exists, create a new one with default values
+    if (!mlt_line) {
+        mlt_line = `mlt::"${expense_type}|||false|false"`;
+    } else {
+        mlt_line = set_value_in_mlt(mlt_line, tag_type_expense, expense_type);
+    }
+    
+    let replaced_line = replace_mlt_in_line(line, mlt_line);
+    let replaced_note_content = replace_line_in_note(note_content, line_index, replaced_line);
     if (note_id) {
-        await updateNoteById(note_id,replaced_note_content);
+        await updateNoteById(note_id, replaced_note_content);
     }
     return replaced_note_content;
 }
@@ -164,26 +168,38 @@ export const set_income_in_mlt = async (note_content,note_id,line_index,income) 
     return replaced_note_content;
 }   
 
-export const set_exclude_from_budget_in_mlt = async (note_content,note_id,line_index,exclude_from_budget) => {
-    let line = get_line_from_note(note_content,line_index);
+export const set_exclude_from_budget_in_mlt = async (note_content, note_id, line_index, exclude) => {
+    let line = get_line_from_note(note_content, line_index);
     let mlt_line = extract_mlt_from_line(line);
-    mlt_line =set_value_in_mlt(mlt_line,tag_type_exclude_from_budget,exclude_from_budget);
-    let replaced_line = replace_mlt_in_line(line,mlt_line);
-    let replaced_note_content = replace_line_in_note(note_content,line_index,replaced_line);
+    mlt_line = set_value_in_mlt(mlt_line, tag_type_exclude_from_budget, exclude ? 'true' : 'false');
+    let replaced_line = replace_mlt_in_line(line, mlt_line);
+    let replaced_note_content = replace_line_in_note(note_content, line_index, replaced_line);
     if (note_id) {
-        await updateNoteById(note_id,replaced_note_content);
+        await updateNoteById(note_id, replaced_note_content);
     }
     return replaced_note_content;
 }
 
-export const set_once_off_in_mlt = async (note_content,note_id,line_index,once_off) => {
-    let line = get_line_from_note(note_content,line_index);
+export const set_once_off_in_mlt = async (note_content, note_id, line_index, once_off) => {
+    let line = get_line_from_note(note_content, line_index);
     let mlt_line = extract_mlt_from_line(line);
-    mlt_line =set_value_in_mlt(mlt_line,tag_type_once_off,once_off);
-    let replaced_line = replace_mlt_in_line(line,mlt_line);
-    let replaced_note_content = replace_line_in_note(note_content,line_index,replaced_line);
+    mlt_line = set_value_in_mlt(mlt_line, tag_type_once_off, once_off ? 'true' : 'false');
+    let replaced_line = replace_mlt_in_line(line, mlt_line);
+    let replaced_note_content = replace_line_in_note(note_content, line_index, replaced_line);
     if (note_id) {
-        await updateNoteById(note_id,replaced_note_content);
+        await updateNoteById(note_id, replaced_note_content);
+    }
+    return replaced_note_content;
+}
+
+export const set_tags_in_mlt = async (note_content, note_id, line_index, tags) => {
+    let line = get_line_from_note(note_content, line_index);
+    let mlt_line = extract_mlt_from_line(line);
+    mlt_line = set_value_in_mlt(mlt_line, tag_type_tags, tags.length > 0 ? `<${tags.join(',')}>` : '');
+    let replaced_line = replace_mlt_in_line(line, mlt_line);
+    let replaced_note_content = replace_line_in_note(note_content, line_index, replaced_line);
+    if (note_id) {
+        await updateNoteById(note_id, replaced_note_content);
     }
     return replaced_note_content;
 }

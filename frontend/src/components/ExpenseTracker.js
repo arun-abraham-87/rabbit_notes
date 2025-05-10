@@ -13,7 +13,7 @@ import { set_expense_type_in_mlt, set_exclude_from_budget_in_mlt, set_once_off_i
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 const ExpenseTracker = () => {
-  //console.log('ExpenseTracker component mounted');
+  ////console.log
   
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
@@ -87,10 +87,10 @@ const ExpenseTracker = () => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
   const years = [2025, 2026, 2027];
-  //console.log('Initialized with categories:', categories);
+  ////console.log
 
   const parseExpenses = (notes, typeMap) => {
-    console.log('Starting to parse expenses from notes:', notes.length);
+    //console.log
     
     const expenseNotes = notes.filter(note => {
       const isExpenseNote = note.content.includes('meta::expense') && 
@@ -98,11 +98,11 @@ const ExpenseTracker = () => {
         !note.content.includes('meta::expense_source_type') &&
         !note.content.includes('meta::expense_source_name');
       
-      console.log(`Note ${note.id} is expense note:`, isExpenseNote);
+//      //console.log
       return isExpenseNote;
     });
 
-    console.log('Found expense notes:', expenseNotes.length);
+    //console.log
 
     // Parse budget allocations
     const budgetNote = notes.find(note => note.content.includes('meta::budget'));
@@ -124,7 +124,7 @@ const ExpenseTracker = () => {
     const lineMap = new Map();
 
     const parsedExpenses = expenseNotes.flatMap(note => {
-      console.log('Processing expense note:', note.id);
+//      //console.log
       
       // Get linked notes
       const linkedNotes = note.content
@@ -157,10 +157,10 @@ const ExpenseTracker = () => {
         line.trim() && !line.includes('meta::')
       );
 
-      console.log('Found expense lines:', lines.length);
+//      //console.log
 
       return lines.map((expenseLine, index) => {
-        console.log('Processing line:', expenseLine);
+//        //console.log
         
         // Extract meta line tags if they exist
         const metaLineMatch = expenseLine.match(/meta_line::([^:]+)::([^\s]+)/);
@@ -197,7 +197,7 @@ const ExpenseTracker = () => {
         const parts = cleanLine.trim().split(/\s+/);
         
         if (parts.length < 3) {
-          console.log('Line has insufficient parts:', parts);
+          //console.log
           return null;
         }
 
@@ -239,7 +239,7 @@ const ExpenseTracker = () => {
           metaTags: params
         };
 
-        console.log('Created expense:', expense);
+//        //console.log
         return expense;
       }).filter(expense => expense !== null);
     });
@@ -247,18 +247,18 @@ const ExpenseTracker = () => {
     // Update the expense line map
     setExpenseLineMap(lineMap);
 
-    console.log('Total parsed expenses:', parsedExpenses.length);
+    //console.log
     return parsedExpenses;
   };
 
   // Load expenses from notes
   useEffect(() => {
-    //console.log('Starting to fetch expenses from notes');
+    ////console.log
     const fetchExpenses = async () => {
       try {
-        //console.log('Calling loadAllNotes()');
+        ////console.log
         const response = await loadAllNotes();
-        //console.log('Received notes response:', response);
+        ////console.log
         setAllNotes(response.notes);
 
         // Create expense type map
@@ -286,7 +286,7 @@ const ExpenseTracker = () => {
       } catch (error) {
         console.error('Error loading expenses:', error);
       } finally {
-        //console.log('Finished loading expenses');
+        ////console.log
         setLoading(false);
       }
     };
@@ -395,9 +395,9 @@ const ExpenseTracker = () => {
 
   // Filter expenses when type, search query, unassigned filter, year, or month changes
   useEffect(() => {
-    console.log('Filtering expenses. Total expenses:', expenses.length);
-    console.log('Selected year:', selectedYear);
-    console.log('Selected months:', Array.from(selectedMonths));
+    //console.log
+    //console.log
+    //console.log
 
     const filtered = expenses.filter(expense => {
       // Type filter
@@ -425,26 +425,26 @@ const ExpenseTracker = () => {
       const monthMatch = selectedMonths.has(expenseDate.getMonth());
 
       // Log the filtering results for debugging
-      console.log('Filtering expense:', {
-        id: expense.id,
-        date: expense.date,
-        parsedDate: expenseDate,
-        yearMatch,
-        monthMatch,
-        typeMatch,
-        searchMatch,
-        unassignedMatch,
-        excludedMatch,
-        incomeMatch,
-        onceOffMatch,
-        hasTagsMatch
-      });
+//      //console.log
+//        id: expense.id,
+//        date: expense.date,
+//        parsedDate: expenseDate,
+//        yearMatch,
+//        monthMatch,
+//        typeMatch,
+//        searchMatch,
+//        unassignedMatch,
+//        excludedMatch,
+//        incomeMatch,
+//        onceOffMatch,
+//        hasTagsMatch
+//gg153j      });
       
       return typeMatch && searchMatch && unassignedMatch && excludedMatch && 
              incomeMatch && onceOffMatch && yearMatch && monthMatch && hasTagsMatch;
     });
 
-    console.log('Filtered expenses count:', filtered.length);
+    //console.log
 
     const sortedAndFiltered = sortExpenses(filtered);
     setFilteredExpenses(sortedAndFiltered);
@@ -540,7 +540,7 @@ const ExpenseTracker = () => {
   };
 
   const handleTypeChange = async (expenseId, newType) => {
-    console.log('handleTypeChange called with:', { expenseId, newType });
+    //console.log
     
     // Get the line info from the expense line map
     const lineInfo = expenseLineMap.get(expenseId);
@@ -550,7 +550,7 @@ const ExpenseTracker = () => {
     }
 
     const { noteId, lineIndex } = lineInfo;
-    console.log('Found line info:', { noteId, lineIndex });
+    //console.log
 
     // Find the type note that matches the selected type
     const typeNote = Array.from(expenseTypeMap.entries())
@@ -561,7 +561,7 @@ const ExpenseTracker = () => {
       return;
     }
     const [typeNoteId] = typeNote;
-    console.log('Found type note:', typeNoteId);
+    //console.log
 
     try {
       // Get the original note content
@@ -621,8 +621,8 @@ const ExpenseTracker = () => {
     if (selectedExpenses.size === 0) return;
 
     try {
-      console.log('Starting bulk update for type:', newType);
-      console.log('Selected expenses:', Array.from(selectedExpenses));
+      //console.log
+      //console.log
 
       // Find the type note for the new type
       const typeNote = Array.from(expenseTypeMap.entries())
@@ -633,7 +633,7 @@ const ExpenseTracker = () => {
         return;
       }
       const [typeNoteId] = typeNote;
-      console.log('Found type note ID:', typeNoteId);
+      //console.log
 
       // Process each selected expense
       for (const expenseId of selectedExpenses) {
@@ -644,7 +644,7 @@ const ExpenseTracker = () => {
         }
 
         const { noteId, lineIndex } = lineInfo;
-        console.log('Processing expense:', { expenseId, noteId, lineIndex });
+        //console.log
 
         // Use set_expense_type_in_mlt from MetaLineTagUtils
         const updatedContent = await set_expense_type_in_mlt(
@@ -666,7 +666,7 @@ const ExpenseTracker = () => {
       setSelectedExpenses(new Set());
 
       // Refresh the expenses
-      console.log('Refreshing expenses...');
+      //console.log
       const refreshResponse = await loadAllNotes();
       setAllNotes(refreshResponse.notes);
       const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
@@ -1101,7 +1101,7 @@ const ExpenseTracker = () => {
       const expenseLine = lines[lineIndex];
       
       if (expenseLine) {
-        console.log('Original line:', expenseLine);
+        //console.log
         
         // Get the base content (without any meta_line tags)
         const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
@@ -1176,7 +1176,7 @@ const ExpenseTracker = () => {
   };
 
   if (loading) {
-    //console.log('Rendering loading state');
+    ////console.log
     return (
       <div className="p-4 w-full">
         <div className="flex items-center justify-center h-64">
@@ -1186,7 +1186,7 @@ const ExpenseTracker = () => {
     );
   }
 
-  //console.log('Rendering main component with expenses:', expenses);
+  ////console.log
   return (
     <div className="w-full px-4 py-8">
       <div className="flex justify-between items-center mb-8">

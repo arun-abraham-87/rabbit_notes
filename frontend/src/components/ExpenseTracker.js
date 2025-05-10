@@ -157,7 +157,7 @@ const ExpenseTracker = () => {
         }
 
         // Check for meta_line::description tag
-        const descriptionMatch = expenseLine.match(/meta_line::description::"([^"]+)"/);
+        const descriptionMatch = expenseLine.match(/meta_line::description::([^\s]+)/);
         const description = descriptionMatch ? descriptionMatch[1] : '';
         
         // Split the expense line by spaces (excluding the meta tags)
@@ -546,7 +546,13 @@ const ExpenseTracker = () => {
       
       // Combine everything with proper spacing
       const updatedLine = [baseContent, ...newMetaTags].join(' ');
+      console.log('Updated line with new meta tags:', updatedLine);
+      console.log('=== NEW UPDATED LINE ===');
+      console.log(updatedLine);
+      console.log('=== END NEW UPDATED LINE ===');
+      
       lines[lineIndex] = updatedLine;
+      console.log('Updated lines array:', lines);
     }
 
     // Update the note with the modified content
@@ -1370,18 +1376,15 @@ const ExpenseTracker = () => {
       // Get the line info from the expense line map
       const lineInfo = expenseLineMap.get(expenseId);
       if (!lineInfo) {
-        console.error('Line info not found for expense:', expenseId);
         toast.error('Failed to save note: Line info not found');
         return;
       }
 
       const { noteId, lineIndex } = lineInfo;
-      console.log('Found line info:', { noteId, lineIndex });
 
       // Find the original note
       const originalNote = allNotes.find(note => note.id === noteId);
       if (!originalNote) {
-        console.error('Original note not found:', noteId);
         toast.error('Failed to save note: Original note not found');
         return;
       }
@@ -1391,20 +1394,28 @@ const ExpenseTracker = () => {
       const expenseLine = lines[lineIndex];
       
       if (expenseLine) {
+        console.log('Original line:', expenseLine);
+        
         // Get the base content (without any meta_line tags)
         const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
         
         // Extract all existing meta_line tags except description
         const existingMetaTags = expenseLine.match(/meta_line::(?!description)[^:]+::[^\s]+/g) || [];
         
+        // Check for call.org references
+        const callOrgMatch = expenseLine.match(/call\.org::([^\s]+)/);
+        
         // Create the new line with all tags
         const newMetaTags = [
           ...existingMetaTags,
-          ...(note ? [`meta_line::description::${note}`] : [])
+          ...(note ? [`meta_line::description::${note}`] : []),
+          ...(callOrgMatch ? [`call.org::${callOrgMatch[1]}`] : [])
         ];
         
         // Combine everything with proper spacing
         const updatedLine = [baseContent, ...newMetaTags].join(' ');
+        console.log('Updated line:', updatedLine);
+        
         lines[lineIndex] = updatedLine;
 
         try {
@@ -1435,15 +1446,15 @@ const ExpenseTracker = () => {
           
           toast.success('Note saved successfully');
         } catch (error) {
-          console.error('Error updating note:', error);
           toast.error('Failed to save note: ' + error.message);
         }
+      } else {
+        toast.error('No expense line found at index: ' + lineIndex);
       }
     } catch (error) {
-      console.error('Error in handleNoteChange:', error);
       toast.error('Failed to save note: ' + error.message);
     }
-  };
+  }
 
   const handleIconClick = (event) => {
     setPopupPosition({
@@ -2119,7 +2130,7 @@ const ExpenseTracker = () => {
                           const progress = budget === 0 ? 0 : (Math.abs(total) / budget) * 100;
 
                           return (
-                            <tr key={type} className="hover:bg-gray-50">
+                            <tr key={type} className="bg-white border-b hover:bg-gray-50" data-expense-id={type}>
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                 <div 
                                   className="cursor-help"
@@ -2199,7 +2210,7 @@ const ExpenseTracker = () => {
                           return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
                         })
                         .map(([tag, total]) => (
-                          <tr key={tag} className="hover:bg-gray-50">
+                          <tr key={tag} className="bg-white border-b hover:bg-gray-50" data-expense-id={tag}>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{tag}</td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium">
                               ${Math.abs(total).toFixed(2)}
@@ -2267,10 +2278,7 @@ const ExpenseTracker = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredExpenses.map((expense, index) => (
                 <React.Fragment key={expense.id}>
-                  <tr 
-                    className={selectedExpenses.has(expense.id) ? 'bg-blue-50' : ''}
-                    data-expense-id={expense.id}
-                  >
+                  <tr className="bg-white border-b hover:bg-gray-50" data-expense-id={expense.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
                       <input
                         type="checkbox"
@@ -2378,7 +2386,8 @@ const ExpenseTracker = () => {
                           const rect = e.target.getBoundingClientRect();
                           setPopupPosition({
                             x: rect.left + rect.width / 2,
-                            y: rect.top + rect.height / 2
+                            y: rect.top + rect.height / 2,
+                            expenseId: expense.id
                           });
                           setPopupText(expense.note || '');
                         }}
@@ -2554,7 +2563,9 @@ const ExpenseTracker = () => {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                // Save the note here
+                if (popupPosition.expenseId) {
+                  handleNoteChange(popupPosition.expenseId, popupText);
+                }
                 setPopupPosition(null);
               }
             }}
@@ -2572,7 +2583,9 @@ const ExpenseTracker = () => {
             </button>
             <button
               onClick={() => {
-                // Save the note here
+                if (popupPosition.expenseId) {
+                  handleNoteChange(popupPosition.expenseId, popupText);
+                }
                 setPopupPosition(null);
               }}
               className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"

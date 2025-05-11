@@ -387,8 +387,8 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
         className={`group relative ${viewMode === 'grid' ? 'h-[200px]' : 'min-h-[80px]'} flex flex-col rounded-lg border shadow-sm hover:shadow-md transition-all duration-200 ${priorityColors[currentPriority]} ${isCompleted ? 'opacity-60' : ''}`}
       >
         {/* Header - Always show */}
-        <div className={`flex items-center justify-between p-2 border-b ${'bg-white/50'}`}>
-          <div className="flex items-center gap-2">
+        <div className={`flex flex-col p-2 border-b ${'bg-white/50'}`}>
+          <div className="flex items-center gap-2 mb-2">
             <span className={`text-xs font-medium ${ageColorClass}`}>
               {new Date(createdDate).toLocaleDateString()}
             </span>
@@ -397,7 +397,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
               {daysOpen === 0 ? 'Opened today' : `Open for ${daysOpen} ${daysOpen === 1 ? 'day' : 'days'}`}
             </span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
             <button
               onClick={() => {
                 // Extract meta tags from the content

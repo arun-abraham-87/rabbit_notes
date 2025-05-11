@@ -515,12 +515,43 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
                   }
 
                   // Process regular lines with URLs and search highlighting
+                  const customUrlRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
                   const urlRegex = /(https?:\/\/[^\s]+)/g;
-                  const parts = line.split(urlRegex);
+                  
+                  // First, replace custom URL format with a placeholder
+                  let processedLine = line;
+                  const customUrls = [];
+                  let match;
+                  while ((match = customUrlRegex.exec(line)) !== null) {
+                    const [fullMatch, text, url] = match;
+                    customUrls.push({ text, url, index: match.index });
+                    processedLine = processedLine.replace(fullMatch, `__CUSTOM_URL_${customUrls.length - 1}__`);
+                  }
+
+                  // Split the processed line by plain URLs
+                  const parts = processedLine.split(urlRegex);
 
                   return (
                     <div key={`line-${lineIndex}`} className="mb-1">
                       {parts.map((part, i) => {
+                        // Check if this part contains a custom URL placeholder
+                        const customUrlMatch = part.match(/__CUSTOM_URL_(\d+)__/);
+                        if (customUrlMatch) {
+                          const urlIndex = parseInt(customUrlMatch[1]);
+                          const { text, url } = customUrls[urlIndex];
+                          return (
+                            <a
+                              key={i}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              {text}
+                            </a>
+                          );
+                        }
+                        // Check for plain URL
                         if (part.match(urlRegex)) {
                           try {
                             const url = new URL(part);

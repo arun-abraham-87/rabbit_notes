@@ -38,20 +38,26 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
   const [pendingTodoContent, setPendingTodoContent] = useState('');
 
   const getFilteredTodos = () => {
-    // Filter todos for display based on all filters
+    console.log('allNotes[0]', allNotes[0]);
+    // Filter todos for display based on allfilters
+    console.log('All notes length', allNotes.length);
     const filteredTodos = (allNotes || [])
       .filter((todo) => {
-        if (todo.id === '3fe5b0ef-f085-4d65-ad32-7f5dc28a2859') {
-          console.log('**********************************************todo', todo);
+        if (!todo || !todo.content) 
+        {
+          console.log('todo has no content');
+          console.log(todo);
+          console.log("--------------------------------");
+          return false;
         }
-        if (!todo || !todo.content) return false;
+         
         const matchesSearch = todo.content.toLowerCase().includes(searchQuery.toLowerCase());
         const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
         const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
         const assignedPriority = priorities[todo.id] || tag;
         const isMetaTodo = todo.content.includes('meta::todo');
         const isCompleted = todo.content.includes('meta::todo_completed');
-
+        console.log('todo', todo);
         // Check if todo was added today or yesterday
         const isTodayOrYesterday = (() => {
           if (!showToday && !showYesterday) return true;
@@ -91,6 +97,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
 
   useEffect(() => {
     console.log('REFRESH: updating todos', allNotes);
+    console.log('REFRESH: updating todos', getFilteredTodos().length);
     setTodos(getFilteredTodos());
   }, [allNotes, searchQuery]);
 
@@ -321,7 +328,8 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
     const todoContent = `${content}\nmeta::todo::${currentTime}\nmeta::${priority}\nmeta::priority_age::${currentTime}`;
     try {
       const response = await createNote(todoContent);
-      setAllNotes([response.content, ...allNotes]);
+      console.log('response from addTodo', response);
+      setAllNotes([response, ...allNotes]);
       setSearchQuery(''); // Clear the search bar after creating todo
     } catch (error) {
       console.error('Failed to create todo:', error);

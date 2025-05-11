@@ -14,9 +14,10 @@ import {
   CodeBracketIcon
 } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
-import { getCurrentISOTime, getDateFromString, getDateInDDMMYYYYFormat, getAgeInDays, isSameAsTodaysDate , isSameAsYesterday} from '../utils/DateUtils';
+import { getCurrentISOTime, getDateFromString, getDateInDDMMYYYYFormat, getAgeInDays, isSameAsTodaysDate, isSameAsYesterday } from '../utils/DateUtils';
 import TodoStats from './TodoStats';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
+import NoteView from './NoteView';
 
 const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
   const [todos, setTodos] = useState([]);
@@ -36,6 +37,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
   const [expandedNotes, setExpandedNotes] = useState({});
   const [showPriorityPopup, setShowPriorityPopup] = useState(false);
   const [pendingTodoContent, setPendingTodoContent] = useState('');
+  const [showRawNote, setShowRawNote] = useState({ isOpen: false, content: '' });
 
   const getFilteredTodos = () => {
     const filteredTodos = (allNotes || [])
@@ -99,8 +101,6 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
     setTodos(getFilteredTodos());
   }, [allNotes, searchQuery, priorityFilter, showToday, showYesterday, showHasDeadline]);
 
-
-
   // Function to clear all date filters
   const clearDateFilters = () => {
     setShowToday(false);
@@ -138,16 +138,12 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
 
   const overdueTodos = getOverdueHighPriorityTodos();
 
-
-
   const getAgeClass = (createdDate) => {
     const ageInDays = getAgeInDays(createdDate);
     if (ageInDays > 2) return 'text-red-500';
     if (ageInDays > 1) return 'text-yellow-500';
     return 'text-green-500';
   };
-
-
 
   const getDeadlineInfo = (content) => {
     const deadlineMatch = content.match(/meta::end_date::([^\n]+)/);
@@ -279,11 +275,6 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
     }
   };
 
-
-
-
-
-
   // Group todos by priority
   const groupedTodos = todos.reduce((acc, todo) => {
     const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
@@ -393,13 +384,10 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
     return (
       <div
         key={todo.id}
-        className={`group relative ${viewMode === 'grid' ? 'h-[200px]' : 'min-h-[80px]'
-          } flex flex-col rounded-lg border shadow-sm hover:shadow-md transition-all duration-200 ${priorityColors[currentPriority]
-          } ${isCompleted ? 'opacity-60' : ''}`}
+        className={`group relative ${viewMode === 'grid' ? 'h-[200px]' : 'min-h-[80px]'} flex flex-col rounded-lg border shadow-sm hover:shadow-md transition-all duration-200 ${priorityColors[currentPriority]} ${isCompleted ? 'opacity-60' : ''}`}
       >
         {/* Header - Always show */}
-        <div className={`flex items-center justify-between p-2 border-b ${'bg-white/50'
-          }`}>
+        <div className={`flex items-center justify-between p-2 border-b ${'bg-white/50'}`}>
           <div className="flex items-center gap-2">
             <span className={`text-xs font-medium ${ageColorClass}`}>
               {new Date(createdDate).toLocaleDateString()}
@@ -420,19 +408,15 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
                 // Open editor with both content and meta tags
                 openEditor('edit', content, todo.id, metaTags);
               }}
-              className={`p-1.5 rounded-full transition-all duration-200 ${'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'
-                }`}
+              className={`p-1.5 rounded-full transition-all duration-200 ${'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'}`}
               title="Edit note"
             >
               <PencilIcon className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setShowRawNotes(prev => ({ ...prev, [todo.id]: !prev[todo.id] }))}
-              className={`p-1.5 rounded-full transition-all duration-200 ${showRawNotes[todo.id]
-                ? 'bg-indigo-100 text-indigo-700'
-                : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'
-                }`}
-              title={showRawNotes[todo.id] ? "Hide raw note" : "Show raw note"}
+              onClick={() => setShowRawNote({ isOpen: true, content: todo.content })}
+              className={`p-1.5 rounded-full transition-all duration-200 ${showRawNotes[todo.id] ? 'bg-indigo-100 text-indigo-700' : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'}`}
+              title="Show raw note"
             >
               <CodeBracketIcon className="h-4 w-4" />
             </button>
@@ -494,8 +478,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
         </div>
 
         <div className="flex-1 p-3 overflow-auto relative">
-          <div className={`text-sm whitespace-pre-wrap ${'text-gray-800'
-            }`}>
+          <div className={`text-sm whitespace-pre-wrap ${'text-gray-800'}`}>
             {showRawNotes[todo.id] ? (
               <pre className="text-xs font-mono bg-gray-50 p-2 rounded overflow-x-auto">
                 {todo.content}
@@ -517,8 +500,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
 
                   if (h1Match) {
                     return (
-                      <h1 key={`line-${lineIndex}`} className={`text-xl font-bold mb-2 ${'text-gray-900'
-                        }`}>
+                      <h1 key={`line-${lineIndex}`} className={`text-xl font-bold mb-2 ${'text-gray-900'}`}>
                         {parseNoteContent({ content: h1Match[1].trim(), searchTerm: searchQuery })}
                       </h1>
                     );
@@ -526,8 +508,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
 
                   if (h2Match) {
                     return (
-                      <h2 key={`line-${lineIndex}`} className={`text-lg font-semibold mb-2 ${'text-gray-800'
-                        }`}>
+                      <h2 key={`line-${lineIndex}`} className={`text-lg font-semibold mb-2 ${'text-gray-800'}`}>
                         {parseNoteContent({ content: h2Match[1].trim(), searchTerm: searchQuery })}
                       </h2>
                     );
@@ -637,8 +618,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
                 </button>
                 <button
                   onClick={() => setShowHeaders(prev => !prev)}
-                  className={`p-2 rounded-lg transition-all duration-200 ${showHeaders ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'
-                    }`}
+                  className={`p-2 rounded-lg transition-all duration-200 ${showHeaders ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'}`}
                   title={showHeaders ? 'Hide headers' : 'Show headers'}
                 >
                   <EllipsisHorizontalIcon className="h-5 w-5" />
@@ -656,8 +636,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
                 </button>
                 <button
                   onClick={() => setShowFilters(prev => !prev)}
-                  className={`p-2 rounded-lg transition-all duration-200 ${showFilters ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'
-                    }`}
+                  className={`p-2 rounded-lg transition-all duration-200 ${showFilters ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'}`}
                   title="Toggle filters"
                 >
                   <FunnelIcon className="h-5 w-5" />
@@ -864,8 +843,6 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
             </div>
           )}
 
-
-
           {/* Priority Selection Popup */}
           {showPriorityPopup && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -911,6 +888,12 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
               </div>
             </div>
           )}
+
+          <NoteView
+            isOpen={showRawNote.isOpen}
+            content={showRawNote.content}
+            onClose={() => setShowRawNote({ isOpen: false, content: '' })}
+          />
         </>
       )}
     </div>

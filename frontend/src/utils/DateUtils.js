@@ -24,8 +24,13 @@ export const isSameAsTodaysDate = (dateString) => {
   return momentObj.format('YYYY-MM-DD') === today;
 };
 
+// function to check if a date is yesterday
+export const isSameAsYesterday = (dateString) => {
+  const momentObj = parseToMoment(dateString);
+  return momentObj ? momentObj.format('YYYY-MM-DD') === moment().subtract(1, 'day').format('YYYY-MM-DD') : false;
+}
 
-// fucntoin that recevied a date, calles parsetomoment and then rrutrsn a dateobkect
+// fucntoin that recevied a date, calles parsetomoment and then rrutns a dateobkect
 export const getDateFromString = (dateString) => {
   const momentObj = parseToMoment(dateString);
   return momentObj ? momentObj.toDate() : null;

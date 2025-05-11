@@ -14,7 +14,7 @@ import {
   CodeBracketIcon
 } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
-import { getCurrentISOTime,getDateFromString, getDateInDDMMYYYYFormat, getAgeInDays } from '../utils/DateUtils';
+import { getCurrentISOTime, getDateFromString, getDateInDDMMYYYYFormat, getAgeInDays, isSameAsTodaysDate , isSameAsYesterday} from '../utils/DateUtils';
 import TodoStats from './TodoStats';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 
@@ -40,32 +40,34 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
   const getFilteredTodos = () => {
     const filteredTodos = (allNotes || [])
       .filter((todo) => {
-        if (!todo || !todo.content) 
-        {
+        if (!todo || !todo.content) {
           return false;
         }
-         
+
         const matchesSearch = todo.content.toLowerCase().includes(searchQuery.toLowerCase());
         const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
         const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
         const assignedPriority = priorities[todo.id] || tag;
         const isMetaTodo = todo.content.includes('meta::todo');
+        if (!isMetaTodo) {
+          return false;
+        }
         const isCompleted = todo.content.includes('meta::todo_completed');
         // Check if todo was added today or yesterday
         const isTodayOrYesterday = (() => {
           if (!showToday && !showYesterday) return true;
           const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
-          const todoDate = new Date(todoDateMatch ? todoDateMatch[1] : todo.created_datetime);
-          const today = new Date();
-          const yesterday = new Date(today);
-          yesterday.setDate(yesterday.getDate() - 1);
-
-          if (showToday && todoDate.toDateString() === today.toDateString()) return true;
-          if (showYesterday && todoDate.toDateString() === yesterday.toDateString()) return true;
+          if (todoDateMatch) {
+            console.log('todoDateMatch',);
+          }else{
+            return false;
+          }
+          if (showToday && isSameAsTodaysDate(todoDateMatch[0].split('meta::todo::')[1])) return true;
+          if (showYesterday && isSameAsYesterday(todoDateMatch[0].split('meta::todo::')[1])) return true;
           return false;
         })();
         if (tagMatch) {
-          const priority=tagMatch[0].split('meta::')[1]
+          const priority = tagMatch[0].split('meta::')[1]
           if (priorityFilter && priorityFilter !== priority) {
             return false;
           }
@@ -95,9 +97,9 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
 
   useEffect(() => {
     setTodos(getFilteredTodos());
-  }, [allNotes, searchQuery, priorityFilter]);
+  }, [allNotes, searchQuery, priorityFilter, showToday, showYesterday, showHasDeadline]);
 
- 
+
 
   // Function to clear all date filters
   const clearDateFilters = () => {
@@ -136,7 +138,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
 
   const overdueTodos = getOverdueHighPriorityTodos();
 
- 
+
 
   const getAgeClass = (createdDate) => {
     const ageInDays = getAgeInDays(createdDate);
@@ -220,7 +222,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
       const response = await updateNoteById(id, updatedContent);
       setAllNotes(allNotes.map((note) =>
         note.id === id ? { ...note, content: updatedContent } : note
-      )); 
+      ));
     }
   };
 

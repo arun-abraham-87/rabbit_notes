@@ -51,7 +51,6 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
         const assignedPriority = priorities[todo.id] || tag;
         const isMetaTodo = todo.content.includes('meta::todo');
         const isCompleted = todo.content.includes('meta::todo_completed');
-        console.log('todo', todo);
         // Check if todo was added today or yesterday
         const isTodayOrYesterday = (() => {
           if (!showToday && !showYesterday) return true;

@@ -189,7 +189,9 @@ const AppContent = () => {
   };
 
   const updateNote = async (id, content) => {
+    console.log('updating note:APP', id, content);
     const response = await updateNoteById(id, content);
+    console.log('response', response);
     setAllNotes(allNotes.map(note => note.id === id ? response : note));
   };
 

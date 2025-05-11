@@ -6,11 +6,10 @@ import {
   FlagIcon
 } from '@heroicons/react/24/solid';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
-import { useNotes } from '../contexts/NotesContext';
 import NoteEditor from './NoteEditor';
 import { getSettings, defaultSettings, loadTags } from '../utils/ApiUtils';
 
-const NoteEditorModal = ({ addNote, updateNote }) => {
+const NoteEditorModal = ({ addNote, updateNote, customNote='None' }) => {
   const { isOpen, initialContent, mode, noteId, metaTags, closeEditor } = useNoteEditor();
   const [settings, setSettings] = useState({});
   const [objList, setObjList] = useState([]);
@@ -144,6 +143,7 @@ const NoteEditorModal = ({ addNote, updateNote }) => {
       ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
       : contentWithNewline;
     console.log('finalContent', finalContent);
+    console.log('customNote', customNote);
     updateNote(noteId, finalContent)
     closeEditor();
   };

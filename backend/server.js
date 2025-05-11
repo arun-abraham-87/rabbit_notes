@@ -4,7 +4,6 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const settingsRouter = require('./routes/settings');
 const journalsRouter = require('./routes/journals');
-const metroRoutes = require('./routes/metro');
 
 const app = express();
 app.use(express.json());
@@ -18,7 +17,6 @@ app.use(cors({
 // Mount routers
 app.use('/api/settings', settingsRouter);
 app.use('/api/journals', journalsRouter);
-app.use('/api/metro', metroRoutes);
 
 const NOTES_DIR = './notes';
 if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);
@@ -47,7 +45,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
           .split('||')
           .map(word => word.trim().toLowerCase())
           .filter(word => word.length > 0);
-        
+
         console.log('\nOR Search detected:');
         console.log('Original query:', searchQuery);
         console.log('Search terms:', searchWords);
@@ -58,7 +56,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
           .split(/\s+/)
           .map(word => word.trim())
           .filter(word => word.length > 0);
-        
+
         console.log('\nAND Search detected:');
         console.log('Original query:', searchQuery);
         console.log('Search terms:', searchWords);
@@ -89,14 +87,14 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
         const matchInContent = noteContentLower.includes(word);
         const matchInEvent = eventDescription.includes(word);
         const matchInTags = noteTags.some(tag => tag.includes(word));
-        
+
         if (matchInContent || matchInEvent || matchInTags) {
           console.log(`\nMatch found for term "${word}":`);
           if (matchInContent) console.log('- Found in content');
           if (matchInEvent) console.log('- Found in event_description');
           if (matchInTags) console.log('- Found in tags');
         }
-        
+
         return matchInContent || matchInEvent || matchInTags;
       };
 
@@ -179,7 +177,7 @@ app.get('/api/notes', (req, res) => {
     const searchQuery = req.query.search ? decodeURIComponent(req.query.search).trim() : '';
     console.log(`Raw search query received: "${req.query.search}"`);
     console.log(`Decoded search query: "${searchQuery}"`);
-    
+
     const currentDateNotesOnly = req.query.currentDate === 'true';
     console.log(`Current Date Filter: ${currentDateNotesOnly}`);
     const noteDate = req.query.noteDate;
@@ -190,7 +188,7 @@ app.get('/api/notes', (req, res) => {
         // Only process .md files and exclude objects.md
         return file.endsWith('.md') && file !== 'objects.md';
       });
-      
+
     let notesArray = [];
 
     files.forEach((file) => {
@@ -256,7 +254,7 @@ app.get('/api/todos', (req, res) => {
         console.error(`Failed to process file: ${file}`, err.message);
       }
     });
-   console.log(todos)
+    console.log(todos)
     todos.sort((a, b) => {
       const dateA = new Date(a.created_datetime);
       const dateB = new Date(b.created_datetime);
@@ -272,6 +270,7 @@ app.get('/api/todos', (req, res) => {
 app.put('/api/notes/:id', (req, res) => {
   const noteId = req.params.id;
   const { content } = req.body;
+  let updatedNote = null;
   //console.log("Recevied Update Request")
   try {
     const files = fs.readdirSync(NOTES_DIR); // Read all files in the directory
@@ -294,6 +293,7 @@ app.put('/api/notes/:id', (req, res) => {
           if (noteIndex !== -1) {
             // Update the note content
             notesInFile[noteIndex].content = content;
+            updatedNote = notesInFile[noteIndex];
             //console.log("Note found for update", content)
             noteUpdated = true;
 
@@ -307,7 +307,7 @@ app.put('/api/notes/:id', (req, res) => {
     });
 
     if (noteUpdated) {
-      res.json({ message: `Note with ID ${noteId} updated successfully.` });
+      res.json(updatedNote);
     } else {
       res.status(404).json({ error: `Note with ID ${noteId} not found.` });
     }
@@ -654,7 +654,7 @@ app.post('/api/images', upload.single('image'), (req, res) => {
   res.status(200).json({ message: 'Image uploaded successfully.', filename: req.file.filename });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5001;
 const server = app.listen(PORT, '0.0.0.0', (err) => {
   if (err) {
     console.error('Error starting server:', err);

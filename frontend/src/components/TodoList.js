@@ -14,9 +14,8 @@ import {
   CodeBracketIcon
 } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
-import { getCurrentISOTime,getDateFromString, getAge, getAgeInDays } from '../utils/DateUtils';
+import { getCurrentISOTime,getDateFromString, getDateInDDMMYYYYFormat, getAgeInDays } from '../utils/DateUtils';
 import TodoStats from './TodoStats';
-import NoteEditorModal from './NoteEditorModal';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 
 const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
@@ -42,6 +41,9 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
     // Filter todos for display based on all filters
     const filteredTodos = (allNotes || [])
       .filter((todo) => {
+        if (todo.id === '3fe5b0ef-f085-4d65-ad32-7f5dc28a2859') {
+          console.log('**********************************************todo', todo);
+        }
         if (!todo || !todo.content) return false;
         const matchesSearch = todo.content.toLowerCase().includes(searchQuery.toLowerCase());
         const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
@@ -88,6 +90,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
   };
 
   useEffect(() => {
+    console.log('REFRESH: updating todos', allNotes);
     setTodos(getFilteredTodos());
   }, [allNotes, searchQuery]);
 
@@ -139,39 +142,20 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
     return 'text-green-500';
   };
 
-  const getAgeLabel = (createdDate) => {
-    const now = new Date();
-    const created = new Date(createdDate); // Use direct Date constructor for ISO strings
-    const diffMs = now - created;
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffDays >= 1) return `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
-
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    return `${diffHours}h ${diffMinutes}m ago`;
-  };
 
   const getDeadlineInfo = (content) => {
     const deadlineMatch = content.match(/meta::end_date::([^\n]+)/);
     if (!deadlineMatch) return null;
 
-    const deadline = new Date(deadlineMatch[1]);
     const now = new Date();
-    const diffMs = deadline - now;
+    const diffMs = getAgeInDays(deadlineMatch[1])
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
     // Format the deadline date
-    const formattedDate = deadline.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+    const formattedDate = getDateInDDMMYYYYFormat(deadlineMatch[1])
 
     // Calculate time remaining
     let timeRemaining;
@@ -228,12 +212,13 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
   const updateTodo = async (id, updatedContent, removeNote = false) => {
     if (removeNote) {
       const response = await deleteNoteById(id);
-      allNotes = allNotes.filter((note) => note.id !== id);
+      setAllNotes(allNotes.filter((note) => note.id !== id));
     } else {
+      console.log('updating todo', id, updatedContent);
       const response = await updateNoteById(id, updatedContent);
-      allNotes = allNotes.map((note) =>
+      setAllNotes(allNotes.map((note) =>
         note.id === id ? { ...note, content: updatedContent } : note
-      );
+      )); 
     }
   };
 
@@ -922,9 +907,6 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
               </div>
             </div>
           )}
-
-          {/* Note Editor Modal */}
-          <NoteEditorModal updateNote={updateTodo} />
         </>
       )}
     </div>

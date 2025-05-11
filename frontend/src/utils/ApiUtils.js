@@ -25,7 +25,7 @@ export const updateNoteById = async (id, updatedContent) => {
         body: JSON.stringify({ content: reorderedContent }),
     });
     if (!response.ok) throw new Error('Failed to update note');
-    return await response.json();
+    return response;
 };
 
 export const deleteNoteById = async (id) => {

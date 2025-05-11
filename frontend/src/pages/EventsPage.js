@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
@@ -9,15 +9,15 @@ import AddEventModal from '../components/AddEventModal';
 // Function to extract event details from note content
 const getEventDetails = (content) => {
   const lines = content.split('\n');
-  
+
   // Find the description
   const descriptionLine = lines.find(line => line.startsWith('event_description:'));
   const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
-  
+
   // Find the event date
   const eventDateLine = lines.find(line => line.startsWith('event_date:'));
   const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
-  
+
   // Find recurring info
   const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
   let recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
@@ -33,12 +33,12 @@ const getEventDetails = (content) => {
   let nextOccurrence = null;
   let lastOccurrence = null;
   if (recurrence === 'none') {
-  recurrence="yearly"
+    recurrence = "yearly"
   }
   else if (recurrence !== 'none' && dateTime) {
     const eventDate = new Date(dateTime);
     const now = new Date();
-    
+
     // Calculate last occurrence
     lastOccurrence = new Date(eventDate);
     if (recurrence === 'daily') {
@@ -46,13 +46,13 @@ const getEventDetails = (content) => {
       while (lastOccurrence > now) {
         lastOccurrence.setDate(lastOccurrence.getDate() - 1);
       }
-    } 
+    }
     else if (recurrence === 'weekly') {
       // For weekly events, last occurrence is this week or last week
       while (lastOccurrence > now) {
         lastOccurrence.setDate(lastOccurrence.getDate() - 7);
       }
-    } 
+    }
     else if (recurrence === 'monthly') {
       // For monthly events, last occurrence is this month or last month
       while (lastOccurrence > now) {
@@ -73,14 +73,14 @@ const getEventDetails = (content) => {
       while (nextOccurrence <= now) {
         nextOccurrence.setDate(nextOccurrence.getDate() + 1);
       }
-    } 
+    }
     else if (recurrence === 'weekly') {
       nextOccurrence = new Date(lastOccurrence);
       nextOccurrence.setDate(lastOccurrence.getDate() + 7);
       while (nextOccurrence <= now) {
         nextOccurrence.setDate(nextOccurrence.getDate() + 7);
       }
-    } 
+    }
     else if (recurrence === 'monthly') {
       nextOccurrence = new Date(lastOccurrence);
       nextOccurrence.setMonth(lastOccurrence.getMonth() + 1);
@@ -100,79 +100,86 @@ const getEventDetails = (content) => {
   return { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, tags };
 };
 
-const EventsPage = ({ notes,allNotes, setAllNotes }) => {
+const EventsPage = ({ allNotes, setAllNotes }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
-  const [editingEvent, setEditingEvent] = useState(null);
-  const [deletingEvent, setDeletingEvent] = useState(null);
-  const [viewMode, setViewMode] = useState('calendar');
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState({
-    description: '',
-    dateTime: '',
-    recurrence: 'none',
-    days: []
-  });
-
+  const [calendarEvents, setCalendarEvents] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [daily, setDaily] = useState(0);
+  const [weekly, setWeekly] = useState(0);
+  const [monthly, setMonthly] = useState(0);
+  const [none, setNone] = useState(0);
   // Get all unique tags from events
   const uniqueTags = useMemo(() => {
     const tags = new Set();
-    notes
+    allNotes
       .filter(note => note?.content && note.content.includes('meta::event::'))
       .forEach(note => {
         const { tags: eventTags } = getEventDetails(note.content);
         eventTags.forEach(tag => tags.add(tag));
       });
     return Array.from(tags).sort();
-  }, [notes]);
+  }, [allNotes]);
 
-  // Filter and group events
-  const events = notes
-    .filter(note => note?.content && note.content.includes('meta::event::'))
-    .filter(note => {
-      const { description, tags } = getEventDetails(note.content);
-      const matchesSearch = description.toLowerCase().includes(searchQuery.toLowerCase());
-      // If no tags are selected, show all events
-      if (selectedTags.length === 0) {
-        return matchesSearch;
-      }
-      // If tags are selected, show only events that have ALL selected tags
-      const matchesTags = selectedTags.every(tag => tags.includes(tag));
-      return matchesSearch && matchesTags;
+  useEffect(() => {
+    setCalendarEvents(getCalendarEvents());
+    setTotal(getCalendarEvents().length);
+  }, [allNotes, searchQuery]);
+
+  const getCalendarEvents = () => {
+    // Filter and group events
+    const events = allNotes
+      .filter(note => note?.content && note.content.includes('meta::event::'))
+      .filter(note => {
+        const { description, tags } = getEventDetails(note.content);
+        const matchesSearch = description.toLowerCase().includes(searchQuery.toLowerCase());
+        // If no tags are selected, show all events
+        if (selectedTags.length === 0) {
+          return matchesSearch;
+        }
+        // If tags are selected, show only events that have ALL selected tags
+        const matchesTags = selectedTags.every(tag => tags.includes(tag));
+        return matchesSearch && matchesTags;
+      });
+
+    // Calculate totals for different recurrence types
+    const { total, daily, weekly, monthly, none } = events.reduce(
+      (acc, event) => {
+        const { recurrence } = getEventDetails(event.content);
+        acc.total++;
+        acc[recurrence]++;
+        return acc;
+      },
+      { total: 0, daily: 0, weekly: 0, monthly: 0, none: 0 }
+    );
+    setTotal(total);
+    setDaily(daily);
+    setWeekly(weekly);
+    setMonthly(monthly);
+    setNone(none);
+
+    // Prepare events for calendar view
+    const calendarEvents = events.map(event => {
+      const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
+      return {
+        id: event.id,
+        description,
+        dateTime,
+        recurrence,
+        metaDate,
+        nextOccurrence,
+        lastOccurrence,
+        content: event.content
+      };
     });
-
-  // Calculate totals for different recurrence types
-  const { total, daily, weekly, monthly, none } = events.reduce(
-    (acc, event) => {
-      const { recurrence } = getEventDetails(event.content);
-      acc.total++;
-      acc[recurrence]++;
-      return acc;
-    },
-    { total: 0, daily: 0, weekly: 0, monthly: 0, none: 0 }
-  );
-
-  // Prepare events for calendar view
-  const calendarEvents = events.map(event => {
-    const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
-    return {
-      id: event.id,
-      description,
-      dateTime,
-      recurrence,
-      metaDate,
-      nextOccurrence,
-      lastOccurrence,
-      content: event.content
-    };
-  });
-
-  const handleEdit = (event) => {
-    setEditingEvent(event);
+    return calendarEvents;
   };
 
+
+
   const handleDelete = async (eventId) => {
-    const deletingEvent = notes.find(note => note.id === eventId);
+    const deletingEvent = allNotes.find(note => note.id === eventId);
     if (!deletingEvent) return;
     try {
       await deleteNoteById(deletingEvent.id);
@@ -182,29 +189,15 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
     }
   };
 
-  const handleToggleHidden = async (event) => {
-    const isHidden = event.content.includes('meta::event_hidden');
-    const updatedContent = isHidden
-      ? event.content.replace('\nmeta::event_hidden', '')
-      : event.content.trim() + '\nmeta::event_hidden';
-    
-    try {
-      await updateNoteById(event.id, updatedContent);
-      setAllNotes(allNotes.map(note => 
-        note.id === event.id ? { ...note, content: updatedContent } : note
-      ));
-    } catch (error) {
-      console.error('Error toggling event visibility:', error);
-    }
-  };
+
 
   const handleAcknowledgeEvent = async (eventId, year) => {
-    const event = notes.find(note => note.id === eventId);
+    const event = allNotes.find(note => note.id === eventId);
     if (!event) return;
 
     // Add the acknowledgment meta tag with correct format
     const metaTag = `meta::acknowledged::${year}`;
-    
+
     // Check if the tag already exists
     if (event.content.includes(metaTag)) {
       return; // Already acknowledged
@@ -213,20 +206,15 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
     // Add the meta tag to the content
     const updatedContent = event.content.trim() + '\n' + metaTag;
 
-    // try {
-    //   // Update the note with the new content
-    //   await updateNoteById(eventId, updatedContent);
-      
-    //   // Update the notes array with the new content
-    //   const updatedNotes = notes.map(note => 
-    //     note.id === eventId ? { ...note, content: updatedContent } : note
-    //   );
-      
-    //   // Pass the updated notes array to onUpdate
-    //   onUpdate(updatedNotes);
-    // } catch (error) {
-    //   console.error('Error acknowledging event:', error);
-    // }
+    try {
+      // Update the note with the new content
+      const response = await updateNoteById(eventId, updatedContent);
+      setAllNotes(allNotes.map(note =>
+        note.id === eventId ? { ...note, content: response.content } : note
+      ));
+    } catch (error) {
+      console.error('Error acknowledging event:', error);
+    }
   };
 
   const handleTagClick = (tag) => {
@@ -271,30 +259,7 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
             <PlusIcon className="h-5 w-5" />
             <span>Add Event</span>
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                viewMode === 'list'
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'hover:bg-gray-100 text-gray-600'
-              }`}
-              title="List View"
-            >
-              <ListBulletIcon className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                viewMode === 'calendar'
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'hover:bg-gray-100 text-gray-600'
-              }`}
-              title="Calendar View"
-            >
-              <CalendarIcon className="h-5 w-5" />
-            </button>
-          </div>
+
         </div>
       </div>
 
@@ -314,18 +279,17 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
             />
           </div>
         </div>
-        
+
         {/* Tag Pills */}
         <div className="flex flex-wrap gap-2">
           {uniqueTags.map(tag => (
             <button
               key={tag}
               onClick={() => handleTagClick(tag)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
-                selectedTags.includes(tag)
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${selectedTags.includes(tag)
                   ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
-              }`}
+                }`}
             >
               {tag}
             </button>
@@ -345,7 +309,7 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
         <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
           <div className="text-xs font-medium text-gray-500">Total</div>
           <div className="text-2xl font-bold text-gray-900">{total}</div>
-        </div>
+        </div> 
         <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
           <div className="text-xs font-medium text-indigo-600">Daily</div>
           <div className="text-2xl font-bold text-indigo-700">{daily}</div>
@@ -364,157 +328,28 @@ const EventsPage = ({ notes,allNotes, setAllNotes }) => {
         </div>
       </div>
 
-      {viewMode === 'calendar' ? (
-        <div className="bg-white rounded-lg border p-6 shadow-sm">
-          <CalendarView 
-            events={calendarEvents} 
-            onAcknowledgeEvent={handleAcknowledgeEvent}
-            onEventUpdated={handleEventUpdated}
-            notes={notes}
-            onDelete={handleDelete}
-          />
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {events.map((event) => {
-            const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, tags } = getEventDetails(event.content);
-            const eventDate = new Date(dateTime);
-            const isToday = eventDate.toDateString() === new Date().toDateString();
-            
-            return (
-              <div 
-                key={event.id} 
-                className={`bg-white rounded-lg border p-4 shadow-sm ${
-                  isToday ? 'border-2 border-indigo-500 bg-indigo-50' : ''
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className={`text-lg font-medium ${
-                      isToday ? 'text-indigo-900' : 'text-gray-900'
-                    }`}>
-                      {event.content.includes('meta::event_hidden') ? (
-                        <div className="flex items-center gap-2">
-                          <span>XXXXXXXXXXXX</span>
-                          <button
-                            onClick={() => handleToggleHidden(event)}
-                            className="text-xs text-indigo-600 hover:text-indigo-700 underline"
-                          >
-                            Reveal
-                          </button>
-                        </div>
-                      ) : (
-                        description
-                      )}
-                      {isToday && (
-                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                          Today
-                        </span>
-                      )}
-                    </h3>
-                    <p className={`text-sm ${
-                      isToday ? 'text-indigo-700' : 'text-gray-500'
-                    }`}>
-                      {getDateInDDMMYYYYFormatWithAgeInParentheses(eventDate)}
-                    </p>
-                    {recurrence !== 'none' && (
-                      <div className="mt-1 space-y-1">
-                        {lastOccurrence && (
-                          <p className="text-xs text-gray-600">
-                            Last occurrence: {getDateInDDMMYYYYFormatWithAgeInParentheses(lastOccurrence)}
-                          </p>
-                        )}
-                        {nextOccurrence && (
-                          <p className="text-xs text-indigo-600">
-                            Next occurrence: {getDateInDDMMYYYYFormatWithAgeInParentheses(nextOccurrence)}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    {/* Tags display */}
-                    {tags.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {tags.map(tag => (
-                          <span
-                            key={tag}
-                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                              isToday 
-                                ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                                : 'bg-gray-100 text-gray-600 border border-gray-200'
-                            }`}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      {recurrence !== 'none' && (
-                        <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
-                          {recurrence.charAt(0).toUpperCase() + recurrence.slice(1)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleToggleHidden(event)}
-                        className={`p-1 ${
-                          isToday ? 'text-indigo-600 hover:text-indigo-700' : 'text-gray-500 hover:text-indigo-600'
-                        }`}
-                        title={event.content.includes('meta::event_hidden') ? "Show event" : "Hide event"}
-                      >
-                        {event.content.includes('meta::event_hidden') ? (
-                          <EyeSlashIcon className="h-5 w-5" />
-                        ) : (
-                          <EyeIcon className="h-5 w-5" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => handleEdit(event)}
-                        className={`p-1 ${
-                          isToday ? 'text-indigo-600 hover:text-indigo-700' : 'text-gray-500 hover:text-indigo-600'
-                        }`}
-                        title="Edit event"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(event.id)}
-                        className={`p-1 ${
-                          isToday ? 'text-indigo-600 hover:text-red-600' : 'text-gray-500 hover:text-red-600'
-                        }`}
-                        title="Delete event"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      <div className="bg-white rounded-lg border p-6 shadow-sm">
+        <CalendarView
+          events={calendarEvents}
+          onAcknowledgeEvent={handleAcknowledgeEvent}
+          onEventUpdated={handleEventUpdated}
+          notes={allNotes}
+          onDelete={handleDelete}
+        />
+      </div>
 
-          {events.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No events found</p>
-            </div>
-          )}
-        </div>
-      )}
 
-     {/* Add Event Modal */}
-     <AddEventModal
+      {/* Add Event Modal */}
+      <AddEventModal
         isOpen={isAddEventModalOpen}
         onClose={() => setIsAddEventModalOpen(false)}
         onAdd={handleAddEvent}
-        notes={notes}
-      /> 
+        notes={allNotes}
+      />
 
-     
 
-    
+
+
     </div>
   );
 };

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getAllUniqueTags } from '../utils/EventUtils';
 
-const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline }) => {
+const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialValues }) => {
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState(() => {
     const now = new Date();
@@ -19,6 +19,18 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline }) => {
   const [tags, setTags] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [isDeadline, setIsDeadline] = useState(isAddDeadline || false);
+
+  // Initialize form with initialValues if provided
+  useEffect(() => {
+    if (initialValues) {
+      setDescription(initialValues.description || '');
+      setEventDate(initialValues.date ? new Date(initialValues.date).toISOString().split('T')[0] : '');
+      setLocation(initialValues.location || '');
+      setIsRecurring(!!initialValues.recurrenceType);
+      setRecurrenceType(initialValues.recurrenceType || 'daily');
+      setIsDeadline(isAddDeadline || false);
+    }
+  }, [initialValues, isAddDeadline]);
 
   const existingTags = getAllUniqueTags(notes || []);
 

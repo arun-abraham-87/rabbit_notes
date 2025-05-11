@@ -1677,13 +1677,34 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
   return nextDate;
 };
 
-const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
+const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showPopup, setShowPopup] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [revealedEvents, setRevealedEvents] = useState({});
   const [eventIndicators, setEventIndicators] = useState('');
+  const [editingEvent, setEditingEvent] = useState(null);
+
+  const handleEditEvent = (event) => {
+    const originalNote = notes.find(n => n.id === event.id);
+    if (originalNote) {
+      const lines = originalNote.content.split('\n');
+      const description = lines.find(line => line.startsWith('event_description:'))?.replace('event_description:', '').trim() || '';
+      const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim() || '';
+      const location = lines.find(line => line.startsWith('event_location:'))?.replace('event_location:', '').trim() || '';
+      const recurrenceType = lines.find(line => line.startsWith('event_recurring_type:'))?.replace('event_recurring_type:', '').trim() || '';
+
+      setEditingEvent({
+        id: event.id,
+        description,
+        date: eventDate,
+        location,
+        recurrenceType
+      });
+      setShowAddEventModal(true);
+    }
+  };
 
   // Add the typewriter animation style
   useEffect(() => {
@@ -1952,6 +1973,13 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
                                     <EyeIcon className="h-5 w-5" />
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => handleEditEvent(event)}
+                                  className="text-blue-600 hover:text-blue-800 focus:outline-none ml-2"
+                                  title="Edit event"
+                                >
+                                  <PencilIcon className="h-5 w-5" />
+                                </button>
                               </div>
                               <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                                 <ClockIcon className="h-4 w-4" />
@@ -2021,28 +2049,74 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
       {showAddEventModal && (
         <AddEventModal
           isOpen={showAddEventModal}
-          onClose={() => setShowAddEventModal(false)}
-          onAdd={(content) => {
-            // Add the event meta tag
-            const contentWithEvent = `${content}\nmeta::event::`;
-            addNewNoteCommon(contentWithEvent);
+          onClose={() => {
             setShowAddEventModal(false);
+            setEditingEvent(null);
+          }}
+          onAdd={(content) => {
+            if (editingEvent) {
+              // Update existing event
+              const note = notes.find(n => n.id === editingEvent.id);
+              if (note) {
+                // Preserve the original meta tags
+                const originalLines = note.content.split('\n');
+                const metaTags = originalLines.filter(line => 
+                  line.startsWith('meta::') && 
+                  !line.startsWith('meta::event::')
+                );
+                
+                // Combine new content with preserved meta tags
+                const updatedContent = content + '\n' + metaTags.join('\n');
+                
+                // Update the note
+                const updatedNote = { ...note, content: updatedContent };
+                setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
+              }
+            } else {
+              // Add new event
+              const newNote = {
+                id: Date.now().toString(),
+                content: content,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+              setNotes([...notes, newNote]);
+            }
+            setShowAddEventModal(false);
+            setEditingEvent(null);
           }}
           notes={notes}
-          isAddDeadline={false}
+          initialValues={editingEvent}
         />
       )}
     </>
   );
 };
 
-const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNote }) => {
+const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNote, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showPopup, setShowPopup] = useState(false);
   const [deadlines, setDeadlines] = useState([]);
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [revealedDeadlines, setRevealedDeadlines] = useState({});
   const [deadlineIndicators, setDeadlineIndicators] = useState('');
+  const [editingDeadline, setEditingDeadline] = useState(null);
+
+  const handleEditDeadline = (deadline) => {
+    const originalNote = notes.find(n => n.id === deadline.id);
+    if (originalNote) {
+      const lines = originalNote.content.split('\n');
+      const description = lines.find(line => line.startsWith('event_description:'))?.replace('event_description:', '').trim() || '';
+      const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim() || '';
+
+      setEditingDeadline({
+        id: deadline.id,
+        description,
+        date: eventDate
+      });
+      setShowAddEventModal(true);
+    }
+  };
 
   // Add the typewriter animation style
   useEffect(() => {
@@ -2270,6 +2344,13 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                                   <EyeIcon className="h-5 w-5" />
                                 </button>
                               )}
+                              <button
+                                onClick={() => handleEditDeadline(deadline)}
+                                className="text-indigo-600 hover:text-indigo-800 focus:outline-none ml-2"
+                                title="Edit deadline"
+                              >
+                                <PencilIcon className="h-5 w-5" />
+                              </button>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                               <ClockIcon className="h-4 w-4" />
@@ -2310,15 +2391,45 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
       {showAddEventModal && (
         <AddEventModal
           isOpen={showAddEventModal}
-          onClose={() => setShowAddEventModal(false)}
-          onAdd={(content) => {
-            // Add the deadline meta tag
-            const contentWithDeadline = `${content}\nmeta::event_deadline`;
-            addNote(contentWithDeadline);
+          onClose={() => {
             setShowAddEventModal(false);
+            setEditingDeadline(null);
+          }}
+          onAdd={(content) => {
+            if (editingDeadline) {
+              // Update existing deadline
+              const note = notes.find(n => n.id === editingDeadline.id);
+              if (note) {
+                // Preserve the original meta tags
+                const originalLines = note.content.split('\n');
+                const metaTags = originalLines.filter(line => 
+                  line.startsWith('meta::') && 
+                  !line.startsWith('meta::event::')
+                );
+                
+                // Combine new content with preserved meta tags
+                const updatedContent = content + '\n' + metaTags.join('\n');
+                
+                // Update the note
+                const updatedNote = { ...note, content: updatedContent };
+                setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
+              }
+            } else {
+              // Add new deadline
+              const newNote = {
+                id: Date.now().toString(),
+                content: content,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+              setNotes([...notes, newNote]);
+            }
+            setShowAddEventModal(false);
+            setEditingDeadline(null);
           }}
           notes={notes}
           isAddDeadline={true}
+          initialValues={editingDeadline}
         />
       )}
     </>
@@ -3069,10 +3180,15 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
               notes={notes} 
               expanded={true} 
               addNote={addNewNoteCommon}
+              setNotes={setNotes}
             />
           </div>
           <div className="w-1/2">
-            <UpcomingEventsAlert notes={notes} expanded={false} />
+            <UpcomingEventsAlert 
+              notes={notes} 
+              expanded={false} 
+              setNotes={setNotes}
+            />
           </div>
         </div>
         <MeetingManager 

@@ -11,7 +11,7 @@ import Journals from './pages/Journals';
 import Manage from './pages/Manage';
 import EventsPage from './pages/EventsPage';
 import PeopleList from './components/PeopleList';
-import { createNote, loadAllNotes, updateNoteById as updateNote, getSettings, defaultSettings } from './utils/ApiUtils';
+import { createNote, loadAllNotes, updateNoteById, getSettings, defaultSettings } from './utils/ApiUtils';
 import { SearchModalProvider } from './contexts/SearchModalContext';
 import { NoteEditorProvider } from './contexts/NoteEditorContext';
 import { NotesProvider} from './contexts/NotesContext';
@@ -33,8 +33,6 @@ const AppContent = () => {
   const [allNotes, setAllNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [settings, setSettings] = useState(defaultSettings);
-  const [objects, setObjects] = useState([]);
-  const [objectList, setObjectList] = useState([]);
   const [todos, setTodos] = useState([]);
   const [noteDate, setNoteDate] = useState(null);
   const [totals, setTotals] = useState(0);
@@ -190,7 +188,10 @@ const AppContent = () => {
     }
   };
 
-
+  const updateNote = async (id, content) => {
+    const response = await updateNoteById(id, content);
+    setAllNotes(allNotes.map(note => note.id === id ? response : note));
+  };
 
   useEffect(() => {
     fetchAllNotesFromServer()
@@ -250,12 +251,10 @@ const AppContent = () => {
                       <div className="h-full overflow-y-auto">
                         <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <NotesMainContainer
-                            objList={objectList}
                             notes={allNotes}
                             allNotes={allNotes}
                             addNote={addNote}
                             setAllNotes={setAllNotes}
-                            objects={objects}
                             searchQuery={searchQuery}
                             setSearchQuery={setSearchQuery}
                             setNoteDate={setNoteDate}
@@ -268,12 +267,9 @@ const AppContent = () => {
                       <div className="h-full overflow-y-auto">
                         <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <NotesMainContainer
-                            objList={objectList}
-                            notes={allNotes}
                             allNotes={allNotes}
                             addNote={addNote}
                             setAllNotes={setAllNotes}
-                            objects={objects}
                             searchQuery={searchQuery}
                             setSearchQuery={setSearchQuery}
                             setNoteDate={setNoteDate}
@@ -297,7 +293,7 @@ const AppContent = () => {
                     <Route path="/tags" element={
                       <div className="h-full overflow-y-auto">
                         <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <TagListing objectList={objects} />
+                          <TagListing />
                         </div>
                       </div>
                     } />
@@ -306,8 +302,7 @@ const AppContent = () => {
                         <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
                             <TodoList
-                              todos={todos}
-                              updateTodosCallback={setTodos}
+                              allNotes={allNotes}
                             />
                           </div>
                         </div>

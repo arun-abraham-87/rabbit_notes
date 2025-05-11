@@ -22,7 +22,8 @@ import TodoStats from './TodoStats';
 import NoteEditorModal from './NoteEditorModal';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 
-const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => {
+const TodoList = ({ allNotes }) => {
+  const [todos, setTodos] = useState([]);
   const { openEditor } = useNoteEditor();
   const [searchQuery, setSearchQuery] = useState('');
   const [priorities, setPriorities] = useState({});
@@ -42,6 +43,20 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
   const [expandedNotes, setExpandedNotes] = useState({});
   const [showPriorityPopup, setShowPriorityPopup] = useState(false);
   const [pendingTodoContent, setPendingTodoContent] = useState('');
+
+
+  useEffect(() => {
+    const filteredTodos = allNotes.filter(note => 
+      note.content.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      note.content.includes('meta::todo') &&
+      !note.content.includes('meta::todo_completed')
+    );
+    setTodos(filteredTodos);
+  }, [allNotes, searchQuery]);
+
+  const updateTodosCallback = (updatedTodos) => {
+    setTodos(updatedTodos);
+  };
 
   // Function to clear all date filters
   const clearDateFilters = () => {
@@ -221,11 +236,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           note.id === id ? { ...note, content: updatedContent } : note
         );
       }
-      updateNoteCallBack(
-        notes.map((note) =>
-          note.id === id ? { ...note, content: updatedContent } : note
-        )
-      );
+   
       updateTodosCallback(updatedTodos);
     }
   };
@@ -306,64 +317,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
     }
   };
 
-  const handleUndo = async () => {
-    if (!removedTodo) return;
-
-    // Clear any existing timeout
-    if (snackbar?.timeoutId) {
-      clearTimeout(snackbar.timeoutId);
-    }
-
-    try {
-      // Restore the todo with its original content
-      const response = await fetch(`http://localhost:5001/api/notes/${removedTodo.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: removedTodo.content }),
-      });
-
-      if (response.ok) {
-        // Add the todo back to the list
-        const updatedTodos = [removedTodo, ...todos.filter(t => t.id !== removedTodo.id)];
-        updateTodosCallback(updatedTodos);
-        updateNoteCallBack([removedTodo, ...notes.filter(n => n.id !== removedTodo.id)]);
-      }
-    } catch (error) {
-      console.error('Error undoing todo completion:', error);
-    }
-
-    // Clear snackbar and removed todo state
-    setSnackbar(null);
-    setRemovedTodo(null);
-  };
-
-  // Calculate total todos and priority counts (only filtered by search)
-  const { total, critical, high, medium, low } = todos.reduce(
-    (acc, todo) => {
-      // Only count if it matches search, is a todo, and is not completed
-      if (todo.content.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          todo.content.includes('meta::todo') &&
-          !todo.content.includes('meta::todo_completed')) {
-        // Increment total
-        acc.total++;
-        
-        // Count priorities independently of priority filter
-        const tagMatch = todo.content.match(/meta::(critical|high|medium|low)/i);
-        const priority = tagMatch ? tagMatch[1].toLowerCase() : 'low';
-        acc[priority]++;
-      }
-      return acc;
-    },
-    { total: 0, critical: 0, high: 0, medium: 0, low: 0 }
-  );
-
-  // Function to get date string for n days ago
-  const getDateStringForDaysAgo = (days) => {
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    return date.toDateString();
-  };
-
+  
   // Filter todos for display based on all filters
   const filteredTodos = todos
     .filter((todo) => {
@@ -482,7 +436,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
           created_datetime: formattedDate
         };
         updateTodosCallback([todoWithDate, ...todos]);
-        updateNoteCallBack([todoWithDate, ...notes]);
         setSearchQuery(''); // Clear the search bar after creating todo
       }
     } catch (error) {
@@ -875,7 +828,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                       }`}
                     >
                       <div className="text-xs font-medium text-gray-500">Total</div>
-                      <div className="text-2xl font-bold text-gray-900">{total}</div>
                     </button>
                     <button
                       onClick={() => setPriorityFilter('critical')}
@@ -886,7 +838,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                       }`}
                     >
                       <div className="text-xs font-medium text-red-600">Critical</div>
-                      <div className="text-2xl font-bold text-red-700">{critical}</div>
                     </button>
                     <button
                       onClick={() => setPriorityFilter('high')}
@@ -897,7 +848,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                       }`}
                     >
                       <div className="text-xs font-medium text-rose-600">High</div>
-                      <div className="text-2xl font-bold text-rose-700">{high}</div>
                     </button>
                     <button
                       onClick={() => setPriorityFilter('medium')}
@@ -908,7 +858,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                       }`}
                     >
                       <div className="text-xs font-medium text-amber-600">Medium</div>
-                      <div className="text-2xl font-bold text-amber-700">{medium}</div>
                     </button>
                     <button
                       onClick={() => setPriorityFilter('low')}
@@ -919,7 +868,6 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
                       }`}
                     >
                       <div className="text-xs font-medium text-emerald-600">Low</div>
-                      <div className="text-2xl font-bold text-emerald-700">{low}</div>
                     </button>
                   </div>
 
@@ -1055,19 +1003,7 @@ const TodoList = ({ todos, notes, updateTodosCallback, updateNoteCallBack }) => 
             </div>
           )}
 
-          {/* Snackbar */}
-          {snackbar && (
-            <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg z-50">
-              <CheckCircleIcon className="h-4 w-4 text-emerald-400" />
-              <span className="text-sm">Todo completed</span>
-              <button
-                onClick={handleUndo}
-                className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors duration-200"
-              >
-                Undo
-              </button>
-            </div>
-          )}
+       
 
           {/* Priority Selection Popup */}
           {showPriorityPopup && (

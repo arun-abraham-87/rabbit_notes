@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { XMarkIcon, ChevronDownIcon, ChevronUpIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
-import { getAge } from '../utils/DateUtils';
+import { getAgeInStringFmt } from '../utils/DateUtils';
 import { getRecentSearches, addRecentSearch } from '../utils/SearchUtils';
 import moment from 'moment';
 
@@ -314,7 +314,7 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-gray-400">
                       <span className="bg-gray-100 px-2 py-0.5 rounded-full">
-                        Added {getAge(note.created_datetime)}
+                        Added {getAgeInStringFmt(note.created_datetime)}
                       </span>
                     </div>
                     <button

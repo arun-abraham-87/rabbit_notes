@@ -26,7 +26,7 @@ import {
 } from '@heroicons/react/24/outline';
 import EventAlerts from './EventAlerts';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon, createNote, exportAllNotes } from '../utils/ApiUtils';
-import { getAge, getDateInDDMMYYYYFormat, getDiffInDays } from '../utils/DateUtils';
+import { getAgeInStringFmt, getDateInDDMMYYYYFormat, getDiffInDays } from '../utils/DateUtils';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
 import NoteView from './NoteView';
 import { generateTrackerQuestions, createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
@@ -1402,7 +1402,7 @@ const UnacknowledgedMeetingsAlert = ({ notes, expanded: initialExpanded = true, 
                       <div className="flex items-center gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
                           <ClockIcon className="h-4 w-4" />
-                          <span>{meetingTime ? getAge(meetingTime) : '0 days ago'}</span>
+                          <span>{meetingTime ? getAgeInStringFmt(meetingTime) : '0 days ago'}</span>
                         </div>
                       </div>
                     </div>
@@ -1974,7 +1974,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
                                   })}
                                 </span>
                                 <span className="text-blue-600 font-medium">
-                                  ({getAge(event.date)})
+                                  ({getAgeInStringFmt(event.date)})
                                 </span>
                               </div>
                               {event.isRecurring && event.originalDate && (
@@ -1985,7 +1985,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true }) => {
                                       year: 'numeric',
                                       month: 'long',
                                       day: 'numeric'
-                                    })} ({getAge(event.originalDate)})
+                                    })} ({getAgeInStringFmt(event.originalDate)})
                                   </span>
                                 </div>
                               )}
@@ -2292,7 +2292,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                                 })}
                               </span>
                               <span className="text-indigo-600 font-medium">
-                                ({getAge(deadline.date)})
+                                ({getAgeInStringFmt(deadline.date)})
                               </span>
                             </div>
                           </div>

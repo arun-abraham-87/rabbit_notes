@@ -1,7 +1,7 @@
 import React from 'react';
 import { UserIcon, XMarkIcon, CodeBracketIcon, PencilIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
-import { getAge } from '../utils/DateUtils';
+import { getAgeInStringFmt } from '../utils/DateUtils';
 
 const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag }) => {
   const getPersonInfo = (content) => {
@@ -26,7 +26,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag }) => {
 
   const renderMetaValue = (info) => {
     if (info.type === 'date') {
-      const age = getAge(info.value);
+      const age = getAgeInStringFmt(info.value);
       return `${info.value} (${age})`;
     }
     return info.value;

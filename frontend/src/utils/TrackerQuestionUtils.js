@@ -1,4 +1,4 @@
-import { getAge } from './DateUtils';
+import { getAgeInStringFmt } from './DateUtils';
 import { createNote } from './ApiUtils';
 
 export const calculateDatesToAsk = (startDate, endDate, cadence, days) => {
@@ -91,7 +91,7 @@ export const generateTrackerQuestions = (notes) => {
         });
         
         // Create the date (age) combo
-        const dateAgeCombo = `${formattedDate} (${getAge(date)})`;
+        const dateAgeCombo = `${formattedDate} (${getAgeInStringFmt(date)})`;
         
         // Replace #date# in question with the combo
         const formattedQuestion = question.replace(/#date#/g, dateAgeCombo);

@@ -14,7 +14,7 @@ import {
   TrashIcon
 } from '@heroicons/react/24/solid';
 import AddTracker from './AddTracker';
-import { getAge } from '../utils/DateUtils';
+import { getAgeInStringFmt } from '../utils/DateUtils';
 import { Line, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -127,7 +127,7 @@ const TrackerListing = () => {
             id: answer.id,
             date,
             answer: answerValue,
-            age: getAge(new Date(date))
+            age: getAgeInStringFmt(new Date(date))
           });
           rawNotesByAnswer[answer.id] = answer.content;
 

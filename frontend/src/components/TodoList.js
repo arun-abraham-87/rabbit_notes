@@ -38,16 +38,10 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
   const [pendingTodoContent, setPendingTodoContent] = useState('');
 
   const getFilteredTodos = () => {
-    console.log('allNotes[0]', allNotes[0]);
-    // Filter todos for display based on allfilters
-    console.log('All notes length', allNotes.length);
     const filteredTodos = (allNotes || [])
       .filter((todo) => {
         if (!todo || !todo.content) 
         {
-          console.log('todo has no content');
-          console.log(todo);
-          console.log("--------------------------------");
           return false;
         }
          
@@ -96,8 +90,6 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
   };
 
   useEffect(() => {
-    console.log('REFRESH: updating todos', allNotes);
-    console.log('REFRESH: updating todos', getFilteredTodos().length);
     setTodos(getFilteredTodos());
   }, [allNotes, searchQuery]);
 
@@ -221,7 +213,6 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
       const response = await deleteNoteById(id);
       setAllNotes(allNotes.filter((note) => note.id !== id));
     } else {
-      console.log('updating todo', id, updatedContent);
       const response = await updateNoteById(id, updatedContent);
       setAllNotes(allNotes.map((note) =>
         note.id === id ? { ...note, content: updatedContent } : note
@@ -328,7 +319,6 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
     const todoContent = `${content}\nmeta::todo::${currentTime}\nmeta::${priority}\nmeta::priority_age::${currentTime}`;
     try {
       const response = await createNote(todoContent);
-      console.log('response from addTodo', response);
       setAllNotes([response, ...allNotes]);
       setSearchQuery(''); // Clear the search bar after creating todo
     } catch (error) {

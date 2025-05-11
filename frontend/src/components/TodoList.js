@@ -64,7 +64,12 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
           if (showYesterday && todoDate.toDateString() === yesterday.toDateString()) return true;
           return false;
         })();
-
+        if (tagMatch) {
+          const priority=tagMatch[0].split('meta::')[1]
+          if (priorityFilter && priorityFilter !== priority) {
+            return false;
+          }
+        }
         // Check if todo has deadline
         const hasDeadline = !showHasDeadline || todo.content.includes('meta::end_date::');
 
@@ -90,7 +95,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
 
   useEffect(() => {
     setTodos(getFilteredTodos());
-  }, [allNotes, searchQuery]);
+  }, [allNotes, searchQuery, priorityFilter]);
 
  
 

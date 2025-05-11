@@ -100,9 +100,10 @@ const Dashboard = ({notes,setNotes}) => {
               </div>
             </div>
             <EventManager />
+            <ExchangeRates />
           <StockPrice />
           </div>
-          <ExchangeRates />
+        
           <BookmarkedLinks notes={notes} />
         </div>
       </div>

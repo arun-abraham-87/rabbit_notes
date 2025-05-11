@@ -209,22 +209,10 @@ const ExchangeRates = () => {
 
   return (
     <div className="space-y-4">
-      <div className="relative w-64 h-40">
+      <div className="relative w-72 h-44">
         <div className="absolute w-full h-full p-4 rounded-md bg-gray-100 shadow-md">
-          <div className="mb-2">
-            <h2 className="text-lg font-bold">INR Exchange Rates</h2>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">1 USD =</span>
-              <span className="text-green-700 font-medium">₹{rates?.usdToInr?.toFixed(2) || '0.00'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">1 AUD =</span>
-              <span className="text-green-700 font-medium">₹{rates?.audToInr?.toFixed(2) || '0.00'}</span>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-bold truncate">INR Exchange Rates</h2>
             <button 
               className="p-1 hover:bg-gray-200 rounded-full transition-colors"
               title="Refresh rates"
@@ -233,10 +221,20 @@ const ExchangeRates = () => {
             >
               <ArrowPathIcon className={`h-5 w-5 text-gray-600 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
-            <div className="text-xs text-gray-500 space-y-1">
-              <div>API Calls Today: {apiCalls}</div>
-              <div>Last updated: {new Date(rates?.timestamp).toLocaleString()}</div>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center">
+              <span className="text-gray-600 text-sm">1 USD =</span>
+              <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.usdToInr?.toFixed(2) || '0.00'}</span>
             </div>
+            <div className="flex items-center">
+              <span className="text-gray-600 text-sm">1 AUD =</span>
+              <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.audToInr?.toFixed(2) || '0.00'}</span>
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-gray-500 space-y-1">
+            <div>API Calls Today: {apiCalls}</div>
+            <div className="truncate max-w-[180px]">Last updated: {new Date(rates?.timestamp).toLocaleString()}</div>
           </div>
         </div>
       </div>

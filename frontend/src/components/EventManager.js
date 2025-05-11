@@ -157,24 +157,7 @@ const EventManager = ({ selectedDate, onClose, onEventAdded, notes, setNotes, ev
 
   return (
     <div className="flex flex-col gap-2 mb-6 bg-gray-50 rounded-xl">
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-lg font-semibold text-gray-900">Events</h2>
-        <button
-          onClick={() => {
-            setEventForm({
-              name: '',
-              date: selectedDate ? formatDate(selectedDate) : formatDate(new Date()),
-              endDate: ''
-            });
-            setIsEditMode(false);
-            setIsModalOpen(true);
-          }}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <PlusIcon className="h-5 w-5" />
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-3 items-start">
+      <div className="flex flex-wrap gap-3 items-start relative">
         {events.map(ev => {
           const eventDate = new Date(ev.date + 'T' + (ev.start || '00:00'));
           const now = new Date();
@@ -205,6 +188,20 @@ const EventManager = ({ selectedDate, onClose, onEventAdded, notes, setNotes, ev
             </div>
           );
         })}
+        <button
+          onClick={() => {
+            setEventForm({
+              name: '',
+              date: selectedDate ? formatDate(selectedDate) : formatDate(new Date()),
+              endDate: ''
+            });
+            setIsEditMode(false);
+            setIsModalOpen(true);
+          }}
+          className="absolute -top-2 right-0 p-2 bg-gray-600/30 text-gray-600 rounded-full shadow-sm hover:bg-gray-600/50 transition-colors z-50"
+        >
+          <PlusIcon className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Event Modal */}

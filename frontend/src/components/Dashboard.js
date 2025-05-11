@@ -3,10 +3,8 @@ import { AlertsProvider } from './Alerts';
 import { loadAllNotes } from '../utils/ApiUtils';
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay';
-import StockPrice from './Stocks';
 import BookmarkedLinks from './BookmarkedLinks';
 import EventManager from './EventManager';
-import ExchangeRates from './ExchangeRates';
 
 const Dashboard = ({notes,setNotes}) => {
   const [events, setEvents] = useState([]);
@@ -100,8 +98,6 @@ const Dashboard = ({notes,setNotes}) => {
               </div>
             </div>
             <EventManager />
-            <ExchangeRates />
-          <StockPrice />
           </div>
         
           <BookmarkedLinks notes={notes} />

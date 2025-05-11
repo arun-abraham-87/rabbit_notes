@@ -735,12 +735,8 @@ const NotesList = ({
             note={editingEventNote}
             onClose={() => setEditingEventNote(null)}
             onSave={(updatedNote) => {
-              updateNoteCallback(updatedNote.id, updatedNote.content);
-              // Update the notes list immediately after successful update
-              const updatedNotes = notes.map(note =>
-                note.id === updatedNote.id ? { ...note, content: updatedNote.content } : note
-              );
-              updateNoteCallback(updatedNotes);
+              console.log('updatedNotes called', updatedNote);
+              updateNoteCallback(editingEventNote.id, updatedNote);
               setEditingEventNote(null);
             }}
             onCancel={() => setEditingEventNote(null)}

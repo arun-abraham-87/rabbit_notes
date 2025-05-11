@@ -1,6 +1,7 @@
 import React from 'react';
 import { Cog6ToothIcon } from '@heroicons/react/24/solid';
 import QuickPasteToggle from './QuickPasteToggle';
+import StockInfoPanel from './StockInfoPanel';
 
 const Navbar = ({ activePage, setActivePage, settings }) => {
   const navigationButtons = [
@@ -17,6 +18,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
     { id: 'trackers', label: 'Trackers', show: settings?.navigation?.showTrackersPage !== false },
     { id: 'calendar', label: 'Calendar', show: settings?.navigation?.showCalendarPage !== false },
     { id: 'bookmarks', label: 'Bookmarks', show: settings?.navigation?.showBookmarksPage !== false },
+    { id: 'assets', label: 'Assets', show: true },
   ].filter(button => button.show);
 
   const NavButton = ({ id, label }) => (
@@ -49,6 +51,9 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
               <NavButton key={button.id} id={button.id} label={button.label} />
             ))}
           </div>
+
+          {/* Stock Info Panel */}
+          <StockInfoPanel />
 
           {/* Quick Paste Toggle */}
           <QuickPasteToggle />

@@ -26,6 +26,7 @@ import { Alerts } from './components/Alerts';
 import CustomCalendar from './components/CustomCalendar';
 import BookmarkManager from './components/BookmarkManager';
 import { initializeSearchIndex, searchNotes, addNoteToIndex, updateNoteInIndex, removeNoteFromIndex } from './utils/SearchUtils';
+import Assets from './components/Assets';
 
 const AppContent = () => {
   const navigate = useNavigate();
@@ -401,6 +402,15 @@ const AppContent = () => {
                         <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <div className="min-h-screen bg-gray-50 p-4">
                             <BookmarkManager allNotes={allNotes} />
+                          </div>
+                        </div>
+                      </div>
+                    } />
+                    <Route path="/assets" element={
+                      <div className="h-full overflow-y-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                          <div className="min-h-screen bg-gray-50 p-4">
+                            <Assets />
                           </div>
                         </div>
                       </div>

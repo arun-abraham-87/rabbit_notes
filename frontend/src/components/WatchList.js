@@ -2,18 +2,19 @@ import React, { useState, useEffect } from 'react';
 import CompressedNotesList from './CompressedNotesList';
 import { ClockIcon, PencilIcon, XMarkIcon, BellIcon } from '@heroicons/react/24/outline';
 import NoteEditor from './NoteEditor';
+import StockInfoPanel from './StockInfoPanel';
 
 const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
   const [editingNote, setEditingNote] = useState(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const watchlistNotes = allNotes.filter(note => 
-    note.content.includes('meta::watch')
+    note && note.content && note.content.includes('meta::watch')
   );
 
   const handleMarkAsReminder = (noteId) => {
     // Find the note
     const note = allNotes.find(n => n.id === noteId);
-    if (!note) return;
+    if (!note || !note.content) return;
 
     // Check if note already has reminder tag
     const hasReminder = note.content.includes('meta::reminder');

@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import {
   PencilIcon,
-  TrashIcon,
   XMarkIcon,
   MagnifyingGlassIcon,
   CheckCircleIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
   ClockIcon,
-  ArrowPathIcon,
   FunnelIcon,
   ListBulletIcon,
   Squares2X2Icon,
@@ -17,19 +14,17 @@ import {
   CodeBracketIcon
 } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
-import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
+import { getCurrentISOTime } from '../utils/DateUtils';
 import TodoStats from './TodoStats';
 import NoteEditorModal from './NoteEditorModal';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 
-const TodoList = ({ allNotes }) => {
+const TodoList = ({ allNotes, setAllNotes }) => {
   const [todos, setTodos] = useState([]);
   const { openEditor } = useNoteEditor();
   const [searchQuery, setSearchQuery] = useState('');
   const [priorities, setPriorities] = useState({});
   const [priorityFilter, setPriorityFilter] = useState(null);
-  const [snackbar, setSnackbar] = useState(null);
-  const [removedTodo, setRemovedTodo] = useState(null);
   const [viewMode, setViewMode] = useState('list');
   const [sortBy, setSortBy] = useState('priority');
   const [showFilters, setShowFilters] = useState(true);
@@ -38,25 +33,64 @@ const TodoList = ({ allNotes }) => {
   const [showToday, setShowToday] = useState(false);
   const [showYesterday, setShowYesterday] = useState(false);
   const [showHasDeadline, setShowHasDeadline] = useState(false);
-  const [completedTodos, setCompletedTodos] = useState({});
   const [showRawNotes, setShowRawNotes] = useState({});
   const [expandedNotes, setExpandedNotes] = useState({});
   const [showPriorityPopup, setShowPriorityPopup] = useState(false);
   const [pendingTodoContent, setPendingTodoContent] = useState('');
 
+  const getFilteredTodos = () => {
+    // Filter todos for display based on all filters
+    const filteredTodos = allNotes
+    .filter((todo) => {
+      const matchesSearch = todo.content.toLowerCase().includes(searchQuery.toLowerCase());
+      const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
+      const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
+      const assignedPriority = priorities[todo.id] || tag;
+      const isMetaTodo = todo.content.includes('meta::todo');
+      const isCompleted = todo.content.includes('meta::todo_completed');
+
+      // Check if todo was added today or yesterday
+      const isTodayOrYesterday = (() => {
+        if (!showToday && !showYesterday) return true;
+        const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
+        const todoDate = new Date(todoDateMatch ? todoDateMatch[1] : todo.created_datetime);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (showToday && todoDate.toDateString() === today.toDateString()) return true;
+        if (showYesterday && todoDate.toDateString() === yesterday.toDateString()) return true;
+        return false;
+      })();
+
+      // Check if todo has deadline
+      const hasDeadline = !showHasDeadline || todo.content.includes('meta::end_date::');
+
+      return matchesSearch && isMetaTodo && !isCompleted && isTodayOrYesterday && hasDeadline;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'priority') {
+        const getPriorityValue = (todo) => {
+          const match = todo.content.match(/meta::(high|medium|low|critical)/i);
+          const priority = match ? match[1].toLowerCase() : 'low';
+          return priority === 'high' ? 3 : priority === 'medium' ? 2 : priority === 'critical' ? 4 : 1;
+        };
+        return getPriorityValue(b) - getPriorityValue(a);
+      } else if (sortBy === 'date') {
+        return parseAusDate(b.created_datetime) - parseAusDate(a.created_datetime);
+      } else if (sortBy === 'age') {
+        return parseAusDate(a.created_datetime) - parseAusDate(b.created_datetime);
+      }
+      return 0;
+    });
+    return filteredTodos;
+  }
 
   useEffect(() => {
-    const filteredTodos = allNotes.filter(note => 
-      note.content.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      note.content.includes('meta::todo') &&
-      !note.content.includes('meta::todo_completed')
-    );
-    setTodos(filteredTodos);
+    setTodos(getFilteredTodos());
   }, [allNotes, searchQuery]);
 
-  const updateTodosCallback = (updatedTodos) => {
-    setTodos(updatedTodos);
-  };
+ 
 
   // Function to clear all date filters
   const clearDateFilters = () => {
@@ -92,19 +126,6 @@ const TodoList = ({ allNotes }) => {
       return priority === 'high' && daysOld > 2;
     });
   };
-
-  // Check for overdue todos every hour instead of every minute since we're checking days
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const overdueTodos = getOverdueHighPriorityTodos();
-      if (overdueTodos.length > 0) {
-        // Force a re-render
-        setPriorities(prev => ({...prev}));
-      }
-    }, 3600000); // Check every hour
-
-    return () => clearInterval(interval);
-  }, [todos]);
 
   const overdueTodos = getOverdueHighPriorityTodos();
 
@@ -203,12 +224,12 @@ const TodoList = ({ allNotes }) => {
   const getPriorityAge = (content) => {
     const match = content.match(/meta::priority_age::(.+)/);
     if (!match) return null;
-    
+
     const priorityDate = new Date(match[1]);
     const now = new Date();
     const diffMs = now - priorityDate;
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       if (diffHours === 0) {
@@ -221,23 +242,14 @@ const TodoList = ({ allNotes }) => {
   };
 
   const updateTodo = async (id, updatedContent, removeNote = false) => {
-    const response = await fetch(`http://localhost:5001/api/notes/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: updatedContent }),
-    });
-
-    if (response.ok) {
-      let updatedTodos;
-      if (removeNote) {
-        updatedTodos = todos.filter((note) => note.id !== id);
-      } else {
-        updatedTodos = todos.map((note) =>
-          note.id === id ? { ...note, content: updatedContent } : note
-        );
-      }
-   
-      updateTodosCallback(updatedTodos);
+    if (removeNote) {
+      const response = await deleteNoteById(id);
+      allNotes = allNotes.filter((note) => note.id !== id);
+    } else {
+      const response = await updateNoteById(id, updatedContent);
+      allNotes = allNotes.map((note) =>
+        note.id === id ? { ...note, content: updatedContent } : note
+      );
     }
   };
 
@@ -247,9 +259,9 @@ const TodoList = ({ allNotes }) => {
       const currentDate = new Date().toISOString();
       const cleanedContent = note.content
         .split('\n')
-        .filter(line => 
-          !line.trim().startsWith('meta::high') && 
-          !line.trim().startsWith('meta::medium') && 
+        .filter(line =>
+          !line.trim().startsWith('meta::high') &&
+          !line.trim().startsWith('meta::medium') &&
           !line.trim().startsWith('meta::low') &&
           !line.trim().startsWith('meta::critical') &&
           !line.trim().startsWith('meta::priority_age::')
@@ -271,100 +283,36 @@ const TodoList = ({ allNotes }) => {
     if (note) {
       const lines = note.content.split('\n');
       const isCompleted = lines.some(line => line.trim().startsWith('meta::todo_completed'));
-      
+
       if (isCompleted) {
         // Remove completed status
         const updatedContent = lines
           .filter(line => !line.trim().startsWith('meta::todo_completed'))
           .join('\n')
           .trim();
-        await updateTodo(id, updatedContent);
-        setCompletedTodos(prev => ({ ...prev, [id]: false }));
+        await updateTodo(id, updatedContent, false);
+        setAllNotes(allNotes.map((note) =>
+          note.id === id ? { ...note, content: updatedContent } : note
+        ));
       } else {
         // Add completed status with timestamp
         const timestamp = new Date().toISOString();
         const updatedContent = `${note.content}\nmeta::todo_completed`;
-        await updateTodo(id, updatedContent);
-        setCompletedTodos(prev => ({ ...prev, [id]: true }));
+        await updateTodo(id, updatedContent, false);
+        setAllNotes(allNotes.map((note) =>
+          note.id === id ? { ...note, content: updatedContent } : note
+        ));
       }
     }
   };
 
-  const handleCheckboxChange = (id, checked) => {
-    const note = todos.find((todo) => todo.id === id);
-    if (!note) return;
 
-    if (checked) {
-      // Store the original content before removing meta::todo
-      const originalContent = note.content;
-      const updatedContent = note.content.replace(/meta::todo/gi, '').trim();
-      
-      // Set the snackbar and removed todo state before updating
-      setSnackbar({ id, content: originalContent });
-      setRemovedTodo({ ...note, content: originalContent });
 
-      // Update the todo
-      updateTodo(id, updatedContent, true);
 
-      // Clear the snackbar after 5 seconds
-      const timeoutId = setTimeout(() => {
-        setSnackbar(null);
-        setRemovedTodo(null);
-      }, 5000);
 
-      // Update snackbar with timeout ID
-      setSnackbar(prev => ({ ...prev, timeoutId }));
-    }
-  };
-
-  
-  // Filter todos for display based on all filters
-  const filteredTodos = todos
-    .filter((todo) => {
-      const matchesSearch = todo.content.toLowerCase().includes(searchQuery.toLowerCase());
-      const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
-      const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
-      const assignedPriority = priorities[todo.id] || tag;
-      const isMetaTodo = todo.content.includes('meta::todo');
-      const isCompleted = todo.content.includes('meta::todo_completed');
-      
-      // Check if todo was added today or yesterday
-      const isTodayOrYesterday = (() => {
-        if (!showToday && !showYesterday) return true;
-        const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
-        const todoDate = new Date(todoDateMatch ? todoDateMatch[1] : todo.created_datetime);
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        if (showToday && todoDate.toDateString() === today.toDateString()) return true;
-        if (showYesterday && todoDate.toDateString() === yesterday.toDateString()) return true;
-        return false;
-      })();
-
-      // Check if todo has deadline
-      const hasDeadline = !showHasDeadline || todo.content.includes('meta::end_date::');
-      
-      return matchesSearch && isMetaTodo && !isCompleted && isTodayOrYesterday && hasDeadline;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'priority') {
-        const getPriorityValue = (todo) => {
-          const match = todo.content.match(/meta::(high|medium|low|critical)/i);
-          const priority = match ? match[1].toLowerCase() : 'low';
-          return priority === 'high' ? 3 : priority === 'medium' ? 2 : priority === 'critical' ? 4 : 1;
-        };
-        return getPriorityValue(b) - getPriorityValue(a);
-      } else if (sortBy === 'date') {
-        return parseAusDate(b.created_datetime) - parseAusDate(a.created_datetime);
-      } else if (sortBy === 'age') {
-        return parseAusDate(a.created_datetime) - parseAusDate(b.created_datetime);
-      }
-      return 0;
-    });
 
   // Group todos by priority
-  const groupedTodos = filteredTodos.reduce((acc, todo) => {
+  const groupedTodos = todos.reduce((acc, todo) => {
     const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
     const priority = tagMatch ? tagMatch[1].toLowerCase() : 'low';
     if (!acc[priority]) {
@@ -399,45 +347,13 @@ const TodoList = ({ allNotes }) => {
   };
 
   // Add new function to create todo
-  const createTodo = async (content, priority = 'low') => {
-    const now = new Date();
-    const isoTimestamp = now.toISOString();
-    
-    // Format the date in DD/MM/YYYY, HH:mm:ss am/pm format
-    const day = now.getDate().toString().padStart(2, '0');
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const year = now.getFullYear();
-    const hours = now.getHours();
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const seconds = now.getSeconds().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'pm' : 'am';
-    const formattedHours = (hours % 12 || 12).toString().padStart(2, '0');
-    
-    const formattedDate = `${day}/${month}/${year}, ${formattedHours}:${minutes}:${seconds} ${ampm}`;
-    
-    const todoContent = `${content}\nmeta::todo::${isoTimestamp}\nmeta::${priority}\nmeta::priority_age::${isoTimestamp}`;
-    
+  const addTodo = async (content, priority = 'low') => {
+    const currentTime = getCurrentISOTime();
+    const todoContent = `${content}\nmeta::todo::${currentTime}\nmeta::${priority}\nmeta::priority_age::${currentTime}`;
     try {
-      const response = await fetch('http://localhost:5001/api/notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          content: todoContent,
-          created_datetime: formattedDate,
-          noteDate: `${year}-${month}-${day}` // Add this for backend date comparison
-        }),
-      });
-
-      if (response.ok) {
-        const newTodo = await response.json();
-        // Ensure the todo has the correct created_datetime
-        const todoWithDate = {
-          ...newTodo,
-          created_datetime: formattedDate
-        };
-        updateTodosCallback([todoWithDate, ...todos]);
-        setSearchQuery(''); // Clear the search bar after creating todo
-      }
+      const response = await createNote(todoContent);
+      setAllNotes([response.content, ...allNotes]);
+      setSearchQuery(''); // Clear the search bar after creating todo
     } catch (error) {
       console.error('Failed to create todo:', error);
     }
@@ -459,7 +375,7 @@ const TodoList = ({ allNotes }) => {
   };
 
   const handlePrioritySelect = (priority) => {
-    createTodo(pendingTodoContent, priority);
+    addTodo(pendingTodoContent, priority);
     setShowPriorityPopup(false);
     setPendingTodoContent('');
   };
@@ -469,7 +385,7 @@ const TodoList = ({ allNotes }) => {
     const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
     const currentPriority = priorities[todo.id] || tag;
     const isCompleted = todo.content.includes('meta::todo_completed');
-    
+
     const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
     const createdDate = todoDateMatch ? todoDateMatch[1] : todo.created_datetime;
     const ageColorClass = getAgeClass(createdDate);
@@ -504,16 +420,13 @@ const TodoList = ({ allNotes }) => {
     return (
       <div
         key={todo.id}
-        className={`group relative ${
-          viewMode === 'grid' ? 'h-[200px]' : 'min-h-[80px]'
-        } flex flex-col rounded-lg border shadow-sm hover:shadow-md transition-all duration-200 ${
-          priorityColors[currentPriority]
-        } ${isCompleted ? 'opacity-60' : ''}`}
+        className={`group relative ${viewMode === 'grid' ? 'h-[200px]' : 'min-h-[80px]'
+          } flex flex-col rounded-lg border shadow-sm hover:shadow-md transition-all duration-200 ${priorityColors[currentPriority]
+          } ${isCompleted ? 'opacity-60' : ''}`}
       >
         {/* Header - Always show */}
-        <div className={`flex items-center justify-between p-2 border-b ${
-          'bg-white/50'
-        }`}>
+        <div className={`flex items-center justify-between p-2 border-b ${'bg-white/50'
+          }`}>
           <div className="flex items-center gap-2">
             <span className={`text-xs font-medium ${ageColorClass}`}>
               {new Date(createdDate).toLocaleDateString()}
@@ -530,79 +443,72 @@ const TodoList = ({ allNotes }) => {
                 const lines = todo.content.split('\n');
                 const metaTags = lines.filter(line => line.trim().startsWith('meta::'));
                 const content = lines.filter(line => !line.trim().startsWith('meta::')).join('\n').trim();
-                
+
                 // Open editor with both content and meta tags
                 openEditor('edit', content, todo.id, metaTags);
               }}
-              className={`p-1.5 rounded-full transition-all duration-200 ${
-                'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'
-              }`}
+              className={`p-1.5 rounded-full transition-all duration-200 ${'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+                }`}
               title="Edit note"
             >
               <PencilIcon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setShowRawNotes(prev => ({ ...prev, [todo.id]: !prev[todo.id] }))}
-              className={`p-1.5 rounded-full transition-all duration-200 ${
-                showRawNotes[todo.id]
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'
-              }`}
+              className={`p-1.5 rounded-full transition-all duration-200 ${showRawNotes[todo.id]
+                ? 'bg-indigo-100 text-indigo-700'
+                : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+                }`}
               title={showRawNotes[todo.id] ? "Hide raw note" : "Show raw note"}
             >
               <CodeBracketIcon className="h-4 w-4" />
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'critical')}
-              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${
-                currentPriority === 'critical'
-                  ? 'bg-red-400 text-white'
-                  : 'bg-white border border-gray-200 hover:bg-red-100 text-gray-400 hover:text-red-600'
-              }`}
+              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${currentPriority === 'critical'
+                ? 'bg-red-400 text-white'
+                : 'bg-white border border-gray-200 hover:bg-red-100 text-gray-400 hover:text-red-600'
+                }`}
               title="Critical priority"
             >
               Critical
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'high')}
-              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${
-                currentPriority === 'high'
-                  ? 'bg-rose-200 text-rose-700'
-                  : 'bg-white border border-gray-200 hover:bg-rose-100 text-gray-400 hover:text-rose-600'
-              }`}
+              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${currentPriority === 'high'
+                ? 'bg-rose-200 text-rose-700'
+                : 'bg-white border border-gray-200 hover:bg-rose-100 text-gray-400 hover:text-rose-600'
+                }`}
               title="High priority"
             >
               High
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'medium')}
-              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${
-                currentPriority === 'medium'
-                  ? 'bg-amber-200 text-amber-700'
-                  : 'bg-white border border-gray-200 hover:bg-amber-100 text-gray-400 hover:text-amber-600'
-              }`}
+              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${currentPriority === 'medium'
+                ? 'bg-amber-200 text-amber-700'
+                : 'bg-white border border-gray-200 hover:bg-amber-100 text-gray-400 hover:text-amber-600'
+                }`}
               title="Medium priority"
             >
               Medium
             </button>
             <button
               onClick={() => handlePriorityClick(todo.id, 'low')}
-              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${
-                currentPriority === 'low'
-                  ? 'bg-emerald-200 text-emerald-700'
-                  : 'bg-white border border-gray-200 hover:bg-emerald-100 text-gray-400 hover:text-emerald-600'
-              }`}
+              className={`px-2 py-1 text-xs rounded font-medium transition-all duration-200 ${currentPriority === 'low'
+                ? 'bg-emerald-200 text-emerald-700'
+                : 'bg-white border border-gray-200 hover:bg-emerald-100 text-gray-400 hover:text-emerald-600'
+                }`}
               title="Low priority"
             >
               Low
             </button>
             <button
               onClick={() => handleCompleteTodo(todo.id)}
-              className={`p-1.5 rounded-full transition-all duration-200 ${
-                isCompleted
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'
-              }`}
+              className={`p-1.5 rounded-full transition-all duration-200 ${isCompleted
+                ? 'bg-green-100 text-green-700'
+                : 'bg-white border border-gray-200 hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+                }`}
               title={isCompleted ? "Mark as incomplete" : "Mark as complete"}
             >
               {isCompleted ? (
@@ -615,9 +521,8 @@ const TodoList = ({ allNotes }) => {
         </div>
 
         <div className="flex-1 p-3 overflow-auto relative">
-          <div className={`text-sm whitespace-pre-wrap ${
-            'text-gray-800'
-          }`}>
+          <div className={`text-sm whitespace-pre-wrap ${'text-gray-800'
+            }`}>
             {showRawNotes[todo.id] ? (
               <pre className="text-xs font-mono bg-gray-50 p-2 rounded overflow-x-auto">
                 {todo.content}
@@ -639,9 +544,8 @@ const TodoList = ({ allNotes }) => {
 
                   if (h1Match) {
                     return (
-                      <h1 key={`line-${lineIndex}`} className={`text-xl font-bold mb-2 ${
-                        'text-gray-900'
-                      }`}>
+                      <h1 key={`line-${lineIndex}`} className={`text-xl font-bold mb-2 ${'text-gray-900'
+                        }`}>
                         {parseNoteContent({ content: h1Match[1].trim(), searchTerm: searchQuery })}
                       </h1>
                     );
@@ -649,9 +553,8 @@ const TodoList = ({ allNotes }) => {
 
                   if (h2Match) {
                     return (
-                      <h2 key={`line-${lineIndex}`} className={`text-lg font-semibold mb-2 ${
-                        'text-gray-800'
-                      }`}>
+                      <h2 key={`line-${lineIndex}`} className={`text-lg font-semibold mb-2 ${'text-gray-800'
+                        }`}>
                         {parseNoteContent({ content: h2Match[1].trim(), searchTerm: searchQuery })}
                       </h2>
                     );
@@ -660,7 +563,7 @@ const TodoList = ({ allNotes }) => {
                   // Process regular lines with URLs and search highlighting
                   const urlRegex = /(https?:\/\/[^\s]+)/g;
                   const parts = line.split(urlRegex);
-                  
+
                   return (
                     <div key={`line-${lineIndex}`} className="mb-1">
                       {parts.map((part, i) => {
@@ -746,7 +649,7 @@ const TodoList = ({ allNotes }) => {
               </div>
             </div>
           )}
-          
+
           {/* Header Controls */}
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
@@ -761,9 +664,8 @@ const TodoList = ({ allNotes }) => {
                 </button>
                 <button
                   onClick={() => setShowHeaders(prev => !prev)}
-                  className={`p-2 rounded-lg transition-all duration-200 ${
-                    showHeaders ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'
-                  }`}
+                  className={`p-2 rounded-lg transition-all duration-200 ${showHeaders ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'
+                    }`}
                   title={showHeaders ? 'Hide headers' : 'Show headers'}
                 >
                   <EllipsisHorizontalIcon className="h-5 w-5" />
@@ -781,9 +683,8 @@ const TodoList = ({ allNotes }) => {
                 </button>
                 <button
                   onClick={() => setShowFilters(prev => !prev)}
-                  className={`p-2 rounded-lg transition-all duration-200 ${
-                    showFilters ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'
-                  }`}
+                  className={`p-2 rounded-lg transition-all duration-200 ${showFilters ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-600'
+                    }`}
                   title="Toggle filters"
                 >
                   <FunnelIcon className="h-5 w-5" />
@@ -821,51 +722,46 @@ const TodoList = ({ allNotes }) => {
                   <div className="grid grid-cols-5 gap-4">
                     <button
                       onClick={() => setPriorityFilter(null)}
-                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
-                        priorityFilter === null
-                          ? 'ring-2 ring-indigo-500 ring-offset-2'
-                          : 'hover:border-indigo-200 hover:shadow-sm'
-                      }`}
+                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${priorityFilter === null
+                        ? 'ring-2 ring-indigo-500 ring-offset-2'
+                        : 'hover:border-indigo-200 hover:shadow-sm'
+                        }`}
                     >
                       <div className="text-xs font-medium text-gray-500">Total</div>
                     </button>
                     <button
                       onClick={() => setPriorityFilter('critical')}
-                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
-                        priorityFilter === 'critical'
-                          ? 'bg-rose-50 border-rose-200 ring-2 ring-red-500 ring-offset-2'
-                          : 'hover:bg-rose-50/50 hover:border-rose-200 hover:shadow-sm'
-                      }`}
+                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${priorityFilter === 'critical'
+                        ? 'bg-rose-50 border-rose-200 ring-2 ring-red-500 ring-offset-2'
+                        : 'hover:bg-rose-50/50 hover:border-rose-200 hover:shadow-sm'
+                        }`}
                     >
                       <div className="text-xs font-medium text-red-600">Critical</div>
                     </button>
                     <button
                       onClick={() => setPriorityFilter('high')}
-                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
-                        priorityFilter === 'high'
-                          ? 'bg-rose-50 border-rose-200 ring-2 ring-rose-500 ring-offset-2'
-                          : 'hover:bg-rose-50/50 hover:border-rose-200 hover:shadow-sm'
-                      }`}
+                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${priorityFilter === 'high'
+                        ? 'bg-rose-50 border-rose-200 ring-2 ring-rose-500 ring-offset-2'
+                        : 'hover:bg-rose-50/50 hover:border-rose-200 hover:shadow-sm'
+                        }`}
                     >
                       <div className="text-xs font-medium text-rose-600">High</div>
                     </button>
                     <button
                       onClick={() => setPriorityFilter('medium')}
-                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
-                        priorityFilter === 'medium'
-                          ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-500 ring-offset-2'
-                          : 'hover:bg-amber-50/50 hover:border-amber-200 hover:shadow-sm'
-                      }`}
+                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${priorityFilter === 'medium'
+                        ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-500 ring-offset-2'
+                        : 'hover:bg-amber-50/50 hover:border-amber-200 hover:shadow-sm'
+                        }`}
                     >
                       <div className="text-xs font-medium text-amber-600">Medium</div>
                     </button>
                     <button
                       onClick={() => setPriorityFilter('low')}
-                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${
-                        priorityFilter === 'low'
-                          ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-500 ring-offset-2'
-                          : 'hover:bg-emerald-50/50 hover:border-emerald-200 hover:shadow-sm'
-                      }`}
+                      className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-200 ${priorityFilter === 'low'
+                        ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-500 ring-offset-2'
+                        : 'hover:bg-emerald-50/50 hover:border-emerald-200 hover:shadow-sm'
+                        }`}
                     >
                       <div className="text-xs font-medium text-emerald-600">Low</div>
                     </button>
@@ -878,31 +774,28 @@ const TodoList = ({ allNotes }) => {
                       <span className="text-sm font-medium text-gray-700">Filters:</span>
                       <button
                         onClick={() => handleDateFilterClick('today')}
-                        className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                          showToday
-                            ? 'bg-indigo-100 text-indigo-700 font-medium'
-                            : 'hover:bg-gray-100 text-gray-600'
-                        }`}
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${showToday
+                          ? 'bg-indigo-100 text-indigo-700 font-medium'
+                          : 'hover:bg-gray-100 text-gray-600'
+                          }`}
                       >
                         Today's Todos
                       </button>
                       <button
                         onClick={() => handleDateFilterClick('yesterday')}
-                        className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                          showYesterday
-                            ? 'bg-indigo-100 text-indigo-700 font-medium'
-                            : 'hover:bg-gray-100 text-gray-600'
-                        }`}
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${showYesterday
+                          ? 'bg-indigo-100 text-indigo-700 font-medium'
+                          : 'hover:bg-gray-100 text-gray-600'
+                          }`}
                       >
                         Yesterday's Todos
                       </button>
                       <button
                         onClick={() => handleDateFilterClick('hasDeadline')}
-                        className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                          showHasDeadline
-                            ? 'bg-indigo-100 text-indigo-700 font-medium'
-                            : 'hover:bg-gray-100 text-gray-600'
-                        }`}
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${showHasDeadline
+                          ? 'bg-indigo-100 text-indigo-700 font-medium'
+                          : 'hover:bg-gray-100 text-gray-600'
+                          }`}
                       >
                         Has Deadline
                       </button>
@@ -922,31 +815,28 @@ const TodoList = ({ allNotes }) => {
                       <div className="flex gap-2">
                         <button
                           onClick={() => setSortBy('priority')}
-                          className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                            sortBy === 'priority'
-                              ? 'bg-indigo-100 text-indigo-700 font-medium'
-                              : 'hover:bg-gray-100 text-gray-600'
-                          }`}
+                          className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${sortBy === 'priority'
+                            ? 'bg-indigo-100 text-indigo-700 font-medium'
+                            : 'hover:bg-gray-100 text-gray-600'
+                            }`}
                         >
                           Priority
                         </button>
                         <button
                           onClick={() => setSortBy('date')}
-                          className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                            sortBy === 'date'
-                              ? 'bg-indigo-100 text-indigo-700 font-medium'
-                              : 'hover:bg-gray-100 text-gray-600'
-                          }`}
+                          className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${sortBy === 'date'
+                            ? 'bg-indigo-100 text-indigo-700 font-medium'
+                            : 'hover:bg-gray-100 text-gray-600'
+                            }`}
                         >
                           Newest
                         </button>
                         <button
                           onClick={() => setSortBy('age')}
-                          className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                            sortBy === 'age'
-                              ? 'bg-indigo-100 text-indigo-700 font-medium'
-                              : 'hover:bg-gray-100 text-gray-600'
-                          }`}
+                          className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${sortBy === 'age'
+                            ? 'bg-indigo-100 text-indigo-700 font-medium'
+                            : 'hover:bg-gray-100 text-gray-600'
+                            }`}
                         >
                           Oldest
                         </button>
@@ -972,9 +862,8 @@ const TodoList = ({ allNotes }) => {
                       <h2 className="text-lg font-semibold capitalize">{priority} Priority</h2>
                       <span className="text-sm font-medium">({todos.length})</span>
                     </div>
-                    <div className={`grid gap-4 ${
-                      viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
-                    }`}>
+                    <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
+                      }`}>
                       {todos.map(renderTodoCard)}
                     </div>
                   </div>
@@ -982,16 +871,15 @@ const TodoList = ({ allNotes }) => {
               })
             ) : (
               // Flat list view for date/age sorting
-              <div className={`grid gap-4 ${
-                viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
-              }`}>
-                {filteredTodos.map(renderTodoCard)}
+              <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'
+                }`}>
+                {todos.map(renderTodoCard)}
               </div>
             )}
           </div>
 
           {/* Empty State */}
-          {filteredTodos.length === 0 && (
+          {todos.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <CheckCircleIcon className="h-12 w-12 text-gray-300 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No todos found</h3>
@@ -1003,7 +891,7 @@ const TodoList = ({ allNotes }) => {
             </div>
           )}
 
-       
+
 
           {/* Priority Selection Popup */}
           {showPriorityPopup && (

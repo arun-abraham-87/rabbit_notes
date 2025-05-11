@@ -82,7 +82,12 @@ export const getTodaysDateInYYYYMMDDFormat = () => {
   return moment().format('YYYY-MM-DD');
 };
 
-/**
+export const getCurrentISOTime = () => {
+  return moment().format('YYYY-MM-DDTHH:mm:ss');
+};
+
+/**with timestamp in time seperated by t
+ * 
  * Gets the next or previous date from a given date
  * @param {string} dateString - Date string in format "YYYY-MM-DD" (e.g., "2023-12-25")
  * @param {boolean} next - If true, get next day; if false, get previous day

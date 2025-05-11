@@ -6,6 +6,7 @@ import TimeZoneDisplay from './TimeZoneDisplay';
 import StockPrice from './Stocks';
 import BookmarkedLinks from './BookmarkedLinks';
 import EventManager from './EventManager';
+import ExchangeRates from './ExchangeRates';
 
 const Dashboard = ({notes,setNotes}) => {
   const [events, setEvents] = useState([]);
@@ -101,6 +102,7 @@ const Dashboard = ({notes,setNotes}) => {
             <EventManager />
           <StockPrice />
           </div>
+          <ExchangeRates />
           <BookmarkedLinks notes={notes} />
         </div>
       </div>

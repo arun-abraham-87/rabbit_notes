@@ -125,7 +125,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   useEffect(() => {
     setCalendarEvents(getCalendarEvents());
     setTotal(getCalendarEvents().length);
-  }, [allNotes, searchQuery]);
+  }, [allNotes, searchQuery, selectedTags]);
 
   const getCalendarEvents = () => {
     // Filter and group events

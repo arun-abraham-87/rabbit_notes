@@ -304,6 +304,7 @@ const AppContent = () => {
                             <TodoList
                               allNotes={allNotes}
                               setAllNotes={setAllNotes}
+                              updateNote={updateNote}
                             />
                           </div>
                         </div>

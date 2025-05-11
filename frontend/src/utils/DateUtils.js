@@ -24,6 +24,13 @@ export const isSameAsTodaysDate = (dateString) => {
   return momentObj.format('YYYY-MM-DD') === today;
 };
 
+
+// fucntoin that recevied a date, calles parsetomoment and then rrutrsn a dateobkect
+export const getDateFromString = (dateString) => {
+  const momentObj = parseToMoment(dateString);
+  return momentObj ? momentObj.toDate() : null;
+}
+
 /**
  * Calculates the relative time from a given date string to now
  * Supports two formats:
@@ -32,9 +39,15 @@ export const isSameAsTodaysDate = (dateString) => {
  * @param {string} dateStr - Date string in format "DD/MM/YYYY, h:mm:ss a" or "YYYY-MM-DDThh:mm:ss"
  * @returns {string} Relative time string (e.g., "2 hours ago", "in 3 days")
  */
-export const getAge = (dateStrOrDateObj) => {
+export const getAgeInStringFmt = (dateStrOrDateObj) => {
   const momentObj = parseToMoment(dateStrOrDateObj);
   return momentObj ? momentObj.fromNow() : 'Invalid date';
+}
+
+//get obve funvtion to return the age in days as integer
+export const getAgeInDays = (dateStrOrDateObj) => {
+  const momentObj = parseToMoment(dateStrOrDateObj);
+  return momentObj ? momentObj.diff(moment(), 'days') : 0;
 }
 
 /**

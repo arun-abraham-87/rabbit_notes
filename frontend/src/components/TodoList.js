@@ -14,12 +14,12 @@ import {
   CodeBracketIcon
 } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
-import { getCurrentISOTime } from '../utils/DateUtils';
+import { getCurrentISOTime,getDateFromString, getAge, getAgeInDays } from '../utils/DateUtils';
 import TodoStats from './TodoStats';
 import NoteEditorModal from './NoteEditorModal';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 
-const TodoList = ({ allNotes, setAllNotes }) => {
+const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
   const [todos, setTodos] = useState([]);
   const { openEditor } = useNoteEditor();
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,51 +40,52 @@ const TodoList = ({ allNotes, setAllNotes }) => {
 
   const getFilteredTodos = () => {
     // Filter todos for display based on all filters
-    const filteredTodos = allNotes
-    .filter((todo) => {
-      const matchesSearch = todo.content.toLowerCase().includes(searchQuery.toLowerCase());
-      const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
-      const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
-      const assignedPriority = priorities[todo.id] || tag;
-      const isMetaTodo = todo.content.includes('meta::todo');
-      const isCompleted = todo.content.includes('meta::todo_completed');
+    const filteredTodos = (allNotes || [])
+      .filter((todo) => {
+        if (!todo || !todo.content) return false;
+        const matchesSearch = todo.content.toLowerCase().includes(searchQuery.toLowerCase());
+        const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
+        const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
+        const assignedPriority = priorities[todo.id] || tag;
+        const isMetaTodo = todo.content.includes('meta::todo');
+        const isCompleted = todo.content.includes('meta::todo_completed');
 
-      // Check if todo was added today or yesterday
-      const isTodayOrYesterday = (() => {
-        if (!showToday && !showYesterday) return true;
-        const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
-        const todoDate = new Date(todoDateMatch ? todoDateMatch[1] : todo.created_datetime);
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
+        // Check if todo was added today or yesterday
+        const isTodayOrYesterday = (() => {
+          if (!showToday && !showYesterday) return true;
+          const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
+          const todoDate = new Date(todoDateMatch ? todoDateMatch[1] : todo.created_datetime);
+          const today = new Date();
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
 
-        if (showToday && todoDate.toDateString() === today.toDateString()) return true;
-        if (showYesterday && todoDate.toDateString() === yesterday.toDateString()) return true;
-        return false;
-      })();
+          if (showToday && todoDate.toDateString() === today.toDateString()) return true;
+          if (showYesterday && todoDate.toDateString() === yesterday.toDateString()) return true;
+          return false;
+        })();
 
-      // Check if todo has deadline
-      const hasDeadline = !showHasDeadline || todo.content.includes('meta::end_date::');
+        // Check if todo has deadline
+        const hasDeadline = !showHasDeadline || todo.content.includes('meta::end_date::');
 
-      return matchesSearch && isMetaTodo && !isCompleted && isTodayOrYesterday && hasDeadline;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'priority') {
-        const getPriorityValue = (todo) => {
-          const match = todo.content.match(/meta::(high|medium|low|critical)/i);
-          const priority = match ? match[1].toLowerCase() : 'low';
-          return priority === 'high' ? 3 : priority === 'medium' ? 2 : priority === 'critical' ? 4 : 1;
-        };
-        return getPriorityValue(b) - getPriorityValue(a);
-      } else if (sortBy === 'date') {
-        return parseAusDate(b.created_datetime) - parseAusDate(a.created_datetime);
-      } else if (sortBy === 'age') {
-        return parseAusDate(a.created_datetime) - parseAusDate(b.created_datetime);
-      }
-      return 0;
-    });
+        return matchesSearch && isMetaTodo && !isCompleted && isTodayOrYesterday && hasDeadline;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'priority') {
+          const getPriorityValue = (todo) => {
+            const match = todo.content.match(/meta::(high|medium|low|critical)/i);
+            const priority = match ? match[1].toLowerCase() : 'low';
+            return priority === 'high' ? 3 : priority === 'medium' ? 2 : priority === 'critical' ? 4 : 1;
+          };
+          return getPriorityValue(b) - getPriorityValue(a);
+        } else if (sortBy === 'date') {
+          return getDateFromString(b.created_datetime) - getDateFromString(a.created_datetime);
+        } else if (sortBy === 'age') {
+          return getDateFromString(b.created_datetime) - getDateFromString(a.created_datetime);
+        }
+        return 0;
+      });
     return filteredTodos;
-  }
+  };
 
   useEffect(() => {
     setTodos(getFilteredTodos());
@@ -129,27 +130,10 @@ const TodoList = ({ allNotes, setAllNotes }) => {
 
   const overdueTodos = getOverdueHighPriorityTodos();
 
-  const parseAusDate = (str) => {
-    // For ISO format dates (e.g., 2025-04-24T14:16:35.161Z)
-    if (str.includes('T') && str.endsWith('Z')) {
-      return new Date(str);
-    }
-
-    // For Australian format dates
-    const [datePart, timePart, ampmRaw] = str.split(/[\s,]+/);
-    const [day, month, year] = datePart?.split('/')?.map(Number) || [];
-    let [hour, minute, second] = timePart?.split(':')?.map(Number) || [];
-    const ampm = ampmRaw ? ampmRaw.toLowerCase() : null;
-
-    if (ampm === 'pm' && hour !== 12) hour += 12;
-    if (ampm === 'am' && hour === 12) hour = 0;
-
-    return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
-  };
+ 
 
   const getAgeClass = (createdDate) => {
-    const created = new Date(createdDate); // Use direct Date constructor for ISO strings
-    const ageInDays = (Date.now() - created) / (1000 * 60 * 60 * 24);
+    const ageInDays = getAgeInDays(createdDate);
     if (ageInDays > 2) return 'text-red-500';
     if (ageInDays > 1) return 'text-yellow-500';
     return 'text-green-500';
@@ -327,9 +311,9 @@ const TodoList = ({ allNotes, setAllNotes }) => {
     Object.keys(groupedTodos).forEach(priority => {
       groupedTodos[priority].sort((a, b) => {
         if (sortBy === 'date') {
-          return parseAusDate(b.created_datetime) - parseAusDate(a.created_datetime);
+          return getDateFromString(b.created_datetime) - getDateFromString(a.created_datetime);
         } else { // age
-          return parseAusDate(a.created_datetime) - parseAusDate(b.created_datetime);
+          return getDateFromString(a.created_datetime) - getDateFromString(b.created_datetime);
         }
       });
     });
@@ -940,7 +924,7 @@ const TodoList = ({ allNotes, setAllNotes }) => {
           )}
 
           {/* Note Editor Modal */}
-          <NoteEditorModal />
+          <NoteEditorModal updateNote={updateTodo} />
         </>
       )}
     </div>

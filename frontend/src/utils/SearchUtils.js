@@ -27,12 +27,14 @@ export const initializeSearchIndex = (notes) => {
   }
   
   // Add all notes to the index
-  const documents = notes.map(note => ({
-    id: note.id,
-    content: note.content,
-    title: note.content.split('\n')[0], // Use first line as title
-    created_datetime: note.created_datetime
-  }));
+  const documents = notes
+    .filter(note => note && note.content) // Filter out invalid notes
+    .map(note => ({
+      id: note.id,
+      content: note.content,
+      title: note.content.split('\n')[0] || '', // Use first line as title, fallback to empty string
+      created_datetime: note.created_datetime
+    }));
   
   miniSearch.addAll(documents);
   isInitialized = true;
@@ -52,12 +54,12 @@ export const searchNotes = (query) => {
 
 // Function to add a single note to the index
 export const addNoteToIndex = (note) => {
-  if (!note || !isInitialized) return;
+  if (!note || !note.content || !isInitialized) return;
   
   const document = {
     id: note.id,
     content: note.content,
-    title: note.content.split('\n')[0],
+    title: note.content.split('\n')[0] || '', // Use first line as title, fallback to empty string
     created_datetime: note.created_datetime
   };
   
@@ -66,12 +68,12 @@ export const addNoteToIndex = (note) => {
 
 // Function to update a note in the index
 export const updateNoteInIndex = (note) => {
-  if (!note || !isInitialized) return;
+  if (!note || !note.content || !isInitialized) return;
   
   const document = {
     id: note.id,
     content: note.content,
-    title: note.content.split('\n')[0],
+    title: note.content.split('\n')[0] || '', // Use first line as title, fallback to empty string
     created_datetime: note.created_datetime
   };
   

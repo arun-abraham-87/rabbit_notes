@@ -19,7 +19,7 @@ import {
   FolderIcon,
 } from '@heroicons/react/24/solid';
 import { MapPinIcon } from '@heroicons/react/24/outline';
-import { getAge,getDateInDDMMYYYYFormat } from '../utils/DateUtils';
+import { getDateInDDMMYYYYFormat, getAgeInStringFmt } from '../utils/DateUtils';
 import { toast } from 'react-toastify';
 
 const Tooltip = ({ text, children }) => {
@@ -251,7 +251,7 @@ const NoteFooter = ({
         {/* Left side - Created date */}
         {showCreatedDate && (
           <span className="text-gray-400">
-            Created: {getDateInDDMMYYYYFormat(note.created_datetime)}({getAge(note.created_datetime)})
+            Created: {getDateInDDMMYYYYFormat(note.created_datetime)}({getAgeInStringFmt(note.created_datetime)})
           </span>
         )}
       </div>

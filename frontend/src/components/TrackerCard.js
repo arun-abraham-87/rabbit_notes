@@ -252,11 +252,40 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     return [];
   }
 
+  // --- Robust current streak calculation ---
+  function getCurrentStreak(answers) {
+    if (!answers || answers.length === 0) return 0;
+    // Normalize to local YYYY-MM-DD
+    const dateSet = new Set(answers.map(a => {
+      const d = new Date(a.date);
+      d.setHours(0,0,0,0);
+      return d.toISOString().slice(0,10);
+    }));
+    let streak = 0;
+    let d = new Date();
+    d.setHours(0,0,0,0);
+    // If today is not checked in, streak is 0
+    if (!dateSet.has(d.toISOString().slice(0,10))) return 0;
+    while (dateSet.has(d.toISOString().slice(0,10))) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    }
+    return streak;
+  }
+  const currentStreak = getCurrentStreak(answers);
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-4">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">{tracker.title}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900">{tracker.title}</h3>
+            {currentStreak > 1 && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 ml-1" title="Current streak">
+                🔥 {currentStreak}-day streak
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-600">{tracker.question}</p>
         </div>
         {!isFocusMode && (
@@ -583,6 +612,34 @@ function EnhancedStats({ answers, tracker }) {
     return <div className="text-gray-400 italic text-center">No check-ins yet.</div>;
   }
 
+  // Normalize and deduplicate dates
+  const dateSet = new Set(answers.map(a => {
+    const d = new Date(a.date);
+    d.setHours(0,0,0,0);
+    return d.toISOString().slice(0,10);
+  }));
+  const sortedDates = Array.from(dateSet).sort();
+
+  // Longest streak calculation (robust)
+  let longest = 0, current = 0;
+  let prev = null;
+  sortedDates.forEach(dateStr => {
+    if (!prev) {
+      current = 1;
+    } else {
+      const prevDate = new Date(prev);
+      const currDate = new Date(dateStr);
+      const diff = (currDate - prevDate) / (1000*60*60*24);
+      if (diff === 1) {
+        current++;
+      } else {
+        current = 1;
+      }
+    }
+    if (current > longest) longest = current;
+    prev = dateStr;
+  });
+
   // Sort answers by date ascending
   const sorted = [...answers].sort((a, b) => new Date(a.date) - new Date(b.date));
   const firstDate = sorted[0]?.date;
@@ -607,38 +664,6 @@ function EnhancedStats({ answers, tracker }) {
     const daysBetween = Math.max(1, Math.ceil((new Date(lastDate) - new Date(firstDate)) / (1000*60*60*24)) + 1);
     completionRate = (total / daysBetween) * 100;
   }
-
-  // Streaks (current and longest)
-  function getStreaks() {
-    if (!firstDate) return { current: 0, longest: 0 };
-    const dateSet = new Set(sorted.map(a => a.date));
-    let currentStreak = 0, longestStreak = 0, streak = 0;
-    let d = new Date(lastDate);
-    while (dateSet.has(d.toISOString().slice(0,10))) {
-      currentStreak++;
-      d.setDate(d.getDate() - 1);
-    }
-    // Longest streak
-    let prev = null;
-    sorted.forEach(a => {
-      if (!prev) {
-        streak = 1;
-      } else {
-        const prevDate = new Date(prev.date);
-        const currDate = new Date(a.date);
-        const diff = (currDate - prevDate) / (1000*60*60*24);
-        if (diff === 1) {
-          streak++;
-        } else {
-          streak = 1;
-        }
-      }
-      if (streak > longestStreak) longestStreak = streak;
-      prev = a;
-    });
-    return { current: currentStreak, longest: longestStreak };
-  }
-  const streaks = getStreaks();
 
   // Prepare chart data (show last 30 check-ins)
   const chartData = {
@@ -710,8 +735,8 @@ function EnhancedStats({ answers, tracker }) {
         )}
         <div><span className="font-semibold">First Check-in:</span> {firstDate && new Date(firstDate).toLocaleDateString()}</div>
         <div><span className="font-semibold">Last Check-in:</span> {lastDate && new Date(lastDate).toLocaleDateString()}</div>
-        <div><span className="font-semibold">Current Streak:</span> {streaks.current}</div>
-        <div><span className="font-semibold">Longest Streak:</span> {streaks.longest}</div>
+        <div><span className="font-semibold">Current Streak:</span> {longest}</div>
+        <div><span className="font-semibold">Longest Streak:</span> {longest}</div>
         {completionRate !== null && (
           <div className="col-span-2"><span className="font-semibold">Completion Rate:</span> {completionRate.toFixed(1)}%</div>
         )}

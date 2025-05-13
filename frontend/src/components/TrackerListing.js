@@ -556,7 +556,7 @@ const TrackerListing = () => {
               onEdit={handleEditTracker}
               isFocusMode={isFocusMode}
             />
-          </div>
+        </div>
         )}
       </div>
     );
@@ -579,9 +579,9 @@ const TrackerListing = () => {
           >
             {isFocusMode ? 'Focus Mode: On' : 'Focus Mode: Off'}
           </button>
-          <button
+        <button
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            onClick={() => setShowAddTracker(true)}
+          onClick={() => setShowAddTracker(true)}
           >
             + Add Tracker
           </button>

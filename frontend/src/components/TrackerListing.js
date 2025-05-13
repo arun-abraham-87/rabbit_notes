@@ -564,6 +564,21 @@ const TrackerListing = () => {
 
   const totalCount = pendingTrackers.length + completedTrackers.length;
 
+  // Remove grouping for pending section
+  const renderPendingTrackers = () => {
+    return (
+      <div className={`bg-blue-50 rounded-lg p-4 mb-6`}>
+        <TrackerGrid 
+          trackers={pendingTrackers} 
+          onToggleDay={handleToggleDay} 
+          trackerAnswers={trackerAnswers} 
+          onEdit={handleEditTracker}
+          isFocusMode={isFocusMode}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -592,7 +607,7 @@ const TrackerListing = () => {
           Check-in Pending ({pendingTrackers.length}/{totalCount})
         </h2>
       </div>
-      {renderGroupedTrackers(pendingGroups, 'pending')}
+      {renderPendingTrackers()}
       <div className="bg-green-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-green-200 mt-8 flex items-center justify-between cursor-pointer" onClick={() => setCompletedCollapsed(c => !c)}>
         <h2 className="text-xl font-semibold">
           Check-in Completed ({completedTrackers.length}/{totalCount})

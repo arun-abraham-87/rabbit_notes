@@ -279,27 +279,95 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     return [];
   }
 
-  // --- Robust current streak calculation ---
-  function getCurrentStreak(answers) {
+  // --- Cadence-aware current streak calculation ---
+  function getCadenceStreak(tracker, answers) {
     if (!answers || answers.length === 0) return 0;
-    // Normalize to local YYYY-MM-DD
-    const dateSet = new Set(answers.map(a => {
+    // Build a set of acknowledged dates (YYYY-MM-DD)
+    const answerSet = new Set(answers.map(a => {
       const d = new Date(a.date);
       d.setHours(0,0,0,0);
       return d.toISOString().slice(0,10);
     }));
+    const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
     let streak = 0;
-    let d = new Date();
-    d.setHours(0,0,0,0);
-    // If today is not checked in, streak is 0
-    if (!dateSet.has(d.toISOString().slice(0,10))) return 0;
-    while (dateSet.has(d.toISOString().slice(0,10))) {
-      streak++;
-      d.setDate(d.getDate() - 1);
+    if (cadence === 'weekly' && tracker.days && tracker.days.length > 0) {
+      // Custom weekly: get last N selected weekdays (e.g., Sundays)
+      let selectedDays = tracker.days.map(d => {
+        if (typeof d === 'string') {
+          const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
+          return idx >= 0 ? idx : d;
+        }
+        return d;
+      }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
+      // Get last 100 occurrences of selected days
+      const relevantDates = [];
+      const today = new Date();
+      let d = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      let safety = 0;
+      while (relevantDates.length < 100 && safety < 366) {
+        if (selectedDays.includes(d.getDay())) {
+          relevantDates.unshift(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+        }
+        d.setDate(d.getDate() - 1);
+        safety++;
+      }
+      // Count streak from most recent backward
+      for (let i = relevantDates.length - 1; i >= 0; i--) {
+        const dateStr = relevantDates[i].toISOString().slice(0,10);
+        if (answerSet.has(dateStr)) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      return streak;
+    } else if (cadence === 'monthly') {
+      // Monthly: consecutive months with check-ins
+      const months = [];
+      const today = new Date();
+      for (let i = 0; i < 24; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        months.unshift(d);
+      }
+      for (let i = months.length - 1; i >= 0; i--) {
+        const monthStr = months[i].toISOString().slice(0,7); // YYYY-MM
+        const found = Array.from(answerSet).some(date => date.startsWith(monthStr));
+        if (found) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      return streak;
+    } else if (cadence === 'yearly') {
+      // Yearly: consecutive years with check-ins
+      const years = [];
+      const today = new Date();
+      for (let i = 0; i < 10; i++) {
+        years.unshift(today.getFullYear() - i);
+      }
+      for (let i = years.length - 1; i >= 0; i--) {
+        const yearStr = years[i].toString();
+        const found = Array.from(answerSet).some(date => date.startsWith(yearStr));
+        if (found) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      return streak;
+    } else {
+      // Daily: consecutive calendar days
+      let d = new Date();
+      d.setHours(0,0,0,0);
+      while (answerSet.has(d.toISOString().slice(0,10))) {
+        streak++;
+        d.setDate(d.getDate() - 1);
+      }
+      return streak;
     }
-    return streak;
   }
-  const currentStreak = getCurrentStreak(answers);
+  const currentStreak = getCadenceStreak(tracker, answers);
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4">

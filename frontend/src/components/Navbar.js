@@ -12,6 +12,7 @@ const Navbar = ({ activePage, setActivePage, settings }) => {
     { id: 'tags', label: 'Tags', show: settings?.navigation?.showTagsPage !== false },
     { id: 'journals', label: 'Journals', show: settings?.navigation?.showJournalsPage !== false },
     { id: 'events', label: 'Events', show: settings?.navigation?.showEventsPage !== false },
+    { id: 'countdowns', label: 'Countdowns', show: true },
     { id: 'people', label: 'People', show: settings?.navigation?.showPeoplePage !== false },
     { id: 'news', label: 'News', show: settings?.navigation?.showNewsPage !== false },
     { id: 'expense', label: 'Expense', show: settings?.navigation?.showExpensePage !== false },

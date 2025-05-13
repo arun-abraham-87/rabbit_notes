@@ -27,6 +27,7 @@ import CustomCalendar from './components/CustomCalendar';
 import BookmarkManager from './components/BookmarkManager';
 import { initializeSearchIndex, searchNotes, addNoteToIndex, updateNoteInIndex, removeNoteFromIndex } from './utils/SearchUtils';
 import Assets from './components/Assets';
+import CountdownsPage from './pages/CountdownsPage';
 
 const AppContent = () => {
   const navigate = useNavigate();
@@ -412,6 +413,13 @@ const AppContent = () => {
                           <div className="min-h-screen bg-gray-50 p-4">
                             <Assets />
                           </div>
+                        </div>
+                      </div>
+                    } />
+                    <Route path="/countdowns" element={
+                      <div className="h-full overflow-y-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                          <CountdownsPage notes={allNotes} />
                         </div>
                       </div>
                     } />

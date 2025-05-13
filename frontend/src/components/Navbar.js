@@ -1,26 +1,40 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Cog6ToothIcon } from '@heroicons/react/24/solid';
 import QuickPasteToggle from './QuickPasteToggle';
 import StockInfoPanel from './StockInfoPanel';
 
-const Navbar = ({ activePage, setActivePage, settings }) => {
+const Navbar = ({ activePage, setActivePage }) => {
+  const [navbarPagesVisibility, setNavbarPagesVisibility] = useState({});
+
+  useEffect(() => {
+    const saved = localStorage.getItem('navbarPagesVisibility');
+    if (saved) {
+      setNavbarPagesVisibility(JSON.parse(saved));
+    } else {
+      // Default: all true
+      setNavbarPagesVisibility({
+        dashboard: true, notes: true, todos: true, watch: true, tags: true, journals: true, events: true, countdowns: true, people: true, news: true, expense: true, trackers: true, calendar: true, bookmarks: true, assets: true
+      });
+    }
+  }, []);
+
   const navigationButtons = [
-    { id: 'dashboard', label: 'Dashboard', show: settings?.navigation?.showDashboardPage !== false },
-    { id: 'notes', label: 'Notes', show: true },
-    { id: 'todos', label: 'Todos', show: settings?.navigation?.showTodosPage !== false },
-    { id: 'watch', label: 'Watch', show: settings?.navigation?.showWatchPage !== false },
-    { id: 'tags', label: 'Tags', show: settings?.navigation?.showTagsPage !== false },
-    { id: 'journals', label: 'Journals', show: settings?.navigation?.showJournalsPage !== false },
-    { id: 'events', label: 'Events', show: settings?.navigation?.showEventsPage !== false },
-    { id: 'countdowns', label: 'Countdowns', show: true },
-    { id: 'people', label: 'People', show: settings?.navigation?.showPeoplePage !== false },
-    { id: 'news', label: 'News', show: settings?.navigation?.showNewsPage !== false },
-    { id: 'expense', label: 'Expense', show: settings?.navigation?.showExpensePage !== false },
-    { id: 'trackers', label: 'Trackers', show: settings?.navigation?.showTrackersPage !== false },
-    { id: 'calendar', label: 'Calendar', show: settings?.navigation?.showCalendarPage !== false },
-    { id: 'bookmarks', label: 'Bookmarks', show: settings?.navigation?.showBookmarksPage !== false },
-    { id: 'assets', label: 'Assets', show: true },
-  ].filter(button => button.show);
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'notes', label: 'Notes' },
+    { id: 'todos', label: 'Todos' },
+    { id: 'watch', label: 'Watch' },
+    { id: 'tags', label: 'Tags' },
+    { id: 'journals', label: 'Journals' },
+    { id: 'events', label: 'Events' },
+    { id: 'countdowns', label: 'Countdowns' },
+    { id: 'people', label: 'People' },
+    { id: 'news', label: 'News' },
+    { id: 'expense', label: 'Expense' },
+    { id: 'trackers', label: 'Trackers' },
+    { id: 'calendar', label: 'Calendar' },
+    { id: 'bookmarks', label: 'Bookmarks' },
+    { id: 'assets', label: 'Assets' },
+  ].filter(button => navbarPagesVisibility[button.id]);
 
   const NavButton = ({ id, label }) => (
     <button

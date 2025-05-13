@@ -25,19 +25,47 @@ export const timeZones = [
   { label: 'NZDT (Auckland, +13:00)', value: 'Pacific/Auckland' },
 ];
 
+const NAVBAR_PAGES = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'notes', label: 'Notes' },
+  { id: 'todos', label: 'Todos' },
+  { id: 'watch', label: 'Watch' },
+  { id: 'tags', label: 'Tags' },
+  { id: 'journals', label: 'Journals' },
+  { id: 'events', label: 'Events' },
+  { id: 'countdowns', label: 'Countdowns' },
+  { id: 'people', label: 'People' },
+  { id: 'news', label: 'News' },
+  { id: 'expense', label: 'Expense' },
+  { id: 'trackers', label: 'Trackers' },
+  { id: 'calendar', label: 'Calendar' },
+  { id: 'bookmarks', label: 'Bookmarks' },
+  { id: 'assets', label: 'Assets' },
+];
+
 const Settings = ({ onClose }) => {
   const [selectedTimezones, setSelectedTimezones] = useState([]);
   const [baseTimezone, setBaseTimezone] = useState('');
+  const [navbarPagesVisibility, setNavbarPagesVisibility] = useState({});
 
-  // Load saved timezones and base timezone on component mount
+  // Load saved timezones, base timezone, and navbar pages visibility on component mount
   useEffect(() => {
     const savedTimezones = localStorage.getItem('selectedTimezones');
     const savedBaseTimezone = localStorage.getItem('baseTimezone');
+    const savedNavbarPages = localStorage.getItem('navbarPagesVisibility');
     if (savedTimezones) {
       setSelectedTimezones(JSON.parse(savedTimezones));
     }
     if (savedBaseTimezone) {
       setBaseTimezone(savedBaseTimezone);
+    }
+    if (savedNavbarPages) {
+      setNavbarPagesVisibility(JSON.parse(savedNavbarPages));
+    } else {
+      // Default: all true
+      const defaultVis = {};
+      NAVBAR_PAGES.forEach(page => { defaultVis[page.id] = true; });
+      setNavbarPagesVisibility(defaultVis);
     }
   }, []);
 
@@ -66,10 +94,15 @@ const Settings = ({ onClose }) => {
     }
   };
 
+  const handleNavbarPageChange = (id, checked) => {
+    setNavbarPagesVisibility(prev => ({ ...prev, [id]: checked }));
+  };
+
   const handleSave = () => {
-    // Save selected timezones and base timezone to localStorage
+    // Save selected timezones, base timezone, and navbar pages visibility to localStorage
     localStorage.setItem('selectedTimezones', JSON.stringify(selectedTimezones));
     localStorage.setItem('baseTimezone', baseTimezone);
+    localStorage.setItem('navbarPagesVisibility', JSON.stringify(navbarPagesVisibility));
     onClose();
   };
 
@@ -216,6 +249,24 @@ const Settings = ({ onClose }) => {
                 <span className="text-gray-600">Toggle Sidebar</span>
                 <kbd className="px-2 py-1 bg-gray-100 rounded">⌘ + B</kbd>
               </div>
+            </div>
+          </div>
+
+          {/* Navbar Pages Visibility */}
+          <div className="border-b pb-4">
+            <h3 className="text-lg font-semibold mb-3 text-gray-700">Navbar Pages</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {NAVBAR_PAGES.map(page => (
+                <label key={page.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={!!navbarPagesVisibility[page.id]}
+                    onChange={e => handleNavbarPageChange(page.id, e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-700">{page.label}</span>
+                </label>
+              ))}
             </div>
           </div>
         </div>

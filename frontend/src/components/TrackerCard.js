@@ -11,11 +11,26 @@ function getLastSevenDays() {
   return days;
 }
 
+function getMonthStats(completions, month, year, upToDay = null) {
+  // upToDay: if provided, only count days up to this day (inclusive)
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const endDay = upToDay || daysInMonth;
+  let x = 0, y = 0;
+  for (let day = 1; day <= endDay; day++) {
+    const date = new Date(year, month, day);
+    const dateStr = date.toISOString().slice(0, 10);
+    if (completions?.[dateStr]) x++;
+    y++;
+  }
+  return { x, y };
+}
+
 export default function TrackerCard({ tracker, onToggleDay }) {
   const days = getLastSevenDays();
   const [showValueModal, setShowValueModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [value, setValue] = useState('');
+  const [showStats, setShowStats] = useState(false);
 
   const handleDateClick = (date, dateStr) => {
     if (tracker.type.toLowerCase() === 'value') {
@@ -33,6 +48,24 @@ export default function TrackerCard({ tracker, onToggleDay }) {
       setValue('');
     }
   };
+
+  // Month stats
+  const now = new Date();
+  const currentMonthStats = getMonthStats(
+    tracker.completions,
+    now.getMonth(),
+    now.getFullYear(),
+    now.getDate()
+  );
+  const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+  const prevMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  const prevMonthDays = new Date(prevMonthYear, prevMonth + 1, 0).getDate();
+  const prevMonthStats = getMonthStats(
+    tracker.completions,
+    prevMonth,
+    prevMonthYear,
+    prevMonthDays
+  );
 
   return (
     <div className="bg-white rounded-xl shadow p-4 flex flex-col items-center">
@@ -57,10 +90,29 @@ export default function TrackerCard({ tracker, onToggleDay }) {
           );
         })}
       </div>
+      <button
+        className="mt-2 text-xs text-blue-600 hover:underline focus:outline-none"
+        onClick={() => setShowStats(s => !s)}
+        aria-expanded={showStats}
+      >
+        {showStats ? 'Hide Stats' : 'Show Stats'}
+      </button>
+      {showStats && (
+        <div className="mt-2 text-xs text-gray-600 text-center">
+          <div>Month: {currentMonthStats.x} / {currentMonthStats.y}</div>
+          <div>Prev: {prevMonthStats.x} / {prevMonthStats.y}</div>
+        </div>
+      )}
       {showValueModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-semibold mb-4">Enter Value</h2>
+            <h2 className="text-xl font-semibold mb-2">{tracker.title}</h2>
+            {tracker.definition && (
+              <div className="mb-2 text-sm text-gray-700">{tracker.definition}</div>
+            )}
+            {tracker.question && (
+              <div className="mb-4 text-sm text-gray-700 font-medium">{tracker.question}</div>
+            )}
             <input
               type="text"
               value={value}

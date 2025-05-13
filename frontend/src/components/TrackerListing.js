@@ -349,10 +349,17 @@ const TrackerListing = () => {
   if (isLoading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">{error}</div>;
 
+  const today = new Date().toISOString().slice(0, 10);
+  const pendingTrackers = trackers.filter(tracker => !tracker.completions[today]);
+  const completedTrackers = trackers.filter(tracker => tracker.completions[today]);
+
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-6">Trackers</h1>
-      <TrackerGrid trackers={trackers} onToggleDay={handleToggleDay} />
+      <h2 className="text-xl font-semibold mb-4">Check-in Pending</h2>
+      <TrackerGrid trackers={pendingTrackers} onToggleDay={handleToggleDay} />
+      <h2 className="text-xl font-semibold mb-4 mt-8">Check-in Completed</h2>
+      <TrackerGrid trackers={completedTrackers} onToggleDay={handleToggleDay} />
     </div>
   );
 };

@@ -34,6 +34,7 @@ import TrackerQuestionCard from './TrackerQuestionCard';
 import MeetingManager from './MeetingManager.js';
 import NoteEditor from './NoteEditor';
 import AddEventModal from './AddEventModal';
+import CadenceSelector from './CadenceSelector';
 
 const Alerts = {
   success: (message) => {
@@ -902,6 +903,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [selectedNote, setSelectedNote] = useState(null);
   const [showPriorityPopup, setShowPriorityPopup] = useState(false);
   const [noteToConvert, setNoteToConvert] = useState(null);
+  const [showCadenceSelector, setShowCadenceSelector] = useState(null);
 
   const overdueNotes = notes.filter(note => {
     if (!note.content.includes('meta::watch')) return false;
@@ -1223,34 +1225,26 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       </button>
                     )}
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => handleSetCadence(note, 2)}
-                        className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 2 hour cadence"
-                      >
-                        2h
-                      </button>
-                      <button
-                        onClick={() => handleSetCadence(note, 6)}
-                        className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 6 hour cadence"
-                      >
-                        6h
-                      </button>
-                      <button
-                        onClick={() => handleSetCadence(note, 12)}
-                        className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 12 hour cadence"
-                      >
-                        12h
-                      </button>
-                      <button
-                        onClick={() => handleSetCadence(note, 24)}
-                        className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 24 hour cadence"
-                      >
-                        24h
-                      </button>
+                      {showCadenceSelector === note.id ? (
+                        <CadenceSelector
+                          noteId={note.id}
+                          notes={notes}
+                          onCadenceChange={() => {
+                            setShowCadenceSelector(null);
+                            if (typeof setNotes === 'function') {
+                              setNotes([...notes]);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setShowCadenceSelector(note.id)}
+                          className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                          title="Set Cadence"
+                        >
+                          Set Cadence
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

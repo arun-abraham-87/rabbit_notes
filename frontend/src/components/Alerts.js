@@ -2784,20 +2784,84 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
       .map(line => line.trim())
       .filter(line => line.length > 0 && !line.startsWith('meta::'));
 
-    const firstLine = lines[0] || '';
-    const secondLine = lines[1] || '';
+    // Helper to render a line with URL logic
+    const renderLine = (line, key) => {
+      // Markdown link: [text](url)
+      const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+      if (markdownMatch) {
+        const text = markdownMatch[1];
+        const url = markdownMatch[2];
+        return (
+          <a
+            key={key}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            {text}
+          </a>
+        );
+      }
+      // Plain URL
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const urlMatch = line.match(urlRegex);
+      if (urlMatch) {
+        // Replace all URLs in the line with clickable links (host name as text)
+        let lastIndex = 0;
+        const parts = [];
+        urlMatch.forEach((url, i) => {
+          const index = line.indexOf(url, lastIndex);
+          if (index > lastIndex) {
+            parts.push(line.slice(lastIndex, index));
+          }
+          const host = url.replace(/^https?:\/\//, '').split('/')[0];
+          parts.push(
+            <a
+              key={key + '-url-' + i}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              {host}
+            </a>
+          );
+          lastIndex = index + url.length;
+        });
+        if (lastIndex < line.length) {
+          parts.push(line.slice(lastIndex));
+        }
+        return <span key={key}>{parts}</span>;
+      }
+      // No URL, render as plain text
+      return <span key={key}>{line}</span>;
+    };
+
+    // Swap logic: if first line is a URL and second is plain text, swap for display
+    let firstLine = lines[0] || '';
+    let secondLine = lines[1] || '';
+    const urlRegex = /^(https?:\/\/[^\s]+)$/;
+    if (lines.length >= 2 && urlRegex.test(firstLine) && !urlRegex.test(secondLine)) {
+      // Also check that second line is not a markdown link
+      const markdownLinkRegex = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/;
+      if (!markdownLinkRegex.test(secondLine)) {
+        // Swap
+        [firstLine, secondLine] = [secondLine, firstLine];
+      }
+    }
     const remainingLines = lines.slice(2);
 
     return (
       <>
-        <div className="font-medium">{firstLine}</div>
-        {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+        <div className="font-medium">{renderLine(firstLine, 'first')}</div>
+        {secondLine && <div className="mt-1 text-gray-600">{renderLine(secondLine, 'second')}</div>}
         {lines.length > 2 && (
           <>
             {isExpanded ? (
               <div className="mt-2 text-gray-600">
                 {remainingLines.map((line, index) => (
-                  <div key={index}>{line}</div>
+                  <div key={index}>{renderLine(line, 'rem-' + index)}</div>
                 ))}
               </div>
             ) : null}

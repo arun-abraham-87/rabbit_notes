@@ -353,6 +353,7 @@ const TrackerListing = () => {
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
   const currentMonthStr = today.toISOString().slice(0, 7); // 'YYYY-MM'
+  const currentYearStr = today.getFullYear().toString();
 
   const isMonthlyCompleted = (tracker) => {
     if (!tracker.completions) return false;
@@ -360,9 +361,18 @@ const TrackerListing = () => {
     return Object.keys(tracker.completions).some(date => date.startsWith(currentMonthStr));
   };
 
+  const isYearlyCompleted = (tracker) => {
+    if (!tracker.completions) return false;
+    // If any completion for this year exists, consider completed
+    return Object.keys(tracker.completions).some(date => date.startsWith(currentYearStr));
+  };
+
   const pendingTrackers = trackers.filter(tracker => {
     if (tracker.cadence && tracker.cadence.toLowerCase() === 'monthly') {
       return !isMonthlyCompleted(tracker);
+    }
+    if (tracker.cadence && tracker.cadence.toLowerCase() === 'yearly') {
+      return !isYearlyCompleted(tracker);
     }
     return !(tracker.completions && tracker.completions[todayStr]);
   });
@@ -370,6 +380,9 @@ const TrackerListing = () => {
   const completedTrackers = trackers.filter(tracker => {
     if (tracker.cadence && tracker.cadence.toLowerCase() === 'monthly') {
       return isMonthlyCompleted(tracker);
+    }
+    if (tracker.cadence && tracker.cadence.toLowerCase() === 'yearly') {
+      return isYearlyCompleted(tracker);
     }
     return tracker.completions && tracker.completions[todayStr];
   });
@@ -427,6 +440,8 @@ const TrackerListing = () => {
     );
   };
 
+  const totalCount = pendingTrackers.length + completedTrackers.length;
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -439,11 +454,15 @@ const TrackerListing = () => {
         </button>
       </div>
       <div className="bg-blue-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-blue-200">
-        <h2 className="text-xl font-semibold">Check-in Pending</h2>
+        <h2 className="text-xl font-semibold">
+          Check-in Pending ({pendingTrackers.length}/{totalCount})
+        </h2>
       </div>
       {renderGroupedTrackers(pendingGroups, 'pending')}
       <div className="bg-green-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-green-200 mt-8 flex items-center justify-between cursor-pointer" onClick={() => setCompletedCollapsed(c => !c)}>
-        <h2 className="text-xl font-semibold">Check-in Completed</h2>
+        <h2 className="text-xl font-semibold">
+          Check-in Completed ({completedTrackers.length}/{totalCount})
+        </h2>
         <button className="ml-2 text-lg focus:outline-none" aria-label="Toggle Completed Section">
           {completedCollapsed ? '▼' : '▲'}
         </button>

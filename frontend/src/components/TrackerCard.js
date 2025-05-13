@@ -34,19 +34,18 @@ function getLastThreeYears() {
 }
 
 function getLastSevenSelectedWeekdays(selectedDays) {
-  // selectedDays: array of weekday names or numbers (0=Sun, 1=Mon, ...)
-  // Return last 7 dates that match selectedDays
+  // selectedDays: array of weekday indices (0=Sun, 1=Mon, ...)
+  // Return last 7 dates that match selectedDays, oldest first (leftmost is oldest)
   const days = [];
   const today = new Date();
-  let count = 0;
-  let d = new Date(today);
-  while (count < 7) {
-    const weekday = d.getDay();
-    if (selectedDays.includes(weekday) || selectedDays.includes(getWeekdayName(weekday))) {
-      days.unshift(new Date(d));
-      count++;
+  let d = new Date(today.getFullYear(), today.getMonth(), today.getDate()); // always midnight local
+  let safety = 0;
+  while (days.length < 7 && safety < 366) { // never go back more than 1 year
+    if (selectedDays.includes(d.getDay())) {
+      days.unshift(new Date(d.getFullYear(), d.getMonth(), d.getDate())); // clone, push oldest to front
     }
     d.setDate(d.getDate() - 1);
+    safety++;
   }
   return days;
 }
@@ -98,7 +97,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         return idx >= 0 ? idx : d;
       }
       return d;
-    });
+    }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
     buttons = getLastSevenSelectedWeekdays(selectedDays);
     buttonType = 'day';
   } else {
@@ -225,14 +224,42 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   // Helper to get the correct 7 buttons based on cadence and offset
   function getButtonsWithOffset() {
     if (buttonType === 'day') {
-      const days = [];
-      const today = new Date();
-      for (let i = 6 + dateOffset * 7; i >= 0 + dateOffset * 7; i--) {
-        const d = new Date(today);
-        d.setDate(d.getDate() - i);
-        days.push(d);
+      if (cadence === 'weekly' && tracker.days && tracker.days.length > 0) {
+        // Custom weekly: precompute last 35 selected weekdays
+        let selectedDays = tracker.days.map(d => {
+          if (typeof d === 'string') {
+            const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
+            return idx >= 0 ? idx : d;
+          }
+          return d;
+        }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
+        // Get last 35 occurrences
+        const all = [];
+        const today = new Date();
+        let d = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        let safety = 0;
+        while (all.length < 35 && safety < 366) {
+          if (selectedDays.includes(d.getDay())) {
+            all.unshift(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+          }
+          d.setDate(d.getDate() - 1);
+          safety++;
+        }
+        // Use offset to select window of 7
+        const start = all.length - 7 - dateOffset * 7;
+        const end = all.length - dateOffset * 7;
+        return all.slice(Math.max(0, start), Math.max(0, end));
+      } else {
+        // Daily or default
+        const days = [];
+        const today = new Date();
+        for (let i = 6 + dateOffset * 7; i >= 0 + dateOffset * 7; i--) {
+          const d = new Date(today);
+          d.setDate(d.getDate() - i);
+          days.push(d);
+        }
+        return days;
       }
-      return days;
     } else if (buttonType === 'month') {
       const months = [];
       const today = new Date();
@@ -354,8 +381,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               // Other types
               done = answerObj ? 'green' : false;
             }
+            // For weekly cadence, always show weekday label above
+            if (cadence === 'weekly') {
+              weekdayLabel = item.toLocaleString('default', { weekday: 'short' });
+            } else {
+              weekdayLabel = item.toLocaleString('default', { weekday: 'short' });
+            }
             monthLabel = item.toLocaleString('default', { month: 'short', year: 'numeric' });
-            weekdayLabel = item.toLocaleString('default', { weekday: 'short' });
           } else if (buttonType === 'month') {
             dateStr = formatMonthDateString(item);
             label = getMonthShortName(item.getMonth());

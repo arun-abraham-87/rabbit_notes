@@ -376,78 +376,82 @@ const CompressedNotesList = ({
           return nextReview && nextReview <= new Date();
         });
 
-        return dueReminders.length > 0 && (
+        return (
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <BellIcon className="h-6 w-6 text-purple-500" />
               Reminders Up For Review ({dueReminders.length})
             </h2>
-            <div className="space-y-4">
-              {dueReminders.map(note => (
-                <div
-                  key={note.id}
-                  className="p-1 rounded border-2 border-purple-500 bg-purple-50 relative group transition-all duration-300"
-                >
-                  <NoteContent
-                    note={note}
-                    searchQuery={searchQuery}
-                    duplicatedUrlColors={duplicatedUrlColors}
-                    editingLine={editingLine}
-                    setEditingLine={setEditingLine}
-                    editedLineContent={editedLineContent}
-                    setEditedLineContent={setEditedLineContent}
-                    rightClickNoteId={rightClickNoteId}
-                    rightClickIndex={rightClickIndex}
-                    setRightClickNoteId={setRightClickNoteId}
-                    setRightClickIndex={setRightClickIndex}
-                    setRightClickPos={setRightClickPos}
-                    editingInlineDate={editingInlineDate}
-                    setEditingInlineDate={setEditingInlineDate}
-                    handleInlineDateSelect={handleInlineDateSelect}
-                    popupNoteText={popupNoteText}
-                    setPopupNoteText={setPopupNoteText}
-                    objList={objList}
-                    addingLineNoteId={addingLineNoteId}
-                    setAddingLineNoteId={setAddingLineNoteId}
-                    newLineText={newLineText}
-                    setNewLineText={setNewLineText}
-                    newLineInputRef={newLineInputRef}
-                    updateNote={updateNote}
-                    compressedView={true}
-                  />
-                  <div className="mt-2 flex items-center justify-between border-t pt-2">
-                    <div className="text-xs text-gray-500">
-                      <span>Last review: {formatTimestamp(cadenceUtilsLastReviewTime(note.id))}</span>
-                      <div className="text-xs text-gray-400">
-                        {showCadenceSelector === note.id ? (
-                          <CadenceSelector
-                            noteId={note.id}
-                            notes={notes}
-                            onCadenceChange={() => {
-                              setShowCadenceSelector(null);
-                              if (typeof refreshNotes === 'function') {
-                                refreshNotes();
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            <span>{renderCadenceSummary(note)}</span>
-                            <button
-                              onClick={() => setShowCadenceSelector(note.id)}
-                              className="text-blue-500 hover:text-blue-700 underline text-sm"
-                              title="Set review cadence"
-                            >
-                              Set Cadence
-                            </button>
-                          </div>
-                        )}
+            {dueReminders.length === 0 ? (
+              <div className="text-gray-500 italic">No reminders for review</div>
+            ) : (
+              <div className="space-y-4">
+                {dueReminders.map(note => (
+                  <div
+                    key={note.id}
+                    className="p-1 rounded border-2 border-purple-500 bg-purple-50 relative group transition-all duration-300"
+                  >
+                    <NoteContent
+                      note={note}
+                      searchQuery={searchQuery}
+                      duplicatedUrlColors={duplicatedUrlColors}
+                      editingLine={editingLine}
+                      setEditingLine={setEditingLine}
+                      editedLineContent={editedLineContent}
+                      setEditedLineContent={setEditedLineContent}
+                      rightClickNoteId={rightClickNoteId}
+                      rightClickIndex={rightClickIndex}
+                      setRightClickNoteId={setRightClickNoteId}
+                      setRightClickIndex={setRightClickIndex}
+                      setRightClickPos={setRightClickPos}
+                      editingInlineDate={editingInlineDate}
+                      setEditingInlineDate={setEditingInlineDate}
+                      handleInlineDateSelect={handleInlineDateSelect}
+                      popupNoteText={popupNoteText}
+                      setPopupNoteText={setPopupNoteText}
+                      objList={objList}
+                      addingLineNoteId={addingLineNoteId}
+                      setAddingLineNoteId={setAddingLineNoteId}
+                      newLineText={newLineText}
+                      setNewLineText={setNewLineText}
+                      newLineInputRef={newLineInputRef}
+                      updateNote={updateNote}
+                      compressedView={true}
+                    />
+                    <div className="mt-2 flex items-center justify-between border-t pt-2">
+                      <div className="text-xs text-gray-500">
+                        <span>Last review: {formatTimestamp(cadenceUtilsLastReviewTime(note.id))}</span>
+                        <div className="text-xs text-gray-400">
+                          {showCadenceSelector === note.id ? (
+                            <CadenceSelector
+                              noteId={note.id}
+                              notes={notes}
+                              onCadenceChange={() => {
+                                setShowCadenceSelector(null);
+                                if (typeof refreshNotes === 'function') {
+                                  refreshNotes();
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <span>{renderCadenceSummary(note)}</span>
+                              <button
+                                onClick={() => setShowCadenceSelector(note.id)}
+                                className="text-blue-500 hover:text-blue-700 underline text-sm"
+                                title="Set review cadence"
+                              >
+                                Set Cadence
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         );
       })()}

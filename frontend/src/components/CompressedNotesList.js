@@ -53,6 +53,7 @@ const CompressedNotesList = ({
   const [showCadenceSelector, setShowCadenceSelector] = useState(null);
   const [expandedNotes, setExpandedNotes] = useState({});
   const [showRawNotes, setShowRawNotes] = useState({});
+  const [countdowns, setCountdowns] = useState({});
 
   // Background check for review times and update time elapsed
   useEffect(() => {
@@ -67,7 +68,7 @@ const CompressedNotesList = ({
         newState[note.id] = checkNeedsReview(note.id);
         const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
         newTimeElapsed[note.id] = formatTimeElapsed(reviews[note.id]);
-        newNextReviewTime[note.id] = formatTimeRemaining(reviews[note.id], note.id);
+        newNextReviewTime[note.id] = formatTimeRemaining(reviews[note.id], note.id, note);
         
         // Check if this note just became overdue
         if (newState[note.id] && !needsReviewState[note.id]) {
@@ -87,6 +88,23 @@ const CompressedNotesList = ({
 
     return () => clearInterval(interval);
   }, [notes, needsReviewState, refreshNotes]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newCountdowns = {};
+      notes.forEach(note => {
+        const nextReview = getNextReviewDateObj(note);
+        const now = new Date();
+        let diff = Math.max(0, nextReview - now);
+        const hours = String(Math.floor(diff / (1000 * 60 * 60))).padStart(2, '0');
+        const minutes = String(Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+        const seconds = String(Math.floor((diff % (1000 * 60)) / 1000)).padStart(2, '0');
+        newCountdowns[note.id] = `${hours}:${minutes}:${seconds}`;
+      });
+      setCountdowns(newCountdowns);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [notes]);
 
   const handleUnfollow = (noteId, content) => {
     const updatedContent = content
@@ -282,8 +300,159 @@ const CompressedNotesList = ({
     return summary.join(' • ');
   }
 
+  // Add a helper to get the base time for next review calculation
+  function getBaseTime(note) {
+    const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+    const lastReview = reviews[note.id] ? new Date(reviews[note.id]) : null;
+    const now = new Date();
+    return lastReview && lastReview > now ? lastReview : now;
+  }
+
+  // Add a handler to remove last review from localStorage
+  function handleRemoveLastReview(noteId, refreshNotes) {
+    const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+    delete reviews[noteId];
+    localStorage.setItem('noteReviews', JSON.stringify(reviews));
+    if (typeof refreshNotes === 'function') {
+      refreshNotes();
+    }
+  }
+
+  // Add a helper to get the next review date as a Date object
+  function getNextReviewDateObj(note) {
+    if (typeof getNextReviewDate === 'function') {
+      return getNextReviewDate(note);
+    }
+    // fallback: 12 hours after last review or now
+    const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+    const lastReview = reviews[note.id] ? new Date(reviews[note.id]) : null;
+    const now = new Date();
+    if (!lastReview) return now;
+    return new Date(lastReview.getTime() + 12 * 60 * 60 * 1000);
+  }
+
+  function formatDateTime(dt) {
+    if (!dt) return '';
+    return dt.toLocaleString(undefined, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  }
+
+  function getHumanFriendlyTimeDiff(nextReviewDate) {
+    const now = new Date();
+    let diff = nextReviewDate - now;
+    if (diff <= 0) return 'now';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    let msg = '';
+    if (days > 0) msg = `in ${days}d ${hours}h ${minutes}m`;
+    else if (hours > 0) msg = `in ${hours}h ${minutes}m`;
+    else if (minutes > 0) msg = `in ${minutes}m`;
+    else msg = 'in <1m';
+    return msg;
+  }
+
   return (
     <div className="space-y-4">
+      {/* Reminders Up For Review Section */}
+      {(() => {
+        const dueReminders = notes.filter(note => {
+          if (!note.content.includes('meta::reminder')) return false;
+          if (note.content.includes('meta::reminder_dismissed')) return false;
+          if (note.content.includes('meta::reminder_snooze')) {
+            const snoozeMatch = note.content.match(/meta::reminder_snooze::until=([^;]+)/);
+            if (snoozeMatch) {
+              const snoozeUntil = new Date(snoozeMatch[1]);
+              if (snoozeUntil > new Date()) return false;
+            }
+          }
+          const nextReview = getNextReviewDate(note);
+          return nextReview && nextReview <= new Date();
+        });
+
+        return dueReminders.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <BellIcon className="h-6 w-6 text-purple-500" />
+              Reminders Up For Review ({dueReminders.length})
+            </h2>
+            <div className="space-y-4">
+              {dueReminders.map(note => (
+                <div
+                  key={note.id}
+                  className="p-1 rounded border-2 border-purple-500 bg-purple-50 relative group transition-all duration-300"
+                >
+                  <NoteContent
+                    note={note}
+                    searchQuery={searchQuery}
+                    duplicatedUrlColors={duplicatedUrlColors}
+                    editingLine={editingLine}
+                    setEditingLine={setEditingLine}
+                    editedLineContent={editedLineContent}
+                    setEditedLineContent={setEditedLineContent}
+                    rightClickNoteId={rightClickNoteId}
+                    rightClickIndex={rightClickIndex}
+                    setRightClickNoteId={setRightClickNoteId}
+                    setRightClickIndex={setRightClickIndex}
+                    setRightClickPos={setRightClickPos}
+                    editingInlineDate={editingInlineDate}
+                    setEditingInlineDate={setEditingInlineDate}
+                    handleInlineDateSelect={handleInlineDateSelect}
+                    popupNoteText={popupNoteText}
+                    setPopupNoteText={setPopupNoteText}
+                    objList={objList}
+                    addingLineNoteId={addingLineNoteId}
+                    setAddingLineNoteId={setAddingLineNoteId}
+                    newLineText={newLineText}
+                    setNewLineText={setNewLineText}
+                    newLineInputRef={newLineInputRef}
+                    updateNote={updateNote}
+                    compressedView={true}
+                  />
+                  <div className="mt-2 flex items-center justify-between border-t pt-2">
+                    <div className="text-xs text-gray-500">
+                      <span>Last review: {formatTimestamp(cadenceUtilsLastReviewTime(note.id))}</span>
+                      <div className="text-xs text-gray-400">
+                        {showCadenceSelector === note.id ? (
+                          <CadenceSelector
+                            noteId={note.id}
+                            notes={notes}
+                            onCadenceChange={() => {
+                              setShowCadenceSelector(null);
+                              if (typeof refreshNotes === 'function') {
+                                refreshNotes();
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span>{renderCadenceSummary(note)}</span>
+                            <button
+                              onClick={() => setShowCadenceSelector(note.id)}
+                              className="text-blue-500 hover:text-blue-700 underline text-sm"
+                              title="Set review cadence"
+                            >
+                              Set Cadence
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Regular Notes List */}
       {notes.map(note => {
         const contentLines = getContentLines(note.content);
         const isLongNote = contentLines.length > 3;
@@ -363,6 +532,20 @@ const CompressedNotesList = ({
               <div className="mt-2 flex items-center justify-between border-t pt-2">
                 <div className="text-xs text-gray-500 flex flex-col">
                   <span>{formatTimeRemaining(cadenceUtilsLastReviewTime(note.id), note.id, note)}</span>
+                  <span>
+                    Last review: {formatTimestamp(cadenceUtilsLastReviewTime(note.id))}
+                    {cadenceUtilsLastReviewTime(note.id) && (
+                      <button
+                        onClick={() => handleRemoveLastReview(note.id, refreshNotes)}
+                        className="ml-2 text-xs text-red-500 underline hover:text-red-700"
+                        title="Remove last review from local storage"
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </span>
+                  <span>Base time for next review: {formatTimestamp(getBaseTime(note))}</span>
                   {isReminder ? (
                     <>
                       <span className="text-purple-600">Reminder</span>
@@ -429,6 +612,15 @@ const CompressedNotesList = ({
                       </div>
                     </>
                   )}
+                  <span>
+                    Next review: {formatDateTime(getNextReviewDateObj(note))}
+                  </span>
+                  <span>
+                    Next review in: {countdowns[note.id] || '--:--:--'}
+                  </span>
+                  <span>
+                    Next review in: {getHumanFriendlyTimeDiff(getNextReviewDateObj(note))}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button

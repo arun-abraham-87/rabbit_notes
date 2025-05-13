@@ -35,6 +35,7 @@ import MeetingManager from './MeetingManager.js';
 import NoteEditor from './NoteEditor';
 import AddEventModal from './AddEventModal';
 import CadenceSelector from './CadenceSelector';
+import { findDueReminders } from '../utils/cadenceUtils';
 
 const Alerts = {
   success: (message) => {
@@ -2712,19 +2713,9 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
     };
   }, []);
 
-  const reminders = notes.filter(note => {
-    if (!note.content.includes('meta::reminder')) return false;
-    if (note.content.includes('meta::reminder_dismissed')) return false;
-    if (note.content.includes('meta::reminder_snooze')) {
-      const snoozeMatch = note.content.match(/meta::reminder_snooze::until=([^;]+)/);
-      if (snoozeMatch) {
-        const snoozeUntil = new Date(snoozeMatch[1]);
-        return snoozeUntil > new Date();
-      }
-      return false;
-    }
-    return true;
-  });
+  // Use findDueReminders to get reminders that are due for review
+  const dueReminders = findDueReminders(notes);
+  const reminders = dueReminders.map(dr => dr.note);
 
   if (reminders.length === 0) return null;
 

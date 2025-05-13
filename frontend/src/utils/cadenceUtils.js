@@ -95,4 +95,35 @@ export function getNextReviewDate(note) {
   // Fallback
   if (!lastReview) return now;
   return new Date(lastReview.getTime() + 12 * 60 * 60 * 1000);
+}
+
+// Find reminders that are due for review right now
+export function findDueReminders(notes) {
+  const now = new Date();
+  
+  return notes.filter(note => {
+    // Only look at notes with reminder tag
+    if (!note.content.includes('meta::reminder')) return false;
+    
+    // Skip dismissed or snoozed reminders
+    if (note.content.includes('meta::reminder_dismissed')) return false;
+    if (note.content.includes('meta::reminder_snooze')) {
+      const snoozeMatch = note.content.match(/meta::reminder_snooze::until=([^;]+)/);
+      if (snoozeMatch) {
+        const snoozeUntil = new Date(snoozeMatch[1]);
+        if (snoozeUntil > now) return false;
+      }
+    }
+
+    // Get the next review time
+    const nextReview = getNextReviewDate(note);
+    if (!nextReview) return false;
+
+    // Check if the next review time has passed
+    return nextReview <= now;
+  }).map(note => ({
+    note,
+    nextReview: getNextReviewDate(note),
+    overdueBy: now.getTime() - getNextReviewDate(note).getTime()
+  })).sort((a, b) => b.overdueBy - a.overdueBy); // Sort by most overdue first
 } 

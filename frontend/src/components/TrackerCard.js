@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
 function getLastSevenDays() {
   const days = [];
@@ -74,7 +75,7 @@ function formatMonthDateString(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
-export default function TrackerCard({ tracker, onToggleDay }) {
+export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
   // Determine cadence
   const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
   let buttons = [];
@@ -103,16 +104,26 @@ export default function TrackerCard({ tracker, onToggleDay }) {
     buttonType = 'day';
   }
 
+  // Helper to find answer note for a date
+  function getAnswerForDate(dateStr) {
+    return answers.find(ans => ans.date === dateStr);
+  }
+
   const [showValueModal, setShowValueModal] = useState(false);
   const [showYesNoModal, setShowYesNoModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [value, setValue] = useState('');
   const [showStats, setShowStats] = useState(false);
+  const [existingAnswer, setExistingAnswer] = useState(null);
+  const [showLastValues, setShowLastValues] = useState(false);
 
   const handleDateClick = (date, dateStr) => {
     const type = tracker.type.toLowerCase();
+    const answer = getAnswerForDate(dateStr);
+    setExistingAnswer(answer);
     if (type === 'value') {
       setSelectedDate(dateStr);
+      setValue(answer ? answer.value : '');
       setShowValueModal(true);
     } else if (type === 'yes,no' || type === 'yesno' || type === 'yes/no') {
       setSelectedDate(dateStr);
@@ -122,18 +133,53 @@ export default function TrackerCard({ tracker, onToggleDay }) {
     }
   };
 
-  const handleValueSubmit = () => {
-    if (value) {
+  const handleValueSubmit = async () => {
+    if (!value) return;
+    if (existingAnswer && existingAnswer.id) {
+      // Update existing note
+      await updateNoteById(existingAnswer.id, value);
+    } else {
       onToggleDay(tracker.id, selectedDate, value);
-      setShowValueModal(false);
-      setValue('');
     }
+    setShowValueModal(false);
+    setValue('');
+    setExistingAnswer(null);
   };
 
-  const handleYesNo = (answer) => {
-    onToggleDay(tracker.id, selectedDate, answer);
+  const handleCancelValueModal = () => {
+    setShowValueModal(false);
+    setValue('');
+    setExistingAnswer(null);
+  };
+
+  const handleYesNo = async (answer) => {
+    if (existingAnswer && existingAnswer.id) {
+      // Update existing note
+      await updateNoteById(existingAnswer.id, answer);
+    } else {
+      onToggleDay(tracker.id, selectedDate, answer);
+    }
     setShowYesNoModal(false);
     setSelectedDate(null);
+    setExistingAnswer(null);
+  };
+
+  const handleCancelYesNoModal = () => {
+    setShowYesNoModal(false);
+    setSelectedDate(null);
+    setExistingAnswer(null);
+  };
+
+  const handleRemoveAcknowledgement = async () => {
+    if (existingAnswer && existingAnswer.id) {
+      await deleteNoteById(existingAnswer.id);
+      // Refresh UI by toggling the day (removes completion)
+      onToggleDay(tracker.id, selectedDate, null);
+    }
+    setShowValueModal(false);
+    setShowYesNoModal(false);
+    setValue('');
+    setExistingAnswer(null);
   };
 
   // Month stats
@@ -159,7 +205,7 @@ export default function TrackerCard({ tracker, onToggleDay }) {
       <div className="font-semibold mb-2">{tracker.title}</div>
       <div className="flex gap-2 justify-center items-center">
         {buttons.map((item, idx) => {
-          let dateStr, label, isToday = false, done = false, monthLabel = '';
+          let dateStr, label, isToday = false, done = false, monthLabel = '', weekdayLabel = '';
           if (buttonType === 'day') {
             dateStr = item.toISOString().slice(0, 10);
             label = item.getDate();
@@ -167,21 +213,28 @@ export default function TrackerCard({ tracker, onToggleDay }) {
             done = tracker.completions && tracker.completions[dateStr];
             // Show month label for daily/weekly/custom
             monthLabel = item.toLocaleString('default', { month: 'short', year: 'numeric' });
+            // Show weekday label above for daily/weekly/custom
+            weekdayLabel = item.toLocaleString('default', { weekday: 'short' });
           } else if (buttonType === 'month') {
             dateStr = formatMonthDateString(item);
             label = getMonthShortName(item.getMonth());
             isToday = (item.getMonth() === now.getMonth() && item.getFullYear() === now.getFullYear());
             done = tracker.completions && Object.keys(tracker.completions).some(d => d.startsWith(dateStr.slice(0,7)));
             monthLabel = '';
+            weekdayLabel = '';
           } else if (buttonType === 'year') {
             dateStr = item + '-01-01';
             label = item;
             isToday = (item === now.getFullYear());
             done = tracker.completions && Object.keys(tracker.completions).some(d => d.startsWith(item.toString()));
             monthLabel = '';
+            weekdayLabel = '';
           }
           return (
             <div key={dateStr} className={`flex flex-col items-center w-10${buttonType === 'year' ? ' mx-1' : ''}`}>
+              {weekdayLabel && (
+                <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{weekdayLabel}</span>
+              )}
               <button
                 onClick={() => handleDateClick(item, dateStr)}
                 className={
@@ -211,6 +264,35 @@ export default function TrackerCard({ tracker, onToggleDay }) {
       >
         {showStats ? 'Hide Stats' : 'Show Stats'}
       </button>
+      {/* Show Last 7 Values for all tracker types */}
+      <>
+        <button
+          className="mt-1 text-xs text-blue-600 hover:underline focus:outline-none"
+          onClick={() => setShowLastValues(s => !s)}
+          aria-expanded={showLastValues}
+        >
+          {showLastValues ? 'Hide Last 7 Values' : 'Show Last 7 Values'}
+        </button>
+        {showLastValues && (
+          <div className="mt-2 text-xs text-gray-600 text-center w-full">
+            {(answers || [])
+              .filter(ans => ans.value !== undefined || ans.answer !== undefined)
+              .sort((a, b) => new Date(b.date) - new Date(a.date))
+              .slice(0, 7)
+              .map(ans => (
+                <div key={ans.id || ans.date} className="flex justify-between px-2 py-1 border-b last:border-b-0">
+                  <span className="text-[11px] text-gray-500">{new Date(ans.date).toLocaleDateString()}</span>
+                  <span className="font-mono text-[13px] text-gray-800">
+                    {ans.value !== undefined ? ans.value : (ans.answer !== undefined ? (ans.answer === 'yes' ? 'Yes' : ans.answer === 'no' ? 'No' : ans.answer) : '')}
+                  </span>
+                </div>
+              ))}
+            {(!answers || answers.filter(ans => ans.value !== undefined || ans.answer !== undefined).length === 0) && (
+              <div className="text-gray-400 italic">No values entered yet.</div>
+            )}
+          </div>
+        )}
+      </>
       {showStats && (
         <div className="mt-2 text-xs text-gray-600 text-center">
           <div>Month: {currentMonthStats.x} / {currentMonthStats.y}</div>
@@ -235,8 +317,16 @@ export default function TrackerCard({ tracker, onToggleDay }) {
               placeholder="Enter value"
             />
             <div className="flex justify-end gap-4 mt-4">
+              {existingAnswer && (
+                <button
+                  onClick={handleRemoveAcknowledgement}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Remove Acknowledgement
+                </button>
+              )}
               <button
-                onClick={() => setShowValueModal(false)}
+                onClick={handleCancelValueModal}
                 className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 Cancel
@@ -261,19 +351,35 @@ export default function TrackerCard({ tracker, onToggleDay }) {
             <div className="flex gap-4">
               <button
                 onClick={() => handleYesNo('yes')}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                className={`px-4 py-2 rounded-lg transition-colors
+                  ${existingAnswer && existingAnswer.answer === 'yes'
+                    ? 'bg-green-500 text-white'
+                    : (!existingAnswer ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500')}
+                `}
               >
                 Yes
               </button>
               <button
                 onClick={() => handleYesNo('no')}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                className={`px-4 py-2 rounded-lg transition-colors
+                  ${existingAnswer && existingAnswer.answer === 'no'
+                    ? 'bg-red-500 text-white'
+                    : (!existingAnswer ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-gray-300 text-gray-500')}
+                `}
               >
                 No
               </button>
             </div>
+            {existingAnswer && (
+              <button
+                onClick={handleRemoveAcknowledgement}
+                className="mt-4 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Remove Acknowledgement
+              </button>
+            )}
             <button
-              onClick={() => setShowYesNoModal(false)}
+              onClick={handleCancelYesNoModal}
               className="mt-4 text-xs text-gray-500 hover:underline"
             >
               Cancel

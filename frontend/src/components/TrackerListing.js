@@ -473,26 +473,26 @@ const TrackerListing = () => {
         {groups.yearly.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Yearly</h3>
-            <TrackerGrid trackers={groups.yearly} onToggleDay={handleToggleDay} />
+            <TrackerGrid trackers={groups.yearly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} />
           </div>
         )}
         {groups.monthly.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Monthly</h3>
-            <TrackerGrid trackers={groups.monthly} onToggleDay={handleToggleDay} />
+            <TrackerGrid trackers={groups.monthly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} />
           </div>
         )}
         {groups.weekly.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Weekly</h3>
-            <TrackerGrid trackers={groups.weekly} onToggleDay={handleToggleDay} />
+            <TrackerGrid trackers={groups.weekly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} />
           </div>
         )}
         {groups.daily.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Daily</h3>
-            <TrackerGrid trackers={groups.daily} onToggleDay={handleToggleDay} />
-        </div>
+            <TrackerGrid trackers={groups.daily} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} />
+          </div>
         )}
       </div>
     );

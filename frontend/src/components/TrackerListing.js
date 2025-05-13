@@ -60,6 +60,7 @@ const TrackerListing = () => {
   const [graphData, setGraphData] = useState({});
   const [deletingAnswerId, setDeletingAnswerId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [completedCollapsed, setCompletedCollapsed] = useState(true);
 
   useEffect(() => {
     loadTrackers();
@@ -349,17 +350,119 @@ const TrackerListing = () => {
   if (isLoading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">{error}</div>;
 
-  const today = new Date().toISOString().slice(0, 10);
-  const pendingTrackers = trackers.filter(tracker => !tracker.completions[today]);
-  const completedTrackers = trackers.filter(tracker => tracker.completions[today]);
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const currentMonthStr = today.toISOString().slice(0, 7); // 'YYYY-MM'
+
+  const isMonthlyCompleted = (tracker) => {
+    if (!tracker.completions) return false;
+    // If any completion for this month exists, consider completed
+    return Object.keys(tracker.completions).some(date => date.startsWith(currentMonthStr));
+  };
+
+  const pendingTrackers = trackers.filter(tracker => {
+    if (tracker.cadence && tracker.cadence.toLowerCase() === 'monthly') {
+      return !isMonthlyCompleted(tracker);
+    }
+    return !(tracker.completions && tracker.completions[todayStr]);
+  });
+
+  const completedTrackers = trackers.filter(tracker => {
+    if (tracker.cadence && tracker.cadence.toLowerCase() === 'monthly') {
+      return isMonthlyCompleted(tracker);
+    }
+    return tracker.completions && tracker.completions[todayStr];
+  });
+
+  // Helper to group trackers by cadence
+  const groupByCadence = (trackers) => {
+    const groups = { yearly: [], monthly: [], weekly: [], daily: [], custom: [] };
+    trackers.forEach(tracker => {
+      const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
+      if (cadence === 'yearly') groups.yearly.push(tracker);
+      else if (cadence === 'monthly') groups.monthly.push(tracker);
+      else if (cadence === 'weekly') {
+        // If you want to distinguish custom, you can add logic here
+        groups.weekly.push(tracker);
+      } else {
+        groups.daily.push(tracker);
+      }
+    });
+    return groups;
+  };
+
+  const pendingGroups = groupByCadence(pendingTrackers);
+  const completedGroups = groupByCadence(completedTrackers);
+
+  const renderGroupedTrackers = (groups, sectionType) => {
+    // sectionType: 'pending' or 'completed' for different shades
+    const sectionBg = sectionType === 'pending' ? 'bg-blue-50' : 'bg-green-50';
+    return (
+      <div className={`${sectionBg} rounded-lg p-4 mb-6`}>
+        {groups.yearly.length > 0 && (
+          <div className="ml-8">
+            <h3 className="text-lg font-semibold mt-4 mb-2">Yearly</h3>
+            <TrackerGrid trackers={groups.yearly} onToggleDay={handleToggleDay} />
+          </div>
+        )}
+        {groups.monthly.length > 0 && (
+          <div className="ml-8">
+            <h3 className="text-lg font-semibold mt-4 mb-2">Monthly</h3>
+            <TrackerGrid trackers={groups.monthly} onToggleDay={handleToggleDay} />
+          </div>
+        )}
+        {groups.weekly.length > 0 && (
+          <div className="ml-8">
+            <h3 className="text-lg font-semibold mt-4 mb-2">Weekly</h3>
+            <TrackerGrid trackers={groups.weekly} onToggleDay={handleToggleDay} />
+          </div>
+        )}
+        {groups.daily.length > 0 && (
+          <div className="ml-8">
+            <h3 className="text-lg font-semibold mt-4 mb-2">Daily</h3>
+            <TrackerGrid trackers={groups.daily} onToggleDay={handleToggleDay} />
+        </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Trackers</h1>
-      <h2 className="text-xl font-semibold mb-4">Check-in Pending</h2>
-      <TrackerGrid trackers={pendingTrackers} onToggleDay={handleToggleDay} />
-      <h2 className="text-xl font-semibold mb-4 mt-8">Check-in Completed</h2>
-      <TrackerGrid trackers={completedTrackers} onToggleDay={handleToggleDay} />
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Trackers</h1>
+        <button
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          onClick={() => setShowAddTracker(true)}
+        >
+          + Add Tracker
+        </button>
+      </div>
+      <div className="bg-blue-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-blue-200">
+        <h2 className="text-xl font-semibold">Check-in Pending</h2>
+      </div>
+      {renderGroupedTrackers(pendingGroups, 'pending')}
+      <div className="bg-green-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-green-200 mt-8 flex items-center justify-between cursor-pointer" onClick={() => setCompletedCollapsed(c => !c)}>
+        <h2 className="text-xl font-semibold">Check-in Completed</h2>
+        <button className="ml-2 text-lg focus:outline-none" aria-label="Toggle Completed Section">
+          {completedCollapsed ? '▼' : '▲'}
+        </button>
+      </div>
+      {!completedCollapsed && renderGroupedTrackers(completedGroups, 'completed')}
+      {showAddTracker && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+              onClick={() => setShowAddTracker(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <AddTracker onTrackerAdded={handleTrackerAdded} onCancel={() => setShowAddTracker(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

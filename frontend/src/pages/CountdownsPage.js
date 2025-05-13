@@ -34,22 +34,64 @@ function groupEventsByMonth(events) {
   }));
 }
 
+function filterFutureGroups(grouped, showPast) {
+  if (showPast) return grouped;
+  const now = new Date();
+  const currentMonth = now.toLocaleString('default', { month: 'long' });
+  const currentDay = now.getDate();
+  let foundCurrentOrFutureMonth = false;
+  return grouped
+    .filter(({ key }) => {
+      if (key === currentMonth) {
+        foundCurrentOrFutureMonth = true;
+        return true;
+      }
+      if (foundCurrentOrFutureMonth) return true;
+      // Only show months after current month
+      const monthOrder = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return monthOrder.indexOf(key) > monthOrder.indexOf(currentMonth);
+    })
+    .map(group => {
+      if (group.key === currentMonth) {
+        return {
+          ...group,
+          events: group.events.filter(ev => ev.date.getDate() >= currentDay)
+        };
+      }
+      return group;
+    })
+    .filter(group => group.events.length > 0);
+}
+
 export default function CountdownsPage({ notes }) {
   const [useThisYear, setUseThisYear] = useState(false);
+  const [showPast, setShowPast] = useState(false);
   const events = parseEventNotes(notes);
   const grouped = groupEventsByMonth(events);
+  const filteredGrouped = filterFutureGroups(grouped, showPast);
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
       <h1 className="text-2xl font-bold mb-6">Countdown</h1>
-      <button
-        className={`mb-8 px-4 py-2 rounded text-sm font-medium transition-colors ${useThisYear ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
-        onClick={() => setUseThisYear(v => !v)}
-      >
-        {useThisYear ? 'Show Original Dates' : 'Use This Year Date for All'}
-      </button>
+      <div className="flex gap-4 mb-8">
+        <button
+          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${useThisYear ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+          onClick={() => setUseThisYear(v => !v)}
+        >
+          {useThisYear ? 'Show Original Dates' : 'Use This Year Date for All'}
+        </button>
+        <button
+          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${showPast ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          onClick={() => setShowPast(v => !v)}
+        >
+          {showPast ? 'Hide Past Dates' : 'Show Past Dates'}
+        </button>
+      </div>
       <div className="space-y-10">
-        {grouped.map(({ key, events }) => (
+        {filteredGrouped.map(({ key, events }) => (
           <div key={key}>
             <h2 className="text-xl font-semibold mb-4">{key}</h2>
             <div className="flex flex-wrap gap-6">

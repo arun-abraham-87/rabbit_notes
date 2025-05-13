@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+import { ChartBarIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
 function getLastSevenDays() {
   const days = [];
@@ -117,6 +118,12 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
   const [existingAnswer, setExistingAnswer] = useState(null);
   const [showLastValues, setShowLastValues] = useState(false);
   const [showMonthlyModal, setShowMonthlyModal] = useState(false);
+  const [monthlyModalMonth, setMonthlyModalMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showLastValuesModal, setShowLastValuesModal] = useState(false);
 
   const handleDateClick = (date, dateStr) => {
     const type = tracker.type.toLowerCase();
@@ -201,11 +208,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
     prevMonthDays
   );
 
-  // Helper to get all dates in the current month
-  function getAllDatesInCurrentMonth() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
+  // Helper to get all dates in a given month
+  function getAllDatesInMonth(monthDate) {
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const dates = [];
     for (let day = 1; day <= daysInMonth; day++) {
@@ -282,48 +288,35 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
           );
         })}
       </div>
-      <button
-        className="mt-2 text-xs text-blue-600 hover:underline focus:outline-none"
-        onClick={() => setShowStats(s => !s)}
-        aria-expanded={showStats}
-      >
-        {showStats ? 'Hide Stats' : 'Show Stats'}
-      </button>
-      <button
-        className="mt-1 text-xs text-blue-600 hover:underline focus:outline-none"
-        onClick={() => setShowMonthlyModal(true)}
-      >
-        Show Monthly Check-ins
-      </button>
-      {/* Show Last 7 Values for all tracker types */}
-      <>
+      <div className="flex gap-2 mt-2 mb-1">
+        {/* Stats Icon */}
         <button
-          className="mt-1 text-xs text-blue-600 hover:underline focus:outline-none"
-          onClick={() => setShowLastValues(s => !s)}
-          aria-expanded={showLastValues}
+          className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+          onClick={() => setShowStatsModal(true)}
+          aria-label={showStats ? 'Hide Stats' : 'Show Stats'}
         >
-          {showLastValues ? 'Hide Last 7 Values' : 'Show Last 7 Values'}
+          <ChartBarIcon className={`h-5 w-5 ${showStats ? 'text-blue-600' : 'text-gray-500'}`} />
         </button>
-        {showLastValues && (
-          <div className="mt-2 text-xs text-gray-600 text-center w-full">
-            {(answers || [])
-              .filter(ans => ans.value !== undefined || ans.answer !== undefined)
-              .sort((a, b) => new Date(b.date) - new Date(a.date))
-              .slice(0, 7)
-              .map(ans => (
-                <div key={ans.id || ans.date} className="flex justify-between px-2 py-1 border-b last:border-b-0">
-                  <span className="text-[11px] text-gray-500">{new Date(ans.date).toLocaleDateString()}</span>
-                  <span className="font-mono text-[13px] text-gray-800">
-                    {ans.value !== undefined ? ans.value : (ans.answer !== undefined ? (ans.answer === 'yes' ? 'Yes' : ans.answer === 'no' ? 'No' : ans.answer) : '')}
-                  </span>
-                </div>
-              ))}
-            {(!answers || answers.filter(ans => ans.value !== undefined || ans.answer !== undefined).length === 0) && (
-              <div className="text-gray-400 italic">No values entered yet.</div>
-            )}
-          </div>
-        )}
-      </>
+        {/* Monthly Check-ins Icon */}
+        <button
+          className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+          onClick={() => {
+            setShowMonthlyModal(true);
+            setMonthlyModalMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+          }}
+          aria-label="Show Monthly Check-ins"
+        >
+          <CalendarIcon className="h-5 w-5 text-gray-500" />
+        </button>
+        {/* Last 7 Values Icon/Button */}
+        <button
+          className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+          onClick={() => setShowLastValuesModal(true)}
+          aria-label="Show Last 7 Values"
+        >
+          <span className="text-[13px] font-bold text-gray-500">7</span>
+        </button>
+      </div>
       {/* Monthly Check-ins Modal */}
       {showMonthlyModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -335,9 +328,27 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
             >
               &times;
             </button>
-            <h2 className="text-lg font-semibold mb-4 text-center">Monthly Check-ins: {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
+            <div className="flex items-center justify-center mb-4 gap-4">
+              <button
+                className="p-2 rounded-full hover:bg-gray-200"
+                onClick={() => setMonthlyModalMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                aria-label="Previous Month"
+              >
+                <span className="text-xl">&#8592;</span>
+              </button>
+              <h2 className="text-lg font-semibold text-center">
+                Monthly Check-ins: {monthlyModalMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </h2>
+              <button
+                className="p-2 rounded-full hover:bg-gray-200"
+                onClick={() => setMonthlyModalMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                aria-label="Next Month"
+              >
+                <span className="text-xl">&#8594;</span>
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2 justify-center bg-blue-50 p-4 rounded-lg">
-              {getAllDatesInCurrentMonth().map(dateObj => {
+              {getAllDatesInMonth(monthlyModalMonth).map(dateObj => {
                 const dateStr = dateObj.toISOString().slice(0, 10);
                 const answerObj = answers.find(ans => ans.date === dateStr);
                 let color = '';
@@ -368,10 +379,55 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
           </div>
         </div>
       )}
-      {showStats && (
-        <div className="mt-2 text-xs text-gray-600 text-center">
-          <div>Month: {currentMonthStats.x} / {currentMonthStats.y}</div>
-          <div>Prev: {prevMonthStats.x} / {prevMonthStats.y}</div>
+      {/* Stats Modal */}
+      {showStatsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+              onClick={() => setShowStatsModal(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h2 className="text-lg font-semibold mb-4 text-center">Stats</h2>
+            <div className="text-xs text-gray-600 text-center">
+              <div>Month: {currentMonthStats.x} / {currentMonthStats.y}</div>
+              <div>Prev: {prevMonthStats.x} / {prevMonthStats.y}</div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Last 7 Values Modal */}
+      {showLastValuesModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+              onClick={() => setShowLastValuesModal(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h2 className="text-lg font-semibold mb-4 text-center">Last 7 Values</h2>
+            <div className="mt-2 text-xs text-gray-600 text-center w-full">
+              {(answers || [])
+                .filter(ans => ans.value !== undefined || ans.answer !== undefined)
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .slice(0, 7)
+                .map(ans => (
+                  <div key={ans.id || ans.date} className="flex justify-between px-2 py-1 border-b last:border-b-0">
+                    <span className="text-[11px] text-gray-500">{new Date(ans.date).toLocaleDateString()}</span>
+                    <span className="font-mono text-[13px] text-gray-800">
+                      {ans.value !== undefined ? ans.value : (ans.answer !== undefined ? (ans.answer === 'yes' ? 'Yes' : ans.answer === 'no' ? 'No' : ans.answer) : '')}
+                    </span>
+                  </div>
+                ))}
+              {(!answers || answers.filter(ans => ans.value !== undefined || ans.answer !== undefined).length === 0) && (
+                <div className="text-gray-400 italic">No values entered yet.</div>
+              )}
+            </div>
+          </div>
         </div>
       )}
       {showValueModal && (

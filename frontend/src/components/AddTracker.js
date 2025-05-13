@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { addNewNoteCommon, updateNoteById } from '../utils/ApiUtils';
+import { addNewNoteCommon, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
 import {
   XMarkIcon,
@@ -7,7 +7,7 @@ import {
   ExclamationCircleIcon
 } from '@heroicons/react/24/solid';
 
-const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker }) => {
+const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel, onTrackerDeleted }) => {
   const [title, setTitle] = useState('');
   const [question, setQuestion] = useState('');
   const [type, setType] = useState('Yes,No');
@@ -28,6 +28,7 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker }) => {
   });
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Populate form fields when editing
   useEffect(() => {
@@ -163,6 +164,23 @@ Start Date: ${startDate}`;
       console.error('Error saving tracker:', err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editingTracker) return;
+    try {
+      setIsSubmitting(true);
+      await deleteNoteById(editingTracker.id);
+      if (onTrackerDeleted) onTrackerDeleted(editingTracker.id);
+      if (onCancel) onCancel();
+      toast.success('Tracker deleted successfully');
+    } catch (error) {
+      console.error('Error deleting tracker:', error);
+      toast.error('Failed to delete tracker');
+    } finally {
+      setIsSubmitting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -304,53 +322,52 @@ Start Date: ${startDate}`;
           </div>
         )}
 
-        {/* Submit Button */}
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-4 mt-6">
+          {editingTracker && (
+            <>
+              <button
+                type="button"
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                Delete
+              </button>
+              {showDeleteConfirm && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                  <div className="bg-white rounded-lg p-6 max-w-sm w-full flex flex-col items-center">
+                    <ExclamationCircleIcon className="h-10 w-10 text-red-500 mb-2" />
+                    <div className="mb-4 text-center">Are you sure you want to delete this tracker?</div>
+                    <div className="flex gap-4">
+                      <button
+                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                        onClick={() => setShowDeleteConfirm(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                        onClick={handleDelete}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
           <button
             type="button"
-            onClick={() => {
-              setTitle('');
-              setQuestion('');
-              setType('Yes,No');
-              setCadence('Daily');
-              setStartDate(new Date().toISOString().split('T')[0]);
-              setEndDate('');
-              setSelectedDays({
-                Monday: false,
-                Tuesday: false,
-                Wednesday: false,
-                Thursday: false,
-                Friday: false,
-                Saturday: false,
-                Sunday: false
-              });
-              setError(null);
-            }}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
-            disabled={isSubmitting}
+            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            onClick={onCancel}
           >
-            <XMarkIcon className="h-5 w-5 inline-block mr-1" />
-            Clear
+            Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isSubmitting}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            {isSubmitting ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {editingTracker ? 'Updating...' : 'Adding...'}
-              </>
-            ) : (
-              <>
-                <CheckIcon className="h-5 w-5 inline-block mr-1" />
-                {editingTracker ? 'Update Tracker' : 'Add Tracker'}
-              </>
-            )}
+            {editingTracker ? 'Update Tracker' : 'Add Tracker'}
           </button>
         </div>
       </form>

@@ -60,7 +60,7 @@ const TrackerListing = () => {
   const [graphData, setGraphData] = useState({});
   const [deletingAnswerId, setDeletingAnswerId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [completedCollapsed, setCompletedCollapsed] = useState(true);
+  const [completedCollapsed, setCompletedCollapsed] = useState(false);
 
   useEffect(() => {
     loadTrackers();

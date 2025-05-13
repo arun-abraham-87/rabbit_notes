@@ -21,10 +21,10 @@ function getLastSevenMonths() {
   return months;
 }
 
-function getLastSevenYears() {
+function getLastThreeYears() {
   const years = [];
   const today = new Date();
-  for (let i = 6; i >= 0; i--) {
+  for (let i = 2; i >= 0; i--) {
     years.push(today.getFullYear() - i);
   }
   return years;
@@ -84,7 +84,7 @@ export default function TrackerCard({ tracker, onToggleDay }) {
     buttons = getLastSevenMonths();
     buttonType = 'month';
   } else if (cadence === 'yearly') {
-    buttons = getLastSevenYears();
+    buttons = getLastThreeYears();
     buttonType = 'year';
   } else if (cadence === 'weekly' && tracker.days && tracker.days.length > 0) {
     // tracker.days can be ['Mon', 'Wed'] or [1,3]
@@ -181,13 +181,18 @@ export default function TrackerCard({ tracker, onToggleDay }) {
             monthLabel = '';
           }
           return (
-            <div key={dateStr} className="flex flex-col items-center w-10">
+            <div key={dateStr} className={`flex flex-col items-center w-10${buttonType === 'year' ? ' mx-1' : ''}`}>
               <button
                 onClick={() => handleDateClick(item, dateStr)}
-                className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm
-                  ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
-                  ${done ? 'bg-green-300' : ''}
-                `}
+                className={
+                  buttonType === 'year'
+                    ? `px-3 py-2 rounded-lg border flex items-center justify-center text-sm
+                        ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
+                        ${done ? 'bg-green-300' : ''}`
+                    : `w-8 h-8 rounded-full border flex items-center justify-center text-sm
+                        ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
+                        ${done ? 'bg-green-300' : ''}`
+                }
                 title={buttonType === 'day' ? item.toLocaleDateString() : (buttonType === 'month' ? item.toLocaleString('default', { month: 'long', year: 'numeric' }) : label)}
               >
                 {label}

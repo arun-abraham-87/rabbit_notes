@@ -28,6 +28,8 @@ import {
   ArcElement
 } from 'chart.js';
 import TrackerGrid from './TrackerGrid';
+import { createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
+import { toast } from 'react-hot-toast';
 
 ChartJS.register(
   CategoryScale,
@@ -92,7 +94,8 @@ const TrackerListing = () => {
             days,
             startDate,
             endDate,
-            createdAt: note.createdAt
+            createdAt: note.createdAt,
+            completions: {} // Initialize completions
           };
         });
       setTrackers(trackerNotes);
@@ -131,6 +134,12 @@ const TrackerListing = () => {
             age: getAgeInStringFmt(new Date(date))
           });
           rawNotesByAnswer[answer.id] = answer.content;
+
+          // Set completions for the tracker
+          const tracker = trackerNotes.find(t => t.id === link);
+          if (tracker) {
+            tracker.completions[date] = answerValue.toLowerCase() === 'yes';
+          }
 
           // Prepare graph data
           if (!graphDataByTracker[link]) {
@@ -313,13 +322,28 @@ const TrackerListing = () => {
   });
 
   // Toggle completion for a tracker on a given date
-  const handleToggleDay = (trackerId, dateStr) => {
-    setTrackers(prev => prev.map(tracker => {
-      if (tracker.id !== trackerId) return tracker;
-      const completions = { ...tracker.completions };
-      completions[dateStr] = !completions[dateStr];
-      return { ...tracker, completions };
-    }));
+  const handleToggleDay = async (trackerId, dateStr) => {
+    const tracker = trackers.find(t => t.id === trackerId);
+    if (!tracker) return;
+
+    const answer = tracker.type === 'Yes,No' ? 'yes' : 'no';
+    try {
+      const response = await createTrackerAnswerNote(trackerId, answer, dateStr);
+      if (response && response.id) {
+        setTrackers(prev => prev.map(t => {
+          if (t.id !== trackerId) return t;
+          const completions = { ...t.completions };
+          completions[dateStr] = !completions[dateStr];
+          return { ...t, completions };
+        }));
+        toast.success('Answer recorded successfully');
+      } else {
+        throw new Error('Failed to create answer note');
+      }
+    } catch (error) {
+      console.error('Error recording answer:', error);
+      toast.error('Failed to record answer: ' + error.message);
+    }
   };
 
   if (isLoading) return <div className="p-8">Loading...</div>;

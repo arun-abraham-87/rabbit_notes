@@ -116,6 +116,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
   const [showStats, setShowStats] = useState(false);
   const [existingAnswer, setExistingAnswer] = useState(null);
   const [showLastValues, setShowLastValues] = useState(false);
+  const [showMonthlyModal, setShowMonthlyModal] = useState(false);
 
   const handleDateClick = (date, dateStr) => {
     const type = tracker.type.toLowerCase();
@@ -200,6 +201,19 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
     prevMonthDays
   );
 
+  // Helper to get all dates in the current month
+  function getAllDatesInCurrentMonth() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const dates = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      dates.push(new Date(year, month, day));
+    }
+    return dates;
+  }
+
   return (
     <div className="bg-white rounded-xl shadow p-4 flex flex-col items-center">
       <div className="font-semibold mb-2">{tracker.title}</div>
@@ -275,6 +289,12 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
       >
         {showStats ? 'Hide Stats' : 'Show Stats'}
       </button>
+      <button
+        className="mt-1 text-xs text-blue-600 hover:underline focus:outline-none"
+        onClick={() => setShowMonthlyModal(true)}
+      >
+        Show Monthly Check-ins
+      </button>
       {/* Show Last 7 Values for all tracker types */}
       <>
         <button
@@ -304,6 +324,50 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
           </div>
         )}
       </>
+      {/* Monthly Check-ins Modal */}
+      {showMonthlyModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full shadow-lg relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+              onClick={() => setShowMonthlyModal(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h2 className="text-lg font-semibold mb-4 text-center">Monthly Check-ins: {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
+            <div className="flex flex-wrap gap-2 justify-center bg-blue-50 p-4 rounded-lg">
+              {getAllDatesInCurrentMonth().map(dateObj => {
+                const dateStr = dateObj.toISOString().slice(0, 10);
+                const answerObj = answers.find(ans => ans.date === dateStr);
+                let color = '';
+                if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
+                  if (answerObj && typeof answerObj.answer === 'string' && answerObj.answer.toLowerCase() === 'yes') {
+                    color = 'bg-green-300';
+                  } else if (answerObj && typeof answerObj.answer === 'string' && answerObj.answer.toLowerCase() === 'no') {
+                    color = 'bg-red-300';
+                  }
+                } else if (tracker.type && tracker.type.toLowerCase() === 'value') {
+                  color = answerObj ? 'bg-green-300' : '';
+                } else {
+                  color = answerObj ? 'bg-green-300' : '';
+                }
+                return (
+                  <div key={dateStr} className={`flex flex-col items-center w-10`}>
+                    <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{dateObj.toLocaleString('default', { weekday: 'short' })}</span>
+                    <div
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm ${color} border-gray-300`}
+                      title={dateObj.toLocaleDateString()}
+                    >
+                      {dateObj.getDate()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
       {showStats && (
         <div className="mt-2 text-xs text-gray-600 text-center">
           <div>Month: {currentMonthStats.x} / {currentMonthStats.y}</div>

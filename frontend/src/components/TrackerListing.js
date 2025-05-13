@@ -322,11 +322,11 @@ const TrackerListing = () => {
   });
 
   // Toggle completion for a tracker on a given date
-  const handleToggleDay = async (trackerId, dateStr) => {
+  const handleToggleDay = async (trackerId, dateStr, value = null) => {
     const tracker = trackers.find(t => t.id === trackerId);
     if (!tracker) return;
 
-    const answer = tracker.type === 'Yes,No' ? 'yes' : 'no';
+    const answer = tracker.type.toLowerCase() === 'value' ? value : (tracker.type === 'Yes,No' ? 'yes' : 'no');
     try {
       const response = await createTrackerAnswerNote(trackerId, answer, dateStr);
       if (response && response.id) {

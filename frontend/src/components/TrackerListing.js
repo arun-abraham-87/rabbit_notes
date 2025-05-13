@@ -61,6 +61,7 @@ const TrackerListing = () => {
   const [deletingAnswerId, setDeletingAnswerId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [completedCollapsed, setCompletedCollapsed] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(true);
 
   useEffect(() => {
     loadTrackers();
@@ -512,25 +513,49 @@ const TrackerListing = () => {
         {groups.yearly.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Yearly</h3>
-            <TrackerGrid trackers={groups.yearly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} onEdit={handleEditTracker} />
+            <TrackerGrid 
+              trackers={groups.yearly} 
+              onToggleDay={handleToggleDay} 
+              trackerAnswers={trackerAnswers} 
+              onEdit={handleEditTracker}
+              isFocusMode={isFocusMode}
+            />
           </div>
         )}
         {groups.monthly.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Monthly</h3>
-            <TrackerGrid trackers={groups.monthly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} onEdit={handleEditTracker} />
+            <TrackerGrid 
+              trackers={groups.monthly} 
+              onToggleDay={handleToggleDay} 
+              trackerAnswers={trackerAnswers} 
+              onEdit={handleEditTracker}
+              isFocusMode={isFocusMode}
+            />
           </div>
         )}
         {groups.weekly.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Weekly</h3>
-            <TrackerGrid trackers={groups.weekly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} onEdit={handleEditTracker} />
+            <TrackerGrid 
+              trackers={groups.weekly} 
+              onToggleDay={handleToggleDay} 
+              trackerAnswers={trackerAnswers} 
+              onEdit={handleEditTracker}
+              isFocusMode={isFocusMode}
+            />
           </div>
         )}
         {groups.daily.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Daily</h3>
-            <TrackerGrid trackers={groups.daily} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} onEdit={handleEditTracker} />
+            <TrackerGrid 
+              trackers={groups.daily} 
+              onToggleDay={handleToggleDay} 
+              trackerAnswers={trackerAnswers} 
+              onEdit={handleEditTracker}
+              isFocusMode={isFocusMode}
+            />
           </div>
         )}
       </div>
@@ -543,12 +568,24 @@ const TrackerListing = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Trackers</h1>
-        <button
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          onClick={() => setShowAddTracker(true)}
-        >
-          + Add Tracker
-        </button>
+        <div className="flex gap-3">
+          <button
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              isFocusMode 
+                ? 'bg-green-600 text-white hover:bg-green-700' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+            onClick={() => setIsFocusMode(!isFocusMode)}
+          >
+            {isFocusMode ? 'Focus Mode: On' : 'Focus Mode: Off'}
+          </button>
+          <button
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => setShowAddTracker(true)}
+          >
+            + Add Tracker
+          </button>
+        </div>
       </div>
       <div className="bg-blue-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-blue-200">
         <h2 className="text-xl font-semibold">

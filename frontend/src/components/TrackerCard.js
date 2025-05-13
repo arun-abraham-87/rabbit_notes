@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
-import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 function getLastSevenDays() {
   const days = [];
@@ -76,7 +76,7 @@ function formatMonthDateString(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
-export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit }) {
+export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode }) {
   // Determine cadence
   const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
   let buttons = [];
@@ -252,17 +252,43 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   }
 
   return (
-    <div className="bg-white rounded-xl shadow p-4 flex flex-col items-center">
-      <div className="flex w-full justify-between items-center mb-2">
-        <div className="font-semibold">{tracker.title}</div>
-        {onEdit && (
-          <button
-            className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
-            onClick={() => onEdit(tracker)}
-            aria-label="Edit Tracker"
-          >
-            <PencilIcon className="h-5 w-5 text-gray-500" />
-          </button>
+    <div className="bg-white rounded-lg shadow-sm p-4">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">{tracker.title}</h3>
+          <p className="text-sm text-gray-600">{tracker.question}</p>
+        </div>
+        {!isFocusMode && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => onEdit(tracker)}
+              className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+              title="Edit tracker"
+            >
+              <PencilIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setShowStatsModal(true)}
+              className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+              title="Show stats"
+            >
+              <ChartBarIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setShowMonthlyModal(true)}
+              className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+              title="Show monthly check-ins"
+            >
+              <CalendarIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setShowLastValuesModal(true)}
+              className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+              title="Show last 7 values"
+            >
+              <ClockIcon className="h-5 w-5" />
+            </button>
+          </div>
         )}
       </div>
       <div className="flex gap-2 justify-center items-center">
@@ -347,35 +373,6 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             <ArrowPathIcon className="h-5 w-5 text-gray-500" />
           </button>
         )}
-      </div>
-      <div className="flex gap-2 mt-2 mb-1">
-        {/* Stats Icon */}
-        <button
-          className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
-          onClick={() => setShowStatsModal(true)}
-          aria-label={showStats ? 'Hide Stats' : 'Show Stats'}
-        >
-          <ChartBarIcon className={`h-5 w-5 ${showStats ? 'text-blue-600' : 'text-gray-500'}`} />
-        </button>
-        {/* Monthly Check-ins Icon */}
-        <button
-          className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
-          onClick={() => {
-            setShowMonthlyModal(true);
-            setMonthlyModalMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-          }}
-          aria-label="Show Monthly Check-ins"
-        >
-          <CalendarIcon className="h-5 w-5 text-gray-500" />
-        </button>
-        {/* Last 7 Values Icon/Button */}
-        <button
-          className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
-          onClick={() => setShowLastValuesModal(true)}
-          aria-label="Show Last 7 Values"
-        >
-          <span className="text-[13px] font-bold text-gray-500">7</span>
-        </button>
       </div>
       {/* Monthly Check-ins Modal */}
       {showMonthlyModal && (

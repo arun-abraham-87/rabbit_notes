@@ -2689,6 +2689,29 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
   const [hoveredNote, setHoveredNote] = useState(null);
   const [showCadenceSelector, setShowCadenceSelector] = useState(null);
 
+  // Add the vibrating animation style for the bell icon
+  useEffect(() => {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+      @keyframes vibrate {
+        0% { transform: rotate(0deg); }
+        20% { transform: rotate(-15deg); }
+        40% { transform: rotate(12deg); }
+        60% { transform: rotate(-9deg); }
+        80% { transform: rotate(6deg); }
+        100% { transform: rotate(0deg); }
+      }
+      .bell-vibrate {
+        animation: vibrate 0.3s ease-in-out infinite;
+        transform-origin: top;
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
+
   const reminders = notes.filter(note => {
     if (!note.content.includes('meta::reminder')) return false;
     if (note.content.includes('meta::reminder_dismissed')) return false;
@@ -2815,13 +2838,13 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
                       <ChevronDownIcon className="h-5 w-5" />
                     )}
                   </button>
-                  <BellIcon className="h-5 w-5 text-purple-700" />
+                  {/* Bell icon with vibration animation */}
+                  <BellIcon className="h-5 w-5 text-purple-700 bell-vibrate" />
                   <div>
                     {formatReminderContent(note.content)}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Set Cadence link moved here, always visible */}
                   {showCadenceSelector === note.id ? (
                     <CadenceSelector
                       noteId={note.id}

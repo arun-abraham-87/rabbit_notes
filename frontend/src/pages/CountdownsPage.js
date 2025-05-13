@@ -93,7 +93,7 @@ export default function CountdownsPage({ notes }) {
       <div className="space-y-10">
         {filteredGrouped.map(({ key, events }) => (
           <div key={key}>
-            <h2 className="text-xl font-semibold mb-4">{key}</h2>
+            <h2 className="text-xl font-semibold mb-4 sticky top-0 bg-gray-50 z-10 py-2">{key}</h2>
             <div className="flex flex-wrap gap-6">
               {events.map(event => (
                 <CountdownCard

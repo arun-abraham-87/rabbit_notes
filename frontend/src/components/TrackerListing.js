@@ -367,23 +367,81 @@ const TrackerListing = () => {
     return Object.keys(tracker.completions).some(date => date.startsWith(currentYearStr));
   };
 
+  // Helper for weekly cadence: get last relevant date (most recent selected day)
+  function getLastRelevantWeeklyDate(tracker) {
+    if (!tracker.days || tracker.days.length === 0) return null;
+    // Convert days to weekday indices (0=Sun, 1=Mon, ...)
+    const selectedDays = tracker.days.map(d => {
+      if (typeof d === 'string') {
+        const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
+        return idx >= 0 ? idx : d;
+      }
+      return d;
+    });
+    let d = new Date(today);
+    for (let i = 0; i < 7; i++) {
+      if (selectedDays.includes(d.getDay())) {
+        return d.toISOString().slice(0, 10);
+      }
+      d.setDate(d.getDate() - 1);
+    }
+    return null;
+  }
+
+  const isWeeklyCompleted = (tracker) => {
+    const lastRelevant = getLastRelevantWeeklyDate(tracker);
+    if (!lastRelevant) return false;
+    return tracker.completions && tracker.completions[lastRelevant];
+  };
+
+  // Helper to check if a date is on or after the start date
+  function isOnOrAfterStartDate(tracker, relevantDateStr) {
+    if (!tracker.startDate) return true;
+    // Compare as YYYY-MM-DD strings
+    return relevantDateStr >= tracker.startDate;
+  }
+
   const pendingTrackers = trackers.filter(tracker => {
+    let relevantDateStr = todayStr;
     if (tracker.cadence && tracker.cadence.toLowerCase() === 'monthly') {
+      relevantDateStr = currentMonthStr + '-01';
+      if (!isOnOrAfterStartDate(tracker, relevantDateStr)) return false;
       return !isMonthlyCompleted(tracker);
     }
     if (tracker.cadence && tracker.cadence.toLowerCase() === 'yearly') {
+      relevantDateStr = currentYearStr + '-01-01';
+      if (!isOnOrAfterStartDate(tracker, relevantDateStr)) return false;
       return !isYearlyCompleted(tracker);
     }
+    if (tracker.cadence && tracker.cadence.toLowerCase() === 'weekly') {
+      const lastRelevant = getLastRelevantWeeklyDate(tracker);
+      if (!lastRelevant || !isOnOrAfterStartDate(tracker, lastRelevant)) return false;
+      return !isWeeklyCompleted(tracker);
+    }
+    // Daily or default
+    if (!isOnOrAfterStartDate(tracker, todayStr)) return false;
     return !(tracker.completions && tracker.completions[todayStr]);
   });
 
   const completedTrackers = trackers.filter(tracker => {
+    let relevantDateStr = todayStr;
     if (tracker.cadence && tracker.cadence.toLowerCase() === 'monthly') {
+      relevantDateStr = currentMonthStr + '-01';
+      if (!isOnOrAfterStartDate(tracker, relevantDateStr)) return false;
       return isMonthlyCompleted(tracker);
     }
     if (tracker.cadence && tracker.cadence.toLowerCase() === 'yearly') {
+      relevantDateStr = currentYearStr + '-01-01';
+      if (!isOnOrAfterStartDate(tracker, relevantDateStr)) return false;
       return isYearlyCompleted(tracker);
     }
+    if (tracker.cadence && tracker.cadence.toLowerCase() === 'weekly') {
+      const lastRelevant = getLastRelevantWeeklyDate(tracker);
+      if (!lastRelevant || !isOnOrAfterStartDate(tracker, lastRelevant)) return false;
+      return isWeeklyCompleted(tracker);
+    }
+    // Daily or default
+    if (!isOnOrAfterStartDate(tracker, todayStr)) return false;
     return tracker.completions && tracker.completions[todayStr];
   });
 

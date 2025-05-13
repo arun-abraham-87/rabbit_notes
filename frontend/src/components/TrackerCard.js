@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 
-function getDayOffsets(centerDate) {
-  // Returns array of 7 dates: [-3, -2, -1, 0, +1, +2, +3]
+function getLastSevenDays() {
   const days = [];
-  for (let i = -3; i <= 3; i++) {
-    const d = new Date(centerDate);
-    d.setDate(d.getDate() + i);
+  const today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
     days.push(d);
   }
   return days;
 }
 
 export default function TrackerCard({ tracker, onToggleDay }) {
-  const today = new Date();
-  const days = getDayOffsets(today);
+  const days = getLastSevenDays();
   const [showValueModal, setShowValueModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [value, setValue] = useState('');
@@ -41,7 +40,7 @@ export default function TrackerCard({ tracker, onToggleDay }) {
       <div className="flex gap-2">
         {days.map((date, idx) => {
           const dateStr = date.toISOString().slice(0, 10);
-          const isToday = idx === 3;
+          const isToday = idx === 6;
           const done = tracker.completions?.[dateStr];
           return (
             <button

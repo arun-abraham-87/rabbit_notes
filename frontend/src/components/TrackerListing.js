@@ -138,7 +138,7 @@ const TrackerListing = () => {
           // Set completions for the tracker
           const tracker = trackerNotes.find(t => t.id === link);
           if (tracker) {
-            tracker.completions[date] = answerValue.toLowerCase() === 'yes';
+            tracker.completions[date] = true; // Mark as completed if there's an answer
           }
 
           // Prepare graph data

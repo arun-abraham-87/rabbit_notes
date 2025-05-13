@@ -157,37 +157,45 @@ export default function TrackerCard({ tracker, onToggleDay }) {
   return (
     <div className="bg-white rounded-xl shadow p-4 flex flex-col items-center">
       <div className="font-semibold mb-2">{tracker.title}</div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 justify-center items-center">
         {buttons.map((item, idx) => {
-          let dateStr, label, isToday = false, done = false;
+          let dateStr, label, isToday = false, done = false, monthLabel = '';
           if (buttonType === 'day') {
             dateStr = item.toISOString().slice(0, 10);
             label = item.getDate();
             isToday = (item.toDateString() === now.toDateString());
             done = tracker.completions && tracker.completions[dateStr];
+            // Show month label for daily/weekly/custom
+            monthLabel = item.toLocaleString('default', { month: 'short', year: 'numeric' });
           } else if (buttonType === 'month') {
             dateStr = formatMonthDateString(item);
             label = getMonthShortName(item.getMonth());
             isToday = (item.getMonth() === now.getMonth() && item.getFullYear() === now.getFullYear());
             done = tracker.completions && Object.keys(tracker.completions).some(d => d.startsWith(dateStr.slice(0,7)));
+            monthLabel = '';
           } else if (buttonType === 'year') {
             dateStr = item + '-01-01';
             label = item;
             isToday = (item === now.getFullYear());
             done = tracker.completions && Object.keys(tracker.completions).some(d => d.startsWith(item.toString()));
+            monthLabel = '';
           }
           return (
-            <button
-              key={dateStr}
-              onClick={() => handleDateClick(item, dateStr)}
-              className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm
-                ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
-                ${done ? 'bg-green-300' : ''}
-              `}
-              title={buttonType === 'day' ? item.toLocaleDateString() : (buttonType === 'month' ? item.toLocaleString('default', { month: 'long', year: 'numeric' }) : label)}
-            >
-              {label}
-            </button>
+            <div key={dateStr} className="flex flex-col items-center w-10">
+              <button
+                onClick={() => handleDateClick(item, dateStr)}
+                className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm
+                  ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
+                  ${done ? 'bg-green-300' : ''}
+                `}
+                title={buttonType === 'day' ? item.toLocaleDateString() : (buttonType === 'month' ? item.toLocaleString('default', { month: 'long', year: 'numeric' }) : label)}
+              >
+                {label}
+              </button>
+              {monthLabel && (
+                <span className="text-[10px] text-gray-400 mt-0.5 text-center w-full">{monthLabel}</span>
+              )}
+            </div>
           );
         })}
       </div>

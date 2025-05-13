@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
-import { ChartBarIcon, CalendarIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon } from '@heroicons/react/24/outline';
 
 function getLastSevenDays() {
   const days = [];
@@ -76,7 +76,7 @@ function formatMonthDateString(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
-export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
+export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit }) {
   // Determine cadence
   const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
   let buttons = [];
@@ -253,7 +253,18 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
 
   return (
     <div className="bg-white rounded-xl shadow p-4 flex flex-col items-center">
-      <div className="font-semibold mb-2">{tracker.title}</div>
+      <div className="flex w-full justify-between items-center mb-2">
+        <div className="font-semibold">{tracker.title}</div>
+        {onEdit && (
+          <button
+            className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+            onClick={() => onEdit(tracker)}
+            aria-label="Edit Tracker"
+          >
+            <PencilIcon className="h-5 w-5 text-gray-500" />
+          </button>
+        )}
+      </div>
       <div className="flex gap-2 justify-center items-center">
         {/* Left chevron for previous 7 */}
         <button

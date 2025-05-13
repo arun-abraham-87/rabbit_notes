@@ -197,10 +197,12 @@ const TrackerListing = () => {
       )
     );
     setEditingTracker(null);
+    setShowAddTracker(false);
   };
 
   const handleEditTracker = (tracker) => {
     setEditingTracker(tracker);
+    setShowAddTracker(true);
   };
 
   const handleShowAnswers = (trackerId) => {
@@ -510,25 +512,25 @@ const TrackerListing = () => {
         {groups.yearly.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Yearly</h3>
-            <TrackerGrid trackers={groups.yearly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} />
+            <TrackerGrid trackers={groups.yearly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} onEdit={handleEditTracker} />
           </div>
         )}
         {groups.monthly.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Monthly</h3>
-            <TrackerGrid trackers={groups.monthly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} />
+            <TrackerGrid trackers={groups.monthly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} onEdit={handleEditTracker} />
           </div>
         )}
         {groups.weekly.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Weekly</h3>
-            <TrackerGrid trackers={groups.weekly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} />
+            <TrackerGrid trackers={groups.weekly} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} onEdit={handleEditTracker} />
           </div>
         )}
         {groups.daily.length > 0 && (
           <div className="ml-8">
             <h3 className="text-lg font-semibold mt-4 mb-2">Daily</h3>
-            <TrackerGrid trackers={groups.daily} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} />
+            <TrackerGrid trackers={groups.daily} onToggleDay={handleToggleDay} trackerAnswers={trackerAnswers} onEdit={handleEditTracker} />
           </div>
         )}
       </div>
@@ -568,12 +570,12 @@ const TrackerListing = () => {
           <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-              onClick={() => setShowAddTracker(false)}
+              onClick={() => { setShowAddTracker(false); setEditingTracker(null); }}
               aria-label="Close"
             >
               &times;
             </button>
-            <AddTracker onTrackerAdded={handleTrackerAdded} onCancel={() => setShowAddTracker(false)} />
+            <AddTracker onTrackerAdded={handleTrackerAdded} onTrackerUpdated={handleTrackerUpdated} editingTracker={editingTracker} />
           </div>
         </div>
       )}

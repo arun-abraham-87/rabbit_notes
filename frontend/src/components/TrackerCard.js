@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { Line } from 'react-chartjs-2';
 
 function getLastSevenDays() {
   const days = [];
@@ -448,10 +449,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               &times;
             </button>
             <h2 className="text-lg font-semibold mb-4 text-center">Stats</h2>
-            <div className="text-xs text-gray-600 text-center">
-              <div>Month: {currentMonthStats.x} / {currentMonthStats.y}</div>
-              <div>Prev: {prevMonthStats.x} / {prevMonthStats.y}</div>
-            </div>
+            <EnhancedStats answers={answers} tracker={tracker} />
           </div>
         </div>
       )}
@@ -575,6 +573,149 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// --- EnhancedStats component ---
+function EnhancedStats({ answers, tracker }) {
+  if (!answers || answers.length === 0) {
+    return <div className="text-gray-400 italic text-center">No check-ins yet.</div>;
+  }
+
+  // Sort answers by date ascending
+  const sorted = [...answers].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const firstDate = sorted[0]?.date;
+  const lastDate = sorted[sorted.length - 1]?.date;
+  const total = sorted.length;
+
+  // Yes/No breakdown
+  let yes = 0, no = 0, valueCount = 0;
+  sorted.forEach(ans => {
+    if (typeof ans.answer === 'string') {
+      if (ans.answer.toLowerCase() === 'yes') yes++;
+      else if (ans.answer.toLowerCase() === 'no') no++;
+      else valueCount++;
+    } else if (ans.value !== undefined) {
+      valueCount++;
+    }
+  });
+
+  // Completion rate (for daily trackers)
+  let completionRate = null;
+  if (tracker.cadence && tracker.cadence.toLowerCase() === 'daily' && firstDate) {
+    const daysBetween = Math.max(1, Math.ceil((new Date(lastDate) - new Date(firstDate)) / (1000*60*60*24)) + 1);
+    completionRate = (total / daysBetween) * 100;
+  }
+
+  // Streaks (current and longest)
+  function getStreaks() {
+    if (!firstDate) return { current: 0, longest: 0 };
+    const dateSet = new Set(sorted.map(a => a.date));
+    let currentStreak = 0, longestStreak = 0, streak = 0;
+    let d = new Date(lastDate);
+    while (dateSet.has(d.toISOString().slice(0,10))) {
+      currentStreak++;
+      d.setDate(d.getDate() - 1);
+    }
+    // Longest streak
+    let prev = null;
+    sorted.forEach(a => {
+      if (!prev) {
+        streak = 1;
+      } else {
+        const prevDate = new Date(prev.date);
+        const currDate = new Date(a.date);
+        const diff = (currDate - prevDate) / (1000*60*60*24);
+        if (diff === 1) {
+          streak++;
+        } else {
+          streak = 1;
+        }
+      }
+      if (streak > longestStreak) longestStreak = streak;
+      prev = a;
+    });
+    return { current: currentStreak, longest: longestStreak };
+  }
+  const streaks = getStreaks();
+
+  // Prepare chart data (show last 30 check-ins)
+  const chartData = {
+    labels: sorted.slice(-30).map(a => new Date(a.date).toLocaleDateString()),
+    datasets: [
+      {
+        label: tracker.type && tracker.type.toLowerCase().includes('yes') ? 'Yes' : 'Value',
+        data: sorted.slice(-30).map(a => {
+          if (typeof a.answer === 'string') {
+            if (a.answer.toLowerCase() === 'yes') return 1;
+            if (a.answer.toLowerCase() === 'no') return 0;
+            return parseFloat(a.answer) || 0;
+          }
+          if (a.value !== undefined) return parseFloat(a.value) || 0;
+          return 0;
+        }),
+        borderColor: 'rgb(34, 197, 94)',
+        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+        tension: 0.2,
+        fill: true,
+        pointRadius: 2,
+      },
+    ],
+  };
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
+              return context.parsed.y === 1 ? 'Yes' : 'No';
+            }
+            return context.parsed.y;
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: tracker.type && tracker.type.toLowerCase().includes('yes') ? 1 : undefined,
+          callback: function(value) {
+            if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
+              return value === 1 ? 'Yes' : 'No';
+            }
+            return value;
+          }
+        },
+        max: tracker.type && tracker.type.toLowerCase().includes('yes') ? 1 : undefined,
+      }
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-4">
+        <Line data={chartData} options={chartOptions} height={120} />
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+        <div><span className="font-semibold">Total Check-ins:</span> {total}</div>
+        {tracker.type && tracker.type.toLowerCase().includes('yes') && (
+          <>
+            <div><span className="font-semibold">Yes:</span> {yes}</div>
+            <div><span className="font-semibold">No:</span> {no}</div>
+          </>
+        )}
+        <div><span className="font-semibold">First Check-in:</span> {firstDate && new Date(firstDate).toLocaleDateString()}</div>
+        <div><span className="font-semibold">Last Check-in:</span> {lastDate && new Date(lastDate).toLocaleDateString()}</div>
+        <div><span className="font-semibold">Current Streak:</span> {streaks.current}</div>
+        <div><span className="font-semibold">Longest Streak:</span> {streaks.longest}</div>
+        {completionRate !== null && (
+          <div className="col-span-2"><span className="font-semibold">Completion Rate:</span> {completionRate.toFixed(1)}%</div>
+        )}
+      </div>
     </div>
   );
 } 

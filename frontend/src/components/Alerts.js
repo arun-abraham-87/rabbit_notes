@@ -2777,19 +2777,24 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
     }));
   };
 
-  const formatReminderContent = (content) => {
-    const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
-    const firstLine = lines[0]?.trim() || '';
-    const secondLine = lines[1]?.trim() || '';
+  const formatReminderContent = (content, isExpanded, toggleDetails) => {
+    // Only count/display non-meta and non-blank lines
+    const lines = content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0 && !line.startsWith('meta::'));
+
+    const firstLine = lines[0] || '';
+    const secondLine = lines[1] || '';
     const remainingLines = lines.slice(2);
 
     return (
       <>
         <div className="font-medium">{firstLine}</div>
         {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
-        {remainingLines.length > 0 && (
+        {lines.length > 2 && (
           <>
-            {expandedDetails[content] ? (
+            {isExpanded ? (
               <div className="mt-2 text-gray-600">
                 {remainingLines.map((line, index) => (
                   <div key={index}>{line}</div>
@@ -2797,10 +2802,10 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
               </div>
             ) : null}
             <button
-              onClick={() => toggleDetails(content)}
+              onClick={toggleDetails}
               className="mt-1 text-sm text-blue-600 hover:text-blue-800"
             >
-              {expandedDetails[content] ? 'Show less' : 'Show more'}
+              {isExpanded ? 'Show less' : `Show more (${lines.length - 2} more line${lines.length - 2 > 1 ? 's' : ''})`}
             </button>
           </>
         )}
@@ -2841,7 +2846,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
                   {/* Bell icon with vibration animation */}
                   <BellIcon className="h-5 w-5 text-purple-700 bell-vibrate" />
                   <div>
-                    {formatReminderContent(note.content)}
+                    {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

@@ -2687,112 +2687,64 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
   const [showAllReminders, setShowAllReminders] = useState(false);
   const [expandedDetails, setExpandedDetails] = useState({});
   const [hoveredNote, setHoveredNote] = useState(null);
-  const [showCustomTime, setShowCustomTime] = useState(null);
-  const [customHours, setCustomHours] = useState('');
-  const [customMinutes, setCustomMinutes] = useState('');
-
-  // Add the vibrating animation style with more vigorous movement
-  const bellVibrateStyle = {
-    animation: 'vibrate 0.3s ease-in-out infinite',
-    transformOrigin: 'top',
-  };
-
-  // Add the keyframes for the more vigorous vibrate animation
-  useEffect(() => {
-    const styleSheet = document.createElement('style');
-    styleSheet.textContent = `
-      @keyframes vibrate {
-        0% { transform: rotate(0deg); }
-        20% { transform: rotate(-15deg); }
-        40% { transform: rotate(12deg); }
-        60% { transform: rotate(-9deg); }
-        80% { transform: rotate(6deg); }
-        100% { transform: rotate(0deg); }
-      }
-    `;
-    document.head.appendChild(styleSheet);
-    return () => {
-      document.head.removeChild(styleSheet);
-    };
-  }, []);
+  const [showCadenceSelector, setShowCadenceSelector] = useState(null);
 
   const reminders = notes.filter(note => {
     if (!note.content.includes('meta::reminder')) return false;
-    if (!note.content.includes('meta::watch')) return false;
-    return checkNeedsReview(note.id);
+    if (note.content.includes('meta::reminder_dismissed')) return false;
+    if (note.content.includes('meta::reminder_snooze')) {
+      const snoozeMatch = note.content.match(/meta::reminder_snooze::until=([^;]+)/);
+      if (snoozeMatch) {
+        const snoozeUntil = new Date(snoozeMatch[1]);
+        return snoozeUntil > new Date();
+      }
+      return false;
+    }
+    return true;
   });
 
-  const displayedReminders = showAllReminders ? reminders : reminders.slice(0, 3);
-  const hasMoreReminders = reminders.length > 3;
+  if (reminders.length === 0) return null;
 
   const handleDismiss = async (note) => {
     try {
-      // Update the review time in localStorage to reset the timer
-      const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-      reviews[note.id] = new Date().toISOString();
-      localStorage.setItem('noteReviews', JSON.stringify(reviews));
-      
-      // Update the notes list to trigger a re-render
-      const updatedNotes = notes.map(n => n);
-      setNotes(updatedNotes);
-
-      Alerts.success('Reminder reset');
+      let lines = note.content.split('\n');
+      const metaIdx = lines.findIndex(line => line.startsWith('meta::reminder'));
+      if (metaIdx !== -1) {
+        lines[metaIdx] = lines[metaIdx].replace('meta::reminder', 'meta::reminder_dismissed');
+        const updatedContent = lines.join('\n');
+        await updateNoteById(note.id, updatedContent);
+        const updatedNotes = notes.map(n => 
+          n.id === note.id ? { ...n, content: updatedContent } : n
+        );
+        setNotes(updatedNotes);
+        Alerts.success('Reminder dismissed');
+      }
     } catch (error) {
-      console.error('Error resetting reminder:', error);
-      Alerts.error('Failed to reset reminder');
+      console.error('Error dismissing reminder:', error);
+      Alerts.error('Failed to dismiss reminder');
     }
   };
 
-  const handleSetCadence = async (note, hours, minutes = 0) => {
+  const handleSnooze = async (note, hours = 24) => {
     try {
-      // Remove existing cadence tag if it exists
-      let updatedContent = note.content
-        .split('\n')
-        .filter(line => !line.includes('meta::cadence::'))
-        .join('\n');
-
-      // Add new cadence tag
-      updatedContent = `${updatedContent}\nmeta::cadence::${hours}h${minutes > 0 ? ` ${minutes}m` : ''}`;
-
-      // Update the note
-      await updateNoteById(note.id, updatedContent);
-      
-      // Update the notes list immediately
-      const updatedNotes = notes.map(n => 
-        n.id === note.id ? { ...n, content: updatedContent } : n
-      );
-      setNotes(updatedNotes);
-      
-      // Update the review time in localStorage
-      const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-      reviews[note.id] = new Date().toISOString();
-      localStorage.setItem('noteReviews', JSON.stringify(reviews));
-
-      // Update the cadence in localStorage
-      const cadences = JSON.parse(localStorage.getItem('noteReviewCadence') || '{}');
-      cadences[note.id] = { hours, minutes };
-      localStorage.setItem('noteReviewCadence', JSON.stringify(cadences));
-
-      Alerts.success(`Reminder cadence set to ${hours}h${minutes > 0 ? ` ${minutes}m` : ''}`);
-      setShowCustomTime(null);
-      setCustomHours('');
-      setCustomMinutes('');
+      let lines = note.content.split('\n');
+      const metaIdx = lines.findIndex(line => line.startsWith('meta::reminder'));
+      if (metaIdx !== -1) {
+        const snoozeUntil = new Date();
+        snoozeUntil.setHours(snoozeUntil.getHours() + hours);
+        lines[metaIdx] = `meta::reminder_snooze::until=${snoozeUntil.toISOString()}`;
+        const updatedContent = lines.join('\n');
+        await updateNoteById(note.id, updatedContent);
+        const updatedNotes = notes.map(n => 
+          n.id === note.id ? { ...n, content: updatedContent } : n
+        );
+        setNotes(updatedNotes);
+        Alerts.success('Reminder snoozed');
+      }
     } catch (error) {
-      console.error('Error setting cadence:', error);
-      Alerts.error('Failed to set reminder cadence');
+      console.error('Error snoozing reminder:', error);
+      Alerts.error('Failed to snooze reminder');
     }
-  };
-
-  const handleCustomTimeSubmit = (note) => {
-    const hours = parseInt(customHours) || 0;
-    const minutes = parseInt(customMinutes) || 0;
-    
-    if (hours === 0 && minutes === 0) {
-      Alerts.error('Please enter a valid time');
-      return;
-    }
-    
-    handleSetCadence(note, hours, minutes);
   };
 
   const toggleDetails = (noteId) => {
@@ -2803,107 +2755,46 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
   };
 
   const formatReminderContent = (content) => {
-    const lines = content.split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0 && !line.startsWith('meta::'));
+    const lines = content.split('\n').filter(line => !line.trim().startsWith('meta::'));
+    const firstLine = lines[0]?.trim() || '';
+    const secondLine = lines[1]?.trim() || '';
+    const remainingLines = lines.slice(2);
 
-    // If there's only one line and it's a URL
-    if (lines.length === 1) {
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const urlMatch = lines[0].match(urlRegex);
-      if (urlMatch) {
-        const url = urlMatch[0];
-        const markdownMatch = lines[0].match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
-        
-        return (
-          <div className="text-lg font-medium text-purple-900">
-            <a
-              href={markdownMatch ? markdownMatch[2] : url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm"
+    return (
+      <>
+        <div className="font-medium">{firstLine}</div>
+        {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+        {remainingLines.length > 0 && (
+          <>
+            {expandedDetails[content] ? (
+              <div className="mt-2 text-gray-600">
+                {remainingLines.map((line, index) => (
+                  <div key={index}>{line}</div>
+                ))}
+              </div>
+            ) : null}
+            <button
+              onClick={() => toggleDetails(content)}
+              className="mt-1 text-sm text-blue-600 hover:text-blue-800"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
-                <path fillRule="evenodd" d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z" clipRule="evenodd" />
-                <path fillRule="evenodd" d="M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z" clipRule="evenodd" />
-              </svg>
-              Link
-            </a>
-          </div>
-        );
-      }
-    }
-
-    const firstLine = lines[0] || '';
-    const secondLine = lines[1] || '';
-
-    // Function to check if a line contains a URL
-    const hasUrl = (line) => {
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      return urlRegex.test(line);
-    };
-
-    // Function to format a URL line
-    const formatUrlLine = (line) => {
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const urlMatch = line.match(urlRegex);
-      if (!urlMatch) return line;
-
-      const url = urlMatch[0];
-      const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
-      
-      return (
-        <a
-          href={markdownMatch ? markdownMatch[2] : url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
-            <path fillRule="evenodd" d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z" clipRule="evenodd" />
-            <path fillRule="evenodd" d="M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z" clipRule="evenodd" />
-          </svg>
-          Link
-        </a>
-      );
-    };
-
-    // If first line has URL
-    if (hasUrl(firstLine)) {
-      return (
-        <div className="text-lg font-medium text-purple-900">
-          {secondLine && <span className="mr-2">{secondLine}</span>}
-          {formatUrlLine(firstLine)}
-        </div>
-      );
-    }
-    
-    // If second line has URL
-    if (hasUrl(secondLine)) {
-      return (
-        <div className="text-lg font-medium text-purple-900">
-          <span className="mr-2">{firstLine}</span>
-          {formatUrlLine(secondLine)}
-        </div>
-      );
-    }
-
-    // If no URL in first two lines, return first line
-    return <div className="text-lg font-medium text-purple-900">{firstLine}</div>;
+              {expandedDetails[content] ? 'Show less' : 'Show more'}
+            </button>
+          </>
+        )}
+      </>
+    );
   };
 
   if (reminders.length === 0) return null;
 
+  const displayedReminders = showAllReminders ? reminders : reminders.slice(0, 3);
+  const hasMoreReminders = reminders.length > 3;
+
   return (
     <div className="space-y-4 w-full">
       {displayedReminders.map((note, index) => {
-        const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-        const reviewTime = reviews[note.id];
-        const cadence = getNoteCadence(note.id);
         const isDetailsExpanded = expandedDetails[note.id];
         const isHovered = hoveredNote === note.id;
-        const isCustomTimeOpen = showCustomTime === note.id;
-
         return (
           <div 
             key={note.id} 
@@ -2924,12 +2815,33 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
                       <ChevronDownIcon className="h-5 w-5" />
                     )}
                   </button>
-                  <BellIcon className="h-5 w-5 text-purple-700" style={bellVibrateStyle} />
+                  <BellIcon className="h-5 w-5 text-purple-700" />
                   <div>
                     {formatReminderContent(note.content)}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* Set Cadence link moved here, always visible */}
+                  {showCadenceSelector === note.id ? (
+                    <CadenceSelector
+                      noteId={note.id}
+                      notes={notes}
+                      onCadenceChange={() => {
+                        setShowCadenceSelector(null);
+                        if (typeof setNotes === 'function') {
+                          setNotes([...notes]);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setShowCadenceSelector(note.id)}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline mr-2"
+                      style={{ padding: 0, background: 'none', border: 'none' }}
+                    >
+                      Set Cadence
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDismiss(note)}
                     className="px-3 py-1 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
@@ -2941,89 +2853,7 @@ const RemindersAlert = ({ notes, expanded: initialExpanded = true, setNotes }) =
               </div>
               {isDetailsExpanded && (
                 <div className="mt-4 pl-8 space-y-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <ClockIcon className="h-4 w-4" />
-                    <span>Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <ClockIcon className="h-4 w-4" />
-                    <span>Review cadence: {cadence.hours}h {cadence.minutes}m</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => handleSetCadence(note, 1)}
-                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                    >
-                      1h
-                    </button>
-                    <button
-                      onClick={() => handleSetCadence(note, 2)}
-                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                    >
-                      2h
-                    </button>
-                    <button
-                      onClick={() => handleSetCadence(note, 4)}
-                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                    >
-                      4h
-                    </button>
-                    <button
-                      onClick={() => handleSetCadence(note, 6)}
-                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                    >
-                      6h
-                    </button>
-                    <button
-                      onClick={() => handleSetCadence(note, 12)}
-                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                    >
-                      12h
-                    </button>
-                    <button
-                      onClick={() => handleSetCadence(note, 24)}
-                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                    >
-                      24h
-                    </button>
-                    <button
-                      onClick={() => handleSetCadence(note, 72)}
-                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                    >
-                      3d
-                    </button>
-                    <button
-                      onClick={() => handleSetCadence(note, 168)}
-                      className="px-3 py-1 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                    >
-                      7d
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={customHours}
-                      onChange={(e) => setCustomHours(e.target.value)}
-                      placeholder="Hours"
-                      className="w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      min="0"
-                    />
-                    <input
-                      type="number"
-                      value={customMinutes}
-                      onChange={(e) => setCustomMinutes(e.target.value)}
-                      placeholder="Minutes"
-                      className="w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      min="0"
-                      max="59"
-                    />
-                    <button
-                      onClick={() => handleCustomTimeSubmit(note)}
-                      className="px-3 py-1 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                    >
-                      Set Custom
-                    </button>
-                  </div>
+                  {/* ... existing details ... */}
                 </div>
               )}
             </div>

@@ -47,12 +47,14 @@ const Settings = ({ onClose }) => {
   const [selectedTimezones, setSelectedTimezones] = useState([]);
   const [baseTimezone, setBaseTimezone] = useState('');
   const [navbarPagesVisibility, setNavbarPagesVisibility] = useState({});
+  const [quickPasteEnabled, setQuickPasteEnabled] = useState(true);
 
-  // Load saved timezones, base timezone, and navbar pages visibility on component mount
+  // Load saved timezones, base timezone, navbar pages visibility, and quick paste on component mount
   useEffect(() => {
     const savedTimezones = localStorage.getItem('selectedTimezones');
     const savedBaseTimezone = localStorage.getItem('baseTimezone');
     const savedNavbarPages = localStorage.getItem('navbarPagesVisibility');
+    const savedQuickPaste = localStorage.getItem('quickPasteEnabled');
     if (savedTimezones) {
       setSelectedTimezones(JSON.parse(savedTimezones));
     }
@@ -66,6 +68,9 @@ const Settings = ({ onClose }) => {
       const defaultVis = {};
       NAVBAR_PAGES.forEach(page => { defaultVis[page.id] = true; });
       setNavbarPagesVisibility(defaultVis);
+    }
+    if (savedQuickPaste !== null) {
+      setQuickPasteEnabled(savedQuickPaste === 'true');
     }
   }, []);
 
@@ -99,10 +104,11 @@ const Settings = ({ onClose }) => {
   };
 
   const handleSave = () => {
-    // Save selected timezones, base timezone, and navbar pages visibility to localStorage
+    // Save selected timezones, base timezone, navbar pages visibility, and quick paste to localStorage
     localStorage.setItem('selectedTimezones', JSON.stringify(selectedTimezones));
     localStorage.setItem('baseTimezone', baseTimezone);
     localStorage.setItem('navbarPagesVisibility', JSON.stringify(navbarPagesVisibility));
+    localStorage.setItem('quickPasteEnabled', quickPasteEnabled);
     onClose();
   };
 
@@ -122,6 +128,20 @@ const Settings = ({ onClose }) => {
         </div>
 
         <div className="space-y-6">
+          {/* Quick Paste Toggle */}
+          <div className="border-b pb-4">
+            <h3 className="text-lg font-semibold mb-3 text-gray-700">Quick Paste</h3>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={quickPasteEnabled}
+                onChange={e => setQuickPasteEnabled(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-gray-700">Enable Quick Paste in UI</span>
+            </label>
+          </div>
+
           {/* Theme Settings */}
           <div className="border-b pb-4">
             <h3 className="text-lg font-semibold mb-3 text-gray-700">Theme</h3>

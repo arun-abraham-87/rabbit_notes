@@ -70,9 +70,6 @@ const Navbar = ({ activePage, setActivePage }) => {
           {/* Stock Info Panel */}
           <StockInfoPanel />
 
-          {/* Quick Paste Toggle */}
-          <QuickPasteToggle />
-
           {/* Settings button */}
           <button
             onClick={() => setActivePage('manage-notes')}

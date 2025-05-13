@@ -210,23 +210,38 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
             dateStr = item.toISOString().slice(0, 10);
             label = item.getDate();
             isToday = (item.toDateString() === now.toDateString());
-            done = tracker.completions && tracker.completions[dateStr];
-            // Show month label for daily/weekly/custom
+            // Find answer for this date
+            const answerObj = answers.find(ans => ans.date === dateStr);
+            if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
+              // Yes/No tracker
+              if (answerObj && typeof answerObj.answer === 'string' && answerObj.answer.toLowerCase() === 'yes') {
+                done = 'green';
+              } else if (answerObj && typeof answerObj.answer === 'string' && answerObj.answer.toLowerCase() === 'no') {
+                done = 'red';
+              } else {
+                done = false;
+              }
+            } else if (tracker.type && tracker.type.toLowerCase() === 'value') {
+              // Value tracker
+              done = answerObj ? 'green' : false;
+            } else {
+              // Other types
+              done = answerObj ? 'green' : false;
+            }
             monthLabel = item.toLocaleString('default', { month: 'short', year: 'numeric' });
-            // Show weekday label above for daily/weekly/custom
             weekdayLabel = item.toLocaleString('default', { weekday: 'short' });
           } else if (buttonType === 'month') {
             dateStr = formatMonthDateString(item);
             label = getMonthShortName(item.getMonth());
             isToday = (item.getMonth() === now.getMonth() && item.getFullYear() === now.getFullYear());
-            done = tracker.completions && Object.keys(tracker.completions).some(d => d.startsWith(dateStr.slice(0,7)));
+            done = false;
             monthLabel = '';
             weekdayLabel = '';
           } else if (buttonType === 'year') {
             dateStr = item + '-01-01';
             label = item;
             isToday = (item === now.getFullYear());
-            done = tracker.completions && Object.keys(tracker.completions).some(d => d.startsWith(item.toString()));
+            done = false;
             monthLabel = '';
             weekdayLabel = '';
           }
@@ -237,15 +252,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
               )}
               <button
                 onClick={() => handleDateClick(item, dateStr)}
-                className={
-                  buttonType === 'year'
-                    ? `px-3 py-2 rounded-lg border flex items-center justify-center text-sm
-                        ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
-                        ${done ? 'bg-green-300' : ''}`
-                    : `w-8 h-8 rounded-full border flex items-center justify-center text-sm
-                        ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
-                        ${done ? 'bg-green-300' : ''}`
-                }
+                className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full
+                  ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
+                  ${done === 'green' ? 'bg-green-300' : ''}
+                  ${done === 'red' ? 'bg-red-300' : ''}
+                `}
                 title={buttonType === 'day' ? item.toLocaleDateString() : (buttonType === 'month' ? item.toLocaleString('default', { month: 'long', year: 'numeric' }) : label)}
               >
                 {label}

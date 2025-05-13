@@ -327,7 +327,14 @@ const TrackerListing = () => {
     const tracker = trackers.find(t => t.id === trackerId);
     if (!tracker) return;
 
-    const answer = tracker.type.toLowerCase() === 'value' ? value : (tracker.type === 'Yes,No' ? 'yes' : 'no');
+    let answer;
+    if (tracker.type.toLowerCase() === 'value') {
+      answer = value;
+    } else if (tracker.type.toLowerCase().includes('yes')) {
+      answer = value; // value should be 'yes' or 'no' from TrackerCard
+    } else {
+      answer = 'no';
+    }
     try {
       const response = await createTrackerAnswerNote(trackerId, answer, dateStr);
       if (response && response.id) {
@@ -337,6 +344,36 @@ const TrackerListing = () => {
           completions[dateStr] = !completions[dateStr];
           return { ...t, completions };
         }));
+        // Update trackerAnswers for immediate UI feedback
+        setTrackerAnswers(prev => {
+          const prevAnswers = prev[trackerId] || [];
+          // Check if answer for this date already exists
+          const idx = prevAnswers.findIndex(a => a.date === dateStr);
+          let newAnswers;
+          if (idx !== -1) {
+            // Update existing answer
+            newAnswers = [...prevAnswers];
+            newAnswers[idx] = {
+              ...newAnswers[idx],
+              answer,
+              value: answer,
+              date: dateStr,
+              id: response.id
+            };
+          } else {
+            // Add new answer
+            newAnswers = [
+              ...prevAnswers,
+              {
+                answer,
+                value: answer,
+                date: dateStr,
+                id: response.id
+              }
+            ];
+          }
+          return { ...prev, [trackerId]: newAnswers };
+        });
         toast.success('Answer recorded successfully');
       } else {
         throw new Error('Failed to create answer note');

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
-import { ChartBarIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, CalendarIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 function getLastSevenDays() {
   const days = [];
@@ -124,6 +124,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
   });
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showLastValuesModal, setShowLastValuesModal] = useState(false);
+  const [dateOffset, setDateOffset] = useState(0);
 
   const handleDateClick = (date, dateStr) => {
     const type = tracker.type.toLowerCase();
@@ -220,11 +221,49 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
     return dates;
   }
 
+  // Helper to get the correct 7 buttons based on cadence and offset
+  function getButtonsWithOffset() {
+    if (buttonType === 'day') {
+      const days = [];
+      const today = new Date();
+      for (let i = 6 + dateOffset * 7; i >= 0 + dateOffset * 7; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        days.push(d);
+      }
+      return days;
+    } else if (buttonType === 'month') {
+      const months = [];
+      const today = new Date();
+      for (let i = 6 + dateOffset * 7; i >= 0 + dateOffset * 7; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        months.push(d);
+      }
+      return months;
+    } else if (buttonType === 'year') {
+      const years = [];
+      const today = new Date();
+      for (let i = 2 + dateOffset * 3; i >= 0 + dateOffset * 3; i--) {
+        years.push(today.getFullYear() - i);
+      }
+      return years;
+    }
+    return [];
+  }
+
   return (
     <div className="bg-white rounded-xl shadow p-4 flex flex-col items-center">
       <div className="font-semibold mb-2">{tracker.title}</div>
       <div className="flex gap-2 justify-center items-center">
-        {buttons.map((item, idx) => {
+        {/* Left chevron for previous 7 */}
+        <button
+          className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+          onClick={() => setDateOffset(offset => Math.max(0, offset + 1))}
+          aria-label="Show previous 7"
+        >
+          <span className="text-xl">&#8592;</span>
+        </button>
+        {getButtonsWithOffset().map((item, idx) => {
           let dateStr, label, isToday = false, done = false, monthLabel = '', weekdayLabel = '';
           if (buttonType === 'day') {
             dateStr = item.toISOString().slice(0, 10);
@@ -287,6 +326,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [] }) {
             </div>
           );
         })}
+        {/* Refresh icon to reset to default if offset > 0 */}
+        {dateOffset > 0 && (
+          <button
+            className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+            onClick={() => setDateOffset(0)}
+            aria-label="Reset to current"
+          >
+            <ArrowPathIcon className="h-5 w-5 text-gray-500" />
+          </button>
+        )}
       </div>
       <div className="flex gap-2 mt-2 mb-1">
         {/* Stats Icon */}

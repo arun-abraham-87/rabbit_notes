@@ -28,14 +28,19 @@ function getMonthStats(completions, month, year, upToDay = null) {
 export default function TrackerCard({ tracker, onToggleDay }) {
   const days = getLastSevenDays();
   const [showValueModal, setShowValueModal] = useState(false);
+  const [showYesNoModal, setShowYesNoModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [value, setValue] = useState('');
   const [showStats, setShowStats] = useState(false);
 
   const handleDateClick = (date, dateStr) => {
-    if (tracker.type.toLowerCase() === 'value') {
+    const type = tracker.type.toLowerCase();
+    if (type === 'value') {
       setSelectedDate(dateStr);
       setShowValueModal(true);
+    } else if (type === 'yes,no' || type === 'yesno' || type === 'yes/no') {
+      setSelectedDate(dateStr);
+      setShowYesNoModal(true);
     } else {
       onToggleDay(tracker.id, dateStr);
     }
@@ -47,6 +52,12 @@ export default function TrackerCard({ tracker, onToggleDay }) {
       setShowValueModal(false);
       setValue('');
     }
+  };
+
+  const handleYesNo = (answer) => {
+    onToggleDay(tracker.id, selectedDate, answer);
+    setShowYesNoModal(false);
+    setSelectedDate(null);
   };
 
   // Month stats
@@ -134,6 +145,36 @@ export default function TrackerCard({ tracker, onToggleDay }) {
                 Submit
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {showYesNoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-xs w-full flex flex-col items-center">
+            <h2 className="text-lg font-semibold mb-4">{tracker.title}</h2>
+            {tracker.question && (
+              <div className="mb-4 text-sm text-gray-700 font-medium">{tracker.question}</div>
+            )}
+            <div className="flex gap-4">
+              <button
+                onClick={() => handleYesNo('yes')}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => handleYesNo('no')}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                No
+              </button>
+            </div>
+            <button
+              onClick={() => setShowYesNoModal(false)}
+              className="mt-4 text-xs text-gray-500 hover:underline"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}

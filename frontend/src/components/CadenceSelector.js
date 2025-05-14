@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
-import { parseReviewCadenceMeta } from '../utils/cadenceUtils';
+import { parseReviewCadenceMeta } from '../utils/CadenceUtils';
 
 const CadenceSelector = ({ noteId, notes, onCadenceChange }) => {
   const [cadenceType, setCadenceType] = useState('every-x-hours');

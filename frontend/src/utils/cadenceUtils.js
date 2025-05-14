@@ -3,8 +3,17 @@
 // Get the last review time for a note from localStorage
 export function getLastReviewTime(noteId) {
   const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+  console.log('reviews', reviews);
   return reviews[noteId] ? new Date(reviews[noteId]) : null;
 }
+
+//fiunction for adding current date with nte id into local storage
+export function addCurrentDateToLocalStorage(noteId) {
+  const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+  reviews[noteId] = new Date().toISOString();
+  localStorage.setItem('noteReviews', JSON.stringify(reviews));
+}
+
 
 // Parse meta::review_cadence:: line from note content
 export function parseReviewCadenceMeta(content) {
@@ -108,18 +117,20 @@ function isReminderDue(note, now = new Date()) {
 
   // Skip dismissed or snoozed reminders
   if (note.content.includes('meta::reminder_dismissed')) return false;
-  if (note.content.includes('meta::reminder_snooze')) {
-    const snoozeMatch = note.content.match(/meta::reminder_snooze::until=([^;]+)/);
-    if (snoozeMatch) {
-      const snoozeUntil = new Date(snoozeMatch[1]);
-      if (snoozeUntil > now) return false;
-    }
-  }
+  // if (note.content.includes('meta::reminder_snooze')) {
+  //   const snoozeMatch = note.content.match(/meta::reminder_snooze::until=([^;]+)/);
+  //   if (snoozeMatch) {
+  //     const snoozeUntil = new Date(snoozeMatch[1]);
+  //     if (snoozeUntil > now) return false;
+  //   }
+  // }
 
   // Get the next review time
   const nextReview = getNextReviewDate(note);
   if (!nextReview) return false;
-
+  if(nextReview.getTime() < now.getTime()){
+    console.log('nextReview', nextReview, 'now', now);
+  } return true;
   // Check if the next review time has passed
   return nextReview <= now;
 }

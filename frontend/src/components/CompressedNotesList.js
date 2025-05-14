@@ -12,8 +12,7 @@ import {
   getLastReviewTime,
   formatTimestamp
 } from '../utils/watchlistUtils';
-import { updateNoteById } from '../utils/ApiUtils';
-import { getLastReviewTime as cadenceUtilsLastReviewTime, parseReviewCadenceMeta, getNextReviewDate, renderCadenceSummary, getBaseTime, handleRemoveLastReview, getNextReviewDateObj, formatDateTime, getHumanFriendlyTimeDiff } from '../utils/cadenceUtils';
+import { getLastReviewTime as cadenceUtilsLastReviewTime, parseReviewCadenceMeta, getNextReviewDate, renderCadenceSummary, getBaseTime, handleRemoveLastReview, getNextReviewDateObj, formatDateTime, getHumanFriendlyTimeDiff } from '../utils/CadenceUtils';
 
 const CompressedNotesList = ({
   notes,

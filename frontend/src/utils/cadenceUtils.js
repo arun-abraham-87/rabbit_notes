@@ -1,5 +1,15 @@
 // cadenceUtils.js
 
+export function getLastReviewObject() {
+  const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+  return reviews;
+}
+
+
+
+
+
+
 // Get the last review time for a note from localStorage
 export function getLastReviewTime(noteId) {
   const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
@@ -9,6 +19,7 @@ export function getLastReviewTime(noteId) {
 
 //fiunction for adding current date with nte id into local storage
 export function addCurrentDateToLocalStorage(noteId) {
+  console.log('Adding current date to local storage for note', noteId);
   const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
   reviews[noteId] = new Date().toISOString();
   localStorage.setItem('noteReviews', JSON.stringify(reviews));
@@ -112,8 +123,11 @@ export function getNextReviewDate(note) {
 
 // Helper to check if a reminder note is due for review
 function isReminderDue(note, now = new Date()) {
+
   // Only look at notes with reminder tag
   if (!note.content.includes('meta::reminder')) return false;
+
+
 
   // Skip dismissed or snoozed reminders
   if (note.content.includes('meta::reminder_dismissed')) return false;
@@ -124,15 +138,24 @@ function isReminderDue(note, now = new Date()) {
   //     if (snoozeUntil > now) return false;
   //   }
   // }
-
+  console.log('isReminderDue', note.content);
   // Get the next review time
   const nextReview = getNextReviewDate(note);
   if (!nextReview) return false;
-  if(nextReview.getTime() < now.getTime()){
+  if(nextReview.getTime() <= now.getTime()){
     console.log('nextReview', nextReview, 'now', now);
-  } return true;
+    if(note.content.includes('Elaine and Noah Vitamins')){
+      console.log('nextReview elaine and noah vitamins', nextReview, 'now', now);
+    }
+    return true;
+  }
+  if(note.content.includes('Elaine and Noah Vitamins')){
+    console.log(nextReview.getTime());
+    console.log(now.getTime());
+    console.log('false nextReview elaine and noah vitamins', nextReview, 'now', now);
+  } 
   // Check if the next review time has passed
-  return nextReview <= now;
+  return false;
 }
 
 // Find reminders that are due for review right now

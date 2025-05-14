@@ -701,7 +701,7 @@ const BackupAlert = ({ notes, expanded: initialExpanded = true }) => {
   const lastBackupDate = backupNotes.reduce((latest, note) => {
     const backupDateMatch = note.content.match(/meta::notes_backup_date::([^T]+)T/);
     if (!backupDateMatch) return latest;
-    console.log('backupDateMatch',backupDateMatch[1]);
+    //console.log('backupDateMatch',backupDateMatch[1]);
     const backupDate = new Date(backupDateMatch[1]);
     return !latest || backupDate > latest ? backupDate : latest;
   }, null);
@@ -820,7 +820,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
       />
       <div className="space-y-4 w-full">
         <BackupAlert notes={notes} expanded={true} />
-        <RemindersAlert notes={notes} expanded={true} setNotes={setNotes} />
+        <RemindersAlert allNotes={notes} expanded={true} setNotes={setNotes} />
         <div className="flex gap-4">
           <div className="w-1/2">
             <UpcomingDeadlinesAlert 

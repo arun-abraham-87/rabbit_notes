@@ -3,6 +3,7 @@ import ReminderWatchCard from './ReminderWatchCard';
 import { ClockIcon, PencilIcon, XMarkIcon, BellIcon } from '@heroicons/react/24/outline';
 import NoteEditor from './NoteEditor';
 import StockInfoPanel from './StockInfoPanel';
+import { findDueRemindersAsNotes, findRemindersNotDue } from '../utils/CadenceUtils';
 
 const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
   const [editingNote, setEditingNote] = useState(null);
@@ -83,12 +84,14 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
     return now >= nextReviewDate;
   });
 
-  const activeNotes = watchlistNotes.filter(note => 
-    !overdueNotes.includes(note) && !note.content.includes('meta::reminder')
-  );
 
-  const reminderNotes = watchlistNotes.filter(note => 
-    note.content.includes('meta::reminder')
+
+  const reminderNotes = findRemindersNotDue(allNotes) 
+
+  const reminderOverdueNotes = findDueRemindersAsNotes(allNotes)
+
+  const activeNotes = watchlistNotes.filter(note => 
+    !reminderNotes.includes(note) && !reminderOverdueNotes.includes(note) && note.content.includes('meta::watch')
   );
 
   const handleUnfollow = (noteId, content) => {
@@ -132,6 +135,25 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
       <div className="p-4">
         <h1 className="text-2xl font-semibold text-gray-900 mb-4">Watchlist</h1>
         
+        {reminderOverdueNotes.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Overdue Notes</h2>
+            <ReminderWatchCard
+              notes={reminderOverdueNotes}
+              updateNote={handleUnfollow}
+              isWatchList={true}
+              getNoteAge={getDaysSinceAdded}
+              onReview={handleMarkForReview}
+              onCadenceChange={handleMarkForReview}
+              onEdit={handleEdit}
+              onMarkForReview={handleMarkForReview}
+              onMarkAsReminder={handleMarkAsReminder}
+              getLastReviewTime={getLastReviewTime}
+              getReviewCadence={getReviewCadence}
+            />
+          </div>
+        )}
+
         {reminderNotes.length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -154,24 +176,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
           </div>
         )}
 
-        {overdueNotes.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Overdue Notes</h2>
-            <ReminderWatchCard
-              notes={overdueNotes}
-              updateNote={handleUnfollow}
-              isWatchList={true}
-              getNoteAge={getDaysSinceAdded}
-              onReview={handleMarkForReview}
-              onCadenceChange={handleMarkForReview}
-              onEdit={handleEdit}
-              onMarkForReview={handleMarkForReview}
-              onMarkAsReminder={handleMarkAsReminder}
-              getLastReviewTime={getLastReviewTime}
-              getReviewCadence={getReviewCadence}
-            />
-          </div>
-        )}
+        
 
         {activeNotes.length > 0 && (
           <div>

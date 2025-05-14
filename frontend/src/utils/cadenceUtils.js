@@ -162,6 +162,10 @@ export function findDueRemindersAsNotes(notes) {
   return notes.filter(note => isReminderDue(note, new Date()))
 }
 
+export const findRemindersNotDue = (notes) => {
+  return notes.filter(note => !isReminderDue(note, new Date()) && note.content.includes('meta::reminder') && !note.content.includes('meta::reminder_dismissed') && !note.content.includes('meta::reminder_dismissed'))
+}
+
 // Find reminders that are due for review right now
 export function findDueReminders(notes) {
   const now = new Date();

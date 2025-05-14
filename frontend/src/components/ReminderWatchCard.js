@@ -6,8 +6,6 @@ import {
   formatTimeElapsed,
   formatTimeRemaining,
   checkNeedsReview,
-  isNoteReviewed,
-  getLastReviewTime,
   formatTimestamp
 } from '../utils/watchlistUtils';
 import { getLastReviewTime as cadenceUtilsLastReviewTime, parseReviewCadenceMeta, getNextReviewDate, renderCadenceSummary, getBaseTime, handleRemoveLastReview, getNextReviewDateObj, formatDateTime, getHumanFriendlyTimeDiff, findDueRemindersAsNotes } from '../utils/CadenceUtils';

@@ -140,33 +140,9 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
             </h2>
             <ReminderWatchCard
               notes={reminderNotes}
-              searchQuery=""
-              duplicatedUrlColors={{}}
-              editingLine={null}
-              setEditingLine={() => {}}
-              editedLineContent=""
-              setEditedLineContent={() => {}}
-              rightClickNoteId={null}
-              rightClickIndex={null}
-              setRightClickNoteId={() => {}}
-              setRightClickIndex={() => {}}
-              setRightClickPos={() => {}}
-              editingInlineDate={null}
-              setEditingInlineDate={() => {}}
-              handleInlineDateSelect={() => {}}
-              popupNoteText={null}
-              setPopupNoteText={() => {}}
-              objList={[]}
-              addingLineNoteId={null}
-              setAddingLineNoteId={() => {}}
-              newLineText=""
-              setNewLineText={() => {}}
-              newLineInputRef={null}
               updateNote={handleUnfollow}
-              onContextMenu={() => {}}
               isWatchList={true}
               getNoteAge={getDaysSinceAdded}
-              refreshNotes={refreshNotes}
               onReview={handleMarkForReview}
               onCadenceChange={handleMarkForReview}
               onEdit={handleEdit}
@@ -183,33 +159,9 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
             <h2 className="text-xl font-semibold mb-4">Overdue Notes</h2>
             <ReminderWatchCard
               notes={overdueNotes}
-              searchQuery=""
-              duplicatedUrlColors={{}}
-              editingLine={null}
-              setEditingLine={() => {}}
-              editedLineContent=""
-              setEditedLineContent={() => {}}
-              rightClickNoteId={null}
-              rightClickIndex={null}
-              setRightClickNoteId={() => {}}
-              setRightClickIndex={() => {}}
-              setRightClickPos={() => {}}
-              editingInlineDate={null}
-              setEditingInlineDate={() => {}}
-              handleInlineDateSelect={() => {}}
-              popupNoteText={null}
-              setPopupNoteText={() => {}}
-              objList={[]}
-              addingLineNoteId={null}
-              setAddingLineNoteId={() => {}}
-              newLineText=""
-              setNewLineText={() => {}}
-              newLineInputRef={null}
               updateNote={handleUnfollow}
-              onContextMenu={() => {}}
               isWatchList={true}
               getNoteAge={getDaysSinceAdded}
-              refreshNotes={refreshNotes}
               onReview={handleMarkForReview}
               onCadenceChange={handleMarkForReview}
               onEdit={handleEdit}

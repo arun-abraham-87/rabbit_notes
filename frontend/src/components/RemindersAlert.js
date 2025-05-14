@@ -11,16 +11,12 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
   const [hoveredNote, setHoveredNote] = useState(null);
   const [showCadenceSelector, setShowCadenceSelector] = useState(null);
   const [reminderObjs, setReminderObjs] = useState([]);
-  const [reviewDate, setReviewDate] = useState(null);
-  const [reminders, setReminders] = useState([]);
 
 
 
   useEffect(() => {
-    const dueReminders = findDueReminders(allNotes);
+    const dueReminders = findDueReminders(allNotes).map(dr => dr.note);
     setReminderObjs(dueReminders);
-    setReminders(dueReminders.map(dr => dr.note));
-    setReviewDate(getLastReviewObject());
   }, [allNotes]);
 
 
@@ -64,7 +60,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
       //   Alerts.success('Reminder dismissed');
       // }
       addCurrentDateToLocalStorage(note.id);
-      setReviewDate(getLastReviewObject());
+      setReminderObjs(findDueReminders(allNotes).map(dr => dr.note));
     } catch (error) {
       console.error('Error dismissing reminder:', error);
       Alerts.error('Failed to dismiss reminder');
@@ -180,10 +176,10 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
     );
   };
 
-  if (reminders.length === 0) return null;
+  if (reminderObjs.length === 0) return null;
 
-  const displayedReminders = showAllReminders ? reminders : reminders.slice(0, 3);
-  const hasMoreReminders = reminders.length > 3;
+  const displayedReminders = showAllReminders ? reminderObjs : reminderObjs.slice(0, 3);
+  const hasMoreReminders = reminderObjs.length > 3;
 
   return (
     <div className="space-y-4 w-full">
@@ -257,7 +253,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
             onClick={() => setShowAllReminders(!showAllReminders)}
             className="px-4 py-2 text-sm font-medium text-purple-600 hover:text-purple-800 focus:outline-none bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
           >
-            {showAllReminders ? 'Show Less' : `Show ${reminders.length - 3} More`}
+            {showAllReminders ? 'Show Less' : `Show ${reminderObjs.length - 3} More`}
           </button>
         </div>
       )}

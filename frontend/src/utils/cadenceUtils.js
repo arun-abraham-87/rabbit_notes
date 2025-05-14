@@ -44,13 +44,9 @@ export function parseReviewCadenceMeta(content) {
 
 // Get next review Date object for a note
 export function getNextReviewDate(note) {
-  // Local helper to get last review time for a note
-  function getLocalLastReviewTime(noteId) {
-    const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-    return reviews[noteId] ? new Date(reviews[noteId]) : null;
-  }
+
   const meta = parseReviewCadenceMeta(note.content);
-  const lastReview = getLocalLastReviewTime(note.id);
+  const lastReview = getLastReviewTime(note.id);
   const now = new Date();
   if (!meta) {
     // Fallback: 12 hours after last review or now
@@ -59,7 +55,7 @@ export function getNextReviewDate(note) {
   }
   // Handle each cadence type
   if (meta.type === 'every-x-hours') {
-    const hours = meta.hours || 12;
+    const hours = meta.hours || 0;
     const minutes = meta.minutes || 0;
     if (!lastReview) return now;
     return new Date(lastReview.getTime() + (hours * 60 * 60 * 1000) + (minutes * 60 * 1000));

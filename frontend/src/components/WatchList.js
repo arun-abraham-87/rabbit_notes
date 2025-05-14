@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import CompressedNotesList from './CompressedNotesList';
+import ReminderWatchCard from './ReminderWatchCard';
 import { ClockIcon, PencilIcon, XMarkIcon, BellIcon } from '@heroicons/react/24/outline';
 import NoteEditor from './NoteEditor';
 import StockInfoPanel from './StockInfoPanel';
@@ -138,7 +138,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               <BellIcon className="h-6 w-6 text-purple-500" />
               Reminders
             </h2>
-            <CompressedNotesList
+            <ReminderWatchCard
               notes={reminderNotes}
               searchQuery=""
               duplicatedUrlColors={{}}
@@ -181,7 +181,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
         {overdueNotes.length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">Overdue Notes</h2>
-            <CompressedNotesList
+            <ReminderWatchCard
               notes={overdueNotes}
               searchQuery=""
               duplicatedUrlColors={{}}
@@ -224,7 +224,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
         {activeNotes.length > 0 && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Active Notes</h2>
-            <CompressedNotesList
+            <ReminderWatchCard
               notes={activeNotes}
               searchQuery=""
               duplicatedUrlColors={{}}

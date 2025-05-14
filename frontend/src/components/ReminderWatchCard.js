@@ -4,17 +4,15 @@ import CadenceSelector from './CadenceSelector';
 import { XMarkIcon, CheckIcon, ClockIcon, PencilIcon, ChevronDownIcon, ChevronUpIcon, CodeBracketIcon, BellIcon } from '@heroicons/react/24/solid';
 import {
   formatTimeElapsed,
-  getNoteCadence,
-  setNoteCadence,
   formatTimeRemaining,
   checkNeedsReview,
   isNoteReviewed,
   getLastReviewTime,
   formatTimestamp
 } from '../utils/watchlistUtils';
-import { getLastReviewTime as cadenceUtilsLastReviewTime, parseReviewCadenceMeta, getNextReviewDate, renderCadenceSummary, getBaseTime, handleRemoveLastReview, getNextReviewDateObj, formatDateTime, getHumanFriendlyTimeDiff } from '../utils/CadenceUtils';
+import { getLastReviewTime as cadenceUtilsLastReviewTime, parseReviewCadenceMeta, getNextReviewDate, renderCadenceSummary, getBaseTime, handleRemoveLastReview, getNextReviewDateObj, formatDateTime, getHumanFriendlyTimeDiff, findDueRemindersAsNotes } from '../utils/CadenceUtils';
 
-const CompressedNotesList = ({
+const ReminderWatchCard = ({
   notes,
   searchQuery,
   duplicatedUrlColors,
@@ -108,7 +106,6 @@ const CompressedNotesList = ({
       .filter(line => !line.includes('meta::watch'))
       .join('\n')
       .trim();
-    
     updateNote(noteId, updatedContent);
   };
 
@@ -193,19 +190,7 @@ const CompressedNotesList = ({
     <div className="space-y-4">
       {/* Reminders Up For Review Section */}
       {(() => {
-        const dueReminders = notes.filter(note => {
-          if (!note.content.includes('meta::reminder')) return false;
-          if (note.content.includes('meta::reminder_dismissed')) return false;
-          if (note.content.includes('meta::reminder_snooze')) {
-            const snoozeMatch = note.content.match(/meta::reminder_snooze::until=([^;]+)/);
-            if (snoozeMatch) {
-              const snoozeUntil = new Date(snoozeMatch[1]);
-              if (snoozeUntil > new Date()) return false;
-            }
-          }
-          const nextReview = getNextReviewDateObj(note);
-          return nextReview && nextReview <= new Date();
-        });
+        const dueReminders = findDueRemindersAsNotes(notes);
 
         return (
           <div className="mb-8">
@@ -526,4 +511,4 @@ const CompressedNotesList = ({
   );
 };
 
-export default CompressedNotesList; 
+export default ReminderWatchCard; 

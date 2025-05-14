@@ -28,7 +28,10 @@ export function addCurrentDateToLocalStorage(noteId) {
 
 // Parse meta::review_cadence:: line from note content
 export function parseReviewCadenceMeta(content) {
-  const line = content.split('\n').find(l => l.startsWith('meta::review_cadence::'));
+  if (!content) return null;
+  const lines = content.split('\n');
+  if (!lines) return null;
+  const line = lines.find(l => l && l.startsWith('meta::review_cadence::'));
   if (!line) return null;
   const meta = {};
   line.replace('meta::review_cadence::', '').split(';').forEach(pair => {
@@ -155,9 +158,14 @@ function isReminderDue(note, now = new Date()) {
 }
 
 // Find reminders that are due for review right now
+export function findDueRemindersAsNotes(notes) {
+  return notes.filter(note => isReminderDue(note, new Date()))
+}
+
+// Find reminders that are due for review right now
 export function findDueReminders(notes) {
   const now = new Date();
-  return notes.filter(note => isReminderDue(note, now))
+  return findDueRemindersAsNotes(notes)
     .map(note => ({
       note,
       nextReview: getNextReviewDate(note),
@@ -168,6 +176,7 @@ export function findDueReminders(notes) {
 
 // Render a human-readable cadence summary for a note
 export function renderCadenceSummary(note) {
+  if (!note || !note.content) return 'Review every 12 hours';
   const meta = parseReviewCadenceMeta(note.content);
   if (!meta) return 'Review every 12 hours';
 

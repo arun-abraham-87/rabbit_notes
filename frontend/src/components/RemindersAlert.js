@@ -15,7 +15,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
 
 
   useEffect(() => {
-    const dueReminders = findDueReminders(allNotes).map(dr => dr.note);
+    const dueReminders = findDueReminders(allNotes);
     setReminderObjs(dueReminders);
   }, [allNotes]);
 
@@ -47,20 +47,8 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
 
   const handleDismiss = async (note) => {
     try {
-      // let lines = note.content.split('\n');
-      // const metaIdx = lines.findIndex(line => line.startsWith('meta::reminder'));
-      // if (metaIdx !== -1) {
-      //   lines[metaIdx] = lines[metaIdx].replace('meta::reminder', 'meta::reminder_dismissed');
-      //   const updatedContent = lines.join('\n');
-      //   await updateNoteById(note.id, updatedContent);
-      //   const updatedNotes = allNotes.map(n => 
-      //     n.id === note.id ? { ...n, content: updatedContent } : n
-      //   );
-      //   setNotes(updatedNotes);
-      //   Alerts.success('Reminder dismissed');
-      // }
       addCurrentDateToLocalStorage(note.id);
-      setReminderObjs(findDueReminders(allNotes).map(dr => dr.note));
+      setReminderObjs(findDueReminders(allNotes));
     } catch (error) {
       console.error('Error dismissing reminder:', error);
       Alerts.error('Failed to dismiss reminder');
@@ -183,7 +171,8 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
 
   return (
     <div className="space-y-4 w-full">
-      {displayedReminders.map((note, index) => {
+      {displayedReminders.map((reminderObj, index) => {
+        const note = reminderObj.note;
         const isDetailsExpanded = expandedDetails[note.id];
         const isHovered = hoveredNote === note.id;
         return (
@@ -237,7 +226,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
                     onClick={() => handleDismiss(note)}
                     className="px-3 py-1 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
                     title="Dismiss"
-                  >123
+                  >
                     <CheckIcon className="h-5 w-5" />
                   </button>
                 </div>

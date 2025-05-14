@@ -13,7 +13,7 @@ import {
   formatTimestamp
 } from '../utils/watchlistUtils';
 import { updateNoteById } from '../utils/ApiUtils';
-import { getLastReviewTime as cadenceUtilsLastReviewTime, parseReviewCadenceMeta, getNextReviewDate } from '../utils/cadenceUtils';
+import { getLastReviewTime as cadenceUtilsLastReviewTime, parseReviewCadenceMeta, getNextReviewDate, renderCadenceSummary, getBaseTime, handleRemoveLastReview, getNextReviewDateObj, formatDateTime, getHumanFriendlyTimeDiff } from '../utils/cadenceUtils';
 
 const CompressedNotesList = ({
   notes,
@@ -80,10 +80,7 @@ const CompressedNotesList = ({
       setTimeElapsed(newTimeElapsed);
       setNextReviewTime(newNextReviewTime);
       
-      // If any note just became overdue, refresh the page
-      if (needsRefresh && typeof refreshNotes === 'function') {
-        refreshNotes();
-      }
+      
     }, 1000);
 
     return () => clearInterval(interval);
@@ -137,10 +134,6 @@ const CompressedNotesList = ({
       [noteId]: 'Just now'
     }));
 
-    // Trigger a refresh of the notes list
-    if (typeof refreshNotes === 'function') {
-      refreshNotes();
-    }
   };
 
   const toggleNoteExpansion = (noteId) => {
@@ -169,167 +162,6 @@ const CompressedNotesList = ({
       .filter(line => line.trim().length > 0)
       .filter(line => !line.trim().startsWith('meta::'));
   };
-
-  // Helper to parse meta::review_cadence:: line from note content
-  function parseReviewCadenceMeta(content) {
-    const line = content.split('\n').find(l => l.startsWith('meta::review_cadence::'));
-    if (!line) return null;
-    const meta = {};
-    line.replace('meta::review_cadence::', '').split(';').forEach(pair => {
-      const [k, v] = pair.split('=');
-      if (k && v !== undefined) {
-        if (k === 'days') meta[k] = v.split(',').map(Number);
-        else if (k === 'day' || k === 'month' || k === 'hours' || k === 'minutes') meta[k] = Number(v);
-        else meta[k] = v;
-      }
-    });
-    return meta;
-  }
-
-  // Helper to get next review Date object for a note
-  function getNextReviewDate(note) {
-    const meta = parseReviewCadenceMeta(note.content);
-    const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-    const lastReview = reviews[note.id] ? new Date(reviews[note.id]) : null;
-    const now = new Date();
-    if (!meta) {
-      // Fallback: 12 hours after last review or now
-      if (!lastReview) return now;
-      return new Date(lastReview.getTime() + 12 * 60 * 60 * 1000);
-    }
-    // Handle each cadence type
-    if (meta.type === 'every-x-hours') {
-      const hours = meta.hours || 12;
-      const minutes = meta.minutes || 0;
-      if (!lastReview) return now;
-      return new Date(lastReview.getTime() + (hours * 60 * 60 * 1000) + (minutes * 60 * 1000));
-    } else if (meta.type === 'daily') {
-      // Next review is next occurrence of meta.time (HH:MM) after lastReview or now
-      const [hh, mm] = (meta.time || '09:00').split(':').map(Number);
-      let base = lastReview && lastReview > now ? lastReview : now;
-      let next = new Date(base);
-      next.setHours(hh, mm, 0, 0);
-      if (next <= base) next.setDate(next.getDate() + 1);
-      return next;
-    } else if (meta.type === 'weekly') {
-      // Next review is next selected weekday at meta.time after lastReview or now
-      const days = Array.isArray(meta.days) ? meta.days : [];
-      const [hh, mm] = (meta.time || '09:00').split(':').map(Number);
-      let base = lastReview && lastReview > now ? lastReview : now;
-      let next = new Date(base);
-      next.setHours(hh, mm, 0, 0);
-      let tries = 0;
-      while (tries < 14) {
-        if (days.includes(next.getDay()) && next > base) return next;
-        next.setDate(next.getDate() + 1);
-        tries++;
-      }
-      return next;
-    } else if (meta.type === 'monthly') {
-      // Next review is next meta.day of month at meta.time after lastReview or now
-      const day = meta.day || 1;
-      const [hh, mm] = (meta.time || '09:00').split(':').map(Number);
-      let base = lastReview && lastReview > now ? lastReview : now;
-      let next = new Date(base);
-      next.setHours(hh, mm, 0, 0);
-      if (next.getDate() > day || (next.getDate() === day && next <= base)) {
-        // Go to next month
-        next.setMonth(next.getMonth() + 1);
-      }
-      next.setDate(day);
-      return next;
-    } else if (meta.type === 'yearly') {
-      // Next review is next meta.month/meta.day at meta.time after lastReview or now
-      const day = meta.day || 1;
-      const month = meta.month ? meta.month - 1 : 0; // JS months 0-based
-      const [hh, mm] = (meta.time || '09:00').split(':').map(Number);
-      let base = lastReview && lastReview > now ? lastReview : now;
-      let next = new Date(base);
-      next.setHours(hh, mm, 0, 0);
-      if (
-        next.getMonth() > month ||
-        (next.getMonth() === month && (next.getDate() > day || (next.getDate() === day && next <= base)))
-      ) {
-        next.setFullYear(next.getFullYear() + 1);
-      }
-      next.setMonth(month);
-      next.setDate(day);
-      return next;
-    }
-    // Fallback
-    if (!lastReview) return now;
-    return new Date(lastReview.getTime() + 12 * 60 * 60 * 1000);
-  }
-
-  // Helper to render a human-readable cadence summary
-  function renderCadenceSummary(note) {
-    const meta = parseReviewCadenceMeta(note.content);
-    if (!meta) return 'Review every 12 hours';
-    
-    let summary = [];
-    
-    if (meta.type === 'every-x-hours') {
-      let parts = [];
-      if (meta.days) parts.push(`${meta.days}d`);
-      if (meta.hours) parts.push(`${meta.hours}h`);
-      if (meta.minutes) parts.push(`${meta.minutes}m`);
-      summary.push(`Review every ${parts.join(' ') || '12h'}`);
-    } else if (meta.type === 'daily') {
-      summary.push(`Review daily at ${meta.time || '09:00'}`);
-    } else if (meta.type === 'weekly') {
-      const days = Array.isArray(meta.days) ? meta.days : [];
-      const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-      const selected = days.map(idx => dayNames[idx]).join(', ');
-      summary.push(`Review weekly on ${selected || 'all days'} at ${meta.time || '09:00'}`);
-    } else if (meta.type === 'monthly') {
-      summary.push(`Review monthly on day ${meta.day || 1} at ${meta.time || '09:00'}`);
-    } else if (meta.type === 'yearly') {
-      summary.push(`Review yearly on ${meta.day || 1}/${meta.month || 1} at ${meta.time || '09:00'}`);
-    }
-
-    // Add start/end dates if they exist
-    if (meta.start) {
-      const startDate = new Date(meta.start);
-      summary.push(`Starts: ${startDate.toLocaleDateString()}`);
-    }
-    if (meta.end) {
-      const endDate = new Date(meta.end);
-      summary.push(`Ends: ${endDate.toLocaleDateString()}`);
-    }
-
-    return summary.join(' • ');
-  }
-
-  // Add a helper to get the base time for next review calculation
-  function getBaseTime(note) {
-    const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-    const lastReview = reviews[note.id] ? new Date(reviews[note.id]) : null;
-    const now = new Date();
-    return lastReview && lastReview > now ? lastReview : now;
-  }
-
-  // Add a handler to remove last review from localStorage
-  function handleRemoveLastReview(noteId, refreshNotes) {
-    const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-    delete reviews[noteId];
-    localStorage.setItem('noteReviews', JSON.stringify(reviews));
-    if (typeof refreshNotes === 'function') {
-      refreshNotes();
-    }
-  }
-
-  // Add a helper to get the next review date as a Date object
-  function getNextReviewDateObj(note) {
-    if (typeof getNextReviewDate === 'function') {
-      return getNextReviewDate(note);
-    }
-    // fallback: 12 hours after last review or now
-    const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-    const lastReview = reviews[note.id] ? new Date(reviews[note.id]) : null;
-    const now = new Date();
-    if (!lastReview) return now;
-    return new Date(lastReview.getTime() + 12 * 60 * 60 * 1000);
-  }
 
   function formatDateTime(dt) {
     if (!dt) return '';
@@ -372,7 +204,7 @@ const CompressedNotesList = ({
               if (snoozeUntil > new Date()) return false;
             }
           }
-          const nextReview = getNextReviewDate(note);
+          const nextReview = getNextReviewDateObj(note);
           return nextReview && nextReview <= new Date();
         });
 

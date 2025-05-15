@@ -248,10 +248,18 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                     occurrence.isPast ? 'bg-gray-300' : 'bg-gray-200'
                   }`} />
                   
-                  {/* Timeline dot */}
-                  <div className={`absolute left-2.5 top-4 w-3 h-3 rounded-full ${
-                    occurrence.isPast ? 'bg-gray-400' : occurrence.isToday ? 'bg-indigo-400' : 'bg-gray-400'
-                  }`} />
+                  {/* Timeline dot with day number */}
+                  <div className={`absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-full ${
+                    occurrence.isPast 
+                      ? 'bg-gray-400 text-white' 
+                      : occurrence.isToday 
+                        ? 'bg-indigo-400 text-white'
+                        : 'bg-gray-400 text-white'
+                  }`}>
+                    <span className="text-sm font-bold">
+                      {occurrence.date.getDate()}
+                    </span>
+                  </div>
 
                   <div className={`ml-4 p-4 rounded-lg border ${
                     occurrence.isPast 

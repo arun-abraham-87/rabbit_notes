@@ -4,13 +4,14 @@ import {
   XMarkIcon,
   CheckCircleIcon,
   EyeIcon,
-  FlagIcon
+  FlagIcon,
+  BellIcon
 } from '@heroicons/react/24/solid';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 import NoteEditor from './NoteEditor';
 import { getSettings, defaultSettings, loadTags } from '../utils/ApiUtils';
 
-const NoteEditorModal = ({ addNote, updateNote, customNote='None' }) => {
+const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
   const { isOpen, initialContent, mode, noteId, metaTags, closeEditor } = useNoteEditor();
   const [settings, setSettings] = useState({});
   const [objList, setObjList] = useState([]);
@@ -114,6 +115,21 @@ const NoteEditorModal = ({ addNote, updateNote, customNote='None' }) => {
         }
         setShowPriorityOptions(false);
         break;
+      case 'reminder':
+        if (newTags.some(tag => tag.startsWith('meta::watch'))) {
+          newTags = newTags.filter(tag => !tag.startsWith('meta::watch'));
+        } else {
+          newTags.push(`meta::watch::${formattedDate}`);
+        }
+        setShowPriorityOptions(false);
+        // Toggle watch tag
+        if (newTags.some(tag => tag.startsWith('meta::reminder'))) {
+          newTags = newTags.filter(tag => !tag.startsWith('meta::reminder'));
+        } else {
+          newTags.push(`meta::reminder`);
+        }
+        setShowPriorityOptions(false);
+        break;
       default:
         return;
     }
@@ -143,12 +159,12 @@ const NoteEditorModal = ({ addNote, updateNote, customNote='None' }) => {
     const finalContent = selectedMetaTags.length > 0
       ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
       : contentWithNewline;
-      
+
     console.log('finalContent', finalContent);
     console.log('customNote', customNote);
     updateNote(noteId, finalContent)
     if (selectedMetaTags.some(tag => tag.startsWith('meta::watch'))) {
-      addCadenceLineToNote(noteId,{}, true);
+      addCadenceLineToNote(noteId, {}, true);
     }
     closeEditor();
   };
@@ -254,6 +270,15 @@ const NoteEditorModal = ({ addNote, updateNote, customNote='None' }) => {
               title="Add to Watch List"
             >
               <EyeIcon className={`h-5 w-5 ${selectedMetaTags.some(tag => tag.startsWith('meta::watch')) ? 'text-purple-600' : 'text-gray-500'
+                }`} />
+            </button>
+            <button
+              onClick={() => handleMetaTagClick('reminder')}
+              className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.some(tag => tag.startsWith('meta::watch')) ? 'bg-purple-100' : ''
+                }`}
+              title="Add to reminder List"
+            >
+              <BellIcon className={`h-5 w-5 ${selectedMetaTags.some(tag => tag.startsWith('meta::reminder')) ? 'text-purple-600' : 'text-gray-500'
                 }`} />
             </button>
           </div>

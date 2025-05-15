@@ -321,29 +321,49 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                             )}
                           </h3>
                           <div className="flex flex-col gap-1">
-                            <p className={`text-sm ${
-                              occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
-                            }`}>
-                              <span className="font-medium">Date:</span> {getDateInDDMMYYYYFormatWithAgeInParentheses(occurrence.date)}
-                            </p>
-                            <p className="text-sm text-gray-600 mt-1">
-                              <span className="font-medium">Original date:</span> {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </p>
-                            {occurrence.event.recurrence !== 'none' && occurrence.age && (
-                              <p className="text-sm text-gray-600 mt-1">
-                                <span className="font-medium">Age:</span> {occurrence.age}
+                            <div className="grid grid-cols-[120px_1fr] gap-x-2">
+                              <p className={`text-sm ${
+                                occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
+                              }`}>
+                                <span className="font-medium">Date:</span>
                               </p>
-                            )}
-                            {occurrence.event.notes && (
-                              <p className="text-sm text-gray-600 mt-1 italic">
-                                <span className="font-medium">Notes:</span> {occurrence.event.notes}
+                              <p className={`text-sm ${
+                                occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
+                              }`}>
+                                {getDateInDDMMYYYYFormatWithAgeInParentheses(occurrence.date)}
                               </p>
-                            )}
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">Original date:</span>
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}
+                              </p>
+                              {occurrence.event.recurrence !== 'none' && occurrence.age && (
+                                <>
+                                  <p className="text-sm text-gray-600">
+                                    <span className="font-medium">Age:</span>
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    {occurrence.age}
+                                  </p>
+                                </>
+                              )}
+                              {occurrence.event.notes && (
+                                <>
+                                  <p className="text-sm text-gray-600 italic">
+                                    <span className="font-medium">Notes:</span>
+                                  </p>
+                                  <p className="text-sm text-gray-600 italic">
+                                    {occurrence.event.notes}
+                                  </p>
+                                </>
+                              )}
+                            </div>
                             {/* Tags display */}
                             {occurrence.event.tags && occurrence.event.tags.length > 0 && (
                               <div className="mt-2 flex flex-wrap gap-1">

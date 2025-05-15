@@ -313,6 +313,8 @@ export const updateCadenceHoursMinutes = (note, hours, minutes) => {
 
 
 export const handleCadenceChange = (note, hours, minutes, cadenceType, cadenceDays, dailyTime, weeklyTime, weeklyDays, monthlyTime, monthlyDay, startDate, endDate) => {
+  if (!note || !note.content) return null;
+
   let cadenceObj = {
     type: cadenceType,
   };
@@ -329,32 +331,30 @@ export const handleCadenceChange = (note, hours, minutes, cadenceType, cadenceDa
     hours = 24; minutes = 0;
     cadenceObj.hours = hours;
     cadenceObj.minutes = minutes;
-    cadenceObj.dailyTime = dailyTime;
+    cadenceObj.time = dailyTime;
     cadenceObj.days = cadenceDays;
   } else if (cadenceType === 'weekly') {
     hours = 24 * 7; minutes = 0;
     cadenceObj.hours = hours;
     cadenceObj.minutes = minutes;
-    cadenceObj.weeklyTime = weeklyTime;
-    cadenceObj.weeklyDays = weeklyDays;
+    cadenceObj.time = weeklyTime;
+    cadenceObj.days = weeklyDays;
   } else if (cadenceType === 'monthly') {
     hours = 24 * 30; minutes = 0;
     cadenceObj.hours = hours;
     cadenceObj.minutes = minutes;
-    cadenceObj.monthlyTime = monthlyTime;
-    cadenceObj.monthlyDays = monthlyDay;
+    cadenceObj.time = monthlyTime;
+    cadenceObj.day = monthlyDay;
   } else if (cadenceType === 'yearly') {
     hours = 24 * 365; minutes = 0;
     cadenceObj.hours = hours;
     cadenceObj.minutes = minutes;
   }
 
+  cadenceObj.start = startDate;
+  cadenceObj.end = endDate;
 
   console.log('cadenceObj', cadenceObj);
   // Build single-line meta tag
-  const res = addCadenceLineToNote(note, cadenceObj, false);
-  return res;
-
-  // Find the note and update its content
-
+  return addCadenceLineToNote(note, cadenceObj, false);
 };

@@ -205,7 +205,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
                   {showCadenceSelector === note.id ? (
                     <CadenceSelector
                       noteId={note.id}
-                      allNotes={allNotes}
+                      notes={allNotes}
                       onCadenceChange={() => {
                         setShowCadenceSelector(null);
                         if (typeof setNotes === 'function') {

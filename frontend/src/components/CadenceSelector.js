@@ -38,7 +38,11 @@ const CadenceSelector = ({ noteId, notes, onCadenceChange }) => {
   }, [noteId, notes]);
 
   const handleCadenceChangeSave = async () => {
-    await handleCadenceChange(notes, noteId, cadenceHours, cadenceMinutes, cadenceType, cadenceDays, dailyTime, weeklyTime, weeklyDays, monthlyTime, monthlyDay, startDate, endDate);
+    if (!notes || !Array.isArray(notes)) return;
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+
+    await handleCadenceChange(note, cadenceHours, cadenceMinutes, cadenceType, cadenceDays, dailyTime, weeklyTime, weeklyDays, monthlyTime, monthlyDay, startDate, endDate);
     if (onCadenceChange) {
       onCadenceChange();
     }

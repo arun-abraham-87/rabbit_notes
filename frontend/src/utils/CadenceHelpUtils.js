@@ -73,7 +73,7 @@ export function getNextReviewDate(note) {
   } else if (meta.type === 'daily') {
     // Next review is next occurrence of meta.time (HH:MM) after lastReview or now
     const [hh, mm] = (meta.time || '09:00').split(':').map(Number);
-    let base = lastReview && lastReview > now ? lastReview : now;
+    let base = lastReview? lastReview : now;
     let next = new Date(base);
     next.setHours(hh, mm, 0, 0);
     if (next <= base) next.setDate(next.getDate() + 1);
@@ -82,7 +82,7 @@ export function getNextReviewDate(note) {
     // Next review is next selected weekday at meta.time after lastReview or now
     const days = Array.isArray(meta.days) ? meta.days : [];
     const [hh, mm] = (meta.time || '09:00').split(':').map(Number);
-    let base = lastReview && lastReview > now ? lastReview : now;
+    let base = lastReview ? lastReview : now;
     let next = new Date(base);
     next.setHours(hh, mm, 0, 0);
     let tries = 0;
@@ -96,7 +96,7 @@ export function getNextReviewDate(note) {
     // Next review is next meta.day of month at meta.time after lastReview or now
     const day = meta.day || 1;
     const [hh, mm] = (meta.time || '09:00').split(':').map(Number);
-    let base = lastReview && lastReview > now ? lastReview : now;
+    let base = lastReview  ? lastReview : now;
     let next = new Date(base);
     next.setHours(hh, mm, 0, 0);
     if (next.getDate() > day || (next.getDate() === day && next <= base)) {

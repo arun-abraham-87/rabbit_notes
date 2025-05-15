@@ -1,7 +1,7 @@
 import { updateNoteById } from './ApiUtils';
 
 export function findDueRemindersAsNotes(notes) {
-  return notes.filter(note => isReminderDue(note, new Date()))
+  return notes.filter(note => isReminderDue(note, new Date())&& note.content.includes('meta::reminder'))
 }
 
 export const findwatchitemsOverdue = (notes) => {
@@ -24,7 +24,6 @@ export function getLastReviewObject() {
 // Get the last review time for a note from localStorage
 export function getLastReviewTime(noteId) {
   const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-  console.log('reviews', reviews);
   return reviews[noteId] ? new Date(reviews[noteId]) : null;
 }
 
@@ -273,14 +272,14 @@ export function getHumanFriendlyTimeDiff(nextReviewDate) {
 }
 
 const getDummyCadenceObj = () => {
-  return { hours: 24, minutes: 0, type: 'every-x-hours', days: 0, time: '09:00', day: 1, start: new Date().toISOString().slice(0, 10), end: '' };
+  return { hours: 0, minutes: 1, type: 'every-x-hours', days: 0, time: '09:00', day: 1, start: new Date().toISOString().slice(0, 10), end: '' };
 }
 
 export const getDummyCadenceLine = () => {
-  return `meta::review_cadence::type=every-x-hours;hours=24;minutes=0;time=09:00;day=1;start=${new Date().toISOString().slice(0, 10)};end=`;
+  return `meta::review_cadence::type=every-x-hours;hours=0;minutes=1;time=09:00;days=0;start=${new Date().toISOString().slice(0, 10)};end=`;
 }
 
-export const addCadenceLineToNote = async (note, cadenceObj={}, dummy=false) => {
+export const addCadenceLineToNote = async (note, cadenceObj = {}, dummy = false) => {
   if (dummy) {
     cadenceObj = getDummyCadenceObj();
   }
@@ -302,7 +301,8 @@ export const addCadenceLineToNote = async (note, cadenceObj={}, dummy=false) => 
     }
     console.log("lines", lines);
     const updatedContent = lines.join('\n');
-    await updateNoteById(note.id, updatedContent);
+    const res = await updateNoteById(note.id, updatedContent);
+    return res;
   }
 }
 
@@ -325,30 +325,47 @@ export const updateCadenceHoursMinutes = async (note, hours, minutes) => {
 
 
 export const handleCadenceChange = async (note, hours, minutes, cadenceType, cadenceDays, dailyTime, weeklyTime, weeklyDays, monthlyTime, monthlyDay, startDate, endDate) => {
-  let cadenceObj = {};
+  let cadenceObj = {
+    type: cadenceType,
+  };
 
   if (cadenceType === 'every-x-hours') {
-    hours += cadenceDays * 24;
-    cadenceObj = { hours, minutes };
+    if (cadenceDays) {
+      hours += cadenceDays * 24;
+    }
+    cadenceObj.hours = hours;
+    cadenceObj.minutes = minutes;
+    cadenceObj.time = dailyTime;
+    cadenceObj.days = cadenceDays;
   } else if (cadenceType === 'daily') {
     hours = 24; minutes = 0;
-    cadenceObj = { hours, minutes, time: dailyTime };
+    cadenceObj.hours = hours;
+    cadenceObj.minutes = minutes;
+    cadenceObj.dailyTime = dailyTime;
+    cadenceObj.days = cadenceDays;
   } else if (cadenceType === 'weekly') {
     hours = 24 * 7; minutes = 0;
-    cadenceObj = { hours, minutes, time: weeklyTime, days: weeklyDays };
+    cadenceObj.hours = hours;
+    cadenceObj.minutes = minutes;
+    cadenceObj.weeklyTime = weeklyTime;
+    cadenceObj.weeklyDays = weeklyDays;
   } else if (cadenceType === 'monthly') {
     hours = 24 * 30; minutes = 0;
-    cadenceObj = { hours, minutes, time: monthlyTime, day: monthlyDay };
+    cadenceObj.hours = hours;
+    cadenceObj.minutes = minutes;
+    cadenceObj.monthlyTime = monthlyTime;
+    cadenceObj.monthlyDays = monthlyDay;
   } else if (cadenceType === 'yearly') {
     hours = 24 * 365; minutes = 0;
-    cadenceObj = { hours, minutes };
+    cadenceObj.hours = hours;
+    cadenceObj.minutes = minutes;
   }
 
-  cadenceObj.startDate = startDate;
-  cadenceObj.endDate = endDate;
 
+  console.log('cadenceObj', cadenceObj);
   // Build single-line meta tag
-  await addCadenceLineToNote(note,cadenceObj);
+  const res = await addCadenceLineToNote(note, cadenceObj, false);
+  return res;
 
   // Find the note and update its content
 

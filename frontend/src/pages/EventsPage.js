@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
-import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon, EyeIcon, EyeSlashIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
 import EditEventModal from '../components/EditEventModal';
 import CalendarView from '../components/CalendarView';
 import AddEventModal from '../components/AddEventModal';
+import CompareEventsModal from '../components/CompareEventsModal';
 
 // Function to extract event details from note content
 const getEventDetails = (content) => {
@@ -108,6 +109,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [total, setTotal] = useState(0);
   const [daily, setDaily] = useState(0);
@@ -258,13 +260,19 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         <h1 className="text-2xl font-semibold text-gray-900">Events</h1>
         <div className="flex items-center gap-4">
           <button
+            onClick={() => setIsCompareModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <ArrowsRightLeftIcon className="h-5 w-5" />
+            <span>Compare Events</span>
+          </button>
+          <button
             onClick={() => setIsAddEventModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <PlusIcon className="h-5 w-5" />
             <span>Add Event</span>
           </button>
-
         </div>
       </div>
 
@@ -350,6 +358,13 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         onClose={() => setIsAddEventModalOpen(false)}
         onAdd={handleAddEvent}
         notes={allNotes}
+      />
+
+      {/* Compare Events Modal */}
+      <CompareEventsModal
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+        events={allNotes.filter(note => note?.content && note.content.includes('meta::event::'))}
       />
 
 

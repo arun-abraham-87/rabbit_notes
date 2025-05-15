@@ -110,7 +110,7 @@ export function getNextReviewDate(note) {
     const day = meta.day || 1;
     const month = meta.month ? meta.month - 1 : 0; // JS months 0-based
     const [hh, mm] = (meta.time || '09:00').split(':').map(Number);
-    let base = lastReview && lastReview > now ? lastReview : now;
+    let base = lastReview ? lastReview : now;
     let next = new Date(base);
     next.setHours(hh, mm, 0, 0);
     if (

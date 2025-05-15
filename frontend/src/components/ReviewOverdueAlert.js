@@ -331,7 +331,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                           </button>
                           <div className="flex flex-wrap gap-1">
                             <button
-                              onClick={() => handleCadence(note, 0, 0.5)}
+                              onClick={() => handleCadence(note, 0, 30)}
                               className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                               title="Set 30 Minute Cadence"
                             >

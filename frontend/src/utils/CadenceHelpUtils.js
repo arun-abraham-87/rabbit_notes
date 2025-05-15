@@ -57,14 +57,11 @@ export function parseReviewCadenceMeta(content) {
 
 // Get next review Date object for a note
 export function getNextReviewDate(note) {
-
-  const meta = parseReviewCadenceMeta(note.content);
+  let meta = parseReviewCadenceMeta(note.content);
   const lastReview = getLastReviewTime(note.id);
   const now = new Date();
   if (!meta) {
     // Fallback: 12 hours after last review or now
-    //if (!lastReview) return now;
-    //return new Date(lastReview.getTime() + 12 * 60 * 60 * 1000);
     meta = getDummyCadenceObj();
   }
   // Handle each cadence type

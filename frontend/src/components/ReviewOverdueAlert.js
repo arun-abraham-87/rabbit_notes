@@ -331,49 +331,49 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                           </button>
                           <div className="flex flex-wrap gap-1">
                             <button
-                              onClick={() => handleCadence(note, 0,30)}
+                              onClick={() => handleCadence(note, 0, 0.5)}
                               className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 30m Cadence"
+                              title="Set 30 Minute Cadence"
                             >
                               30m
                             </button>
                             <button
-                              onClick={() => handleCadence(note,1,0)}
+                              onClick={() => handleCadence(note, 1, 0)}
                               className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                               title="Set 1 Hour Cadence"
                             >
                               1h
                             </button>
                             <button
-                              onClick={() => handleCadence(note, 2,0)}
+                              onClick={() => handleCadence(note, 2, 0)}
                               className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                               title="Set 2 Hour Cadence"
                             >
                               2h
                             </button>
                             <button
-                              onClick={() => handleCadence(note, 4,0)}
+                              onClick={() => handleCadence(note, 4, 0)}
                               className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                               title="Set 4 Hour Cadence"
                             >
                               4h
                             </button>
                             <button
-                              onClick={() => handleCadence(note, 8,0)}
+                              onClick={() => handleCadence(note, 8, 0)}
                               className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                               title="Set 8 Hour Cadence"
                             >
                               8h
                             </button>
                             <button
-                              onClick={() => handleCadence(note, 12)}
+                              onClick={() => handleCadence(note, 12, 0)}
                               className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                               title="Set 12 Hour Cadence"
                             >
                               12h
                             </button>
                             <button
-                              onClick={() => handleCadence(note, 24)}
+                              onClick={() => handleCadence(note, 24, 0)}
                               className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                               title="Set 24 Hour Cadence"
                             >

@@ -16,6 +16,8 @@ const CadenceSelector = ({ noteId, notes, onCadenceChange }) => {
 
   // Initialize state from existing note
   useEffect(() => {
+    if (!notes || !Array.isArray(notes)) return;
+    
     const note = notes.find(n => n.id === noteId);
     if (note) {
       const meta = parseReviewCadenceMeta(note.content);

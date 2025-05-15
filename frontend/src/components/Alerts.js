@@ -198,6 +198,34 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
     return diffDays;
   };
 
+  const handleAddEvent = async (content) => {
+    console.log('content***************************',editingDeadline)
+    if (editingDeadline) {
+      // Update existing deadline
+      const note = notes.find(n => n.id === editingDeadline.id);
+      if (note) {
+        // Preserve the original meta tags
+        const originalLines = note.content.split('\n');
+        const metaTags = originalLines.filter(line => 
+          line.startsWith('meta::') && 
+          !line.startsWith('meta::event::')
+        );
+        
+        // Combine new content with preserved meta tags
+        const updatedContent = content + '\n' + metaTags.join('\n');
+        
+        // Update the note
+        const updatedNote = { ...note, content: updatedContent };
+        setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
+      }
+    } else {
+      const newNote = await createNote(content);
+      setNotes([...notes, newNote]);
+    }
+    setShowAddEventModal(false);
+    setEditingDeadline(null);
+  }
+  
   useEffect(() => {
     const eventNotes = notes.filter(note => note.content.includes('meta::event_deadline'));
     const upcoming = [];
@@ -394,41 +422,11 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
         <AddEventModal
           isOpen={showAddEventModal}
           onClose={() => {
+            console.log('closing add event modal')
             setShowAddEventModal(false);
             setEditingDeadline(null);
           }}
-          onAdd={(content) => {
-            if (editingDeadline) {
-              // Update existing deadline
-              const note = notes.find(n => n.id === editingDeadline.id);
-              if (note) {
-                // Preserve the original meta tags
-                const originalLines = note.content.split('\n');
-                const metaTags = originalLines.filter(line => 
-                  line.startsWith('meta::') && 
-                  !line.startsWith('meta::event::')
-                );
-                
-                // Combine new content with preserved meta tags
-                const updatedContent = content + '\n' + metaTags.join('\n');
-                
-                // Update the note
-                const updatedNote = { ...note, content: updatedContent };
-                setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
-              }
-            } else {
-              // Add new deadline
-              const newNote = {
-                id: Date.now().toString(),
-                content: content,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              };
-              setNotes([...notes, newNote]);
-            }
-            setShowAddEventModal(false);
-            setEditingDeadline(null);
-          }}
+          onAdd={handleAddEvent}
           notes={notes}
           isAddDeadline={true}
           initialValues={editingDeadline}
@@ -694,14 +692,17 @@ const BackupAlert = ({ notes, expanded: initialExpanded = true }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [isBackingUp, setIsBackingUp] = useState(false);
 
-  const backupNotes = notes.filter(note => note.content.includes('meta::notes_backup_date::'));
+  // Add null check for notes
+  if (!notes || !Array.isArray(notes)) return null;
+
+  const backupNotes = notes.filter(note => note && note.content && note.content.includes('meta::notes_backup_date::'));
   if (backupNotes.length === 0) return null;
 
   // Find the most recent backup date
   const lastBackupDate = backupNotes.reduce((latest, note) => {
+    if (!note || !note.content) return latest;
     const backupDateMatch = note.content.match(/meta::notes_backup_date::([^T]+)T/);
     if (!backupDateMatch) return latest;
-    //console.log('backupDateMatch',backupDateMatch[1]);
     const backupDate = new Date(backupDateMatch[1]);
     return !latest || backupDate > latest ? backupDate : latest;
   }, null);

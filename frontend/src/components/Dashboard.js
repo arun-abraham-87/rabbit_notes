@@ -44,11 +44,13 @@ const Dashboard = ({notes,setNotes}) => {
     const fetchNotes = async () => {
       try {
         const response = await loadAllNotes();
-        setNotes(response.notes);
-        
-        // Extract events from notes
-        const eventNotes = response.notes.filter(note => note.content.includes('meta::event::'));
-        setEvents(eventNotes);
+        if (response && response.notes) {
+          setNotes(response.notes);
+          
+          // Extract events from notes
+          const eventNotes = response.notes.filter(note => note && note.content && note.content.includes('meta::event::'));
+          setEvents(eventNotes);
+        }
       } catch (error) {
         console.error('Error loading notes:', error);
       } finally {
@@ -57,7 +59,7 @@ const Dashboard = ({notes,setNotes}) => {
     };
 
     fetchNotes();
-  }, []);
+  }, [setNotes]);
 
   if (loading) {
     return (

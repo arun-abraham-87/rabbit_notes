@@ -92,10 +92,11 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
     // Add meta information as the last lines
     content += `\nmeta::event::${new Date().toISOString()}`;
     if (isDeadline) {
-      content += `\nmeta::deadline`;
+      content += `\nmeta::event_deadline`;
     }
-    
+    console.log("Calling add event",content) 
     onAdd(content);
+    console.log("Called add event")
     
     // Reset form
     setDescription('');

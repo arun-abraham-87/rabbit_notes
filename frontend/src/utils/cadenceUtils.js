@@ -1,7 +1,16 @@
 import { updateNoteById } from './ApiUtils';
 
-// cadenceUtils.js
+export function findDueRemindersAsNotes(notes) {
+  return notes.filter(note => isReminderDue(note, new Date()))
+}
 
+export const findwatchitemsOverdue = (notes) => {
+  return notes.filter(note => isReminderDue(note, new Date()) && !note.content.includes('meta::reminder'));
+}
+
+export const findRemindersNotDue = (notes) => {
+  return notes.filter(note => !isReminderDue(note, new Date()) && note.content.includes('meta::reminder') && !note.content.includes('meta::reminder_dismissed') && !note.content.includes('meta::reminder_dismissed'))
+}
 export function getLastReviewObject() {
   const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
   return reviews;
@@ -154,18 +163,7 @@ function isReminderDue(note, now = new Date()) {
   return false;
 }
 
-// Find reminders that are due for review right now
-export function findDueRemindersAsNotes(notes) {
-  return notes.filter(note => isReminderDue(note, new Date()))
-}
 
-export const findwatchitemsOverdue = (notes) => {
-  return notes.filter(note => isReminderDue(note, new Date()) && note.content.includes('meta::watch'));
-}
-
-export const findRemindersNotDue = (notes) => {
-  return notes.filter(note => !isReminderDue(note, new Date()) && note.content.includes('meta::reminder') && !note.content.includes('meta::reminder_dismissed') && !note.content.includes('meta::reminder_dismissed'))
-}
 
 // Find reminders that are due for review right now
 export function findDueReminders(notes) {

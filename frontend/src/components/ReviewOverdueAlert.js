@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
 import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
 import { Alerts } from './Alerts';
-import { addCurrentDateToLocalStorage, updateCadenceHoursMinutes } from '../utils/CadenceUtils';
+import { addCurrentDateToLocalStorage, updateCadenceHoursMinutes,findwatchitemsOverdue, findDueRemindersAsNotes } from '../utils/CadenceUtils';
 
 const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [showAllNotes, setShowAllNotes] = useState(false);
@@ -15,12 +16,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [showPriorityPopup, setShowPriorityPopup] = useState(false);
   const [noteToConvert, setNoteToConvert] = useState(null);
   const [showCadenceSelector, setShowCadenceSelector] = useState(null);
+  const [overdueNotes, setOverdueNotes] = useState([]);
 
-  const overdueNotes = notes.filter(note => {
-    if (!note.content.includes('meta::watch')) return false;
-    if (note.content.includes('meta::reminder')) return false;
-    return checkNeedsReview(note.id);
-  });
+  useEffect(() => {
+    const overdueNotes = findwatchitemsOverdue(notes);
+    setOverdueNotes(overdueNotes);
+  }, [notes]);
+
+ 
 
   if (overdueNotes.length === 0) return null;
 
@@ -70,42 +73,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     }
   };
 
-  const handleSetCadence = async (note, hours) => {
-    try {
-      // Remove existing cadence tag if it exists
-      let updatedContent = note.content
-        .split('\n')
-        .filter(line => !line.includes('meta::cadence::'))
-        .join('\n');
-
-      // Add new cadence tag
-      updatedContent = `${updatedContent}\nmeta::cadence::${hours}h`;
-
-      // Update the note
-      await updateNoteById(note.id, updatedContent);
-      
-      // Update the notes list immediately
-      const updatedNotes = notes.map(n => 
-        n.id === note.id ? { ...n, content: updatedContent } : n
-      );
-      setNotes(updatedNotes);
-      
-      // Update the review time in localStorage
-      const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-      reviews[note.id] = new Date().toISOString();
-      localStorage.setItem('noteReviews', JSON.stringify(reviews));
-
-      // Update the cadence in localStorage
-      const cadences = JSON.parse(localStorage.getItem('noteReviewCadence') || '{}');
-      cadences[note.id] = { hours, minutes: 0 };
-      localStorage.setItem('noteReviewCadence', JSON.stringify(cadences));
-
-      Alerts.success(`Review cadence set to ${hours} hours`);
-    } catch (error) {
-      console.error('Error setting cadence:', error);
-      Alerts.error('Failed to set review cadence');
-    }
-  };
+  
 
   const formatContent = (content) => {
     // Split content into lines, trim each line, and filter out empty lines

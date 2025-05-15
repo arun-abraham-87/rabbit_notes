@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { addCadenceLineToNote } from '../utils/CadenceUtils';
 import {
   XMarkIcon,
   CheckCircleIcon,
@@ -142,9 +143,13 @@ const NoteEditorModal = ({ addNote, updateNote, customNote='None' }) => {
     const finalContent = selectedMetaTags.length > 0
       ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
       : contentWithNewline;
+      
     console.log('finalContent', finalContent);
     console.log('customNote', customNote);
     updateNote(noteId, finalContent)
+    if (selectedMetaTags.some(tag => tag.startsWith('meta::watch'))) {
+      addCadenceLineToNote(noteId,{}, true);
+    }
     closeEditor();
   };
 

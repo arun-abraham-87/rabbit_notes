@@ -1,4 +1,3 @@
-
 import { updateNoteById } from './ApiUtils';
 
 // cadenceUtils.js
@@ -125,25 +124,19 @@ export function getNextReviewDate(note) {
 
 // Helper to check if a reminder note is due for review
 function isReminderDue(note, now = new Date()) {
+  // Check if note or note.content exists
+  if (!note || !note.content) return false;
 
   // Only look at notes with reminder tag
   if (!note.content.includes('meta::reminder')) return false;
 
-
-
   // Skip dismissed or snoozed reminders
   if (note.content.includes('meta::reminder_dismissed')) return false;
-  // if (note.content.includes('meta::reminder_snooze')) {
-  //   const snoozeMatch = note.content.match(/meta::reminder_snooze::until=([^;]+)/);
-  //   if (snoozeMatch) {
-  //     const snoozeUntil = new Date(snoozeMatch[1]);
-  //     if (snoozeUntil > now) return false;
-  //   }
-  // }
-  console.log('isReminderDue', note.content);
+
   // Get the next review time
   const nextReview = getNextReviewDate(note);
   if (!nextReview) return false;
+
   if (nextReview.getTime() <= now.getTime()) {
     console.log('nextReview', nextReview, 'now', now);
     if (note.content.includes('Elaine and Noah Vitamins')) {
@@ -151,18 +144,23 @@ function isReminderDue(note, now = new Date()) {
     }
     return true;
   }
+
   if (note.content.includes('Elaine and Noah Vitamins')) {
     console.log(nextReview.getTime());
     console.log(now.getTime());
     console.log('false nextReview elaine and noah vitamins', nextReview, 'now', now);
   }
-  // Check if the next review time has passed
+
   return false;
 }
 
 // Find reminders that are due for review right now
 export function findDueRemindersAsNotes(notes) {
   return notes.filter(note => isReminderDue(note, new Date()))
+}
+
+export const findwatchitemsOverdue = (notes) => {
+  return notes.filter(note => isReminderDue(note, new Date()) && note.content.includes('meta::watch'));
 }
 
 export const findRemindersNotDue = (notes) => {
@@ -277,8 +275,39 @@ export function getHumanFriendlyTimeDiff(nextReviewDate) {
 }
 
 const getDummyCadenceObj = () => {
-  return { hours: 0, minutes: 0, type: 'every-x-hours', days: 0, time: '09:00', day: 1, start: new Date().toISOString().slice(0, 10), end: '' };
+  return { hours: 24, minutes: 0, type: 'every-x-hours', days: 0, time: '09:00', day: 1, start: new Date().toISOString().slice(0, 10), end: '' };
 }
+
+export const getDummyCadenceLine = () => {
+  return `meta::review_cadence::type=every-x-hours;hours=24;minutes=0;time=09:00;day=1;start=${new Date().toISOString().slice(0, 10)};end=`;
+}
+
+export const addCadenceLineToNote = async (note, cadenceObj={}, dummy=false) => {
+  if (dummy) {
+    cadenceObj = getDummyCadenceObj();
+  }
+  let metaLine = `meta::review_cadence::type=${cadenceObj.type}`;
+  metaLine += `;hours=${cadenceObj.hours}`;
+  metaLine += `;minutes=${cadenceObj.minutes}`;
+  if (cadenceObj.time) metaLine += `;time=${cadenceObj.time}`;
+  if (cadenceObj.days) metaLine += `;days=${cadenceObj.days.join(',')}`;
+  if (cadenceObj.day) metaLine += `;day=${cadenceObj.day}`;
+  if (cadenceObj.month) metaLine += `;month=${cadenceObj.month}`;
+
+  if (note) {
+    let lines = note.content.split('\n');
+    const metaIdx = lines.findIndex(line => line.startsWith('meta::review_cadence::'));
+    if (metaIdx !== -1) {
+      lines[metaIdx] = metaLine;
+    } else {
+      lines.push(metaLine);
+    }
+    console.log("lines", lines);
+    const updatedContent = lines.join('\n');
+    await updateNoteById(note.id, updatedContent);
+  }
+}
+
 
 
 export const updateCadenceHoursMinutes = async (note, hours, minutes) => {
@@ -288,7 +317,8 @@ export const updateCadenceHoursMinutes = async (note, hours, minutes) => {
   }
   else {
     cadenceObj.type = 'every-x-hours';
-    cadenceObj = { hours, minutes };
+    cadenceObj.hours = hours;
+    cadenceObj.minutes = minutes;
   }
   console.log('cadenceObj', cadenceObj);
   await handleCadenceChange(note, hours, minutes, cadenceObj.type, cadenceObj.days, cadenceObj.time, cadenceObj.time, cadenceObj.days, cadenceObj.time, cadenceObj.day, cadenceObj.start, cadenceObj.end);
@@ -320,26 +350,8 @@ export const handleCadenceChange = async (note, hours, minutes, cadenceType, cad
   cadenceObj.endDate = endDate;
 
   // Build single-line meta tag
-  let metaLine = `meta::review_cadence::type=${cadenceType}`;
-  metaLine += `;hours=${hours}`;
-  metaLine += `;minutes=${minutes}`;
-  if (cadenceObj.time) metaLine += `;time=${cadenceObj.time}`;
-  if (cadenceType === 'weekly' && cadenceObj.days) metaLine += `;days=${cadenceObj.days.join(',')}`;
-  if (cadenceType === 'monthly' && cadenceObj.day) metaLine += `;day=${cadenceObj.day}`;
-  if (cadenceType === 'yearly' && cadenceObj.day && cadenceObj.month) metaLine += `;day=${cadenceObj.day};month=${cadenceObj.month}`;
-  if (cadenceObj.startDate) metaLine += `;start=${cadenceObj.startDate}`;
-  if (cadenceObj.endDate) metaLine += `;end=${cadenceObj.endDate}`;
+  await addCadenceLineToNote(note,cadenceObj);
 
   // Find the note and update its content
-  if (note) {
-    let lines = note.content.split('\n');
-    const metaIdx = lines.findIndex(line => line.startsWith('meta::review_cadence::'));
-    if (metaIdx !== -1) {
-      lines[metaIdx] = metaLine;
-    } else {
-      lines.push(metaLine);
-    }
-    const updatedContent = lines.join('\n');
-    await updateNoteById(note.id, updatedContent);
-  }
+
 };

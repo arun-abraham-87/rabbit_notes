@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Alerts } from './Alerts';
 
+
 import ConfirmationModal from './ConfirmationModal';
 import { updateNoteById, deleteNoteById, addNewNoteCommon, loadNotes } from '../utils/ApiUtils';
 import { findDuplicatedUrls } from '../utils/genUtils';
@@ -12,15 +13,12 @@ import TagSelectionPopup from './TagSelectionPopup';
 import EditMeetingModal from './EditMeetingModal';
 import AddEventModal from './AddEventModal';
 import EditEventModal from './EditEventModal';
-import TextPastePopup from './TextPastePopup';
 import NoteCard from './NoteCard';
 import {
-  CalendarIcon,
-  ClockIcon,
   XMarkIcon,
 } from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
-import AddPeopleModal from './AddPeopleModal';
+import { getDummyCadenceLine } from '../utils/CadenceUtils';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -371,6 +369,7 @@ const NotesList = ({
       // Add watch meta tag if watch is selected
       if (isWatchSelected) {
         noteContent += `\nmeta::watch::${formattedDateTime}`;
+        noteContent += `\n${getDummyCadenceLine()}`;
       }
 
       // Add review pending tag

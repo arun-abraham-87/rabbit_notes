@@ -21,12 +21,13 @@ import {
 import { MapPinIcon } from '@heroicons/react/24/outline';
 import { getDateInDDMMYYYYFormat, getAgeInStringFmt } from '../utils/DateUtils';
 import { toast } from 'react-toastify';
+import { getDummyCadenceLine } from '../utils/CadenceUtils';
 
 const Tooltip = ({ text, children }) => {
   const [isHovered, setIsHovered] = useState(false);
-  
+
   return (
-    <div 
+    <div
       className="relative inline-block"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -111,7 +112,7 @@ const NoteFooter = ({
 
     const timestamp = new Date().toISOString();
     const lines = note.content.split('\n');
-    
+
     // Remove any existing pin metadata
     const contentWithoutPinMeta = lines
       .filter(line => !line.trim().startsWith('meta::pin::'))
@@ -121,11 +122,11 @@ const NoteFooter = ({
     const lineNumbers = selectedPinLines.map(index => index + 1);
 
     // Create pin metadata with 1-based line numbers
-    const pinMeta = `meta::pin::${lineNumbers.join(',')}`; 
+    const pinMeta = `meta::pin::${lineNumbers.join(',')}`;
 
     // Combine content with new pin metadata
     const newContent = `${contentWithoutPinMeta}\n${pinMeta}`;
-    
+
     updateNote(note.id, newContent);
     setSelectedPinLines([]);
     setShowPinPopup(false);
@@ -137,14 +138,14 @@ const NoteFooter = ({
     const pinMetaLine = note.content
       .split('\n')
       .find(line => line.trim().startsWith('meta::pin::'));
-    
+
     if (!pinMetaLine) return false;
-    
+
     const pinnedLineNumbers = pinMetaLine
       .replace('meta::pin::', '')
       .split(',')
       .map(num => parseInt(num.trim()));
-    
+
     // Convert 0-based index to 1-based line number for comparison
     return pinnedLineNumbers.includes(index + 1);
   };
@@ -155,10 +156,16 @@ const NoteFooter = ({
 
     if (hasAction) {
       // Remove the action if it exists
-      const without = lines
+      let without = lines
         .filter(l => !l.trim().startsWith(`meta::${action}::`))
         .join('\n')
         .trim();
+
+      if (action === 'watch') {
+        // then remove from without line starting with meta::review_cadence 
+        without = without.split('\n').filter(l => !l.trim().startsWith('meta::review_cadence::')).join('\n');
+      }
+
       updateNote(note.id, without);
       toast.success(`Removed ${action} tag`);
     } else {
@@ -167,10 +174,12 @@ const NoteFooter = ({
         .filter(l => !l.trim().startsWith(`meta::${action}::`))
         .join('\n')
         .trim();
-      
+
       if (action === 'watch') {
-        // For watch action, use the note's creation date
-        updateNote(note.id, `${without}\nmeta::watch::${note.created_datetime}`);
+        // then remove from without line starting with meta::review_cadence 
+        const withoutReviewCadence = without.split('\n').filter(l => !l.trim().startsWith('meta::review_cadence::')).join('\n');
+        //  For watch action, use the note's creation date
+        updateNote(note.id, `${withoutReviewCadence}\nmeta::watch::${note.created_datetime}\n${getDummyCadenceLine()}`);
         toast.success('Added to watch list');
       } else {
         // For other actions, use current timestamp
@@ -185,12 +194,12 @@ const NoteFooter = ({
     const timestamp = new Date().toISOString();
     const lines = note.content.split('\n');
     const isTodo = lines.some(l => l.trim().startsWith('meta::todo::'));
-    const currentPriority = priority ? 
+    const currentPriority = priority ?
       lines.some(l => l.trim().startsWith(`meta::${priority}`)) : false;
 
     // Filter out all todo-related meta tags
     const contentWithoutTodoMeta = lines
-      .filter(line => 
+      .filter(line =>
         !line.trim().startsWith('meta::todo::') &&
         !line.trim().startsWith('meta::low') &&
         !line.trim().startsWith('meta::medium') &&
@@ -228,10 +237,10 @@ const NoteFooter = ({
   };
 
   const isTodo = note.content.toLowerCase().includes('meta::todo::');
-  const currentPriority = isTodo ? 
+  const currentPriority = isTodo ?
     note.content.toLowerCase().includes('meta::low') ? 'low' :
-    note.content.toLowerCase().includes('meta::medium') ? 'medium' :
-    note.content.toLowerCase().includes('meta::high') ? 'high' : null : null;
+      note.content.toLowerCase().includes('meta::medium') ? 'medium' :
+        note.content.toLowerCase().includes('meta::high') ? 'high' : null : null;
 
   const handleRemoveAllTags = () => {
     const lines = note.content.split('\n');
@@ -239,7 +248,7 @@ const NoteFooter = ({
       .filter(line => !line.trim().startsWith('meta::'))
       .join('\n')
       .trim();
-    
+
     updateNote(note.id, contentWithoutTags);
     setShowRemoveTagsConfirm(false);
     toast.success('All tags removed from note');
@@ -262,13 +271,11 @@ const NoteFooter = ({
           <Tooltip text={isTodo ? 'Remove Todo Status' : 'Mark as Todo'}>
             <button
               onClick={() => handleTodoAction()}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                isTodo ? 'bg-blue-100' : ''
-              }`}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${isTodo ? 'bg-blue-100' : ''
+                }`}
             >
-              <ClockIcon className={`h-4 w-4 text-gray-500 transition-colors ${
-                isTodo ? 'text-blue-500' : 'hover:text-blue-500'
-              }`} />
+              <ClockIcon className={`h-4 w-4 text-gray-500 transition-colors ${isTodo ? 'text-blue-500' : 'hover:text-blue-500'
+                }`} />
             </button>
           </Tooltip>
 
@@ -277,39 +284,33 @@ const NoteFooter = ({
               <Tooltip text="High Priority">
                 <button
                   onClick={() => handleTodoAction('high')}
-                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                    currentPriority === 'high' ? 'bg-red-100' : ''
-                  }`}
+                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${currentPriority === 'high' ? 'bg-red-100' : ''
+                    }`}
                 >
-                  <FlagIcon className={`h-4 w-4 transition-colors ${
-                    currentPriority === 'high' ? 'text-red-500' : 'text-red-400'
-                  }`} />
+                  <FlagIcon className={`h-4 w-4 transition-colors ${currentPriority === 'high' ? 'text-red-500' : 'text-red-400'
+                    }`} />
                 </button>
               </Tooltip>
 
               <Tooltip text="Medium Priority">
                 <button
                   onClick={() => handleTodoAction('medium')}
-                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                    currentPriority === 'medium' ? 'bg-yellow-100' : ''
-                  }`}
+                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${currentPriority === 'medium' ? 'bg-yellow-100' : ''
+                    }`}
                 >
-                  <FlagIcon className={`h-4 w-4 transition-colors ${
-                    currentPriority === 'medium' ? 'text-yellow-500' : 'text-yellow-400'
-                  }`} />
+                  <FlagIcon className={`h-4 w-4 transition-colors ${currentPriority === 'medium' ? 'text-yellow-500' : 'text-yellow-400'
+                    }`} />
                 </button>
               </Tooltip>
 
               <Tooltip text="Low Priority">
                 <button
                   onClick={() => handleTodoAction('low')}
-                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                    currentPriority === 'low' ? 'bg-blue-100' : ''
-                  }`}
+                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${currentPriority === 'low' ? 'bg-blue-100' : ''
+                    }`}
                 >
-                  <FlagIcon className={`h-4 w-4 transition-colors ${
-                    currentPriority === 'low' ? 'text-blue-500' : 'text-blue-400'
-                  }`} />
+                  <FlagIcon className={`h-4 w-4 transition-colors ${currentPriority === 'low' ? 'text-blue-500' : 'text-blue-400'
+                    }`} />
                 </button>
               </Tooltip>
             </>
@@ -324,52 +325,44 @@ const NoteFooter = ({
           <Tooltip text="Bookmark">
             <button
               onClick={() => handleAction('bookmark')}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                note.content.includes('meta::bookmark::') ? 'bg-yellow-100' : ''
-              }`}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::bookmark::') ? 'bg-yellow-100' : ''
+                }`}
             >
-              <BookmarkIcon className={`h-4 w-4 transition-colors ${
-                note.content.includes('meta::bookmark::') ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'
-              }`} />
+              <BookmarkIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::bookmark::') ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'
+                }`} />
             </button>
           </Tooltip>
 
           <Tooltip text="Mark as Abbreviation">
             <button
               onClick={() => handleAction('abbreviation')}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                note.content.includes('meta::abbreviation::') ? 'bg-purple-100' : ''
-              }`}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::abbreviation::') ? 'bg-purple-100' : ''
+                }`}
             >
-              <TagIcon className={`h-4 w-4 transition-colors ${
-                note.content.includes('meta::abbreviation::') ? 'text-purple-500' : 'text-gray-500 hover:text-purple-500'
-              }`} />
+              <TagIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::abbreviation::') ? 'text-purple-500' : 'text-gray-500 hover:text-purple-500'
+                }`} />
             </button>
           </Tooltip>
 
           <Tooltip text="Watch">
             <button
               onClick={() => handleAction('watch')}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                note.content.includes('meta::watch::') ? 'bg-green-100' : ''
-              }`}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::watch::') ? 'bg-green-100' : ''
+                }`}
             >
-              <EyeIcon className={`h-4 w-4 transition-colors ${
-                note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500 hover:text-green-500'
-              }`} />
+              <EyeIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500 hover:text-green-500'
+                }`} />
             </button>
           </Tooltip>
 
           <Tooltip text="Workstream">
             <button
               onClick={() => handleAction('workstream')}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                note.content.includes('meta::workstream::') ? 'bg-indigo-100' : ''
-              }`}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::workstream::') ? 'bg-indigo-100' : ''
+                }`}
             >
-              <FolderIcon className={`h-4 w-4 transition-colors ${
-                note.content.includes('meta::workstream::') ? 'text-indigo-500' : 'text-gray-500 hover:text-indigo-500'
-              }`} />
+              <FolderIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::workstream::') ? 'text-indigo-500' : 'text-gray-500 hover:text-indigo-500'
+                }`} />
             </button>
           </Tooltip>
 
@@ -404,13 +397,11 @@ const NoteFooter = ({
           <Tooltip text={selectedNotes.length === 0 ? 'Start Merge' : selectedNotes.includes(note.id) ? 'Unselect for Merge' : 'Select for Merge'}>
             <button
               onClick={() => toggleNoteSelection(note.id)}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                selectedNotes.includes(note.id) ? 'bg-blue-100' : ''
-              }`}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${selectedNotes.includes(note.id) ? 'bg-blue-100' : ''
+                }`}
             >
-              <ArrowsPointingInIcon className={`h-4 w-4 transition-colors ${
-                selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-              }`} />
+              <ArrowsPointingInIcon className={`h-4 w-4 transition-colors ${selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+                }`} />
             </button>
           </Tooltip>
         </div>
@@ -435,26 +426,22 @@ const NoteFooter = ({
           <Tooltip text="View Raw Note">
             <button
               onClick={() => setShowRawNote(!showRawNote)}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                showRawNote ? 'bg-gray-100' : ''
-              }`}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${showRawNote ? 'bg-gray-100' : ''
+                }`}
             >
-              <CodeBracketIcon className={`h-4 w-4 transition-colors ${
-                showRawNote ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-              }`} />
+              <CodeBracketIcon className={`h-4 w-4 transition-colors ${showRawNote ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+                }`} />
             </button>
           </Tooltip>
 
           <Tooltip text="Pin Lines">
             <button
               onClick={() => setShowPinPopup(!showPinPopup)}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${
-                showPinPopup ? 'bg-gray-100' : ''
-              }`}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${showPinPopup ? 'bg-gray-100' : ''
+                }`}
             >
-              <MapPinIcon className={`h-4 w-4 transition-colors ${
-                showPinPopup ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-              }`} />
+              <MapPinIcon className={`h-4 w-4 transition-colors ${showPinPopup ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+                }`} />
             </button>
           </Tooltip>
         </div>
@@ -512,8 +499,8 @@ const NoteFooter = ({
               <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
                 <pre className="whitespace-pre-wrap break-words text-sm font-mono text-gray-700 max-w-full" style={{ wordBreak: 'break-word' }}>
                   {note.content.split('\n').map((line, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className={line.trim().startsWith('meta::') ? 'text-red-500' : ''}
                     >
                       {line}
@@ -554,11 +541,10 @@ const NoteFooter = ({
             <div className="p-6 overflow-y-auto max-h-[calc(80vh-8rem)]">
               <div className="space-y-1">
                 {lines.map((line, index) => (
-                  <div 
-                    key={index} 
-                    className={`flex items-start space-x-3 p-2 rounded ${
-                      isPinned(index) ? 'bg-blue-50' : 'hover:bg-gray-50'
-                    }`}
+                  <div
+                    key={index}
+                    className={`flex items-start space-x-3 p-2 rounded ${isPinned(index) ? 'bg-blue-50' : 'hover:bg-gray-50'
+                      }`}
                   >
                     <div className="flex items-center space-x-3 min-w-[60px]">
                       <input

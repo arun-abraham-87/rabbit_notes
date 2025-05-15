@@ -28,6 +28,7 @@ import BookmarkManager from './components/BookmarkManager';
 import { initializeSearchIndex, searchNotes, addNoteToIndex, updateNoteInIndex, removeNoteFromIndex } from './utils/SearchUtils';
 import Assets from './components/Assets';
 import CountdownsPage from './pages/CountdownsPage';
+import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceUtils';
 
 const AppContent = () => {
   const navigate = useNavigate();
@@ -123,6 +124,7 @@ const AppContent = () => {
       // Add watch meta tag if watch is selected
       if (isWatchSelected) {
         noteContent += `\nmeta::watch::${formattedDateTime}`;
+        noteContent += getDummyCadenceLine();
       }
       
       // Add review pending tag

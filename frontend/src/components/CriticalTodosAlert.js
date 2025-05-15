@@ -4,6 +4,7 @@ import { FireIcon, PlusIcon, CheckIcon, ArrowTrendingDownIcon, PencilIcon, CodeB
 import NoteView from './NoteView';
 import NoteEditor from './NoteEditor';
 import { Alerts } from './Alerts';
+import { addCadenceLineToNote } from '../utils/CadenceUtils';
 
 const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [showRawNote, setShowRawNote] = useState(false);
@@ -302,7 +303,9 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       }
 
       const updatedContent = `${note.content}\nmeta::watch`;
+
       await updateNoteById(note.id, updatedContent);
+      await addCadenceLineToNote(note,{}, true);
       // Update the notes list immediately after successful update
       const updatedNotes = notes.map(n => 
         n.id === note.id ? { ...n, content: updatedContent } : n

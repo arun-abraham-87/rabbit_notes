@@ -39,12 +39,36 @@ const CompareEventsModal = ({ isOpen, onClose, events }) => {
     
     const left = new Date(leftDate);
     const right = new Date(rightDate);
-    const diffInYears = (right - left) / (1000 * 60 * 60 * 24 * 365.25);
     
-    if (diffInYears > 0) {
-      return `${diffInYears.toFixed(1)} years ahead`;
-    } else if (diffInYears < 0) {
-      return `${Math.abs(diffInYears).toFixed(1)} years behind`;
+    // Calculate total days difference
+    const diffTime = Math.abs(right - left);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Calculate years, months, and remaining days
+    const years = Math.floor(diffDays / 365);
+    const remainingDays = diffDays % 365;
+    const months = Math.floor(remainingDays / 30);
+    const days = remainingDays % 30;
+    
+    // Build the difference string
+    let diffString = '';
+    if (years > 0) {
+      diffString += `${years} year${years > 1 ? 's' : ''}`;
+    }
+    if (months > 0) {
+      if (diffString) diffString += ' ';
+      diffString += `${months} month${months > 1 ? 's' : ''}`;
+    }
+    if (days > 0) {
+      if (diffString) diffString += ' ';
+      diffString += `${days} day${days > 1 ? 's' : ''}`;
+    }
+    
+    // Add direction
+    if (right > left) {
+      return `${diffString} ahead`;
+    } else if (right < left) {
+      return `${diffString} behind`;
     } else {
       return 'Same time';
     }

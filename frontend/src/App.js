@@ -28,7 +28,7 @@ import BookmarkManager from './components/BookmarkManager';
 import { initializeSearchIndex, searchNotes, addNoteToIndex, updateNoteInIndex, removeNoteFromIndex } from './utils/SearchUtils';
 import Assets from './components/Assets';
 import CountdownsPage from './pages/CountdownsPage';
-import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceUtils';
+import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceHelpUtils';
 
 const AppContent = () => {
   const navigate = useNavigate();

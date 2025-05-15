@@ -63,8 +63,9 @@ export function getNextReviewDate(note) {
   const now = new Date();
   if (!meta) {
     // Fallback: 12 hours after last review or now
-    if (!lastReview) return now;
-    return new Date(lastReview.getTime() + 12 * 60 * 60 * 1000);
+    //if (!lastReview) return now;
+    //return new Date(lastReview.getTime() + 12 * 60 * 60 * 1000);
+    meta = getDummyCadenceObj();
   }
   // Handle each cadence type
   if (meta.type === 'every-x-hours') {
@@ -291,7 +292,7 @@ export const addCadenceLineToNote = (note, cadenceObj = {}, dummy = false) => {
     }
     console.log("lines", lines);
     const updatedContent = lines.join('\n');
-    const res = updateNoteById(note.id, updatedContent);
+    updateNoteById(note.id, updatedContent);
     return updatedContent;
   }
 }

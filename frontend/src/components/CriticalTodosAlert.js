@@ -4,7 +4,7 @@ import { FireIcon, PlusIcon, CheckIcon, ArrowTrendingDownIcon, PencilIcon, CodeB
 import NoteView from './NoteView';
 import NoteEditor from './NoteEditor';
 import { Alerts } from './Alerts';
-import { addCadenceLineToNote } from '../utils/CadenceUtils';
+import { addCadenceLineToNote } from '../utils/CadenceHelpUtils';
 
 const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [showRawNote, setShowRawNote] = useState(false);

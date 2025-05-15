@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDownIcon, ChevronUpIcon, BellIcon, CheckIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
 import { Alerts } from './Alerts';
-import { findDueReminders, addCurrentDateToLocalStorage, getLastReviewObject } from '../utils/CadenceUtils';
+import { findDueReminders, addCurrentDateToLocalStorage, getLastReviewObject } from '../utils/CadenceHelpUtils';
 
 const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);

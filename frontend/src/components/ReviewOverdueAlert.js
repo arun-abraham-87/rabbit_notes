@@ -5,7 +5,7 @@ import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
 import { Alerts } from './Alerts';
-import { addCurrentDateToLocalStorage, updateCadenceHoursMinutes,findwatchitemsOverdue, findDueRemindersAsNotes } from '../utils/CadenceUtils';
+import { addCurrentDateToLocalStorage, updateCadenceHoursMinutes,findwatchitemsOverdue, findDueRemindersAsNotes } from '../utils/CadenceHelpUtils';
 
 const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [expandedNotes, setExpandedNotes] = useState({});
@@ -235,10 +235,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     }
   };
 
-  const handleCadence = (note, hours, days = 0) => {
-    console.log('Setting cadence for note:', note.id, 'hours:', hours, 'days:', days);
-    updateCadenceHoursMinutes(note, hours, 0);
+  const handleCadence = (note, hours, minutes = 0) => {
+    console.log('Setting cadence for note:', note.id, 'hours:', hours, 'minutes:', minutes);
+    let updatedContent=updateCadenceHoursMinutes(note, hours, minutes);
     addCurrentDateToLocalStorage(note.id);
+    setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
   };
 
   return (
@@ -332,16 +333,16 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                             <button
                               onClick={() => handleCadence(note, 0,30)}
                               className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 2 Hour Cadence"
+                              title="Set 30m Cadence"
                             >
                               30m
                             </button>
                             <button
                               onClick={() => handleCadence(note,1,0)}
                               className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 2 Hour Cadence"
+                              title="Set 1 Hour Cadence"
                             >
-                              12h
+                              1h
                             </button>
                             <button
                               onClick={() => handleCadence(note, 2,0)}

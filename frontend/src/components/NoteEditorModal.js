@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { addCadenceLineToNote } from '../utils/CadenceUtils';
+import { addCadenceLineToNote } from '../utils/CadenceHelpUtils';
 import {
   XMarkIcon,
   CheckCircleIcon,

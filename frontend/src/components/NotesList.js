@@ -18,7 +18,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
-import { getDummyCadenceLine } from '../utils/CadenceUtils';
+import { getDummyCadenceLine } from '../utils/CadenceHelpUtils';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;

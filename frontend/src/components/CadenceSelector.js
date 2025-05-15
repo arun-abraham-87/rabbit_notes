@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { parseReviewCadenceMeta, handleCadenceChange } from '../utils/CadenceUtils';
+import { parseReviewCadenceMeta, handleCadenceChange } from '../utils/CadenceHelpUtils';
 
 const CadenceSelector = ({ noteId, notes, onCadenceChange }) => {
   const [cadenceType, setCadenceType] = useState('every-x-hours');

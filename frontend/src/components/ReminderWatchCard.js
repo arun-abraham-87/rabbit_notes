@@ -8,7 +8,7 @@ import {
   checkNeedsReview,
   formatTimestamp
 } from '../utils/watchlistUtils';
-import { getLastReviewTime as cadenceUtilsLastReviewTime, parseReviewCadenceMeta, getNextReviewDate, renderCadenceSummary, getBaseTime, handleRemoveLastReview, getNextReviewDateObj, formatDateTime, getHumanFriendlyTimeDiff, findDueRemindersAsNotes } from '../utils/CadenceUtils';
+import { getLastReviewTime as CadenceHelpUtilsLastReviewTime, parseReviewCadenceMeta, getNextReviewDate, renderCadenceSummary, getBaseTime, handleRemoveLastReview, getNextReviewDateObj, formatDateTime, getHumanFriendlyTimeDiff, findDueRemindersAsNotes } from '../utils/CadenceHelpUtils';
 
 const ReminderWatchCard = ({
   notes,
@@ -266,10 +266,10 @@ const ReminderWatchCard = ({
             {isWatchList && (
               <div className="mt-2 flex items-center justify-between border-t pt-2">
                 <div className="text-xs text-gray-500 flex flex-col">
-                  <span>{formatTimeRemaining(cadenceUtilsLastReviewTime(note.id), note.id, note)}</span>
+                  <span>{formatTimeRemaining(CadenceHelpUtilsLastReviewTime(note.id), note.id, note)}</span>
                   <span>
-                    Last review: {formatTimestamp(cadenceUtilsLastReviewTime(note.id))}
-                    {cadenceUtilsLastReviewTime(note.id) && (
+                    Last review: {formatTimestamp(CadenceHelpUtilsLastReviewTime(note.id))}
+                    {CadenceHelpUtilsLastReviewTime(note.id) && (
                       <button
                         onClick={() => handleRemoveLastReview(note.id)}
                         className="ml-2 text-xs text-red-500 underline hover:text-red-700"
@@ -286,7 +286,7 @@ const ReminderWatchCard = ({
                       <span className="text-purple-600">Reminder</span>
                       <div className="text-xs text-gray-400">
                         {needsReviewState[note.id] 
-                          ? 'Last review: ' + formatTimestamp(cadenceUtilsLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
+                          ? 'Last review: ' + formatTimestamp(CadenceHelpUtilsLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
                           : nextReviewTime[note.id]}
                         <div className="text-xs text-gray-400">
                           {showCadenceSelector === note.id ? (
@@ -316,7 +316,7 @@ const ReminderWatchCard = ({
                   ) : (
                     <>
                       {needsReviewState[note.id] 
-                        ? 'Last review: ' + formatTimestamp(cadenceUtilsLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
+                        ? 'Last review: ' + formatTimestamp(CadenceHelpUtilsLastReviewTime(note.id)) + ' (' + timeElapsed[note.id] + ')'
                         : nextReviewTime[note.id]}
                       <div className="text-xs text-gray-400">
                         {showCadenceSelector === note.id ? (

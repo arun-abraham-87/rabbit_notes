@@ -21,7 +21,7 @@ import {
 import { MapPinIcon } from '@heroicons/react/24/outline';
 import { getDateInDDMMYYYYFormat, getAgeInStringFmt } from '../utils/DateUtils';
 import { toast } from 'react-toastify';
-import { getDummyCadenceLine } from '../utils/CadenceUtils';
+import { getDummyCadenceLine } from '../utils/CadenceHelpUtils';
 
 const Tooltip = ({ text, children }) => {
   const [isHovered, setIsHovered] = useState(false);

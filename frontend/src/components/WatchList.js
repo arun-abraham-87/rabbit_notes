@@ -3,7 +3,7 @@ import ReminderWatchCard from './ReminderWatchCard';
 import { ClockIcon, PencilIcon, XMarkIcon, BellIcon } from '@heroicons/react/24/outline';
 import NoteEditor from './NoteEditor';
 import StockInfoPanel from './StockInfoPanel';
-import { findDueRemindersAsNotes, findRemindersNotDue } from '../utils/CadenceUtils';
+import { findDueRemindersAsNotes, findRemindersNotDue } from '../utils/CadenceHelpUtils';
 
 const WatchList = ({ allNotes, updateNote}) => {
   const [editingNote, setEditingNote] = useState(null);

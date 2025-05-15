@@ -326,21 +326,6 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                             }`}>
                               {getDateInDDMMYYYYFormatWithAgeInParentheses(occurrence.date)}
                             </p>
-                            <div className="flex items-center gap-2">
-                              {occurrence.isPast && (
-                                <span className="text-xs text-gray-400">
-                                  {Math.ceil((new Date() - occurrence.date) / (1000 * 60 * 60 * 24))} days ago
-                                </span>
-                              )}
-                              {!occurrence.isPast && !occurrence.isToday && (
-                                <span className="text-xs text-indigo-600">
-                                  {Math.ceil((occurrence.date - new Date()) / (1000 * 60 * 60 * 24))} days to event
-                                </span>
-                              )}
-                              {occurrence.isToday && (
-                                <span className="text-xs font-medium text-indigo-600">Today</span>
-                              )}
-                            </div>
                             <p className="text-xs text-gray-400 mt-1">
                               Original date: {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
                                 weekday: 'long',

@@ -5,7 +5,7 @@ import NoteEditor from './NoteEditor';
 import StockInfoPanel from './StockInfoPanel';
 import { findDueRemindersAsNotes, findRemindersNotDue } from '../utils/CadenceUtils';
 
-const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
+const WatchList = ({ allNotes, updateNote}) => {
   const [editingNote, setEditingNote] = useState(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const watchlistNotes = allNotes.filter(note => 
@@ -34,9 +34,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
     }
     
     // Update the note
-    updateNote(noteId, updatedContent).then(() => {
-      refreshNotes();
-    });
+    updateNote(noteId, updatedContent)
   };
 
   const handleMarkForReview = (noteId) => {
@@ -47,7 +45,6 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
     // Save back to localStorage
     localStorage.setItem('noteReviews', JSON.stringify(reviews));
     // Refresh the notes to update the UI
-    refreshNotes();
   };
 
   const getLastReviewTime = (noteId) => {
@@ -90,7 +87,7 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
 
   const reminderOverdueNotes = findDueRemindersAsNotes(allNotes)
 
-  const activeNotes = watchlistNotes.filter(note => 
+  const watchNotes = watchlistNotes.filter(note => 
     !reminderNotes.includes(note) && !reminderOverdueNotes.includes(note) && note.content.includes('meta::watch')
   );
 
@@ -105,7 +102,6 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
     // Call the parent's updateNote function to save the changes
     updateNote(noteId, updatedContent).then(() => {
       // Refresh the notes list
-      refreshNotes();
     });
   };
 
@@ -127,7 +123,6 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
     updateNote(editingNote.id, updatedNote);
     setIsEditorOpen(false);
     setEditingNote(null);
-    refreshNotes();
   };
 
   return (
@@ -178,11 +173,11 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
 
         
 
-        {activeNotes.length > 0 && (
+        {watchNotes.length > 0 && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Active Notes</h2>
             <ReminderWatchCard
-              notes={activeNotes}
+              notes={watchNotes}
               searchQuery=""
               duplicatedUrlColors={{}}
               editingLine={null}
@@ -209,7 +204,6 @@ const WatchList = ({ allNotes, updateNote, refreshNotes }) => {
               onContextMenu={() => {}}
               isWatchList={true}
               getNoteAge={getDaysSinceAdded}
-              refreshNotes={refreshNotes}
               onReview={handleMarkForReview}
               onCadenceChange={handleMarkForReview}
               onEdit={handleEdit}

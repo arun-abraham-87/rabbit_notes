@@ -1,3 +1,6 @@
+
+import { updateNoteById } from './ApiUtils';
+
 // cadenceUtils.js
 
 export function getLastReviewObject() {
@@ -141,18 +144,18 @@ function isReminderDue(note, now = new Date()) {
   // Get the next review time
   const nextReview = getNextReviewDate(note);
   if (!nextReview) return false;
-  if(nextReview.getTime() <= now.getTime()){
+  if (nextReview.getTime() <= now.getTime()) {
     console.log('nextReview', nextReview, 'now', now);
-    if(note.content.includes('Elaine and Noah Vitamins')){
+    if (note.content.includes('Elaine and Noah Vitamins')) {
       console.log('nextReview elaine and noah vitamins', nextReview, 'now', now);
     }
     return true;
   }
-  if(note.content.includes('Elaine and Noah Vitamins')){
+  if (note.content.includes('Elaine and Noah Vitamins')) {
     console.log(nextReview.getTime());
     console.log(now.getTime());
     console.log('false nextReview elaine and noah vitamins', nextReview, 'now', now);
-  } 
+  }
   // Check if the next review time has passed
   return false;
 }
@@ -196,7 +199,7 @@ export function renderCadenceSummary(note) {
     summary.push(`Review daily at ${meta.time || '09:00'}`);
   } else if (meta.type === 'weekly') {
     const days = Array.isArray(meta.days) ? meta.days : [];
-    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const selected = days.map(idx => dayNames[idx]).join(', ');
     summary.push(`Review weekly on ${selected || 'all days'} at ${meta.time || '09:00'}`);
   } else if (meta.type === 'monthly') {
@@ -226,7 +229,7 @@ export function getBaseTime(note) {
 }
 
 // Remove last review from localStorage for a note
-export function handleRemoveLastReview(noteId, refreshNotes) {
+export function handleRemoveLastReview(noteId) {
   const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
   delete reviews[noteId];
   localStorage.setItem('noteReviews', JSON.stringify(reviews));
@@ -271,4 +274,72 @@ export function getHumanFriendlyTimeDiff(nextReviewDate) {
   else if (minutes > 0) msg = `in ${minutes}m`;
   else msg = 'in <1m';
   return msg;
-} 
+}
+
+const getDummyCadenceObj = () => {
+  return { hours: 0, minutes: 0, type: 'every-x-hours', days: 0, time: '09:00', day: 1, start: new Date().toISOString().slice(0, 10), end: '' };
+}
+
+
+export const updateCadenceHoursMinutes = async (note, hours, minutes) => {
+  let cadenceObj = parseReviewCadenceMeta(note.content);
+  if (cadenceObj == null) {
+    cadenceObj = getDummyCadenceObj();
+  }
+  else {
+    cadenceObj.type = 'every-x-hours';
+    cadenceObj = { hours, minutes };
+  }
+  console.log('cadenceObj', cadenceObj);
+  await handleCadenceChange(note, hours, minutes, cadenceObj.type, cadenceObj.days, cadenceObj.time, cadenceObj.time, cadenceObj.days, cadenceObj.time, cadenceObj.day, cadenceObj.start, cadenceObj.end);
+}
+
+
+
+export const handleCadenceChange = async (note, hours, minutes, cadenceType, cadenceDays, dailyTime, weeklyTime, weeklyDays, monthlyTime, monthlyDay, startDate, endDate) => {
+  let cadenceObj = {};
+
+  if (cadenceType === 'every-x-hours') {
+    hours += cadenceDays * 24;
+    cadenceObj = { hours, minutes };
+  } else if (cadenceType === 'daily') {
+    hours = 24; minutes = 0;
+    cadenceObj = { hours, minutes, time: dailyTime };
+  } else if (cadenceType === 'weekly') {
+    hours = 24 * 7; minutes = 0;
+    cadenceObj = { hours, minutes, time: weeklyTime, days: weeklyDays };
+  } else if (cadenceType === 'monthly') {
+    hours = 24 * 30; minutes = 0;
+    cadenceObj = { hours, minutes, time: monthlyTime, day: monthlyDay };
+  } else if (cadenceType === 'yearly') {
+    hours = 24 * 365; minutes = 0;
+    cadenceObj = { hours, minutes };
+  }
+
+  cadenceObj.startDate = startDate;
+  cadenceObj.endDate = endDate;
+
+  // Build single-line meta tag
+  let metaLine = `meta::review_cadence::type=${cadenceType}`;
+  metaLine += `;hours=${hours}`;
+  metaLine += `;minutes=${minutes}`;
+  if (cadenceObj.time) metaLine += `;time=${cadenceObj.time}`;
+  if (cadenceType === 'weekly' && cadenceObj.days) metaLine += `;days=${cadenceObj.days.join(',')}`;
+  if (cadenceType === 'monthly' && cadenceObj.day) metaLine += `;day=${cadenceObj.day}`;
+  if (cadenceType === 'yearly' && cadenceObj.day && cadenceObj.month) metaLine += `;day=${cadenceObj.day};month=${cadenceObj.month}`;
+  if (cadenceObj.startDate) metaLine += `;start=${cadenceObj.startDate}`;
+  if (cadenceObj.endDate) metaLine += `;end=${cadenceObj.endDate}`;
+
+  // Find the note and update its content
+  if (note) {
+    let lines = note.content.split('\n');
+    const metaIdx = lines.findIndex(line => line.startsWith('meta::review_cadence::'));
+    if (metaIdx !== -1) {
+      lines[metaIdx] = metaLine;
+    } else {
+      lines.push(metaLine);
+    }
+    const updatedContent = lines.join('\n');
+    await updateNoteById(note.id, updatedContent);
+  }
+};

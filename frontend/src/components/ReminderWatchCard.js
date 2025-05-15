@@ -37,7 +37,6 @@ const ReminderWatchCard = ({
   updateNote,
   onContextMenu,
   isWatchList = false,
-  refreshNotes,
   onEdit,
   onMarkForReview,
   onMarkAsReminder
@@ -79,7 +78,7 @@ const ReminderWatchCard = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [notes, needsReviewState, refreshNotes]);
+  }, [notes, needsReviewState]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -272,7 +271,7 @@ const ReminderWatchCard = ({
                     Last review: {formatTimestamp(cadenceUtilsLastReviewTime(note.id))}
                     {cadenceUtilsLastReviewTime(note.id) && (
                       <button
-                        onClick={() => handleRemoveLastReview(note.id, refreshNotes)}
+                        onClick={() => handleRemoveLastReview(note.id)}
                         className="ml-2 text-xs text-red-500 underline hover:text-red-700"
                         title="Remove last review from local storage"
                         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
@@ -296,9 +295,7 @@ const ReminderWatchCard = ({
                               notes={notes}
                               onCadenceChange={() => {
                                 setShowCadenceSelector(null);
-                                if (typeof refreshNotes === 'function') {
-                                  refreshNotes();
-                                }
+                               
                               }}
                             />
                           ) : (
@@ -328,9 +325,7 @@ const ReminderWatchCard = ({
                             notes={notes}
                             onCadenceChange={() => {
                               setShowCadenceSelector(null);
-                              if (typeof refreshNotes === 'function') {
-                                refreshNotes();
-                              }
+                              
                             }}
                           />
                         ) : (

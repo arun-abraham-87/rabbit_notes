@@ -324,19 +324,24 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                             <p className={`text-sm ${
                               occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
                             }`}>
-                              {getDateInDDMMYYYYFormatWithAgeInParentheses(occurrence.date)}
+                              <span className="font-medium">Date:</span> {getDateInDDMMYYYYFormatWithAgeInParentheses(occurrence.date)}
                             </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              Original date: {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
+                            <p className="text-sm text-gray-600 mt-1">
+                              <span className="font-medium">Original date:</span> {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 year: 'numeric',
                                 month: 'long',
                                 day: 'numeric'
                               })}
                             </p>
+                            {occurrence.event.recurrence !== 'none' && occurrence.age && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                <span className="font-medium">Age:</span> {occurrence.age}
+                              </p>
+                            )}
                             {occurrence.event.notes && (
                               <p className="text-sm text-gray-600 mt-1 italic">
-                                Notes: {occurrence.event.notes}
+                                <span className="font-medium">Notes:</span> {occurrence.event.notes}
                               </p>
                             )}
                             {/* Tags display */}
@@ -412,15 +417,6 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                           </div>
                         </div>
                       </div>
-
-                      {/* Age information - only show for recurring events */}
-                      {occurrence.event.recurrence !== 'none' && occurrence.age && (
-                        <div className={`text-sm font-medium ${
-                          occurrence.isPast ? 'text-gray-400' : 'text-indigo-600'
-                        }`}>
-                          Age: {occurrence.age}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>

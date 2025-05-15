@@ -15,6 +15,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
   const [tags, setTags] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [eventNotes, setEventNotes] = useState('');
 
   const existingTags = getAllUniqueTags(notes || []);
 
@@ -67,6 +68,12 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
       if (recurringEndLine) {
         setRecurrenceEndDate(recurringEndLine.replace('event_recurring_end:', '').trim());
       }
+
+      // Parse notes
+      const notesLine = lines.find(line => line.startsWith('event_notes:'));
+      if (notesLine) {
+        setEventNotes(notesLine.replace('event_notes:', '').trim());
+      }
     }
   }, [note]);
 
@@ -109,6 +116,9 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
     if (location) {
       content += `\nevent_location:${location}`;
     }
+    if (eventNotes) {
+      content += `\nevent_notes:${eventNotes}`;
+    }
     if (isRecurring) {
       content += `\nevent_recurring_type:${recurrenceType}`;
       if (recurrenceEndDate) {
@@ -137,6 +147,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
     setRecurrenceEndDate('');
     setTags('');
     setTagInput('');
+    setEventNotes('');
   };
 
   const handleDelete = async () => {
@@ -184,6 +195,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
     setRecurrenceEndDate('');
     setTags('');
     setTagInput('');
+    setEventNotes('');
 
     // Call the onCancel prop
     if (typeof onCancel === 'function') {
@@ -325,6 +337,19 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
               </div>
             </>
           )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Notes (optional)
+            </label>
+            <textarea
+              value={eventNotes}
+              onChange={(e) => setEventNotes(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Add any additional notes..."
+              rows="3"
+            />
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

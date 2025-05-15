@@ -341,6 +341,11 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                                 day: 'numeric'
                               })}
                             </p>
+                            {occurrence.event.notes && (
+                              <p className="text-sm text-gray-600 mt-1 italic">
+                                Notes: {occurrence.event.notes}
+                              </p>
+                            )}
                             {/* Tags display */}
                             {occurrence.event.tags && occurrence.event.tags.length > 0 && (
                               <div className="mt-2 flex flex-wrap gap-1">

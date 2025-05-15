@@ -19,6 +19,7 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
   const [tags, setTags] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [isDeadline, setIsDeadline] = useState(isAddDeadline || false);
+  const [eventNotes, setEventNotes] = useState('');
 
   // Initialize form with initialValues if provided
   useEffect(() => {
@@ -29,6 +30,15 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
       setIsRecurring(!!initialValues.recurrenceType);
       setRecurrenceType(initialValues.recurrenceType || 'daily');
       setIsDeadline(isAddDeadline || false);
+      
+      // Extract notes from the content if it exists
+      if (initialValues.content) {
+        const lines = initialValues.content.split('\n');
+        const notesLine = lines.find(line => line.startsWith('event_notes:'));
+        if (notesLine) {
+          setEventNotes(notesLine.replace('event_notes:', '').trim());
+        }
+      }
     }
   }, [initialValues, isAddDeadline]);
 
@@ -87,6 +97,11 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
       if (tags) {
         content += `\nevent_tags:${tags}`;
       }
+
+      // Add notes if any
+      if (eventNotes) {
+        content += `\nevent_notes:${eventNotes}`;
+      }
     }
     
     // Add meta information as the last lines
@@ -110,6 +125,7 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
     setTags('');
     setTagInput('');
     setIsDeadline(isAddDeadline || false);
+    setEventNotes('');
     onClose();
   };
 
@@ -272,6 +288,19 @@ const AddEventModal = ({ isOpen, onClose, onAdd, notes, isAddDeadline, initialVa
                   </div>
                 </>
               )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes (optional)
+                </label>
+                <textarea
+                  value={eventNotes}
+                  onChange={(e) => setEventNotes(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Add any additional notes..."
+                  rows="3"
+                />
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -18,6 +18,10 @@ const getEventDetails = (content) => {
   const eventDateLine = lines.find(line => line.startsWith('event_date:'));
   const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
 
+  // Find event notes
+  const notesLine = lines.find(line => line.startsWith('event_notes:'));
+  const notes = notesLine ? notesLine.replace('event_notes:', '').trim() : '';
+
   // Find recurring info
   const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
   let recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
@@ -97,7 +101,7 @@ const getEventDetails = (content) => {
     }
   }
 
-  return { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, tags };
+  return { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, tags, notes };
 };
 
 const EventsPage = ({ allNotes, setAllNotes }) => {
@@ -161,7 +165,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
 
     // Prepare events for calendar view
     const calendarEvents = events.map(event => {
-      const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence } = getEventDetails(event.content);
+      const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, notes } = getEventDetails(event.content);
       return {
         id: event.id,
         description,
@@ -170,6 +174,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         metaDate,
         nextOccurrence,
         lastOccurrence,
+        notes,
         content: event.content
       };
     });

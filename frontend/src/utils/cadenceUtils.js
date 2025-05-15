@@ -137,7 +137,7 @@ function isReminderDue(note, now = new Date()) {
   if (!note || !note.content) return false;
 
   // Only look at notes with reminder tag
-  if (!note.content.includes('meta::reminder')) return false;
+  if (!note.content.includes('meta::watch')) return false;
 
   // Skip dismissed or snoozed reminders
   if (note.content.includes('meta::reminder_dismissed')) return false;

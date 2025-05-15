@@ -16,6 +16,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
   const [tagInput, setTagInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventNotes, setEventNotes] = useState('');
+  const [isReference, setIsReference] = useState(false);
 
   const existingTags = getAllUniqueTags(notes || []);
 
@@ -73,6 +74,12 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
       const notesLine = lines.find(line => line.startsWith('event_notes:'));
       if (notesLine) {
         setEventNotes(notesLine.replace('event_notes:', '').trim());
+      }
+
+      // Parse reference status
+      const isReferenceLine = lines.find(line => line.startsWith('meta::event_ref:'));
+      if (isReferenceLine) {
+        setIsReference(isReferenceLine.includes('true'));
       }
     }
   }, [note]);
@@ -133,6 +140,9 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
 
     // Add meta information as the last lines
     content += `\nmeta::event::${new Date().toISOString()}`;
+    if (isReference) {
+      content += `\nmeta::event_ref:true`;
+    }
 
     onSave(content);
 
@@ -148,6 +158,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
     setTags('');
     setTagInput('');
     setEventNotes('');
+    setIsReference(false);
   };
 
   const handleDelete = async () => {
@@ -196,6 +207,7 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
     setTags('');
     setTagInput('');
     setEventNotes('');
+    setIsReference(false);
 
     // Call the onCancel prop
     if (typeof onCancel === 'function') {
@@ -410,6 +422,19 @@ const EditEventModal = ({ note, onSave, onCancel, onSwitchToNormalEdit, onDelete
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="isReference"
+              checked={isReference}
+              onChange={(e) => setIsReference(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="isReference" className="text-sm text-gray-600">
+              Mark as reference
+            </label>
           </div>
         </div>
 

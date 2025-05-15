@@ -146,17 +146,7 @@ function isReminderDue(note, now = new Date()) {
   if (!nextReview) return false;
 
   if (nextReview.getTime() <= now.getTime()) {
-    console.log('nextReview', nextReview, 'now', now);
-    if (note.content.includes('Elaine and Noah Vitamins')) {
-      console.log('nextReview elaine and noah vitamins', nextReview, 'now', now);
-    }
     return true;
-  }
-
-  if (note.content.includes('Elaine and Noah Vitamins')) {
-    console.log(nextReview.getTime());
-    console.log(now.getTime());
-    console.log('false nextReview elaine and noah vitamins', nextReview, 'now', now);
   }
 
   return false;
@@ -279,7 +269,7 @@ export const getDummyCadenceLine = () => {
   return `meta::review_cadence::type=every-x-hours;hours=0;minutes=1;time=09:00;days=0;start=${new Date().toISOString().slice(0, 10)};end=`;
 }
 
-export const addCadenceLineToNote = async (note, cadenceObj = {}, dummy = false) => {
+export const addCadenceLineToNote = (note, cadenceObj = {}, dummy = false) => {
   if (dummy) {
     cadenceObj = getDummyCadenceObj();
   }
@@ -301,14 +291,14 @@ export const addCadenceLineToNote = async (note, cadenceObj = {}, dummy = false)
     }
     console.log("lines", lines);
     const updatedContent = lines.join('\n');
-    const res = await updateNoteById(note.id, updatedContent);
-    return res;
+    const res = updateNoteById(note.id, updatedContent);
+    return updatedContent;
   }
 }
 
 
 
-export const updateCadenceHoursMinutes = async (note, hours, minutes) => {
+export const updateCadenceHoursMinutes = (note, hours, minutes) => {
   let cadenceObj = parseReviewCadenceMeta(note.content);
   if (cadenceObj == null) {
     cadenceObj = getDummyCadenceObj();
@@ -319,12 +309,12 @@ export const updateCadenceHoursMinutes = async (note, hours, minutes) => {
     cadenceObj.minutes = minutes;
   }
   console.log('cadenceObj', cadenceObj);
-  await handleCadenceChange(note, hours, minutes, cadenceObj.type, cadenceObj.days, cadenceObj.time, cadenceObj.time, cadenceObj.days, cadenceObj.time, cadenceObj.day, cadenceObj.start, cadenceObj.end);
+  return handleCadenceChange(note, hours, minutes, cadenceObj.type, cadenceObj.days, cadenceObj.time, cadenceObj.time, cadenceObj.days, cadenceObj.time, cadenceObj.day, cadenceObj.start, cadenceObj.end);
 }
 
 
 
-export const handleCadenceChange = async (note, hours, minutes, cadenceType, cadenceDays, dailyTime, weeklyTime, weeklyDays, monthlyTime, monthlyDay, startDate, endDate) => {
+export const handleCadenceChange = (note, hours, minutes, cadenceType, cadenceDays, dailyTime, weeklyTime, weeklyDays, monthlyTime, monthlyDay, startDate, endDate) => {
   let cadenceObj = {
     type: cadenceType,
   };
@@ -364,7 +354,7 @@ export const handleCadenceChange = async (note, hours, minutes, cadenceType, cad
 
   console.log('cadenceObj', cadenceObj);
   // Build single-line meta tag
-  const res = await addCadenceLineToNote(note, cadenceObj, false);
+  const res = addCadenceLineToNote(note, cadenceObj, false);
   return res;
 
   // Find the note and update its content

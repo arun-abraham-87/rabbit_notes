@@ -239,9 +239,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const handleCadence = (note,hours,minutes) => {
     console.log('Setting 2 hour cadence for note:', note.id);
     const res = updateCadenceHoursMinutes(note,hours,minutes);
-    console.log('res',res);
     addCurrentDateToLocalStorage(note.id);
-    setNotes([...notes]);
+    setNotes(notes.map(n => n.id === note.id ? { ...n, content: res } : n));
   };
 
   return (
@@ -332,7 +331,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                             Set Cadence
                           </button>
                           <button
-                            onClick={() => handleCadence(note)}
+                            onClick={() => handleCadence(note,2,0)}
                             className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                             title="Set 2 Hour Cadence"
                           >

@@ -19,6 +19,8 @@ const StockVesting = ({ notes }) => {
   const [showTaxModal, setShowTaxModal] = useState(false);
   const [tempTaxRate, setTempTaxRate] = useState('');
   const [showTaxObligation, setShowTaxObligation] = useState(false);
+  const [excludeSold, setExcludeSold] = useState(false);
+  const [excludeUnvested, setExcludeUnvested] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -407,6 +409,84 @@ const StockVesting = ({ notes }) => {
   // Calculate total number of grants (unique grant cards)
   const totalGrants = vestingData.length;
 
+  // Parse sold notes and initialize soldRecords FIRST
+  const soldNotes = notes.filter(note => note.content && note.content.includes('meta::stock_vesting_sold_data'));
+  let soldRecords = [];
+  soldNotes.forEach(note => {
+    const lines = note.content.split('\n');
+    lines.forEach((line, idx) => {
+      if (idx === 0 || line.includes('meta::stock_vesting_sold_data')) return;
+      const [
+        symbol,
+        quantity,
+        dateOfSell,
+        dateAcquired,
+        adjustedCostBasis,
+        totalProceeds,
+        gainLoss,
+        capitalGainsStatus
+      ] = line.split(',').map(item => item && item.trim());
+      if (quantity && dateAcquired) {
+        soldRecords.push({
+          symbol,
+          quantity: parseFloat(quantity),
+          dateOfSell,
+          dateAcquired,
+          adjustedCostBasis,
+          totalProceeds,
+          gainLoss,
+          capitalGainsStatus,
+          matched: false
+        });
+      }
+    });
+  });
+
+  // Calculate total gain/loss and total proceeds from all sold records with date of sell in the past
+  const now = new Date();
+  const totalGainLoss = soldRecords
+    .filter(sold => {
+      if (!sold.dateOfSell) return false;
+      const [day, month, year] = sold.dateOfSell.split('/');
+      const sellDate = new Date(year, parseInt(month) - 1, day);
+      return sellDate <= now;
+    })
+    .reduce((sum, sold) => sum + (parseFloat(sold.gainLoss) || 0), 0);
+  const totalProceeds = soldRecords
+    .filter(sold => {
+      if (!sold.dateOfSell) return false;
+      const [day, month, year] = sold.dateOfSell.split('/');
+      const sellDate = new Date(year, parseInt(month) - 1, day);
+      return sellDate <= now;
+    })
+    .reduce((sum, sold) => sum + (parseFloat(sold.totalProceeds) || 0), 0);
+  const taxedGainLoss = taxRate ? totalGainLoss * taxRate : null;
+
+  // Helper to match sold record to vesting row
+  const findMatchingSoldRecord = (row) => {
+    // Match by quantity and date acquired (vesting date) in dd/mm/yyyy format
+    const vestDateStr = row.vestDate;
+    const matchIdx = soldRecords.findIndex(sold =>
+      sold.quantity === row.grantQuantity &&
+      sold.dateAcquired === vestDateStr &&
+      !sold.matched
+    );
+    if (matchIdx !== -1) {
+      soldRecords[matchIdx].matched = true;
+      return soldRecords[matchIdx];
+    }
+    return null;
+  };
+
+  // Helper to check if a row is sold (for filtering)
+  const isRowSold = (row) => {
+    const vestDateStr = row.vestDate;
+    return soldRecords.some(sold =>
+      sold.quantity === row.grantQuantity &&
+      sold.dateAcquired === vestDateStr
+    );
+  };
+
   if (!vestingData || vestingData.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -434,7 +514,7 @@ const StockVesting = ({ notes }) => {
       <h1 className="text-2xl font-bold mb-6">Stock Vesting Details</h1>
 
       {/* Totals Summary */}
-      <div className="grid grid-cols-5 gap-4 mb-4">
+      <div className="grid grid-cols-6 gap-4 mb-4">
         {/* Total Grants Card */}
         <div className="bg-gray-50 p-4 rounded-lg flex flex-col items-center justify-center">
           <div className="text-sm font-medium text-gray-500 mb-1">Total Number of Grants</div>
@@ -502,6 +582,17 @@ const StockVesting = ({ notes }) => {
             }
           })()}
         </div>
+        {/* Gain/Loss and Proceeds Card */}
+        <div className="bg-gray-50 p-4 rounded-lg flex flex-col items-center justify-center">
+          <div className="text-sm font-medium text-gray-500 mb-1">Total Gain/Loss (Sold)</div>
+          <div className={`text-lg font-bold mb-1 ${totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>{currency === 'USD' ? '$' : 'A$'} {totalGainLoss.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+          {taxRate && (
+            <div className="text-xs text-gray-500 opacity-80">
+              After Tax ({(taxRate * 100).toFixed(1)}%): {currency === 'USD' ? '$' : 'A$'} {taxedGainLoss.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            </div>
+          )}
+          <div className="text-xs text-gray-500 opacity-80">Total Proceeds: {currency === 'USD' ? '$' : 'A$'} {totalProceeds.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+        </div>
       </div>
       
       {/* Currency and Tax Controls */}
@@ -551,6 +642,24 @@ const StockVesting = ({ notes }) => {
             </button>
           </div>
         )}
+        <label className="flex items-center gap-2 ml-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={excludeSold}
+            onChange={() => setExcludeSold(v => !v)}
+            className="form-checkbox h-4 w-4 text-black"
+          />
+          <span className="text-sm text-gray-700">Exclude Sold Shares</span>
+        </label>
+        <label className="flex items-center gap-2 ml-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={excludeUnvested}
+            onChange={() => setExcludeUnvested(v => !v)}
+            className="form-checkbox h-4 w-4 text-black"
+          />
+          <span className="text-sm text-gray-700">Exclude Unvested Quantity</span>
+        </label>
       </div>
 
       {/* Conversion Rate Modal */}
@@ -928,6 +1037,8 @@ const StockVesting = ({ notes }) => {
               vestingData.flatMap((schedule, scheduleIndex) => 
                 schedule.data
                   .filter(row => {
+                    if (excludeSold && isRowSold(row)) return false;
+                    if (excludeUnvested && row.unvestQuantity > 0) return false;
                     if (!showUnvestedOnly) return true;
                     if (!row.vestDate) return false;
                     const [day, month, year] = row.vestDate.split('/');
@@ -977,6 +1088,21 @@ const StockVesting = ({ notes }) => {
                           </div>
                         )}
                       </td>
+                      <td className="px-6 py-4 border-b">
+                        {(() => {
+                          const sold = findMatchingSoldRecord(row);
+                          if (sold) {
+                            return (
+                              <div className="text-xs text-red-600 font-semibold">
+                                Sold: {sold.quantity} on {sold.dateOfSell}<br/>
+                                Proceeds: {currency === 'USD' ? '$' : 'A$'} {sold.totalProceeds}<br/>
+                                Gain/Loss: {currency === 'USD' ? '$' : 'A$'} {sold.gainLoss} ({sold.capitalGainsStatus})
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </td>
                     </tr>
                   ))
               )
@@ -988,6 +1114,8 @@ const StockVesting = ({ notes }) => {
                   {vestingData
                     .flatMap(schedule => schedule.data)
                     .filter(row => {
+                      if (excludeSold && isRowSold(row)) return false;
+                      if (excludeUnvested && row.unvestQuantity > 0) return false;
                       if (!showUnvestedOnly) return true;
                       if (!row.vestDate) return false;
                       const [day, month, year] = row.vestDate.split('/');
@@ -1002,6 +1130,8 @@ const StockVesting = ({ notes }) => {
                         vestingData
                           .flatMap(schedule => schedule.data)
                           .filter(row => {
+                            if (excludeSold && isRowSold(row)) return false;
+                            if (excludeUnvested && row.unvestQuantity > 0) return false;
                             if (!showUnvestedOnly) return true;
                             if (!row.vestDate) return false;
                             const [day, month, year] = row.vestDate.split('/');
@@ -1017,6 +1147,8 @@ const StockVesting = ({ notes }) => {
                   {vestingData
                     .flatMap(schedule => schedule.data)
                     .filter(row => {
+                      if (excludeSold && isRowSold(row)) return false;
+                      if (excludeUnvested && row.unvestQuantity > 0) return false;
                       if (!showUnvestedOnly) return true;
                       if (!row.vestDate) return false;
                       const [day, month, year] = row.vestDate.split('/');
@@ -1031,6 +1163,8 @@ const StockVesting = ({ notes }) => {
                         vestingData
                           .flatMap(schedule => schedule.data)
                           .filter(row => {
+                            if (excludeSold && isRowSold(row)) return false;
+                            if (excludeUnvested && row.unvestQuantity > 0) return false;
                             if (!showUnvestedOnly) return true;
                             if (!row.vestDate) return false;
                             const [day, month, year] = row.vestDate.split('/');
@@ -1046,6 +1180,8 @@ const StockVesting = ({ notes }) => {
                   {vestingData
                     .flatMap(schedule => schedule.data)
                     .filter(row => {
+                      if (excludeSold && isRowSold(row)) return false;
+                      if (excludeUnvested && row.unvestQuantity > 0) return false;
                       if (!showUnvestedOnly) return true;
                       if (!row.vestDate) return false;
                       const [day, month, year] = row.vestDate.split('/');
@@ -1060,6 +1196,8 @@ const StockVesting = ({ notes }) => {
                         vestingData
                           .flatMap(schedule => schedule.data)
                           .filter(row => {
+                            if (excludeSold && isRowSold(row)) return false;
+                            if (excludeUnvested && row.unvestQuantity > 0) return false;
                             if (!showUnvestedOnly) return true;
                             if (!row.vestDate) return false;
                             const [day, month, year] = row.vestDate.split('/');
@@ -1076,6 +1214,41 @@ const StockVesting = ({ notes }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Unmatched Sold Records Section */}
+      {soldRecords.filter(s => !s.matched).length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-lg font-bold mb-2 text-red-700">Unmatched Sold Records</h2>
+          <table className="min-w-full bg-white border border-gray-300 mb-4">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="px-6 py-3 border-b text-left">Symbol</th>
+                <th className="px-6 py-3 border-b text-left">Quantity</th>
+                <th className="px-6 py-3 border-b text-left">Date of Sell</th>
+                <th className="px-6 py-3 border-b text-left">Date Acquired</th>
+                <th className="px-6 py-3 border-b text-left">Adjusted Cost Basis</th>
+                <th className="px-6 py-3 border-b text-left">Total Proceeds</th>
+                <th className="px-6 py-3 border-b text-left">Gain/Loss</th>
+                <th className="px-6 py-3 border-b text-left">Capital Gains Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {soldRecords.filter(s => !s.matched).map((sold, idx) => (
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                  <td className="px-6 py-4 border-b">{sold.symbol}</td>
+                  <td className="px-6 py-4 border-b">{sold.quantity}</td>
+                  <td className="px-6 py-4 border-b">{sold.dateOfSell}</td>
+                  <td className="px-6 py-4 border-b">{sold.dateAcquired}</td>
+                  <td className="px-6 py-4 border-b">{sold.adjustedCostBasis}</td>
+                  <td className="px-6 py-4 border-b">{sold.totalProceeds}</td>
+                  <td className="px-6 py-4 border-b">{sold.gainLoss}</td>
+                  <td className="px-6 py-4 border-b">{sold.capitalGainsStatus}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

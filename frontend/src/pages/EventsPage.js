@@ -290,8 +290,16 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
               placeholder="Search events..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full"
+              className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            )}
           </div>
           <button
             onClick={() => setShowOnlyDeadlines(!showOnlyDeadlines)}
@@ -307,7 +315,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         </div>
 
         {/* Tag Pills */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {uniqueTags.map(tag => (
             <button
               key={tag}
@@ -323,9 +331,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           {selectedTags.length > 0 && (
             <button
               onClick={() => setSelectedTags([])}
-              className="px-3 py-1 rounded-full text-sm font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-200 border border-gray-200"
+              className="ml-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 flex items-center gap-2"
             >
-              Clear All
+              <XMarkIcon className="h-4 w-4" />
+              Clear All Tags
             </button>
           )}
         </div>

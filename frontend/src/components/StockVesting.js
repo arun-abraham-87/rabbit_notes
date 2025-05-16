@@ -201,11 +201,24 @@ const StockVesting = ({ notes }) => {
               <h3 className="text-sm font-medium text-gray-500">Next Vest</h3>
               {schedule.nextVest ? (
                 <>
-                  <p className="text-lg font-semibold">{schedule.nextVest.quantity.toLocaleString()}</p>
-                  <p className="text-sm text-gray-600">{schedule.nextVest.date}</p>
+                  <div className="mt-2">
+                    <span className="text-gray-600">Date: </span>
+                    <span className="text-green-500">
+                      {formatDateWithMonthName(schedule.nextVest.date)}
+                    </span>
+                    <span className="text-gray-500 ml-2">
+                      ({getAgeInStringFmt(schedule.nextVest.date)})
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-gray-600">Quantity: </span>
+                    <span>
+                      {schedule.nextVest.quantity.toLocaleString()}
+                    </span>
+                  </div>
                 </>
               ) : (
-                <p className="text-lg font-semibold text-gray-500">No upcoming vests</p>
+                <p className="text-gray-500 mt-2">No upcoming vests</p>
               )}
             </div>
           </div>

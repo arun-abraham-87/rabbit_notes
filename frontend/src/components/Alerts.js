@@ -845,7 +845,6 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
           searchQuery=''
           currentDate=''
         />
-        <TrackerQuestionsAlert notes={notes} expanded={false} />
         <AlertsContainer 
           expanded={true}
           notes={notes} 

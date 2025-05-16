@@ -12,7 +12,8 @@ import {
   FlagIcon,
   SparklesIcon,
   InformationCircleIcon,
-  CodeBracketIcon
+  CodeBracketIcon,
+  FunnelIcon
 } from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
@@ -162,6 +163,9 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
     acc[month].push(occurrence);
     return acc;
   }, {});
+
+  // Filter events based on current filters
+  const filteredEvents = events;
 
   const handleEditEvent = (event) => {
     setEditingEvent(event);

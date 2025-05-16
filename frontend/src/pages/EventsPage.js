@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
-import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon, EyeIcon, EyeSlashIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon, EyeIcon, EyeSlashIcon, ArrowsRightLeftIcon, FlagIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
 import EditEventModal from '../components/EditEventModal';
 import CalendarView from '../components/CalendarView';
@@ -116,6 +116,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [weekly, setWeekly] = useState(0);
   const [monthly, setMonthly] = useState(0);
   const [none, setNone] = useState(0);
+  const [showOnlyDeadlines, setShowOnlyDeadlines] = useState(false);
   // Get all unique tags from events
   const uniqueTags = useMemo(() => {
     const tags = new Set();
@@ -131,7 +132,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   useEffect(() => {
     setCalendarEvents(getCalendarEvents());
     setTotal(getCalendarEvents().length);
-  }, [allNotes, searchQuery, selectedTags]);
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines]);
 
   const getCalendarEvents = () => {
     // Filter and group events
@@ -140,13 +141,14 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       .filter(note => {
         const { description, tags } = getEventDetails(note.content);
         const matchesSearch = description.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesDeadline = !showOnlyDeadlines || note.content.includes('meta::event_deadline');
         // If no tags are selected, show all events
         if (selectedTags.length === 0) {
-          return matchesSearch;
+          return matchesSearch && matchesDeadline;
         }
         // If tags are selected, show only events that have ALL selected tags
         const matchesTags = selectedTags.every(tag => tags.includes(tag));
-        return matchesSearch && matchesTags;
+        return matchesSearch && matchesTags && matchesDeadline;
       });
 
     // Calculate totals for different recurrence types
@@ -278,7 +280,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
 
       {/* Search and Tag Filter */}
       <div className="flex flex-col space-y-4">
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col space-y-4">
           <div className="relative flex-1">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
@@ -291,6 +293,17 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full"
             />
           </div>
+          <button
+            onClick={() => setShowOnlyDeadlines(!showOnlyDeadlines)}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-fit ${
+              showOnlyDeadlines
+                ? 'bg-red-100 text-red-700 border border-red-200 hover:bg-red-200'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <FlagIcon className="h-5 w-5" />
+            {showOnlyDeadlines ? 'Show All Events' : 'Show Deadlines Only'}
+          </button>
         </div>
 
         {/* Tag Pills */}

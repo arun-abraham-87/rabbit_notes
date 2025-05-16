@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon } from '@heroicons/react/24/solid';
-import { createNote, updateNoteById } from '../utils/ApiUtils';
 
-const EventManager = ({ selectedDate, onClose, onEventAdded, notes, setNotes, eventToEdit }) => {
+const EventManager = ({ selectedDate, onClose }) => {
   const [events, setEvents] = useState(() => {
     try {
       const stored = localStorage.getItem('tempEvents');
@@ -33,31 +32,6 @@ const EventManager = ({ selectedDate, onClose, onEventAdded, notes, setNotes, ev
     endDate: '' 
   });
 
-  // Initialize form with event data if editing
-  useEffect(() => {
-    if (eventToEdit) {
-      const lines = eventToEdit.content.split('\n');
-      const title = lines[0].trim().replace('event_description:', '').trim();
-      const eventDateLine = lines.find(line => line.trim().startsWith('event_date:'));
-      const date = eventDateLine ? new Date(eventDateLine.split(':')[1].trim().split("T")[0]) : null;
-      
-      setEventForm({
-        name: title,
-        date: date ? formatDate(date) : formatDate(selectedDate),
-        endDate: ''
-      });
-      setIsEditMode(true);
-      setIsModalOpen(true);
-    } else {
-      setEventForm({
-        name: '',
-        date: selectedDate ? formatDate(selectedDate) : '',
-        endDate: ''
-      });
-      setIsEditMode(false);
-    }
-  }, [eventToEdit, selectedDate]);
-
   // Update eventForm when selectedDate changes
   useEffect(() => {
     if (selectedDate) {
@@ -84,48 +58,21 @@ const EventManager = ({ selectedDate, onClose, onEventAdded, notes, setNotes, ev
     setEventForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleEventSubmit = async (e) => {
+  const handleEventSubmit = (e) => {
     e.preventDefault();
     if (!eventForm.name || !eventForm.date) return;
     
-    try {
-      // Create the event content with required metadata
-      const eventContent = `event_description:${eventForm.name}\nevent_date:${eventForm.date}T12:00\nmeta::event::${eventForm.date}`;
-      
-      if (isEditMode && eventToEdit) {
-        // Update existing note
-        const response = await updateNoteById(eventToEdit.id, eventContent);
-        if (response && response.note) {
-          // Update the notes array
-          if (setNotes && notes) {
-            setNotes(notes.map(note => 
-              note.id === eventToEdit.id ? response.note : note
-            ));
-          }
-        }
-      } else {
-        // Create new note
-        const response = await createNote(eventContent);
-        if (response && response.note) {
-          // Add the new note to the notes array
-          if (setNotes && notes) {
-            setNotes([...notes, response.note]);
-          }
-        }
-      }
-      
-      // Reset form and close modal
-      setEventForm({ name: '', date: '', endDate: '' });
-      setIsModalOpen(false);
-      setIsEditMode(false);
-      
-      // Notify parent component that an event was added/edited
-      if (onEventAdded) {
-        onEventAdded();
-      }
-    } catch (error) {
-      console.error('Error creating/updating event:', error);
-    }
+    const newEvent = {
+      id: Date.now(),
+      ...eventForm
+    };
+    
+    setEvents(prev => [...prev, newEvent]);
+    
+    // Reset form and close modal
+    setEventForm({ name: '', date: '', endDate: '' });
+    setIsModalOpen(false);
+    setIsEditMode(false);
   };
 
   const handleEditEvent = (event) => {

@@ -9,7 +9,8 @@ import {
   PencilIcon,
   XMarkIcon,
   DocumentTextIcon,
-  FlagIcon
+  FlagIcon,
+  SparklesIcon
 } from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
@@ -273,20 +274,27 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                       occurrence.isPast 
                         ? 'bg-gray-200 text-gray-600' 
                         : occurrence.isToday 
-                          ? 'bg-indigo-500 text-white'
+                          ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
                           : 'bg-blue-500 text-white'
                     }`}>
-                      <div className="text-2xl font-bold">
-                        {occurrence.isPast 
-                          ? Math.ceil((new Date() - occurrence.date) / (1000 * 60 * 60 * 24))
-                          : occurrence.isToday 
-                            ? 0
-                            : Math.ceil((occurrence.date - new Date()) / (1000 * 60 * 60 * 24))
-                        }
-                      </div>
-                      <div className="text-xs font-medium">
-                        {occurrence.isPast ? 'DAYS AGO' : 'DAYS TO'}
-                      </div>
+                      {occurrence.isToday ? (
+                        <div className="flex flex-col items-center justify-center py-2">
+                          <SparklesIcon className="h-8 w-8 mb-1" />
+                          <div className="text-xs font-medium">TODAY</div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-2xl font-bold">
+                            {occurrence.isPast 
+                              ? Math.ceil((new Date() - occurrence.date) / (1000 * 60 * 60 * 24))
+                              : Math.ceil((occurrence.date - new Date()) / (1000 * 60 * 60 * 24))
+                            }
+                          </div>
+                          <div className="text-xs font-medium">
+                            {occurrence.isPast ? 'DAYS AGO' : 'DAYS TO'}
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     <div className="flex-1 space-y-3">

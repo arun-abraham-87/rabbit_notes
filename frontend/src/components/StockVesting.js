@@ -9,7 +9,108 @@ const StockVesting = ({ notes }) => {
   const [showNext3Months, setShowNext3Months] = useState(false);
   const [activeTab, setActiveTab] = useState('future');
   const [monthsToShow, setMonthsToShow] = useState(3);
+  const [stockPrice, setStockPrice] = useState(null);
+  const [currency, setCurrency] = useState('USD');
+  const [conversionRate, setConversionRate] = useState(null);
+  const [showConversionModal, setShowConversionModal] = useState(false);
+  const [tempConversionRate, setTempConversionRate] = useState('');
+  const [applyTax, setApplyTax] = useState(false);
+  const [taxRate, setTaxRate] = useState(null);
+  const [showTaxModal, setShowTaxModal] = useState(false);
+  const [tempTaxRate, setTempTaxRate] = useState('');
+  const [showTaxObligation, setShowTaxObligation] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Get stock price from localStorage
+    const cachedData = localStorage.getItem('stockPriceData');
+    if (cachedData) {
+      const { timestamp, price: cachedPrice } = JSON.parse(cachedData);
+      const now = new Date().getTime();
+      const hoursSinceLastUpdate = (now - timestamp) / (1000 * 60 * 60);
+      
+      if (hoursSinceLastUpdate < 24) {
+        setStockPrice(cachedPrice);
+      }
+    }
+
+    // Get conversion rate from localStorage
+    const savedConversionRate = localStorage.getItem('audConversionRate');
+    if (savedConversionRate) {
+      setConversionRate(parseFloat(savedConversionRate));
+    }
+
+    // Get tax rate from localStorage
+    const savedTaxRate = localStorage.getItem('vestingTaxRate');
+    if (savedTaxRate) {
+      setTaxRate(parseFloat(savedTaxRate));
+    }
+  }, []);
+
+  const calculateMonetaryValue = (quantity) => {
+    if (!stockPrice) return null;
+    let value = quantity * stockPrice;
+    
+    // Apply currency conversion if needed
+    if (currency === 'AUD' && conversionRate) {
+      value = value * conversionRate;
+    }
+
+    // Apply tax if enabled
+    if (applyTax && taxRate) {
+      value = value * (1 - taxRate);
+    }
+
+    return value.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  const handleCurrencySwitch = () => {
+    if (currency === 'USD') {
+      if (!conversionRate) {
+        setShowConversionModal(true);
+      } else {
+        setCurrency('AUD');
+      }
+    } else {
+      setCurrency('USD');
+    }
+  };
+
+  const handleConversionRateSave = () => {
+    const rate = parseFloat(tempConversionRate);
+    if (!isNaN(rate) && rate > 0) {
+      setConversionRate(rate);
+      localStorage.setItem('audConversionRate', rate.toString());
+      setCurrency('AUD');
+      setShowConversionModal(false);
+    }
+  };
+
+  const handleTaxToggle = () => {
+    if (!applyTax) {
+      if (!taxRate) {
+        setTempTaxRate('');
+        setShowTaxModal(true);
+      } else {
+        setApplyTax(true);
+      }
+    } else {
+      setApplyTax(false);
+    }
+  };
+
+  const handleTaxRateSave = () => {
+    const rate = parseFloat(tempTaxRate) / 100;
+    if (!isNaN(rate) && rate >= 0 && rate <= 1) {
+      setTaxRate(rate);
+      localStorage.setItem('vestingTaxRate', rate.toString());
+      setApplyTax(true);
+      setShowTaxModal(false);
+    }
+  };
 
   const formatDateWithMonthName = (dateStr) => {
     if (!dateStr || dateStr === '-' || dateStr === 'Unknown') return dateStr;
@@ -40,6 +141,24 @@ const StockVesting = ({ notes }) => {
       vestQuantity: isVested ? row.grantQuantity : 0,
       unvestQuantity: isVested ? 0 : row.grantQuantity
     };
+  };
+
+  const getNextVestings = (schedule) => {
+    const today = new Date();
+    return schedule.data
+      .filter(row => {
+        if (!row.vestDate) return false;
+        const [day, month, year] = row.vestDate.split('/');
+        const vestDate = new Date(year, parseInt(month) - 1, day);
+        return vestDate > today;
+      })
+      .sort((a, b) => {
+        const [aDay, aMonth, aYear] = a.vestDate.split('/');
+        const [bDay, bMonth, bYear] = b.vestDate.split('/');
+        const aDate = new Date(aYear, parseInt(aMonth) - 1, aDay);
+        const bDate = new Date(bYear, parseInt(bMonth) - 1, bDay);
+        return aDate - bDate;
+      });
   };
 
   const getVestingsInDateRange = (schedule, isFuture = true) => {
@@ -204,30 +323,12 @@ const StockVesting = ({ notes }) => {
           return currentDate > maxDate ? date : max;
         }, null) || '-';
 
-      // Find next vesting date and quantity
-      const today = new Date();
-      const nextVest = data
-        .filter(row => {
-          if (!row.vestDate) return false;
-          const [day, month, year] = row.vestDate.split('/');
-          const vestDate = new Date(year, parseInt(month) - 1, day);
-          return vestDate > today;
-        })
-        .sort((a, b) => {
-          const [aDay, aMonth, aYear] = a.vestDate.split('/');
-          const [bDay, bMonth, bYear] = b.vestDate.split('/');
-          const aDate = new Date(aYear, parseInt(aMonth) - 1, aDay);
-          const bDate = new Date(bYear, parseInt(bMonth) - 1, bDay);
-          return aDate - bDate;
-        })[0];
+      // Get next vestings
+      const nextVestings = getNextVestings({ data });
+      const nextVest = nextVestings[0];
 
       // Count remaining vestings
-      const remainingVestings = data.filter(row => {
-        if (!row.vestDate) return false;
-        const [day, month, year] = row.vestDate.split('/');
-        const vestDate = new Date(year, parseInt(month) - 1, day);
-        return vestDate > today;
-      }).length;
+      const remainingVestings = nextVestings.length;
 
       return {
         grantDate: group.grantDate,
@@ -246,10 +347,70 @@ const StockVesting = ({ notes }) => {
     setVestingData(processedData);
   }, [notes]);
 
+  // Helper to get all future vestings, sorted
+  const getAllFutureVestings = () => {
+    return vestingData
+      .flatMap(schedule => schedule.data)
+      .filter(row => {
+        if (!row.vestDate) return false;
+        const [day, month, year] = row.vestDate.split('/');
+        const vestDate = new Date(year, parseInt(month) - 1, day);
+        return vestDate > new Date();
+      })
+      .sort((a, b) => {
+        const [aDay, aMonth, aYear] = a.vestDate.split('/');
+        const [bDay, bMonth, bYear] = b.vestDate.split('/');
+        const aDate = new Date(aYear, parseInt(aMonth) - 1, aDay);
+        const bDate = new Date(bYear, parseInt(bMonth) - 1, bDay);
+        return aDate - bDate;
+      });
+  };
+
+  // Get next vesting date and sum all vestings on that date
+  const getNextVestSummary = () => {
+    const futureVestings = getAllFutureVestings();
+    if (futureVestings.length === 0) return null;
+    const nextDate = futureVestings[0].vestDate;
+    const sameDateVestings = futureVestings.filter(v => v.vestDate === nextDate);
+    const totalQuantity = sameDateVestings.reduce((sum, v) => sum + v.unvestQuantity, 0);
+    return {
+      date: nextDate,
+      quantity: totalQuantity
+    };
+  };
+
+  // Helper to get current Australian financial year range
+  const getCurrentFinancialYear = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    // If before July, financial year started last year
+    if (today.getMonth() < 6) {
+      return { start: new Date(year - 1, 6, 1), end: new Date(year, 5, 30) };
+    } else {
+      return { start: new Date(year, 6, 1), end: new Date(year + 1, 5, 30) };
+    }
+  };
+
+  // Helper to get all vested in current financial year
+  const getVestedThisFinancialYear = () => {
+    const { start, end } = getCurrentFinancialYear();
+    return vestingData
+      .flatMap(schedule => schedule.data)
+      .filter(row => {
+        if (!row.vestDate) return false;
+        const [day, month, year] = row.vestDate.split('/');
+        const vestDate = new Date(year, parseInt(month) - 1, day);
+        return vestDate >= start && vestDate <= end && isDateInPast(row.vestDate);
+      });
+  };
+
+  // Calculate total number of grants (unique grant cards)
+  const totalGrants = vestingData.length;
+
   if (!vestingData || vestingData.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Stock Vesting Schedules</h1>
+        <h1 className="text-2xl font-bold mb-6">Stock Vesting Details</h1>
         <div className="text-center text-gray-500 mt-8">
           No stock vesting data found. Add a note with 'meta::stock_vesting_data' tag to see your vesting schedule.
         </div>
@@ -270,48 +431,224 @@ const StockVesting = ({ notes }) => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Stock Vesting Schedules</h1>
-      
+      <h1 className="text-2xl font-bold mb-6">Stock Vesting Details</h1>
+
       {/* Totals Summary */}
-      <div className="grid grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-5 gap-4 mb-4">
+        {/* Total Grants Card */}
+        <div className="bg-gray-50 p-4 rounded-lg flex flex-col items-center justify-center">
+          <div className="text-sm font-medium text-gray-500 mb-1">Total Number of Grants</div>
+          <div className="text-2xl font-bold text-gray-900 mb-1">{totalGrants}</div>
+          <div className="text-xs text-gray-500 opacity-80">(Each card below represents a grant)</div>
+        </div>
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="text-sm font-medium text-gray-500">Total Grant</h3>
           <p className="text-lg font-semibold">{overallTotals.grantQuantity.toLocaleString()}</p>
+          {stockPrice && (
+            <p className="text-sm text-gray-600">
+              Value: {currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(overallTotals.grantQuantity)}
+            </p>
+          )}
         </div>
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="text-sm font-medium text-gray-500">Total Vested</h3>
           <p className="text-lg font-semibold">{overallTotals.vestQuantity.toLocaleString()}</p>
+          {stockPrice && (
+            <p className="text-sm text-gray-600">
+              Value: {currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(overallTotals.vestQuantity)}
+            </p>
+          )}
         </div>
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="text-sm font-medium text-gray-500">Total Unvested</h3>
           <p className="text-lg font-semibold">{overallTotals.unvestQuantity.toLocaleString()}</p>
+          {stockPrice && (
+            <p className="text-sm text-gray-600">
+              Value: {currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(overallTotals.unvestQuantity)}
+            </p>
+          )}
         </div>
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="text-sm font-medium text-gray-500">Next Vest</h3>
-          {vestingData[0]?.nextVest ? (
-            <>
-              <div className="mt-2">
-                <span className="text-gray-600">Date: </span>
-                <span className="text-green-500">
-                  {formatDateWithMonthName(vestingData[0].nextVest.date)}
-                </span>
-                <span className="text-gray-500 ml-2">
-                  ({getAgeInStringFmt(vestingData[0].nextVest.date)})
-                </span>
-              </div>
-              <div className="mt-2">
-                <span className="text-gray-600">Quantity: </span>
-                <span>
-                  {vestingData[0].nextVest.quantity.toLocaleString()}
-                </span>
-              </div>
-            </>
-          ) : (
-            <p className="text-gray-500 mt-2">No upcoming vests</p>
-          )}
+          {(() => {
+            const nextVest = getNextVestSummary();
+            if (nextVest) {
+              return (
+                <>
+                  <div className="mt-2">
+                    <span className="text-gray-600">Date: </span>
+                    <span className="text-green-500">
+                      {formatDateWithMonthName(nextVest.date)}
+                    </span>
+                    <span className="text-gray-500 ml-2">
+                      ({getAgeInStringFmt(nextVest.date)})
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-gray-600">Quantity: </span>
+                    <span>
+                      {nextVest.quantity.toLocaleString()}
+                    </span>
+                    {stockPrice && (
+                      <span className="text-gray-600 ml-2">
+                        (Value: {currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(nextVest.quantity)})
+                      </span>
+                    )}
+                  </div>
+                </>
+              );
+            } else {
+              return <p className="text-gray-500 mt-2">No upcoming vests</p>;
+            }
+          })()}
         </div>
       </div>
+      
+      {/* Currency and Tax Controls */}
+      <div className="mb-4 flex items-center gap-4">
+        <button
+          onClick={handleCurrencySwitch}
+          className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+        >
+          Switch to {currency === 'USD' ? 'AUD' : 'USD'}
+        </button>
+        {currency === 'AUD' && conversionRate && (
+          <div className="text-sm text-gray-600">
+            Conversion rate: 
+            <button
+              onClick={() => {
+                setTempConversionRate(conversionRate.toString());
+                setShowConversionModal(true);
+              }}
+              className="ml-1 text-blue-600 hover:text-blue-800 underline"
+            >
+              {conversionRate.toFixed(4)}
+            </button>
+          </div>
+        )}
 
+        <button
+          onClick={handleTaxToggle}
+          className={`px-4 py-2 rounded transition-colors ${
+            applyTax 
+              ? 'bg-black text-white hover:bg-gray-800' 
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          {applyTax ? 'Remove Tax' : 'Apply Tax'}
+        </button>
+        {applyTax && taxRate && (
+          <div className="text-sm text-gray-600">
+            Tax rate: 
+            <button
+              onClick={() => {
+                setTempTaxRate(taxRate.toString());
+                setShowTaxModal(true);
+              }}
+              className="ml-1 text-blue-600 hover:text-blue-800 underline"
+            >
+              {(taxRate * 100).toFixed(1)}%
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Conversion Rate Modal */}
+      {showConversionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-semibold mb-4">Set AUD Conversion Rate</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                USD to AUD Conversion Rate
+              </label>
+              <input
+                type="number"
+                step="0.0001"
+                value={tempConversionRate}
+                onChange={(e) => setTempConversionRate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter conversion rate"
+              />
+            </div>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowConversionModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConversionRateSave}
+                className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tax Rate Modal */}
+      {showTaxModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-semibold mb-4">Set Tax Rate</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tax Rate (as percentage)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={tempTaxRate}
+                onChange={(e) => setTempTaxRate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter tax rate (e.g., 30 for 30%)"
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                Enter a value between 0 and 100 (e.g., 30 for 30%)
+              </p>
+            </div>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => {
+                  setShowTaxModal(false);
+                  setTempTaxRate('');
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTaxRateSave}
+                className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stock Price Note */}
+      {stockPrice && (
+        <div className="mb-4 text-sm text-gray-600">
+          Note: All monetary values are calculated using the current stock price of {currency === 'USD' ? '$' : 'A$'}{stockPrice.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })} per share
+          {currency === 'AUD' && conversionRate && (
+            <span> (converted at {conversionRate.toFixed(4)} USD/AUD)</span>
+          )}
+          {applyTax && taxRate && (
+            <span> (after {taxRate * 100}% tax)</span>
+          )}
+        </div>
+      )}
+      
       {/* Collapse/Expand Button */}
       <div className="mb-4 flex gap-4">
         <button
@@ -336,7 +673,13 @@ const StockVesting = ({ notes }) => {
               onClick={() => setShowNext3Months(true)}
               className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
             >
-              Show Next 3 Months Vesting
+              Show Future/Past Vesting
+            </button>
+            <button
+              onClick={() => setShowTaxObligation(true)}
+              className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+            >
+              Show Tax Obligation
             </button>
           </>
         )}
@@ -395,7 +738,12 @@ const StockVesting = ({ notes }) => {
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-medium text-lg">{formatMonthYear(monthGroup.month)}</h3>
                     <div className="font-semibold">
-                      Total: {monthGroup.total.toLocaleString()}
+                      <div>Total: {monthGroup.total.toLocaleString()}</div>
+                      {stockPrice && (
+                        <div className="text-sm text-gray-600">
+                          Value: {currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(monthGroup.total)}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -410,7 +758,20 @@ const StockVesting = ({ notes }) => {
                           </span>
                         </div>
                         <div className="font-medium">
-                          {activeTab === 'future' ? row.unvestQuantity.toLocaleString() : row.vestQuantity.toLocaleString()}
+                          <div>
+                            {activeTab === 'future' 
+                              ? row.unvestQuantity.toLocaleString() 
+                              : row.vestQuantity.toLocaleString()}
+                          </div>
+                          {stockPrice && (
+                            <div className="text-sm text-gray-600">
+                              {currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(
+                                activeTab === 'future' 
+                                  ? row.unvestQuantity 
+                                  : row.vestQuantity
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -427,6 +788,60 @@ const StockVesting = ({ notes }) => {
                   Load {activeTab === 'future' ? 'Next' : 'Previous'} 3 Months
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tax Obligation Modal */}
+      {showTaxObligation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Tax Obligation (Current Financial Year)</h2>
+              <button
+                onClick={() => setShowTaxObligation(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mb-4 text-sm text-gray-600">
+              Financial Year: {(() => {
+                const fy = getCurrentFinancialYear();
+                return `${fy.start.getDate()}/${fy.start.getMonth()+1}/${fy.start.getFullYear()} - ${fy.end.getDate()}/${fy.end.getMonth()+1}/${fy.end.getFullYear()}`;
+              })()}
+            </div>
+            <table className="min-w-full bg-white border border-gray-300 mb-4">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="px-6 py-3 border-b text-left">Vest Date</th>
+                  <th className="px-6 py-3 border-b text-left">Units Vested</th>
+                  <th className="px-6 py-3 border-b text-left">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getVestedThisFinancialYear().map((row, idx) => (
+                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                    <td className="px-6 py-4 border-b">{formatDateWithMonthName(row.vestDate)}</td>
+                    <td className="px-6 py-4 border-b">{row.vestQuantity.toLocaleString()}</td>
+                    <td className="px-6 py-4 border-b">{currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(row.vestQuantity)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {/* Totals */}
+            <div className="mb-2 font-semibold">
+              Total Units Vested: {getVestedThisFinancialYear().reduce((sum, row) => sum + row.vestQuantity, 0).toLocaleString()}
+            </div>
+            <div className="mb-2 font-semibold">
+              Total Value: {currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(getVestedThisFinancialYear().reduce((sum, row) => sum + row.vestQuantity, 0))}
+            </div>
+            <div className="mb-2 font-semibold">
+              Tax Rate: {taxRate !== null ? `${(taxRate * 100).toFixed(1)}%` : 'Not Set'}
+            </div>
+            <div className="mb-2 font-semibold">
+              Tax Obligation: {taxRate !== null ? `${currency === 'USD' ? '$' : 'A$'} ${calculateMonetaryValue(getVestedThisFinancialYear().reduce((sum, row) => sum + row.vestQuantity, 0) * taxRate)}` : 'Set tax rate to calculate'}
             </div>
           </div>
         </div>
@@ -538,9 +953,30 @@ const StockVesting = ({ notes }) => {
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 border-b">{row.grantQuantity.toLocaleString()}</td>
-                      <td className="px-6 py-4 border-b">{row.vestQuantity.toLocaleString()}</td>
-                      <td className="px-6 py-4 border-b">{row.unvestQuantity.toLocaleString()}</td>
+                      <td className="px-6 py-4 border-b">
+                        {row.grantQuantity.toLocaleString()}
+                        {stockPrice && (
+                          <div className="text-sm text-gray-500">
+                            ({currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(row.grantQuantity)})
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 border-b">
+                        {row.vestQuantity.toLocaleString()}
+                        {stockPrice && (
+                          <div className="text-sm text-gray-500">
+                            ({currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(row.vestQuantity)})
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 border-b">
+                        {row.unvestQuantity.toLocaleString()}
+                        {stockPrice && (
+                          <div className="text-sm text-gray-500">
+                            ({currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(row.unvestQuantity)})
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))
               )
@@ -560,6 +996,22 @@ const StockVesting = ({ notes }) => {
                     })
                     .reduce((sum, row) => sum + row.grantQuantity, 0)
                     .toLocaleString()}
+                  {stockPrice && (
+                    <div className="text-sm text-gray-500">
+                      ({currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(
+                        vestingData
+                          .flatMap(schedule => schedule.data)
+                          .filter(row => {
+                            if (!showUnvestedOnly) return true;
+                            if (!row.vestDate) return false;
+                            const [day, month, year] = row.vestDate.split('/');
+                            const vestDate = new Date(year, parseInt(month) - 1, day);
+                            return vestDate > new Date();
+                          })
+                          .reduce((sum, row) => sum + row.grantQuantity, 0)
+                      )})
+                    </div>
+                  )}
                 </td>
                 <td className="px-6 py-4 border-b">
                   {vestingData
@@ -573,6 +1025,22 @@ const StockVesting = ({ notes }) => {
                     })
                     .reduce((sum, row) => sum + row.vestQuantity, 0)
                     .toLocaleString()}
+                  {stockPrice && (
+                    <div className="text-sm text-gray-500">
+                      ({currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(
+                        vestingData
+                          .flatMap(schedule => schedule.data)
+                          .filter(row => {
+                            if (!showUnvestedOnly) return true;
+                            if (!row.vestDate) return false;
+                            const [day, month, year] = row.vestDate.split('/');
+                            const vestDate = new Date(year, parseInt(month) - 1, day);
+                            return vestDate > new Date();
+                          })
+                          .reduce((sum, row) => sum + row.vestQuantity, 0)
+                      )})
+                    </div>
+                  )}
                 </td>
                 <td className="px-6 py-4 border-b">
                   {vestingData
@@ -586,6 +1054,22 @@ const StockVesting = ({ notes }) => {
                     })
                     .reduce((sum, row) => sum + row.unvestQuantity, 0)
                     .toLocaleString()}
+                  {stockPrice && (
+                    <div className="text-sm text-gray-500">
+                      ({currency === 'USD' ? '$' : 'A$'} {calculateMonetaryValue(
+                        vestingData
+                          .flatMap(schedule => schedule.data)
+                          .filter(row => {
+                            if (!showUnvestedOnly) return true;
+                            if (!row.vestDate) return false;
+                            const [day, month, year] = row.vestDate.split('/');
+                            const vestDate = new Date(year, parseInt(month) - 1, day);
+                            return vestDate > new Date();
+                          })
+                          .reduce((sum, row) => sum + row.unvestQuantity, 0)
+                      )})
+                    </div>
+                  )}
                 </td>
               </tr>
             )}

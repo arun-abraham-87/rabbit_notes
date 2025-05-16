@@ -10,7 +10,8 @@ import {
   XMarkIcon,
   DocumentTextIcon,
   FlagIcon,
-  SparklesIcon
+  SparklesIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
@@ -18,6 +19,7 @@ import AddEventModal from './AddEventModal';
 
 const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddEvent,onDelete }) => {
   const [showPastEvents, setShowPastEvents] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [rawNote, setRawNote] = useState(null);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
@@ -207,7 +209,14 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
       {/* Alerts Section */}
       <EventAlerts events={events} onAcknowledgeEvent={onAcknowledgeEvent} />
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-4">
+        <button
+          onClick={() => setShowDetails(!showDetails)}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <InformationCircleIcon className="w-4 h-4" />
+          {showDetails ? 'Hide Details' : 'Show Details'}
+        </button>
         <button
           onClick={() => setShowPastEvents(!showPastEvents)}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -275,14 +284,14 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                       }`} />
                       
                       {/* Date circle */}
-                      <div className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-12 h-12 rounded-full ${
+                      <div className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full ${
                         isPast 
                           ? 'bg-gray-400 text-white' 
                           : isToday 
                             ? 'bg-indigo-400 text-white'
                             : 'bg-gray-400 text-white'
                       }`}>
-                        <span className="text-xl font-bold">
+                        <span className="text-sm font-bold">
                           {dayNumber}
                         </span>
                       </div>
@@ -365,16 +374,6 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                                   </h3>
                                   <div className="flex flex-col gap-1">
                                     <div className="grid grid-cols-[120px_1fr] gap-x-2">
-                                      <p className={`text-sm ${
-                                        occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
-                                      }`}>
-                                        <span className="font-medium">Date:</span>
-                                      </p>
-                                      <p className={`text-sm ${
-                                        occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
-                                      }`}>
-                                        {getDateInDDMMYYYYFormatWithAgeInParentheses(occurrence.date)}
-                                      </p>
                                       <p className="text-sm text-gray-600">
                                         <span className="font-medium">Original date:</span>
                                       </p>
@@ -386,12 +385,30 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                                           day: 'numeric'
                                         })}
                                       </p>
+                                      {showDetails && (
+                                        <>
+                                          <p className={`text-sm ${
+                                            occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
+                                          }`}>
+                                            <span className="font-medium">Date:</span>
+                                          </p>
+                                          <p className={`text-sm ${
+                                            occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
+                                          }`}>
+                                            {getDateInDDMMYYYYFormatWithAgeInParentheses(occurrence.date)}
+                                          </p>
+                                        </>
+                                      )}
                                       {occurrence.event.recurrence !== 'none' && occurrence.age && (
                                         <>
-                                          <p className="text-sm text-gray-600">
-                                            <span className="font-medium">Age:</span>
+                                          <p className={`text-sm font-medium ${
+                                            occurrence.isToday ? 'text-indigo-700' : 'text-gray-600'
+                                          }`}>
+                                            <span className="font-bold">Age:</span>
                                           </p>
-                                          <p className="text-sm text-gray-600">
+                                          <p className={`text-sm font-semibold ${
+                                            occurrence.isToday ? 'text-indigo-700' : 'text-gray-600'
+                                          }`}>
                                             {occurrence.age}
                                           </p>
                                         </>

@@ -18,6 +18,7 @@ import NoteView from './NoteView';
 import NoteEditor from './NoteEditor';
 import { Alerts } from './Alerts';
 import { addCadenceLineToNote } from '../utils/CadenceHelpUtils';
+import { getAgeInStringFmt } from '../utils/DateUtils';
 
 const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [showRawNote, setShowRawNote] = useState(false);
@@ -445,6 +446,9 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                     <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
                       {formatContent(todo.content)}
                     </h4>
+                    <div className="text-sm text-gray-500 mt-2">
+                      Open for: {getAgeInStringFmt(todo.created_datetime)}
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-4">
                     <button

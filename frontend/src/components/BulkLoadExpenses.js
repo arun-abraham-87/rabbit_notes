@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { XMarkIcon, ArrowUpTrayIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowUpTrayIcon, ChevronRightIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import Papa from 'papaparse';
 import { createNote } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
@@ -123,6 +123,29 @@ meta::event::${metaDate}`;
     }
   }, [parsedData, onBulkCreate, onClose]);
 
+  const handleDownloadSample = () => {
+    // Sample data with generic dummy events
+    const sampleData = [
+      ['25/03/2024', 'Dummy Event 1', 'Tag1', 'false'],
+      ['15/04/2024', 'Dummy Event 2', 'Tag2', 'false'],
+      ['01/05/2024', 'Dummy Event 3', 'Tag3', 'true']
+    ];
+
+    // Convert to CSV
+    const csv = Papa.unparse(sampleData);
+
+    // Create blob and download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'sample_events.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -143,11 +166,20 @@ meta::event::${metaDate}`;
             <div className="sm:flex sm:items-start">
               <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
                 <h3 className="text-lg font-semibold leading-6 text-gray-900 mb-4">
-                  {showNotePreview ? 'Confirm Note Format' : 'Bulk Load Expenses'}
+                  {showNotePreview ? 'Confirm Note Format' : 'Bulk Load Events'}
                 </h3>
 
                 {!showNotePreview ? (
                   <>
+                    <div className="flex justify-end mb-4">
+                      <button
+                        onClick={handleDownloadSample}
+                        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                      >
+                        <ArrowDownTrayIcon className="h-5 w-5" />
+                        Download Sample CSV
+                      </button>
+                    </div>
                     <div
                       className={`mt-2 border-2 border-dashed rounded-lg p-6 text-center ${
                         isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'

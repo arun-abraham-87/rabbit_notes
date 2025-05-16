@@ -265,7 +265,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                 const totalEvents = dateOccurrences.length;
 
                 return (
-                  <div key={dateKey} className="relative pl-12">
+                  <div key={dateKey} className="relative pl-12 group">
                     {/* Bracket-like timeline */}
                     <div className="absolute left-0 top-0 bottom-0 flex flex-col items-center">
                       {/* Top horizontal line */}
@@ -284,12 +284,12 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                       }`} />
                       
                       {/* Date circle */}
-                      <div className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full ${
+                      <div className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full cursor-pointer transition-all duration-200 ${
                         isPast 
-                          ? 'bg-gray-400 text-white' 
+                          ? 'bg-gray-400 text-white group-hover:bg-gray-500' 
                           : isToday 
-                            ? 'bg-indigo-400 text-white'
-                            : 'bg-gray-400 text-white'
+                            ? 'bg-indigo-400 text-white group-hover:bg-indigo-500'
+                            : 'bg-gray-400 text-white group-hover:bg-gray-500'
                       }`}>
                         <span className="text-sm font-bold">
                           {dayNumber}
@@ -302,16 +302,16 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
                       {dateOccurrences.map((occurrence, index) => (
                         <div
                           key={`${occurrence.event.id}-${occurrence.date.toISOString()}`}
-                          className={`${
-                            occurrence.isPast ? 'opacity-60' : ''
+                          className={`transition-all duration-200 ${
+                            occurrence.isPast ? 'opacity-60 group-hover:opacity-100' : ''
                           }`}
                         >
-                          <div className={`p-4 rounded-lg border ${
+                          <div className={`p-4 rounded-lg border transition-all duration-200 ${
                             occurrence.isPast 
-                              ? 'bg-gray-50 border-gray-200' 
+                              ? 'bg-gray-50 border-gray-200 group-hover:bg-gray-100 group-hover:border-gray-300' 
                               : occurrence.isToday 
-                                ? 'border-2 border-indigo-500 bg-indigo-50 shadow-md'
-                                : 'bg-white border-gray-200'
+                                ? 'border-2 border-indigo-500 bg-indigo-50 shadow-md group-hover:bg-indigo-100'
+                                : 'bg-white border-gray-200 group-hover:bg-gray-50 group-hover:border-gray-300'
                           } shadow-sm flex`}>
                             {/* Days indicator */}
                             <div className={`flex flex-col items-center justify-center min-w-[80px] mr-4 rounded-l-lg ${

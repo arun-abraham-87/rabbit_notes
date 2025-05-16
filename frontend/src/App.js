@@ -29,6 +29,7 @@ import { initializeSearchIndex, searchNotes, addNoteToIndex, updateNoteInIndex, 
 import Assets from './components/Assets';
 import CountdownsPage from './pages/CountdownsPage';
 import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceHelpUtils';
+import StockVesting from './components/StockVesting';
 
 const AppContent = () => {
   const navigate = useNavigate();
@@ -422,6 +423,13 @@ const AppContent = () => {
                       <div className="h-full overflow-y-auto">
                         <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                           <CountdownsPage notes={allNotes} />
+                        </div>
+                      </div>
+                    } />
+                    <Route path="/stock-vesting" element={
+                      <div className="h-full overflow-y-auto">
+                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                          <StockVesting notes={allNotes} />
                         </div>
                       </div>
                     } />

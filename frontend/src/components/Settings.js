@@ -41,6 +41,7 @@ const NAVBAR_PAGES = [
   { id: 'calendar', label: 'Calendar' },
   { id: 'bookmarks', label: 'Bookmarks' },
   { id: 'assets', label: 'Assets' },
+  { id: 'stock-vesting', label: 'Stock Vesting' },
 ];
 
 const Settings = ({ onClose }) => {

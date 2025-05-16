@@ -108,7 +108,12 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
 
   const handleEditDeadline = (deadline) => {
     const originalNote = notes.find(n => n.id === deadline.id);
-    if (originalNote) {
+    if (!originalNote || !originalNote.content) {
+      console.error('Note not found or has no content:', deadline.id);
+      return;
+    }
+
+    try {
       const lines = originalNote.content.split('\n');
       const description = lines.find(line => line.startsWith('event_description:'))?.replace('event_description:', '').trim() || '';
       const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim() || '';
@@ -119,6 +124,8 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
         date: eventDate
       });
       setShowEditEventModal(true);
+    } catch (error) {
+      console.error('Error parsing deadline note:', error);
     }
   };
 
@@ -813,15 +820,23 @@ const TodayEventsBar = ({ events }) => {
     return events.filter(event => {
       if (!event || !event.content) return false;
       
-      const lines = event.content.split('\n');
-      const eventDateLine = lines.find(line => line.startsWith('event_date:'));
-      if (!eventDateLine) return false;
-      
-      const eventDateStr = eventDateLine.replace('event_date:', '').trim();
-      const eventDate = new Date(eventDateStr);
-      
-      // Check if month and date match today, regardless of year
-      return eventDate.getMonth() === todayMonth && eventDate.getDate() === todayDate;
+      try {
+        const lines = event.content.split('\n');
+        const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+        if (!eventDateLine) return false;
+        
+        const eventDateStr = eventDateLine.replace('event_date:', '').trim();
+        if (!eventDateStr) return false;
+        
+        const eventDate = new Date(eventDateStr);
+        if (isNaN(eventDate.getTime())) return false;
+        
+        // Check if month and date match today, regardless of year
+        return eventDate.getMonth() === todayMonth && eventDate.getDate() === todayDate;
+      } catch (error) {
+        console.error('Error processing event:', error);
+        return false;
+      }
     });
   };
 

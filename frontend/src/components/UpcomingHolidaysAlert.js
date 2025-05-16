@@ -130,6 +130,7 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
     const upcoming = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const currentYear = today.getFullYear();
     let hasTodayHoliday = false;
     let hasTomorrowHoliday = false;
     let nextHolidayDays = null;
@@ -147,23 +148,26 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        // Check if holiday is today or tomorrow
-        if (holidayDate.getTime() === today.getTime()) {
-          hasTodayHoliday = true;
-        } else if (holidayDate.getTime() === tomorrow.getTime()) {
-          hasTomorrowHoliday = true;
-        } else if (!nextHolidayDays || holidayDate < new Date(nextHolidayDays.date)) {
-          const diffTime = Math.abs(holidayDate - today);
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          nextHolidayDays = { date: holidayDate, days: diffDays };
-        }
+        // Only include holidays for the current year
+        if (holidayDate.getFullYear() === currentYear) {
+          // Check if holiday is today or tomorrow for indicators
+          if (holidayDate.getTime() === today.getTime()) {
+            hasTodayHoliday = true;
+          } else if (holidayDate.getTime() === tomorrow.getTime()) {
+            hasTomorrowHoliday = true;
+          } else if (!nextHolidayDays || holidayDate < new Date(nextHolidayDays.date)) {
+            const diffTime = Math.abs(holidayDate - today);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            nextHolidayDays = { date: holidayDate, days: diffDays };
+          }
 
-        upcoming.push({
-          id: note.id,
-          date: new Date(eventDate),
-          description,
-          isHidden
-        });
+          upcoming.push({
+            id: note.id,
+            date: new Date(eventDate),
+            description,
+            isHidden
+          });
+        }
       }
     });
 

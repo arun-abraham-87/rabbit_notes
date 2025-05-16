@@ -100,10 +100,7 @@ meta::event::${metaDate}`;
       const toastId = toast.loading(`Creating ${parsedData.length} notes...`);
       
       try {
-        for (const row of parsedData) {
-          const content = getNoteContent(row);
-          await createNote(content);
-        }
+        await onBulkCreate(parsedData);
         
         toast.update(toastId, {
           render: `Successfully created ${parsedData.length} notes!`,
@@ -111,7 +108,6 @@ meta::event::${metaDate}`;
           isLoading: false,
           autoClose: 3000
         });
-        onBulkCreate(parsedData);
         onClose();
       } catch (error) {
         console.error('Error creating notes:', error);

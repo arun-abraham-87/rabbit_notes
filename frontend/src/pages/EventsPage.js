@@ -257,10 +257,15 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const handleBulkCreate = async (expenseList) => {
     try {
       for (const expense of expenseList) {
+        // Convert dd/mm/yyyy to YYYY-MM-DDThh:mm format
+        const [day, month, year] = expense.date.split('/');
+        const eventDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T12:00`;
+        const metaDate = new Date(year, month - 1, day).toISOString();
+        
         const content = `event_description:${expense.description}
-event_date:${expense.date}
+event_date:${eventDate}
 event_tags:${expense.tag}
-meta::event::${expense.date}`;
+meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_deadline' : ''}`;
         
         await handleAddEvent(content);
       }
@@ -301,23 +306,38 @@ meta::event::${expense.date}`;
       {/* Search and Tag Filter */}
       <div className="flex flex-col space-y-4">
         <div className="flex flex-col space-y-4">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search events..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              )}
             </div>
-            <input
-              type="text"
-              placeholder="Search events..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full"
-            />
-            {searchQuery && (
+            {(searchQuery || selectedTags.length > 0 || showOnlyDeadlines) && (
               <button
-                onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedTags([]);
+                  setShowOnlyDeadlines(false);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
               >
-                <XMarkIcon className="h-5 w-5" />
+                <XMarkIcon className="h-4 w-4" />
+                Clear All Filters
               </button>
             )}
           </div>
@@ -348,15 +368,6 @@ meta::event::${expense.date}`;
               {tag}
             </button>
           ))}
-          {selectedTags.length > 0 && (
-            <button
-              onClick={() => setSelectedTags([])}
-              className="ml-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 flex items-center gap-2"
-            >
-              <XMarkIcon className="h-4 w-4" />
-              Clear All Tags
-            </button>
-          )}
         </div>
       </div>
 

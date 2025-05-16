@@ -11,7 +11,6 @@ import EndDatePickerModal from './EndDatePickerModal';
 import LinkNotesModal from './LinkNotesModal';
 import TagSelectionPopup from './TagSelectionPopup';
 import EditMeetingModal from './EditMeetingModal';
-import AddEventModal from './AddEventModal';
 import EditEventModal from './EditEventModal';
 import NoteCard from './NoteCard';
 import {
@@ -19,6 +18,25 @@ import {
 } from '@heroicons/react/24/solid';
 import NoteEditor from './NoteEditor';
 import { getDummyCadenceLine } from '../utils/CadenceHelpUtils';
+import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
+import { 
+  ChevronRightIcon, 
+  ChevronLeftIcon, 
+  CalendarIcon, 
+  EyeIcon, 
+  EyeSlashIcon, 
+  PencilIcon,
+  DocumentTextIcon,
+  FlagIcon,
+  SparklesIcon,
+  InformationCircleIcon,
+  CodeBracketIcon,
+  FunnelIcon,
+  ClockIcon,
+  PlusIcon
+} from '@heroicons/react/24/solid';
+import EventAlerts from './EventAlerts';
+import EventsByAgeView from './EventsByAgeView';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -70,7 +88,6 @@ const NotesList = ({
   const newLineInputRef = useRef(null);
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(false);
-  const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [editingMeetingNote, setEditingMeetingNote] = useState(null);
   const [editingEventNote, setEditingEventNote] = useState(null);
   const [showingNormalEventEditor, setShowingNormalEventEditor] = useState(false);
@@ -81,6 +98,11 @@ const NotesList = ({
   const [showAddPeopleModal, setShowAddPeopleModal] = useState(false);
   const [selectedPriority, setSelectedPriority] = useState(null);
   const [isWatchSelected, setIsWatchSelected] = useState(false);
+  const [showPastEvents, setShowPastEvents] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'age'
+  const [rawNote, setRawNote] = useState(null);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -682,69 +704,6 @@ const NotesList = ({
         />
       )}
 
-
-      <AddEventModal
-        isOpen={showAddEventModal}
-        onClose={() => setShowAddEventModal(false)}
-        onAdd={(content) => {
-          addNotes(content);
-          setShowAddEventModal(false);
-        }}
-        notes={allNotes}
-      />
-
-      {editingMeetingNote && (
-        <EditMeetingModal
-          note={editingMeetingNote}
-          onSave={(updatedNote) => {
-            updateNoteCallback(editingMeetingNote.id, updatedNote.content);
-            setEditingMeetingNote(null);
-          }}
-          onCancel={() => setEditingMeetingNote(null)}
-          onSwitchToNormalEdit={() => {
-            setEditingMeetingNote(null);
-            setPopupNoteText(editingMeetingNote.id);
-          }}
-        />
-      )}
-
-      {editingEventNote && (
-        showingNormalEventEditor ? (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
-              </div>
-              <NoteEditor
-                note={editingEventNote}
-                onSave={(updatedNote) => {
-                  updateNoteCallback(updatedNote.id, updatedNote.content);
-                  setEditingEventNote(null);
-                  setShowingNormalEventEditor(false);
-                }}
-                onCancel={() => {
-                  setEditingEventNote(null);
-                  setShowingNormalEventEditor(false);
-                }}
-                objList={objList}
-              />
-            </div>
-          </div>
-        ) : (
-          <EditEventModal
-            note={editingEventNote}
-            onClose={() => setEditingEventNote(null)}
-            onSave={(updatedNote) => {
-              console.log('updatedNotes called', updatedNote);
-              updateNoteCallback(editingEventNote.id, updatedNote);
-              setEditingEventNote(null);
-            }}
-            onCancel={() => setEditingEventNote(null)}
-            onSwitchToNormalEdit={() => setShowingNormalEventEditor(true)}
-          />
-        )
-      )}
-
       {popupNoteText && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -771,10 +730,24 @@ const NotesList = ({
         </div>
       )}
 
-  
-     
-  
-
+      {rawNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Raw Note Content</h2>
+              <button
+                onClick={() => setRawNote(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <pre className="whitespace-pre-wrap font-mono text-sm bg-gray-50 p-4 rounded-lg">
+              {rawNote.content}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -7,16 +7,85 @@ import {
   PencilIcon,
   EyeIcon
 } from '@heroicons/react/24/outline';
-import AddEventModal from './AddEventModal';
+import EditEventModal from './EditEventModal';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 
 const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showPopup, setShowPopup] = useState(false);
   const [holidays, setHolidays] = useState([]);
-  const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [revealedHolidays, setRevealedHolidays] = useState({});
   const [editingHoliday, setEditingHoliday] = useState(null);
+  const [holidayIndicators, setHolidayIndicators] = useState('');
+
+  // Add the typewriter animation style
+  useEffect(() => {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+      @keyframes typewriter {
+        0% {
+          opacity: 0;
+        }
+        5% {
+          opacity: 1;
+        }
+        95% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      .typewriter-text {
+        display: inline-block;
+        font-weight: 600;
+        color: rgb(239, 68, 68);
+      }
+      .typewriter-text span {
+        display: inline-block;
+        opacity: 0;
+        animation: typewriter 3s infinite;
+      }
+      .typewriter-text span:nth-child(1) { animation-delay: 0s; }
+      .typewriter-text span:nth-child(2) { animation-delay: 0.1s; }
+      .typewriter-text span:nth-child(3) { animation-delay: 0.2s; }
+      .typewriter-text span:nth-child(4) { animation-delay: 0.3s; }
+      .typewriter-text span:nth-child(5) { animation-delay: 0.4s; }
+      .typewriter-text span:nth-child(6) { animation-delay: 0.5s; }
+      .typewriter-text span:nth-child(7) { animation-delay: 0.6s; }
+      .typewriter-text span:nth-child(8) { animation-delay: 0.7s; }
+      .typewriter-text span:nth-child(9) { animation-delay: 0.8s; }
+      .typewriter-text span:nth-child(10) { animation-delay: 0.9s; }
+      .typewriter-text span:nth-child(11) { animation-delay: 1s; }
+      .typewriter-text span:nth-child(12) { animation-delay: 1.1s; }
+      .typewriter-text span:nth-child(13) { animation-delay: 1.2s; }
+      .typewriter-text span:nth-child(14) { animation-delay: 1.3s; }
+      .typewriter-text span:nth-child(15) { animation-delay: 1.4s; }
+      .typewriter-text span:nth-child(16) { animation-delay: 1.5s; }
+      .typewriter-text span:nth-child(17) { animation-delay: 1.6s; }
+      .typewriter-text span:nth-child(18) { animation-delay: 1.7s; }
+      .typewriter-text span:nth-child(19) { animation-delay: 1.8s; }
+      .typewriter-text span:nth-child(20) { animation-delay: 1.9s; }
+    `;
+    document.head.appendChild(styleSheet);
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
+
+  const renderAnimatedText = (text) => {
+    if (!text) return null;
+    // Replace spaces with non-breaking spaces to ensure they're preserved in the animation
+    const processedText = text.replace(/ /g, '\u00A0');
+    return (
+      <div className="typewriter-text">
+        {processedText.split('').map((char, index) => (
+          <span key={index}>{char}</span>
+        ))}
+      </div>
+    );
+  };
 
   const handleEditHoliday = (holiday) => {
     const originalNote = notes.find(n => n.id === holiday.id);
@@ -24,13 +93,17 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
       const lines = originalNote.content.split('\n');
       const description = lines.find(line => line.startsWith('event_description:'))?.replace('event_description:', '').trim() || '';
       const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim() || '';
+      const location = lines.find(line => line.startsWith('event_location:'))?.replace('event_location:', '').trim() || '';
+      const recurrenceType = lines.find(line => line.startsWith('event_recurring_type:'))?.replace('event_recurring_type:', '').trim() || '';
 
       setEditingHoliday({
         id: holiday.id,
         description,
-        date: eventDate
+        date: eventDate,
+        location,
+        recurrenceType
       });
-      setShowAddEventModal(true);
+      setShowEditEventModal(true);
     }
   };
 
@@ -44,40 +117,6 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
     return diffDays;
   };
 
-  const handleAddEvent = async (content) => {
-    if (editingHoliday) {
-      // Update existing holiday
-      const note = notes.find(n => n.id === editingHoliday.id);
-      if (note) {
-        // Preserve the original meta tags
-        const originalLines = note.content.split('\n');
-        const metaTags = originalLines.filter(line => 
-          line.startsWith('meta::') && 
-          !line.startsWith('meta::event::')
-        );
-        
-        // Combine new content with preserved meta tags
-        const updatedContent = content + '\n' + metaTags.join('\n');
-        
-        // Update the note
-        const updatedNote = { ...note, content: updatedContent };
-        setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
-      }
-    } else {
-      // Add holiday tag to new event
-      const contentWithHolidayTag = content + '\nevent_tags:holiday';
-      const newNote = {
-        id: Date.now().toString(),
-        content: contentWithHolidayTag,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setNotes([...notes, newNote]);
-    }
-    setShowAddEventModal(false);
-    setEditingHoliday(null);
-  };
-
   useEffect(() => {
     const holidayNotes = notes.filter(note => {
       if (!note.content.includes('meta::event::')) return false;
@@ -85,22 +124,61 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
       const tagsLine = lines.find(line => line.startsWith('event_tags:'));
       if (!tagsLine) return false;
       const tags = tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim());
-      return tags.some(tag => tag.toLowerCase() === 'holiday'); // Convert to lowercase for comparison
+      return tags.some(tag => tag.toLowerCase() === 'holiday');
     });
 
-    const upcoming = holidayNotes.map(note => {
+    const upcoming = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let hasTodayHoliday = false;
+    let hasTomorrowHoliday = false;
+    let nextHolidayDays = null;
+
+    holidayNotes.forEach(note => {
       const lines = note.content.split('\n');
       const description = lines.find(line => line.startsWith('event_description:'))?.replace('event_description:', '').trim() || '';
-      const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim();
+      const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+      const eventDate = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : null;
       const isHidden = note.content.includes('meta::event_hidden');
+      
+      if (eventDate) {
+        const holidayDate = new Date(eventDate);
+        holidayDate.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
 
-      return {
-        id: note.id,
-        date: new Date(eventDate),
-        description,
-        isHidden
-      };
+        // Check if holiday is today or tomorrow
+        if (holidayDate.getTime() === today.getTime()) {
+          hasTodayHoliday = true;
+        } else if (holidayDate.getTime() === tomorrow.getTime()) {
+          hasTomorrowHoliday = true;
+        } else if (!nextHolidayDays || holidayDate < new Date(nextHolidayDays.date)) {
+          const diffTime = Math.abs(holidayDate - today);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          nextHolidayDays = { date: holidayDate, days: diffDays };
+        }
+
+        upcoming.push({
+          id: note.id,
+          date: new Date(eventDate),
+          description,
+          isHidden
+        });
+      }
     });
+
+    // Set holiday indicators
+    if (hasTodayHoliday && hasTomorrowHoliday) {
+      setHolidayIndicators('(Holidays Today & Tomorrow)');
+    } else if (hasTodayHoliday) {
+      setHolidayIndicators('(Holiday Today)');
+    } else if (hasTomorrowHoliday) {
+      setHolidayIndicators('(Holiday Tomorrow)');
+    } else if (nextHolidayDays) {
+      setHolidayIndicators(`(Next Holiday in ${nextHolidayDays.days} days)`);
+    } else {
+      setHolidayIndicators('');
+    }
 
     // Sort by date
     upcoming.sort((a, b) => a.date - b.date);
@@ -125,13 +203,22 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
                 <h3 className="text-lg font-semibold text-blue-800">
                   Upcoming Holidays ({holidays.length})
                 </h3>
+                {holidayIndicators && (
+                  <div className="mt-1">
+                    {holidayIndicators.includes('Today') || holidayIndicators.includes('Tomorrow') 
+                      ? renderAnimatedText(holidayIndicators)
+                      : <span className="text-blue-600">{holidayIndicators}</span>
+                    }
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowAddEventModal(true);
+                  setEditingHoliday(null);
+                  setShowEditEventModal(true);
                 }}
                 className="px-3 py-1 text-blue-600 hover:text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors duration-150"
                 title="Add Holiday"
@@ -162,7 +249,7 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
                     <button
                       onClick={() => {
                         setShowPopup(false);
-                        setShowAddEventModal(true);
+                        setShowEditEventModal(true);
                       }}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-150"
                     >
@@ -246,16 +333,54 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
         )}
       </div>
 
-      {showAddEventModal && (
-        <AddEventModal
-          isOpen={showAddEventModal}
-          onClose={() => {
-            setShowAddEventModal(false);
+      {showEditEventModal && (
+        <EditEventModal
+          note={editingHoliday}
+          onSave={(content) => {
+            if (editingHoliday) {
+              // Update existing holiday
+              const note = notes.find(n => n.id === editingHoliday.id);
+              if (note) {
+                // Preserve the original meta tags
+                const originalLines = note.content.split('\n');
+                const metaTags = originalLines.filter(line => 
+                  line.startsWith('meta::') && 
+                  !line.startsWith('meta::event::')
+                );
+                
+                // Combine new content with preserved meta tags
+                const updatedContent = content + '\n' + metaTags.join('\n');
+                
+                // Update the note
+                const updatedNote = { ...note, content: updatedContent };
+                setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
+              }
+            } else {
+              // Add new holiday
+              const newNote = {
+                id: Date.now().toString(),
+                content: content,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+              setNotes([...notes, newNote]);
+            }
+            setShowEditEventModal(false);
             setEditingHoliday(null);
           }}
-          onAdd={handleAddEvent}
+          onCancel={() => {
+            setShowEditEventModal(false);
+            setEditingHoliday(null);
+          }}
+          onSwitchToNormalEdit={() => {
+            setShowEditEventModal(false);
+            setEditingHoliday(null);
+          }}
+          onDelete={() => {
+            setShowEditEventModal(false);
+            setEditingHoliday(null);
+          }}
           notes={notes}
-          initialValues={editingHoliday}
         />
       )}
     </>

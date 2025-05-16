@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { 
   ChevronRightIcon, 
@@ -14,11 +14,11 @@ import {
   InformationCircleIcon,
   CodeBracketIcon,
   FunnelIcon,
-  ClockIcon
+  ClockIcon,
+  PlusIcon
 } from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
-import AddEventModal from './AddEventModal';
 import EventsByAgeView from './EventsByAgeView';
 
 const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAddEvent, onDelete }) => {
@@ -26,7 +26,8 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
   const [showDetails, setShowDetails] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [rawNote, setRawNote] = useState(null);
-  const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'age'
 
   // Function to calculate age in years, months, and days
@@ -171,7 +172,29 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
   const filteredEvents = events;
 
   const handleEditEvent = (event) => {
-    setEditingEvent(event);
+    const originalNote = notes.find(n => n.id === event.id);
+    if (originalNote) {
+      const lines = originalNote.content.split('\n');
+      const description = lines.find(line => line.startsWith('event_description:'))?.replace('event_description:', '').trim() || '';
+      const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim() || '';
+      const location = lines.find(line => line.startsWith('event_location:'))?.replace('event_location:', '').trim() || '';
+      const recurrenceType = lines.find(line => line.startsWith('event_recurring_type:'))?.replace('event_recurring_type:', '').trim() || '';
+
+      setEditingEvent({
+        id: event.id,
+        description,
+        date: eventDate,
+        location,
+        recurrenceType
+      });
+      setShowEditEventModal(true);
+    }
+  };
+
+  const handleDateClick = (date) => {
+    setSelectedDate(date);
+    setEditingEvent(null);
+    setShowEditEventModal(true);
   };
 
   const handleEventUpdated = (updatedEvent) => {
@@ -181,10 +204,6 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
 
   const handleDelete = async (deletedId) => {
     onDelete(deletedId);
-  };
-
-  const handleAddEvent = (newEvent) => {
-    // Implementation of adding a new event
   };
 
   const handleToggleDeadline = async (event) => {
@@ -534,11 +553,52 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
       )}
 
       {/* Edit Event Modal */}
-      {editingEvent && (
+      {showEditEventModal && (
         <EditEventModal
           note={editingEvent}
-          onSave={handleEventUpdated}
-          onCancel={() => setEditingEvent(null)}
+          onSave={(content) => {
+            if (editingEvent) {
+              // Update existing event
+              const note = notes.find(n => n.id === editingEvent.id);
+              if (note) {
+                // Preserve the original meta tags
+                const originalLines = note.content.split('\n');
+                const metaTags = originalLines.filter(line => 
+                  line.startsWith('meta::') && 
+                  !line.startsWith('meta::event::')
+                );
+                
+                // Combine new content with preserved meta tags
+                const updatedContent = content + '\n' + metaTags.join('\n');
+                
+                // Update the note
+                const updatedNote = { ...note, content: updatedContent };
+                onEventUpdated(editingEvent.id, updatedContent);
+              }
+            } else {
+              // Add new event
+              const newNote = {
+                id: Date.now().toString(),
+                content: content,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+              onAddEvent(newNote);
+            }
+            setShowEditEventModal(false);
+            setEditingEvent(null);
+            setSelectedDate(null);
+          }}
+          onCancel={() => {
+            setShowEditEventModal(false);
+            setEditingEvent(null);
+            setSelectedDate(null);
+          }}
+          onSwitchToNormalEdit={() => {
+            setShowEditEventModal(false);
+            setEditingEvent(null);
+            setSelectedDate(null);
+          }}
           onDelete={handleDelete}
           notes={notes}
         />
@@ -562,16 +622,6 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
             </pre>
           </div>
         </div>
-      )}
-
-      {/* Add Event Modal */}
-      {isAddEventModalOpen && (
-        <AddEventModal
-          isOpen={isAddEventModalOpen}
-          onClose={() => setIsAddEventModalOpen(false)}
-          onSave={onAddEvent}
-          notes={notes}
-        />
       )}
     </div>
   );

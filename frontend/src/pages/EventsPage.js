@@ -4,7 +4,6 @@ import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTrian
 import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
 import EditEventModal from '../components/EditEventModal';
 import CalendarView from '../components/CalendarView';
-import AddEventModal from '../components/AddEventModal';
 import CompareEventsModal from '../components/CompareEventsModal';
 import BulkLoadExpenses from '../components/BulkLoadExpenses';
 
@@ -109,7 +108,6 @@ const getEventDetails = (content) => {
 const EventsPage = ({ allNotes, setAllNotes }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
-  const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [total, setTotal] = useState(0);
@@ -119,6 +117,9 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [none, setNone] = useState(0);
   const [showOnlyDeadlines, setShowOnlyDeadlines] = useState(false);
   const [isBulkLoadOpen, setIsBulkLoadOpen] = useState(false);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
   // Get all unique tags from events
   const uniqueTags = useMemo(() => {
     const tags = new Set();
@@ -236,10 +237,30 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     });
   };
 
-  const handleEventUpdated = async (id, updatedNote) => {
-    await updateNoteById(id, updatedNote);
-    setAllNotes(allNotes.map(note => note.id === id ? { ...note, content: updatedNote } : note));
-    setIsAddEventModalOpen(false);
+  const handleEditEvent = (event) => {
+    const originalNote = allNotes.find(n => n.id === event.id);
+    if (originalNote) {
+      const lines = originalNote.content.split('\n');
+      const description = lines.find(line => line.startsWith('event_description:'))?.replace('event_description:', '').trim() || '';
+      const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim() || '';
+      const location = lines.find(line => line.startsWith('event_location:'))?.replace('event_location:', '').trim() || '';
+      const recurrenceType = lines.find(line => line.startsWith('event_recurring_type:'))?.replace('event_recurring_type:', '').trim() || '';
+
+      setEditingEvent({
+        id: event.id,
+        description,
+        date: eventDate,
+        location,
+        recurrenceType
+      });
+      setShowEditEventModal(true);
+    }
+  };
+
+  const handleDateClick = (date) => {
+    setSelectedDate(date);
+    setEditingEvent(null);
+    setShowEditEventModal(true);
   };
 
   const handleAddEvent = async (content) => {
@@ -274,6 +295,12 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
     }
   };
 
+  const handleEventUpdated = (eventId, updatedContent) => {
+    setAllNotes(allNotes.map(note => 
+      note.id === eventId ? { ...note, content: updatedContent } : note
+    ));
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -294,7 +321,6 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
             <span>Compare Events</span>
           </button>
           <button
-            onClick={() => setIsAddEventModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <PlusIcon className="h-5 w-5" />
@@ -398,17 +424,43 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
         <CalendarView
           events={calendarEvents}
           onAcknowledgeEvent={handleAcknowledgeEvent}
-          onEventUpdated={handleEventUpdated}
+          onEditEvent={handleEditEvent}
+          onDateClick={handleDateClick}
           notes={allNotes}
           onDelete={handleDelete}
         />
       </div>
 
       {/* Add Event Modal */}
-      <AddEventModal
-        isOpen={isAddEventModalOpen}
-        onClose={() => setIsAddEventModalOpen(false)}
-        onAdd={handleAddEvent}
+      <EditEventModal
+        isOpen={showEditEventModal}
+        note={editingEvent}
+        onSave={(content) => {
+          if (editingEvent) {
+            handleEventUpdated(editingEvent.id, content);
+          } else {
+            handleAddEvent(content);
+          }
+          setShowEditEventModal(false);
+          setEditingEvent(null);
+          setSelectedDate(null);
+        }}
+        onCancel={() => {
+          setShowEditEventModal(false);
+          setEditingEvent(null);
+          setSelectedDate(null);
+        }}
+        onSwitchToNormalEdit={() => {
+          setShowEditEventModal(false);
+          setEditingEvent(null);
+          setSelectedDate(null);
+        }}
+        onDelete={(eventId) => {
+          setAllNotes(allNotes.filter(note => note.id !== eventId));
+          setShowEditEventModal(false);
+          setEditingEvent(null);
+          setSelectedDate(null);
+        }}
         notes={allNotes}
       />
 

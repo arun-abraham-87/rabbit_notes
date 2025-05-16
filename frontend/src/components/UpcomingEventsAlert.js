@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { CalendarIcon, ClockIcon, PlusIcon, PencilIcon, EyeIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import AddEventModal from './AddEventModal';
+import EditEventModal from './EditEventModal';
  
 const formatDateString = (date) => {
   // If date is already a string in YYYY-MM-DD format, return it
@@ -124,7 +123,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
     const [isExpanded, setIsExpanded] = useState(initialExpanded);
     const [showPopup, setShowPopup] = useState(false);
     const [upcomingEvents, setUpcomingEvents] = useState([]);
-    const [showAddEventModal, setShowAddEventModal] = useState(false);
+    const [showEditEventModal, setShowEditEventModal] = useState(false);
     const [revealedEvents, setRevealedEvents] = useState({});
     const [eventIndicators, setEventIndicators] = useState('');
     const [editingEvent, setEditingEvent] = useState(null);
@@ -145,7 +144,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
           location,
           recurrenceType
         });
-        setShowAddEventModal(true);
+        setShowEditEventModal(true);
       }
     };
   
@@ -357,7 +356,8 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setShowAddEventModal(true);
+                    setEditingEvent(null);
+                    setShowEditEventModal(true);
                   }}
                   className="px-3 py-1 text-blue-600 hover:text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors duration-150"
                   title="Add Event"
@@ -489,14 +489,10 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
           )}
         </div>
   
-        {showAddEventModal && (
-          <AddEventModal
-            isOpen={showAddEventModal}
-            onClose={() => {
-              setShowAddEventModal(false);
-              setEditingEvent(null);
-            }}
-            onAdd={(content) => {
+        {showEditEventModal && (
+          <EditEventModal
+            note={editingEvent}
+            onSave={(content) => {
               if (editingEvent) {
                 // Update existing event
                 const note = notes.find(n => n.id === editingEvent.id);
@@ -525,11 +521,22 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
                 };
                 setNotes([...notes, newNote]);
               }
-              setShowAddEventModal(false);
+              setShowEditEventModal(false);
+              setEditingEvent(null);
+            }}
+            onCancel={() => {
+              setShowEditEventModal(false);
+              setEditingEvent(null);
+            }}
+            onSwitchToNormalEdit={() => {
+              setShowEditEventModal(false);
+              setEditingEvent(null);
+            }}
+            onDelete={() => {
+              setShowEditEventModal(false);
               setEditingEvent(null);
             }}
             notes={notes}
-            initialValues={editingEvent}
           />
         )}
       </>

@@ -127,15 +127,7 @@ const NoteCard = ({
           showCreatedDate={showCreatedDate}
           setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
           handleDelete={handleDelete}
-          setPopupNoteText={(noteId) => {
-            if (isMeetingNote(note)) {
-              setEditingMeetingNote(note);
-            } else if (isEventNote(note)) {
-              setEditingEventNote(note);
-            } else {
-              setPopupNoteText(noteId);
-            }
-          }}
+          setPopupNoteText={setPopupNoteText}
           setLinkingNoteId={setLinkingNoteId}
           setLinkSearchTerm={setLinkSearchTerm}
           setLinkPopupVisible={setLinkPopupVisible}

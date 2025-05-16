@@ -28,7 +28,7 @@ import { updateNoteById, loadNotes, loadTags, addNewNoteCommon, createNote, expo
 import { getAgeInStringFmt,  getDiffInDays } from '../utils/DateUtils';
 import { checkNeedsReview } from '../utils/watchlistUtils';
 import MeetingManager from './MeetingManager.js';
-import AddEventModal from './AddEventModal';
+import EditEventModal from './EditEventModal';
 import DeadlinePassedAlert from './DeadlinePassedAlert';
 import CriticalTodosAlert from './CriticalTodosAlert';
 import ReviewOverdueAlert from './ReviewOverdueAlert';
@@ -100,7 +100,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [showPopup, setShowPopup] = useState(false);
   const [deadlines, setDeadlines] = useState([]);
-  const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [revealedDeadlines, setRevealedDeadlines] = useState({});
   const [deadlineIndicators, setDeadlineIndicators] = useState('');
   const [editingDeadline, setEditingDeadline] = useState(null);
@@ -117,7 +117,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
         description,
         date: eventDate
       });
-      setShowAddEventModal(true);
+      setShowEditEventModal(true);
     }
   };
 
@@ -200,7 +200,6 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
   };
 
   const handleAddEvent = async (content) => {
-    console.log('content***************************',editingDeadline)
     if (editingDeadline) {
       // Update existing deadline
       const note = notes.find(n => n.id === editingDeadline.id);
@@ -223,7 +222,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
       const newNote = await createNote(content);
       setNotes([...notes, newNote]);
     }
-    setShowAddEventModal(false);
+    setShowEditEventModal(false);
     setEditingDeadline(null);
   }
   
@@ -321,7 +320,8 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowAddEventModal(true);
+                  setEditingDeadline(null);
+                  setShowEditEventModal(true);
                 }}
                 className="px-3 py-1 text-blue-600 hover:text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors duration-150"
                 title="Add Deadline"
@@ -419,18 +419,23 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
         )}
       </div>
 
-      {showAddEventModal && (
-        <AddEventModal
-          isOpen={showAddEventModal}
-          onClose={() => {
-            console.log('closing add event modal')
-            setShowAddEventModal(false);
+      {showEditEventModal && (
+        <EditEventModal
+          note={editingDeadline}
+          onSave={handleAddEvent}
+          onCancel={() => {
+            setShowEditEventModal(false);
             setEditingDeadline(null);
           }}
-          onAdd={handleAddEvent}
+          onSwitchToNormalEdit={() => {
+            setShowEditEventModal(false);
+            setEditingDeadline(null);
+          }}
+          onDelete={() => {
+            setShowEditEventModal(false);
+            setEditingDeadline(null);
+          }}
           notes={notes}
-          isAddDeadline={true}
-          initialValues={editingDeadline}
         />
       )}
     </>

@@ -384,16 +384,6 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                               </button>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                              <ClockIcon className="h-4 w-4" />
-                              <span>
-                                {deadline.date.toLocaleTimeString('en-US', {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                  hour12: true
-                                })}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                               <CalendarIcon className="h-4 w-4" />
                               <span>
                                 {deadline.date.toLocaleDateString('en-US', {
@@ -404,7 +394,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                                 })}
                               </span>
                               <span className="text-indigo-600 font-medium">
-                                ({getAgeInStringFmt(deadline.date)})
+                                ({daysUntil} days until deadline)
                               </span>
                             </div>
                           </div>

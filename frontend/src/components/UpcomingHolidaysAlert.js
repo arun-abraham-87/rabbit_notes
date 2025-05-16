@@ -297,16 +297,6 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
                                 </button>
                               </div>
                               <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                                <ClockIcon className="h-4 w-4" />
-                                <span>
-                                  {holiday.date.toLocaleTimeString('en-US', {
-                                    hour: 'numeric',
-                                    minute: '2-digit',
-                                    hour12: true
-                                  })}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                                 <CalendarIcon className="h-4 w-4" />
                                 <span>
                                   {holiday.date.toLocaleDateString('en-US', {
@@ -315,9 +305,6 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
                                     month: 'long',
                                     day: 'numeric'
                                   })}
-                                </span>
-                                <span className="text-blue-600 font-medium">
-                                  ({getAgeInStringFmt(holiday.date)})
                                 </span>
                               </div>
                             </div>

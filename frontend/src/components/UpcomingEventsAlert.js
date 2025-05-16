@@ -211,7 +211,23 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
         sevenDaysFromNow.setDate(today.getDate() + 7);
         sevenDaysFromNow.setHours(23, 59, 59, 999); // End of the day
   
-        const eventNotes = notes.filter(note => note.content.includes('meta::event::'));
+        const eventNotes = notes.filter(note => {
+          // Exclude notes that are deadlines
+          if (note.content.includes('meta::event_deadline')) return false;
+          
+          // Check if it's an event
+          if (!note.content.includes('meta::event::')) return false;
+          
+          // Check if it has the deadline tag
+          const lines = note.content.split('\n');
+          const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+          if (tagsLine) {
+            const tags = tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim());
+            if (tags.some(tag => tag.toLowerCase() === 'deadline')) return false;
+          }
+          
+          return true;
+        });
         const upcoming = [];
         let hasTodayEvent = false;
         let hasTomorrowEvent = false;
@@ -230,6 +246,9 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
           const locationLine = lines.find(line => line.startsWith('event_location:'));
           const location = locationLine ? locationLine.replace('event_location:', '').trim() : null;
   
+          const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+          const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
+  
           const isHidden = note.content.includes('meta::event_hidden');
   
           try {
@@ -243,24 +262,38 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
   
             // Check if event is today or tomorrow
             const eventDate = new Date(nextOccurrence);
-            eventDate.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
+            const todayStart = new Date(today);
+            todayStart.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(todayStart);
+            todayEnd.setHours(23, 59, 59, 999);
+            const sevenDaysFromNow = new Date(todayStart);
+            sevenDaysFromNow.setDate(todayStart.getDate() + 7);
+            sevenDaysFromNow.setHours(23, 59, 59, 999);
   
-            if (eventDate.getTime() === today.getTime()) {
+            // Debug logging
+            console.log('Event:', {
+              description: description.replace('event_description:', '').trim(),
+              eventDate: eventDate.toISOString(),
+              todayStart: todayStart.toISOString(),
+              todayEnd: todayEnd.toISOString(),
+              isToday: eventDate >= todayStart && eventDate <= todayEnd
+            });
+  
+            // Check if event is today or tomorrow for indicators
+            if (eventDate >= todayStart && eventDate <= todayEnd) {
               hasTodayEvent = true;
-            } else if (eventDate.getTime() === tomorrow.getTime()) {
+            } else if (eventDate >= todayEnd && eventDate <= new Date(todayEnd.getTime() + 24 * 60 * 60 * 1000)) {
               hasTomorrowEvent = true;
             } else if (!nextEventDays || eventDate < new Date(nextEventDays.date)) {
-              const diffTime = eventDate - today;
+              const diffTime = eventDate - todayStart;
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              if (diffDays > 0) { // Only consider future events
+              if (diffDays > 0) {
                 nextEventDays = { date: eventDate, days: diffDays };
               }
             }
   
-            // Only include events within the next 7 days
-            if (nextOccurrence >= today && nextOccurrence <= sevenDaysFromNow) {
+            // Include events from today and within the next 7 days
+            if (eventDate >= todayStart && eventDate <= sevenDaysFromNow) {
               upcoming.push({
                 id: note.id,
                 date: nextOccurrence,
@@ -270,7 +303,8 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
                 isRecurring: !!recurrenceType,
                 recurrenceType,
                 baseEventDate,
-                isHidden
+                isHidden,
+                tags
               });
             }
           } catch (error) {
@@ -425,16 +459,6 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
                                   </button>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                                  <ClockIcon className="h-4 w-4" />
-                                  <span>
-                                    {event.date.toLocaleTimeString('en-US', {
-                                      hour: 'numeric',
-                                      minute: '2-digit',
-                                      hour12: true
-                                    })}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                                   <CalendarIcon className="h-4 w-4" />
                                   <span>
                                     {event.date.toLocaleDateString('en-US', {
@@ -443,9 +467,6 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
                                       month: 'long',
                                       day: 'numeric'
                                     })}
-                                  </span>
-                                  <span className="text-blue-600 font-medium">
-                                    ({getAgeInStringFmt(event.date)})
                                   </span>
                                 </div>
                                 {event.isRecurring && event.originalDate && (
@@ -474,6 +495,20 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
                                       <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                                     </svg>
                                     <span>{event.recurrenceType.charAt(0).toUpperCase() + event.recurrenceType.slice(1)}</span>
+                                  </div>
+                                )}
+                                {event.tags && event.tags.length > 0 && (
+                                  <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                      <path fillRule="evenodd" d="M5.25 2.25a3 3 0 00-3 3v4.318a3 3 0 00.879 2.121l9.58 9.581c.92.92 2.39.92 3.31 0l4.318-4.318a3 3 0 000-3.31l-9.58-9.581a3 3 0 00-2.121-.879H5.25zM6.375 7.5a1.125 1.125 0 100-2.25 1.125 1.125 0 000 2.25z" clipRule="evenodd" />
+                                    </svg>
+                                    <div className="flex flex-wrap gap-1">
+                                      {event.tags.map((tag, index) => (
+                                        <span key={index} className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs">
+                                          {tag}
+                                        </span>
+                                      ))}
+                                    </div>
                                   </div>
                                 )}
                               </div>

@@ -19,6 +19,8 @@ import NoteEditor from './NoteEditor';
 import { Alerts } from './Alerts';
 import { addCadenceLineToNote } from '../utils/CadenceHelpUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
+import moment from 'moment';
+import { parseToMoment } from '../utils/DateUtils';
 
 const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [showRawNote, setShowRawNote] = useState(false);
@@ -357,6 +359,18 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     }
   };
 
+  const getAgeInStringFmt = (dateStrOrDateObj) => {
+    const momentObj = parseToMoment(dateStrOrDateObj);
+    return momentObj ? momentObj.fromNow() : 'Invalid date';
+  }
+
+  const isOlderThanTwoDays = (dateStrOrDateObj) => {
+    const momentObj = parseToMoment(dateStrOrDateObj);
+    if (!momentObj) return false;
+    const now = moment();
+    return now.diff(momentObj, 'days') > 2;
+  };
+
   return (
     <div className="w-1/2 pr-2">
       <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
@@ -446,8 +460,11 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                     <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
                       {formatContent(todo.content)}
                     </h4>
-                    <div className="text-sm text-gray-500 mt-2">
-                      Open for: {getAgeInStringFmt(todo.created_datetime)}
+                    <div className="text-sm text-gray-500 mt-2 flex items-center">
+                      <span>Open for: {getAgeInStringFmt(todo.created_datetime)}</span>
+                      {isOlderThanTwoDays(todo.created_datetime) && (
+                        <FireIcon className="h-4 w-4 text-red-500 burning-icon ml-2" />
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-4">

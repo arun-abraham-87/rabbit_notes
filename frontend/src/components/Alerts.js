@@ -22,7 +22,8 @@ import {
   PencilIcon,
   ChevronRightIcon,
   BellIcon,
-  FireIcon
+  FireIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 import { updateNoteById, loadNotes, loadTags, addNewNoteCommon, createNote, exportAllNotes } from '../utils/ApiUtils';
 import { getAgeInStringFmt,  getDiffInDays } from '../utils/DateUtils';
@@ -775,6 +776,59 @@ const BackupAlert = ({ notes, expanded: initialExpanded = true }) => {
   );
 };
 
+const TodayEventsBar = ({ events }) => {
+  const getTodayEvents = () => {
+    if (!events || !Array.isArray(events)) return [];
+    
+    const today = new Date();
+    const todayMonth = today.getMonth();
+    const todayDate = today.getDate();
+
+    return events.filter(event => {
+      if (!event || !event.content) return false;
+      
+      const lines = event.content.split('\n');
+      const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+      if (!eventDateLine) return false;
+      
+      const eventDateStr = eventDateLine.replace('event_date:', '').trim();
+      const eventDate = new Date(eventDateStr);
+      
+      // Check if month and date match today, regardless of year
+      return eventDate.getMonth() === todayMonth && eventDate.getDate() === todayDate;
+    });
+  };
+
+  const todayEvents = getTodayEvents();
+  if (todayEvents.length === 0) return null;
+
+  return (
+    <div className="bg-green-50 border-b border-green-100">
+      <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between flex-wrap">
+          <div className="w-0 flex-1 flex items-center">
+            <span className="flex p-2 rounded-lg bg-green-100">
+              <SparklesIcon className="h-6 w-6 text-green-600" aria-hidden="true" />
+            </span>
+            <p className="ml-3 font-medium text-green-800 truncate">
+              <span className="md:hidden">Exciting! {todayEvents.length} event{todayEvents.length > 1 ? 's' : ''} today!</span>
+              <span className="hidden md:inline">Exciting! You have {todayEvents.length} event{todayEvents.length > 1 ? 's' : ''} happening today!</span>
+            </p>
+          </div>
+          <div className="order-3 mt-2 flex-shrink-0 w-full sm:order-2 sm:mt-0 sm:w-auto">
+            <a
+              href="/#/events"
+              className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200"
+            >
+              Check it out
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) => {
   const [EventAlertsComponent, setEventAlertsComponent] = useState(null);
 
@@ -816,6 +870,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         theme="light"
       />
       <div className="space-y-4 w-full">
+        <TodayEventsBar events={events} />
         <BackupAlert notes={notes} expanded={true} />
         <RemindersAlert allNotes={notes} expanded={true} setNotes={setNotes} />
         <div className="flex gap-4">

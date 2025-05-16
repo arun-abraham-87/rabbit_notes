@@ -5,7 +5,7 @@ import { XMarkIcon } from '@heroicons/react/24/solid';
 import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
 import WatchList from './WatchList';
-import { updateNoteById, loadNotes, defaultSettings } from '../utils/ApiUtils';
+import { updateNoteById, loadNotes, defaultSettings, deleteNoteById } from '../utils/ApiUtils';
 import { isSameAsTodaysDate } from '../utils/DateUtils';
 import { searchInNote, buildSuggestionsFromNotes } from '../utils/NotesUtils';
 import NoteFilters from './NoteFilters';
@@ -95,6 +95,16 @@ const NotesMainContainer = ({
         }
     };
 
+    const handleDelete = async (noteId) => {
+        try {
+            await deleteNoteById(noteId);
+            setAllNotes(allNotes.filter(note => note.id !== noteId));
+            setTotals(allNotes.length);
+        } catch (error) {   
+            console.error('Error deleting note:', error);
+        }
+    };
+
     // Build suggestions from allNotes
     const mergedObjList = useMemo(() =>
         buildSuggestionsFromNotes(allNotes, objList),
@@ -134,10 +144,10 @@ const NotesMainContainer = ({
                     /> */}
                     <NotesList
                         objList={mergedObjList}
-                        notes={filteredNotes}
-                        allNotes={allNotes}
+                        allNotes={filteredNotes}
                         addNotes={addNote}
                         updateNoteCallback={handleNoteUpdate}
+                        handleDelete={handleDelete}
                         updateTotals={setTotals}
                         objects={objects}
                         addObjects={addTag}

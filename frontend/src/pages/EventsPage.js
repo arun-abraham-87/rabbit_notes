@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
-import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon, EyeIcon, EyeSlashIcon, ArrowsRightLeftIcon, FlagIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon, EyeIcon, EyeSlashIcon, ArrowsRightLeftIcon, FlagIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
 import EditEventModal from '../components/EditEventModal';
 import CalendarView from '../components/CalendarView';
 import AddEventModal from '../components/AddEventModal';
 import CompareEventsModal from '../components/CompareEventsModal';
+import BulkLoadExpenses from '../components/BulkLoadExpenses';
 
 // Function to extract event details from note content
 const getEventDetails = (content) => {
@@ -117,6 +118,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [monthly, setMonthly] = useState(0);
   const [none, setNone] = useState(0);
   const [showOnlyDeadlines, setShowOnlyDeadlines] = useState(false);
+  const [isBulkLoadOpen, setIsBulkLoadOpen] = useState(false);
   // Get all unique tags from events
   const uniqueTags = useMemo(() => {
     const tags = new Set();
@@ -185,8 +187,6 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     return calendarEvents;
   };
 
-
-
   const handleDelete = async (eventId) => {
     const deletingEvent = allNotes.find(note => note.id === eventId);
     if (!deletingEvent) return;
@@ -197,8 +197,6 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       console.error('Error deleting event:', error);
     }
   };
-
-
 
   const handleAcknowledgeEvent = async (eventId, year) => {
     const event = allNotes.find(note => note.id === eventId);
@@ -256,11 +254,33 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     }
   };
 
+  const handleBulkCreate = async (expenseList) => {
+    try {
+      for (const expense of expenseList) {
+        const content = `event_description:${expense.description}
+event_date:${expense.date}
+event_tags:${expense.tag}
+meta::event::${expense.date}`;
+        
+        await handleAddEvent(content);
+      }
+    } catch (error) {
+      console.error('Error bulk creating events:', error);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Events</h1>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsBulkLoadOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <ArrowUpTrayIcon className="h-5 w-5" />
+            <span>Bulk Load</span>
+          </button>
           <button
             onClick={() => setIsCompareModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -373,7 +393,6 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         />
       </div>
 
-
       {/* Add Event Modal */}
       <AddEventModal
         isOpen={isAddEventModalOpen}
@@ -389,9 +408,12 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         events={allNotes.filter(note => note?.content && note.content.includes('meta::event::'))}
       />
 
-
-
-
+      {/* Add BulkLoadExpenses Modal */}
+      <BulkLoadExpenses
+        isOpen={isBulkLoadOpen}
+        onClose={() => setIsBulkLoadOpen(false)}
+        onBulkCreate={handleBulkCreate}
+      />
     </div>
   );
 };

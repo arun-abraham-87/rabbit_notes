@@ -25,11 +25,11 @@ export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d
 
 const NotesList = ({
   objList,
-  notes,
   allNotes,
   addNotes,
   updateNoteCallback,
   updateTotals,
+  handleDelete,
   objects,
   addObjects,
   searchQuery,
@@ -52,7 +52,7 @@ const NotesList = ({
   const [pasteText, setPasteText] = useState('');
   const [newNoteText, setNewNoteText] = useState('');
   const popupTimeoutRef = useRef(null);
-  const safeNotes = notes || [];
+  const safeNotes = allNotes || [];
   const [showEndDatePickerForNoteId, setShowEndDatePickerForNoteId] = useState(null);
   const [editingInlineDate, setEditingInlineDate] = useState({
     noteId: null,
@@ -86,7 +86,7 @@ const NotesList = ({
   const closeModal = () => setModalOpen(false);
 
   const confirmDelete = () => {
-    deleteNote(deletingNoteId);
+    handleDelete(deletingNoteId);
     closeModal();
   };
 
@@ -96,14 +96,14 @@ const NotesList = ({
       .querySelector(`#note-${id}`)
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  const handleDelete = (noteId) => {
+  const handleModalDelete = (noteId) => {
     setDeletingNoteId(noteId);
     openModal();
   };
 
 
   const handleEndDateSelect = (noteId, date) => {
-    const updatedNotes = notes.map(note => {
+    const updatedNotes = allNotes.map(note => {
       if (note.id === noteId) {
         const contentWithoutOldEndDate = note.content
           .split('\n')
@@ -123,7 +123,7 @@ const NotesList = ({
   const handleInlineDateSelect = (noteId, lineIndex, dateValue) => {
     const [year, month, day] = dateValue.split('-');
     const dateStr = `${day}/${month}/${year}`;
-    const noteToUpdate = notes.find(n => n.id === noteId);
+    const noteToUpdate = allNotes.find(n => n.id === noteId);
     const lines = noteToUpdate.content.split('\n');
     lines[lineIndex] = lines[lineIndex].replace(editingInlineDate.originalDate, dateStr);
     updateNoteCallback(noteId, lines.join('\n'));
@@ -133,10 +133,11 @@ const NotesList = ({
   const deleteNote = async (id) => {
     deleteNoteById(id);
     updateNoteCallback(
-      notes.filter((note) => note.id !== id) // Filter out the deleted note from the list
+      allNotes.filter((note) => note.id !== id) // Filter out the deleted note from the list
     );
-    updateTotals(notes.length);
+    updateTotals(allNotes.length);
     setDeletingNoteId(0);
+    
   };
 
   const handleTextSelection = (e) => {
@@ -209,7 +210,7 @@ const NotesList = ({
 
   const handleMergeNotes = async () => {
     try {
-      const notesToMerge = notes.filter(note => selectedNotes.includes(note.id));
+      const notesToMerge = allNotes.filter(note => selectedNotes.includes(note.id));
       if (notesToMerge.length === 0) return;
       const mergedContent = notesToMerge.map(note => note.content).join('\n\n');
       const allTags = notesToMerge.flatMap(note => note.tags || []);
@@ -461,7 +462,7 @@ const NotesList = ({
                     updateNoteCallback={updateNoteCallback}
                     showCreatedDate={settings.showCreatedDate || false}
                     setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
-                    handleDelete={handleDelete}
+                    handleDelete={handleModalDelete}
                     setLinkingNoteId={setLinkingNoteId}
                     setLinkSearchTerm={setLinkSearchTerm}
                     setLinkPopupVisible={setLinkPopupVisible}
@@ -525,7 +526,7 @@ const NotesList = ({
                     updateNoteCallback={updateNoteCallback}
                     showCreatedDate={settings.showCreatedDate || false}
                     setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
-                    handleDelete={handleDelete}
+                    handleDelete={handleModalDelete}
                     setLinkingNoteId={setLinkingNoteId}
                     setLinkSearchTerm={setLinkSearchTerm}
                     setLinkPopupVisible={setLinkPopupVisible}
@@ -590,7 +591,7 @@ const NotesList = ({
                   updateNoteCallback={updateNoteCallback}
                   showCreatedDate={settings.showCreatedDate || false}
                   setShowEndDatePickerForNoteId={setShowEndDatePickerForNoteId}
-                  handleDelete={handleDelete}
+                  handleDelete={handleModalDelete}
                   setLinkingNoteId={setLinkingNoteId}
                   setLinkSearchTerm={setLinkSearchTerm}
                   setLinkPopupVisible={setLinkPopupVisible}
@@ -632,13 +633,13 @@ const NotesList = ({
       {linkPopupVisible && (
         <LinkNotesModal
           visible={linkPopupVisible}
-          notes={allNotes || notes}
+          notes={allNotes}
           linkingNoteId={linkingNoteId}
           searchTerm={linkSearchTerm}
           onSearchTermChange={setLinkSearchTerm}
           onLink={(fromId, toId) => {
-            const source = allNotes.find(n => n.id === fromId) || notes.find(n => n.id === fromId);
-            const target = allNotes.find(n => n.id === toId) || notes.find(n => n.id === toId);
+            const source = allNotes.find(n => n.id === fromId) || allNotes.find(n => n.id === fromId);
+            const target = allNotes.find(n => n.id === toId) || allNotes.find(n => n.id === toId);
             const addTag = (content, id) => {
               const lines = content.split('\n').map(l => l.trimEnd());
               const tag = `meta::link::${id}`;
@@ -758,7 +759,7 @@ const NotesList = ({
             </div>
             <NoteEditor
               isAddMode={false}
-              note={notes.find(n => n.id === popupNoteText)}
+              note={allNotes.find(n => n.id === popupNoteText)}
               onSave={(updatedNote) => {
                 updateNoteCallback(popupNoteText, updatedNote);
                 setPopupNoteText(null);

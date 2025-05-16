@@ -777,6 +777,32 @@ const BackupAlert = ({ notes, expanded: initialExpanded = true }) => {
 };
 
 const TodayEventsBar = ({ events }) => {
+  const [isDismissed, setIsDismissed] = useState(() => {
+    try {
+      const lastAcknowledged = localStorage.getItem('todayEventsLastAcknowledged');
+      if (!lastAcknowledged) return false;
+      
+      const lastAckTime = new Date(lastAcknowledged);
+      const now = new Date();
+      const hoursSinceLastAck = (now - lastAckTime) / (1000 * 60 * 60);
+      
+      // If it's been more than 4 hours since last acknowledgment, show the bar again
+      return hoursSinceLastAck < 4;
+    } catch (error) {
+      console.error('Error reading from localStorage:', error);
+      return false;
+    }
+  });
+
+  const handleDismiss = () => {
+    try {
+      localStorage.setItem('todayEventsLastAcknowledged', new Date().toISOString());
+      setIsDismissed(true);
+    } catch (error) {
+      console.error('Error writing to localStorage:', error);
+    }
+  };
+
   const getTodayEvents = () => {
     if (!events || !Array.isArray(events)) return [];
     
@@ -800,7 +826,7 @@ const TodayEventsBar = ({ events }) => {
   };
 
   const todayEvents = getTodayEvents();
-  if (todayEvents.length === 0) return null;
+  if (todayEvents.length === 0 || isDismissed) return null;
 
   return (
     <div className="bg-green-50 border-b border-green-100">
@@ -815,13 +841,20 @@ const TodayEventsBar = ({ events }) => {
               <span className="hidden md:inline">Exciting! You have {todayEvents.length} event{todayEvents.length > 1 ? 's' : ''} happening today!</span>
             </p>
           </div>
-          <div className="order-3 mt-2 flex-shrink-0 w-full sm:order-2 sm:mt-0 sm:w-auto">
+          <div className="order-3 mt-2 flex-shrink-0 w-full sm:order-2 sm:mt-0 sm:w-auto flex items-center gap-2">
             <a
               href="/#/events"
               className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200"
             >
               Check it out
             </a>
+            <button
+              onClick={handleDismiss}
+              className="flex items-center justify-center p-2 text-green-700 hover:text-green-800 hover:bg-green-200 rounded-md transition-colors duration-150"
+              title="Dismiss for 4 hours"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>

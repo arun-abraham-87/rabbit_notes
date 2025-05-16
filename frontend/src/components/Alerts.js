@@ -36,6 +36,7 @@ import UnacknowledgedMeetingsAlert from './UnacknowledgedMeetingsAlert';
 import TrackerQuestionsAlert from './TrackerQuestionsAlert';
 import UpcomingEventsAlert from './UpcomingEventsAlert'
 import RemindersAlert from './RemindersAlert';
+import UpcomingHolidaysAlert from './UpcomingHolidaysAlert';
 
 const Alerts = {
   success: (message) => {
@@ -823,7 +824,7 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
         <BackupAlert notes={notes} expanded={true} />
         <RemindersAlert allNotes={notes} expanded={true} setNotes={setNotes} />
         <div className="flex gap-4">
-          <div className="w-1/2">
+          <div className="w-1/3">
             <UpcomingDeadlinesAlert 
               notes={notes} 
               expanded={true} 
@@ -831,8 +832,15 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
               setNotes={setNotes}
             />
           </div>
-          <div className="w-1/2">
+          <div className="w-1/3">
             <UpcomingEventsAlert 
+              notes={notes} 
+              expanded={false} 
+              setNotes={setNotes}
+            />
+          </div>
+          <div className="w-1/3">
+            <UpcomingHolidaysAlert 
               notes={notes} 
               expanded={false} 
               setNotes={setNotes}

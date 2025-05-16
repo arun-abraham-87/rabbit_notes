@@ -7,7 +7,7 @@ import { toast } from 'react-toastify';
 const BulkLoadExpenses = ({ isOpen, onClose, onBulkCreate }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [parsedData, setParsedData] = useState([]);
-  const [error, setError] = useState(null);
+  const [errors, setErrors] = useState([]);
   const [showNotePreview, setShowNotePreview] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -21,21 +21,68 @@ const BulkLoadExpenses = ({ isOpen, onClose, onBulkCreate }) => {
     setIsDragging(false);
   }, []);
 
+  const validateRow = (row, index) => {
+    const rowErrors = [];
+    
+    // Check if row has enough columns
+    if (row.length < 3) {
+      rowErrors.push(`Row ${index + 1}: Missing required columns. Expected at least 3 columns.`);
+      return rowErrors;
+    }
+
+    // Validate date format (dd/mm/yyyy)
+    const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+    if (!row[0] || !dateRegex.test(row[0])) {
+      rowErrors.push(`Row ${index + 1}: Invalid date format. Expected dd/mm/yyyy.`);
+    } else {
+      const [day, month, year] = row[0].split('/');
+      const date = new Date(year, month - 1, day);
+      if (isNaN(date.getTime())) {
+        rowErrors.push(`Row ${index + 1}: Invalid date. Please check the day, month, and year values.`);
+      }
+    }
+
+    // Validate description
+    if (!row[1] || row[1].trim() === '') {
+      rowErrors.push(`Row ${index + 1}: Description is required.`);
+    }
+
+    // Validate tag
+    if (!row[2] || row[2].trim() === '') {
+      rowErrors.push(`Row ${index + 1}: Tag is required.`);
+    }
+
+    // Validate deadline flag if present
+    if (row[3] && row[3].toLowerCase() !== 'true' && row[3].toLowerCase() !== 'false') {
+      rowErrors.push(`Row ${index + 1}: Deadline flag must be 'true' or 'false'.`);
+    }
+
+    return rowErrors;
+  };
+
   const processFile = useCallback((file) => {
     if (file.type !== 'text/csv') {
-      setError('Please upload a CSV file');
+      setErrors(['Please upload a CSV file']);
       return;
     }
 
     Papa.parse(file, {
       complete: (results) => {
         if (results.errors.length > 0) {
-          setError('Error parsing CSV file');
+          setErrors(['Error parsing CSV file: ' + results.errors[0].message]);
           return;
         }
 
+        const validationErrors = [];
         const validData = results.data
-          .filter(row => row.length >= 3 && row[0] && row[1] && row[2]) // Ensure required fields are present
+          .filter((row, index) => {
+            const rowErrors = validateRow(row, index);
+            if (rowErrors.length > 0) {
+              validationErrors.push(...rowErrors);
+              return false;
+            }
+            return true;
+          })
           .map(row => ({
             date: row[0],
             description: row[1],
@@ -44,10 +91,10 @@ const BulkLoadExpenses = ({ isOpen, onClose, onBulkCreate }) => {
           }));
 
         setParsedData(validData);
-        setError(null);
+        setErrors(validationErrors);
       },
       error: (error) => {
-        setError('Error parsing CSV file');
+        setErrors(['Error parsing CSV file: ' + error.message]);
         console.error('CSV Parse Error:', error);
       }
     });
@@ -213,16 +260,25 @@ meta::event::${metaDate}`;
                       </div>
                     </div>
 
-                    {error && (
-                      <div className="mt-4 text-sm text-red-600">
-                        {error}
+                    {errors.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-red-600 mb-2">Validation Errors:</h4>
+                        <div className="max-h-40 overflow-y-auto">
+                          <ul className="list-disc pl-5 space-y-1">
+                            {errors.map((error, index) => (
+                              <li key={index} className="text-sm text-red-600">
+                                {error}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       </div>
                     )}
 
                     {parsedData.length > 0 && (
                       <div className="mt-4">
                         <h4 className="text-sm font-medium text-gray-900 mb-2">
-                          Preview ({parsedData.length} entries)
+                          Preview ({parsedData.length} valid entries)
                         </h4>
                         <div className="max-h-60 overflow-y-auto">
                           <table className="min-w-full divide-y divide-gray-300">
@@ -260,12 +316,12 @@ meta::event::${metaDate}`;
                       <button
                         type="button"
                         className={`rounded-md px-3 py-2 text-sm font-semibold text-white shadow-sm ${
-                          parsedData.length > 0
+                          parsedData.length > 0 && errors.length === 0
                             ? 'bg-indigo-600 hover:bg-indigo-500'
                             : 'bg-gray-400 cursor-not-allowed'
                         }`}
                         onClick={handleConfirm}
-                        disabled={parsedData.length === 0}
+                        disabled={parsedData.length === 0 || errors.length > 0}
                       >
                         Confirm Upload
                       </button>

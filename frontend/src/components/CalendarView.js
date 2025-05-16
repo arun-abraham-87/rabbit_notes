@@ -228,6 +228,17 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
 
       {Object.entries(groupedByMonth).map(([month, occurrences]) => {
         const isCurrentMonth = month === new Date().toLocaleString('default', { month: 'long' });
+        
+        // Group occurrences by date
+        const occurrencesByDate = occurrences.reduce((acc, occurrence) => {
+          const dateKey = occurrence.date.toDateString();
+          if (!acc[dateKey]) {
+            acc[dateKey] = [];
+          }
+          acc[dateKey].push(occurrence);
+          return acc;
+        }, {});
+
         return (
           <div 
             key={month} 
@@ -237,218 +248,246 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes,onAddE
               {month}
             </h2>
             <div className="space-y-4">
-              {occurrences.map((occurrence, index) => (
-                <div
-                  key={`${occurrence.event.id}-${occurrence.date.toISOString()}`}
-                  className={`relative pl-8 ${
-                    occurrence.isPast ? 'opacity-60' : ''
-                  }`}
-                >
-                  {/* Timeline line */}
-                  <div className={`absolute left-3 top-0 bottom-0 w-0.5 ${
-                    occurrence.isPast ? 'bg-gray-300' : 'bg-gray-200'
-                  }`} />
-                  
-                  {/* Timeline dot with day number */}
-                  <div className={`absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-full ${
-                    occurrence.isPast 
-                      ? 'bg-gray-400 text-white' 
-                      : occurrence.isToday 
-                        ? 'bg-indigo-400 text-white'
-                        : 'bg-gray-400 text-white'
-                  }`}>
-                    <span className="text-sm font-bold">
-                      {occurrence.date.getDate()}
-                    </span>
-                  </div>
+              {Object.entries(occurrencesByDate).map(([dateKey, dateOccurrences]) => {
+                const firstOccurrence = dateOccurrences[0];
+                const isToday = firstOccurrence.isToday;
+                const isPast = firstOccurrence.isPast;
+                const dayNumber = firstOccurrence.date.getDate();
+                const totalEvents = dateOccurrences.length;
 
-                  <div className={`ml-4 p-4 rounded-lg border ${
-                    occurrence.isPast 
-                      ? 'bg-gray-50 border-gray-200' 
-                      : occurrence.isToday 
-                        ? 'border-2 border-indigo-500 bg-indigo-50 shadow-md'
-                        : 'bg-white border-gray-200'
-                  } shadow-sm flex`}>
-                    {/* Days indicator */}
-                    <div className={`flex flex-col items-center justify-center min-w-[80px] mr-4 rounded-l-lg ${
-                      occurrence.isPast 
-                        ? 'bg-gray-200 text-gray-600' 
-                        : occurrence.isToday 
-                          ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
-                          : 'bg-blue-500 text-white'
-                    }`}>
-                      {occurrence.isToday ? (
-                        <div className="flex flex-col items-center justify-center py-2">
-                          <SparklesIcon className="h-8 w-8 mb-1" />
-                          <div className="text-xs font-medium">TODAY</div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="text-2xl font-bold">
-                            {occurrence.isPast 
-                              ? Math.ceil((new Date() - occurrence.date) / (1000 * 60 * 60 * 24))
-                              : Math.ceil((occurrence.date - new Date()) / (1000 * 60 * 60 * 24))
-                            }
-                          </div>
-                          <div className="text-xs font-medium">
-                            {occurrence.isPast ? 'DAYS AGO' : 'DAYS TO'}
-                          </div>
-                        </>
-                      )}
+                return (
+                  <div key={dateKey} className="relative pl-12">
+                    {/* Bracket-like timeline */}
+                    <div className="absolute left-0 top-0 bottom-0 flex flex-col items-center">
+                      {/* Top horizontal line */}
+                      <div className={`w-8 h-0.5 ${
+                        isPast ? 'bg-gray-300' : 'bg-gray-200'
+                      }`} />
+                      
+                      {/* Vertical line */}
+                      <div className={`w-0.5 flex-grow ${
+                        isPast ? 'bg-gray-300' : 'bg-gray-200'
+                      }`} />
+                      
+                      {/* Bottom horizontal line */}
+                      <div className={`w-8 h-0.5 ${
+                        isPast ? 'bg-gray-300' : 'bg-gray-200'
+                      }`} />
+                      
+                      {/* Date circle */}
+                      <div className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-12 h-12 rounded-full ${
+                        isPast 
+                          ? 'bg-gray-400 text-white' 
+                          : isToday 
+                            ? 'bg-indigo-400 text-white'
+                            : 'bg-gray-400 text-white'
+                      }`}>
+                        <span className="text-xl font-bold">
+                          {dayNumber}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex-1 space-y-3">
-                      {/* Event description and date row */}
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <h3 className={`text-lg font-medium ${
-                            occurrence.isToday ? 'text-indigo-900' : 'text-gray-900'
-                          }`}>
-                            {occurrence.event.content.includes('meta::event_hidden') ? (
-                              <div className="flex items-center gap-2">
-                                <span>XXXXXXXXXXXX</span>
-                                <button
-                                  onClick={() => handleToggleHidden(occurrence.event)}
-                                  className="text-xs text-indigo-600 hover:text-indigo-700 underline"
-                                >
-                                  Reveal
-                                </button>
-                              </div>
-                            ) : (
-                              occurrence.event.description
-                            )}
-                            {occurrence.isToday && (
-                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                                Today
-                              </span>
-                            )}
-                            {occurrence.event.content.includes('meta::event_deadline') && (
-                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                Deadline
-                              </span>
-                            )}
-                          </h3>
-                          <div className="flex flex-col gap-1">
-                            <div className="grid grid-cols-[120px_1fr] gap-x-2">
-                              <p className={`text-sm ${
-                                occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
-                              }`}>
-                                <span className="font-medium">Date:</span>
-                              </p>
-                              <p className={`text-sm ${
-                                occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
-                              }`}>
-                                {getDateInDDMMYYYYFormatWithAgeInParentheses(occurrence.date)}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                <span className="font-medium">Original date:</span>
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
-                              </p>
-                              {occurrence.event.recurrence !== 'none' && occurrence.age && (
+                    {/* Event cards */}
+                    <div className="space-y-4">
+                      {dateOccurrences.map((occurrence, index) => (
+                        <div
+                          key={`${occurrence.event.id}-${occurrence.date.toISOString()}`}
+                          className={`${
+                            occurrence.isPast ? 'opacity-60' : ''
+                          }`}
+                        >
+                          <div className={`p-4 rounded-lg border ${
+                            occurrence.isPast 
+                              ? 'bg-gray-50 border-gray-200' 
+                              : occurrence.isToday 
+                                ? 'border-2 border-indigo-500 bg-indigo-50 shadow-md'
+                                : 'bg-white border-gray-200'
+                          } shadow-sm flex`}>
+                            {/* Days indicator */}
+                            <div className={`flex flex-col items-center justify-center min-w-[80px] mr-4 rounded-l-lg ${
+                              occurrence.isPast 
+                                ? 'bg-gray-200 text-gray-600' 
+                                : occurrence.isToday 
+                                  ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
+                                  : 'bg-blue-500 text-white'
+                            }`}>
+                              {occurrence.isToday ? (
+                                <div className="flex flex-col items-center justify-center py-2">
+                                  <SparklesIcon className="h-8 w-8 mb-1" />
+                                  <div className="text-xs font-medium">TODAY</div>
+                                </div>
+                              ) : (
                                 <>
-                                  <p className="text-sm text-gray-600">
-                                    <span className="font-medium">Age:</span>
-                                  </p>
-                                  <p className="text-sm text-gray-600">
-                                    {occurrence.age}
-                                  </p>
-                                </>
-                              )}
-                              {occurrence.event.notes && (
-                                <>
-                                  <p className="text-sm text-gray-600 italic">
-                                    <span className="font-medium">Notes:</span>
-                                  </p>
-                                  <p className="text-sm text-gray-600 italic">
-                                    {occurrence.event.notes}
-                                  </p>
+                                  <div className="text-2xl font-bold">
+                                    {occurrence.isPast 
+                                      ? Math.ceil((new Date() - occurrence.date) / (1000 * 60 * 60 * 24))
+                                      : Math.ceil((occurrence.date - new Date()) / (1000 * 60 * 60 * 24))
+                                    }
+                                  </div>
+                                  <div className="text-xs font-medium">
+                                    {occurrence.isPast ? 'DAYS AGO' : 'DAYS TO'}
+                                  </div>
                                 </>
                               )}
                             </div>
-                            {/* Tags display */}
-                            {occurrence.event.tags && occurrence.event.tags.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {occurrence.event.tags.map(tag => (
-                                  <span
-                                    key={tag}
-                                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                      occurrence.isToday 
-                                        ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                                        : 'bg-gray-100 text-gray-600 border border-gray-200'
-                                    }`}
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
+
+                            <div className="flex-1 space-y-3">
+                              {/* Event description and date row */}
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-1">
+                                  <h3 className={`text-lg font-medium ${
+                                    occurrence.isToday ? 'text-indigo-900' : 'text-gray-900'
+                                  }`}>
+                                    {occurrence.event.content.includes('meta::event_hidden') ? (
+                                      <div className="flex items-center gap-2">
+                                        <span>XXXXXXXXXXXX</span>
+                                        <button
+                                          onClick={() => handleToggleHidden(occurrence.event)}
+                                          className="text-xs text-indigo-600 hover:text-indigo-700 underline"
+                                        >
+                                          Reveal
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      occurrence.event.description
+                                    )}
+                                    {occurrence.isToday && (
+                                      <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                        Today
+                                      </span>
+                                    )}
+                                    {occurrence.event.content.includes('meta::event_deadline') && (
+                                      <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        Deadline
+                                      </span>
+                                    )}
+                                  </h3>
+                                  <div className="flex flex-col gap-1">
+                                    <div className="grid grid-cols-[120px_1fr] gap-x-2">
+                                      <p className={`text-sm ${
+                                        occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
+                                      }`}>
+                                        <span className="font-medium">Date:</span>
+                                      </p>
+                                      <p className={`text-sm ${
+                                        occurrence.isToday ? 'text-indigo-700' : 'text-gray-500'
+                                      }`}>
+                                        {getDateInDDMMYYYYFormatWithAgeInParentheses(occurrence.date)}
+                                      </p>
+                                      <p className="text-sm text-gray-600">
+                                        <span className="font-medium">Original date:</span>
+                                      </p>
+                                      <p className="text-sm text-gray-600">
+                                        {new Date(occurrence.event.dateTime).toLocaleDateString('en-US', {
+                                          weekday: 'long',
+                                          year: 'numeric',
+                                          month: 'long',
+                                          day: 'numeric'
+                                        })}
+                                      </p>
+                                      {occurrence.event.recurrence !== 'none' && occurrence.age && (
+                                        <>
+                                          <p className="text-sm text-gray-600">
+                                            <span className="font-medium">Age:</span>
+                                          </p>
+                                          <p className="text-sm text-gray-600">
+                                            {occurrence.age}
+                                          </p>
+                                        </>
+                                      )}
+                                      {occurrence.event.notes && (
+                                        <>
+                                          <p className="text-sm text-gray-600 italic">
+                                            <span className="font-medium">Notes:</span>
+                                          </p>
+                                          <p className="text-sm text-gray-600 italic">
+                                            {occurrence.event.notes}
+                                          </p>
+                                        </>
+                                      )}
+                                    </div>
+                                    {/* Tags display */}
+                                    {occurrence.event.tags && occurrence.event.tags.length > 0 && (
+                                      <div className="mt-2 flex flex-wrap gap-1">
+                                        {occurrence.event.tags.map(tag => (
+                                          <span
+                                            key={tag}
+                                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                              occurrence.isToday 
+                                                ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                                : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                            }`}
+                                          >
+                                            {tag}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  {occurrence.event.recurrence !== 'none' && (
+                                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
+                                      occurrence.isPast 
+                                        ? 'bg-gray-100 text-gray-500' 
+                                        : 'bg-indigo-100 text-indigo-700'
+                                    }`}>
+                                      {occurrence.event.recurrence.charAt(0).toUpperCase() + occurrence.event.recurrence.slice(1)}
+                                    </span>
+                                  )}
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => handleToggleHidden(occurrence.event)}
+                                      className={`p-2 rounded-lg transition-colors ${
+                                        occurrence.event.content.includes('meta::event_hidden')
+                                          ? 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                      }`}
+                                      title={occurrence.event.content.includes('meta::event_hidden') ? "Show event" : "Hide event"}
+                                    >
+                                      {occurrence.event.content.includes('meta::event_hidden') ? (
+                                        <EyeSlashIcon className="h-5 w-5" />
+                                      ) : (
+                                        <EyeIcon className="h-5 w-5" />
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => handleToggleDeadline(occurrence.event)}
+                                      className={`p-2 rounded-lg transition-colors ${
+                                        occurrence.event.content.includes('meta::event_deadline')
+                                          ? 'text-red-500 hover:text-red-600 hover:bg-red-50'
+                                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                      }`}
+                                      title={occurrence.event.content.includes('meta::event_deadline') ? "Remove deadline" : "Mark as deadline"}
+                                    >
+                                      <FlagIcon className="h-5 w-5" />
+                                    </button>
+                                    <button
+                                      onClick={() => setRawNote(occurrence.event)}
+                                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                      title="View raw note"
+                                    >
+                                      <DocumentTextIcon className="h-5 w-5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleEditEvent(occurrence.event)}
+                                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                      title="Edit event"
+                                    >
+                                      <PencilIcon className="h-5 w-5" />
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                            )}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-start gap-2">
-                          {occurrence.event.recurrence !== 'none' && (
-                            <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
-                              occurrence.isPast 
-                                ? 'bg-gray-100 text-gray-500' 
-                                : 'bg-indigo-100 text-indigo-700'
-                            }`}>
-                              {occurrence.event.recurrence.charAt(0).toUpperCase() + occurrence.event.recurrence.slice(1)}
-                            </span>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleToggleHidden(occurrence.event)}
-                              className={`p-2 rounded-lg transition-colors ${
-                                occurrence.event.content.includes('meta::event_hidden')
-                                  ? 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                              }`}
-                              title={occurrence.event.content.includes('meta::event_hidden') ? "Show event" : "Hide event"}
-                            >
-                              {occurrence.event.content.includes('meta::event_hidden') ? (
-                                <EyeSlashIcon className="h-5 w-5" />
-                              ) : (
-                                <EyeIcon className="h-5 w-5" />
-                              )}
-                            </button>
-                            <button
-                              onClick={() => handleToggleDeadline(occurrence.event)}
-                              className={`p-2 rounded-lg transition-colors ${
-                                occurrence.event.content.includes('meta::event_deadline')
-                                  ? 'text-red-500 hover:text-red-600 hover:bg-red-50'
-                                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                              }`}
-                              title={occurrence.event.content.includes('meta::event_deadline') ? "Remove deadline" : "Mark as deadline"}
-                            >
-                              <FlagIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => setRawNote(occurrence.event)}
-                              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                              title="View raw note"
-                            >
-                              <DocumentTextIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => handleEditEvent(occurrence.event)}
-                              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                              title="Edit event"
-                            >
-                              <PencilIcon className="h-5 w-5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );

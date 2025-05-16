@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
-import { FireIcon, PlusIcon, CheckIcon, ArrowTrendingDownIcon, PencilIcon, CodeBracketIcon, EyeIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { 
+  FireIcon, 
+  PlusIcon, 
+  CheckIcon, 
+  ArrowTrendingDownIcon, 
+  PencilIcon, 
+  CodeBracketIcon, 
+  EyeIcon, 
+  XMarkIcon,
+  ClipboardDocumentListIcon,
+  ExclamationTriangleIcon,
+  ClockIcon,
+  ArrowDownIcon
+} from '@heroicons/react/24/outline';
 import NoteView from './NoteView';
 import NoteEditor from './NoteEditor';
 import { Alerts } from './Alerts';
@@ -13,6 +26,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [noteToUpdate, setNoteToUpdate] = useState(null);
   const [expandedNotes, setExpandedNotes] = useState({});
   const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [activeTab, setActiveTab] = useState('critical');
 
   // Add burning animation styles
   useEffect(() => {
@@ -87,13 +101,37 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     };
   }, []);
 
-  const criticalTodos = notes.filter(note => {
-    if (!note.content.includes('meta::todo::')) return false;
-    if (note.content.includes('meta::todo_completed')) return false;
-    return note.content.includes('meta::critical');
-  });
+  const getTodosByPriority = (priority) => {
+    return notes.filter(note => {
+      // First check if it's a todo
+      if (!note.content.includes('meta::todo::')) return false;
+      // Exclude completed todos
+      if (note.content.includes('meta::todo_completed')) return false;
+      
+      const content = note.content.toLowerCase();
+      const lines = content.split('\n').map(line => line.trim());
+      
+      // First determine the note's priority
+      let notePriority = 'low'; // default priority
+      
+      if (lines.some(line => line === 'meta::critical')) {
+        notePriority = 'critical';
+      } else if (lines.some(line => line === 'meta::high')) {
+        notePriority = 'high';
+      } else if (lines.some(line => line === 'meta::medium')) {
+        notePriority = 'medium';
+      } else{
+        notePriority = 'low';
+      }
+      
+      // Return true if the note's priority matches the requested priority
+      return notePriority === priority;
+    });
+  };
 
-  if (criticalTodos.length === 0) return null;
+  const todos = getTodosByPriority(activeTab);
+
+  if (notes.length === 0) return null;
 
   const handleViewRawNote = (note) => {
     setSelectedNote(note);
@@ -324,9 +362,9 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         <div className="bg-red-50 px-6 py-4 border-b border-red-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <FireIcon className="h-6 w-6 text-red-500 burning-icon" />
+              <ClipboardDocumentListIcon className="h-6 w-6 text-red-500" />
               <h3 className="ml-3 text-base font-semibold text-red-800">
-                Critical Todos ({criticalTodos.length})
+                To Do's
               </h3>
             </div>
             <div className="flex items-center gap-2">
@@ -343,8 +381,58 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
             </div>
           </div>
         </div>
+
+        {/* Tabs */}
+        <div className="border-b border-gray-200">
+          <nav className="flex w-full">
+            {[
+              { 
+                id: 'critical', 
+                label: 'Critical', 
+                bgColor: 'bg-red-700', 
+                textColor: 'text-white',
+                icon: <FireIcon className="h-5 w-5 mr-1" />
+              },
+              { 
+                id: 'high', 
+                label: 'High', 
+                bgColor: 'bg-red-300', 
+                textColor: 'text-red-900',
+                icon: <ExclamationTriangleIcon className="h-5 w-5 mr-1" />
+              },
+              { 
+                id: 'medium', 
+                label: 'Medium', 
+                bgColor: 'bg-yellow-300', 
+                textColor: 'text-yellow-900',
+                icon: <ClockIcon className="h-5 w-5 mr-1" />
+              },
+              { 
+                id: 'low', 
+                label: 'Low', 
+                bgColor: 'bg-green-300', 
+                textColor: 'text-green-900',
+                icon: <ArrowDownIcon className="h-5 w-5 mr-1" />
+              }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-150 flex items-center justify-center ${
+                  activeTab === tab.id
+                    ? `${tab.bgColor} ${tab.textColor}`
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
         <div className="divide-y divide-gray-100">
-          {criticalTodos.map((todo, index) => {
+          {todos.map((todo, index) => {
             return (
               <div 
                 key={todo.id} 

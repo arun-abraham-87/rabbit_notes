@@ -108,6 +108,8 @@ const getEventDetails = (content) => {
 const EventsPage = ({ allNotes, setAllNotes }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedDay, setSelectedDay] = useState('');
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [total, setTotal] = useState(0);
@@ -135,23 +137,36 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   useEffect(() => {
     setCalendarEvents(getCalendarEvents());
     setTotal(getCalendarEvents().length);
-  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines]);
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay]);
 
   const getCalendarEvents = () => {
     // Filter and group events
     const events = allNotes
       .filter(note => note?.content && note.content.includes('meta::event::'))
       .filter(note => {
-        const { description, tags } = getEventDetails(note.content);
+        const { description, tags, dateTime } = getEventDetails(note.content);
         const matchesSearch = description.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesDeadline = !showOnlyDeadlines || note.content.includes('meta::event_deadline');
+        
+        // Month and day filtering
+        let matchesDate = true;
+        if (dateTime) {
+          const eventDate = new Date(dateTime);
+          if (selectedMonth && selectedMonth !== '') {
+            matchesDate = matchesDate && (eventDate.getMonth() + 1 === parseInt(selectedMonth));
+          }
+          if (selectedDay && selectedDay !== '') {
+            matchesDate = matchesDate && (eventDate.getDate() === parseInt(selectedDay));
+          }
+        }
+
         // If no tags are selected, show all events
         if (selectedTags.length === 0) {
-          return matchesSearch && matchesDeadline;
+          return matchesSearch && matchesDeadline && matchesDate;
         }
         // If tags are selected, show only events that have ALL selected tags
         const matchesTags = selectedTags.every(tag => tags.includes(tag));
-        return matchesSearch && matchesTags && matchesDeadline;
+        return matchesSearch && matchesTags && matchesDeadline && matchesDate;
       });
 
     // Calculate totals for different recurrence types
@@ -358,12 +373,14 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
                 </button>
               )}
             </div>
-            {(searchQuery || selectedTags.length > 0 || showOnlyDeadlines) && (
+            {(searchQuery || selectedTags.length > 0 || showOnlyDeadlines || selectedMonth || selectedDay) && (
               <button
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedTags([]);
                   setShowOnlyDeadlines(false);
+                  setSelectedMonth('');
+                  setSelectedDay('');
                 }}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
               >
@@ -372,17 +389,47 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
               </button>
             )}
           </div>
-          <button
-            onClick={() => setShowOnlyDeadlines(!showOnlyDeadlines)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-fit ${
-              showOnlyDeadlines
-                ? 'bg-red-100 text-red-700 border border-red-200 hover:bg-red-200'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <FlagIcon className="h-5 w-5" />
-            {showOnlyDeadlines ? 'Show All Events' : 'Show Deadlines Only'}
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowOnlyDeadlines(!showOnlyDeadlines)}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-fit ${
+                showOnlyDeadlines
+                  ? 'bg-red-100 text-red-700 border border-red-200 hover:bg-red-200'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <FlagIcon className="h-5 w-5" />
+              {showOnlyDeadlines ? 'Show All Events' : 'Show Deadlines Only'}
+            </button>
+
+            {/* Month Filter */}
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <option value="">All Months</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                <option key={month} value={month}>
+                  {new Date(2000, month - 1).toLocaleString('default', { month: 'long' })}
+                </option>
+              ))}
+            </select>
+
+            {/* Day Filter */}
+            <select
+              value={selectedDay}
+              onChange={(e) => setSelectedDay(e.target.value)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <option value="">All Days</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                <option key={day} value={day}>
+                  {day}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Tag Pills */}

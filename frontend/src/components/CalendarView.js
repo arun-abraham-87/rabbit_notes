@@ -174,19 +174,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
   const handleEditEvent = (event) => {
     const originalNote = notes.find(n => n.id === event.id);
     if (originalNote) {
-      const lines = originalNote.content.split('\n');
-      const description = lines.find(line => line.startsWith('event_description:'))?.replace('event_description:', '').trim() || '';
-      const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim() || '';
-      const location = lines.find(line => line.startsWith('event_location:'))?.replace('event_location:', '').trim() || '';
-      const recurrenceType = lines.find(line => line.startsWith('event_recurring_type:'))?.replace('event_recurring_type:', '').trim() || '';
-
-      setEditingEvent({
-        id: event.id,
-        description,
-        date: eventDate,
-        location,
-        recurrenceType
-      });
+      setEditingEvent(originalNote);
       setShowEditEventModal(true);
     }
   };
@@ -555,6 +543,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
       {/* Edit Event Modal */}
       {showEditEventModal && (
         <EditEventModal
+          isOpen={showEditEventModal}
           note={editingEvent}
           onSave={(content) => {
             if (editingEvent) {

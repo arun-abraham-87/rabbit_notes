@@ -429,10 +429,11 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
         <CalendarView
           events={calendarEvents}
           onAcknowledgeEvent={handleAcknowledgeEvent}
-          onEditEvent={handleEditEvent}
+          onEventUpdated={handleEventUpdated}
           onDateClick={handleDateClick}
           notes={allNotes}
           onDelete={handleDelete}
+          onAddEvent={handleAddEvent}
         />
       </div>
 

@@ -168,7 +168,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           const isPast = eventDate < now;
 
           // Check if event matches current filters
-          const matchesSearch = description.toLowerCase().includes(searchQuery.toLowerCase());
+          const matchesSearch = searchQuery === '' || description.toLowerCase().includes(searchQuery.toLowerCase());
           const matchesTags = selectedTags.length === 0 || 
             selectedTags.every(tag => tags.includes(tag));
           
@@ -198,7 +198,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       .filter(note => note?.content && note.content.includes('meta::event::'))
       .filter(note => {
         const { description, tags, dateTime } = getEventDetails(note.content);
-        const matchesSearch = description.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = searchQuery === '' || description.toLowerCase().includes(searchQuery.toLowerCase());
         
         // Check if any filter is active
         const hasActiveFilters = searchQuery || selectedTags.length > 0 || selectedYear || selectedMonth || selectedDay;
@@ -372,6 +372,7 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
   };
 
   const handleEventUpdated = (eventId, updatedContent) => {
+    updateNoteById(eventId, updatedContent);
     setAllNotes(allNotes.map(note => 
       note.id === eventId ? { ...note, content: updatedContent } : note
     ));

@@ -17,6 +17,7 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel
     return today.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState('');
+  const [trackFromYesterday, setTrackFromYesterday] = useState(false);
   const [selectedDays, setSelectedDays] = useState({
     Monday: false,
     Tuesday: false,
@@ -39,6 +40,7 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel
       setCadence(editingTracker.cadence || 'Daily');
       setStartDate(editingTracker.startDate || new Date().toISOString().split('T')[0]);
       setEndDate(editingTracker.endDate || '');
+      setTrackFromYesterday(editingTracker.trackFromYesterday || false);
       
       // Set selected days for weekly cadence
       if (editingTracker.days) {
@@ -106,6 +108,11 @@ Start Date: ${startDate}`;
         content += `\nDays: ${days}`;
       }
 
+      // Add tracking_as_of if checkbox is selected
+      if (trackFromYesterday) {
+        content += '\ntracking_as_of:yesterday';
+      }
+
       content += '\nmeta::tracker';
 
       if (editingTracker) {
@@ -119,6 +126,7 @@ Start Date: ${startDate}`;
           cadence,
           startDate,
           endDate,
+          trackFromYesterday,
           days: cadence === 'Weekly' ? Object.entries(selectedDays)
             .filter(([_, selected]) => selected)
             .map(([day]) => day) : []
@@ -135,6 +143,7 @@ Start Date: ${startDate}`;
           cadence,
           startDate,
           endDate,
+          trackFromYesterday,
           days: cadence === 'Weekly' ? Object.entries(selectedDays)
             .filter(([_, selected]) => selected)
             .map(([day]) => day) : [],
@@ -149,6 +158,7 @@ Start Date: ${startDate}`;
         setCadence('Daily');
         setStartDate(new Date().toISOString().split('T')[0]);
         setEndDate('');
+        setTrackFromYesterday(false);
         setSelectedDays({
           Monday: false,
           Tuesday: false,
@@ -295,6 +305,20 @@ Start Date: ${startDate}`;
             className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             min={startDate}
           />
+        </div>
+
+        {/* Track From Yesterday Checkbox */}
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="trackFromYesterday"
+            checked={trackFromYesterday}
+            onChange={(e) => setTrackFromYesterday(e.target.checked)}
+            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+          />
+          <label htmlFor="trackFromYesterday" className="text-sm text-gray-700">
+            Track as of yesterday
+          </label>
         </div>
 
         {/* Week Days Selection - Only shown when cadence is Weekly */}

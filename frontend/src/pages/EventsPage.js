@@ -110,6 +110,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedDay, setSelectedDay] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [total, setTotal] = useState(0);
@@ -122,6 +123,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [pastEventsCount, setPastEventsCount] = useState(0);
   // Get all unique tags from events
   const uniqueTags = useMemo(() => {
     const tags = new Set();
@@ -134,10 +136,61 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     return Array.from(tags).sort();
   }, [allNotes]);
 
+  // Get unique years from events
+  const uniqueYears = useMemo(() => {
+    const years = new Set();
+    allNotes
+      .filter(note => note?.content && note.content.includes('meta::event::'))
+      .forEach(note => {
+        const { dateTime } = getEventDetails(note.content);
+        if (dateTime) {
+          years.add(new Date(dateTime).getFullYear());
+        }
+      });
+    return Array.from(years).sort((a, b) => b - a); // Sort years in descending order
+  }, [allNotes]);
+
   useEffect(() => {
-    setCalendarEvents(getCalendarEvents());
-    setTotal(getCalendarEvents().length);
-  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay]);
+    const events = getCalendarEvents();
+    setCalendarEvents(events);
+    setTotal(events.length);
+
+    // Calculate past events count
+    if (!showOnlyDeadlines) {
+      const pastEvents = allNotes
+        .filter(note => note?.content && note.content.includes('meta::event::'))
+        .filter(note => {
+          const { dateTime, description, tags } = getEventDetails(note.content);
+          if (!dateTime) return false;
+          
+          const eventDate = new Date(dateTime);
+          const now = new Date();
+          const isPast = eventDate < now;
+
+          // Check if event matches current filters
+          const matchesSearch = description.toLowerCase().includes(searchQuery.toLowerCase());
+          const matchesTags = selectedTags.length === 0 || 
+            selectedTags.every(tag => tags.includes(tag));
+          
+          let matchesDate = true;
+          if (selectedYear) {
+            matchesDate = matchesDate && (eventDate.getFullYear() === parseInt(selectedYear));
+          }
+          if (selectedMonth) {
+            matchesDate = matchesDate && (eventDate.getMonth() + 1 === parseInt(selectedMonth));
+          }
+          if (selectedDay) {
+            matchesDate = matchesDate && (eventDate.getDate() === parseInt(selectedDay));
+          }
+
+          return isPast && matchesSearch && matchesTags && matchesDate;
+        }).length;
+      
+      setPastEventsCount(pastEvents);
+    } else {
+      setPastEventsCount(0);
+    }
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear]);
 
   const getCalendarEvents = () => {
     // Filter and group events
@@ -146,12 +199,20 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       .filter(note => {
         const { description, tags, dateTime } = getEventDetails(note.content);
         const matchesSearch = description.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesDeadline = !showOnlyDeadlines || note.content.includes('meta::event_deadline');
         
-        // Month and day filtering
+        // Check if any filter is active
+        const hasActiveFilters = searchQuery || selectedTags.length > 0 || selectedYear || selectedMonth || selectedDay;
+        
+        // Only apply deadline filter if no filters are active
+        const matchesDeadline = hasActiveFilters ? true : (!showOnlyDeadlines || note.content.includes('meta::event_deadline'));
+        
+        // Month, day, and year filtering
         let matchesDate = true;
         if (dateTime) {
           const eventDate = new Date(dateTime);
+          if (selectedYear && selectedYear !== '') {
+            matchesDate = matchesDate && (eventDate.getFullYear() === parseInt(selectedYear));
+          }
           if (selectedMonth && selectedMonth !== '') {
             matchesDate = matchesDate && (eventDate.getMonth() + 1 === parseInt(selectedMonth));
           }
@@ -316,6 +377,11 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
     ));
   };
 
+  // Helper function to check if any filters are active
+  const hasActiveFilters = () => {
+    return searchQuery || selectedTags.length > 0 || selectedYear || selectedMonth || selectedDay;
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -373,7 +439,7 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
                 </button>
               )}
             </div>
-            {(searchQuery || selectedTags.length > 0 || showOnlyDeadlines || selectedMonth || selectedDay) && (
+            {(searchQuery || selectedTags.length > 0 || showOnlyDeadlines || selectedMonth || selectedDay || selectedYear) && (
               <button
                 onClick={() => {
                   setSearchQuery('');
@@ -381,6 +447,7 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
                   setShowOnlyDeadlines(false);
                   setSelectedMonth('');
                   setSelectedDay('');
+                  setSelectedYear('');
                 }}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
               >
@@ -401,6 +468,20 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
               <FlagIcon className="h-5 w-5" />
               {showOnlyDeadlines ? 'Show All Events' : 'Show Deadlines Only'}
             </button>
+
+            {/* Year Filter */}
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <option value="">All Years</option>
+              {uniqueYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
 
             {/* Month Filter */}
             <select
@@ -431,6 +512,16 @@ meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_de
             </select>
           </div>
         </div>
+
+        {/* Past Events Note */}
+        {showOnlyDeadlines && pastEventsCount > 0 && hasActiveFilters() && (
+          <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-md border border-gray-200">
+            <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
+            <span>
+              {pastEventsCount} past event{pastEventsCount !== 1 ? 's' : ''} match{pastEventsCount !== 1 ? '' : 'es'} your filter{pastEventsCount !== 1 ? 's' : ''}
+            </span>
+          </div>
+        )}
 
         {/* Tag Pills */}
         <div className="flex flex-wrap gap-2 items-center">

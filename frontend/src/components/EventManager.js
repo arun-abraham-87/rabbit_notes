@@ -29,7 +29,8 @@ const EventManager = ({ selectedDate, onClose }) => {
   const [eventForm, setEventForm] = useState({ 
     name: '', 
     date: selectedDate ? formatDate(selectedDate) : '', 
-    endDate: '' 
+    endDate: '',
+    type: 'event' // Add type field with default value 'event'
   });
 
   // Update eventForm when selectedDate changes
@@ -60,17 +61,21 @@ const EventManager = ({ selectedDate, onClose }) => {
 
   const handleEventSubmit = (e) => {
     e.preventDefault();
-    if (!eventForm.name || !eventForm.date) return;
+    if (!eventForm.name || (eventForm.type === 'event' && !eventForm.date)) return;
     
-    const newEvent = {
-      id: Date.now(),
-      ...eventForm
-    };
-    
-    setEvents(prev => [...prev, newEvent]);
-    
+    if (isEditMode && eventForm.id) {
+      // Update existing event/note
+      setEvents(prev => prev.map(ev => ev.id === eventForm.id ? { ...eventForm } : ev));
+    } else {
+      // Add new event/note
+      const newEvent = {
+        id: Date.now(),
+        ...eventForm
+      };
+      setEvents(prev => [...prev, newEvent]);
+    }
     // Reset form and close modal
-    setEventForm({ name: '', date: '', endDate: '' });
+    setEventForm({ name: '', date: '', endDate: '', type: 'event' });
     setIsModalOpen(false);
     setIsEditMode(false);
   };
@@ -94,7 +99,7 @@ const EventManager = ({ selectedDate, onClose }) => {
   };
 
   const handleCloseModal = () => {
-    setEventForm({ name: '', date: '', endDate: '' });
+    setEventForm({ name: '', date: '', endDate: '', type: 'event' });
     setIsModalOpen(false);
     setIsEditMode(false);
     if (onClose) {
@@ -104,8 +109,30 @@ const EventManager = ({ selectedDate, onClose }) => {
 
   return (
     <div className="flex flex-col gap-2 mb-6 bg-gray-50 rounded-xl">
-      <div className="flex flex-wrap gap-3 items-start relative">
+      <div className="flex flex-row flex-wrap gap-3 items-start relative">
         {events.map(ev => {
+          if (ev.type === 'note') {
+            return (
+              <div key={ev.id} className="flex flex-col items-start bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs">
+                <div className="font-medium text-gray-900 w-full break-words whitespace-pre-line" style={{ wordBreak: 'break-word' }}>{ev.name}</div>
+                <div className="flex gap-2 mt-2 self-end">
+                  <button 
+                    onClick={() => handleEditEvent(ev)} 
+                    className="text-xs text-blue-500 hover:underline"
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteEvent(ev.id)} 
+                    className="text-xs text-red-500 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
           const eventDate = new Date(ev.date + 'T' + (ev.start || '00:00'));
           const now = new Date();
           const daysLeft = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
@@ -113,7 +140,7 @@ const EventManager = ({ selectedDate, onClose }) => {
             <div key={ev.id} className="flex flex-col items-start bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs">
               <div className="text-2xl font-bold text-gray-600">{daysLeft > 0 ? daysLeft : 0}</div>
               <div className="text-xs text-gray-400 -mt-1 mb-1">days</div>
-              <div className="font-medium text-gray-900 truncate w-full">{ev.name}</div>
+              <div className="font-medium text-gray-900 w-full break-words truncate" style={{ wordBreak: 'break-word' }}>{ev.name}</div>
               <div className="text-sm text-gray-500">{new Date(ev.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
               {ev.endDate && (
                 <div className="text-xs text-gray-500">to {new Date(ev.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</div>
@@ -140,7 +167,8 @@ const EventManager = ({ selectedDate, onClose }) => {
             setEventForm({
               name: '',
               date: selectedDate ? formatDate(selectedDate) : formatDate(new Date()),
-              endDate: ''
+              endDate: '',
+              type: 'event'
             });
             setIsEditMode(false);
             setIsModalOpen(true);
@@ -158,37 +186,71 @@ const EventManager = ({ selectedDate, onClose }) => {
             <h2 className="text-lg font-semibold mb-4">{isEditMode ? 'Edit Event' : 'Add Event'}</h2>
             <form onSubmit={handleEventSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Event Name</label>
-                <input 
-                  type="text" 
-                  name="name" 
-                  value={eventForm.name} 
-                  onChange={handleEventInput} 
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
-                  required 
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <div className="flex gap-2 mb-2">
+                  <button
+                    type="button"
+                    className={`px-3 py-1 rounded-md border ${eventForm.type === 'event' ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-700 border-gray-300'}`}
+                    onClick={() => setEventForm(prev => ({ ...prev, type: 'event' }))}
+                  >
+                    Event
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-3 py-1 rounded-md border ${eventForm.type === 'note' ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-700 border-gray-300'}`}
+                    onClick={() => setEventForm(prev => ({ ...prev, type: 'note' }))}
+                  >
+                    Note Card
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Event Date</label>
-                <input 
-                  type="date" 
-                  name="date" 
-                  value={eventForm.date} 
-                  onChange={handleEventInput} 
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
-                  required 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Event End Date (optional)</label>
-                <input 
-                  type="date" 
-                  name="endDate" 
-                  value={eventForm.endDate} 
-                  onChange={handleEventInput} 
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
-                />
-              </div>
+              {eventForm.type === 'note' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Note Content</label>
+                  <textarea
+                    name="name"
+                    value={eventForm.name}
+                    onChange={handleEventInput}
+                    className="mt-1 block w-full border border-gray-300 rounded-md p-2 min-h-[80px]"
+                    required
+                  />
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Event Name</label>
+                    <input 
+                      type="text" 
+                      name="name" 
+                      value={eventForm.name} 
+                      onChange={handleEventInput} 
+                      className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Event Date</label>
+                    <input 
+                      type="date" 
+                      name="date" 
+                      value={eventForm.date} 
+                      onChange={handleEventInput} 
+                      className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Event End Date (optional)</label>
+                    <input 
+                      type="date" 
+                      name="endDate" 
+                      value={eventForm.endDate} 
+                      onChange={handleEventInput} 
+                      className="mt-1 block w-full border border-gray-300 rounded-md p-2" 
+                    />
+                  </div>
+                </>
+              )}
               <div className="flex justify-end gap-2">
                 <button 
                   type="button" 

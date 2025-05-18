@@ -359,10 +359,18 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         const eventDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T12:00`;
         const metaDate = new Date(year, month - 1, day).toISOString();
         
-        const content = `event_description:${expense.description}
+        let content = `event_description:${expense.description}
 event_date:${eventDate}
-event_tags:${expense.tag}
-meta::event::${metaDate}${expense.isDeadline ? '\nmeta::deadline\nmeta::event_deadline' : ''}`;
+event_tags:${expense.tag.join(',')}`;
+
+        if (expense.notes) {
+          content += `\nevent_notes:${expense.notes}`;
+        }
+
+        content += `\nmeta::event::${metaDate}`;
+        if (expense.isDeadline) {
+          content += '\nmeta::deadline\nmeta::event_deadline';
+        }
         
         await handleAddEvent(content);
       }

@@ -25,8 +25,8 @@ const BulkLoadExpenses = ({ isOpen, onClose, onBulkCreate }) => {
     const rowErrors = [];
     
     // Check if row has enough columns
-    if (row.length < 3) {
-      rowErrors.push(`Row ${index + 1}: Missing required columns. Expected at least 3 columns.`);
+    if (row.length < 4) {
+      rowErrors.push(`Row ${index + 1}: Missing required columns. Expected at least 4 columns.`);
       return rowErrors;
     }
 
@@ -49,7 +49,7 @@ const BulkLoadExpenses = ({ isOpen, onClose, onBulkCreate }) => {
 
     // Validate tag
     if (!row[2] || row[2].trim() === '') {
-      rowErrors.push(`Row ${index + 1}: Tag is required.`);
+      rowErrors.push(`Row ${index + 1}: At least one tag is required.`);
     }
 
     // Validate deadline flag if present
@@ -86,8 +86,9 @@ const BulkLoadExpenses = ({ isOpen, onClose, onBulkCreate }) => {
           .map(row => ({
             date: row[0],
             description: row[1],
-            tag: row[2],
-            isDeadline: row[3]?.toLowerCase() === 'true'
+            tag: row[2].split('|').map(tag => tag.trim()).filter(tag => tag !== ''),
+            isDeadline: row[3]?.toLowerCase() === 'true',
+            notes: row[4] || '' // Add notes field
           }));
 
         setParsedData(validData);
@@ -123,11 +124,18 @@ const BulkLoadExpenses = ({ isOpen, onClose, onBulkCreate }) => {
     const eventDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T12:00`;
     const metaDate = new Date(year, month - 1, day).toISOString();
     
+    // Start with the basic event information
     let content = `event_description:${row.description}
 event_date:${eventDate}
-event_tags:${row.tag}
-meta::event::${metaDate}`;
+event_tags:${row.tag.join(',')}`;
 
+    // Add notes if present
+    if (row.notes) {
+      content += `\nevent_notes:${row.notes}`;
+    }
+
+    // Add meta tags at the end
+    content += `\nmeta::event::${metaDate}`;
     if (row.isDeadline) {
       content += '\nmeta::deadline\nmeta::event_deadline';
     }
@@ -173,9 +181,9 @@ meta::event::${metaDate}`;
   const handleDownloadSample = () => {
     // Sample data with generic dummy events
     const sampleData = [
-      ['25/03/2024', 'Dummy Event 1', 'Tag1', 'false'],
-      ['15/04/2024', 'Dummy Event 2', 'Tag2', 'false'],
-      ['01/05/2024', 'Dummy Event 3', 'Tag3', 'true']
+      ['25/03/2024', 'Dummy Event 1', 'Tag1|Tag2|Tag3', 'false', 'This is a sample event description'],
+      ['15/04/2024', 'Dummy Event 2', 'Tag2|Tag4', 'false', 'Another sample event with multiple tags'],
+      ['01/05/2024', 'Dummy Event 3', 'Tag3|Tag5|Tag6', 'true', 'A deadline event with multiple tags']
     ];
 
     // Convert to CSV
@@ -255,7 +263,7 @@ meta::event::${metaDate}`;
                           or drag and drop a CSV file
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          Format: date (dd/mm/yyyy), description, tag, is_deadline (true/false)
+                          Format: date (dd/mm/yyyy), description, tags (separated by |), is_deadline (true/false), notes
                         </p>
                       </div>
                     </div>
@@ -286,7 +294,7 @@ meta::event::${metaDate}`;
                               <tr>
                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Date</th>
                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Description</th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Tag</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Tags</th>
                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Deadline</th>
                               </tr>
                             </thead>
@@ -295,7 +303,7 @@ meta::event::${metaDate}`;
                                 <tr key={index}>
                                   <td className="px-3 py-2 text-sm text-gray-500">{row.date}</td>
                                   <td className="px-3 py-2 text-sm text-gray-500">{row.description}</td>
-                                  <td className="px-3 py-2 text-sm text-gray-500">{row.tag}</td>
+                                  <td className="px-3 py-2 text-sm text-gray-500">{row.tag.join(', ')}</td>
                                   <td className="px-3 py-2 text-sm text-gray-500">{row.isDeadline ? 'Yes' : 'No'}</td>
                                 </tr>
                               ))}

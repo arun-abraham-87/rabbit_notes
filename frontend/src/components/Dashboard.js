@@ -76,8 +76,8 @@ const Dashboard = ({notes,setNotes}) => {
       {/* Date and Time Section */}
       <div className="mb-8">
         <div className="flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-            <div>
+          <div className="flex items-center gap-4">
+            <div className="flex-shrink-0 w-auto">
               <h1 className="text-3xl font-bold mb-4">{formattedDate}</h1>
               <div
                 className="relative group"
@@ -99,7 +99,9 @@ const Dashboard = ({notes,setNotes}) => {
                 )}
               </div>
             </div>
-            <EventManager />
+            <div className="flex-1 min-w-0">
+              <EventManager />
+            </div>
           </div>
         
           <BookmarkedLinks notes={notes} />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
+import { getAgeInStringFmt } from '../utils/DateUtils';
 
 const EventManager = ({ selectedDate, onClose }) => {
   const [events, setEvents] = useState(() => {
@@ -167,14 +168,18 @@ const EventManager = ({ selectedDate, onClose }) => {
           const eventDate = new Date(ev.date + 'T' + (ev.start || '00:00'));
           const now = new Date();
           const daysLeft = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+          const age = getAgeInStringFmt(eventDate);
           return (
             <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
               <div className="text-2xl font-bold text-gray-600">{daysLeft > 0 ? daysLeft : 0}</div>
               <div className="text-xs text-gray-400 -mt-1 mb-1">days</div>
               <div className="font-medium text-gray-900 w-full break-words truncate" style={{ wordBreak: 'break-word' }}>{ev.name}</div>
               <div className="text-sm text-gray-500">{new Date(ev.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
+              <div className="text-sm font-medium text-gray-600 -mt-1">
+                {age}
+              </div>
               {ev.endDate && (
-                <div className="text-xs text-gray-500">to {new Date(ev.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</div>
+                <div className="text-xs text-gray-500 mt-1">to {new Date(ev.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</div>
               )}
               <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
                 <button 

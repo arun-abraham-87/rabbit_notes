@@ -5,6 +5,7 @@ import { ChevronDownIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay';
 import BookmarkedLinks from './BookmarkedLinks';
 import EventManager from './EventManager';
+import Pomodoro from './Pomodoro';
 
 const Dashboard = ({notes,setNotes}) => {
   const [events, setEvents] = useState([]);
@@ -101,6 +102,9 @@ const Dashboard = ({notes,setNotes}) => {
             </div>
             <div className="flex-1 min-w-0">
               <EventManager />
+            </div>
+            <div className="ml-4 flex-shrink-0">
+              <Pomodoro />
             </div>
           </div>
         

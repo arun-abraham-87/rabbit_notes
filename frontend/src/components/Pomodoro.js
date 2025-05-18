@@ -79,7 +79,7 @@ const Pomodoro = () => {
           style={{ animation: 'pulse 1s infinite' }}
         >
           <TomatoIcon className="w-24 h-24 mb-6" />
-          <div className="text-white text-6xl font-extrabold drop-shadow-lg animate-bounce mb-6">Time's Up!</div>
+          <div className="text-white text-6xl font-extrabold drop-shadow-lg animate-bounce mb-6">Done !</div>
           <button
             className="px-6 py-3 bg-white text-red-600 font-bold rounded-full text-xl shadow hover:bg-red-100 transition"
             onClick={() => setShowAnimation(false)}

@@ -64,7 +64,10 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
   // For other recurrence types
   const nextDate = new Date(meetingDateObj);
 
-  switch (recurrenceType) {
+  // Default to yearly if no recurrence type is specified
+  const effectiveRecurrenceType = recurrenceType ? recurrenceType.trim() : 'yearly';
+
+  switch (effectiveRecurrenceType) {
     case 'weekly':
       while (formatDateString(nextDate) <= todayStr || ackDates.includes(formatDateString(nextDate))) {
         nextDate.setDate(nextDate.getDate() + 7);
@@ -113,7 +116,11 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
       }
       break;
     default:
-      return null;
+      // Default to yearly if an unknown recurrence type is provided
+      while (formatDateString(nextDate) <= todayStr || ackDates.includes(formatDateString(nextDate))) {
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+      }
+      break;
   }
 
   return nextDate;
@@ -241,7 +248,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
           if (!baseEventDate) return;
   
           const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
-          const recurrenceType = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : null;
+          const recurrenceType = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'yearly';  // Default to yearly if no recurrence type
   
           const locationLine = lines.find(line => line.startsWith('event_location:'));
           const location = locationLine ? locationLine.replace('event_location:', '').trim() : null;
@@ -253,9 +260,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
   
           try {
             // Calculate next occurrence if it's a recurring event
-            const nextOccurrence = recurrenceType
-              ? calculateNextOccurrence(baseEventDate, recurrenceType, [], note.content)
-              : new Date(baseEventDate);
+            const nextOccurrence = calculateNextOccurrence(baseEventDate, recurrenceType, [], note.content);
   
             // If there's no next occurrence or invalid date, don't include the event
             if (!nextOccurrence || !(nextOccurrence instanceof Date)) return;
@@ -276,7 +281,8 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
               eventDate: eventDate.toISOString(),
               todayStart: todayStart.toISOString(),
               todayEnd: todayEnd.toISOString(),
-              isToday: eventDate >= todayStart && eventDate <= todayEnd
+              isToday: eventDate >= todayStart && eventDate <= todayEnd,
+              recurrenceType: recurrenceType
             });
   
             // Check if event is today or tomorrow for indicators

@@ -271,7 +271,15 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   // --- Cadence-aware current streak calculation ---
   function getCadenceStreak(tracker, answers) {
     if (!answers || answers.length === 0) return 0;
-    const answerSet = new Set(answers.map(a => moment(a.date).format('YYYY-MM-DD')));
+    
+    // For yes/no type trackers, create a map of dates to their answers
+    const isYesNoType = tracker.type && tracker.type.toLowerCase().includes('yes');
+    const answerMap = new Map();
+    answers.forEach(a => {
+      const dateStr = moment(a.date).format('YYYY-MM-DD');
+      answerMap.set(dateStr, a.answer?.toLowerCase() || a.value);
+    });
+    
     const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
     let streak = 0;
     
@@ -285,7 +293,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
       
       const relevantDates = [];
-      const today = moment();
+      const today = moment().subtract(1, 'days');
       let d = moment(today).startOf('day');
       let safety = 0;
       while (relevantDates.length < 100 && safety < 366) {
@@ -298,7 +306,14 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       
       for (let i = relevantDates.length - 1; i >= 0; i--) {
         const dateStr = relevantDates[i].format('YYYY-MM-DD');
-        if (answerSet.has(dateStr)) {
+        const answer = answerMap.get(dateStr);
+        if (isYesNoType) {
+          if (answer === 'yes') {
+            streak++;
+          } else {
+            break;
+          }
+        } else if (answer !== undefined) {
           streak++;
         } else {
           break;
@@ -307,14 +322,23 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       return streak;
     } else if (cadence === 'monthly') {
       const months = [];
-      const today = moment();
+      const today = moment().subtract(1, 'days');
       for (let i = 0; i < 24; i++) {
         months.unshift(moment(today).subtract(i, 'months').startOf('month'));
       }
       for (let i = months.length - 1; i >= 0; i--) {
         const monthStr = months[i].format('YYYY-MM');
-        const found = Array.from(answerSet).some(date => date.startsWith(monthStr));
-        if (found) {
+        const monthAnswers = Array.from(answerMap.entries())
+          .filter(([date]) => date.startsWith(monthStr))
+          .map(([, answer]) => answer);
+        
+        if (isYesNoType) {
+          if (monthAnswers.includes('yes')) {
+            streak++;
+          } else {
+            break;
+          }
+        } else if (monthAnswers.length > 0) {
           streak++;
         } else {
           break;
@@ -323,14 +347,23 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       return streak;
     } else if (cadence === 'yearly') {
       const years = [];
-      const today = moment();
+      const today = moment().subtract(1, 'days');
       for (let i = 0; i < 10; i++) {
         years.unshift(today.year() - i);
       }
       for (let i = years.length - 1; i >= 0; i--) {
         const yearStr = years[i].toString();
-        const found = Array.from(answerSet).some(date => date.startsWith(yearStr));
-        if (found) {
+        const yearAnswers = Array.from(answerMap.entries())
+          .filter(([date]) => date.startsWith(yearStr))
+          .map(([, answer]) => answer);
+        
+        if (isYesNoType) {
+          if (yearAnswers.includes('yes')) {
+            streak++;
+          } else {
+            break;
+          }
+        } else if (yearAnswers.length > 0) {
           streak++;
         } else {
           break;
@@ -338,9 +371,24 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       }
       return streak;
     } else {
-      let d = moment().startOf('day');
-      while (answerSet.has(d.format('YYYY-MM-DD'))) {
-        streak++;
+      // Daily: consecutive calendar days
+      let d = moment().subtract(1, 'days').startOf('day');
+      while (true) {
+        const dateStr = d.format('YYYY-MM-DD');
+        const answer = answerMap.get(dateStr);
+        
+        if (isYesNoType) {
+          if (answer === 'yes') {
+            streak++;
+          } else {
+            break;
+          }
+        } else if (answer !== undefined) {
+          streak++;
+        } else {
+          break;
+        }
+        
         d.subtract(1, 'days');
       }
       return streak;

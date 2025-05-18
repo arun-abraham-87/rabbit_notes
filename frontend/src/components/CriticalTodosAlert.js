@@ -429,20 +429,23 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                 textColor: 'text-green-900',
                 icon: <ArrowDownIcon className="h-5 w-5 mr-1" />
               }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-150 flex items-center justify-center ${
-                  activeTab === tab.id
-                    ? `${tab.bgColor} ${tab.textColor}`
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
+            ].map((tab) => {
+              const count = getTodosByPriority(tab.id).length;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-150 flex items-center justify-center ${
+                    activeTab === tab.id
+                      ? `${tab.bgColor} ${tab.textColor}`
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label} ({count})
+                </button>
+              );
+            })}
           </nav>
         </div>
 

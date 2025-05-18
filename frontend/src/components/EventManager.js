@@ -133,9 +133,17 @@ const EventManager = ({ selectedDate, onClose }) => {
       <div className="flex flex-row flex-wrap gap-3 items-stretch relative">
         {events.map(ev => {
           if (ev.type === 'note') {
+            const [header, ...bodyLines] = (ev.name || '').split('\n');
             return (
               <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
-                <div className="font-medium text-gray-900 w-full break-words whitespace-pre-line" style={{ wordBreak: 'break-word' }}>{ev.name}</div>
+                <div className="font-bold text-gray-900 w-full break-words" style={{ wordBreak: 'break-word' }}>
+                  {header}
+                </div>
+                {bodyLines.length > 0 && (
+                  <div className="text-sm text-gray-700 w-full break-words whitespace-pre-line mt-1" style={{ wordBreak: 'break-word' }}>
+                    {bodyLines.join('\n')}
+                  </div>
+                )}
                 <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={() => handleEditEvent(ev)} 

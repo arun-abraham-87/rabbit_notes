@@ -17,6 +17,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventNotes, setEventNotes] = useState('');
   const [isReference, setIsReference] = useState(false);
+  const [isDeadline, setIsDeadline] = useState(false);
 
   const existingTags = getAllUniqueTags(notes || []);
 
@@ -81,6 +82,12 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       if (isReferenceLine) {
         setIsReference(isReferenceLine.includes('true'));
       }
+
+      // Parse deadline status
+      const isDeadlineLine = lines.find(line => line.startsWith('meta::event_deadline:'));
+      if (isDeadlineLine) {
+        setIsDeadline(isDeadlineLine.includes('true'));
+      }
     }
   }, [note]);
 
@@ -143,6 +150,13 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     if (isReference) {
       content += `\nmeta::event_ref:true`;
     }
+    if (isDeadline) {
+      content += `\nmeta::event_deadline:true`;
+      // Add deadline tag if not already present
+      if (!tags.includes('deadline')) {
+        content += `\nevent_tags:${tags ? tags + ',deadline' : 'deadline'}`;
+      }
+    }
 
     onSave(content);
 
@@ -159,6 +173,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setTagInput('');
     setEventNotes('');
     setIsReference(false);
+    setIsDeadline(false);
   };
 
   const handleDelete = async () => {
@@ -208,6 +223,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setTagInput('');
     setEventNotes('');
     setIsReference(false);
+    setIsDeadline(false);
 
     // Call the onCancel prop
     if (typeof onCancel === 'function') {
@@ -436,6 +452,19 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                 />
                 <label htmlFor="isReference" className="text-sm text-gray-600">
                   Mark as reference
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isDeadline"
+                  checked={isDeadline}
+                  onChange={(e) => setIsDeadline(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="isDeadline" className="text-sm text-gray-600">
+                  Mark as deadline
                 </label>
               </div>
             </div>

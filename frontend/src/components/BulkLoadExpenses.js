@@ -57,6 +57,11 @@ const BulkLoadExpenses = ({ isOpen, onClose, onBulkCreate }) => {
       rowErrors.push(`Row ${index + 1}: Deadline flag must be 'true' or 'false'.`);
     }
 
+    // Validate numeric value if present
+    if (row[5] && isNaN(parseFloat(row[5]))) {
+      rowErrors.push(`Row ${index + 1}: Last column must be a valid number.`);
+    }
+
     return rowErrors;
   };
 
@@ -88,7 +93,8 @@ const BulkLoadExpenses = ({ isOpen, onClose, onBulkCreate }) => {
             description: row[1],
             tag: row[2].split('|').map(tag => tag.trim()).filter(tag => tag !== ''),
             isDeadline: row[3]?.toLowerCase() === 'true',
-            notes: row[4] || '' // Add notes field
+            notes: row[4] || '',
+            value: row[5] ? parseFloat(row[5]) : null
           }));
 
         setParsedData(validData);
@@ -132,6 +138,11 @@ event_tags:${row.tag.join(',')}`;
     // Add notes if present
     if (row.notes) {
       content += `\nevent_notes:${row.notes}`;
+    }
+
+    // Add value if present
+    if (row.value !== null && row.value !== undefined && row.value !== '') {
+      content += `\nevent_$:${row.value}`;
     }
 
     // Add meta tags at the end
@@ -181,9 +192,9 @@ event_tags:${row.tag.join(',')}`;
   const handleDownloadSample = () => {
     // Sample data with generic dummy events
     const sampleData = [
-      ['25/03/2024', 'Dummy Event 1', 'Tag1|Tag2|Tag3', 'false', 'This is a sample event description'],
-      ['15/04/2024', 'Dummy Event 2', 'Tag2|Tag4', 'false', 'Another sample event with multiple tags'],
-      ['01/05/2024', 'Dummy Event 3', 'Tag3|Tag5|Tag6', 'true', 'A deadline event with multiple tags']
+      ['25/03/2024', 'Dummy Event 1', 'Tag1|Tag2|Tag3', 'false', 'This is a sample event description', '100.50'],
+      ['15/04/2024', 'Dummy Event 2', 'Tag2|Tag4', 'false', 'Another sample event with multiple tags', '75'],
+      ['01/05/2024', 'Dummy Event 3', 'Tag3|Tag5|Tag6', 'true', 'A deadline event with multiple tags', '']
     ];
 
     // Convert to CSV
@@ -263,7 +274,7 @@ event_tags:${row.tag.join(',')}`;
                           or drag and drop a CSV file
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          Format: date (dd/mm/yyyy), description, tags (separated by |), is_deadline (true/false), notes
+                          Format: date (dd/mm/yyyy), description, tags (separated by |), is_deadline (true/false), notes, custom_field (optional)
                         </p>
                       </div>
                     </div>

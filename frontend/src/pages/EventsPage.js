@@ -379,6 +379,11 @@ event_tags:${expense.tag.join(',')}`;
           content += `\nevent_notes:${expense.notes}`;
         }
 
+        // Add value if present
+        if (expense.value !== null && expense.value !== undefined && expense.value !== '') {
+          content += `\nevent_$:${expense.value}`;
+        }
+
         content += `\nmeta::event::${metaDate}`;
         if (expense.isDeadline) {
           content += '\nmeta::deadline\nmeta::event_deadline';

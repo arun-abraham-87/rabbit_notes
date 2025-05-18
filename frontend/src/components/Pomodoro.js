@@ -89,15 +89,7 @@ const Pomodoro = () => {
         </div>
       )}
       <div className="flex flex-col items-center justify-center">
-        <button
-          className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-700 font-semibold mb-4 hover:bg-red-200 transition"
-          onClick={() => setShowSetup(true)}
-          disabled={active}
-          title="Pomodoro Timer"
-        >
-          <TomatoIcon className="w-6 h-6" />
-          Pomo
-        </button>
+       
         {active ? (
           <div className="flex flex-col items-center">
             <div className="relative w-36 h-36 flex items-center justify-center">

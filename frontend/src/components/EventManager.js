@@ -130,11 +130,11 @@ const EventManager = ({ selectedDate, onClose }) => {
 
   return (
     <div className="flex flex-col gap-2 mb-6 bg-gray-50 rounded-xl">
-      <div className="flex flex-row flex-wrap gap-3 items-center relative">
+      <div className="flex flex-row flex-wrap gap-3 items-stretch relative">
         {events.map(ev => {
           if (ev.type === 'note') {
             return (
-              <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
+              <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
                 <div className="font-medium text-gray-900 w-full break-words whitespace-pre-line" style={{ wordBreak: 'break-word' }}>{ev.name}</div>
                 <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
                   <button 
@@ -160,7 +160,7 @@ const EventManager = ({ selectedDate, onClose }) => {
           const now = new Date();
           const daysLeft = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
           return (
-            <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
+            <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
               <div className="text-2xl font-bold text-gray-600">{daysLeft > 0 ? daysLeft : 0}</div>
               <div className="text-xs text-gray-400 -mt-1 mb-1">days</div>
               <div className="font-medium text-gray-900 w-full break-words truncate" style={{ wordBreak: 'break-word' }}>{ev.name}</div>
@@ -199,7 +199,7 @@ const EventManager = ({ selectedDate, onClose }) => {
             setIsEditMode(false);
             setIsModalOpen(true);
           }}
-          className="w-8 h-8 bg-gray-200/60 text-gray-400 rounded-full shadow-sm hover:bg-gray-300/80 transition-colors flex items-center justify-center"
+          className="w-8 h-8 bg-gray-200/60 text-gray-400 rounded-full shadow-sm hover:bg-gray-300/80 transition-colors flex items-center justify-center self-center"
         >
           <PlusIcon className="h-3 w-3" />
         </button>

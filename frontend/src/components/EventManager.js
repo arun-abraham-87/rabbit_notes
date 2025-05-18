@@ -30,7 +30,8 @@ const EventManager = ({ selectedDate, onClose }) => {
     name: '', 
     date: selectedDate ? formatDate(selectedDate) : '', 
     endDate: '',
-    type: 'event' // Add type field with default value 'event'
+    type: 'event', // Add type field with default value 'event'
+    bgColor: '#ffffff' // Default background color
   });
 
   // Update eventForm when selectedDate changes
@@ -75,7 +76,7 @@ const EventManager = ({ selectedDate, onClose }) => {
       setEvents(prev => [...prev, newEvent]);
     }
     // Reset form and close modal
-    setEventForm({ name: '', date: '', endDate: '', type: 'event' });
+    setEventForm({ name: '', date: '', endDate: '', type: 'event', bgColor: '#ffffff' });
     setIsModalOpen(false);
     setIsEditMode(false);
   };
@@ -99,7 +100,7 @@ const EventManager = ({ selectedDate, onClose }) => {
   };
 
   const handleCloseModal = () => {
-    setEventForm({ name: '', date: '', endDate: '', type: 'event' });
+    setEventForm({ name: '', date: '', endDate: '', type: 'event', bgColor: '#ffffff' });
     setIsModalOpen(false);
     setIsEditMode(false);
     if (onClose) {
@@ -107,13 +108,23 @@ const EventManager = ({ selectedDate, onClose }) => {
     }
   };
 
+  const colorOptions = [
+    '#ffffff', // white
+    '#fef9c3', // yellow
+    '#d1fae5', // green
+    '#e0e7ff', // blue
+    '#fee2e2', // red
+    '#f3e8ff', // purple
+    '#f1f5f9'  // gray
+  ];
+
   return (
     <div className="flex flex-col gap-2 mb-6 bg-gray-50 rounded-xl">
       <div className="flex flex-row flex-wrap gap-3 items-start relative">
         {events.map(ev => {
           if (ev.type === 'note') {
             return (
-              <div key={ev.id} className="flex flex-col items-start bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs">
+              <div key={ev.id} className="flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
                 <div className="font-medium text-gray-900 w-full break-words whitespace-pre-line" style={{ wordBreak: 'break-word' }}>{ev.name}</div>
                 <div className="flex gap-2 mt-2 self-end">
                   <button 
@@ -137,7 +148,7 @@ const EventManager = ({ selectedDate, onClose }) => {
           const now = new Date();
           const daysLeft = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
           return (
-            <div key={ev.id} className="flex flex-col items-start bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs">
+            <div key={ev.id} className="flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
               <div className="text-2xl font-bold text-gray-600">{daysLeft > 0 ? daysLeft : 0}</div>
               <div className="text-xs text-gray-400 -mt-1 mb-1">days</div>
               <div className="font-medium text-gray-900 w-full break-words truncate" style={{ wordBreak: 'break-word' }}>{ev.name}</div>
@@ -168,7 +179,8 @@ const EventManager = ({ selectedDate, onClose }) => {
               name: '',
               date: selectedDate ? formatDate(selectedDate) : formatDate(new Date()),
               endDate: '',
-              type: 'event'
+              type: 'event',
+              bgColor: '#ffffff'
             });
             setIsEditMode(false);
             setIsModalOpen(true);
@@ -251,6 +263,20 @@ const EventManager = ({ selectedDate, onClose }) => {
                   </div>
                 </>
               )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Background Color</label>
+                <div className="flex gap-2 mb-2">
+                  {colorOptions.map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={`w-7 h-7 rounded-full border-2 ${eventForm.bgColor === color ? 'border-gray-700' : 'border-gray-200'}`}
+                      style={{ backgroundColor: color }}
+                      onClick={() => setEventForm(prev => ({ ...prev, bgColor: color }))}
+                    />
+                  ))}
+                </div>
+              </div>
               <div className="flex justify-end gap-2">
                 <button 
                   type="button" 

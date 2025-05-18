@@ -34,6 +34,18 @@ const getEventDetails = (content) => {
   const tagsLine = lines.find(line => line.startsWith('event_tags:'));
   const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
 
+  // Find any line that starts with event_$: where $ is any character
+  const customFields = {};
+  lines.forEach(line => {
+    if (line.startsWith('event_') && line.includes(':')) {
+      const [key, value] = line.split(':');
+      if (key !== 'event_description' && key !== 'event_date' && key !== 'event_notes' && key !== 'event_recurring_type' && key !== 'event_tags') {
+        const fieldName = key.replace('event_', '');
+        customFields[fieldName] = value.trim();
+      }
+    }
+  });
+
   // Calculate next occurrence for recurring events
   let nextOccurrence = null;
   let lastOccurrence = null;
@@ -102,7 +114,7 @@ const getEventDetails = (content) => {
     }
   }
 
-  return { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, tags, notes };
+  return { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, tags, notes, customFields };
 };
 
 const EventsPage = ({ allNotes, setAllNotes }) => {

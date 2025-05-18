@@ -17,6 +17,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventNotes, setEventNotes] = useState('');
   const [isDeadline, setIsDeadline] = useState(false);
+  const [price, setPrice] = useState('');
 
   const existingTags = getAllUniqueTags(notes || []);
 
@@ -81,6 +82,12 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       if (isDeadlineLine) {
         setIsDeadline(isDeadlineLine.includes('true'));
       }
+
+      // Parse price if exists
+      const priceLine = lines.find(line => line.startsWith('event_$:'));
+      if (priceLine) {
+        setPrice(priceLine.replace('event_$:', '').trim());
+      }
     }
   }, [note]);
 
@@ -138,6 +145,11 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       content += `\nevent_tags:${tags}`;
     }
 
+    // Add price if it exists and purchase tag is present
+    if (price && tags.toLowerCase().includes('purchase')) {
+      content += `\nevent_$:${price}`;
+    }
+
     // Add meta information as the last lines
     content += `\nmeta::event::${new Date().toISOString()}`;
     if (isDeadline) {
@@ -163,6 +175,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setTagInput('');
     setEventNotes('');
     setIsDeadline(false);
+    setPrice('');
   };
 
   const handleDelete = async () => {
@@ -212,6 +225,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setTagInput('');
     setEventNotes('');
     setIsDeadline(false);
+    setPrice('');
 
     // Call the onCancel prop
     if (typeof onCancel === 'function') {
@@ -442,6 +456,23 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                   Mark as deadline
                 </label>
               </div>
+
+              {tags.toLowerCase().includes('purchase') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Price ($)
+                  </label>
+                  <input
+                    type="number"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter price..."
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex justify-between">

@@ -124,15 +124,25 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
     const tagsLine = lines.find(line => line.startsWith('event_tags:'));
     const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
 
-    // Calculate next occurrence for recurring events
-    let nextOccurrence = null;
+    // Find any line that starts with event_$: where $ is any character
+    const customFields = {};
+    lines.forEach(line => {
+      if (line.startsWith('event_') && line.includes(':')) {
+        const [key, value] = line.split(':');
+        if (key !== 'event_description' && key !== 'event_date' && key !== 'event_notes' && key !== 'event_recurring_type' && key !== 'event_tags') {
+          const fieldName = key.replace('event_', '');
+          customFields[fieldName] = value.trim();
+        }
+      }
+    });
 
     return {
       description,
       dateTime,
       recurrence,
       metaDate,
-      tags
+      tags,
+      customFields
     };
   };
 
@@ -144,7 +154,8 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
       date,
       event: {
         ...event,
-        tags: eventDetails.tags
+        tags: eventDetails.tags,
+        customFields: eventDetails.customFields
       },
       isToday: date.toDateString() === new Date().toDateString(),
       isPast: date < new Date() && !(date.toDateString() === new Date().toDateString()),
@@ -436,16 +447,21 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                             </p>
                                           </>
                                         )}
-                                        {occurrence.event.notes && (
-                                          <>
-                                            <p className="text-sm text-gray-600 italic">
-                                              <span className="font-medium">Notes:</span>
+                                        {/* Display custom fields */}
+                                        {Object.entries(occurrence.event.customFields || {}).map(([key, value]) => (
+                                          <React.Fragment key={key}>
+                                            <p className={`text-sm ${
+                                              occurrence.isToday ? 'text-indigo-700' : 'text-gray-600'
+                                            }`}>
+                                              <span className="font-medium">{key}:</span>
                                             </p>
-                                            <p className="text-sm text-gray-600 italic">
-                                              {occurrence.event.notes}
+                                            <p className={`text-sm ${
+                                              occurrence.isToday ? 'text-indigo-700' : 'text-gray-600'
+                                            }`}>
+                                              {value}
                                             </p>
-                                          </>
-                                        )}
+                                          </React.Fragment>
+                                        ))}
                                       </div>
                                       {/* Tags display */}
                                       {occurrence.event.tags && occurrence.event.tags.length > 0 && (

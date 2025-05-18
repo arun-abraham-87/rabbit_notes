@@ -1,70 +1,66 @@
 import React, { useState } from 'react';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
-import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import { Line } from 'react-chartjs-2';
+import moment from 'moment';
 
 function getLastSevenDays() {
   const days = [];
-  const today = new Date();
+  const today = moment();
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    days.push(d);
+    days.push(moment(today).subtract(i, 'days'));
   }
   return days;
 }
 
 function getLastSevenMonths() {
   const months = [];
-  const today = new Date();
+  const today = moment();
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-    months.push(d);
+    months.push(moment(today).subtract(i, 'months').startOf('month'));
   }
   return months;
 }
 
 function getLastThreeYears() {
   const years = [];
-  const today = new Date();
+  const today = moment();
   for (let i = 2; i >= 0; i--) {
-    years.push(today.getFullYear() - i);
+    years.push(today.year() - i);
   }
   return years;
 }
 
 function getLastSevenSelectedWeekdays(selectedDays) {
-  // selectedDays: array of weekday indices (0=Sun, 1=Mon, ...)
-  // Return last 7 dates that match selectedDays, oldest first (leftmost is oldest)
   const days = [];
-  const today = new Date();
-  let d = new Date(today.getFullYear(), today.getMonth(), today.getDate()); // always midnight local
+  const today = moment();
+  let d = moment(today).startOf('day');
   let safety = 0;
-  while (days.length < 7 && safety < 366) { // never go back more than 1 year
-    if (selectedDays.includes(d.getDay())) {
-      days.unshift(new Date(d.getFullYear(), d.getMonth(), d.getDate())); // clone, push oldest to front
+  while (days.length < 7 && safety < 366) {
+    if (selectedDays.includes(d.day())) {
+      days.unshift(moment(d));
     }
-    d.setDate(d.getDate() - 1);
+    d.subtract(1, 'days');
     safety++;
   }
   return days;
 }
 
 function getWeekdayName(idx) {
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][idx];
+  return moment().day(idx).format('ddd');
 }
 
 function getMonthShortName(idx) {
-  return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][idx];
+  return moment().month(idx).format('MMM');
 }
 
 function getMonthStats(completions, month, year, upToDay = null) {
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInMonth = moment([year, month]).daysInMonth();
   const endDay = upToDay || daysInMonth;
   let x = 0, y = 0;
   for (let day = 1; day <= endDay; day++) {
-    const date = new Date(year, month, day);
-    const dateStr = date.toISOString().slice(0, 10);
+    const date = moment([year, month, day]);
+    const dateStr = date.format('YYYY-MM-DD');
     if (completions?.[dateStr]) x++;
     y++;
   }
@@ -72,8 +68,7 @@ function getMonthStats(completions, month, year, upToDay = null) {
 }
 
 function formatMonthDateString(date) {
-  // Always returns YYYY-MM-01 for the given JS Date object
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+  return moment(date).format('YYYY-MM-01');
 }
 
 export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode }) {
@@ -119,12 +114,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [showLastValues, setShowLastValues] = useState(false);
   const [showMonthlyModal, setShowMonthlyModal] = useState(false);
   const [monthlyModalMonth, setMonthlyModalMonth] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    const now = moment();
+    return moment(now).startOf('month');
   });
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showLastValuesModal, setShowLastValuesModal] = useState(false);
   const [dateOffset, setDateOffset] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   const handleDateClick = (date, dateStr) => {
     const type = tracker.type.toLowerCase();
@@ -192,16 +188,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   };
 
   // Month stats
-  const now = new Date();
+  const now = moment();
   const currentMonthStats = getMonthStats(
     tracker.completions,
-    now.getMonth(),
-    now.getFullYear(),
-    now.getDate()
+    now.month(),
+    now.year(),
+    now.date()
   );
-  const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-  const prevMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-  const prevMonthDays = new Date(prevMonthYear, prevMonth + 1, 0).getDate();
+  const prevMonth = now.month() === 0 ? 11 : now.month() - 1;
+  const prevMonthYear = now.month() === 0 ? now.year() - 1 : now.year();
+  const prevMonthDays = moment([prevMonthYear, prevMonth + 1, 0]).daysInMonth();
   const prevMonthStats = getMonthStats(
     tracker.completions,
     prevMonth,
@@ -211,12 +207,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
 
   // Helper to get all dates in a given month
   function getAllDatesInMonth(monthDate) {
-    const year = monthDate.getFullYear();
-    const month = monthDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
     const dates = [];
+    const daysInMonth = moment(monthDate).daysInMonth();
     for (let day = 1; day <= daysInMonth; day++) {
-      dates.push(new Date(year, month, day));
+      dates.push(moment(monthDate).date(day));
     }
     return dates;
   }
@@ -225,7 +219,6 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   function getButtonsWithOffset() {
     if (buttonType === 'day') {
       if (cadence === 'weekly' && tracker.days && tracker.days.length > 0) {
-        // Custom weekly: precompute last 35 selected weekdays
         let selectedDays = tracker.days.map(d => {
           if (typeof d === 'string') {
             const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
@@ -233,46 +226,42 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           }
           return d;
         }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
-        // Get last 35 occurrences
+        
         const all = [];
-        const today = new Date();
-        let d = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const today = moment();
+        let d = moment(today).startOf('day');
         let safety = 0;
         while (all.length < 35 && safety < 366) {
-          if (selectedDays.includes(d.getDay())) {
-            all.unshift(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+          if (selectedDays.includes(d.day())) {
+            all.unshift(moment(d));
           }
-          d.setDate(d.getDate() - 1);
+          d.subtract(1, 'days');
           safety++;
         }
-        // Use offset to select window of 7
+        
         const start = all.length - 7 - dateOffset * 7;
         const end = all.length - dateOffset * 7;
         return all.slice(Math.max(0, start), Math.max(0, end));
       } else {
-        // Daily or default
         const days = [];
-        const today = new Date();
+        const today = moment();
         for (let i = 6 + dateOffset * 7; i >= 0 + dateOffset * 7; i--) {
-          const d = new Date(today);
-          d.setDate(d.getDate() - i);
-          days.push(d);
+          days.push(moment(today).subtract(i, 'days'));
         }
         return days;
       }
     } else if (buttonType === 'month') {
       const months = [];
-      const today = new Date();
+      const today = moment();
       for (let i = 6 + dateOffset * 7; i >= 0 + dateOffset * 7; i--) {
-        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        months.push(d);
+        months.push(moment(today).subtract(i, 'months').startOf('month'));
       }
       return months;
     } else if (buttonType === 'year') {
       const years = [];
-      const today = new Date();
+      const today = moment();
       for (let i = 2 + dateOffset * 3; i >= 0 + dateOffset * 3; i--) {
-        years.push(today.getFullYear() - i);
+        years.push(today.year() - i);
       }
       return years;
     }
@@ -282,16 +271,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   // --- Cadence-aware current streak calculation ---
   function getCadenceStreak(tracker, answers) {
     if (!answers || answers.length === 0) return 0;
-    // Build a set of acknowledged dates (YYYY-MM-DD)
-    const answerSet = new Set(answers.map(a => {
-      const d = new Date(a.date);
-      d.setHours(0,0,0,0);
-      return d.toISOString().slice(0,10);
-    }));
+    const answerSet = new Set(answers.map(a => moment(a.date).format('YYYY-MM-DD')));
     const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
     let streak = 0;
+    
     if (cadence === 'weekly' && tracker.days && tracker.days.length > 0) {
-      // Custom weekly: get last N selected weekdays (e.g., Sundays)
       let selectedDays = tracker.days.map(d => {
         if (typeof d === 'string') {
           const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
@@ -299,21 +283,21 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         }
         return d;
       }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
-      // Get last 100 occurrences of selected days
+      
       const relevantDates = [];
-      const today = new Date();
-      let d = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const today = moment();
+      let d = moment(today).startOf('day');
       let safety = 0;
       while (relevantDates.length < 100 && safety < 366) {
-        if (selectedDays.includes(d.getDay())) {
-          relevantDates.unshift(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+        if (selectedDays.includes(d.day())) {
+          relevantDates.unshift(moment(d));
         }
-        d.setDate(d.getDate() - 1);
+        d.subtract(1, 'days');
         safety++;
       }
-      // Count streak from most recent backward
+      
       for (let i = relevantDates.length - 1; i >= 0; i--) {
-        const dateStr = relevantDates[i].toISOString().slice(0,10);
+        const dateStr = relevantDates[i].format('YYYY-MM-DD');
         if (answerSet.has(dateStr)) {
           streak++;
         } else {
@@ -322,15 +306,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       }
       return streak;
     } else if (cadence === 'monthly') {
-      // Monthly: consecutive months with check-ins
       const months = [];
-      const today = new Date();
+      const today = moment();
       for (let i = 0; i < 24; i++) {
-        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        months.unshift(d);
+        months.unshift(moment(today).subtract(i, 'months').startOf('month'));
       }
       for (let i = months.length - 1; i >= 0; i--) {
-        const monthStr = months[i].toISOString().slice(0,7); // YYYY-MM
+        const monthStr = months[i].format('YYYY-MM');
         const found = Array.from(answerSet).some(date => date.startsWith(monthStr));
         if (found) {
           streak++;
@@ -340,11 +322,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       }
       return streak;
     } else if (cadence === 'yearly') {
-      // Yearly: consecutive years with check-ins
       const years = [];
-      const today = new Date();
+      const today = moment();
       for (let i = 0; i < 10; i++) {
-        years.unshift(today.getFullYear() - i);
+        years.unshift(today.year() - i);
       }
       for (let i = years.length - 1; i >= 0; i--) {
         const yearStr = years[i].toString();
@@ -357,17 +338,25 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       }
       return streak;
     } else {
-      // Daily: consecutive calendar days
-      let d = new Date();
-      d.setHours(0,0,0,0);
-      while (answerSet.has(d.toISOString().slice(0,10))) {
+      let d = moment().startOf('day');
+      while (answerSet.has(d.format('YYYY-MM-DD'))) {
         streak++;
-        d.setDate(d.getDate() - 1);
+        d.subtract(1, 'days');
       }
       return streak;
     }
   }
   const currentStreak = getCadenceStreak(tracker, answers);
+
+  const handleCopyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(tracker.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4">
@@ -428,9 +417,9 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         {getButtonsWithOffset().map((item, idx) => {
           let dateStr, label, isToday = false, done = false, monthLabel = '', weekdayLabel = '';
           if (buttonType === 'day') {
-            dateStr = item.toISOString().slice(0, 10);
-            label = item.getDate();
-            isToday = (item.toDateString() === now.toDateString());
+            dateStr = item.format('YYYY-MM-DD');
+            label = item.date();
+            isToday = (item.format('YYYY-MM-DD') === now.format('YYYY-MM-DD'));
             // Find answer for this date
             const answerObj = answers.find(ans => ans.date === dateStr);
             if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
@@ -451,22 +440,22 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             }
             // For weekly cadence, always show weekday label above
             if (cadence === 'weekly') {
-              weekdayLabel = item.toLocaleString('default', { weekday: 'short' });
+              weekdayLabel = item.format('ddd');
             } else {
-              weekdayLabel = item.toLocaleString('default', { weekday: 'short' });
+              weekdayLabel = item.format('ddd');
             }
-            monthLabel = item.toLocaleString('default', { month: 'short', year: 'numeric' });
+            monthLabel = item.format('MMM YYYY');
           } else if (buttonType === 'month') {
             dateStr = formatMonthDateString(item);
-            label = getMonthShortName(item.getMonth());
-            isToday = (item.getMonth() === now.getMonth() && item.getFullYear() === now.getFullYear());
+            label = getMonthShortName(item.month());
+            isToday = (item.month() === now.month() && item.year() === now.year());
             done = false;
             monthLabel = '';
             weekdayLabel = '';
           } else if (buttonType === 'year') {
             dateStr = item + '-01-01';
             label = item;
-            isToday = (item === now.getFullYear());
+            isToday = (item === now.year());
             done = false;
             monthLabel = '';
             weekdayLabel = '';
@@ -483,7 +472,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                   ${done === 'green' ? 'bg-green-300' : ''}
                   ${done === 'red' ? 'bg-red-300' : ''}
                 `}
-                title={buttonType === 'day' ? item.toLocaleDateString() : (buttonType === 'month' ? item.toLocaleString('default', { month: 'long', year: 'numeric' }) : label)}
+                title={buttonType === 'day' ? item.format('MMM D, YYYY') : (buttonType === 'month' ? item.format('MMMM YYYY') : label)}
               >
                 {label}
               </button>
@@ -518,17 +507,17 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             <div className="flex items-center justify-center mb-4 gap-4">
               <button
                 className="p-2 rounded-full hover:bg-gray-200"
-                onClick={() => setMonthlyModalMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                onClick={() => setMonthlyModalMonth(prev => prev.subtract(1, 'months').startOf('month'))}
                 aria-label="Previous Month"
               >
                 <span className="text-xl">&#8592;</span>
               </button>
               <h2 className="text-lg font-semibold text-center">
-                Monthly Check-ins: {monthlyModalMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                Monthly Check-ins: {monthlyModalMonth.format('MMMM YYYY')}
               </h2>
               <button
                 className="p-2 rounded-full hover:bg-gray-200"
-                onClick={() => setMonthlyModalMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                onClick={() => setMonthlyModalMonth(prev => prev.add(1, 'months').startOf('month'))}
                 aria-label="Next Month"
               >
                 <span className="text-xl">&#8594;</span>
@@ -536,7 +525,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             </div>
             <div className="flex flex-wrap gap-2 justify-center bg-blue-50 p-4 rounded-lg">
               {getAllDatesInMonth(monthlyModalMonth).map(dateObj => {
-                const dateStr = dateObj.toISOString().slice(0, 10);
+                const dateStr = dateObj.format('YYYY-MM-DD');
                 const answerObj = answers.find(ans => ans.date === dateStr);
                 let color = '';
                 if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
@@ -552,12 +541,12 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 }
                 return (
                   <div key={dateStr} className={`flex flex-col items-center w-10`}>
-                    <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{dateObj.toLocaleString('default', { weekday: 'short' })}</span>
+                    <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{dateObj.format('ddd')}</span>
                     <div
                       className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm ${color} border-gray-300`}
-                      title={dateObj.toLocaleDateString()}
+                      title={dateObj.format('MMM D, YYYY')}
                     >
-                      {dateObj.getDate()}
+                      {dateObj.date()}
                     </div>
                   </div>
                 );
@@ -702,6 +691,29 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           </div>
         </div>
       )}
+      <div className="mt-4 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+        <div className="flex items-center gap-1">
+          <span>ID:</span>
+          <code className="font-mono bg-gray-50 px-1 py-0.5 rounded">{tracker.id}</code>
+        </div>
+        <button
+          onClick={handleCopyToClipboard}
+          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+          title="Copy ID to clipboard"
+        >
+          {copied ? (
+            <>
+              <ClipboardDocumentCheckIcon className="h-4 w-4 text-green-500" />
+              <span>Copied!</span>
+            </>
+          ) : (
+            <>
+              <ClipboardIcon className="h-4 w-4" />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
@@ -713,11 +725,7 @@ function EnhancedStats({ answers, tracker }) {
   }
 
   // Normalize and deduplicate dates
-  const dateSet = new Set(answers.map(a => {
-    const d = new Date(a.date);
-    d.setHours(0,0,0,0);
-    return d.toISOString().slice(0,10);
-  }));
+  const dateSet = new Set(answers.map(a => moment(a.date).format('YYYY-MM-DD')));
   const sortedDates = Array.from(dateSet).sort();
 
   // Longest streak calculation (robust)
@@ -727,9 +735,9 @@ function EnhancedStats({ answers, tracker }) {
     if (!prev) {
       current = 1;
     } else {
-      const prevDate = new Date(prev);
-      const currDate = new Date(dateStr);
-      const diff = (currDate - prevDate) / (1000*60*60*24);
+      const prevDate = moment(prev);
+      const currDate = moment(dateStr);
+      const diff = currDate.diff(prevDate, 'days');
       if (diff === 1) {
         current++;
       } else {

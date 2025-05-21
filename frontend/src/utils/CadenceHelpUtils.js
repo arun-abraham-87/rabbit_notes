@@ -326,19 +326,19 @@ export const handleCadenceChange = (note, hours, minutes, cadenceType, cadenceDa
     cadenceObj.hours = hours;
     cadenceObj.minutes = minutes;
     cadenceObj.time = dailyTime;
-    cadenceObj.days = cadenceDays;
+    cadenceObj.days = Array.isArray(cadenceDays) ? cadenceDays : [cadenceDays].filter(Boolean);
   } else if (cadenceType === 'daily') {
     hours = 24; minutes = 0;
     cadenceObj.hours = hours;
     cadenceObj.minutes = minutes;
     cadenceObj.time = dailyTime;
-    cadenceObj.days = cadenceDays;
+    cadenceObj.days = Array.isArray(cadenceDays) ? cadenceDays : [cadenceDays].filter(Boolean);
   } else if (cadenceType === 'weekly') {
     hours = 24 * 7; minutes = 0;
     cadenceObj.hours = hours;
     cadenceObj.minutes = minutes;
     cadenceObj.time = weeklyTime;
-    cadenceObj.days = weeklyDays;
+    cadenceObj.days = Array.isArray(weeklyDays) ? weeklyDays : [weeklyDays].filter(Boolean);
   } else if (cadenceType === 'monthly') {
     hours = 24 * 30; minutes = 0;
     cadenceObj.hours = hours;

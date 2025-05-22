@@ -22,72 +22,72 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const existingTags = getAllUniqueTags(notes || []);
 
   useEffect(() => {
-    if (note) {
-      const lines = note.content.split('\n');
+    if (!note || !note.content) return;
+    
+    const lines = note.content.split('\n');
 
-      // Find the description
-      const descriptionLine = lines.find(line => line.startsWith('event_description:'));
-      if (descriptionLine) {
-        setDescription(descriptionLine.replace('event_description:', '').trim());
-      }
+    // Find the description
+    const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+    if (descriptionLine) {
+      setDescription(descriptionLine.replace('event_description:', '').trim());
+    }
 
-      // Find the event date
-      const eventDateLine = lines.find(line => line.startsWith('event_date:'));
-      if (eventDateLine) {
-        const dateStr = eventDateLine.replace('event_date:', '').trim();
-        setEventDate(dateStr.split('T')[0]);
-      }
+    // Find the event date
+    const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+    if (eventDateLine) {
+      const dateStr = eventDateLine.replace('event_date:', '').trim();
+      setEventDate(dateStr.split('T')[0]);
+    }
 
-      // Find end date if exists
-      const endDateLine = lines.find(line => line.startsWith('event_end_date:'));
-      if (endDateLine) {
-        const dateStr = endDateLine.replace('event_end_date:', '').trim();
-        setEndDate(dateStr.split('T')[0]);
-        setShowEndDate(true);
-      }
+    // Find end date if exists
+    const endDateLine = lines.find(line => line.startsWith('event_end_date:'));
+    if (endDateLine) {
+      const dateStr = endDateLine.replace('event_end_date:', '').trim();
+      setEndDate(dateStr.split('T')[0]);
+      setShowEndDate(true);
+    }
 
-      // Parse location
-      const locationLine = lines.find(line => line.startsWith('event_location:'));
-      if (locationLine) {
-        setLocation(locationLine.replace('event_location:', '').trim());
-      }
+    // Parse location
+    const locationLine = lines.find(line => line.startsWith('event_location:'));
+    if (locationLine) {
+      setLocation(locationLine.replace('event_location:', '').trim());
+    }
 
-      // Parse tags
-      const tagsLine = lines.find(line => line.startsWith('event_tags:'));
-      if (tagsLine) {
-        setTags(tagsLine.replace('event_tags:', '').trim());
-      }
+    // Parse tags
+    const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+    if (tagsLine) {
+      setTags(tagsLine.replace('event_tags:', '').trim());
+    }
 
-      // Parse recurring info
-      const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
-      if (recurringLine) {
-        setIsRecurring(true);
-        setRecurrenceType(recurringLine.replace('event_recurring_type:', '').trim());
-      }
+    // Parse recurring info
+    const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
+    if (recurringLine) {
+      setIsRecurring(true);
+      setRecurrenceType(recurringLine.replace('event_recurring_type:', '').trim());
+    }
 
-      // Parse recurring end date
-      const recurringEndLine = lines.find(line => line.startsWith('event_recurring_end:'));
-      if (recurringEndLine) {
-        setRecurrenceEndDate(recurringEndLine.replace('event_recurring_end:', '').trim());
-      }
+    // Parse recurring end date
+    const recurringEndLine = lines.find(line => line.startsWith('event_recurring_end:'));
+    if (recurringEndLine) {
+      setRecurrenceEndDate(recurringEndLine.replace('event_recurring_end:', '').trim());
+    }
 
-      // Parse notes
-      const notesLine = lines.find(line => line.startsWith('event_notes:'));
-      if (notesLine) {
-        setEventNotes(notesLine.replace('event_notes:', '').trim());
-      }
+    // Parse notes
+    const notesLine = lines.find(line => line.startsWith('event_notes:'));
+    if (notesLine) {
+      setEventNotes(notesLine.replace('event_notes:', '').trim());
+    }
 
-      // Parse deadline status
-      const isDeadlineLine = lines.find(line => line.startsWith('meta::event_deadline:'));
-      if (isDeadlineLine) {
-        setIsDeadline(isDeadlineLine.includes('true'));
-      }
+    // Parse deadline status
+    const isDeadlineLine = lines.find(line => line.startsWith('meta::event_deadline:'));
+    if (isDeadlineLine) {
+      setIsDeadline(isDeadlineLine.includes('true'));
+    }
 
-      // Parse price if exists
-      const priceLine = lines.find(line => line.startsWith('event_$:'));
-      if (priceLine) {
-        setPrice(priceLine.replace('event_$:', '').trim());
-      }
+    // Parse price if exists
+    const priceLine = lines.find(line => line.startsWith('event_$:'));
+    if (priceLine) {
+      setPrice(priceLine.replace('event_$:', '').trim());
     }
   }, [note]);
 

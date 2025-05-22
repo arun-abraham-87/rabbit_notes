@@ -108,21 +108,18 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
 
   const handleEditDeadline = (deadline) => {
     const originalNote = notes.find(n => n.id === deadline.id);
-    if (!originalNote || !originalNote.content) {
-      console.error('Note not found or has no content:', deadline.id);
+    if (!originalNote) {
+      console.error('Note not found:', deadline.id);
+      return;
+    }
+
+    if (!originalNote.content) {
+      console.error('Note has no content:', deadline.id);
       return;
     }
 
     try {
-      const lines = originalNote.content.split('\n');
-      const description = lines.find(line => line.startsWith('event_description:'))?.replace('event_description:', '').trim() || '';
-      const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim() || '';
-
-      setEditingDeadline({
-        id: deadline.id,
-        description,
-        date: eventDate
-      });
+      setEditingDeadline(originalNote);
       setShowEditEventModal(true);
     } catch (error) {
       console.error('Error parsing deadline note:', error);
@@ -235,7 +232,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
   }
   
   useEffect(() => {
-    const eventNotes = notes.filter(note => note.content.includes('meta::event_deadline'));
+    const eventNotes = notes.filter(note => note && note.content && note.content.includes('meta::event_deadline'));
     const upcoming = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Start of today
@@ -244,8 +241,10 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
     let nextDeadlineDays = null;
 
     eventNotes.forEach(note => {
+      if (!note || !note.content) return;
+      
       const lines = note.content.split('\n');
-      const description = lines[0].trim();
+      const description = lines[0]?.trim() || '';
       const eventDateLine = lines.find(line => line.startsWith('event_date:'));
       const eventDate = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : null;
       const isHidden = note.content.includes('meta::event_hidden');
@@ -419,6 +418,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
 
       {showEditEventModal && (
         <EditEventModal
+          isOpen={showEditEventModal}
           note={editingDeadline}
           onSave={handleAddEvent}
           onCancel={() => {

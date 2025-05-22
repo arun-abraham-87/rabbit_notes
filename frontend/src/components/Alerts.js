@@ -255,23 +255,26 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        // Check if deadline is today or tomorrow
-        if (deadlineDate.getTime() === today.getTime()) {
-          hasTodayDeadline = true;
-        } else if (deadlineDate.getTime() === tomorrow.getTime()) {
-          hasTomorrowDeadline = true;
-        } else if (!nextDeadlineDays || deadlineDate < new Date(nextDeadlineDays.date)) {
-          const diffTime = Math.abs(deadlineDate - today);
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          nextDeadlineDays = { date: deadlineDate, days: diffDays };
-        }
+        // Only include deadlines that are today or in the future
+        if (deadlineDate >= today) {
+          // Check if deadline is today or tomorrow
+          if (deadlineDate.getTime() === today.getTime()) {
+            hasTodayDeadline = true;
+          } else if (deadlineDate.getTime() === tomorrow.getTime()) {
+            hasTomorrowDeadline = true;
+          } else if (!nextDeadlineDays || deadlineDate < new Date(nextDeadlineDays.date)) {
+            const diffTime = Math.abs(deadlineDate - today);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            nextDeadlineDays = { date: deadlineDate, days: diffDays };
+          }
 
-        upcoming.push({
-          id: note.id,
-          date: new Date(eventDate),
-          description: description.replace('event_description:', '').trim(),
-          isHidden
-        });
+          upcoming.push({
+            id: note.id,
+            date: new Date(eventDate),
+            description: description.replace('event_description:', '').trim(),
+            isHidden
+          });
+        }
       }
     });
 
@@ -420,7 +423,50 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
         <EditEventModal
           isOpen={showEditEventModal}
           note={editingDeadline}
-          onSave={handleAddEvent}
+          onSave={async (content) => {
+            if (editingDeadline) {
+              try {
+                // Update existing event
+                const note = notes.find(n => n.id === editingDeadline.id);
+                if (note) {
+                  // Preserve the original meta tags
+                  const originalLines = note.content.split('\n');
+                  const metaTags = originalLines.filter(line => 
+                    line.startsWith('meta::') && 
+                    !line.startsWith('meta::event::')
+                  );
+                  
+                  // Combine new content with preserved meta tags
+                  const updatedContent = content + '\n' + metaTags.join('\n');
+                  
+                  // Update the note in the backend
+                  await updateNoteById(editingDeadline.id, updatedContent);
+                  
+                  // Update the note in the local state
+                  const updatedNote = { ...note, content: updatedContent };
+                  setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
+                }
+              } catch (error) {
+                console.error('Error updating event:', error);
+              }
+            } else {
+              // Add new event
+              try {
+                const newNote = {
+                  id: Date.now().toString(),
+                  content: content,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                };
+                await createNote(content);
+                setNotes([...notes, newNote]);
+              } catch (error) {
+                console.error('Error creating event:', error);
+              }
+            }
+            setShowEditEventModal(false);
+            setEditingDeadline(null);
+          }}
           onCancel={() => {
             setShowEditEventModal(false);
             setEditingDeadline(null);

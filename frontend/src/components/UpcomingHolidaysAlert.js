@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  XMarkIcon, 
+import {
+  XMarkIcon,
   CalendarIcon,
   ClockIcon,
   PlusIcon,
@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import EditEventModal from './EditEventModal';
 import { getAgeInStringFmt } from '../utils/DateUtils';
+import { updateNoteById } from '../utils/ApiUtils';
 
 const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
@@ -95,13 +96,22 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
       const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim() || '';
       const location = lines.find(line => line.startsWith('event_location:'))?.replace('event_location:', '').trim() || '';
       const recurrenceType = lines.find(line => line.startsWith('event_recurring_type:'))?.replace('event_recurring_type:', '').trim() || '';
+      const tags = lines.find(line => line.startsWith('event_tags:'))?.replace('event_tags:', '').trim() || '';
+      const notes = lines.find(line => line.startsWith('event_notes:'))?.replace('event_notes:', '').trim() || '';
+      const isDeadline = lines.some(line => line.startsWith('meta::event_deadline:'));
+      const price = lines.find(line => line.startsWith('event_$:'))?.replace('event_$:', '').trim() || '';
 
       setEditingHoliday({
         id: holiday.id,
+        content: originalNote.content,
         description,
         date: eventDate,
         location,
-        recurrenceType
+        recurrenceType,
+        tags,
+        notes,
+        isDeadline,
+        price
       });
       setShowEditEventModal(true);
     }
@@ -141,7 +151,7 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
       const eventDateLine = lines.find(line => line.startsWith('event_date:'));
       const eventDate = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : null;
       const isHidden = note.content.includes('meta::event_hidden');
-      
+
       if (eventDate) {
         const holidayDate = new Date(eventDate);
         holidayDate.setHours(0, 0, 0, 0);
@@ -209,7 +219,7 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
                 </h3>
                 {holidayIndicators && (
                   <div className="mt-1">
-                    {holidayIndicators.includes('Today') || holidayIndicators.includes('Tomorrow') 
+                    {holidayIndicators.includes('Today') || holidayIndicators.includes('Tomorrow')
                       ? renderAnimatedText(holidayIndicators)
                       : <span className="text-blue-600">{holidayIndicators}</span>
                     }
@@ -264,7 +274,7 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
                   holidays.map((holiday) => {
                     const daysUntil = getDaysUntilHoliday(holiday.date);
                     return (
-                      <div 
+                      <div
                         key={holiday.id}
                         className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150 flex"
                       >
@@ -326,22 +336,24 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
 
       {showEditEventModal && (
         <EditEventModal
+          isOpen={showEditEventModal}
           note={editingHoliday}
-          onSave={(content) => {
+          onSave={async (content) => {
             if (editingHoliday) {
               // Update existing holiday
               const note = notes.find(n => n.id === editingHoliday.id);
               if (note) {
                 // Preserve the original meta tags
                 const originalLines = note.content.split('\n');
-                const metaTags = originalLines.filter(line => 
-                  line.startsWith('meta::') && 
+                const metaTags = originalLines.filter(line =>
+                  line.startsWith('meta::') &&
                   !line.startsWith('meta::event::')
                 );
-                
+
                 // Combine new content with preserved meta tags
                 const updatedContent = content + '\n' + metaTags.join('\n');
-                
+                // Update the note in the backend
+                await updateNoteById(editingHoliday.id, updatedContent);
                 // Update the note
                 const updatedNote = { ...note, content: updatedContent };
                 setNotes(notes.map(n => n.id === note.id ? updatedNote : n));

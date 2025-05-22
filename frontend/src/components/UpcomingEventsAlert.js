@@ -225,12 +225,12 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
           // Check if it's an event
           if (!note.content.includes('meta::event::')) return false;
           
-          // Check if it has the deadline tag
+          // Check if it has the deadline tag or purchase tag
           const lines = note.content.split('\n');
           const tagsLine = lines.find(line => line.startsWith('event_tags:'));
           if (tagsLine) {
             const tags = tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim());
-            if (tags.some(tag => tag.toLowerCase() === 'deadline')) return false;
+            if (tags.some(tag => tag.toLowerCase() === 'deadline' || tag.toLowerCase() === 'purchase')) return false;
           }
           
           return true;

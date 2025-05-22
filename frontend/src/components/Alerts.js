@@ -334,9 +334,9 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
                   setShowEditEventModal(true);
                 }}
                 className="px-3 py-1 text-blue-600 hover:text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors duration-150"
-                title="Add Deadline"
+                title="Add new deadline"
               >
-                <PlusIcon className="h-5 w-5" />
+                <PlusIcon className="h-6 w-6" />
               </button>
             </div>
           </div>

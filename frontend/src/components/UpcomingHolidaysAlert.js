@@ -9,7 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import EditEventModal from './EditEventModal';
 import { getAgeInStringFmt } from '../utils/DateUtils';
-import { updateNoteById } from '../utils/ApiUtils';
+import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
 const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
@@ -379,7 +379,9 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
             setShowEditEventModal(false);
             setEditingHoliday(null);
           }}
-          onDelete={() => {
+          onDelete={async () => {
+            await deleteNoteById(editingHoliday.id);
+            setNotes(notes.filter(n => n.id !== editingHoliday.id));
             setShowEditEventModal(false);
             setEditingHoliday(null);
           }}

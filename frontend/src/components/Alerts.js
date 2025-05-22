@@ -38,6 +38,7 @@ import TrackerQuestionsAlert from './TrackerQuestionsAlert';
 import UpcomingEventsAlert from './UpcomingEventsAlert'
 import RemindersAlert from './RemindersAlert';
 import UpcomingHolidaysAlert from './UpcomingHolidaysAlert';
+import { deleteNoteById } from '../utils/ApiUtils';
 
 const Alerts = {
   success: (message) => {
@@ -475,7 +476,9 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
             setShowEditEventModal(false);
             setEditingDeadline(null);
           }}
-          onDelete={() => {
+          onDelete={async () => {
+            await deleteNoteById(editingDeadline.id);
+            setNotes(notes.filter(n => n.id !== editingDeadline.id));
             setShowEditEventModal(false);
             setEditingDeadline(null);
           }}

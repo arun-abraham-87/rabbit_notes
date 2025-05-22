@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { CalendarIcon, ClockIcon, PlusIcon, PencilIcon, EyeIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import EditEventModal from './EditEventModal';
+import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
  
 const formatDateString = (date) => {
   // If date is already a string in YYYY-MM-DD format, return it
@@ -135,21 +136,12 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
     const [eventIndicators, setEventIndicators] = useState('');
     const [editingEvent, setEditingEvent] = useState(null);
   
-    const handleEditEvent = (event) => {
+    const handleEditEvent = async (event) => {
       const originalNote = notes.find(n => n.id === event.id);
       if (originalNote) {
-        const lines = originalNote.content.split('\n');
-        const description = lines.find(line => line.startsWith('event_description:'))?.replace('event_description:', '').trim() || '';
-        const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim() || '';
-        const location = lines.find(line => line.startsWith('event_location:'))?.replace('event_location:', '').trim() || '';
-        const recurrenceType = lines.find(line => line.startsWith('event_recurring_type:'))?.replace('event_recurring_type:', '').trim() || '';
-  
         setEditingEvent({
           id: event.id,
-          description,
-          date: eventDate,
-          location,
-          recurrenceType
+          content: originalNote.content
         });
         setShowEditEventModal(true);
       }
@@ -532,35 +524,48 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
   
         {showEditEventModal && (
           <EditEventModal
+            isOpen={showEditEventModal}
             note={editingEvent}
-            onSave={(content) => {
+            onSave={async (content) => {
               if (editingEvent) {
-                // Update existing event
-                const note = notes.find(n => n.id === editingEvent.id);
-                if (note) {
-                  // Preserve the original meta tags
-                  const originalLines = note.content.split('\n');
-                  const metaTags = originalLines.filter(line => 
-                    line.startsWith('meta::') && 
-                    !line.startsWith('meta::event::')
-                  );
-                  
-                  // Combine new content with preserved meta tags
-                  const updatedContent = content + '\n' + metaTags.join('\n');
-                  
-                  // Update the note
-                  const updatedNote = { ...note, content: updatedContent };
-                  setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
+                try {
+                  // Update existing event
+                  const note = notes.find(n => n.id === editingEvent.id);
+                  if (note) {
+                    // Preserve the original meta tags
+                    const originalLines = note.content.split('\n');
+                    const metaTags = originalLines.filter(line => 
+                      line.startsWith('meta::') && 
+                      !line.startsWith('meta::event::')
+                    );
+                    
+                    // Combine new content with preserved meta tags
+                    const updatedContent = content + '\n' + metaTags.join('\n');
+                    
+                    // Update the note in the backend
+                    await updateNoteById(editingEvent.id, updatedContent);
+                    
+                    // Update the note in the local state
+                    const updatedNote = { ...note, content: updatedContent };
+                    setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
+                  }
+                } catch (error) {
+                  console.error('Error updating event:', error);
                 }
               } else {
                 // Add new event
-                const newNote = {
-                  id: Date.now().toString(),
-                  content: content,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                };
-                setNotes([...notes, newNote]);
+                try {
+                  const newNote = {
+                    id: Date.now().toString(),
+                    content: content,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  };
+                  await createNote(content);
+                  setNotes([...notes, newNote]);
+                } catch (error) {
+                  console.error('Error creating event:', error);
+                }
               }
               setShowEditEventModal(false);
               setEditingEvent(null);
@@ -573,7 +578,15 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
               setShowEditEventModal(false);
               setEditingEvent(null);
             }}
-            onDelete={() => {
+            onDelete={async () => {
+              if (editingEvent) {
+                try {
+                  await deleteNoteById(editingEvent.id);
+                  setNotes(notes.filter(n => n.id !== editingEvent.id));
+                } catch (error) {
+                  console.error('Error deleting event:', error);
+                }
+              }
               setShowEditEventModal(false);
               setEditingEvent(null);
             }}

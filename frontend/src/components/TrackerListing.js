@@ -30,6 +30,7 @@ import {
 import TrackerGrid from './TrackerGrid';
 import { createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
 import { toast } from 'react-hot-toast';
+import moment from 'moment';
 
 ChartJS.register(
   CategoryScale,
@@ -390,10 +391,10 @@ const TrackerListing = () => {
   if (isLoading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">{error}</div>;
 
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const currentMonthStr = today.toISOString().slice(0, 7); // 'YYYY-MM'
-  const currentYearStr = today.getFullYear().toString();
+  const today = moment();
+  const todayStr = today.format('YYYY-MM-DD');
+  const currentMonthStr = today.format('YYYY-MM'); // 'YYYY-MM'
+  const currentYearStr = today.format('YYYY');
 
   const isMonthlyCompleted = (tracker) => {
     if (!tracker.completions) return false;
@@ -418,12 +419,12 @@ const TrackerListing = () => {
       }
       return d;
     });
-    let d = new Date(today);
+    let d = moment();
     for (let i = 0; i < 7; i++) {
-      if (selectedDays.includes(d.getDay())) {
-        return d.toISOString().slice(0, 10);
+      if (selectedDays.includes(d.day())) {
+        return d.format('YYYY-MM-DD');
       }
-      d.setDate(d.getDate() - 1);
+      d = d.subtract(1, 'days');
     }
     return null;
   }

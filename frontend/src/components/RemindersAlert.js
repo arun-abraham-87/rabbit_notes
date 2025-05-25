@@ -178,7 +178,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
         return (
           <div
             key={note.id}
-            className="bg-white shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200"
+            className="bg-amber-100 border border-amber-200 shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200"
             onMouseEnter={() => setHoveredNote(note.id)}
             onMouseLeave={() => setHoveredNote(null)}
           >

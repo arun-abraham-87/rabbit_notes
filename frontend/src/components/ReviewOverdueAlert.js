@@ -392,52 +392,60 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       )}
                     </div>
                     <div className="w-full mt-4">
-                      <button
+                      <div 
                         onClick={() => toggleNoteExpand(`actions-${note.id}`)}
-                        className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150 flex items-center justify-between"
+                        className="w-full py-2 text-sm font-medium text-gray-700 cursor-pointer flex items-center justify-end"
                       >
-                        <span>Actions</span>
-                        <svg
-                          className={`w-5 h-5 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-180' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
+                        <div className="flex items-center">
+                          <span>Actions</span>
+                          <svg
+                            className={`w-5 h-5 ml-2 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-90' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
                       {expandedNotes[`actions-${note.id}`] && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <button
-                            onClick={() => setShowCadenceSelector(note.id)}
-                            className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                            title="Set Custom Cadence"
-                          >
-                            Set Custom Cadence
-                          </button>
-                          <button
-                            onClick={() => handleEditNote(note)}
-                            className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                            title="Edit Note"
-                          >
-                            <PencilIcon className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleUnfollow(note)}
-                            className="px-4 py-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                            title="Remove from watchlist"
-                          >
-                            <EyeSlashIcon className="w-5 h-5" />
-                          </button>
-                          {!note.content.includes('meta::reminder') && (
+                        <div className="mt-2">
+                          <div className="flex flex-wrap gap-2 justify-end">
                             <button
-                              onClick={() => handleAddReminder(note)}
-                              className="px-4 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
-                              title="Add Reminder"
+                              onClick={() => setShowCadenceSelector(note.id)}
+                              className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                              title="Set Custom Cadence"
                             >
-                              <BellIcon className="w-5 h-5" />
+                              <ClockIcon className="w-5 h-5 inline-block mr-1" />
+                              <span>Set Cadence</span>
                             </button>
-                          )}
+                            <button
+                              onClick={() => handleEditNote(note)}
+                              className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                              title="Edit Note"
+                            >
+                              <PencilIcon className="w-5 h-5 inline-block mr-1" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => handleUnfollow(note)}
+                              className="px-4 py-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                              title="Remove from watchlist"
+                            >
+                              <EyeSlashIcon className="w-5 h-5 inline-block mr-1" />
+                              <span>Unfollow</span>
+                            </button>
+                            {!note.content.includes('meta::reminder') && (
+                              <button
+                                onClick={() => handleAddReminder(note)}
+                                className="px-4 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
+                                title="Add Reminder"
+                              >
+                                <BellIcon className="w-5 h-5 inline-block mr-1" />
+                                <span>Set as Reminder</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

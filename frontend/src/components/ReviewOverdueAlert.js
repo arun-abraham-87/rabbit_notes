@@ -81,6 +81,17 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       .filter(line => !line.trim().startsWith('meta::'))
       .filter(line => line.length > 0);
 
+    // Function to convert text to sentence case
+    const toSentenceCase = (text) => {
+      // Check if it's a URL or markdown link
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const markdownMatch = text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+      if (urlRegex.test(text) || markdownMatch) return text;
+
+      // Convert to sentence case
+      return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+    };
+
     const firstLine = lines[0] || '';
     const secondLine = lines[1] || '';
     const remainingLines = lines.slice(2).filter(line => line.length > 0);
@@ -121,13 +132,13 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       return (
         <>
           <div>{formatUrlLine(firstLine)}</div>
-          {secondLine && <div className="mt-1 text-gray-600">{secondLine}</div>}
+          {secondLine && <div className="mt-1 text-gray-600">{toSentenceCase(secondLine)}</div>}
           {remainingLines.length > 0 && (
             <>
               {expandedNotes[content] ? (
                 <div className="mt-2 text-gray-600">
                   {remainingLines.map((line, index) => (
-                    <div key={index}>{line}</div>
+                    <div key={index}>{toSentenceCase(line)}</div>
                   ))}
                 </div>
               ) : null}
@@ -147,14 +158,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     if (secondLineUrlMatch) {
       return (
         <>
-          <div>{firstLine}</div>
+          <div>{toSentenceCase(firstLine)}</div>
           <div className="mt-1 text-gray-600">{formatUrlLine(secondLine)}</div>
           {remainingLines.length > 0 && (
             <>
               {expandedNotes[content] ? (
                 <div className="mt-2 text-gray-600">
                   {remainingLines.map((line, index) => (
-                    <div key={index}>{line}</div>
+                    <div key={index}>{toSentenceCase(line)}</div>
                   ))}
                 </div>
               ) : null}
@@ -174,11 +185,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     if (lines.length > 1) {
       return (
         <>
-          <div>{firstLine}</div>
+          <div>{toSentenceCase(firstLine)}</div>
           {expandedNotes[content] ? (
             <div className="mt-2 text-gray-600">
               {lines.slice(1).map((line, index) => (
-                <div key={index}>{line}</div>
+                <div key={index}>{toSentenceCase(line)}</div>
               ))}
             </div>
           ) : null}
@@ -195,7 +206,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     }
 
     // If only one line
-    return firstLine;
+    return toSentenceCase(firstLine);
   };
 
   const handleConvertToTodo = (note) => {
@@ -308,70 +319,70 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       <button
                         onClick={() => handleCadence(note, 0, 30)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 30 Minute Cadence"
+                        title="Set 30 minute cadence"
                       >
                         30m
                       </button>
                       <button
                         onClick={() => handleCadence(note, 1, 0)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 1 Hour Cadence"
+                        title="Set 1 hour cadence"
                       >
                         1h
                       </button>
                       <button
                         onClick={() => handleCadence(note, 2, 0)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 2 Hour Cadence"
+                        title="Set 2 hour cadence"
                       >
                         2h
                       </button>
                       <button
                         onClick={() => handleCadence(note, 4, 0)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 4 Hour Cadence"
+                        title="Set 4 hour cadence"
                       >
                         4h
                       </button>
                       <button
                         onClick={() => handleCadence(note, 8, 0)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 8 Hour Cadence"
+                        title="Set 8 hour cadence"
                       >
                         8h
                       </button>
                       <button
                         onClick={() => handleCadence(note, 12, 0)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 12 Hour Cadence"
+                        title="Set 12 hour cadence"
                       >
                         12h
                       </button>
                       <button
                         onClick={() => handleCadence(note, 24, 0)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 24 Hour Cadence"
+                        title="Set 24 hour cadence"
                       >
                         24h
                       </button>
                       <button
                         onClick={() => handleCadence(note, 48, 0)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 2 Day Cadence"
+                        title="Set 2 day cadence"
                       >
                         2d
                       </button>
                       <button
                         onClick={() => handleCadence(note, 72, 0)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 3 Day Cadence"
+                        title="Set 3 day cadence"
                       >
                         3d
                       </button>
                       <button
                         onClick={() => handleCadence(note, 168, 0)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 7 Day Cadence"
+                        title="Set 7 day cadence"
                       >
                         7d
                       </button>
@@ -379,12 +390,12 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                     <div className="flex items-center">
                       <div 
                         onClick={() => toggleNoteExpand(`actions-${note.id}`)}
-                        className="py-2 text-sm font-medium text-gray-700 cursor-pointer flex items-center"
+                        className="py-2 text-xs font-medium text-gray-700 cursor-pointer flex items-center"
                       >
                         <div className="flex items-center">
                           <span>Actions</span>
                           <svg
-                            className={`w-5 h-5 ml-2 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-90' : ''}`}
+                            className={`w-4 h-4 ml-1 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-90' : ''}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -401,15 +412,15 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                         <button
                           onClick={() => setShowCadenceSelector(note.id)}
                           className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set Custom Cadence"
+                          title="Set custom cadence"
                         >
                           <ClockIcon className="w-5 h-5 inline-block mr-1" />
-                          <span>Set Cadence</span>
+                          <span>Set cadence</span>
                         </button>
                         <button
                           onClick={() => handleEditNote(note)}
                           className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                          title="Edit Note"
+                          title="Edit note"
                         >
                           <PencilIcon className="w-5 h-5 inline-block mr-1" />
                           <span>Edit</span>
@@ -426,10 +437,10 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                           <button
                             onClick={() => handleAddReminder(note)}
                             className="px-4 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
-                            title="Add Reminder"
+                            title="Set as reminder"
                           >
                             <BellIcon className="w-5 h-5 inline-block mr-1" />
-                            <span>Set as Reminder</span>
+                            <span>Set as reminder</span>
                           </button>
                         )}
                       </div>

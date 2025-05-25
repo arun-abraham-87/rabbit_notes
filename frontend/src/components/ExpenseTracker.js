@@ -45,6 +45,9 @@ const ExpenseTracker = () => {
   const [showHasTags, setShowHasTags] = useState(false);
   const [selectedExpenses, setSelectedExpenses] = useState(new Set());
   const [bulkType, setBulkType] = useState('Unassigned');
+  const [bulkTags, setBulkTags] = useState('');
+  const [bulkTagSuggestions, setBulkTagSuggestions] = useState([]);
+  const [showBulkTagSuggestions, setShowBulkTagSuggestions] = useState(false);
   const [expenseLineMap, setExpenseLineMap] = useState(new Map());
   const [sortConfig, setSortConfig] = useState({
     key: 'amount',
@@ -365,7 +368,9 @@ const ExpenseTracker = () => {
   };
 
   const toggleExpenseSelection = (expenseId, event) => {
-    event.stopPropagation();
+    if (event) {
+      event.stopPropagation();
+    }
     setSelectedExpenses(prev => {
       const newSet = new Set(prev);
       if (newSet.has(expenseId)) {
@@ -378,7 +383,9 @@ const ExpenseTracker = () => {
   };
 
   const handleSelectAll = (event) => {
-    event.stopPropagation();
+    if (event) {
+      event.stopPropagation();
+    }
     if (selectedExpenses.size === filteredExpenses.length) {
       setSelectedExpenses(new Set());
     } else {
@@ -1134,6 +1141,103 @@ const ExpenseTracker = () => {
     }
   };
 
+  const handleBulkTagInputChange = (e) => {
+    const value = e.target.value;
+    setBulkTags(value);
+    
+    // Show suggestions if there's input
+    setShowBulkTagSuggestions(value.trim().length > 0);
+    
+    // Filter suggestions based on input
+    const inputTags = value.split(' ').filter(tag => tag.trim());
+    const lastTag = inputTags[inputTags.length - 1] || '';
+    
+    const allTags = new Set();
+    expenses.forEach(exp => {
+      if (exp.tags) {
+        exp.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    
+    const filteredSuggestions = Array.from(allTags)
+      .filter(tag => 
+        tag.toLowerCase().includes(lastTag.toLowerCase()) && 
+        !inputTags.includes(tag)
+      );
+    
+    setBulkTagSuggestions(filteredSuggestions);
+  };
+
+  const addBulkTagFromSuggestion = (tag) => {
+    const currentTags = bulkTags.split(' ').filter(t => t.trim());
+    currentTags[currentTags.length - 1] = tag;
+    setBulkTags(currentTags.join(' '));
+    setShowBulkTagSuggestions(false);
+  };
+
+  const handleBulkTagChange = async () => {
+    if (selectedExpenses.size === 0 || !bulkTags.trim()) return;
+
+    try {
+      const newTags = bulkTags.split(' ').filter(tag => tag.trim());
+      
+      // Process each selected expense
+      for (const expenseId of selectedExpenses) {
+        // Get the original note
+        const originalNote = allNotes.find(note => note.id === expenseId);
+        if (!originalNote) {
+          console.error('Original note not found:', expenseId);
+          continue;
+        }
+
+        // Get existing tags
+        const expense = expenses.find(exp => exp.id === expenseId);
+        const existingTags = expense.tags || [];
+        
+        // Combine existing tags with new tags, removing duplicates
+        const allTags = [...new Set([...existingTags, ...newTags])];
+
+        // Remove all existing tag meta lines
+        let updatedContent = originalNote.content
+          .split('\n')
+          .filter(line => !line.includes('meta::tag::'))
+          .join('\n');
+
+        // Add new tag meta lines
+        allTags.forEach(tag => {
+          updatedContent = addOrReplaceMetaTag(updatedContent, 'tag', tag);
+        });
+
+        // Save the updated note to the database
+        await updateNoteById(expenseId, updatedContent);
+
+        // Update allNotes state
+        setAllNotes(prevNotes => 
+          prevNotes.map(note => 
+            note.id === expenseId ? { ...note, content: updatedContent } : note
+          )
+        );
+      }
+
+      // Clear selection and input
+      setSelectedExpenses(new Set());
+      setBulkTags('');
+
+      // Refresh the expenses
+      const refreshResponse = await loadAllNotes();
+      setAllNotes(refreshResponse.notes);
+      const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+      setExpenses(parsedExpenses);
+      setFilteredExpenses(parsedExpenses);
+      calculateTotals(parsedExpenses);
+      
+      toast.success('Tags added successfully');
+    } catch (error) {
+      console.error('Error updating notes:', error);
+      toast.error('Failed to add tags');
+    }
+  };
+
   if (loading || notesLoading) {
     return (
       <div className="p-4 w-full">
@@ -1253,20 +1357,56 @@ const ExpenseTracker = () => {
             <span className="text-sm font-medium text-gray-700">
               {selectedExpenses.size} expenses selected
             </span>
-            <select
-              value={bulkType}
-              onChange={(e) => setBulkType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {expenseTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <select
+                value={bulkType}
+                onChange={(e) => setBulkType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {expenseTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
             <button
               onClick={() => handleBulkTypeChange(bulkType)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               Update Type
+            </button>
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={bulkTags}
+                onChange={handleBulkTagInputChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleBulkTagChange();
+                  }
+                }}
+                placeholder="Add tags (space separated)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {showBulkTagSuggestions && bulkTagSuggestions.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                  {bulkTagSuggestions.map((tag, index) => (
+                    <div
+                      key={index}
+                      onClick={() => addBulkTagFromSuggestion(tag)}
+                      className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                    >
+                      {tag}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleBulkTagChange}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Add Tags
             </button>
             <button
               onClick={() => setShowBulkExclude(true)}
@@ -1903,13 +2043,7 @@ const ExpenseTracker = () => {
                   <input
                     type="checkbox"
                     checked={selectedExpenses.size === filteredExpenses.length}
-                    onChange={() => {
-                      if (selectedExpenses.size === filteredExpenses.length) {
-                        setSelectedExpenses(new Set());
-                      } else {
-                        setSelectedExpenses(new Set(filteredExpenses.map(e => e.id)));
-                      }
-                    }}
+                    onChange={(e) => handleSelectAll(e)}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                 </th>
@@ -1944,7 +2078,7 @@ const ExpenseTracker = () => {
                       <input
                         type="checkbox"
                         checked={selectedExpenses.has(expense.id)}
-                        onChange={() => toggleExpenseSelection(expense.id)}
+                        onChange={(e) => toggleExpenseSelection(expense.id, e)}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         data-expense-checkbox={expense.id}
                       />

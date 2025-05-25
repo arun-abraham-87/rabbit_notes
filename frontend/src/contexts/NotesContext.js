@@ -7,50 +7,53 @@ export function NotesProvider({ children }) {
   const [notes, setNotes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // useEffect(() => {
-  //   const fetchNotes = async () => {
-  //     try {
-  //       const data = await loadAllNotes('', null);
-  //       setNotes(data.notes || []);
-  //     } catch (error) {
-  //       console.error('Error loading notes:', error);
-  //       setNotes([]);
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
+  useEffect(() => {
+    const fetchNotes = async () => {
+      try {
+        const data = await loadAllNotes('', null);
+        setNotes(data.notes || []);
+      } catch (error) {
+        console.error('Error loading notes:', error);
+        setNotes([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  //   fetchNotes();
-  // }, []);
+    fetchNotes();
+  }, []);
 
-  // const addNote = async (content) => {
-  //   try {
-  //     const newNote = await createNote(content);
-  //     setNotes(prevNotes => [...prevNotes, newNote]);
-  //     return newNote;
-  //   } catch (error) {
-  //     console.error('Error adding note:', error);
-  //     throw error;
-  //   }
-  // };
+  const addNote = async (content) => {
+    try {
+      const newNote = await createNote(content);
+      setNotes(prevNotes => [...prevNotes, newNote]);
+      return newNote;
+    } catch (error) {
+      console.error('Error adding note:', error);
+      throw error;
+    }
+  };
 
-  // const updateNote = async (noteId, content) => {
-  //   try {
-  //     const updatedNote = await updateNoteById(noteId, content);
-  //     setNotes(prevNotes => 
-  //       prevNotes.map(note => note.id === noteId ? updatedNote : note)
-  //     );
-  //     return updatedNote;
-  //   } catch (error) {
-  //     console.error('Error updating note:', error);
-  //     throw error;
-  //   }
-  // };
+  const updateNote = async (noteId, content) => {
+    try {
+      const updatedNote = await updateNoteById(noteId, content);
+      setNotes(prevNotes => 
+        prevNotes.map(note => note.id === noteId ? updatedNote : note)
+      );
+      return updatedNote;
+    } catch (error) {
+      console.error('Error updating note:', error);
+      throw error;
+    }
+  };
 
   return (
     <NotesContext.Provider value={{ 
       notes, 
-      isLoading 
+      isLoading,
+      addNote,
+      updateNote,
+      setNotes
     }}>
       {children}
     </NotesContext.Provider>
@@ -59,7 +62,7 @@ export function NotesProvider({ children }) {
 
 export function useNotes() {
   const context = useContext(NotesContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useNotes must be used within a NotesProvider');
   }
   return context;

@@ -23,15 +23,17 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
         const response = await loadAllNotes();
         const allNotes = response.notes || [];
         
-        console.log('All Notes:', allNotes);
+        console.log('All Notes 1:', allNotes);
         
         // Filter notes with meta::expense_source_type tag
         const sourceTypes = allNotes.filter(note => 
-          note.content.split('\n').some(line => line.trim() === 'meta::expense_source_type')
+          note.content.split('\n').some(line => line.trim().includes('meta::expense'))
         ).map(note => ({
           id: note.id,
           name: note.content.split('\n')[0]
         }));
+
+        console.log('sourceTypes', sourceTypes);
 
         // Filter notes with meta::expense_source_name tag
         const sourceNames = allNotes.filter(note => 
@@ -241,40 +243,46 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
     }
 
     try {
-        // Save all rows without quotes
-        const formattedLines = data.map(row => 
-            row.map(cell => cell.replace(/^"|"$/g, '')).join(' ')
-        );
+        // Save each row as a separate note
+        let successCount = 0;
+        for (const row of data) {
+            // Format the row content without quotes
+            const formattedLine = row.map(cell => cell.replace(/^"|"$/g, '')).join(' ');
 
-        // Create content with meta::expense tag and links to source notes
-        const content = [
-            ...formattedLines,
-            'meta::expense',
-            `meta::link::${selectedSourceType}`,
-            `meta::link::${selectedSourceName}`
-        ].join('\n');
+            // Create content with meta::expense tag and links to source notes
+            const content = [
+                formattedLine,
+                'meta::expense',
+                `meta::link::${selectedSourceType}`,
+                `meta::link::${selectedSourceName}`
+            ].join('\n');
 
-        let response;
-        if (noteId) {
-            // Update existing note
-            response = await updateNoteById(noteId, content);
-        } else {
-            // Create new note
-            response = await createNote(content);
+            let response;
+            if (noteId) {
+                // Update existing note
+                response = await updateNoteById(noteId, content);
+            } else {
+                // Create new note
+                response = await createNote(content);
+            }
+
+            if (response) {
+                successCount++;
+            }
         }
 
-        if (response) {
-            setSavedCount(formattedLines.length);
+        if (successCount > 0) {
+            setSavedCount(successCount);
             setShowSuccess(true);
             setTimeout(() => {
                 setShowSuccess(false);
                 onClose();
             }, 2000);
         } else {
-            console.error('Failed to save note');
+            console.error('Failed to save any notes');
         }
     } catch (error) {
-        console.error('Error saving note:', error);
+        console.error('Error saving notes:', error);
     }
   };
 

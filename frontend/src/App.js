@@ -247,6 +247,9 @@ const AppContent = () => {
                   searchQuery={searchQuery}
                   settings={settings}
                   setSettings={setSettings}
+                  activePage={activePage}
+                  setActivePage={(page) => navigate(`/${page}`)}
+                  setShowPastePopup={setShowPastePopup}
                 />
               </div>
 
@@ -255,35 +258,22 @@ const AppContent = () => {
                 <div className="h-full">
                   <Routes>
                     <Route path="/" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <NotesMainContainer
-                            notes={allNotes}
-                            allNotes={allNotes}
-                            addNote={addNote}
-                            setAllNotes={setAllNotes}
-                            searchQuery={searchQuery}
-                            setSearchQuery={setSearchQuery}
-                            setNoteDate={setNoteDate}
-                            settings={settings}
-                          />
-                        </div>
-                      </div>
+                      <NotesProvider>
+                        <Dashboard notes={allNotes} setNotes={setAllNotes} />
+                      </NotesProvider>
                     } />
                     <Route path="/notes" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <NotesMainContainer
-                            allNotes={allNotes}
-                            addNote={addNote}
-                            setAllNotes={setAllNotes}
-                            searchQuery={searchQuery}
-                            setSearchQuery={setSearchQuery}
-                            setNoteDate={setNoteDate}
-                            settings={settings}
-                          />
-                        </div>
-                      </div>
+                      <NotesProvider>
+                        <NotesMainContainer
+                          allNotes={allNotes}
+                          setAllNotes={setAllNotes}
+                          addNote={addNote}
+                          searchQuery={searchQuery}
+                          setSearchQuery={setSearchQuery}
+                          setNoteDate={setNoteDate}
+                          settings={settings}
+                        />
+                      </NotesProvider>
                     } />
                     <Route path="/watch" element={
                       <div className="h-full overflow-y-auto">
@@ -377,7 +367,9 @@ const AppContent = () => {
                         <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto h-full">
                           <div className="h-full w-full bg-gray-50">
                             <div className="h-full w-full">
-                              <ExpenseTracker allNotes={allNotes} />
+                              <NotesProvider>
+                                <ExpenseTracker />
+                              </NotesProvider>
                             </div>
                           </div>
                         </div>

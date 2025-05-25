@@ -11,13 +11,15 @@ import {
   Squares2X2Icon,
   EllipsisHorizontalIcon,
   ChartBarIcon,
-  CodeBracketIcon
+  CodeBracketIcon,
+  PlusIcon
 } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 import { getCurrentISOTime, getDateFromString, getDateInDDMMYYYYFormat, getAgeInDays, isSameAsTodaysDate, isSameAsYesterday } from '../utils/DateUtils';
 import TodoStats from './TodoStats';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 import NoteView from './NoteView';
+import AddTodo from './AddTodo';
 
 const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
   const [todos, setTodos] = useState([]);
@@ -38,6 +40,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
   const [showPriorityPopup, setShowPriorityPopup] = useState(false);
   const [pendingTodoContent, setPendingTodoContent] = useState('');
   const [showRawNote, setShowRawNote] = useState({ isOpen: false, content: '' });
+  const [showAddTodoModal, setShowAddTodoModal] = useState(false);
 
   const getFilteredTodos = () => {
     const filteredTodos = (allNotes || [])
@@ -344,6 +347,18 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
     setPendingTodoContent('');
   };
 
+  // Add new function to handle adding todo
+  const handleAddTodo = async (content, priority) => {
+    const currentTime = getCurrentISOTime();
+    const todoContent = `${content}\nmeta::todo::${currentTime}\nmeta::${priority}\nmeta::priority_age::${currentTime}`;
+    try {
+      const response = await createNote(todoContent);
+      setAllNotes([response, ...allNotes]);
+    } catch (error) {
+      console.error('Failed to create todo:', error);
+    }
+  };
+
   const renderTodoCard = (todo) => {
     const tagMatch = todo.content.match(/meta::(high|medium|low|critical)/i);
     const tag = tagMatch ? tagMatch[1].toLowerCase() : 'low';
@@ -641,6 +656,14 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
               <h1 className="text-2xl font-semibold text-gray-900">Todos</h1>
               <div className="flex items-center gap-3">
                 <button
+                  onClick={() => setShowAddTodoModal(true)}
+                  className="p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200 flex items-center gap-2"
+                  title="Add New Todo"
+                >
+                  <PlusIcon className="h-5 w-5" />
+                  <span className="text-sm font-medium">Add Todo</span>
+                </button>
+                <button
                   onClick={() => setShowStats(true)}
                   className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-all duration-200"
                   title="View Statistics"
@@ -924,6 +947,13 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
             isOpen={showRawNote.isOpen}
             content={showRawNote.content}
             onClose={() => setShowRawNote({ isOpen: false, content: '' })}
+          />
+
+          {/* Add Todo Modal */}
+          <AddTodo
+            isOpen={showAddTodoModal}
+            onClose={() => setShowAddTodoModal(false)}
+            onAdd={handleAddTodo}
           />
         </>
       )}

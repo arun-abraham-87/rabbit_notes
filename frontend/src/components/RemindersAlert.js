@@ -6,19 +6,15 @@ import { findDueReminders, addCurrentDateToLocalStorage, getLastReviewObject } f
 
 const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
-  const [showAllReminders, setShowAllReminders] = useState(false);
   const [expandedDetails, setExpandedDetails] = useState({});
   const [hoveredNote, setHoveredNote] = useState(null);
   const [showCadenceSelector, setShowCadenceSelector] = useState(null);
   const [reminderObjs, setReminderObjs] = useState([]);
 
-
-
   useEffect(() => {
     const dueReminders = findDueReminders(allNotes);
     setReminderObjs(dueReminders);
   }, [allNotes]);
-
 
   // Add the vibrating animation style for the bell icon
   useEffect(() => {
@@ -43,8 +39,6 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
     };
   }, []);
 
-
-
   const handleDismiss = async (note) => {
     try {
       addCurrentDateToLocalStorage(note.id);
@@ -54,8 +48,6 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
       Alerts.error('Failed to dismiss reminder');
     }
   };
-
-
 
   const toggleDetails = (noteId) => {
     setExpandedDetails(prev => ({
@@ -166,15 +158,18 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
 
   if (reminderObjs.length === 0) return null;
 
-  const displayedReminders = showAllReminders ? reminderObjs : reminderObjs.slice(0, 3);
-  const hasMoreReminders = reminderObjs.length > 3;
-
   return (
     <div className="space-y-4 w-full">
-      {displayedReminders.map((reminderObj, index) => {
+      {reminderObjs.map((reminderObj, index) => {
         const note = reminderObj.note;
         const isDetailsExpanded = expandedDetails[note.id];
         const isHovered = hoveredNote === note.id;
+        const contentLines = note.content
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 0 && !line.startsWith('meta::'));
+        const hasMoreContent = contentLines.length > 2;
+
         return (
           <div
             key={note.id}
@@ -185,16 +180,18 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
             <div className="px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => toggleDetails(note.id)}
-                    className="text-purple-700 hover:text-purple-900 focus:outline-none"
-                  >
-                    {isDetailsExpanded ? (
-                      <ChevronUpIcon className="h-5 w-5" />
-                    ) : (
-                      <ChevronDownIcon className="h-5 w-5" />
-                    )}
-                  </button>
+                  {hasMoreContent && (
+                    <button
+                      onClick={() => toggleDetails(note.id)}
+                      className="text-purple-700 hover:text-purple-900 focus:outline-none"
+                    >
+                      {isDetailsExpanded ? (
+                        <ChevronUpIcon className="h-5 w-5" />
+                      ) : (
+                        <ChevronDownIcon className="h-5 w-5" />
+                      )}
+                    </button>
+                  )}
                   {/* Bell icon with vibration animation */}
                   <BellIcon className="h-5 w-5 text-purple-700 bell-vibrate" />
                   <div>
@@ -236,16 +233,6 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
           </div>
         );
       })}
-      {hasMoreReminders && (
-        <div className="flex justify-center">
-          <button
-            onClick={() => setShowAllReminders(!showAllReminders)}
-            className="px-4 py-2 text-sm font-medium text-purple-600 hover:text-purple-800 focus:outline-none bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-          >
-            {showAllReminders ? 'Show Less' : `Show ${reminderObjs.length - 3} More`}
-          </button>
-        </div>
-      )}
     </div>
   );
 };

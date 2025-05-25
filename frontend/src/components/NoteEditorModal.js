@@ -10,6 +10,7 @@ import {
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 import NoteEditor from './NoteEditor';
 import { getSettings, defaultSettings, loadTags } from '../utils/ApiUtils';
+import moment from 'moment';
 
 const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
   const { isOpen, initialContent, mode, noteId, metaTags, closeEditor } = useNoteEditor();
@@ -62,9 +63,9 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
     setShowPriorityOptions(metaTags?.some(tag => tag.startsWith('meta::todo')) || false);
   }, [metaTags]);
 
+
   const handleMetaTagClick = (tagType) => {
-    const now = new Date();
-    const formattedDate = now.toISOString();
+    const formattedDate = moment().format('YYYY-MM-DD HH:mm:ss');
     let newTags = [...selectedMetaTags];
 
     switch (tagType) {
@@ -213,6 +214,7 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
         <div className="flex flex-col items-center gap-4 mt-4 p-2 border-t border-gray-200">
           <div className="flex items-center justify-center gap-4">
             <div className="flex items-center gap-2">
+
               <button
                 onClick={() => handleMetaTagClick('todo')}
                 className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.some(tag => tag.startsWith('meta::todo')) ? 'bg-green-100' : ''

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
-import { 
-  FireIcon, 
-  PlusIcon, 
-  CheckIcon, 
-  ArrowTrendingDownIcon, 
-  PencilIcon, 
-  CodeBracketIcon, 
-  EyeIcon, 
+import {
+  FireIcon,
+  PlusIcon,
+  CheckIcon,
+  ArrowTrendingDownIcon,
+  PencilIcon,
+  CodeBracketIcon,
+  EyeIcon,
   XMarkIcon,
   ClipboardDocumentListIcon,
   ExclamationTriangleIcon,
@@ -16,11 +16,13 @@ import {
 } from '@heroicons/react/24/outline';
 import NoteView from './NoteView';
 import NoteEditor from './NoteEditor';
+import AddTodo from './AddTodo';
 import { Alerts } from './Alerts';
 import { addCadenceLineToNote } from '../utils/CadenceHelpUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import moment from 'moment';
 import { parseToMoment } from '../utils/DateUtils';
+import { createNote } from '../utils/ApiUtils';
 
 const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [showRawNote, setShowRawNote] = useState(false);
@@ -30,6 +32,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [expandedNotes, setExpandedNotes] = useState({});
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [activeTab, setActiveTab] = useState('critical');
+  const [showAddTodo, setShowAddTodo] = useState(false);
 
   // Add burning animation styles
   useEffect(() => {
@@ -110,23 +113,23 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       if (!note.content.includes('meta::todo::')) return false;
       // Exclude completed todos
       if (note.content.includes('meta::todo_completed')) return false;
-      
+
       const content = note.content.toLowerCase();
       const lines = content.split('\n').map(line => line.trim());
-      
+
       // First determine the note's priority
       let notePriority = 'low'; // default priority
-      
+
       if (lines.some(line => line === 'meta::critical')) {
         notePriority = 'critical';
       } else if (lines.some(line => line === 'meta::high')) {
         notePriority = 'high';
       } else if (lines.some(line => line === 'meta::medium')) {
         notePriority = 'medium';
-      } else{
+      } else {
         notePriority = 'low';
       }
-      
+
       // Return true if the note's priority matches the requested priority
       return notePriority === priority;
     });
@@ -151,7 +154,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       const updatedContent = `${note.content}\nmeta::todo_completed`;
       await updateNoteById(note.id, updatedContent);
       // Update the notes list immediately after successful update
-      const updatedNotes = notes.map(n => 
+      const updatedNotes = notes.map(n =>
         n.id === note.id ? { ...n, content: updatedContent } : n
       );
       setNotes(updatedNotes);
@@ -186,13 +189,13 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       }
 
       await updateNoteById(noteToUpdate.id, updatedContent);
-      
+
       // Update the notes list immediately after successful update
-      const updatedNotes = notes.map(n => 
+      const updatedNotes = notes.map(n =>
         n.id === noteToUpdate.id ? { ...n, content: updatedContent } : n
       );
       setNotes(updatedNotes);
-      
+
       Alerts.success(`Priority updated to ${priority}`);
     } catch (error) {
       console.error('Error updating priority:', error);
@@ -226,7 +229,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const firstLineUrlMatch = firstLine.match(urlRegex);
     const secondLineUrlMatch = secondLine.match(urlRegex);
-    
+
     // Function to format a URL line
     const formatUrlLine = (line) => {
       const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -235,7 +238,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
 
       const url = urlMatch[0];
       const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
-      
+
       // Always use "Link" as the text, regardless of markdown or plain URL
       return (
         <a
@@ -346,9 +349,9 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       const updatedContent = `${note.content}\nmeta::watch`;
 
       await updateNoteById(note.id, updatedContent);
-      await addCadenceLineToNote(note,{}, true);
+      await addCadenceLineToNote(note, {}, true);
       // Update the notes list immediately after successful update
-      const updatedNotes = notes.map(n => 
+      const updatedNotes = notes.map(n =>
         n.id === note.id ? { ...n, content: updatedContent } : n
       );
       setNotes(updatedNotes);
@@ -386,7 +389,7 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.location.href = 'http://localhost:3000/#/todos';
+                  setShowAddTodo(true);
                 }}
                 className="text-red-600 hover:text-red-700 focus:outline-none"
                 aria-label="Add new todo"
@@ -401,31 +404,31 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         <div className="border-b border-gray-200">
           <nav className="flex w-full">
             {[
-              { 
-                id: 'critical', 
-                label: 'Critical', 
-                bgColor: 'bg-red-700', 
+              {
+                id: 'critical',
+                label: 'Critical',
+                bgColor: 'bg-red-700',
                 textColor: 'text-white',
                 icon: <FireIcon className="h-5 w-5 mr-1" />
               },
-              { 
-                id: 'high', 
-                label: 'High', 
-                bgColor: 'bg-red-300', 
+              {
+                id: 'high',
+                label: 'High',
+                bgColor: 'bg-red-300',
                 textColor: 'text-red-900',
                 icon: <ExclamationTriangleIcon className="h-5 w-5 mr-1" />
               },
-              { 
-                id: 'medium', 
-                label: 'Medium', 
-                bgColor: 'bg-yellow-300', 
+              {
+                id: 'medium',
+                label: 'Medium',
+                bgColor: 'bg-yellow-300',
                 textColor: 'text-yellow-900',
                 icon: <ClockIcon className="h-5 w-5 mr-1" />
               },
-              { 
-                id: 'low', 
-                label: 'Low', 
-                bgColor: 'bg-green-300', 
+              {
+                id: 'low',
+                label: 'Low',
+                bgColor: 'bg-green-300',
                 textColor: 'text-green-900',
                 icon: <ArrowDownIcon className="h-5 w-5 mr-1" />
               }
@@ -435,11 +438,10 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-150 flex items-center justify-center ${
-                    activeTab === tab.id
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-150 flex items-center justify-center ${activeTab === tab.id
                       ? `${tab.bgColor} ${tab.textColor}`
                       : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {tab.icon}
                   {tab.label} ({count})
@@ -452,65 +454,96 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         <div className="divide-y divide-gray-100">
           {todos.map((todo, index) => {
             return (
-              <div 
-                key={todo.id} 
-                className={`p-6 transition-colors duration-150 min-h-[160px] ${
-                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                } hover:bg-gray-100`}
+              <div
+                key={todo.id}
+                className={`p-6 transition-colors duration-150 min-h-[160px] ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  } hover:bg-gray-100`}
               >
                 <div className="flex flex-col h-full">
                   <div className="flex-1">
-                    <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
-                      {formatContent(todo.content)}
-                    </h4>
-                    <div className="text-sm text-gray-500 mt-2 flex items-center">
-                      <span>Open for: {getAgeInStringFmt(todo.created_datetime)}</span>
-                      {isOlderThanTwoDays(todo.created_datetime) && (
-                        <FireIcon className="h-4 w-4 text-red-500 burning-icon ml-2" />
-                      )}
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
+                          {formatContent(todo.content)}
+                        </h4>
+                        <div className="text-sm text-gray-500 mt-2 flex items-center">
+                          <span>Open for: {getAgeInStringFmt(todo.created_datetime)}</span>
+                          {isOlderThanTwoDays(todo.created_datetime) && (
+                            <FireIcon className="h-4 w-4 text-red-500 burning-icon ml-2" />
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleMarkCompleted(todo)}
+                        className="p-2 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150 ml-4"
+                        title="Mark as completed"
+                      >
+                        <CheckIcon className="w-5 h-5" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    <button
-                      onClick={() => handleMarkCompleted(todo)}
-                      className="px-4 py-2 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
-                      title="Mark Completed"
-                    >
-                      <CheckIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleLowerPriority(todo)}
-                      className="px-4 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
-                      title="Lower Priority"
-                    >
-                      <ArrowTrendingDownIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleEditNote(todo)}
-                      className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                      title="Edit Note"
-                    >
-                      <PencilIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleViewRawNote(todo)}
-                      className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
-                      title="View Raw Note"
-                    >
-                      <CodeBracketIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleAddToWatch(todo)}
-                      className={`px-4 py-2 text-xs font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
-                        todo.content.includes('meta::watch')
-                          ? 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500'
-                          : 'text-blue-700 bg-blue-50 hover:bg-blue-100 focus:ring-blue-500'
-                      }`}
-                      title={todo.content.includes('meta::watch') ? 'Already Watching' : 'Add to Watch List'}
-                    >
-                      <EyeIcon className="w-5 h-5" />
-                    </button>
+                  <div className="flex flex-wrap gap-2 mt-4 justify-end">
+                    <div className="flex items-center">
+                      <div 
+                        onClick={() => toggleNoteExpand(`actions-${todo.id}`)}
+                        className="py-2 text-xs font-medium text-gray-700 cursor-pointer flex items-center"
+                      >
+                        <div className="flex items-center">
+                          <span>Actions</span>
+                          <svg
+                            className={`w-4 h-4 ml-1 transform transition-transform duration-200 ${expandedNotes[`actions-${todo.id}`] ? 'rotate-90' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                  {expandedNotes[`actions-${todo.id}`] && (
+                    <div className="mt-2">
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        <button
+                          onClick={() => handleLowerPriority(todo)}
+                          className="px-4 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
+                          title="Lower priority"
+                        >
+                          <ArrowTrendingDownIcon className="w-5 h-5 inline-block mr-1" />
+                          <span>Lower priority</span>
+                        </button>
+                        <button
+                          onClick={() => handleEditNote(todo)}
+                          className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                          title="Edit note"
+                        >
+                          <PencilIcon className="w-5 h-5 inline-block mr-1" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => handleViewRawNote(todo)}
+                          className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+                          title="View raw note"
+                        >
+                          <CodeBracketIcon className="w-5 h-5 inline-block mr-1" />
+                          <span>View raw</span>
+                        </button>
+                        <button
+                          onClick={() => handleAddToWatch(todo)}
+                          className={`px-4 py-2 text-xs font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
+                            todo.content.includes('meta::watch')
+                              ? 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500'
+                              : 'text-blue-700 bg-blue-50 hover:bg-blue-100 focus:ring-blue-500'
+                          }`}
+                          title={todo.content.includes('meta::watch') ? 'Already Watching' : 'Add to Watch List'}
+                        >
+                          <EyeIcon className="w-5 h-5 inline-block mr-1" />
+                          <span>{todo.content.includes('meta::watch') ? 'Watching' : 'Watch'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -571,10 +604,10 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
               onSave={(updatedContent) => {
                 updateNoteById(selectedNote.id, updatedContent);
                 // Update the notes list immediately after successful update
-                const updatedNotes = notes.map(n => 
+                const updatedNotes = notes.map(n =>
                   n.id === selectedNote.id ? { ...n, content: updatedContent } : n
                 );
-              
+
                 setNotes(updatedNotes);
                 setShowNoteEditor(false);
               }}
@@ -583,6 +616,27 @@ const CriticalTodosAlert = ({ notes, expanded: initialExpanded = true, setNotes 
             />
           </div>
         </div>
+      )}
+
+      {showAddTodo && (
+        <AddTodo
+          isOpen={showAddTodo}
+          onClose={() => setShowAddTodo(false)}
+          onAdd={async (content, priority) => {
+            const currentTime = moment().toISOString();
+            const todoContent = `${content}\nmeta::todo::${currentTime}\nmeta::${priority}\nmeta::priority_age::${currentTime}`;
+            try {
+              const response = await createNote(todoContent);
+              setNotes([response, ...notes]);
+            } catch (error) {
+              console.error('Failed to create todo:', error);
+            }
+
+            setShowAddTodo(false);
+          }}
+          setNotes={setNotes}
+          notes={notes}
+        />
       )}
     </div>
   );

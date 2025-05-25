@@ -7,7 +7,7 @@ import Budget from './Budget';
 import ExpenseDataLoader from './ExpenseDataLoader';
 import ExpenseLoadStatus from './ExpenseLoadStatus';
 import { toast } from 'react-toastify';
-import { addOrReplaceMetaLineTag } from '../utils/MetaTagUtils';
+import { addOrReplaceMetaLineTag, addOrReplaceMetaTag, deleteMetaTag } from '../utils/MetaTagUtils';
 import { set_expense_type_in_mlt, set_exclude_from_budget_in_mlt, set_once_off_in_mlt, set_value_in_mlt, set_tags_in_mlt, extract_mlt_from_line, get_all_params, get_expense_type, get_is_income, get_is_exclude_from_budget, get_description, get_tags } from '../utils/MetaLineTagUtils';
 import { useNotes } from '../contexts/NotesContext';
 
@@ -95,7 +95,7 @@ const ExpenseTracker = () => {
     
     const expenseNotes = notes.filter(note => {
       const hasExpense = note.content.includes('meta::expense');
-      const isTypeNote = note.content.includes('meta::expense_type');
+      const isTypeNote = note.content.includes('meta::expense_type') && !note.content.includes('meta::expense');
       const isSourceTypeNote = note.content.includes('meta::expense_source_type');
       const isSourceNameNote = note.content.includes('meta::expense_source_name');
       
@@ -130,10 +130,7 @@ const ExpenseTracker = () => {
     // Create a map of all notes for quick lookup
     const notesMap = new Map(notes.map(note => [note.id, note]));
 
-    // Create a map to store expense lines
-    const lineMap = new Map();
-
-    const parsedExpenses = expenseNotes.flatMap(note => {
+    const parsedExpenses = expenseNotes.map(note => {
       console.log('Processing expense note:', note.id);
       
       // Get linked notes
@@ -166,106 +163,80 @@ const ExpenseTracker = () => {
 
       console.log('Source info:', { expenseSourceType, expenseSourceName });
 
-      // Split the content by newlines and filter out meta:: lines
-      const lines = note.content.split('\n').filter(line => 
+      // Get expense type from meta tag
+      const typeLine = note.content.split('\n').find(line => line.includes('meta::expense_type::'));
+      const typeId = typeLine ? typeLine.split('::')[2] : null;
+      const type = typeId ? typeMap.get(typeId) || 'Unassigned' : 'Unassigned';
+
+      // Get expense status from meta tags
+      const isExcluded = note.content.includes('meta::exclude_from_budget');
+      const isOnceOff = note.content.includes('meta::once_off');
+      const isIncome = note.content.includes('meta::income');
+
+      // Get expense description from meta tag
+      const descriptionLine = note.content.split('\n').find(line => line.includes('meta::description'));
+      const description = descriptionLine ? descriptionLine.split('::')[2] : '';
+
+      // Get expense tags from meta tags
+      const tags = note.content
+        .split('\n')
+        .filter(line => line.includes('meta::tag::'))
+        .map(line => line.split('::')[2].trim());
+
+      // Get the expense line (first non-meta line)
+      const expenseLine = note.content.split('\n').find(line => 
         line.trim() && !line.includes('meta::')
       );
 
-      console.log('Expense lines:', lines);
+      if (!expenseLine) {
+        console.log('No expense line found in note:', note.id);
+        return null;
+      }
 
-      return lines.map((expenseLine, index) => {
-        console.log('Processing line:', expenseLine);
-        
-        // Extract meta line tags if they exist
-        const metaLineMatch = expenseLine.match(/meta_line::([^:]+)::([^\s]+)/);
-        let mlt = null;
-        let params = {};
-        
-        if (metaLineMatch) {
-          const tagType = metaLineMatch[1];
-          const tagValue = metaLineMatch[2];
-          mlt = `mlt::"${tagType}|${tagValue}|||false|false"`;
-          params = get_all_params(mlt);
-          console.log('Found meta line tag:', { tagType, tagValue, mlt, params });
-        }
-
-        // Get expense type from meta_line tag if it exists
-        let type = 'Unassigned';
-        if (mlt) {
-          const expenseTypeId = get_expense_type(mlt);
-          if (expenseTypeId) {
-            type = typeMap.get(expenseTypeId) || 'Unassigned';
-          }
-        }
-
-        // Get description from meta_line tag if it exists
-        const description = mlt ? get_description(mlt) : '';
-
-        // Get tags from meta_line tag if they exist
-        const tags = mlt ? get_tags(mlt) : [];
-
-        // Split the expense line by spaces (excluding the meta tags)
-        const cleanLine = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/, '').trim();
-        const parts = cleanLine.trim().split(/\s+/);
-        
-        console.log('Parsed line parts:', { cleanLine, parts });
-
-        // Log invalid lines for debugging
-        if (parts.length < 3) {
-          console.log('Invalid expense line:', {
-            original: expenseLine,
-            cleanLine,
-            parts,
-            partsLength: parts.length
-          });
-          return null;
-        }
-
-        // First part is date, second is amount, rest is description
-        const date = parts[0];
-        const amount = parseFloat(parts[1]);
-        const mainDescription = parts.slice(2).join(' ');
-
-        const expenseId = `${note.id}-${index}`;
-        
-        // Store the line in the map
-        lineMap.set(expenseId, {
-          noteId: note.id,
-          lineIndex: index,
-          content: expenseLine
+      // Parse the expense line
+      const parts = expenseLine.trim().split(/\s+/);
+      if (parts.length < 3) {
+        console.log('Invalid expense line:', {
+          original: expenseLine,
+          parts,
+          partsLength: parts.length
         });
+        return null;
+      }
 
-        // Check status using meta_line tags if they exist
-        const isExcluded = mlt ? get_is_exclude_from_budget(mlt) === 'true' : false;
-        const isOnceOff = mlt ? params.tag_type_once_off === 'true' : false;
-        const isIncome = mlt ? get_is_income(mlt) === 'true' : false;
+      // First part is date, second is amount, rest is description
+      const date = parts[0];
+      const amount = parseFloat(parts[1]);
+      const mainDescription = parts.slice(2).join(' ');
 
-        // Create the expense object
-        const expense = {
-          id: expenseId,
-          date,
-          amount,
-          description: mainDescription,
-          note: description,
+      // Create the expense object
+      const expense = {
+        id: note.id,
+        date,
+        amount,
+        description: mainDescription,
+        note: description,
+        type,
+        noteId: note.id,
+        sourceType: expenseSourceType,
+        sourceName: expenseSourceName,
+        isExcluded,
+        isOnceOff,
+        isIncome,
+        tags,
+        metaTags: {
           type,
-          noteId: note.id,
-          lineIndex: index,
-          sourceType: expenseSourceType,
-          sourceName: expenseSourceName,
           isExcluded,
           isOnceOff,
           isIncome,
-          tags,
-          metaTags: params
-        };
+          description,
+          tags: tags.join(',')
+        }
+      };
 
-        console.log('Created expense object:', expense);
-        return expense;
-      }).filter(expense => expense !== null);
-    });
-
-    // Update the expense line map
-    setExpenseLineMap(lineMap);
+      console.log('Created expense object:', expense);
+      return expense;
+    }).filter(expense => expense !== null);
 
     console.log('Final parsed expenses:', parsedExpenses.length);
     console.log('First few expenses:', parsedExpenses.slice(0, 3));
@@ -282,9 +253,11 @@ const ExpenseTracker = () => {
         
         // Create expense type map
         const typeMap = new Map();
-        const typeNotes = allNotes.filter(note => 
-          note.content.includes('meta::expense_type')
-        );
+        const typeNotes = allNotes.filter(note => {
+          const hasTypeTag = note.content.includes('meta::expense_type');
+          const hasTypeValue = note.content.includes('meta::expense_type::');
+          return hasTypeTag && !hasTypeValue;
+        });
 
         console.log('Found type notes:', typeNotes.length);
         console.log('Type notes:', typeNotes.map(n => ({ id: n.id, content: n.content })));
@@ -570,60 +543,34 @@ const ExpenseTracker = () => {
   };
 
   const handleTypeChange = async (expenseId, newType) => {
-    //console.log
-    
-    // Get the line info from the expense line map
-    const lineInfo = expenseLineMap.get(expenseId);
-    if (!lineInfo) {
-      console.error('Line info not found for expense:', expenseId);
-      return;
-    }
-
-    const { noteId, lineIndex } = lineInfo;
-    //console.log
-
-    // Find the type note that matches the selected type
-    const typeNote = Array.from(expenseTypeMap.entries())
-      .find(([_, type]) => type === newType);
-    
-    if (!typeNote) {
-      console.error('Type note not found for type:', newType);
-      return;
-    }
-    const [typeNoteId] = typeNote;
-    //console.log
-
     try {
-      // Get the original note content
-      const originalNote = allNotes.find(note => note.id === noteId);
+      // Find the type note that matches the selected type
+      const typeNote = Array.from(expenseTypeMap.entries())
+        .find(([_, type]) => type === newType);
+      
+      if (!typeNote) {
+        console.error('Type note not found for type:', newType);
+        return;
+      }
+      const [typeNoteId] = typeNote;
+
+      // Get the original note
+      const originalNote = allNotes.find(note => note.id === expenseId);
       if (!originalNote) {
-        console.error('Original note not found:', noteId);
+        console.error('Original note not found:', expenseId);
         return;
       }
 
-      // Get the line content
-      const lines = originalNote.content.split('\n');
-      const line = lines[lineIndex];
-      
-      // Extract or create mlt
-      let mlt = extract_mlt_from_line(line);
-      if (!mlt) {
-        // If no mlt exists, create a new one with default values
-        mlt = `mlt::"${typeNoteId}|||false|false"`;
-      }
+      // Update the expense type meta tag
+      const updatedContent = addOrReplaceMetaTag(originalNote.content, 'expense_type', typeNoteId);
 
-      // Use set_expense_type_in_mlt from MetaLineTagUtils
-      const updatedContent = await set_expense_type_in_mlt(
-        originalNote.content,
-        noteId,
-        lineIndex,
-        typeNoteId
-      );
+      // Save the updated note to the database
+      await updateNoteById(expenseId, updatedContent);
 
       // Update allNotes state
       setAllNotes(prevNotes => 
         prevNotes.map(note => 
-          note.id === noteId ? { ...note, content: updatedContent } : note
+          note.id === expenseId ? { ...note, content: updatedContent } : note
         )
       );
 
@@ -647,47 +594,185 @@ const ExpenseTracker = () => {
     }
   };
 
-  const handleBulkTypeChange = async (newType) => {
+  const handleStatusChange = async (expenseId, type, checked) => {
+    try {
+      // Get the original note
+      const originalNote = allNotes.find(note => note.id === expenseId);
+      if (!originalNote) {
+        console.error('Original note not found:', expenseId);
+        return;
+      }
+
+      let updatedContent = originalNote.content;
+
+      if (type === 'excluded') {
+        if (checked) {
+          updatedContent = addOrReplaceMetaTag(updatedContent, 'exclude_from_budget', 'true');
+        } else {
+          updatedContent = deleteMetaTag(updatedContent, 'exclude_from_budget');
+        }
+      } else if (type === 'onceOff') {
+        if (checked) {
+          updatedContent = addOrReplaceMetaTag(updatedContent, 'once_off', 'true');
+        } else {
+          updatedContent = deleteMetaTag(updatedContent, 'once_off');
+        }
+      } else if (type === 'income') {
+        if (checked) {
+          updatedContent = addOrReplaceMetaTag(updatedContent, 'income', 'true');
+        } else {
+          updatedContent = deleteMetaTag(updatedContent, 'income');
+        }
+      }
+
+      // Save the updated note to the database
+      await updateNoteById(expenseId, updatedContent);
+
+      // Update allNotes state
+      setAllNotes(prevNotes => 
+        prevNotes.map(note => 
+          note.id === expenseId ? { ...note, content: updatedContent } : note
+        )
+      );
+
+      // Update the local state
+      setExpenses(prevExpenses => 
+        prevExpenses.map(exp => 
+          exp.id === expenseId ? { 
+            ...exp, 
+            isExcluded: type === 'excluded' ? checked : exp.isExcluded,
+            isOnceOff: type === 'onceOff' ? checked : exp.isOnceOff,
+            isIncome: type === 'income' ? checked : exp.isIncome
+          } : exp
+        )
+      );
+
+      // Refresh the expenses
+      const refreshResponse = await loadAllNotes();
+      setAllNotes(refreshResponse.notes);
+      const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+      setExpenses(parsedExpenses);
+      setFilteredExpenses(parsedExpenses);
+      calculateTotals(parsedExpenses);
+      
+    } catch (error) {
+      console.error('Error updating note:', error);
+    }
+  };
+
+  const handleTagChange = async (expenseId, newTags) => {
+    try {
+      // Get the original note
+      const originalNote = allNotes.find(note => note.id === expenseId);
+      if (!originalNote) {
+        console.error('Original note not found:', expenseId);
+        return;
+      }
+
+      // Remove all existing tag meta lines
+      let updatedContent = originalNote.content
+        .split('\n')
+        .filter(line => !line.includes('meta::tag::'))
+        .join('\n');
+
+      // Add new tag meta lines
+      newTags.forEach(tag => {
+        updatedContent = addOrReplaceMetaTag(updatedContent, 'tag', tag);
+      });
+
+      // Save the updated note to the database
+      await updateNoteById(expenseId, updatedContent);
+
+      // Update allNotes state
+      setAllNotes(prevNotes => 
+        prevNotes.map(note => 
+          note.id === expenseId ? { ...note, content: updatedContent } : note
+        )
+      );
+
+      // Update the local state
+      setExpenses(prevExpenses => 
+        prevExpenses.map(exp => 
+          exp.id === expenseId ? { ...exp, tags: newTags } : exp
+        )
+      );
+
+      // Refresh the expenses
+      const refreshResponse = await loadAllNotes();
+      setAllNotes(refreshResponse.notes);
+      const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+      setExpenses(parsedExpenses);
+      setFilteredExpenses(parsedExpenses);
+      calculateTotals(parsedExpenses);
+      
+    } catch (error) {
+      console.error('Error updating note:', error);
+    }
+  };
+
+  const handleNoteChange = async (expenseId, note) => {
+    try {
+      // Get the original note
+      const originalNote = allNotes.find(note => note.id === expenseId);
+      if (!originalNote) {
+        toast.error('Failed to save note: Original note not found');
+        return;
+      }
+
+      // Update the description meta tag
+      const updatedContent = addOrReplaceMetaTag(originalNote.content, 'description', note);
+
+      // Save the updated note to the database
+      await updateNoteById(expenseId, updatedContent);
+
+      // Update allNotes state
+      setAllNotes(prevNotes => 
+        prevNotes.map(note => 
+          note.id === expenseId ? { ...note, content: updatedContent } : note
+        )
+      );
+
+      // Update the local state
+      setExpenses(prevExpenses => 
+        prevExpenses.map(exp => 
+          exp.id === expenseId ? { ...exp, note: note } : exp
+        )
+      );
+
+      // Refresh the expenses
+      const refreshResponse = await loadAllNotes();
+      setAllNotes(refreshResponse.notes);
+      const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
+      setExpenses(parsedExpenses);
+      setFilteredExpenses(parsedExpenses);
+      calculateTotals(parsedExpenses);
+      
+      toast.success('Note saved successfully');
+    } catch (error) {
+      toast.error('Failed to save note: ' + error.message);
+    }
+  };
+
+  const handleBulkExclude = async () => {
     if (selectedExpenses.size === 0) return;
 
     try {
-      //console.log
-      //console.log
-
-      // Find the type note for the new type
-      const typeNote = Array.from(expenseTypeMap.entries())
-        .find(([_, type]) => type === newType);
-      
-      if (!typeNote) {
-        console.error('Type note not found for type:', newType);
-        return;
-      }
-      const [typeNoteId] = typeNote;
-      //console.log
-
       // Process each selected expense
       for (const expenseId of selectedExpenses) {
-        const lineInfo = expenseLineMap.get(expenseId);
-        if (!lineInfo) {
-          console.error('Line info not found for expense:', expenseId);
+        // Get the original note
+        const originalNote = allNotes.find(note => note.id === expenseId);
+        if (!originalNote) {
+          console.error('Original note not found:', expenseId);
           continue;
         }
 
-        const { noteId, lineIndex } = lineInfo;
-        //console.log
-
-        // Use set_expense_type_in_mlt from MetaLineTagUtils
-        const updatedContent = await set_expense_type_in_mlt(
-          allNotes.find(note => note.id === noteId).content,
-          noteId,
-          lineIndex,
-          typeNoteId
-        );
+        // Add exclude_from_budget meta tag
+        const updatedContent = addOrReplaceMetaTag(originalNote.content, 'exclude_from_budget', 'true');
 
         // Update allNotes state
         setAllNotes(prevNotes => 
           prevNotes.map(note => 
-            note.id === noteId ? { ...note, content: updatedContent } : note
+            note.id === expenseId ? { ...note, content: updatedContent } : note
           )
         );
       }
@@ -696,7 +781,6 @@ const ExpenseTracker = () => {
       setSelectedExpenses(new Set());
 
       // Refresh the expenses
-      //console.log
       const refreshResponse = await loadAllNotes();
       setAllNotes(refreshResponse.notes);
       const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
@@ -710,26 +794,23 @@ const ExpenseTracker = () => {
   };
 
   const handleExclude = async (expenseId, exclude) => {
-    const lineInfo = expenseLineMap.get(expenseId);
-    if (!lineInfo) {
-      console.error('Line info not found for expense:', expenseId);
-      return;
-    }
-
-    const { noteId, lineIndex } = lineInfo;
-
     try {
-      const updatedContent = await set_exclude_from_budget_in_mlt(
-        allNotes.find(note => note.id === noteId).content,
-        noteId,
-        lineIndex,
-        exclude
-      );
+      // Get the original note
+      const originalNote = allNotes.find(note => note.id === expenseId);
+      if (!originalNote) {
+        console.error('Original note not found:', expenseId);
+        return;
+      }
+
+      // Update the exclude_from_budget meta tag
+      const updatedContent = exclude ? 
+        addOrReplaceMetaTag(originalNote.content, 'exclude_from_budget', 'true') :
+        deleteMetaTag(originalNote.content, 'exclude_from_budget');
 
       // Update allNotes state
       setAllNotes(prevNotes => 
         prevNotes.map(note => 
-          note.id === noteId ? { ...note, content: updatedContent } : note
+          note.id === expenseId ? { ...note, content: updatedContent } : note
         )
       );
 
@@ -754,26 +835,23 @@ const ExpenseTracker = () => {
   };
 
   const handleOnceOff = async (expenseId, isOnceOff) => {
-    const lineInfo = expenseLineMap.get(expenseId);
-    if (!lineInfo) {
-      console.error('Line info not found for expense:', expenseId);
-      return;
-    }
-
-    const { noteId, lineIndex } = lineInfo;
-
     try {
-      const updatedContent = await set_once_off_in_mlt(
-        allNotes.find(note => note.id === noteId).content,
-        noteId,
-        lineIndex,
-        isOnceOff
-      );
+      // Get the original note
+      const originalNote = allNotes.find(note => note.id === expenseId);
+      if (!originalNote) {
+        console.error('Original note not found:', expenseId);
+        return;
+      }
+
+      // Update the once_off meta tag
+      const updatedContent = isOnceOff ? 
+        addOrReplaceMetaTag(originalNote.content, 'once_off', 'true') :
+        deleteMetaTag(originalNote.content, 'once_off');
 
       // Update allNotes state
       setAllNotes(prevNotes => 
         prevNotes.map(note => 
-          note.id === noteId ? { ...note, content: updatedContent } : note
+          note.id === expenseId ? { ...note, content: updatedContent } : note
         )
       );
 
@@ -834,73 +912,6 @@ const ExpenseTracker = () => {
     });
   };
 
-  const handleStatusChange = async (expenseId, type, checked) => {
-    const lineInfo = expenseLineMap.get(expenseId);
-    if (!lineInfo) {
-      console.error('Line info not found for expense:', expenseId);
-      return;
-    }
-
-    const { noteId, lineIndex } = lineInfo;
-
-    try {
-      let updatedContent;
-      if (type === 'excluded') {
-        updatedContent = await set_exclude_from_budget_in_mlt(
-          allNotes.find(note => note.id === noteId).content,
-          noteId,
-          lineIndex,
-          checked
-        );
-      } else if (type === 'onceOff') {
-        updatedContent = await set_once_off_in_mlt(
-          allNotes.find(note => note.id === noteId).content,
-          noteId,
-          lineIndex,
-          checked
-        );
-      } else if (type === 'income') {
-        updatedContent = await set_value_in_mlt(
-          allNotes.find(note => note.id === noteId).content,
-          noteId,
-          lineIndex,
-          'income',
-          checked ? 'true' : 'false'
-        );
-      }
-
-      // Update allNotes state
-      setAllNotes(prevNotes => 
-        prevNotes.map(note => 
-          note.id === noteId ? { ...note, content: updatedContent } : note
-        )
-      );
-
-      // Update the local state
-      setExpenses(prevExpenses => 
-        prevExpenses.map(exp => 
-          exp.id === expenseId ? { 
-            ...exp, 
-            isExcluded: type === 'excluded' ? checked : exp.isExcluded,
-            isOnceOff: type === 'onceOff' ? checked : exp.isOnceOff,
-            isIncome: type === 'income' ? checked : exp.isIncome
-          } : exp
-        )
-      );
-
-      // Refresh the expenses
-      const refreshResponse = await loadAllNotes();
-      setAllNotes(refreshResponse.notes);
-      const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
-      setExpenses(parsedExpenses);
-      setFilteredExpenses(parsedExpenses);
-      calculateTotals(parsedExpenses);
-      
-    } catch (error) {
-      console.error('Error updating note:', error);
-    }
-  };
-
   const handleTagClick = (event, expenseId) => {
     const expense = filteredExpenses.find(e => e.id === expenseId);
     setTagInput(expense.tags ? expense.tags.join(' ') : '');
@@ -944,85 +955,76 @@ const ExpenseTracker = () => {
       );
     
     setTagSuggestions(filteredSuggestions);
+
+    // If Enter is pressed, save the tags
+    if (e.key === 'Enter' && tagPopup) {
+      e.preventDefault();
+      // Split by space and filter out empty tags
+      const tags = value.split(' ').filter(tag => tag.trim());
+      if (tags.length > 0) {
+        // Get existing tags from the expense
+        const expense = expenses.find(exp => exp.id === tagPopup.id);
+        const existingTags = expense.tags || [];
+        // Combine existing tags with new tags, removing duplicates
+        const allTags = [...new Set([...existingTags, ...tags])];
+        handleTagChange(tagPopup.id, allTags);
+        setTagPopup(null);
+        setTagInput('');
+        setShowSuggestions(false);
+      }
+    }
   };
 
   const addTagFromSuggestion = (tag) => {
-    const currentTags = tagInput.split(' ').filter(t => t.trim());
-    currentTags[currentTags.length - 1] = tag;
-    setTagInput(currentTags.join(' ') + ' ');
+    if (!tagPopup) return;
+
+    // Get existing tags from the expense
+    const expense = expenses.find(exp => exp.id === tagPopup.id);
+    const existingTags = expense.tags || [];
+    
+    // Add the new tag if it doesn't exist
+    if (!existingTags.includes(tag)) {
+      const newTags = [...existingTags, tag];
+      handleTagChange(tagPopup.id, newTags);
+    }
+    
+    setTagPopup(null);
+    setTagInput('');
     setShowSuggestions(false);
   };
 
-  const handleTagChange = async (expenseId, newTags) => {
-    const lineInfo = expenseLineMap.get(expenseId);
-    if (!lineInfo) {
-      console.error('Line info not found for expense:', expenseId);
-      return;
-    }
-
-    const { noteId, lineIndex } = lineInfo;
-
-    try {
-      const updatedContent = await set_tags_in_mlt(
-        allNotes.find(note => note.id === noteId).content,
-        noteId,
-        lineIndex,
-        newTags
-      );
-
-      // Update allNotes state
-      setAllNotes(prevNotes => 
-        prevNotes.map(note => 
-          note.id === noteId ? { ...note, content: updatedContent } : note
-        )
-      );
-
-      // Update the local state
-      setExpenses(prevExpenses => 
-        prevExpenses.map(exp => 
-          exp.id === expenseId ? { ...exp, tags: newTags } : exp
-        )
-      );
-
-      // Refresh the expenses
-      const refreshResponse = await loadAllNotes();
-      setAllNotes(refreshResponse.notes);
-      const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
-      setExpenses(parsedExpenses);
-      setFilteredExpenses(parsedExpenses);
-      calculateTotals(parsedExpenses);
-      
-    } catch (error) {
-      console.error('Error updating note:', error);
-    }
-  };
-
   const handleTagRemove = async (expenseId, tagToRemove) => {
-    const lineInfo = expenseLineMap.get(expenseId);
-    if (!lineInfo) {
-      console.error('Line info not found for expense:', expenseId);
-      return;
-    }
-
-    const { noteId, lineIndex } = lineInfo;
-
     try {
+      // Get the original note
+      const originalNote = allNotes.find(note => note.id === expenseId);
+      if (!originalNote) {
+        console.error('Original note not found:', expenseId);
+        return;
+      }
+
       // Get current tags and remove the specified tag
       const expense = expenses.find(exp => exp.id === expenseId);
       const currentTags = expense.tags || [];
       const newTags = currentTags.filter(tag => tag !== tagToRemove);
 
-      const updatedContent = await set_tags_in_mlt(
-        allNotes.find(note => note.id === noteId).content,
-        noteId,
-        lineIndex,
-        newTags
-      );
+      // Remove all existing tag meta lines
+      let updatedContent = originalNote.content
+        .split('\n')
+        .filter(line => !line.includes('meta::tag::'))
+        .join('\n');
+
+      // Add new tag meta lines
+      newTags.forEach(tag => {
+        updatedContent = addOrReplaceMetaTag(updatedContent, 'tag', tag);
+      });
+
+      // Save the updated note to the database
+      await updateNoteById(expenseId, updatedContent);
 
       // Update allNotes state
       setAllNotes(prevNotes => 
         prevNotes.map(note => 
-          note.id === noteId ? { ...note, content: updatedContent } : note
+          note.id === expenseId ? { ...note, content: updatedContent } : note
         )
       );
 
@@ -1063,31 +1065,55 @@ const ExpenseTracker = () => {
     };
   }, [statusPopup, tagPopup]);
 
-  const handleBulkExclude = async () => {
+  const handleIconClick = (event) => {
+    setPopupPosition({
+      x: event.clientX,
+      y: event.clientY
+    });
+    setPopupText('');
+  };
+
+  const handlePopupKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      // Save the text here
+      setPopupPosition(null);
+    }
+  };
+
+  const handleBulkTypeChange = async (newType) => {
     if (selectedExpenses.size === 0) return;
 
     try {
+      // Find the type note that matches the selected type
+      const typeNote = Array.from(expenseTypeMap.entries())
+        .find(([_, type]) => type === newType);
+      
+      if (!typeNote) {
+        console.error('Type note not found for type:', newType);
+        return;
+      }
+      const [typeNoteId] = typeNote;
+
       // Process each selected expense
       for (const expenseId of selectedExpenses) {
-        const lineInfo = expenseLineMap.get(expenseId);
-        if (!lineInfo) {
-          console.error('Line info not found for expense:', expenseId);
+        // Get the original note
+        const originalNote = allNotes.find(note => note.id === expenseId);
+        if (!originalNote) {
+          console.error('Original note not found:', expenseId);
           continue;
         }
 
-        const { noteId, lineIndex } = lineInfo;
+        // Update the expense type meta tag
+        const updatedContent = addOrReplaceMetaTag(originalNote.content, 'expense_type', typeNoteId);
 
-        const updatedContent = await set_exclude_from_budget_in_mlt(
-          allNotes.find(note => note.id === noteId).content,
-          noteId,
-          lineIndex,
-          true
-        );
+        // Save the updated note to the database
+        await updateNoteById(expenseId, updatedContent);
 
         // Update allNotes state
         setAllNotes(prevNotes => 
           prevNotes.map(note => 
-            note.id === noteId ? { ...note, content: updatedContent } : note
+            note.id === expenseId ? { ...note, content: updatedContent } : note
           )
         );
       }
@@ -1105,103 +1131,6 @@ const ExpenseTracker = () => {
       
     } catch (error) {
       console.error('Error updating notes:', error);
-    }
-  };
-
-  const handleNoteChange = async (expenseId, note) => {
-    try {
-      // Get the line info from the expense line map
-      const lineInfo = expenseLineMap.get(expenseId);
-      if (!lineInfo) {
-        toast.error('Failed to save note: Line info not found');
-        return;
-      }
-
-      const { noteId, lineIndex } = lineInfo;
-
-      // Find the original note
-      const originalNote = allNotes.find(note => note.id === noteId);
-      if (!originalNote) {
-        toast.error('Failed to save note: Original note not found');
-        return;
-      }
-
-      // Split the note content into lines
-      const lines = originalNote.content.split('\n');
-      const expenseLine = lines[lineIndex];
-      
-      if (expenseLine) {
-        //console.log
-        
-        // Get the base content (without any meta_line tags)
-        const baseContent = expenseLine.replace(/meta_line::[^:]+::[^\s]+\s*/g, '').trim();
-        
-        // Check for call.org references
-        const callOrgMatch = expenseLine.match(/call\.org::([^\s]+)/);
-        
-        // Use addOrReplaceMetaLineTag to update the description
-        let updatedLine = note ? 
-          addOrReplaceMetaLineTag(baseContent, 'description', `<${note}>`) :
-          baseContent;
-        
-        // Add back call.org reference if it exists
-        if (callOrgMatch) {
-          updatedLine = `${updatedLine} call.org::${callOrgMatch[1]}`;
-        }
-        
-        lines[lineIndex] = updatedLine;
-
-        try {
-          const updatedContent = lines.join('\n');
-          await updateNoteById(noteId, updatedContent);
-          
-          // Update allNotes state
-          setAllNotes(prevNotes => 
-            prevNotes.map(note => 
-              note.id === noteId ? { ...note, content: updatedContent } : note
-            )
-          );
-
-          // Update the local state
-          setExpenses(prevExpenses => 
-            prevExpenses.map(exp => 
-              exp.id === expenseId ? { ...exp, note: note } : exp
-            )
-          );
-
-          // Refresh the expenses
-          const refreshResponse = await loadAllNotes();
-          setAllNotes(refreshResponse.notes);
-          const parsedExpenses = parseExpenses(refreshResponse.notes, expenseTypeMap);
-          setExpenses(parsedExpenses);
-          setFilteredExpenses(parsedExpenses);
-          calculateTotals(parsedExpenses);
-          
-          toast.success('Note saved successfully');
-        } catch (error) {
-          toast.error('Failed to save note: ' + error.message);
-        }
-      } else {
-        toast.error('No expense line found at index: ' + lineIndex);
-      }
-    } catch (error) {
-      toast.error('Failed to save note: ' + error.message);
-    }
-  }
-
-  const handleIconClick = (event) => {
-    setPopupPosition({
-      x: event.clientX,
-      y: event.clientY
-    });
-    setPopupText('');
-  };
-
-  const handlePopupKeyDown = (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      // Save the text here
-      setPopupPosition(null);
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
-import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
@@ -242,6 +242,24 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
   };
 
+  const handleAddReminder = async (note) => {
+    try {
+      const updatedContent = `${note.content}\nmeta::reminder`;
+      await updateNoteById(note.id, updatedContent);
+      
+      // Update the notes list immediately
+      const updatedNotes = notes.map(n => 
+        n.id === note.id ? { ...n, content: updatedContent } : n
+      );
+      setNotes(updatedNotes);
+      
+      Alerts.success('Reminder added to note');
+    } catch (error) {
+      console.error('Error adding reminder:', error);
+      Alerts.error('Failed to add reminder');
+    }
+  };
+
   return (
     <div className="w-1/2 pl-2">
       <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
@@ -285,29 +303,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-4">
-                    <button
-                      onClick={() => handleEditNote(note)}
-                      className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                      title="Edit Note"
-                    >
-                      <PencilIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleUnfollow(note)}
-                      className="px-4 py-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                      title="Remove from watchlist"
-                    >
-                      <XMarkIcon className="w-5 h-5" />
-                    </button>
-                    {!note.content.includes('meta::todo::') && (
-                      <button
-                        onClick={() => handleConvertToTodo(note)}
-                        className="px-4 py-2 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
-                        title="Convert to Todo"
-                      >
-                        <CheckIcon className="w-5 h-5" />
-                      </button>
-                    )}
                     <div className="flex gap-2">
                       {showCadenceSelector === note.id ? (
                         <CadenceSelector
@@ -321,87 +316,129 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                           }}
                         />
                       ) : (
-                        <>
+                        <div className="flex flex-wrap gap-1 items-center">
+                          <span className="text-sm text-gray-600 mr-2">Review in:</span>
+                          <button
+                            onClick={() => handleCadence(note, 0, 30)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 30 Minute Cadence"
+                          >
+                            30m
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 1, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 1 Hour Cadence"
+                          >
+                            1h
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 2, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 2 Hour Cadence"
+                          >
+                            2h
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 4, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 4 Hour Cadence"
+                          >
+                            4h
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 8, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 8 Hour Cadence"
+                          >
+                            8h
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 12, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 12 Hour Cadence"
+                          >
+                            12h
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 24, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 24 Hour Cadence"
+                          >
+                            24h
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 48, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 2 Day Cadence"
+                          >
+                            2d
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 72, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 3 Day Cadence"
+                          >
+                            3d
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 168, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 7 Day Cadence"
+                          >
+                            7d
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-full mt-4">
+                      <button
+                        onClick={() => toggleNoteExpand(`actions-${note.id}`)}
+                        className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150 flex items-center justify-between"
+                      >
+                        <span>Actions</span>
+                        <svg
+                          className={`w-5 h-5 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {expandedNotes[`actions-${note.id}`] && (
+                        <div className="mt-2 flex flex-wrap gap-2">
                           <button
                             onClick={() => setShowCadenceSelector(note.id)}
-                            className="px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                            title="Set Cadence"
+                            className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set Custom Cadence"
                           >
-                            Set Cadence
+                            Set Custom Cadence
                           </button>
-                          <div className="flex flex-wrap gap-1">
+                          <button
+                            onClick={() => handleEditNote(note)}
+                            className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                            title="Edit Note"
+                          >
+                            <PencilIcon className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleUnfollow(note)}
+                            className="px-4 py-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                            title="Remove from watchlist"
+                          >
+                            <EyeSlashIcon className="w-5 h-5" />
+                          </button>
+                          {!note.content.includes('meta::reminder') && (
                             <button
-                              onClick={() => handleCadence(note, 0, 30)}
-                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 30 Minute Cadence"
+                              onClick={() => handleAddReminder(note)}
+                              className="px-4 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
+                              title="Add Reminder"
                             >
-                              30m
+                              <BellIcon className="w-5 h-5" />
                             </button>
-                            <button
-                              onClick={() => handleCadence(note, 1, 0)}
-                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 1 Hour Cadence"
-                            >
-                              1h
-                            </button>
-                            <button
-                              onClick={() => handleCadence(note, 2, 0)}
-                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 2 Hour Cadence"
-                            >
-                              2h
-                            </button>
-                            <button
-                              onClick={() => handleCadence(note, 4, 0)}
-                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 4 Hour Cadence"
-                            >
-                              4h
-                            </button>
-                            <button
-                              onClick={() => handleCadence(note, 8, 0)}
-                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 8 Hour Cadence"
-                            >
-                              8h
-                            </button>
-                            <button
-                              onClick={() => handleCadence(note, 12, 0)}
-                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 12 Hour Cadence"
-                            >
-                              12h
-                            </button>
-                            <button
-                              onClick={() => handleCadence(note, 24, 0)}
-                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 24 Hour Cadence"
-                            >
-                              24h
-                            </button>
-                            <button
-                              onClick={() => handleCadence(note, 48, 0)}
-                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 2 Day Cadence"
-                            >
-                              2d
-                            </button>
-                            <button
-                              onClick={() => handleCadence(note, 72, 0)}
-                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 3 Day Cadence"
-                            >
-                              3d
-                            </button>
-                            <button
-                              onClick={() => handleCadence(note, 168, 0)}
-                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Set 7 Day Cadence"
-                            >
-                              7d
-                            </button>
-                          </div>
-                        </>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

@@ -9,7 +9,7 @@ export const findwatchitemsOverdue = (notes) => {
 }
 
 export const findRemindersNotDue = (notes) => {
-  return notes.filter(note => !isReminderDue(note, new Date()) && note.content.includes('meta::reminder') && !note.content.includes('meta::reminder_dismissed') && !note.content.includes('meta::reminder_dismissed'))
+  return notes.filter(note => note && note.content && !isReminderDue(note, new Date()) && note.content.includes('meta::reminder') && !note.content.includes('meta::reminder_dismissed') && !note.content.includes('meta::reminder_dismissed'))
 }
 export function getLastReviewObject() {
   const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');

@@ -93,6 +93,17 @@ const ExpenseTracker = () => {
   const years = [2025, 2026, 2027];
   ////console.log
 
+  const [includeUnassigned, setIncludeUnassigned] = useState(false);
+  const [includeExcluded, setIncludeExcluded] = useState(false);
+  const [includeIncome, setIncludeIncome] = useState(false);
+  const [includeOnceOff, setIncludeOnceOff] = useState(false);
+  const [includeHasTags, setIncludeHasTags] = useState(false);
+  const [excludeUnassigned, setExcludeUnassigned] = useState(false);
+  const [excludeExcluded, setExcludeExcluded] = useState(false);
+  const [excludeIncome, setExcludeIncome] = useState(false);
+  const [excludeOnceOff, setExcludeOnceOff] = useState(false);
+  const [excludeHasTags, setExcludeHasTags] = useState(false);
+
   const parseExpenses = (notes, typeMap) => {
     console.log('Starting parseExpenses with notes:', notes.length);
     console.log('First few notes:', notes.slice(0, 3).map(n => ({ id: n.id, content: n.content })));
@@ -423,12 +434,19 @@ const ExpenseTracker = () => {
         expense.sourceName.toLowerCase().includes(searchLower);
       
       // Status filters
-      const unassignedMatch = !showUnassignedOnly || expense.type === 'Unassigned';
-      const excludedMatch = !showExcluded || expense.isExcluded;
-      const incomeMatch = !showIncome || expense.isIncome;
-      const onceOffMatch = !showOnceOff || expense.isOnceOff;
-      const hasTagsMatch = !showHasTags || (expense.tags && expense.tags.length > 0);
+      const unassignedMatch = !includeUnassigned || expense.type === 'Unassigned';
+      const excludedMatch = !includeExcluded || expense.isExcluded;
+      const incomeMatch = !includeIncome || expense.isIncome;
+      const onceOffMatch = !includeOnceOff || expense.isOnceOff;
+      const hasTagsMatch = !includeHasTags || (expense.tags && expense.tags.length > 0);
 
+      // Exclude filters
+      const excludeUnassignedMatch = !excludeUnassigned || expense.type !== 'Unassigned';
+      const excludeExcludedMatch = !excludeExcluded || !expense.isExcluded;
+      const excludeIncomeMatch = !excludeIncome || !expense.isIncome;
+      const excludeOnceOffMatch = !excludeOnceOff || !expense.isOnceOff;
+      const excludeHasTagsMatch = !excludeHasTags || !(expense.tags && expense.tags.length > 0);
+      
       // Date filter
       const [day, month, year] = expense.date.split('/').map(Number);
       const expenseDate = new Date(year, month - 1, day); // month is 0-based in JavaScript Date
@@ -452,7 +470,9 @@ const ExpenseTracker = () => {
 //gg153j      });
       
       return typeMatch && searchMatch && unassignedMatch && excludedMatch && 
-             incomeMatch && onceOffMatch && yearMatch && monthMatch && hasTagsMatch;
+             incomeMatch && onceOffMatch && yearMatch && monthMatch && hasTagsMatch &&
+             excludeUnassignedMatch && excludeExcludedMatch && excludeIncomeMatch && 
+             excludeOnceOffMatch && excludeHasTagsMatch;
     });
 
     //console.log
@@ -460,7 +480,7 @@ const ExpenseTracker = () => {
     const sortedAndFiltered = sortExpenses(filtered);
     setFilteredExpenses(sortedAndFiltered);
     calculateTotals(sortedAndFiltered);
-  }, [selectedType, searchQuery, showUnassignedOnly, expenses, sortConfig, 
+  }, [selectedType, searchQuery, includeUnassigned, includeExcluded, includeIncome, includeOnceOff, includeHasTags, excludeUnassigned, excludeExcluded, excludeIncome, excludeOnceOff, excludeHasTags, expenses, sortConfig, 
       selectedYear, selectedMonths, showExcluded, showIncome, showOnceOff, showHasTags]);
 
   const calculateTotals = (expenseList) => {
@@ -1558,11 +1578,16 @@ const ExpenseTracker = () => {
               onClick={() => {
                 setSelectedType('All');
                 setSearchQuery('');
-                setShowUnassignedOnly(false);
-                setShowExcluded(false);
-                setShowIncome(false);
-                setShowOnceOff(false);
-                setShowHasTags(false);
+                setIncludeUnassigned(false);
+                setIncludeExcluded(false);
+                setIncludeIncome(false);
+                setIncludeOnceOff(false);
+                setIncludeHasTags(false);
+                setExcludeUnassigned(false);
+                setExcludeExcluded(false);
+                setExcludeIncome(false);
+                setExcludeOnceOff(false);
+                setExcludeHasTags(false);
                 setSelectedMonths(new Set([new Date().getMonth() === 0 ? 11 : new Date().getMonth() - 1]));
               }}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -1571,52 +1596,107 @@ const ExpenseTracker = () => {
             </button>
           </div>
         </div>
-        <div className="flex gap-6">
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={showUnassignedOnly}
-              onChange={(e) => setShowUnassignedOnly(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <span className="text-sm font-medium text-gray-700">Unassigned Only</span>
-          </label>
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={showExcluded}
-              onChange={(e) => setShowExcluded(e.target.checked)}
-              className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-            />
-            <span className="text-sm font-medium text-gray-700">Excluded Only</span>
-          </label>
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={showIncome}
-              onChange={(e) => setShowIncome(e.target.checked)}
-              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-            />
-            <span className="text-sm font-medium text-gray-700">Income Only</span>
-          </label>
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={showOnceOff}
-              onChange={(e) => setShowOnceOff(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <span className="text-sm font-medium text-gray-700">Once Off Only</span>
-          </label>
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={showHasTags}
-              onChange={(e) => setShowHasTags(e.target.checked)}
-              className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-            />
-            <span className="text-sm font-medium text-gray-700">Has Tags</span>
-          </label>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700 min-w-[80px]">Include:</span>
+            <div className="flex gap-6">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={includeUnassigned}
+                  onChange={(e) => setIncludeUnassigned(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Unassigned</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={includeExcluded}
+                  onChange={(e) => setIncludeExcluded(e.target.checked)}
+                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Excluded</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={includeIncome}
+                  onChange={(e) => setIncludeIncome(e.target.checked)}
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Income</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={includeOnceOff}
+                  onChange={(e) => setIncludeOnceOff(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Once Off</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={includeHasTags}
+                  onChange={(e) => setIncludeHasTags(e.target.checked)}
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Has Tags</span>
+              </label>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700 min-w-[80px]">Exclude:</span>
+            <div className="flex gap-6">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={excludeUnassigned}
+                  onChange={(e) => setExcludeUnassigned(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Unassigned</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={excludeExcluded}
+                  onChange={(e) => setExcludeExcluded(e.target.checked)}
+                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Excluded</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={excludeIncome}
+                  onChange={(e) => setExcludeIncome(e.target.checked)}
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Income</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={excludeOnceOff}
+                  onChange={(e) => setExcludeOnceOff(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Once Off</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={excludeHasTags}
+                  onChange={(e) => setExcludeHasTags(e.target.checked)}
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Has Tags</span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 

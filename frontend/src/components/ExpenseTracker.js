@@ -1573,7 +1573,27 @@ const ExpenseTracker = () => {
               )}
             </div>
           </div>
-          <div className="flex items-end">
+          <div className="flex items-end gap-2">
+            {(includeUnassigned || includeExcluded || includeIncome || includeOnceOff || includeHasTags ||
+              excludeUnassigned || excludeExcluded || excludeIncome || excludeOnceOff || excludeHasTags) && (
+              <button
+                onClick={() => {
+                  setIncludeUnassigned(false);
+                  setIncludeExcluded(false);
+                  setIncludeIncome(false);
+                  setIncludeOnceOff(false);
+                  setIncludeHasTags(false);
+                  setExcludeUnassigned(false);
+                  setExcludeExcluded(false);
+                  setExcludeIncome(false);
+                  setExcludeOnceOff(false);
+                  setExcludeHasTags(false);
+                }}
+                className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Clear Filters
+              </button>
+            )}
             <button
               onClick={() => {
                 setSelectedType('All');
@@ -1592,7 +1612,7 @@ const ExpenseTracker = () => {
               }}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
-              Reset Filters
+              Reset All
             </button>
           </div>
         </div>

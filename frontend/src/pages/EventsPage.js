@@ -131,6 +131,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [monthly, setMonthly] = useState(0);
   const [none, setNone] = useState(0);
   const [showOnlyDeadlines, setShowOnlyDeadlines] = useState(false);
+  const [excludePurchases, setExcludePurchases] = useState(true);
   const [isBulkLoadOpen, setIsBulkLoadOpen] = useState(false);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -184,6 +185,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           const matchesTags = selectedTags.length === 0 || 
             selectedTags.every(tag => tags.includes(tag));
           
+          // Handle purchase filtering
+          const isPurchase = tags.some(tag => tag.toLowerCase() === 'purchase');
+          const matchesPurchaseFilter = excludePurchases ? !isPurchase : true;
+          
           let matchesDate = true;
           if (selectedYear) {
             matchesDate = matchesDate && (eventDate.getFullYear() === parseInt(selectedYear));
@@ -195,14 +200,14 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
             matchesDate = matchesDate && (eventDate.getDate() === parseInt(selectedDay));
           }
 
-          return isPast && matchesSearch && matchesTags && matchesDate;
+          return isPast && matchesSearch && matchesTags && matchesDate && matchesPurchaseFilter;
         }).length;
       
       setPastEventsCount(pastEvents);
     } else {
       setPastEventsCount(0);
     }
-  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear]);
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases]);
 
   const getCalendarEvents = () => {
     // Filter and group events
@@ -217,6 +222,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         
         // Only apply deadline filter if no filters are active
         const matchesDeadline = hasActiveFilters ? true : (!showOnlyDeadlines || note.content.includes('meta::event_deadline'));
+        
+        // Handle purchase filtering
+        const isPurchase = tags.some(tag => tag.toLowerCase() === 'purchase');
+        const matchesPurchaseFilter = excludePurchases ? !isPurchase : true;
         
         // Month, day, and year filtering
         let matchesDate = true;
@@ -235,11 +244,11 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
 
         // If no tags are selected, show all events
         if (selectedTags.length === 0) {
-          return matchesSearch && matchesDeadline && matchesDate;
+          return matchesSearch && matchesDeadline && matchesDate && matchesPurchaseFilter;
         }
         // If tags are selected, show only events that have ALL selected tags
         const matchesTags = selectedTags.every(tag => tags.includes(tag));
-        return matchesSearch && matchesTags && matchesDeadline && matchesDate;
+        return matchesSearch && matchesTags && matchesDeadline && matchesDate && matchesPurchaseFilter;
       });
 
     // Calculate totals for different recurrence types
@@ -465,22 +474,6 @@ event_tags:${expense.tag.join(',')}`;
                 </button>
               )}
             </div>
-            {(searchQuery || selectedTags.length > 0 || showOnlyDeadlines || selectedMonth || selectedDay || selectedYear) && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setSelectedTags([]);
-                  setShowOnlyDeadlines(false);
-                  setSelectedMonth('');
-                  setSelectedDay('');
-                  setSelectedYear('');
-                }}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
-              >
-                <XMarkIcon className="h-4 w-4" />
-                Clear All Filters
-              </button>
-            )}
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -494,6 +487,17 @@ event_tags:${expense.tag.join(',')}`;
               <FlagIcon className="h-5 w-5" />
               {showOnlyDeadlines ? 'Show All Events' : 'Show Deadlines Only'}
             </button>
+
+            {/* Exclude Purchases Checkbox */}
+            <label className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={excludePurchases}
+                onChange={(e) => setExcludePurchases(e.target.checked)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              Exclude Purchases
+            </label>
 
             {/* Year Filter */}
             <select
@@ -546,6 +550,66 @@ event_tags:${expense.tag.join(',')}`;
             <span>
               {pastEventsCount} past event{pastEventsCount !== 1 ? 's' : ''} match{pastEventsCount !== 1 ? '' : 'es'} your filter{pastEventsCount !== 1 ? 's' : ''}
             </span>
+          </div>
+        )}
+
+        {/* Active Filters Note */}
+        {(searchQuery || selectedTags.length > 0 || showOnlyDeadlines || selectedMonth || selectedDay || selectedYear || excludePurchases) && (
+          <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-md border border-gray-200">
+            <ListBulletIcon className="h-5 w-5 text-gray-500" />
+            <span className="font-medium">Filters Applied:</span>
+            <div className="flex flex-wrap gap-2 flex-1">
+              {searchQuery && (
+                <span className="px-2 py-1 bg-white rounded border text-gray-700">
+                  Search: "{searchQuery}"
+                </span>
+              )}
+              {selectedTags.length > 0 && (
+                <span className="px-2 py-1 bg-white rounded border text-gray-700">
+                  Tags: {selectedTags.join(', ')}
+                </span>
+              )}
+              {showOnlyDeadlines && (
+                <span className="px-2 py-1 bg-white rounded border text-gray-700">
+                  Deadlines Only
+                </span>
+              )}
+              {selectedYear && (
+                <span className="px-2 py-1 bg-white rounded border text-gray-700">
+                  Year: {selectedYear}
+                </span>
+              )}
+              {selectedMonth && (
+                <span className="px-2 py-1 bg-white rounded border text-gray-700">
+                  Month: {new Date(2000, selectedMonth - 1).toLocaleString('default', { month: 'long' })}
+                </span>
+              )}
+              {selectedDay && (
+                <span className="px-2 py-1 bg-white rounded border text-gray-700">
+                  Day: {selectedDay}
+                </span>
+              )}
+              {excludePurchases && (
+                <span className="px-2 py-1 bg-white rounded border text-gray-700">
+                  Excluding Purchases
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedTags([]);
+                setShowOnlyDeadlines(false);
+                setSelectedMonth('');
+                setSelectedDay('');
+                setSelectedYear('');
+                setExcludePurchases(true);
+              }}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
+            >
+              <XMarkIcon className="h-4 w-4" />
+              Clear All Filters
+            </button>
           </div>
         )}
 

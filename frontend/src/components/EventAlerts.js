@@ -3,6 +3,25 @@ import { ExclamationCircleIcon, CheckCircleIcon, CalendarIcon, ClockIcon, Chevro
 import { updateNoteById } from '../utils/ApiUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 
+// Function to extract event details from note content
+const getEventDetails = (content) => {
+  const lines = content.split('\n');
+  
+  // Find the description
+  const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+  const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+  
+  // Find the event date
+  const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+  const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
+  
+  // Find recurring info
+  const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
+  const recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
+
+  return { description, dateTime, recurrence };
+};
+
 const EventAlerts = ({ events, onAcknowledgeEvent }) => {
   const [acknowledgedEvents, setAcknowledgedEvents] = useState(new Set());
   const [isExpanded, setIsExpanded] = useState(true);
@@ -36,7 +55,7 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
   // Get all occurrences that need acknowledgment
   const getUnacknowledgedOccurrences = () => {
     return events.flatMap(event => {
-      const { dateTime, recurrence } = event;
+      const { dateTime, recurrence } = getEventDetails(event.content);
       const eventDate = new Date(dateTime);
       const now = new Date();
       const currentYear = now.getFullYear();
@@ -163,39 +182,42 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
       </div>
       {isExpanded && (
         <div className="divide-y divide-gray-100">
-          {unacknowledgedOccurrences.map((occurrence, index) => (
-            <div key={index} className="p-6 hover:bg-gray-50 transition-colors duration-150">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                    <CalendarIcon className="h-4 w-4" />
-                    <span>{formatDate(occurrence.date)}</span>
-                  </div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">
-                    {occurrence.event.description}
-                  </h4>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <ClockIcon className="h-4 w-4" />
-                      <span>{getAgeInStringFmt(occurrence.date)}</span>
+          {unacknowledgedOccurrences.map((occurrence, index) => {
+            const { description, recurrence } = getEventDetails(occurrence.event.content);
+            return (
+              <div key={index} className="p-6 hover:bg-gray-50 transition-colors duration-150">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      <span>{formatDate(occurrence.date)}</span>
                     </div>
-                    {occurrence.event.recurrence !== 'none' && (
-                      <span className="px-2 py-1 bg-red-50 text-red-600 rounded-full text-xs">
-                        {occurrence.event.recurrence}
-                      </span>
-                    )}
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">
+                      {description}
+                    </h4>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>{getAgeInStringFmt(occurrence.date)}</span>
+                      </div>
+                      {recurrence !== 'none' && (
+                        <span className="px-2 py-1 bg-red-50 text-red-600 rounded-full text-xs">
+                          {recurrence}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  <button
+                    onClick={() => handleAcknowledge(occurrence.event.id, occurrence.date.getFullYear())}
+                    className="ml-4 flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                  >
+                    <CheckCircleIcon className="w-5 h-5" />
+                    Acknowledge
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleAcknowledge(occurrence.event.id, occurrence.date.getFullYear())}
-                  className="ml-4 flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                >
-                  <CheckCircleIcon className="w-5 h-5" />
-                  Acknowledge
-                </button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -5,7 +5,7 @@ import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
 import { checkNeedsReview, formatTimeElapsed } from '../utils/watchlistUtils';
 import { Alerts } from './Alerts';
-import { addCurrentDateToLocalStorage, updateCadenceHoursMinutes, findwatchitemsOverdue, findDueRemindersAsNotes, parseReviewCadenceMeta, renderCadenceSummary, getNextReviewDate, getHumanFriendlyTimeDiff } from '../utils/CadenceHelpUtils';
+import { addCurrentDateToLocalStorage, updateCadenceHoursMinutes, findwatchitemsOverdue, findDueRemindersAsNotes, parseReviewCadenceMeta, renderCadenceSummary, getNextReviewDate, getHumanFriendlyTimeDiff, handleCadenceChange } from '../utils/CadenceHelpUtils';
 
 const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [expandedNotes, setExpandedNotes] = useState({});
@@ -21,10 +21,15 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
 
   useEffect(() => {
     const overdueNotes = findwatchitemsOverdue(notes);
-    setOverdueNotes(overdueNotes);
+    // Filter out notes with reminder tag
+    const filteredOverdue = overdueNotes.filter(note => !note.content.includes('meta::reminder'));
+    setOverdueNotes(filteredOverdue);
     
-    // Get all watch notes that are not overdue
-    const allWatchNotes = notes.filter(note => note.content.includes('meta::watch'));
+    // Get all watch notes that are not overdue and don't have reminder tag
+    const allWatchNotes = notes.filter(note => 
+      note.content.includes('meta::watch') && 
+      !note.content.includes('meta::reminder')
+    );
     const snoozed = allWatchNotes.filter(note => !overdueNotes.some(overdue => overdue.id === note.id));
     setSnoozedNotes(snoozed);
   }, [notes]);
@@ -269,11 +274,20 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     }
   };
 
-  const handleCadence = (note, hours, minutes = 0) => {
-    console.log('Setting cadence for note:', note.id, 'hours:', hours, 'minutes:', minutes);
-    let updatedContent=updateCadenceHoursMinutes(note, hours, minutes);
-    addCurrentDateToLocalStorage(note.id);
-    setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+  const handleCadence = async (note, hours, minutes = 0) => {
+    try {
+      console.log('Setting cadence for note:', note.id, 'hours:', hours, 'minutes:', minutes);
+      const updatedContent = updateCadenceHoursMinutes(note, hours, minutes);
+      if (updatedContent) {
+        await updateNoteById(note.id, updatedContent);
+        addCurrentDateToLocalStorage(note.id);
+        setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+        Alerts.success('Review cadence updated');
+      }
+    } catch (error) {
+      console.error('Error updating cadence:', error);
+      Alerts.error('Failed to update review cadence');
+    }
   };
 
   const handleAddReminder = async (note) => {
@@ -317,8 +331,27 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
 
   const getCadenceDisplay = (note) => {
     const meta = parseReviewCadenceMeta(note.content);
-    if (!meta) return 'Review every 12 hours';
-    return renderCadenceSummary(note);
+    if (!meta) {
+      console.warn('No cadence meta found for note:', note);
+      return 'Every 12 hours';
+    }
+    const summary = renderCadenceSummary(note);
+    if (!summary || summary.trim() === '' || summary === 'Review every') {
+      console.warn('Cadence summary is empty or invalid for note:', note, 'meta:', meta);
+      return 'Every 12 hours';
+    }
+    // Remove "Review " from the beginning and ensure first letter is capitalized
+    let display = summary.replace(/^Review\s+/, '').replace(/^[a-z]/, letter => letter.toUpperCase());
+    // Remove "0d " from the beginning if present
+    display = display.replace(/^Every\s+0d\s+/, 'Every ');
+    // Convert 24-hour time to 12-hour format with AM/PM
+    display = display.replace(/(\d{2}):(\d{2})/g, (match, hours, minutes) => {
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      return `${hour12}:${minutes} ${ampm}`;
+    });
+    return display;
   };
 
   const getTimeUntilNextReview = (note) => {
@@ -327,9 +360,29 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     
     const now = new Date();
     const timeUntilNext = nextReview - now;
-    if (timeUntilNext <= 0) return 'Overdue';
+    if (timeUntilNext <= 0) return null;
     
-    return getHumanFriendlyTimeDiff(nextReview);
+    const diff = getHumanFriendlyTimeDiff(nextReview);
+    // Remove "0d " from the beginning if present
+    return diff.replace(/^0d\s+/, '');
+  };
+
+  const onCadenceChange = (note, cadenceObj) => {
+    try {
+      const updatedContent = handleCadenceChange(note, cadenceObj);
+      if (updatedContent) {
+        // Update the notes list immediately
+        const updatedNotes = notes.map(n => 
+          n.id === note.id ? { ...n, content: updatedContent } : n
+        );
+        setNotes(updatedNotes);
+        setShowCadenceSelector(null);
+        Alerts.success('Review cadence updated');
+      }
+    } catch (error) {
+      console.error('Error updating cadence:', error);
+      Alerts.error('Failed to update review cadence');
+    }
   };
 
   return (
@@ -390,14 +443,15 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
                         {formatContent(note.content)}
                       </h4>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <ClockIcon className="h-4 w-4" />
+                      <div className="flex flex-col gap-1 text-sm text-gray-500">
+                        <div className="grid grid-cols-[120px_1fr] items-center">
+                          <span className="text-xs text-gray-500">Review cadence:</span>
                           <span className="text-xs text-gray-500">{getCadenceDisplay(note)}</span>
                         </div>
                         {timeUntilNext && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs text-red-500">Next review in: {timeUntilNext}</span>
+                          <div className="grid grid-cols-[120px_1fr] items-center">
+                            <span className="text-xs text-red-500">Next review:</span>
+                            <span className="text-xs text-red-500">{timeUntilNext}</span>
                           </div>
                         )}
                       </div>
@@ -493,14 +547,22 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                   {expandedNotes[`actions-${note.id}`] && (
                     <div className="mt-4">
                       <div className="flex flex-wrap gap-2 justify-end">
-                        <button
-                          onClick={() => setShowCadenceSelector(note.id)}
-                          className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set custom cadence"
-                        >
-                          <ClockIcon className="w-5 h-5 inline-block mr-1" />
-                          <span>Set cadence</span>
-                        </button>
+                        {showCadenceSelector === note.id ? (
+                          <CadenceSelector
+                            noteId={note.id}
+                            notes={notes}
+                            onCadenceChange={() => setShowCadenceSelector(null)}
+                          />
+                        ) : (
+                          <button
+                            onClick={() => setShowCadenceSelector(note.id)}
+                            className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set custom cadence"
+                          >
+                            <ClockIcon className="w-5 h-5 inline-block mr-1" />
+                            <span>Set cadence</span>
+                          </button>
+                        )}
                         {!note.content.includes('meta::reminder') && (
                           <button
                             onClick={() => handleAddReminder(note)}
@@ -565,14 +627,15 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                             {formatContent(note.content)}
                           </h4>
                         </div>
-                        <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                          <div className="flex items-center gap-1">
-                            <ClockIcon className="h-4 w-4" />
+                        <div className="flex flex-col gap-1 text-sm text-gray-500">
+                          <div className="grid grid-cols-[120px_1fr] items-center">
+                            <span className="text-xs text-gray-500">Review cadence:</span>
                             <span className="text-xs text-gray-500">{getCadenceDisplay(note)}</span>
                           </div>
                           {timeUntilNext && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs text-gray-500">Next review in: {timeUntilNext}</span>
+                            <div className="grid grid-cols-[120px_1fr] items-center">
+                              <span className="text-xs text-gray-500">Next review:</span>
+                              <span className="text-xs text-gray-500">{timeUntilNext}</span>
                             </div>
                           )}
                         </div>
@@ -675,14 +738,22 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                     {expandedNotes[`actions-${note.id}`] && (
                       <div className="mt-4">
                         <div className="flex flex-wrap gap-2 justify-end">
-                          <button
-                            onClick={() => setShowCadenceSelector(note.id)}
-                            className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                            title="Set custom cadence"
-                          >
-                            <ClockIcon className="w-5 h-5 inline-block mr-1" />
-                            <span>Set cadence</span>
-                          </button>
+                          {showCadenceSelector === note.id ? (
+                            <CadenceSelector
+                              noteId={note.id}
+                              notes={notes}
+                              onCadenceChange={() => setShowCadenceSelector(null)}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setShowCadenceSelector(note.id)}
+                              className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                              title="Set custom cadence"
+                            >
+                              <ClockIcon className="w-5 h-5 inline-block mr-1" />
+                              <span>Set cadence</span>
+                            </button>
+                          )}
                           {!note.content.includes('meta::reminder') && (
                             <button
                               onClick={() => handleAddReminder(note)}

@@ -532,24 +532,6 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
     };
   }, [isAutoRefreshEnabled, setNotes]);
 
-  const criticalTodos = notes.filter(note => {
-    if (!note.content.includes('meta::todo::')) return false;
-    if (note.content.includes('meta::todo_completed')) return false;
-    return note.content.includes('meta::critical');
-  });
-
-  const passedDeadlineTodos = notes.filter(note => {
-    if (!note.content.includes('meta::todo::')) return false;
-    if (note.content.includes('meta::todo_completed')) return false;
-    
-    const endDateMatch = note.content.match(/meta::end_date::(\d{4}-\d{2}-\d{2})/);
-    if (!endDateMatch) return false;
-    
-    const endDate = new Date(endDateMatch[1]);
-    const now = new Date();
-    return endDate < now;
-  });
-
   const getUnacknowledgedOccurrences = () => {
     return events.flatMap(event => {
       if (!event || !event.dateTime) return [];
@@ -621,23 +603,11 @@ const AlertsContainer = ({ children, notes, events, expanded: initialExpanded = 
   };
 
   const totalAlerts = unacknowledgedEvents.length + 
-                     criticalTodos.length + 
-                     passedDeadlineTodos.length + 
                      unacknowledgedMeetings.length +
                      overdueNotes.length;
 
   const handleTitleClick = () => {
     setIsExpanded(!isExpanded);
-  };
-
-  const handleCriticalTodosClick = (e) => {
-    e.stopPropagation();
-    window.location.href = '/#/todos';
-  };
-
-  const handleDeadlineMissedClick = (e) => {
-    e.stopPropagation();
-    window.location.href = '/#/todos';
   };
 
   const handleReviewOverdueClick = (e) => {
@@ -927,11 +897,9 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
               expanded={true}
             />
           )}
-          <div className="flex gap-4">
-            <CriticalTodosAlert notes={notes} expanded={true} setNotes={setNotes} />
+          <div className="w-full">
             <ReviewOverdueAlert notes={notes} expanded={true} setNotes={setNotes} />
           </div>
-          <DeadlinePassedAlert notes={notes} expanded={true} setNotes={setNotes} />
           <UnacknowledgedMeetingsAlert 
             notes={notes} 
             expanded={true}

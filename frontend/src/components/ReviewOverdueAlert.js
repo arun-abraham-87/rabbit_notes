@@ -272,7 +272,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   };
 
   return (
-    <div className="w-1/2 pl-2">
+    <div className="w-full">
       <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
         <div className="bg-red-50 px-6 py-4 border-b border-red-100">
           <div className="flex items-center justify-between">

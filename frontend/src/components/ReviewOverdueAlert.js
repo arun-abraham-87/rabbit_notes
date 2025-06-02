@@ -317,20 +317,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                     <div className="flex flex-wrap gap-1 items-center flex-1">
                       <span className="text-sm text-gray-600 mr-2">Review in:</span>
                       <button
-                        onClick={() => handleCadence(note, 0, 30)}
-                        className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 30 minute cadence"
-                      >
-                        30m
-                      </button>
-                      <button
-                        onClick={() => handleCadence(note, 1, 0)}
-                        className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 1 hour cadence"
-                      >
-                        1h
-                      </button>
-                      <button
                         onClick={() => handleCadence(note, 2, 0)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                         title="Set 2 hour cadence"
@@ -345,25 +331,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                         4h
                       </button>
                       <button
-                        onClick={() => handleCadence(note, 8, 0)}
-                        className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 8 hour cadence"
-                      >
-                        8h
-                      </button>
-                      <button
                         onClick={() => handleCadence(note, 12, 0)}
                         className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                         title="Set 12 hour cadence"
                       >
                         12h
-                      </button>
-                      <button
-                        onClick={() => handleCadence(note, 24, 0)}
-                        className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set 24 hour cadence"
-                      >
-                        24h
                       </button>
                       <button
                         onClick={() => handleCadence(note, 48, 0)}
@@ -387,7 +359,15 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                         7d
                       </button>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleUnfollow(note)}
+                        className="px-4 py-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                        title="Remove from watchlist"
+                      >
+                        <EyeSlashIcon className="w-5 h-5 inline-block mr-1" />
+                        <span>Unfollow</span>
+                      </button>
                       <div 
                         onClick={() => toggleNoteExpand(`actions-${note.id}`)}
                         className="py-2 text-xs font-medium text-gray-700 cursor-pointer flex items-center"
@@ -424,14 +404,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                         >
                           <PencilIcon className="w-5 h-5 inline-block mr-1" />
                           <span>Edit</span>
-                        </button>
-                        <button
-                          onClick={() => handleUnfollow(note)}
-                          className="px-4 py-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                          title="Remove from watchlist"
-                        >
-                          <EyeSlashIcon className="w-5 h-5 inline-block mr-1" />
-                          <span>Unfollow</span>
                         </button>
                         {!note.content.includes('meta::reminder') && (
                           <button

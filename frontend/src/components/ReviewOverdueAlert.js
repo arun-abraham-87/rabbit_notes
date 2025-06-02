@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
-import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon, PauseIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon, PauseIcon, ChevronDownIcon, PlayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
@@ -17,6 +17,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [overdueNotes, setOverdueNotes] = useState([]);
   const [snoozedNotes, setSnoozedNotes] = useState([]);
   const [isSnoozedExpanded, setIsSnoozedExpanded] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     const overdueNotes = findwatchitemsOverdue(notes);
@@ -27,6 +28,25 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     const snoozed = allWatchNotes.filter(note => !overdueNotes.some(overdue => overdue.id === note.id));
     setSnoozedNotes(snoozed);
   }, [notes]);
+
+  const filterNotesBySearch = (notes) => {
+    if (!searchText.trim()) return notes;
+    
+    const searchLower = searchText.toLowerCase();
+    return notes.filter(note => {
+      // Remove meta tags for search
+      const contentWithoutMeta = note.content
+        .split('\n')
+        .filter(line => !line.trim().startsWith('meta::'))
+        .join('\n')
+        .toLowerCase();
+      
+      return contentWithoutMeta.includes(searchLower);
+    });
+  };
+
+  const filteredOverdueNotes = filterNotesBySearch(overdueNotes);
+  const filteredSnoozedNotes = filterNotesBySearch(snoozedNotes);
 
   if (overdueNotes.length === 0 && snoozedNotes.length === 0) return null;
 
@@ -274,23 +294,68 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     }
   };
 
+  const handleUnsnooze = (note) => {
+    try {
+      // Get current reviews from localStorage
+      const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+      
+      // Delete the review entry for this note
+      delete reviews[note.id];
+      
+      // Update localStorage
+      localStorage.setItem('noteReviews', JSON.stringify(reviews));
+      
+      // Force a re-render by updating the notes state
+      setNotes([...notes]);
+      
+      Alerts.success('Note unsnoozed');
+    } catch (error) {
+      console.error('Error unsnoozing note:', error);
+      Alerts.error('Failed to unsnooze note');
+    }
+  };
+
   return (
     <div className="w-full">
+      {/* Search Box */}
+      <div className="mb-4">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+            placeholder="Search watchlist..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+          {searchText && (
+            <button
+              onClick={() => setSearchText('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            >
+              <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-500" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Overdue Notes Section */}
-      {overdueNotes.length > 0 && (
+      {filteredOverdueNotes.length > 0 && (
         <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full mb-4">
           <div className="bg-red-50 px-6 py-4 border-b border-red-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <ClockIcon className="h-6 w-6 text-red-500" />
                 <h3 className="ml-3 text-base font-semibold text-red-800">
-                  Review Overdue ({overdueNotes.length})
+                  Review Overdue ({filteredOverdueNotes.length})
                 </h3>
               </div>
             </div>
           </div>
           <div className="divide-y divide-gray-100">
-            {overdueNotes.map((note, index) => {
+            {filteredOverdueNotes.map((note, index) => {
               const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
               const reviewTime = reviews[note.id];
               const cadence = getNoteCadence(note.id);
@@ -439,7 +504,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       )}
 
       {/* Snoozed Notes Section */}
-      {snoozedNotes.length > 0 && (
+      {filteredSnoozedNotes.length > 0 && (
         <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
           <div 
             className="bg-gray-50 px-6 py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors duration-150"
@@ -449,7 +514,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
               <div className="flex items-center">
                 <PauseIcon className="h-6 w-6 text-gray-500" />
                 <h3 className="ml-3 text-base font-semibold text-gray-800">
-                  Snoozed Notes ({snoozedNotes.length})
+                  Snoozing Watch List ({filteredSnoozedNotes.length})
                 </h3>
               </div>
               <ChevronDownIcon 
@@ -461,7 +526,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           </div>
           {isSnoozedExpanded && (
             <div className="divide-y divide-gray-100">
-              {snoozedNotes.map((note, index) => {
+              {filteredSnoozedNotes.map((note, index) => {
                 const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
                 const reviewTime = reviews[note.id];
                 const cadence = getNoteCadence(note.id);
@@ -548,6 +613,13 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       {/* Third Section - Unfollow and Actions */}
                       <div className="flex items-center gap-2 justify-end">
                         <button
+                          onClick={() => handleUnsnooze(note)}
+                          className="p-2 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                          title="Unsnooze note"
+                        >
+                          <PlayIcon className="w-5 h-5" />
+                        </button>
+                        <button
                           onClick={() => handleUnfollow(note)}
                           className="p-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
                           title="Remove from watchlist"
@@ -610,6 +682,13 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Show message when no results found */}
+      {searchText && filteredOverdueNotes.length === 0 && filteredSnoozedNotes.length === 0 && (
+        <div className="text-center py-4 text-gray-500">
+          No notes found matching "{searchText}"
         </div>
       )}
 

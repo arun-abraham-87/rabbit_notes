@@ -3,9 +3,9 @@ import { updateNoteById } from '../utils/ApiUtils';
 import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon, PauseIcon, ChevronDownIcon, PlayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
-import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
+import { checkNeedsReview, formatTimeElapsed } from '../utils/watchlistUtils';
 import { Alerts } from './Alerts';
-import { addCurrentDateToLocalStorage, updateCadenceHoursMinutes,findwatchitemsOverdue, findDueRemindersAsNotes } from '../utils/CadenceHelpUtils';
+import { addCurrentDateToLocalStorage, updateCadenceHoursMinutes, findwatchitemsOverdue, findDueRemindersAsNotes, parseReviewCadenceMeta, renderCadenceSummary, getNextReviewDate, getHumanFriendlyTimeDiff } from '../utils/CadenceHelpUtils';
 
 const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [expandedNotes, setExpandedNotes] = useState({});
@@ -315,6 +315,23 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     }
   };
 
+  const getCadenceDisplay = (note) => {
+    const meta = parseReviewCadenceMeta(note.content);
+    if (!meta) return 'Review every 12 hours';
+    return renderCadenceSummary(note);
+  };
+
+  const getTimeUntilNextReview = (note) => {
+    const nextReview = getNextReviewDate(note);
+    if (!nextReview) return null;
+    
+    const now = new Date();
+    const timeUntilNext = nextReview - now;
+    if (timeUntilNext <= 0) return 'Overdue';
+    
+    return getHumanFriendlyTimeDiff(nextReview);
+  };
+
   return (
     <div className="w-full">
       {/* Search Box */}
@@ -358,7 +375,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
             {filteredOverdueNotes.map((note, index) => {
               const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
               const reviewTime = reviews[note.id];
-              const cadence = getNoteCadence(note.id);
+              const timeUntilNext = getTimeUntilNextReview(note);
 
               return (
                 <div 
@@ -376,12 +393,13 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                       <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
                           <ClockIcon className="h-4 w-4" />
-                          <span className="text-xs text-gray-500">Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
+                          <span className="text-xs text-gray-500">{getCadenceDisplay(note)}</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <ClockIcon className="h-4 w-4" />
-                          <span className="text-xs text-gray-500">Review cadence: {cadence.hours}h {cadence.minutes}m</span>
-                        </div>
+                        {timeUntilNext && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-red-500">Next review in: {timeUntilNext}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -529,7 +547,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
               {filteredSnoozedNotes.map((note, index) => {
                 const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
                 const reviewTime = reviews[note.id];
-                const cadence = getNoteCadence(note.id);
+                const timeUntilNext = getTimeUntilNextReview(note);
 
                 return (
                   <div 
@@ -550,12 +568,13 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                         <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                           <div className="flex items-center gap-1">
                             <ClockIcon className="h-4 w-4" />
-                            <span className="text-xs text-gray-500">Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
+                            <span className="text-xs text-gray-500">{getCadenceDisplay(note)}</span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <ClockIcon className="h-4 w-4" />
-                            <span className="text-xs text-gray-500">Review cadence: {cadence.hours}h {cadence.minutes}m</span>
-                          </div>
+                          {timeUntilNext && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-gray-500">Next review in: {timeUntilNext}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 

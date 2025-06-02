@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
-import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon, PauseIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
 import { checkNeedsReview, getNoteCadence, formatTimeElapsed } from '../utils/watchlistUtils';
@@ -15,15 +15,20 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [noteToConvert, setNoteToConvert] = useState(null);
   const [showCadenceSelector, setShowCadenceSelector] = useState(null);
   const [overdueNotes, setOverdueNotes] = useState([]);
+  const [snoozedNotes, setSnoozedNotes] = useState([]);
+  const [isSnoozedExpanded, setIsSnoozedExpanded] = useState(false);
 
   useEffect(() => {
     const overdueNotes = findwatchitemsOverdue(notes);
     setOverdueNotes(overdueNotes);
+    
+    // Get all watch notes that are not overdue
+    const allWatchNotes = notes.filter(note => note.content.includes('meta::watch'));
+    const snoozed = allWatchNotes.filter(note => !overdueNotes.some(overdue => overdue.id === note.id));
+    setSnoozedNotes(snoozed);
   }, [notes]);
 
- 
-
-  if (overdueNotes.length === 0) return null;
+  if (overdueNotes.length === 0 && snoozedNotes.length === 0) return null;
 
   const toggleNoteExpand = (noteId) => {
     setExpandedNotes(prev => ({
@@ -70,8 +75,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       Alerts.error('Failed to remove from watchlist');
     }
   };
-
-  
 
   const formatContent = (content) => {
     // Split content into lines, trim each line, and filter out empty lines
@@ -273,164 +276,342 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
 
   return (
     <div className="w-full">
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
-        <div className="bg-red-50 px-6 py-4 border-b border-red-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <ClockIcon className="h-6 w-6 text-red-500" />
-              <h3 className="ml-3 text-base font-semibold text-red-800">
-                Review Overdue ({overdueNotes.length})
-              </h3>
+      {/* Overdue Notes Section */}
+      {overdueNotes.length > 0 && (
+        <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full mb-4">
+          <div className="bg-red-50 px-6 py-4 border-b border-red-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <ClockIcon className="h-6 w-6 text-red-500" />
+                <h3 className="ml-3 text-base font-semibold text-red-800">
+                  Review Overdue ({overdueNotes.length})
+                </h3>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="divide-y divide-gray-100">
-          {overdueNotes.map((note, index) => {
-            const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
-            const reviewTime = reviews[note.id];
-            const cadence = getNoteCadence(note.id);
+          <div className="divide-y divide-gray-100">
+            {overdueNotes.map((note, index) => {
+              const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+              const reviewTime = reviews[note.id];
+              const cadence = getNoteCadence(note.id);
 
-            return (
-              <div 
-                key={note.id} 
-                className={`px-6 py-3 transition-colors duration-150 min-h-[120px] ${
-                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                } hover:bg-gray-100`}
-              >
-                <div className="grid grid-cols-4 gap-4">
-                  {/* First Section - Description (50%) */}
-                  <div className="col-span-2 flex flex-col">
-                    <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
-                      {formatContent(note.content)}
-                    </h4>
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <ClockIcon className="h-4 w-4" />
-                        <span className="text-xs text-gray-500">Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <ClockIcon className="h-4 w-4" />
-                        <span className="text-xs text-gray-500">Review cadence: {cadence.hours}h {cadence.minutes}m</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Second Section - Review In Buttons (25%) */}
-                  <div className="flex flex-wrap gap-1 items-center justify-end">
-                    <div className="flex flex-wrap gap-1 items-center">
-                      <span className="text-sm text-gray-600 mr-2">Review in:</span>
-                      <div className="flex flex-wrap gap-1">
-                        <button
-                          onClick={() => handleCadence(note, 2, 0)}
-                          className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set 2 hour cadence"
-                        >
-                          2h
-                        </button>
-                        <button
-                          onClick={() => handleCadence(note, 4, 0)}
-                          className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set 4 hour cadence"
-                        >
-                          4h
-                        </button>
-                        <button
-                          onClick={() => handleCadence(note, 12, 0)}
-                          className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set 12 hour cadence"
-                        >
-                          12h
-                        </button>
-                        <button
-                          onClick={() => handleCadence(note, 48, 0)}
-                          className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set 2 day cadence"
-                        >
-                          2d
-                        </button>
-                        <button
-                          onClick={() => handleCadence(note, 72, 0)}
-                          className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set 3 day cadence"
-                        >
-                          3d
-                        </button>
-                        <button
-                          onClick={() => handleCadence(note, 168, 0)}
-                          className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                          title="Set 7 day cadence"
-                        >
-                          7d
-                        </button>
+              return (
+                <div 
+                  key={note.id} 
+                  className={`px-6 py-3 transition-colors duration-150 min-h-[120px] ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  } hover:bg-gray-100`}
+                >
+                  <div className="grid grid-cols-4 gap-4">
+                    {/* First Section - Description (50%) */}
+                    <div className="col-span-2 flex flex-col">
+                      <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
+                        {formatContent(note.content)}
+                      </h4>
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="h-4 w-4" />
+                          <span className="text-xs text-gray-500">Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="h-4 w-4" />
+                          <span className="text-xs text-gray-500">Review cadence: {cadence.hours}h {cadence.minutes}m</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Third Section - Unfollow and Actions */}
-                  <div className="flex items-center gap-2 justify-end">
-                    <button
-                      onClick={() => handleUnfollow(note)}
-                      className="p-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                      title="Remove from watchlist"
-                    >
-                      <EyeSlashIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleEditNote(note)}
-                      className="p-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                      title="Edit note"
-                    >
-                      <PencilIcon className="w-5 h-5" />
-                    </button>
-                    <div 
-                      onClick={() => toggleNoteExpand(`actions-${note.id}`)}
-                      className="py-2 text-xs font-medium text-gray-700 cursor-pointer flex items-center"
-                    >
-                      <div className="flex items-center">
-                        <span>Actions</span>
-                        <svg
-                          className={`w-4 h-4 ml-1 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-90' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
+                    {/* Second Section - Review In Buttons (25%) */}
+                    <div className="flex flex-wrap gap-1 items-center justify-end">
+                      <div className="flex flex-wrap gap-1 items-center">
+                        <span className="text-sm text-gray-600 mr-2">Review in:</span>
+                        <div className="flex flex-wrap gap-1">
+                          <button
+                            onClick={() => handleCadence(note, 2, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 2 hour cadence"
+                          >
+                            2h
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 4, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 4 hour cadence"
+                          >
+                            4h
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 12, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 12 hour cadence"
+                          >
+                            12h
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 48, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 2 day cadence"
+                          >
+                            2d
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 72, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 3 day cadence"
+                          >
+                            3d
+                          </button>
+                          <button
+                            onClick={() => handleCadence(note, 168, 0)}
+                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set 7 day cadence"
+                          >
+                            7d
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Actions Dropdown */}
-                {expandedNotes[`actions-${note.id}`] && (
-                  <div className="mt-4">
-                    <div className="flex flex-wrap gap-2 justify-end">
+                    {/* Third Section - Unfollow and Actions */}
+                    <div className="flex items-center gap-2 justify-end">
                       <button
-                        onClick={() => setShowCadenceSelector(note.id)}
-                        className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                        title="Set custom cadence"
+                        onClick={() => handleUnfollow(note)}
+                        className="p-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                        title="Remove from watchlist"
                       >
-                        <ClockIcon className="w-5 h-5 inline-block mr-1" />
-                        <span>Set cadence</span>
+                        <EyeSlashIcon className="w-5 h-5" />
                       </button>
-                      {!note.content.includes('meta::reminder') && (
-                        <button
-                          onClick={() => handleAddReminder(note)}
-                          className="px-4 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
-                          title="Set as reminder"
-                        >
-                          <BellIcon className="w-5 h-5 inline-block mr-1" />
-                          <span>Set as reminder</span>
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleEditNote(note)}
+                        className="p-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                        title="Edit note"
+                      >
+                        <PencilIcon className="w-5 h-5" />
+                      </button>
+                      <div 
+                        onClick={() => toggleNoteExpand(`actions-${note.id}`)}
+                        className="py-2 text-xs font-medium text-gray-700 cursor-pointer flex items-center"
+                      >
+                        <div className="flex items-center">
+                          <span>Actions</span>
+                          <svg
+                            className={`w-4 h-4 ml-1 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-90' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+
+                  {/* Actions Dropdown */}
+                  {expandedNotes[`actions-${note.id}`] && (
+                    <div className="mt-4">
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        <button
+                          onClick={() => setShowCadenceSelector(note.id)}
+                          className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                          title="Set custom cadence"
+                        >
+                          <ClockIcon className="w-5 h-5 inline-block mr-1" />
+                          <span>Set cadence</span>
+                        </button>
+                        {!note.content.includes('meta::reminder') && (
+                          <button
+                            onClick={() => handleAddReminder(note)}
+                            className="px-4 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
+                            title="Set as reminder"
+                          >
+                            <BellIcon className="w-5 h-5 inline-block mr-1" />
+                            <span>Set as reminder</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Snoozed Notes Section */}
+      {snoozedNotes.length > 0 && (
+        <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
+          <div 
+            className="bg-gray-50 px-6 py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors duration-150"
+            onClick={() => setIsSnoozedExpanded(!isSnoozedExpanded)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <PauseIcon className="h-6 w-6 text-gray-500" />
+                <h3 className="ml-3 text-base font-semibold text-gray-800">
+                  Snoozed Notes ({snoozedNotes.length})
+                </h3>
+              </div>
+              <ChevronDownIcon 
+                className={`h-5 w-5 text-gray-500 transform transition-transform duration-200 ${
+                  isSnoozedExpanded ? 'rotate-180' : ''
+                }`}
+              />
+            </div>
+          </div>
+          {isSnoozedExpanded && (
+            <div className="divide-y divide-gray-100">
+              {snoozedNotes.map((note, index) => {
+                const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+                const reviewTime = reviews[note.id];
+                const cadence = getNoteCadence(note.id);
+
+                return (
+                  <div 
+                    key={note.id} 
+                    className={`px-6 py-3 transition-colors duration-150 min-h-[120px] ${
+                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                    } hover:bg-gray-100`}
+                  >
+                    <div className="grid grid-cols-4 gap-4">
+                      {/* First Section - Description (50%) */}
+                      <div className="col-span-2 flex flex-col">
+                        <div className="flex items-center gap-2 mb-2">
+                          <PauseIcon className="h-4 w-4 text-gray-400" />
+                          <h4 className="text-base font-medium text-gray-900 break-words">
+                            {formatContent(note.content)}
+                          </h4>
+                        </div>
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <ClockIcon className="h-4 w-4" />
+                            <span className="text-xs text-gray-500">Last reviewed: {reviewTime ? formatTimeElapsed(reviewTime) : 'Never'}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <ClockIcon className="h-4 w-4" />
+                            <span className="text-xs text-gray-500">Review cadence: {cadence.hours}h {cadence.minutes}m</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Second Section - Review In Buttons (25%) */}
+                      <div className="flex flex-wrap gap-1 items-center justify-end">
+                        <div className="flex flex-wrap gap-1 items-center">
+                          <span className="text-sm text-gray-600 mr-2">Review in:</span>
+                          <div className="flex flex-wrap gap-1">
+                            <button
+                              onClick={() => handleCadence(note, 2, 0)}
+                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                              title="Set 2 hour cadence"
+                            >
+                              2h
+                            </button>
+                            <button
+                              onClick={() => handleCadence(note, 4, 0)}
+                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                              title="Set 4 hour cadence"
+                            >
+                              4h
+                            </button>
+                            <button
+                              onClick={() => handleCadence(note, 12, 0)}
+                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                              title="Set 12 hour cadence"
+                            >
+                              12h
+                            </button>
+                            <button
+                              onClick={() => handleCadence(note, 48, 0)}
+                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                              title="Set 2 day cadence"
+                            >
+                              2d
+                            </button>
+                            <button
+                              onClick={() => handleCadence(note, 72, 0)}
+                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                              title="Set 3 day cadence"
+                            >
+                              3d
+                            </button>
+                            <button
+                              onClick={() => handleCadence(note, 168, 0)}
+                              className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                              title="Set 7 day cadence"
+                            >
+                              7d
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Third Section - Unfollow and Actions */}
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => handleUnfollow(note)}
+                          className="p-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                          title="Remove from watchlist"
+                        >
+                          <EyeSlashIcon className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => handleEditNote(note)}
+                          className="p-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                          title="Edit note"
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </button>
+                        <div 
+                          onClick={() => toggleNoteExpand(`actions-${note.id}`)}
+                          className="py-2 text-xs font-medium text-gray-700 cursor-pointer flex items-center"
+                        >
+                          <div className="flex items-center">
+                            <span>Actions</span>
+                            <svg
+                              className={`w-4 h-4 ml-1 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-90' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions Dropdown */}
+                    {expandedNotes[`actions-${note.id}`] && (
+                      <div className="mt-4">
+                        <div className="flex flex-wrap gap-2 justify-end">
+                          <button
+                            onClick={() => setShowCadenceSelector(note.id)}
+                            className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                            title="Set custom cadence"
+                          >
+                            <ClockIcon className="w-5 h-5 inline-block mr-1" />
+                            <span>Set cadence</span>
+                          </button>
+                          {!note.content.includes('meta::reminder') && (
+                            <button
+                              onClick={() => handleAddReminder(note)}
+                              className="px-4 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
+                              title="Set as reminder"
+                            >
+                              <BellIcon className="w-5 h-5 inline-block mr-1" />
+                              <span>Set as reminder</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Priority Selection Popup */}
       {showPriorityPopup && noteToConvert && (

@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDownIcon, ChevronUpIcon, BellIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronUpIcon, BellIcon, CheckIcon, ClockIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
 import { Alerts } from './Alerts';
 import { findDueReminders, addCurrentDateToLocalStorage, getLastReviewObject } from '../utils/CadenceHelpUtils';
+
+const QUICK_CADENCES = [
+  { label: '2h', value: '2h' },
+  { label: '4h', value: '4h' },
+  { label: '12h', value: '12h' },
+  { label: '2d', value: '2d' },
+  { label: '3d', value: '3d' },
+  { label: '7d', value: '7d' },
+];
 
 const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
@@ -10,10 +19,59 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
   const [hoveredNote, setHoveredNote] = useState(null);
   const [showCadenceSelector, setShowCadenceSelector] = useState(null);
   const [reminderObjs, setReminderObjs] = useState([]);
+  const [upcomingReminders, setUpcomingReminders] = useState([]);
 
   useEffect(() => {
     const dueReminders = findDueReminders(allNotes);
     setReminderObjs(dueReminders);
+
+    // Find upcoming reminders (not yet due)
+    const upcoming = allNotes
+      .filter(note => {
+        const lastReview = getLastReviewObject(note);
+        if (!lastReview) return false;
+        
+        const cadenceMatch = note.content.match(/meta::cadence::([^\n]+)/);
+        if (!cadenceMatch) return false;
+        
+        const cadence = cadenceMatch[1];
+        const nextReview = new Date(lastReview.date);
+        
+        // Parse cadence and add to nextReview
+        const match = cadence.match(/(\d+)([hd])/);
+        if (!match) return false;
+        
+        const [, amount, unit] = match;
+        if (unit === 'h') {
+          nextReview.setHours(nextReview.getHours() + parseInt(amount));
+        } else if (unit === 'd') {
+          nextReview.setDate(nextReview.getDate() + parseInt(amount));
+        }
+        
+        return nextReview > new Date();
+      })
+      .map(note => ({
+        note,
+        nextReview: (() => {
+          const lastReview = getLastReviewObject(note);
+          const cadenceMatch = note.content.match(/meta::cadence::([^\n]+)/);
+          const cadence = cadenceMatch[1];
+          const nextReview = new Date(lastReview.date);
+          
+          const match = cadence.match(/(\d+)([hd])/);
+          const [, amount, unit] = match;
+          if (unit === 'h') {
+            nextReview.setHours(nextReview.getHours() + parseInt(amount));
+          } else if (unit === 'd') {
+            nextReview.setDate(nextReview.getDate() + parseInt(amount));
+          }
+          
+          return nextReview;
+        })()
+      }))
+      .sort((a, b) => a.nextReview - b.nextReview);
+
+    setUpcomingReminders(upcoming);
   }, [allNotes]);
 
   // Add the vibrating animation style for the bell icon
@@ -156,83 +214,215 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
     );
   };
 
-  if (reminderObjs.length === 0) return null;
+  const handleQuickCadence = async (noteId, cadence) => {
+    try {
+      const note = allNotes.find(n => n.id === noteId);
+      if (!note) return;
+
+      // Update the note's cadence
+      const updatedNote = {
+        ...note,
+        content: note.content.replace(/meta::cadence::[^\n]*/, `meta::cadence::${cadence}`)
+      };
+
+      // Update the notes array
+      const updatedNotes = allNotes.map(n => n.id === noteId ? updatedNote : n);
+      if (typeof setNotes === 'function') {
+        setNotes(updatedNotes);
+      }
+      
+      // Dismiss the current reminder
+      addCurrentDateToLocalStorage(noteId);
+      setReminderObjs(findDueReminders(updatedNotes));
+    } catch (error) {
+      console.error('Error setting quick cadence:', error);
+      Alerts.error('Failed to set cadence');
+    }
+  };
+
+  const formatDate = (date) => {
+    const now = new Date();
+    const diff = date - now;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) {
+      return `in ${days} day${days > 1 ? 's' : ''}`;
+    } else if (hours > 0) {
+      return `in ${hours} hour${hours > 1 ? 's' : ''}`;
+    } else {
+      return 'soon';
+    }
+  };
+
+  if (reminderObjs.length === 0 && upcomingReminders.length === 0) return null;
 
   return (
     <div className="space-y-4 w-full">
-      {reminderObjs.map((reminderObj, index) => {
-        const note = reminderObj.note;
-        const isDetailsExpanded = expandedDetails[note.id];
-        const isHovered = hoveredNote === note.id;
-        const contentLines = note.content
-          .split('\n')
-          .map(line => line.trim())
-          .filter(line => line.length > 0 && !line.startsWith('meta::'));
-        const hasMoreContent = contentLines.length > 2;
+      {/* Active Reminders Section */}
+      {reminderObjs.length > 0 && (
+        <div className="space-y-4">
+          {reminderObjs.map((reminderObj, index) => {
+            const note = reminderObj.note;
+            const isDetailsExpanded = expandedDetails[note.id];
+            const isHovered = hoveredNote === note.id;
+            const contentLines = note.content
+              .split('\n')
+              .map(line => line.trim())
+              .filter(line => line.length > 0 && !line.startsWith('meta::'));
+            const hasMoreContent = contentLines.length > 2;
 
-        return (
-          <div
-            key={note.id}
-            className="bg-amber-100 border border-amber-200 shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200"
-            onMouseEnter={() => setHoveredNote(note.id)}
-            onMouseLeave={() => setHoveredNote(null)}
-          >
-            <div className="px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {hasMoreContent && (
-                    <button
-                      onClick={() => toggleDetails(note.id)}
-                      className="text-purple-700 hover:text-purple-900 focus:outline-none"
-                    >
-                      {isDetailsExpanded ? (
-                        <ChevronUpIcon className="h-5 w-5" />
-                      ) : (
-                        <ChevronDownIcon className="h-5 w-5" />
+            return (
+              <div
+                key={note.id}
+                className="bg-amber-100 border border-amber-200 shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200"
+                onMouseEnter={() => setHoveredNote(note.id)}
+                onMouseLeave={() => setHoveredNote(null)}
+              >
+                <div className="px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {hasMoreContent && (
+                        <button
+                          onClick={() => toggleDetails(note.id)}
+                          className="text-purple-700 hover:text-purple-900 focus:outline-none"
+                        >
+                          {isDetailsExpanded ? (
+                            <ChevronUpIcon className="h-5 w-5" />
+                          ) : (
+                            <ChevronDownIcon className="h-5 w-5" />
+                          )}
+                        </button>
                       )}
-                    </button>
-                  )}
-                  {/* Bell icon with vibration animation */}
-                  <BellIcon className="h-5 w-5 text-purple-700 bell-vibrate" />
-                  <div>
-                    {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
+                      {/* Bell icon with vibration animation */}
+                      <BellIcon className="h-5 w-5 text-purple-700 bell-vibrate" />
+                      <div>
+                        {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {showCadenceSelector === note.id ? (
+                        <CadenceSelector
+                          noteId={note.id}
+                          notes={allNotes}
+                          onCadenceChange={() => {
+                            setShowCadenceSelector(null);
+                            if (typeof setNotes === 'function') {
+                              setNotes([...allNotes]);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <div className="flex gap-1 mr-2">
+                            {QUICK_CADENCES.map(({ label, value }) => (
+                              <button
+                                key={value}
+                                onClick={() => handleQuickCadence(note.id, value)}
+                                className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors duration-150"
+                                style={{ padding: '2px 6px', background: 'none', border: 'none' }}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => setShowCadenceSelector(note.id)}
+                            className="text-xs text-blue-600 hover:text-blue-800 underline mr-2"
+                            style={{ padding: 0, background: 'none', border: 'none' }}
+                          >
+                            Set Cadence
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => handleDismiss(note)}
+                        className="px-3 py-1 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                        title="Dismiss"
+                      >
+                        <CheckIcon className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {showCadenceSelector === note.id ? (
-                    <CadenceSelector
-                      noteId={note.id}
-                      notes={allNotes}
-                      onCadenceChange={() => {
-                        setShowCadenceSelector(null);
-                        if (typeof setNotes === 'function') {
-                          setNotes([...allNotes]);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <button
-                      onClick={() => setShowCadenceSelector(note.id)}
-                      className="text-xs text-blue-600 hover:text-blue-800 underline mr-2"
-                      style={{ padding: 0, background: 'none', border: 'none' }}
-                    >
-                      Set Cadence
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDismiss(note)}
-                    className="px-3 py-1 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
-                    title="Dismiss"
-                  >
-                    <CheckIcon className="h-5 w-5" />
-                  </button>
-                </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-            </div>
+      {/* Upcoming Reminders Section */}
+      {upcomingReminders.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
+            <ClockIcon className="h-4 w-4" />
+            Upcoming Reminders
+          </h3>
+          <div className="space-y-3">
+            {upcomingReminders.map(({ note, nextReview }) => {
+              const isDetailsExpanded = expandedDetails[note.id];
+              const contentLines = note.content
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0 && !line.startsWith('meta::'));
+              const hasMoreContent = contentLines.length > 2;
+
+              return (
+                <div
+                  key={note.id}
+                  className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-all duration-200"
+                >
+                  <div className="px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {hasMoreContent && (
+                          <button
+                            onClick={() => toggleDetails(note.id)}
+                            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                          >
+                            {isDetailsExpanded ? (
+                              <ChevronUpIcon className="h-5 w-5" />
+                            ) : (
+                              <ChevronDownIcon className="h-5 w-5" />
+                            )}
+                          </button>
+                        )}
+                        <div>
+                          {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
+                          <div className="mt-1 text-sm text-gray-500">
+                            {formatDate(nextReview)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1 mr-2">
+                          {QUICK_CADENCES.map(({ label, value }) => (
+                            <button
+                              key={value}
+                              onClick={() => handleQuickCadence(note.id, value)}
+                              className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors duration-150"
+                              style={{ padding: '2px 6px', background: 'none', border: 'none' }}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => setShowCadenceSelector(note.id)}
+                          className="text-xs text-blue-600 hover:text-blue-800 underline mr-2"
+                          style={{ padding: 0, background: 'none', border: 'none' }}
+                        >
+                          Set Cadence
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+      )}
     </div>
   );
 };

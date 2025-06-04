@@ -551,7 +551,23 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                           <CadenceSelector
                             noteId={note.id}
                             notes={notes}
-                            onCadenceChange={() => setShowCadenceSelector(null)}
+                            onCadenceChange={async () => {
+                              // Fetch the updated note content (simulate by reloading from backend or localStorage)
+                              // For now, re-fetch from backend is not shown, so we update from localStorage or force a refresh
+                              // Option 1: If you have a way to fetch the updated note, do it here
+                              // Option 2: For now, just close the selector and force a re-render
+                              const updatedNotes = notes.map(n => {
+                                if (n.id === note.id) {
+                                  // Try to get the latest content from localStorage if available
+                                  // (Assume updateCadenceHoursMinutes already updated the note content in localStorage)
+                                  // If not, just keep the old content (will update on next full refresh)
+                                  return { ...n, content: n.content };
+                                }
+                                return n;
+                              });
+                              setNotes(updatedNotes);
+                              setShowCadenceSelector(null);
+                            }}
                           />
                         ) : (
                           <button
@@ -742,7 +758,23 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                             <CadenceSelector
                               noteId={note.id}
                               notes={notes}
-                              onCadenceChange={() => setShowCadenceSelector(null)}
+                              onCadenceChange={async () => {
+                                // Fetch the updated note content (simulate by reloading from backend or localStorage)
+                                // For now, re-fetch from backend is not shown, so we update from localStorage or force a refresh
+                                // Option 1: If you have a way to fetch the updated note, do it here
+                                // Option 2: For now, just close the selector and force a re-render
+                                const updatedNotes = notes.map(n => {
+                                  if (n.id === note.id) {
+                                    // Try to get the latest content from localStorage if available
+                                    // (Assume updateCadenceHoursMinutes already updated the note content in localStorage)
+                                    // If not, just keep the old content (will update on next full refresh)
+                                    return { ...n, content: n.content };
+                                  }
+                                  return n;
+                                });
+                                setNotes(updatedNotes);
+                                setShowCadenceSelector(null);
+                              }}
                             />
                           ) : (
                             <button

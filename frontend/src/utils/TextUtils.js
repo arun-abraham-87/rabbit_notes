@@ -9,7 +9,7 @@ import LinkWithPreview from '../components/LinkWithPreview';
  * @param {string} params.searchTerm - Search term for highlighting
  * @returns {Array<React.ReactElement>} Array of formatted React elements
  */
-export const parseNoteContent = ({ content, searchTerm }) => {
+export const parseNoteContent = ({ content, searchTerm, onAddText }) => {
   if (!content) return [];
 
   // Split into lines and process each line
@@ -26,20 +26,34 @@ export const parseNoteContent = ({ content, searchTerm }) => {
       return { line: cleanLine, color };
     });
 
-  return lines.map(({ line, color }, lineIndex) => {
+  // Process lines and add blank lines before h2 headers (except the first line)
+  const processedElements = [];
+  
+  lines.forEach(({ line, color }, lineIndex) => {
+    // Check if this is an h2 header (not the first line)
+    const trimmed = line.trim();
+    const isH2 = trimmed.startsWith('##') && !trimmed.startsWith('###') && trimmed.endsWith('##');
+    
+    // Add blank line before h2 headers (except the first line)
+    if (isH2 && lineIndex > 0) {
+      processedElements.push(
+        <div key={`blank-before-h2-${lineIndex}`} className="h-4"></div>
+      );
+    }
+    
     // Step 1: Parse inline formatting first
     const formattedContent = parseInlineFormatting({
       content: line,
       searchTerm,
-      lineIndex
+      lineIndex,
+      onAddText
     });
 
     // Step 2: Check if this is a heading by looking at the original line
-    const trimmed = line.trim();
     let type = 'normal';
     if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
       type = 'heading1';
-    } else if (trimmed.startsWith('##') && !trimmed.startsWith('###') && trimmed.endsWith('##')) {
+    } else if (isH2) {
       type = 'heading2';
     } else if (trimmed.startsWith('- ')) {
       type = 'bullet';
@@ -59,8 +73,10 @@ export const parseNoteContent = ({ content, searchTerm }) => {
       });
     }
 
-    return element;
+    processedElements.push(element);
   });
+
+  return processedElements;
 };
 
 /**
@@ -87,7 +103,7 @@ const extractUrlFromMarkdown = (text) => {
 /**
  * Parse inline formatting (bold, links, colors)
  */
-const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
+const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText }) => {
   // First handle any heading markers by temporarily replacing them
   let processedContent = content;
   const trimmed = content.trim();
@@ -110,9 +126,18 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
     const hostname = new URL(url).hostname;
     
     let urlElement = (
-      <LinkWithPreview key={`url-${lineIndex}`} url={url}>
-        {hostname}
-      </LinkWithPreview>
+      <span key={`url-${lineIndex}`} className="inline-flex items-center gap-1">
+        <LinkWithPreview url={url}>
+          {hostname}
+        </LinkWithPreview>
+        <button
+          onClick={() => onAddText && onAddText(url)}
+          className="px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150"
+          title="Add custom text for this link"
+        >
+          Add text
+        </button>
+      </span>
     );
     elements.push(urlElement);
   } else if ((processedContent.includes("http:") || processedContent.includes("https:")) && processedContent.startsWith("[")) {
@@ -171,6 +196,27 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex }) => {
           urlEnd++;
         }
         const url = processedContent.slice(i, urlEnd);
+        const hostname = new URL(url).hostname;
+        
+        elements.push(
+          <span key={`url-${lineIndex}-${i}`} className="inline-flex items-center gap-1">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              {hostname}
+            </a>
+            <button
+              onClick={() => onAddText && onAddText(url)}
+              className="px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150"
+              title="Add custom text for this link"
+            >
+              Add text
+            </button>
+          </span>
+        );
         i = urlEnd - 1;
         continue;
       }

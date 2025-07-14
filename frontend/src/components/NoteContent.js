@@ -6,6 +6,7 @@ import {
     parseNoteContent
 } from '../utils/TextUtils';
 import { renderLineWithClickableDates, getIndentFlags, getRawLines } from '../utils/genUtils';
+import AddTextModal from './AddTextModal';
 
 /**
  * NoteContent - renders the body of a note, including headings, lines, inline editors,
@@ -38,12 +39,49 @@ export default function NoteContent({
     compressedView = false,
     updateNote
 }) {
+    const [showAddTextModal, setShowAddTextModal] = React.useState(false);
+    const [urlForText, setUrlForText] = React.useState('');
+
     if (!note) {
         return null;
     }
 
+    const handleAddText = (url) => {
+        setUrlForText(url);
+        setShowAddTextModal(true);
+    };
+
+    const handleSaveText = async (noteId, url, customText) => {
+        try {
+            // Split content into lines
+            const lines = note.content.split('\n');
+            
+            // Find the line containing the URL and replace it with markdown format
+            const updatedLines = lines.map(line => {
+                if (line.trim() === url) {
+                    return `[${customText}](${url})`;
+                }
+                return line;
+            });
+            
+            // Join lines back together
+            const updatedContent = updatedLines.join('\n');
+            
+            // Update the note
+            await updateNote(noteId, updatedContent);
+            
+            setShowAddTextModal(false);
+        } catch (error) {
+            console.error('Error adding custom text:', error);
+        }
+    };
+
     const rawLines = getRawLines(note.content);
-    const contentLines = parseNoteContent({ content: rawLines.join('\n'), searchTerm: searchQuery });
+    const contentLines = parseNoteContent({ 
+        content: rawLines.join('\n'), 
+        searchTerm: searchQuery,
+        onAddText: handleAddText
+    });
     const indentFlags = getIndentFlags(contentLines);
 
     if (editingLine?.noteId === note.id) {
@@ -236,6 +274,13 @@ export default function NoteContent({
                     <PlusIcon className="w-4 h-4" />
                 </button>
             )}
+            <AddTextModal
+                isOpen={showAddTextModal}
+                onClose={() => setShowAddTextModal(false)}
+                onSave={handleSaveText}
+                noteId={note.id}
+                url={urlForText}
+            />
         </div>
     );
 }

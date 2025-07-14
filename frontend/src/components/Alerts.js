@@ -896,6 +896,29 @@ const AlertsProvider = ({ children, notes, expanded = true, events, setNotes }) 
             <EventAlertsComponent 
               events={events}
               expanded={true}
+              onAcknowledgeEvent={async (eventId, year) => {
+                try {
+                  const event = events.find(e => e.id === eventId);
+                  if (!event) return;
+                  
+                  const metaTag = `meta::acknowledged::${year}`;
+                  if (event.content.includes(metaTag)) {
+                    return; // Already acknowledged
+                  }
+                  
+                  const updatedContent = event.content.trim() + `\n${metaTag}`;
+                  await updateNoteById(eventId, updatedContent);
+                  
+                  // Update the events state to reflect the change
+                  const updatedEvents = events.map(e => 
+                    e.id === eventId ? { ...e, content: updatedContent } : e
+                  );
+                  // Note: We can't update events directly here, but the acknowledgment will be reflected
+                  // when the component re-renders with fresh data
+                } catch (error) {
+                  console.error('Error acknowledging event:', error);
+                }
+              }}
             />
           )}
           <div className="w-full">

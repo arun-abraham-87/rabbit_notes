@@ -92,56 +92,32 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
   };
 
   const handleAcknowledge = async (eventId, year) => {
-    // try {
-    //   console.log('Starting event acknowledgment:', { eventId, year });
+    try {
+      const event = events.find(e => e.id === eventId);
+      if (!event) return;
       
-    //   const event = events.find(e => e.id === eventId);
-    //   console.log('Found event:', event ? { id: event.id, content: event.content } : 'Not found');
+      const metaTag = `meta::acknowledged::${year}`;
+      if (event.content.includes(metaTag)) {
+        return; // Already acknowledged
+      }
       
-    //   if (!event) {
-    //     console.log('Event not found, returning early');
-    //     return;
-    //   }
-
-    //   const metaTag = `meta::acknowledged::${year}`;
-    //   console.log('Checking for existing acknowledgment tag:', metaTag);
+      const updatedContent = event.content.trim() + `\n${metaTag}`;
+      await updateNoteById(eventId, updatedContent);
       
-    //   if (event.content.includes(metaTag)) {
-    //     console.log('Event already acknowledged for this year');
-    //     return; // Already acknowledged
-    //   }
-
-    //   const updatedContent = event.content.trim() + `\n${metaTag}`;
-    //   console.log('Prepared updated content:', updatedContent);
+      // Update local state to reflect acknowledgment
+      setAcknowledgedEvents(prev => {
+        const newSet = new Set(prev);
+        newSet.add(`${eventId}-${year}`);
+        return newSet;
+      });
       
-    //   console.log('Calling updateNoteById...');
-    //   const response = await updateNoteById(eventId, updatedContent);
-    //   console.log('Received response from updateNoteById:', response);
-
-    //   if (response && response.message) {
-    //     console.log('Update successful, updating acknowledged events state');
-    //     setAcknowledgedEvents(prev => {
-    //       const newSet = new Set(prev);
-    //       newSet.add(`${eventId}-${year}`);
-    //       console.log('New acknowledged events set:', Array.from(newSet));
-    //       return newSet;
-    //     });
-         
-    //     if (onAcknowledgeEvent) {
-    //       console.log('Calling onAcknowledgeEvent callback');
-    //       onAcknowledgeEvent(eventId, year);
-    //     }
-    //   } else {
-    //     console.error('Update failed - invalid response:', response);
-    //   }
-    // } catch (error) {
-    //   console.error('Error in handleAcknowledge:', error);
-    //   console.error('Error details:', {
-    //     message: error.message,
-    //     stack: error.stack
-    //   });
-    // }
-    onAcknowledgeEvent(eventId, year);
+      // Call the callback if provided
+      if (onAcknowledgeEvent) {
+        onAcknowledgeEvent(eventId, year);
+      }
+    } catch (error) {
+      console.error('Error in handleAcknowledge:', error);
+    }
   };
 
   const formatDate = (date) => {

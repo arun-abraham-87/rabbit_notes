@@ -116,14 +116,23 @@ const NotesMainContainer = ({
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
                 <div className="mt-4">
                     <div className="relative">
-                        <input
+                        <textarea
                             ref={searchInputRef}
-                            type="search"
-                            className="w-full p-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden"
+                            className="w-full p-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[40px] max-h-[120px] overflow-y-auto"
                             value={localSearchQuery}
                             onChange={handleSearchChange}
                             onKeyDown={handleKeyDown}
                             placeholder="Search notes... (Cmd+Enter to create note)"
+                            rows={1}
+                            style={{
+                                resize: 'none',
+                                overflow: 'hidden'
+                            }}
+                            onInput={(e) => {
+                                // Auto-resize the textarea
+                                e.target.style.height = 'auto';
+                                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                            }}
                         />
                         {localSearchQuery && (
                             <button
@@ -132,7 +141,7 @@ const NotesMainContainer = ({
                                     setSearchQuery('');
                                     searchInputRef.current?.focus();
                                 }}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 focus:outline-none"
+                                className="absolute right-2 top-2 p-1 text-gray-500 hover:text-gray-700 focus:outline-none"
                                 aria-label="Clear search"
                             >
                                 <XMarkIcon className="h-5 w-5" />

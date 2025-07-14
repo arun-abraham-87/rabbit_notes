@@ -156,6 +156,25 @@ export default function NoteContent({
         setRightClickPos({ x: e.clientX, y: e.clientY });
     };
 
+    const handleTextClick = (idx) => {
+        // Get the original line content for editing
+        const rawLines = getRawLines(note.content);
+        const originalLine = rawLines[idx];
+        if (!originalLine) return;
+
+        // Check if the line contains only a URL (with or without custom text)
+        const urlRegex = /^(https?:\/\/[^\s]+)$/;
+        const markdownUrlRegex = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/;
+        
+        // If the line is just a URL or markdown link, don't open inline editing
+        if (urlRegex.test(originalLine.trim()) || markdownUrlRegex.test(originalLine.trim())) {
+            return; // Let the normal URL behavior handle it
+        }
+
+        setEditingLine({ noteId: note.id, lineIndex: idx });
+        setEditedLineContent(originalLine);
+    };
+
     const handleSaveEdit = (newText, idx, isH1, isH2) => {
         const lines = note.content.split('\n');
         if (isH1) {
@@ -169,6 +188,7 @@ export default function NoteContent({
         const reorderedContent = reorderMetaTags(updatedContent);
         updateNote(note.id, reorderedContent);
         setEditingLine({ noteId: null, lineIndex: null });
+        setEditedLineContent('');
     };
 
     const renderInlineEditor = (idx, isH1, isH2) => (
@@ -246,6 +266,7 @@ export default function NoteContent({
                     <div className="flex items-center gap-2">
                         {React.cloneElement(line, {
                             onContextMenu: (e) => handleRightClick(e, idx),
+                            onClick: () => handleTextClick(idx),
                             className: `${line.props.className || ''} ${
                                 rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                             }`,
@@ -316,16 +337,40 @@ export default function NoteContent({
                             <span className="mr-2 text-3xl self-start leading-none">•</span>
                         )}
                         <div className="flex items-center gap-2">
-                            {renderLineWithClickableDates(
-                                headingContent,
-                                note,
-                                idx,
-                                isListItem,
-                                searchQuery,
-                                parseNoteContent,
-                                setEditingInlineDate,
-                                handleInlineDateSelect
-                            )}
+                            {(() => {
+                                // Check if this line contains only a URL
+                                const rawLines = getRawLines(note.content);
+                                const originalLine = rawLines[idx];
+                                const urlRegex = /^(https?:\/\/[^\s]+)$/;
+                                const markdownUrlRegex = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/;
+                                const isUrlOnly = originalLine && (urlRegex.test(originalLine.trim()) || markdownUrlRegex.test(originalLine.trim()));
+                                
+                                const content = renderLineWithClickableDates(
+                                    headingContent,
+                                    note,
+                                    idx,
+                                    isListItem,
+                                    searchQuery,
+                                    parseNoteContent,
+                                    setEditingInlineDate,
+                                    handleInlineDateSelect
+                                );
+                                
+                                if (isUrlOnly) {
+                                    // For URL-only lines, render without click wrapper
+                                    return content;
+                                } else {
+                                    // For regular text, wrap with click handler
+                                    return (
+                                        <div 
+                                            onClick={() => handleTextClick(idx)}
+                                            className="cursor-pointer hover:bg-gray-50 px-1 py-0.5 rounded flex-1"
+                                        >
+                                            {content}
+                                        </div>
+                                    );
+                                }
+                            })()}
                             {isFirstLine && !isFirstLineH1 && (
                                 <button
                                     onClick={() => handleConvertToH1(note, lineContent)}

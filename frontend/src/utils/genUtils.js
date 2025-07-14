@@ -542,6 +542,12 @@ export const getRawLines = (content) => {
   //////console.log(content)
   //////console.log("Line END")
   let split_vals = content.split('\n').filter((line) => !line.trim().startsWith('meta::'))
+  
+  // Remove trailing empty lines
+  while (split_vals.length > 0 && split_vals[split_vals.length - 1].trim() === '') {
+    split_vals.pop();
+  }
+  
   //////console.log('Split vals')
   //////console.log(split_vals)
   //////console.log('Split vals End')

@@ -129,13 +129,35 @@ export default function NoteContent({
             if (editingLine?.noteId === note.id && editingLine?.lineIndex === idx) {
                 return renderInlineEditor(idx, false, false);
             }
-            return React.cloneElement(line, {
-                key: idx,
-                onContextMenu: (e) => handleRightClick(e, idx),
-                className: `${line.props.className || ''} ${
-                    rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
-                }`,
-            });
+            
+            // Apply indentation to React elements (h1, h2, etc.)
+            const shouldIndent = indentFlags[idx];
+            const elementType = line.type;
+            const isH1 = elementType === 'h1';
+            const isH2 = elementType === 'h2';
+            
+            return (
+                <div
+                    key={idx}
+                    onContextMenu={(e) => handleRightClick(e, idx)}
+                    className={`${shouldIndent ? 'pl-8 ' : ''}
+                        group cursor-text flex items-center justify-between ${
+                            rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
+                        }`}
+                >
+                    {shouldIndent && !isH1 && !isH2 && (
+                        <span className="mr-2 text-3xl self-start leading-none">•</span>
+                    )}
+                    <span className="flex-1">
+                        {React.cloneElement(line, {
+                            onContextMenu: (e) => handleRightClick(e, idx),
+                            className: `${line.props.className || ''} ${
+                                rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
+                            }`,
+                        })}
+                    </span>
+                </div>
+            );
         }
 
         const lineContent = line.toString();

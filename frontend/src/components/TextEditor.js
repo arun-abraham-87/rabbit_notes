@@ -455,7 +455,7 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
                         const content = notes[index];
                         const updated = [...notes];
                         updated.splice(index, 1);
-                        updated.unshift(`### ${content}`);
+                        updated.unshift(`###${content}###`);
                         setNotes(updated);
                         setTimeout(() => focusDiv(0, true), 0);
                       }}

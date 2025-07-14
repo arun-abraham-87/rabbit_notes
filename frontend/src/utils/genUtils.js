@@ -224,29 +224,66 @@ export const renderLineWithClickableDates = (
  * Returns an array of booleans indicating whether each line should be
  * indented. Indentation starts on the line *after* an <h2> and continues
  * until the next <h2> or a blank line.
+ * 
+ * For h1 headers (###text###), indentation starts on the line *after* the h1
+ * and continues until the end, a blank line, another h1 header (###), or an h2 header (##).
  */
 export const getIndentFlags = (contentLines) => {
   if (!Array.isArray(contentLines) || contentLines.length === 0) {
     return [];
   }
   let flag = false;
-  return contentLines.map((line) => {
-    // Handle both string and React element inputs
+  let h1Flag = false; // New flag for h1 headers
+  
+  return contentLines.map((line, index) => {
+    // Handle React elements (h1, h2, etc.)
+    if (React.isValidElement(line)) {
+      const elementType = line.type;
+      if (elementType === 'h1') {
+        h1Flag = true;
+        flag = false; // Reset h2 flag when we encounter h1
+        return false;
+      }
+      if (elementType === 'h2') {
+        flag = true;
+        h1Flag = false; // Reset h1 flag when we encounter h2
+        return false;
+      }
+      // For other React elements, check if they're empty
+      const children = line.props?.children;
+      if (!children || (typeof children === 'string' && children.trim() === '')) {
+        flag = false;
+        h1Flag = false; // Reset both flags on empty line
+        return false;
+      }
+    }
+    
+    // Handle string content
     const lineContent = typeof line === 'string' ? line : (line?.props?.children || '');
     
-    // Check for h2 tag in string content
+    // Check for h1 tag in string content (###text###)
+    if (typeof lineContent === 'string' && lineContent.startsWith('<h1>') && lineContent.endsWith('</h1>')) {
+      h1Flag = true;
+      flag = false; // Reset h2 flag when we encounter h1
+      return false;
+    }
+    
+    // Check for h2 tag in string content (##text##)
     if (typeof lineContent === 'string' && (lineContent.startsWith('<h2>') || lineContent.startsWith('##'))) {
       flag = true;
+      h1Flag = false; // Reset h1 flag when we encounter h2
       return false;
     }
     
     // Check for empty line
     if (typeof lineContent === 'string' && lineContent.trim() === '') {
       flag = false;
+      h1Flag = false; // Reset both flags on empty line
       return false;
     }
     
-    return flag;
+    // Return true if either h1 or h2 flag is active
+    return flag || h1Flag;
   });
 };
 

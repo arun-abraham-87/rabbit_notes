@@ -162,10 +162,10 @@ export default function RightClickMenu({
           onClick={() => {
             const arr = note.content.split('\n');
             const h1Text = arr[lineIndex].trim()
-              .replace(/^###|###$/g, '')  // Remove H2 markers first
-              .replace(/^##|##$/g, '')    // Remove H1 markers
+              .replace(/^###|###$/g, '')  // Remove H1 markers first
+              .replace(/^##|##$/g, '')    // Remove H2 markers
               .trim();
-            arr[lineIndex] = `##${h1Text}##`;
+            arr[lineIndex] = `###${h1Text}###`;
             updateNote(noteId, arr.join('\n'));
           }}
         >
@@ -176,10 +176,10 @@ export default function RightClickMenu({
           onClick={() => {
             const arr = note.content.split('\n');
             const h2Text = arr[lineIndex].trim()
-              .replace(/^###|###$/g, '')  // Remove H2 markers first
-              .replace(/^##|##$/g, '')    // Remove H1 markers
+              .replace(/^###|###$/g, '')  // Remove H1 markers first
+              .replace(/^##|##$/g, '')    // Remove H2 markers
               .trim();
-            arr[lineIndex] = `###${h2Text}###`;
+            arr[lineIndex] = `##${h2Text}##`;
             updateNote(noteId, arr.join('\n'));
           }}
         >

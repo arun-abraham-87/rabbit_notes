@@ -294,8 +294,8 @@ const NoteFilters = ({
     setActivePriority('');
     setExcludeEvents(false);
     setExcludeMeetings(false);
-    setExcludeEventNotes(true); // Reset to default (exclude event notes)
-    setExcludeBackupNotes(true); // Reset to default (exclude backup notes)
+    setExcludeEventNotes(false); // Clear all checkboxes
+    setExcludeBackupNotes(false); // Clear all checkboxes
     setLines([{ id: 'line-0', text: '', isTitle: false }]);
     setSearchQuery('');
   };

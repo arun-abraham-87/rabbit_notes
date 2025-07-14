@@ -142,15 +142,26 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           }
           const host = url.replace(/^https?:\/\//, '').split('/')[0];
           parts.push(
-            <a
-              key={key + '-url-' + i}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
-            >
-              {host}
-            </a>
+            <span key={key + '-url-' + i} className="inline-flex items-center gap-1">
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-800"
+              >
+                {host}
+              </a>
+              <button
+                onClick={() => {
+                  // This button does nothing for now as requested
+                  console.log('Add text button clicked for URL:', url);
+                }}
+                className="px-1 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+                title="Add custom text for this link"
+              >
+                Add text
+              </button>
+            </span>
           );
           lastIndex = index + url.length;
         });

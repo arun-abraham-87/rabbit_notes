@@ -362,6 +362,26 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
 
     // Helper to render a line with URL logic
     const renderLine = (line, key) => {
+      // Check for H1 headers (###text###)
+      const h1Match = line.match(/^###(.+?)###$/);
+      if (h1Match) {
+        return (
+          <h1 key={key} className="text-2xl font-bold text-gray-900">
+            {h1Match[1]}
+          </h1>
+        );
+      }
+      
+      // Check for H2 headers (##text##)
+      const h2Match = line.match(/^##(.+?)##$/);
+      if (h2Match) {
+        return (
+          <h2 key={key} className="text-lg font-semibold text-purple-700">
+            {h2Match[1]}
+          </h2>
+        );
+      }
+      
       // Markdown link: [text](url)
       const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
       if (markdownMatch) {
@@ -456,13 +476,25 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         {firstFiveLines.map((line, index) => {
           const isFirstLine = index === 0;
           const isSecondLine = index === 1;
+          const isFirstLineH1 = line.trim().startsWith('###') && line.trim().endsWith('###');
           
           return (
             <div 
               key={index} 
               className={isFirstLine ? '' : isSecondLine ? 'mt-1 text-gray-600' : 'mt-1 text-gray-600'}
             >
-              {renderLine(line, 'line-' + index)}
+              <div className="flex items-center gap-2">
+                {renderLine(line, 'line-' + index)}
+                {isFirstLine && !isFirstLineH1 && (
+                  <button
+                    onClick={() => handleConvertToH1(note, line)}
+                    className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+                    title="Convert to H1"
+                  >
+                    H1
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}
@@ -666,6 +698,37 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     } catch (error) {
       console.error('Error adding custom text:', error);
       Alerts.error('Failed to add custom text');
+    }
+  };
+
+  const handleConvertToH1 = async (note, lineText) => {
+    try {
+      // Split content into lines
+      const lines = note.content.split('\n');
+      
+      // Find and replace the first line with H1 format
+      const updatedLines = lines.map((line, index) => {
+        if (index === 0) {
+          // Remove any existing H1 markers and add new ones
+          const cleanText = line.replace(/^###\s*/, '').replace(/\s*###$/, '');
+          return `###${cleanText}###`;
+        }
+        return line;
+      });
+      
+      // Join lines back together
+      const updatedContent = updatedLines.join('\n');
+      
+      // Update the note
+      await updateNoteById(note.id, updatedContent);
+      
+      // Update the notes state
+      setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+      
+      Alerts.success('Converted to H1');
+    } catch (error) {
+      console.error('Error converting to H1:', error);
+      Alerts.error('Failed to convert to H1');
     }
   };
 

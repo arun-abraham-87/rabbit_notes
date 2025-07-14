@@ -78,6 +78,35 @@ export default function NoteContent({
         }
     };
 
+    const handleConvertToH1 = async (note, lineText) => {
+        try {
+            // Split content into lines
+            const lines = note.content.split('\n');
+            
+            // Find and replace the first line with H1 format
+            const updatedLines = lines.map((line, index) => {
+                if (index === 0) {
+                    // Get the original first line from the note content
+                    const originalFirstLine = lines[0];
+                    
+                    // Remove any existing H1 markers and add new ones
+                    const cleanText = originalFirstLine.replace(/^###\s*/, '').replace(/\s*###$/, '');
+                    return `###${cleanText}###`;
+                }
+                return line;
+            });
+            
+            // Join lines back together
+            const updatedContent = updatedLines.join('\n');
+            const reorderedContent = reorderMetaTags(updatedContent);
+            
+            // Update the note
+            await updateNote(note.id, reorderedContent);
+        } catch (error) {
+            console.error('Error converting to H1:', error);
+        }
+    };
+
     const rawLines = getRawLines(note.content);
     const contentLines = parseNoteContent({ 
         content: rawLines.join('\n'), 
@@ -177,27 +206,37 @@ export default function NoteContent({
             const elementType = line.type;
             const isH1 = elementType === 'h1';
             const isH2 = elementType === 'h2';
+            const isFirstLine = idx === 0;
             
             return (
                 <div
                     key={idx}
                     onContextMenu={(e) => handleRightClick(e, idx)}
                     className={`${shouldIndent ? 'pl-8 ' : ''}
-                        group cursor-text flex items-center justify-between ${
+                        group cursor-text flex items-center ${
                             rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                         }`}
                 >
                     {shouldIndent && !isH1 && !isH2 && (
                         <span className="mr-2 text-3xl self-start leading-none">•</span>
                     )}
-                    <span className="flex-1">
+                    <div className="flex items-center gap-2">
                         {React.cloneElement(line, {
                             onContextMenu: (e) => handleRightClick(e, idx),
                             className: `${line.props.className || ''} ${
                                 rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                             }`,
                         })}
-                    </span>
+                        {isFirstLine && !isH1 && (
+                            <button
+                                onClick={() => handleConvertToH1(note, line.props.children)}
+                                className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+                                title="Convert to H1"
+                            >
+                                H1
+                            </button>
+                        )}
+                    </div>
                 </div>
             );
         }
@@ -222,12 +261,15 @@ export default function NoteContent({
             );
         }
 
+        const isFirstLine = idx === 0;
+        const isFirstLineH1 = lineContent.trim().startsWith('###') && lineContent.trim().endsWith('###');
+        
         return (
             <div
                 key={idx}
                 onContextMenu={(e) => handleRightClick(e, idx)}
                 className={`${(indentFlags[idx] || isListItem) ? 'pl-8 ' : ''}
-                    group cursor-text flex items-center justify-between ${
+                    group cursor-text flex items-center ${
                         rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                     } ${
                         isH1 ? 'text-2xl font-bold text-gray-900' :
@@ -241,7 +283,7 @@ export default function NoteContent({
                         {(indentFlags[idx] || isListItem) && !isH1 && !isH2 && (
                             <span className="mr-2 text-3xl self-start leading-none">•</span>
                         )}
-                        <span className="flex-1">
+                        <div className="flex items-center gap-2">
                             {renderLineWithClickableDates(
                                 headingContent,
                                 note,
@@ -252,7 +294,16 @@ export default function NoteContent({
                                 setEditingInlineDate,
                                 handleInlineDateSelect
                             )}
-                        </span>
+                            {isFirstLine && !isFirstLineH1 && (
+                                <button
+                                    onClick={() => handleConvertToH1(note, lineContent)}
+                                    className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+                                    title="Convert to H1"
+                                >
+                                    H1
+                                </button>
+                            )}
+                        </div>
                         {editingInlineDate?.noteId === note.id && editingInlineDate?.lineIndex === idx && renderDatePicker(idx)}
                     </>
                 )}

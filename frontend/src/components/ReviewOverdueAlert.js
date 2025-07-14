@@ -109,6 +109,60 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       .filter(line => !line.trim().startsWith('meta::'))
       .filter(line => line.length > 0);
 
+    // Helper to render a line with URL logic
+    const renderLine = (line, key) => {
+      // Markdown link: [text](url)
+      const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+      if (markdownMatch) {
+        const text = markdownMatch[1];
+        const url = markdownMatch[2];
+        return (
+          <a
+            key={key}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            {text}
+          </a>
+        );
+      }
+      // Plain URL
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const urlMatch = line.match(urlRegex);
+      if (urlMatch) {
+        // Replace all URLs in the line with clickable links (host name as text)
+        let lastIndex = 0;
+        const parts = [];
+        urlMatch.forEach((url, i) => {
+          const index = line.indexOf(url, lastIndex);
+          if (index > lastIndex) {
+            parts.push(line.slice(lastIndex, index));
+          }
+          const host = url.replace(/^https?:\/\//, '').split('/')[0];
+          parts.push(
+            <a
+              key={key + '-url-' + i}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              {host}
+            </a>
+          );
+          lastIndex = index + url.length;
+        });
+        if (lastIndex < line.length) {
+          parts.push(line.slice(lastIndex));
+        }
+        return <span key={key}>{parts}</span>;
+      }
+      // No URL, render as plain text
+      return <span key={key}>{line}</span>;
+    };
+
     // Function to convert text to sentence case
     const toSentenceCase = (text) => {
       // Check if it's a URL or markdown link
@@ -128,45 +182,19 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const firstLineUrlMatch = firstLine.match(urlRegex);
     const secondLineUrlMatch = secondLine.match(urlRegex);
-    
-    // Function to format a URL line
-    const formatUrlLine = (line) => {
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const urlMatch = line.match(urlRegex);
-      if (!urlMatch) return line;
-
-      const url = urlMatch[0];
-      const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
-      
-      // Always use "Link" as the text, regardless of markdown or plain URL
-      return (
-        <a
-          href={markdownMatch ? markdownMatch[2] : url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
-            <path fillRule="evenodd" d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z" clipRule="evenodd" />
-            <path fillRule="evenodd" d="M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z" clipRule="evenodd" />
-          </svg>
-          Link
-        </a>
-      );
-    };
 
     // If first line is URL
     if (firstLineUrlMatch) {
       return (
         <>
-          <div>{formatUrlLine(firstLine)}</div>
-          {secondLine && <div className="mt-1 text-gray-600">{toSentenceCase(secondLine)}</div>}
+          <div>{renderLine(firstLine, 'first')}</div>
+          {secondLine && <div className="mt-1 text-gray-600">{renderLine(secondLine, 'second')}</div>}
           {remainingLines.length > 0 && (
             <>
               {expandedNotes[content] ? (
                 <div className="mt-2 text-gray-600">
                   {remainingLines.map((line, index) => (
-                    <div key={index}>{toSentenceCase(line)}</div>
+                    <div key={index}>{renderLine(line, 'rem-' + index)}</div>
                   ))}
                 </div>
               ) : null}
@@ -187,13 +215,13 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       return (
         <>
           <div>{toSentenceCase(firstLine)}</div>
-          <div className="mt-1 text-gray-600">{formatUrlLine(secondLine)}</div>
+          <div className="mt-1 text-gray-600">{renderLine(secondLine, 'second')}</div>
           {remainingLines.length > 0 && (
             <>
               {expandedNotes[content] ? (
                 <div className="mt-2 text-gray-600">
                   {remainingLines.map((line, index) => (
-                    <div key={index}>{toSentenceCase(line)}</div>
+                    <div key={index}>{renderLine(line, 'rem-' + index)}</div>
                   ))}
                 </div>
               ) : null}
@@ -217,7 +245,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           {expandedNotes[content] ? (
             <div className="mt-2 text-gray-600">
               {lines.slice(1).map((line, index) => (
-                <div key={index}>{toSentenceCase(line)}</div>
+                <div key={index}>{renderLine(line, 'rem-' + index)}</div>
               ))}
             </div>
           ) : null}
@@ -234,7 +262,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     }
 
     // If only one line
-    return toSentenceCase(firstLine);
+    return renderLine(firstLine, 'single');
   };
 
   const handleConvertToTodo = (note) => {

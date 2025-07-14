@@ -26,20 +26,13 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText })
       return { line: cleanLine, color };
     });
 
-  // Process lines and add blank lines before h2 headers (except the first line)
+  // Process lines
   const processedElements = [];
   
   lines.forEach(({ line, color }, lineIndex) => {
-    // Check if this is an h2 header (not the first line)
+    // Check if this is an h2 header
     const trimmed = line.trim();
     const isH2 = trimmed.startsWith('##') && !trimmed.startsWith('###') && trimmed.endsWith('##');
-    
-    // Add blank line before h2 headers (except the first line)
-    if (isH2 && lineIndex > 0) {
-      processedElements.push(
-        <div key={`blank-before-h2-${lineIndex}`} className="h-4"></div>
-      );
-    }
     
     // Step 1: Parse inline formatting first
     const formattedContent = parseInlineFormatting({
@@ -609,7 +602,7 @@ const wrapInContainer = ({ content, type, lineIndex }) => {
       );
     case 'heading2':
       return (
-        <h2 key={`h2-${lineIndex}`} className="text-lg font-semibold text-purple-700">
+        <h2 key={`h2-${lineIndex}`} className="text-lg font-semibold text-gray-900">
           {content}
         </h2>
       );

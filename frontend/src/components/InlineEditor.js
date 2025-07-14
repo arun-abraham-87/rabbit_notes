@@ -10,9 +10,10 @@ import React, { useRef, useEffect, useState } from 'react';
  * setText         – setter for the text in the parent state
  * onSave          – fn(newText)  called on Save or "Cmd+Enter"
  * onCancel        – fn()         called on Cancel click or "Escape"
+ * onDelete        – fn()         called on Delete button click
  * inputClass      – extra Tailwind classes for the textarea (optional)
  */
-const InlineEditor = ({ text, setText, onSave, onCancel, inputClass = '' }) => {
+const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '' }) => {
   const inputRef = useRef(null);
   useEffect(() => {
     inputRef.current?.focus();
@@ -99,6 +100,17 @@ const InlineEditor = ({ text, setText, onSave, onCancel, inputClass = '' }) => {
 
   return (
     <div className="w-full relative">
+      {/* Red X button for deleting the line */}
+      <button
+        onClick={onDelete}
+        className="absolute left-1 top-1/2 transform -translate-y-1/2 z-10 w-5 h-5 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors duration-150"
+        title="Delete this line"
+      >
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+      </button>
+      
       {pendingUrl && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-4 rounded shadow-lg w-80">
@@ -157,7 +169,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, inputClass = '' }) => {
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
-        className={`w-full border border-gray-300 px-2 py-1 rounded text-sm resize-none ${inputClass}`}
+        className={`w-full border border-gray-300 pl-8 pr-16 py-1 rounded text-sm resize-none ${inputClass}`}
         rows={1}
         style={{
           resize: 'none',
@@ -171,18 +183,18 @@ const InlineEditor = ({ text, setText, onSave, onCancel, inputClass = '' }) => {
       />
       
       {/* Floating buttons at the end of text */}
-      <div className="absolute right-0 top-0 flex items-center h-full pointer-events-none">
+      <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center pointer-events-none">
         <div className="flex items-center gap-1 pointer-events-auto">
           <button
             onClick={() => onSave(text)}
-            className="px-2 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-400 transition-colors duration-150 shadow-sm"
+            className="px-1.5 py-0.5 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-400 transition-colors duration-150 shadow-sm"
           >
             Save
           </button>
 
           <button
             onClick={onCancel}
-            className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150 shadow-sm"
+            className="px-1.5 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150 shadow-sm"
           >
             Cancel
           </button>

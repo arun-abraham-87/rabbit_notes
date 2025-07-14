@@ -16,6 +16,16 @@ const EventManager = ({ selectedDate, onClose }) => {
     return [];
   });
 
+  const [displayMode, setDisplayMode] = useState(() => {
+    try {
+      const stored = localStorage.getItem('eventDisplayMode');
+      return stored || 'days';
+    } catch (error) {
+      console.error('Error loading display mode:', error);
+      return 'days';
+    }
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
@@ -110,6 +120,19 @@ const EventManager = ({ selectedDate, onClose }) => {
     setPendingDeleteId(null);
   };
 
+  const toggleDisplayMode = () => {
+    const modes = ['days', 'weeks', 'months', 'years'];
+    const currentIndex = modes.indexOf(displayMode);
+    const newIndex = (currentIndex + 1) % modes.length;
+    const newMode = modes[newIndex];
+    setDisplayMode(newMode);
+    try {
+      localStorage.setItem('eventDisplayMode', newMode);
+    } catch (error) {
+      console.error('Error saving display mode:', error);
+    }
+  };
+
   const handleCloseModal = () => {
     setEventForm({ name: '', date: '', endDate: '', type: 'event', bgColor: '#ffffff' });
     setIsModalOpen(false);
@@ -167,12 +190,52 @@ const EventManager = ({ selectedDate, onClose }) => {
 
           const eventDate = new Date(ev.date + 'T' + (ev.start || '00:00'));
           const now = new Date();
-          const daysLeft = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+          const totalDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
           const age = getAgeInStringFmt(eventDate);
+          
+          let timeLeft, timeUnit, displayText;
+          switch (displayMode) {
+            case 'weeks':
+              const weeks = Math.floor(totalDays / 7);
+              const remainingDays = totalDays % 7;
+              timeLeft = weeks;
+              timeUnit = 'weeks';
+              displayText = weeks > 0 ? `${weeks} week${weeks !== 1 ? 's' : ''}${remainingDays > 0 ? ` ${remainingDays} day${remainingDays !== 1 ? 's' : ''}` : ''}` : `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+              break;
+            case 'months':
+              const months = Math.floor(totalDays / 30.44);
+              const remainingDaysInMonth = Math.floor(totalDays % 30.44);
+              timeLeft = months;
+              timeUnit = 'months';
+              displayText = months > 0 ? `${months} month${months !== 1 ? 's' : ''}${remainingDaysInMonth > 0 ? ` ${remainingDaysInMonth} day${remainingDaysInMonth !== 1 ? 's' : ''}` : ''}` : `${remainingDaysInMonth} day${remainingDaysInMonth !== 1 ? 's' : ''}`;
+              break;
+            case 'years':
+              const years = Math.floor(totalDays / 365.25);
+              const remainingDaysInYear = Math.floor(totalDays % 365.25);
+              const monthsInYear = Math.floor(remainingDaysInYear / 30.44);
+              timeLeft = years;
+              timeUnit = 'years';
+              if (years > 0) {
+                displayText = `${years} year${years !== 1 ? 's' : ''}${monthsInYear > 0 ? ` ${monthsInYear} month${monthsInYear !== 1 ? 's' : ''}` : ''}`;
+              } else {
+                displayText = monthsInYear > 0 ? `${monthsInYear} month${monthsInYear !== 1 ? 's' : ''}` : `${remainingDaysInYear} day${remainingDaysInYear !== 1 ? 's' : ''}`;
+              }
+              break;
+            default:
+              timeLeft = totalDays;
+              timeUnit = 'days';
+              displayText = `${totalDays} day${totalDays !== 1 ? 's' : ''}`;
+          }
+          
           return (
-            <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
-              <div className="text-2xl font-bold text-gray-600">{daysLeft > 0 ? daysLeft : 0}</div>
-              <div className="text-xs text-gray-400 -mt-1 mb-1">days</div>
+            <div 
+              key={ev.id} 
+              className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow" 
+              style={{ backgroundColor: ev.bgColor || '#ffffff' }}
+              onClick={toggleDisplayMode}
+              title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
+            >
+              <div className="text-2xl font-bold text-gray-600">{displayText}</div>
               <div className="font-medium text-gray-900 w-full break-words truncate" style={{ wordBreak: 'break-word' }}>{ev.name}</div>
               <div className="text-sm text-gray-500">{new Date(ev.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
               <div className="text-sm font-medium text-gray-600 -mt-1">
@@ -183,14 +246,20 @@ const EventManager = ({ selectedDate, onClose }) => {
               )}
               <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
                 <button 
-                  onClick={() => handleEditEvent(ev)} 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditEvent(ev);
+                  }} 
                   className="text-blue-500 hover:text-blue-700 p-1"
                   title="Edit"
                 >
                   <PencilIcon className="h-4 w-4" />
                 </button>
                 <button 
-                  onClick={() => handleDeleteEvent(ev.id)} 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteEvent(ev.id);
+                  }} 
                   className="text-red-500 hover:text-red-700 p-1"
                   title="Delete"
                 >

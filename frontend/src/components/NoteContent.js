@@ -191,6 +191,16 @@ export default function NoteContent({
         setEditedLineContent('');
     };
 
+    const handleDeleteLine = (idx) => {
+        const lines = note.content.split('\n');
+        lines.splice(idx, 1); // Remove the line at index idx
+        const updatedContent = lines.join('\n');
+        const reorderedContent = reorderMetaTags(updatedContent);
+        updateNote(note.id, reorderedContent);
+        setEditingLine({ noteId: null, lineIndex: null });
+        setEditedLineContent('');
+    };
+
     const renderInlineEditor = (idx, isH1, isH2) => (
         <InlineEditor
             key={idx}
@@ -198,6 +208,7 @@ export default function NoteContent({
             setText={setEditedLineContent}
             onSave={(newText) => handleSaveEdit(newText, idx, isH1, isH2)}
             onCancel={() => setEditingLine({ noteId: null, lineIndex: null })}
+            onDelete={() => handleDeleteLine(idx)}
         />
     );
 
@@ -326,7 +337,7 @@ export default function NoteContent({
                         rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                     } ${
                         isH1 ? 'text-2xl font-bold text-gray-900' :
-                        isH2 ? 'text-lg font-semibold text-purple-700' : ''
+                        isH2 ? 'text-lg font-semibold text-gray-900' : ''
                     }`}
             >
                 {editingLine?.noteId === note.id && editingLine?.lineIndex === idx ? (

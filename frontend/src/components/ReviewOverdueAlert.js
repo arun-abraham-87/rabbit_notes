@@ -3,6 +3,7 @@ import { updateNoteById } from '../utils/ApiUtils';
 import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon, PauseIcon, ChevronDownIcon, PlayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
+import AddLinkModal from './AddLinkModal';
 import { checkNeedsReview, formatTimeElapsed } from '../utils/watchlistUtils';
 import { Alerts } from './Alerts';
 import { addCurrentDateToLocalStorage, updateCadenceHoursMinutes, findwatchitemsOverdue, findDueRemindersAsNotes, parseReviewCadenceMeta, renderCadenceSummary, getNextReviewDate, getHumanFriendlyTimeDiff, handleCadenceChange } from '../utils/CadenceHelpUtils';
@@ -18,6 +19,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [snoozedNotes, setSnoozedNotes] = useState([]);
   const [isSnoozedExpanded, setIsSnoozedExpanded] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [showAddLinkModal, setShowAddLinkModal] = useState(false);
+  const [noteIdForLink, setNoteIdForLink] = useState(null);
 
   useEffect(() => {
     const overdueNotes = findwatchitemsOverdue(notes);
@@ -101,7 +104,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     }
   };
 
-  const formatContent = (content) => {
+  const formatContent = (content, note) => {
     // Split content into lines, trim each line, and filter out empty lines
     const lines = content
       .split('\n')
@@ -218,10 +221,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         {!hasAnyLinks && firstFiveLines.length > 0 && (
           <div className="mt-2">
             <button
-              onClick={() => {
-                // This button does nothing for now as requested
-                console.log('Add link button clicked');
-              }}
+              onClick={() => handleAddLink(note.id)}
               className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
             >
               Add link
@@ -343,6 +343,44 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     }
   };
 
+  const handleAddLink = (noteId) => {
+    setNoteIdForLink(noteId);
+    setShowAddLinkModal(true);
+  };
+
+  const handleSaveLink = async (noteId, linkUrl) => {
+    try {
+      const note = notes.find(n => n.id === noteId);
+      if (!note) return;
+
+      // Split content into lines
+      const lines = note.content.split('\n');
+      
+      // Find the index where meta tags start (lines that start with meta::)
+      const metaTagIndex = lines.findIndex(line => line.trim().startsWith('meta::'));
+      
+      // If no meta tags found, add the link at the end
+      const insertIndex = metaTagIndex !== -1 ? metaTagIndex : lines.length;
+      
+      // Insert the link before meta tags
+      lines.splice(insertIndex, 0, linkUrl);
+      
+      // Join lines back together
+      const updatedContent = lines.join('\n');
+      
+      // Update the note
+      await updateNoteById(noteId, updatedContent);
+      
+      // Update the notes state
+      setNotes(notes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
+      
+      Alerts.success('Link added successfully');
+    } catch (error) {
+      console.error('Error adding link:', error);
+      Alerts.error('Failed to add link');
+    }
+  };
+
   const getCadenceDisplay = (note) => {
     const meta = parseReviewCadenceMeta(note.content);
     if (!meta) {
@@ -455,7 +493,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                     {/* First Section - Description (50%) */}
                     <div className="col-span-2 flex flex-col">
                       <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
-                        {formatContent(note.content)}
+                        {formatContent(note.content, note)}
                       </h4>
                       <div className="flex flex-col gap-1 text-sm text-gray-500">
                         <div className="grid grid-cols-[120px_1fr] items-center">
@@ -654,7 +692,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                         <div className="flex items-center gap-2 mb-2">
                           <PauseIcon className="h-4 w-4 text-gray-400" />
                           <h4 className="text-base font-medium text-gray-900 break-words">
-                            {formatContent(note.content)}
+                            {formatContent(note.content, note)}
                           </h4>
                         </div>
                         <div className="flex flex-col gap-1 text-sm text-gray-500">
@@ -900,6 +938,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           </div>
         </div>
       )}
+
+      {/* Add Link Modal */}
+      <AddLinkModal
+        isOpen={showAddLinkModal}
+        onClose={() => setShowAddLinkModal(false)}
+        onSave={handleSaveLink}
+        noteId={noteIdForLink}
+      />
     </div>
   );
 };

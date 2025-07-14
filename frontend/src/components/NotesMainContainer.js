@@ -28,6 +28,7 @@ const NotesMainContainer = ({
     const [excludeEvents, setExcludeEvents] = useState(settings?.excludeEventsByDefault || false);
     const [excludeMeetings, setExcludeMeetings] = useState(settings?.excludeMeetingsByDefault || false);
     const [excludeEventNotes, setExcludeEventNotes] = useState(true); // Default to true to exclude event notes
+    const [excludeBackupNotes, setExcludeBackupNotes] = useState(true); // Default to true to exclude backup notes
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
     const searchInputRef = useRef(null);
@@ -79,11 +80,15 @@ const NotesMainContainer = ({
             if (excludeEventNotes && note.content && note.content.includes('meta::event::')) {
                 return false;
             }
+            // Exclude backup notes if the filter is enabled
+            if (excludeBackupNotes && note.content && note.content.includes('meta::notes_backup_date')) {
+                return false;
+            }
             return (!searchQuery && isSameAsTodaysDate(note.created_datetime)) || searchInNote(note, searchQuery);
         });
         setTotals({ totals: filtered.length });
         return filtered;
-    }, [allNotes, searchQuery, excludeEventNotes]);
+    }, [allNotes, searchQuery, excludeEventNotes, excludeBackupNotes]);
 
     const handleTagClick = (tag) => {
         setLocalSearchQuery(tag);
@@ -167,6 +172,7 @@ const NotesMainContainer = ({
                         onExcludeMeetingsChange={setExcludeMeetings}
                         onDeadlinePassedChange={setShowDeadlinePassedFilter}
                         onExcludeEventNotesChange={setExcludeEventNotes}
+                        onExcludeBackupNotesChange={setExcludeBackupNotes}
                     />
                     <NotesList
                         objList={mergedObjList}

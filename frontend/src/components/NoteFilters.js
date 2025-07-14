@@ -10,7 +10,8 @@ const NoteFilters = ({
   onExcludeEventsChange,
   onExcludeMeetingsChange,
   onDeadlinePassedChange,
-  onExcludeEventNotesChange
+  onExcludeEventNotesChange,
+  onExcludeBackupNotesChange
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
   const [showEventButtons, setShowEventButtons] = useState(false);
@@ -19,6 +20,7 @@ const NoteFilters = ({
   const [excludeEvents, setExcludeEvents] = useState(settings.excludeEventsByDefault || false);
   const [excludeMeetings, setExcludeMeetings] = useState(settings.excludeMeetingsByDefault || false);
   const [excludeEventNotes, setExcludeEventNotes] = useState(true); // Default to true to exclude event notes
+  const [excludeBackupNotes, setExcludeBackupNotes] = useState(true); // Default to true to exclude backup notes
   const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
 
   // Only set the initial state of checkboxes
@@ -52,6 +54,12 @@ const NoteFilters = ({
       onExcludeEventNotesChange(excludeEventNotes);
     }
   }, [excludeEventNotes, onExcludeEventNotesChange]);
+
+  useEffect(() => {
+    if (onExcludeBackupNotesChange) {
+      onExcludeBackupNotesChange(excludeBackupNotes);
+    }
+  }, [excludeBackupNotes, onExcludeBackupNotesChange]);
 
   const removeFilterFromQuery = (filterText) => {
     if (setSearchQuery) {
@@ -273,6 +281,10 @@ const NoteFilters = ({
     setExcludeEventNotes(checked);
   };
 
+  const handleExcludeBackupNotesChange = (checked) => {
+    setExcludeBackupNotes(checked);
+  };
+
   const handleClear = () => {
     setShowTodoButtons(false);
     setShowEventButtons(false);
@@ -283,6 +295,7 @@ const NoteFilters = ({
     setExcludeEvents(false);
     setExcludeMeetings(false);
     setExcludeEventNotes(true); // Reset to default (exclude event notes)
+    setExcludeBackupNotes(true); // Reset to default (exclude backup notes)
     setLines([{ id: 'line-0', text: '', isTitle: false }]);
     setSearchQuery('');
   };
@@ -445,15 +458,6 @@ const NoteFilters = ({
         <label className="flex items-center gap-2 text-xs text-gray-600">
           <input
             type="checkbox"
-            checked={excludeEvents}
-            onChange={(e) => handleExcludeEventsChange(e.target.checked)}
-            className="form-checkbox h-3 w-3 text-purple-600"
-          />
-          Exclude Events
-        </label>
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input
-            type="checkbox"
             checked={excludeMeetings}
             onChange={(e) => handleExcludeMeetingsChange(e.target.checked)}
             className="form-checkbox h-3 w-3 text-purple-600"
@@ -468,6 +472,15 @@ const NoteFilters = ({
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Event Notes
+        </label>
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input
+            type="checkbox"
+            checked={excludeBackupNotes}
+            onChange={(e) => handleExcludeBackupNotesChange(e.target.checked)}
+            className="form-checkbox h-3 w-3 text-purple-600"
+          />
+          Exclude Backup
         </label>
       </div>
 

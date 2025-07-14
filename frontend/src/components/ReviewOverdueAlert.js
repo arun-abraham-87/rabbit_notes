@@ -174,95 +174,70 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
     };
 
-    const firstLine = lines[0] || '';
-    const secondLine = lines[1] || '';
-    const remainingLines = lines.slice(2).filter(line => line.length > 0);
+    // Check if the note contains any links
+    const hasAnyLinks = lines.some(line => {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const markdownMatch = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+      return urlRegex.test(line) || markdownMatch;
+    });
 
-    // Check if first line is a URL
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const firstLineUrlMatch = firstLine.match(urlRegex);
-    const secondLineUrlMatch = secondLine.match(urlRegex);
+    // Always show first 5 lines, show more only if there are more than 5 lines
+    const firstFiveLines = lines.slice(0, 5);
+    const remainingLines = lines.slice(5);
+    const hasMoreLines = lines.length > 5;
 
-    // If first line is URL
-    if (firstLineUrlMatch) {
-      return (
-        <>
-          <div>{renderLine(firstLine, 'first')}</div>
-          {secondLine && <div className="mt-1 text-gray-600">{renderLine(secondLine, 'second')}</div>}
-          {remainingLines.length > 0 && (
-            <>
-              {expandedNotes[content] ? (
-                <div className="mt-2 text-gray-600">
-                  {remainingLines.map((line, index) => (
-                    <div key={index}>{renderLine(line, 'rem-' + index)}</div>
-                  ))}
-                </div>
-              ) : null}
-              <button
-                onClick={() => toggleNoteExpand(content)}
-                className="mt-1 text-sm text-blue-600 hover:text-blue-800"
-              >
-                {expandedNotes[content] ? 'Show less' : 'Show more'}
-              </button>
-            </>
-          )}
-        </>
-      );
-    }
-
-    // If second line is URL
-    if (secondLineUrlMatch) {
-      return (
-        <>
-          <div>{toSentenceCase(firstLine)}</div>
-          <div className="mt-1 text-gray-600">{renderLine(secondLine, 'second')}</div>
-          {remainingLines.length > 0 && (
-            <>
-              {expandedNotes[content] ? (
-                <div className="mt-2 text-gray-600">
-                  {remainingLines.map((line, index) => (
-                    <div key={index}>{renderLine(line, 'rem-' + index)}</div>
-                  ))}
-                </div>
-              ) : null}
-              <button
-                onClick={() => toggleNoteExpand(content)}
-                className="mt-1 text-sm text-blue-600 hover:text-blue-800"
-              >
-                {expandedNotes[content] ? 'Show less' : 'Show more'}
-              </button>
-            </>
-          )}
-        </>
-      );
-    }
-
-    // For regular content
-    if (lines.length > 1) {
-      return (
-        <>
-          <div>{toSentenceCase(firstLine)}</div>
-          {expandedNotes[content] ? (
-            <div className="mt-2 text-gray-600">
-              {lines.slice(1).map((line, index) => (
-                <div key={index}>{renderLine(line, 'rem-' + index)}</div>
-              ))}
-            </div>
-          ) : null}
-          {lines.length > 2 && (
-            <button
-              onClick={() => toggleNoteExpand(content)}
-              className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+    return (
+      <>
+        {/* Always show first 5 lines */}
+        {firstFiveLines.map((line, index) => {
+          const isFirstLine = index === 0;
+          const isSecondLine = index === 1;
+          
+          return (
+            <div 
+              key={index} 
+              className={isFirstLine ? '' : isSecondLine ? 'mt-1 text-gray-600' : 'mt-1 text-gray-600'}
             >
-              {expandedNotes[content] ? 'Show less' : 'Show more'}
+              {renderLine(line, 'line-' + index)}
+            </div>
+          );
+        })}
+        
+        {/* Add link button after first line if no links exist */}
+        {!hasAnyLinks && firstFiveLines.length > 0 && (
+          <div className="mt-2">
+            <button
+              onClick={() => {
+                // This button does nothing for now as requested
+                console.log('Add link button clicked');
+              }}
+              className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+            >
+              Add link
             </button>
-          )}
-        </>
-      );
-    }
-
-    // If only one line
-    return renderLine(firstLine, 'single');
+          </div>
+        )}
+        
+        {/* Show remaining lines if expanded */}
+        {hasMoreLines && expandedNotes[content] && (
+          <div className="mt-2 text-gray-600">
+            {remainingLines.map((line, index) => (
+              <div key={index}>{renderLine(line, 'rem-' + index)}</div>
+            ))}
+          </div>
+        )}
+        
+        {/* Show more/less button only if there are more than 5 lines */}
+        {hasMoreLines && (
+          <button
+            onClick={() => toggleNoteExpand(content)}
+            className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+          >
+            {expandedNotes[content] ? 'Show less' : `Show more (${remainingLines.length} more line${remainingLines.length > 1 ? 's' : ''})`}
+          </button>
+        )}
+      </>
+    );
   };
 
   const handleConvertToTodo = (note) => {

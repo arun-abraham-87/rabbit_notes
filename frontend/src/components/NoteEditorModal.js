@@ -11,6 +11,7 @@ import { useNoteEditor } from '../contexts/NoteEditorContext';
 import NoteEditor from './NoteEditor';
 import { getSettings, defaultSettings, loadTags } from '../utils/ApiUtils';
 import moment from 'moment';
+import { reorderMetaTags } from '../utils/TextUtils';
 
 const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
   const { isOpen, initialContent, mode, noteId, metaTags, closeEditor } = useNoteEditor();
@@ -167,7 +168,11 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
 
     console.log('finalContent', finalContent);
     console.log('customNote', customNote);
-    updateNote(noteId, finalContent)
+    
+    // Reorder meta tags to ensure they appear at the bottom
+    const reorderedContent = reorderMetaTags(finalContent);
+    updateNote(noteId, reorderedContent);
+    
     if (selectedMetaTags.some(tag => tag.startsWith('meta::watch'))) {
       addCadenceLineToNote(noteId, {}, true);
     }
@@ -182,7 +187,10 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
       ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
       : contentWithNewline;
     console.log('finalContent', finalContent);
-    addNote(finalContent);
+    
+    // Reorder meta tags to ensure they appear at the bottom
+    const reorderedContent = reorderMetaTags(finalContent);
+    addNote(reorderedContent);
     closeEditor();
   };
 

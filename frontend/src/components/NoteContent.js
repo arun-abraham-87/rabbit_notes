@@ -7,6 +7,7 @@ import {
 } from '../utils/TextUtils';
 import { renderLineWithClickableDates, getIndentFlags, getRawLines } from '../utils/genUtils';
 import AddTextModal from './AddTextModal';
+import { reorderMetaTags } from '../utils/TextUtils';
 
 /**
  * NoteContent - renders the body of a note, including headings, lines, inline editors,
@@ -66,9 +67,10 @@ export default function NoteContent({
             
             // Join lines back together
             const updatedContent = updatedLines.join('\n');
+            const reorderedContent = reorderMetaTags(updatedContent);
             
             // Update the note
-            await updateNote(noteId, updatedContent);
+            await updateNote(noteId, reorderedContent);
             
             setShowAddTextModal(false);
         } catch (error) {
@@ -111,7 +113,9 @@ export default function NoteContent({
         } else {
             lines[idx] = newText;
         }
-        updateNote(note.id, lines.join('\n'));
+        const updatedContent = lines.join('\n');
+        const reorderedContent = reorderMetaTags(updatedContent);
+        updateNote(note.id, reorderedContent);
         setEditingLine({ noteId: null, lineIndex: null });
     };
 

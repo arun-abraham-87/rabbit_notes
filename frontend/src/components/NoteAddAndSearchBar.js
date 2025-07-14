@@ -1,6 +1,7 @@
 import React, { useState, useRef ,useEffect} from "react";
 import Calendar from "react-calendar"; // Install via `npm install react-calendar`
 import "react-calendar/dist/Calendar.css";
+import { reorderMetaTags } from '../utils/TextUtils';
 
 const AddNoteBar = ({ addNote, searchQuery, setSearchQuery, objList }) => {
   const [content, setContent] = useState(searchQuery || "");
@@ -87,7 +88,8 @@ const AddNoteBar = ({ addNote, searchQuery, setSearchQuery, objList }) => {
 
   const handleAdd = () => {
     if (content.trim() === "") return; // Prevent adding an empty note
-    addNote(content, tags.split(",").map((tag) => tag.trim()));
+    const reorderedContent = reorderMetaTags(content);
+    addNote(reorderedContent, tags.split(",").map((tag) => tag.trim()));
     setContent("");
     setTags("");
   };

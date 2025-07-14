@@ -3,6 +3,7 @@ import { updateNoteById } from '../utils/ApiUtils';
 import NoteFilters from './NoteFilters';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { debounce } from 'lodash';
+import { reorderMetaTags } from '../utils/TextUtils';
 
 const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
@@ -548,15 +549,19 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     if (!merged || !merged.trim()) {
       return;
     }
+
+    // Reorder meta tags to ensure they appear at the bottom
+    const reorderedContent = reorderMetaTags(merged);
+    console.log('Reordered content:', reorderedContent);
    console.log('isAddMode', isAddMode);
     if (isAddMode) {
-        addNote(merged);
+        addNote(reorderedContent);
         setLines([{ id: 'line-0', text: '', isTitle: false }]);
         setUrlLabelSelection({ urlIndex: null, labelIndex: null });
         onCancel();
       //}
     } else {
-        onSave(merged);
+        onSave(reorderedContent);
     //  });
     }
   };
@@ -1178,10 +1183,11 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           <button
             onClick={() => {
               const merged = lines.map(line => line.text).join('\n');
-                addNote(merged);
-                setLines([{ id: 'line-0', text: '', isTitle: false }]);
-                setUrlLabelSelection({ urlIndex: null, labelIndex: null });
-                onCancel();
+              const reorderedContent = reorderMetaTags(merged);
+              addNote(reorderedContent);
+              setLines([{ id: 'line-0', text: '', isTitle: false }]);
+              setUrlLabelSelection({ urlIndex: null, labelIndex: null });
+              onCancel();
             }}
             className="px-3 py-1.5 rounded text-sm bg-gray-800 text-white hover:bg-gray-700 shadow-sm"
           >

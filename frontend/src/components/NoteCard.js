@@ -5,6 +5,7 @@ import NoteTagBar from './NoteTagBar';
 import NoteFooter from './NoteFooter';
 import LinkedNotesSection from './LinkedNotesSection';
 import InlineEditor from './InlineEditor';
+import { reorderMetaTags } from '../utils/TextUtils';
 
 const NoteCard = ({
   note,
@@ -102,7 +103,8 @@ const NoteCard = ({
               setText={setNewLineText}
               onSave={(text) => {
                 const updated = note.content.trimEnd() + '\n' + text;
-                updateNote(note.id, updated);
+                const reorderedContent = reorderMetaTags(updated);
+                updateNote(note.id, reorderedContent);
                 setAddingLineNoteId(null);
                 setNewLineText('');
               }}

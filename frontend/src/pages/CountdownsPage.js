@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import CountdownCard from '../components/CountdownCard';
 
-function parseEventNotes(notes) {
+function parseEventNotes(notes, excludePurchases = true) {
   // Example: meta::event::, event_description:..., event_date:YYYY-MM-DD
   return notes
     .filter(note => note.content.includes('meta::event::'))
@@ -10,9 +10,15 @@ function parseEventNotes(notes) {
       const title = lines.find(l => l.startsWith('event_description:'))?.replace('event_description:', '').trim() || 'Event';
       const dateStr = lines.find(l => l.startsWith('event_date:'))?.replace('event_date:', '').trim();
       const date = dateStr ? new Date(dateStr) : null;
-      return { id: note.id, title, date };
+      
+      // Extract tags to check for purchase
+      const eventTagsLine = lines.find(line => line.startsWith('event_tags:'));
+      const isPurchase = eventTagsLine ? eventTagsLine.toLowerCase().includes('purchase') : false;
+      
+      return { id: note.id, title, date, isPurchase };
     })
-    .filter(event => event.date);
+    .filter(event => event.date)
+    .filter(event => excludePurchases ? !event.isPurchase : true);
 }
 
 function groupEventsByMonth(events) {
@@ -69,7 +75,8 @@ function filterFutureGroups(grouped, showPast) {
 export default function CountdownsPage({ notes }) {
   const [useThisYear, setUseThisYear] = useState(false);
   const [showPast, setShowPast] = useState(false);
-  const events = parseEventNotes(notes);
+  const [excludePurchases, setExcludePurchases] = useState(true);
+  const events = parseEventNotes(notes, excludePurchases);
   const grouped = groupEventsByMonth(events);
   const filteredGrouped = filterFutureGroups(grouped, showPast);
 
@@ -89,6 +96,18 @@ export default function CountdownsPage({ notes }) {
         >
           {showPast ? 'Hide Past Dates' : 'Show Past Dates'}
         </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="excludePurchases"
+            checked={excludePurchases}
+            onChange={(e) => setExcludePurchases(e.target.checked)}
+            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+          />
+          <label htmlFor="excludePurchases" className="text-sm font-medium text-gray-700">
+            Exclude Purchases
+          </label>
+        </div>
       </div>
       <div className="space-y-10">
         {filteredGrouped.map(({ key, events }) => (

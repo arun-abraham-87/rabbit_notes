@@ -128,7 +128,7 @@ export default function CountdownCard({ title, date, useThisYear }) {
       displayText = `${totalDays} day${totalDays !== 1 ? 's' : ''}`;
   }
   
-  const isPast = diff < 0;
+  const isPast = totalDays < 0;
   const cardColor = 'bg-white';
   const borderColor = 'border border-gray-200';
   const textColor = 'text-gray-900';
@@ -147,6 +147,9 @@ export default function CountdownCard({ title, date, useThisYear }) {
       title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
     >
       <div className={`text-lg font-bold mb-2 ${textColor}`}>{title}</div>
+      <div className={`text-3xl font-bold text-center mb-2 ${textColor}`}>
+        {displayText}
+      </div>
       <div className="text-gray-700 text-center">
         {isPast
           ? `${displayText} since ${displayDate.toLocaleDateString('en-GB')}`

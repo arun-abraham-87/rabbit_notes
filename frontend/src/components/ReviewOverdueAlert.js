@@ -269,6 +269,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [showAddTextModal, setShowAddTextModal] = useState(false);
   const [noteIdForText, setNoteIdForText] = useState(null);
   const [urlForText, setUrlForText] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentCustomText, setCurrentCustomText] = useState('');
 
   useEffect(() => {
     const overdueNotes = findwatchitemsOverdue(notes);
@@ -394,19 +396,27 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         const url = markdownMatch[2];
         const linkIndicator = getLinkTypeIndicator(url);
         return (
-          <a
-            key={key}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline hover:text-blue-800"
-          >
-            {linkIndicator ? (
-              <>
-                {text} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
-              </>
-            ) : text}
-          </a>
+          <span key={key} className="inline-flex items-center gap-1">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              {linkIndicator ? (
+                <>
+                  {text} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+                </>
+              ) : text}
+            </a>
+            <button
+              onClick={() => handleEditText(note.id, url, text)}
+              className="px-1 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+              title="Edit link text"
+            >
+              Edit
+            </button>
+          </span>
         );
       }
       // Plain URL
@@ -671,6 +681,16 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const handleAddText = (noteId, url) => {
     setNoteIdForText(noteId);
     setUrlForText(url);
+    setIsEditing(false);
+    setCurrentCustomText('');
+    setShowAddTextModal(true);
+  };
+
+  const handleEditText = (noteId, url, customText) => {
+    setNoteIdForText(noteId);
+    setUrlForText(url);
+    setIsEditing(true);
+    setCurrentCustomText(customText);
     setShowAddTextModal(true);
   };
 
@@ -684,8 +704,17 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       
       // Find the line containing the URL and replace it with markdown format
       const updatedLines = lines.map(line => {
-        if (line.trim() === url) {
-          return `[${customText}](${url})`;
+        if (isEditing) {
+          // For editing, replace existing markdown link
+          const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`);
+          if (markdownRegex.test(line)) {
+            return line.replace(markdownRegex, `[${customText}](${url})`);
+          }
+        } else {
+          // For adding, replace plain URL with markdown format
+          if (line.trim() === url) {
+            return `[${customText}](${url})`;
+          }
         }
         return line;
       });
@@ -699,10 +728,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       // Update the notes state
       setNotes(notes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
       
-      Alerts.success('Custom text added successfully');
+      setShowAddTextModal(false);
+      setIsEditing(false);
+      setCurrentCustomText('');
+      
+      Alerts.success(isEditing ? 'Link text updated successfully' : 'Custom text added successfully');
     } catch (error) {
-      console.error('Error adding custom text:', error);
-      Alerts.error('Failed to add custom text');
+      console.error('Error saving custom text:', error);
+      Alerts.error('Failed to save custom text');
     }
   };
 
@@ -1310,6 +1343,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         onSave={handleSaveText}
         noteId={noteIdForText}
         url={urlForText}
+        isEditing={isEditing}
+        initialText={currentCustomText}
       />
     </div>
   );

@@ -42,6 +42,8 @@ export default function NoteContent({
 }) {
     const [showAddTextModal, setShowAddTextModal] = React.useState(false);
     const [urlForText, setUrlForText] = React.useState('');
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [currentCustomText, setCurrentCustomText] = React.useState('');
 
     if (!note) {
         return null;
@@ -49,6 +51,15 @@ export default function NoteContent({
 
     const handleAddText = (url) => {
         setUrlForText(url);
+        setIsEditing(false);
+        setCurrentCustomText('');
+        setShowAddTextModal(true);
+    };
+
+    const handleEditText = (url, customText) => {
+        setUrlForText(url);
+        setIsEditing(true);
+        setCurrentCustomText(customText);
         setShowAddTextModal(true);
     };
 
@@ -59,8 +70,17 @@ export default function NoteContent({
             
             // Find the line containing the URL and replace it with markdown format
             const updatedLines = lines.map(line => {
-                if (line.trim() === url) {
-                    return `[${customText}](${url})`;
+                if (isEditing) {
+                    // For editing, replace existing markdown link
+                    const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`);
+                    if (markdownRegex.test(line)) {
+                        return line.replace(markdownRegex, `[${customText}](${url})`);
+                    }
+                } else {
+                    // For adding, replace plain URL with markdown format
+                    if (line.trim() === url) {
+                        return `[${customText}](${url})`;
+                    }
                 }
                 return line;
             });
@@ -73,8 +93,10 @@ export default function NoteContent({
             await updateNote(noteId, reorderedContent);
             
             setShowAddTextModal(false);
+            setIsEditing(false);
+            setCurrentCustomText('');
         } catch (error) {
-            console.error('Error adding custom text:', error);
+            console.error('Error saving custom text:', error);
         }
     };
 
@@ -111,7 +133,8 @@ export default function NoteContent({
     const contentLines = parseNoteContent({ 
         content: rawLines.join('\n'), 
         searchTerm: searchQuery,
-        onAddText: handleAddText
+        onAddText: handleAddText,
+        onEditText: handleEditText
     });
     const indentFlags = getIndentFlags(contentLines);
 
@@ -344,6 +367,8 @@ export default function NoteContent({
                 onSave={handleSaveText}
                 noteId={note.id}
                 url={urlForText}
+                isEditing={isEditing}
+                initialText={currentCustomText}
             />
         </div>
     );

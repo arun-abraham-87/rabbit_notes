@@ -9,7 +9,7 @@ import LinkWithPreview from '../components/LinkWithPreview';
  * @param {string} params.searchTerm - Search term for highlighting
  * @returns {Array<React.ReactElement>} Array of formatted React elements
  */
-export const parseNoteContent = ({ content, searchTerm, onAddText }) => {
+export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText }) => {
   if (!content) return [];
 
   // Split into lines and process each line
@@ -46,7 +46,8 @@ export const parseNoteContent = ({ content, searchTerm, onAddText }) => {
       content: line,
       searchTerm,
       lineIndex,
-      onAddText
+      onAddText,
+      onEditText
     });
 
     // Step 2: Check if this is a heading by looking at the original line
@@ -351,7 +352,7 @@ const getLinkTypeIndicator = (url) => {
 /**
  * Parse inline formatting (bold, links, colors)
  */
-const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText }) => {
+const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEditText }) => {
   // First handle any heading markers by temporarily replacing them
   let processedContent = content;
   const trimmed = content.trim();
@@ -399,13 +400,22 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText }) =>
       const linkIndicator = getLinkTypeIndicator(url);
       
       let urlElement = (
-        <LinkWithPreview key={`url-${lineIndex}`} url={url}>
-          {linkIndicator ? (
-            <>
-              {customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
-            </>
-          ) : customText}
-        </LinkWithPreview>
+        <span key={`url-${lineIndex}`} className="inline-flex items-center gap-1">
+          <LinkWithPreview url={url}>
+            {linkIndicator ? (
+              <>
+                {customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+              </>
+            ) : customText}
+          </LinkWithPreview>
+          <button
+            onClick={() => onEditText && onEditText(url, customText)}
+            className="px-1 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+            title="Edit link text"
+          >
+            Edit
+          </button>
+        </span>
       );
       elements.push(urlElement);
     }

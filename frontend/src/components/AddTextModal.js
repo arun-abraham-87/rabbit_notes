@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
-const AddTextModal = ({ isOpen, onClose, onSave, noteId, url }) => {
-  const [customText, setCustomText] = useState('');
+const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false, initialText = '' }) => {
+  const [customText, setCustomText] = useState(initialText);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -18,13 +18,20 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url }) => {
     onClose();
   };
 
+  // Update customText when initialText changes (for editing mode)
+  React.useEffect(() => {
+    setCustomText(initialText);
+  }, [initialText]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-96 max-w-md mx-4">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Add Custom Text</h3>
+          <h3 className="text-lg font-medium text-gray-900">
+            {isEditing ? 'Edit Link Text' : 'Add Custom Text'}
+          </h3>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -71,7 +78,7 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url }) => {
               type="submit"
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              Add Text
+              {isEditing ? 'Update Text' : 'Add Text'}
             </button>
           </div>
         </form>

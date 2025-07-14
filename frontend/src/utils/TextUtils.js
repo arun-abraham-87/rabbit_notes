@@ -101,6 +101,254 @@ const extractUrlFromMarkdown = (text) => {
 };
 
 /**
+ * Detect the type of link and return an appropriate indicator
+ * @param {string} url - The URL to analyze
+ * @returns {string} - The indicator text for the link type
+ */
+const getLinkTypeIndicator = (url) => {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    const pathname = urlObj.pathname.toLowerCase();
+    
+    // Instagram
+    if (hostname.includes('instagram.com')) {
+      return '[Instagram]';
+    }
+    
+    // Google services
+    if (hostname.includes('docs.google.com')) {
+      if (pathname.includes('/document/')) {
+        return '[Google Docs]';
+      } else if (pathname.includes('/spreadsheets/')) {
+        return '[Google Sheets]';
+      } else if (pathname.includes('/presentation/')) {
+        return '[Google Slides]';
+      } else if (pathname.includes('/forms/')) {
+        return '[Google Forms]';
+      }
+    }
+    
+    // Gmail
+    if (hostname.includes('mail.google.com') || hostname.includes('gmail.com')) {
+      return '[Gmail]';
+    }
+    
+    // Slack
+    if (hostname.includes('slack.com')) {
+      return '[Slack]';
+    }
+    
+    // Discord
+    if (hostname.includes('discord.com') || hostname.includes('discord.gg')) {
+      return '[Discord]';
+    }
+    
+    // GitHub
+    if (hostname.includes('github.com')) {
+      return '[GitHub]';
+    }
+    
+    // YouTube
+    if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+      return '[YouTube]';
+    }
+    
+    // Twitter/X
+    if (hostname.includes('twitter.com') || hostname.includes('x.com')) {
+      return '[Twitter]';
+    }
+    
+    // LinkedIn
+    if (hostname.includes('linkedin.com')) {
+      return '[LinkedIn]';
+    }
+    
+    // Facebook
+    if (hostname.includes('facebook.com')) {
+      return '[Facebook]';
+    }
+    
+    // Reddit
+    if (hostname.includes('reddit.com')) {
+      return '[Reddit]';
+    }
+    
+    // Notion
+    if (hostname.includes('notion.so')) {
+      return '[Notion]';
+    }
+    
+    // Figma
+    if (hostname.includes('figma.com')) {
+      return '[Figma]';
+    }
+    
+    // Zoom
+    if (hostname.includes('zoom.us')) {
+      return '[Zoom]';
+    }
+    
+    // Teams
+    if (hostname.includes('teams.microsoft.com')) {
+      return '[Teams]';
+    }
+    
+    // Dropbox
+    if (hostname.includes('dropbox.com')) {
+      return '[Dropbox]';
+    }
+    
+    // Google Drive
+    if (hostname.includes('drive.google.com')) {
+      return '[Google Drive]';
+    }
+    
+    // OneDrive
+    if (hostname.includes('onedrive.live.com') || hostname.includes('1drv.ms')) {
+      return '[OneDrive]';
+    }
+    
+    // iCloud
+    if (hostname.includes('icloud.com')) {
+      return '[iCloud]';
+    }
+    
+    // Spotify
+    if (hostname.includes('open.spotify.com')) {
+      return '[Spotify]';
+    }
+    
+    // Apple Music
+    if (hostname.includes('music.apple.com')) {
+      return '[Apple Music]';
+    }
+    
+    // Netflix
+    if (hostname.includes('netflix.com')) {
+      return '[Netflix]';
+    }
+    
+    // Amazon
+    if (hostname.includes('amazon.com') || hostname.includes('amazon.co.uk') || hostname.includes('amazon.ca')) {
+      return '[Amazon]';
+    }
+    
+    // eBay
+    if (hostname.includes('ebay.com')) {
+      return '[eBay]';
+    }
+    
+    // PayPal
+    if (hostname.includes('paypal.com')) {
+      return '[PayPal]';
+    }
+    
+    // Stripe
+    if (hostname.includes('stripe.com')) {
+      return '[Stripe]';
+    }
+    
+    // Shopify
+    if (hostname.includes('shopify.com')) {
+      return '[Shopify]';
+    }
+    
+    // WordPress
+    if (hostname.includes('wordpress.com')) {
+      return '[WordPress]';
+    }
+    
+    // Medium
+    if (hostname.includes('medium.com')) {
+      return '[Medium]';
+    }
+    
+    // Substack
+    if (hostname.includes('substack.com')) {
+      return '[Substack]';
+    }
+    
+    // Calendly
+    if (hostname.includes('calendly.com')) {
+      return '[Calendly]';
+    }
+    
+    // Typeform
+    if (hostname.includes('typeform.com')) {
+      return '[Typeform]';
+    }
+    
+    // Airtable
+    if (hostname.includes('airtable.com')) {
+      return '[Airtable]';
+    }
+    
+    // Trello
+    if (hostname.includes('trello.com')) {
+      return '[Trello]';
+    }
+    
+    // Asana
+    if (hostname.includes('asana.com')) {
+      return '[Asana]';
+    }
+    
+    // Monday.com
+    if (hostname.includes('monday.com')) {
+      return '[Monday]';
+    }
+    
+    // Jira
+    if (hostname.includes('atlassian.net') || hostname.includes('jira.com')) {
+      return '[Jira]';
+    }
+    
+    // Confluence
+    if (hostname.includes('atlassian.net') && pathname.includes('/wiki/')) {
+      return '[Confluence]';
+    }
+    
+    // Linear
+    if (hostname.includes('linear.app')) {
+      return '[Linear]';
+    }
+    
+    // ClickUp
+    if (hostname.includes('clickup.com')) {
+      return '[ClickUp]';
+    }
+    
+    // Notion
+    if (hostname.includes('notion.so')) {
+      return '[Notion]';
+    }
+    
+    // Obsidian
+    if (hostname.includes('obsidian.md')) {
+      return '[Obsidian]';
+    }
+    
+    // Roam Research
+    if (hostname.includes('roamresearch.com')) {
+      return '[Roam]';
+    }
+    
+    // Logseq
+    if (hostname.includes('logseq.com')) {
+      return '[Logseq]';
+    }
+    
+    // Default for unknown services
+    return '';
+    
+  } catch (error) {
+    // If URL parsing fails, return empty string
+    return '';
+  }
+};
+
+/**
  * Parse inline formatting (bold, links, colors)
  */
 const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText }) => {
@@ -148,10 +396,11 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText }) =>
     if (textMatch && urlMatch) {
       const customText = textMatch[1];
       const url = urlMatch[1];
+      const linkIndicator = getLinkTypeIndicator(url);
       
       let urlElement = (
         <LinkWithPreview key={`url-${lineIndex}`} url={url}>
-          {customText}
+          {linkIndicator ? `${customText} ${linkIndicator}` : customText}
         </LinkWithPreview>
       );
       elements.push(urlElement);

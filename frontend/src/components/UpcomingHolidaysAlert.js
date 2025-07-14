@@ -9,7 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import EditEventModal from './EditEventModal';
 import { getAgeInStringFmt } from '../utils/DateUtils';
-import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
 
 const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
@@ -338,6 +338,7 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
         <EditEventModal
           isOpen={showEditEventModal}
           note={editingHoliday}
+          prePopulatedTags={!editingHoliday ? 'Holiday' : ''} // Pre-populate "Holiday" tag when adding new holiday
           onSave={async (content) => {
             if (editingHoliday) {
               // Update existing holiday
@@ -360,13 +361,20 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
               }
             } else {
               // Add new holiday
-              const newNote = {
-                id: Date.now().toString(),
-                content: content,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              };
-              setNotes([...notes, newNote]);
+              try {
+                const response = await createNote(content);
+                if (response && response.id) {
+                  const newNote = {
+                    id: response.id,
+                    content: content,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  };
+                  setNotes([...notes, newNote]);
+                }
+              } catch (error) {
+                console.error('Error creating holiday:', error);
+              }
             }
             setShowEditEventModal(false);
             setEditingHoliday(null);

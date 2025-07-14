@@ -424,6 +424,7 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
         <EditEventModal
           isOpen={showEditEventModal}
           note={editingDeadline}
+          isAddDeadline={!editingDeadline} // Pre-select deadline checkbox when adding new deadline
           onSave={async (content) => {
             if (editingDeadline) {
               try {

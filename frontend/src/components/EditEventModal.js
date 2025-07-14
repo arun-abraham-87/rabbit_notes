@@ -3,7 +3,7 @@ import { getAllUniqueTags } from '../utils/EventUtils';
 import { deleteNoteById } from '../utils/ApiUtils';
 import ConfirmationModal from './ConfirmationModal';
 
-const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes }) => {
+const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '' }) => {
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -12,17 +12,23 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState('daily');
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
-  const [tags, setTags] = useState('');
+  const [tags, setTags] = useState(prePopulatedTags);
   const [tagInput, setTagInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventNotes, setEventNotes] = useState('');
-  const [isDeadline, setIsDeadline] = useState(false);
+  const [isDeadline, setIsDeadline] = useState(isAddDeadline);
   const [price, setPrice] = useState('');
 
   const existingTags = getAllUniqueTags(notes || []);
 
   useEffect(() => {
-    if (!note || !note.content) return;
+    if (!note || !note.content) {
+      // If no note is provided (new event), set deadline based on isAddDeadline prop
+      setIsDeadline(isAddDeadline);
+      // Set pre-populated tags for new events
+      setTags(prePopulatedTags);
+      return;
+    }
     
     const lines = note.content.split('\n');
 

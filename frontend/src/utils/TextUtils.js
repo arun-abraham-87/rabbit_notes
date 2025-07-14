@@ -541,6 +541,14 @@ const highlightSearchTerm = (text, searchTerm, keyPrefix) => {
 };
 
 /**
+ * Convert text to sentence case (first letter capitalized, rest lowercase)
+ */
+const toSentenceCase = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+};
+
+/**
  * Wrap content in appropriate container based on line type
  */
 const wrapInContainer = ({ content, type, lineIndex }) => {
@@ -548,7 +556,7 @@ const wrapInContainer = ({ content, type, lineIndex }) => {
     case 'heading1':
       return (
         <h1 key={`h1-${lineIndex}`} className="text-2xl font-bold">
-          {content}
+          {toSentenceCase(content)}
         </h1>
       );
     case 'heading2':

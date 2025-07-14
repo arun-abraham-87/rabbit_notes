@@ -245,7 +245,16 @@ export default function NoteContent({
         const isListItem = lineContent.startsWith('- ');
         const isH1 = lineContent.startsWith('<h1>') && lineContent.endsWith('</h1>');
         const isH2 = lineContent.startsWith('<h2>') && lineContent.endsWith('</h2>');
-        const headingContent = isH1 || isH2 ? lineContent.slice(4, -5) : lineContent;
+        
+        // Convert to sentence case for H1 headings
+        const toSentenceCase = (text) => {
+            if (!text || typeof text !== 'string') return text;
+            return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+        };
+        
+        const headingContent = isH1 || isH2 ? 
+            (isH1 ? toSentenceCase(lineContent.slice(4, -5)) : lineContent.slice(4, -5)) : 
+            lineContent;
 
         if (lineContent.trim() === '') {
             return (

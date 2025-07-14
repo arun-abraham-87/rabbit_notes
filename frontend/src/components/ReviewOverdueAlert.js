@@ -365,9 +365,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       // Check for H1 headers (###text###)
       const h1Match = line.match(/^###(.+?)###$/);
       if (h1Match) {
+        const toSentenceCase = (text) => {
+          if (!text || typeof text !== 'string') return text;
+          return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+        };
+        
         return (
           <h1 key={key} className="text-2xl font-bold text-gray-900">
-            {h1Match[1]}
+            {toSentenceCase(h1Match[1])}
           </h1>
         );
       }

@@ -42,7 +42,6 @@ export const findDuplicatedUrls = (safeNotes) => {
     .filter(([, ids]) => ids.length > 1)
     .map(([url]) => url);
 
-
   const duplicatedUrlColors = {};
   const highlightPalette = ['#fde68a', '#a7f3d0', '#fbcfe8', '#bfdbfe', '#ddd6fe', '#fecaca'];
 
@@ -58,6 +57,8 @@ export const findDuplicatedUrls = (safeNotes) => {
   });
 
   const duplicateWithinNoteIds = new Set();
+  const urlShareSpaceNoteIds = new Set();
+
   safeNotes.forEach((note) => {
     const urls = note.content.match(urlPattern) || [];
     const seen = new Set();
@@ -68,9 +69,23 @@ export const findDuplicatedUrls = (safeNotes) => {
       }
       seen.add(url);
     }
+    // Check for URL and text sharing the same line
+    note.content.split('\n').forEach(line => {
+      const urlMatches = line.match(urlPattern) || [];
+      const textWithoutUrls = line.replace(urlPattern, '').trim();
+      if (urlMatches.length > 0 && textWithoutUrls.length > 0 && !line.trim().startsWith('meta::')) {
+        urlShareSpaceNoteIds.add(note.id);
+      }
+    });
   });
 
-  return { duplicateUrlNoteIds, duplicateWithinNoteIds, urlToNotesMap, duplicatedUrlColors };
+  return { 
+    duplicateUrlNoteIds, 
+    duplicateWithinNoteIds, 
+    urlShareSpaceNoteIds,
+    urlToNotesMap, 
+    duplicatedUrlColors 
+  };
 }
 
 

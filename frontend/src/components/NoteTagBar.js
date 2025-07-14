@@ -17,6 +17,7 @@ export default function NoteTagBar({
   updateNote,
   duplicateUrlNoteIds,
   duplicateWithinNoteIds,
+  urlShareSpaceNoteIds,
 }) {
   const metaTags = extractMetaTags(note.content);
 
@@ -223,6 +224,13 @@ export default function NoteTagBar({
             Remove Duplicates
           </button>
         </>
+      )}
+
+      {/* URL Share Space With Text Badge */}
+      {urlShareSpaceNoteIds && urlShareSpaceNoteIds.has(note.id) && (
+        <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200 text-xs font-medium">
+          URL share space with text, fix it
+        </div>
       )}
     </div>
   );

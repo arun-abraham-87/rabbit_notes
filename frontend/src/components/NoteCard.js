@@ -49,7 +49,8 @@ const NoteCard = ({
   setEditingMeetingNote,
   setEditingEventNote,
   duplicateUrlNoteIds,
-  duplicateWithinNoteIds
+  duplicateWithinNoteIds,
+  urlShareSpaceNoteIds
 }) => {
   return (
     <div
@@ -119,6 +120,7 @@ const NoteCard = ({
             updateNote={updateNote}
             duplicateUrlNoteIds={duplicateUrlNoteIds}
             duplicateWithinNoteIds={duplicateWithinNoteIds}
+            urlShareSpaceNoteIds={urlShareSpaceNoteIds}
           />
         </div>
 

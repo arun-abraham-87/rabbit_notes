@@ -250,6 +250,7 @@ const NotesList = ({
   const {
     duplicateUrlNoteIds,
     duplicateWithinNoteIds,
+    urlShareSpaceNoteIds,
     urlToNotesMap,
     duplicatedUrlColors,
   } = findDuplicatedUrls(safeNotes);
@@ -499,6 +500,7 @@ const NotesList = ({
                     setEditingEventNote={setEditingEventNote}
                     duplicateUrlNoteIds={duplicateUrlNoteIds}
                     duplicateWithinNoteIds={duplicateWithinNoteIds}
+                    urlShareSpaceNoteIds={urlShareSpaceNoteIds}
                   />
                 ))}
               </div>
@@ -563,6 +565,7 @@ const NotesList = ({
                     setEditingEventNote={setEditingEventNote}
                     duplicateUrlNoteIds={duplicateUrlNoteIds}
                     duplicateWithinNoteIds={duplicateWithinNoteIds}
+                    urlShareSpaceNoteIds={urlShareSpaceNoteIds}
                   />
                 ))}
               </div>
@@ -628,6 +631,7 @@ const NotesList = ({
                   setEditingEventNote={setEditingEventNote}
                   duplicateUrlNoteIds={duplicateUrlNoteIds}
                   duplicateWithinNoteIds={duplicateWithinNoteIds}
+                  urlShareSpaceNoteIds={urlShareSpaceNoteIds}
                 />
               ))}
             </div>

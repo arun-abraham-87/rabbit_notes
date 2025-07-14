@@ -27,6 +27,7 @@ const NotesMainContainer = ({
     const [currentDate, setCurrentDate] = useState(null);
     const [excludeEvents, setExcludeEvents] = useState(settings?.excludeEventsByDefault || false);
     const [excludeMeetings, setExcludeMeetings] = useState(settings?.excludeMeetingsByDefault || false);
+    const [excludeEventNotes, setExcludeEventNotes] = useState(true); // Default to true to exclude event notes
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
     const searchInputRef = useRef(null);
@@ -74,11 +75,15 @@ const NotesMainContainer = ({
     // Filter notes for display based on selected date and exclude states
     const filteredNotes = useMemo(() => {
         const filtered = allNotes.filter(note => {
+            // Exclude event notes if the filter is enabled
+            if (excludeEventNotes && note.content && note.content.includes('meta::event::')) {
+                return false;
+            }
             return (!searchQuery && isSameAsTodaysDate(note.created_datetime)) || searchInNote(note, searchQuery);
         });
         setTotals({ totals: filtered.length });
         return filtered;
-    }, [allNotes, searchQuery]);
+    }, [allNotes, searchQuery, excludeEventNotes]);
 
     const handleTagClick = (tag) => {
         setLocalSearchQuery(tag);
@@ -151,6 +156,18 @@ const NotesMainContainer = ({
                     {/* <InfoPanel
                         totals={totals}
                     /> */}
+                    <NoteFilters
+                        setLines={() => {}}
+                        setShowTodoSubButtons={() => {}}
+                        setActivePriority={() => {}}
+                        setSearchQuery={setSearchQuery}
+                        searchQuery={searchQuery}
+                        settings={settings}
+                        onExcludeEventsChange={setExcludeEvents}
+                        onExcludeMeetingsChange={setExcludeMeetings}
+                        onDeadlinePassedChange={setShowDeadlinePassedFilter}
+                        onExcludeEventNotesChange={setExcludeEventNotes}
+                    />
                     <NotesList
                         objList={mergedObjList}
                         allNotes={filteredNotes}

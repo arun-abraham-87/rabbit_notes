@@ -9,7 +9,8 @@ const NoteFilters = ({
   settings = {},
   onExcludeEventsChange,
   onExcludeMeetingsChange,
-  onDeadlinePassedChange
+  onDeadlinePassedChange,
+  onExcludeEventNotesChange
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
   const [showEventButtons, setShowEventButtons] = useState(false);
@@ -17,6 +18,7 @@ const NoteFilters = ({
   const [activePriorityFilter, setActivePriorityFilter] = useState('');
   const [excludeEvents, setExcludeEvents] = useState(settings.excludeEventsByDefault || false);
   const [excludeMeetings, setExcludeMeetings] = useState(settings.excludeMeetingsByDefault || false);
+  const [excludeEventNotes, setExcludeEventNotes] = useState(true); // Default to true to exclude event notes
   const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
 
   // Only set the initial state of checkboxes
@@ -44,6 +46,12 @@ const NoteFilters = ({
       onDeadlinePassedChange(showDeadlinePassedFilter);
     }
   }, [showDeadlinePassedFilter, onDeadlinePassedChange]);
+
+  useEffect(() => {
+    if (onExcludeEventNotesChange) {
+      onExcludeEventNotesChange(excludeEventNotes);
+    }
+  }, [excludeEventNotes, onExcludeEventNotesChange]);
 
   const removeFilterFromQuery = (filterText) => {
     if (setSearchQuery) {
@@ -261,6 +269,10 @@ const NoteFilters = ({
     }
   };
 
+  const handleExcludeEventNotesChange = (checked) => {
+    setExcludeEventNotes(checked);
+  };
+
   const handleClear = () => {
     setShowTodoButtons(false);
     setShowEventButtons(false);
@@ -270,6 +282,7 @@ const NoteFilters = ({
     setActivePriority('');
     setExcludeEvents(false);
     setExcludeMeetings(false);
+    setExcludeEventNotes(true); // Reset to default (exclude event notes)
     setLines([{ id: 'line-0', text: '', isTitle: false }]);
     setSearchQuery('');
   };
@@ -446,6 +459,15 @@ const NoteFilters = ({
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Meetings
+        </label>
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input
+            type="checkbox"
+            checked={excludeEventNotes}
+            onChange={(e) => handleExcludeEventNotesChange(e.target.checked)}
+            className="form-checkbox h-3 w-3 text-purple-600"
+          />
+          Exclude Event Notes
         </label>
       </div>
 

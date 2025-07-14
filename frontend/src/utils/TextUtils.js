@@ -400,7 +400,11 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText }) =>
       
       let urlElement = (
         <LinkWithPreview key={`url-${lineIndex}`} url={url}>
-          {linkIndicator ? `${customText} ${linkIndicator}` : customText}
+          {linkIndicator ? (
+            <>
+              {customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+            </>
+          ) : customText}
         </LinkWithPreview>
       );
       elements.push(urlElement);

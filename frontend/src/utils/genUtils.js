@@ -374,6 +374,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
       // bare URL
       try {
         const host = new URL(match[6]).hostname.replace(/^www\./, '');
+        const linkIndicator = getLinkTypeIndicator(match[6]);
         elements.push(
           <a
             key={`url-${idx}-${match.index}`}
@@ -382,7 +383,11 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
             rel="noopener noreferrer"
             className="text-blue-600 underline"
           >
-            {host}
+            {linkIndicator ? (
+              <>
+                {host} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+              </>
+            ) : host}
           </a>
         );
       } catch {

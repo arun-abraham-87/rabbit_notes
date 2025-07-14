@@ -204,3 +204,53 @@ export const extractMetaTags = (content) => {
 
   return metaTags;
 }; 
+
+/**
+ * Reorders meta tags in note content to ensure they appear at the bottom in a consistent order.
+ * @param {string} content - The note content to process
+ * @returns {string} - The content with meta tags reordered to the bottom
+ */
+export const reorderMetaTags = (content) => {
+  if (!content) return content;
+
+  const lines = content.split('\n');
+  const metaLines = [];
+  const nonMetaLines = [];
+
+  // Separate meta tags from regular content
+  lines.forEach(line => {
+    const trimmedLine = line.trim();
+    if (trimmedLine.startsWith('meta::') || trimmedLine.startsWith('meta_detail::')) {
+      metaLines.push(line);
+    } else {
+      nonMetaLines.push(line);
+    }
+  });
+
+  // Sort meta tags in a consistent order
+  const metaOrder = [
+    'meta::abbreviation',
+    'meta::bookmark',
+    'meta::quick_links',
+    'meta::pin',
+    'meta::event',
+    'meta::meeting',
+    'meta::todo',
+    'meta::end_date',
+    'meta_detail::dismissed'
+  ];
+
+  metaLines.sort((a, b) => {
+    const aPrefix = metaOrder.find(prefix => a.trim().startsWith(prefix)) || a;
+    const bPrefix = metaOrder.find(prefix => b.trim().startsWith(prefix)) || b;
+    return metaOrder.indexOf(aPrefix) - metaOrder.indexOf(bPrefix);
+  });
+
+  // Remove empty lines at the end of non-meta content
+  while (nonMetaLines.length > 0 && !nonMetaLines[nonMetaLines.length - 1].trim()) {
+    nonMetaLines.pop();
+  }
+
+  // Combine content with meta tags at the bottom
+  return [...nonMetaLines, '', ...metaLines].join('\n').trim();
+}; 

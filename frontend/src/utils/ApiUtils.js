@@ -1,4 +1,4 @@
-import { reorderMetaTags } from './TextUtils';
+import { reorderMetaTags } from './MetaTagUtils';
 import JSZip from 'jszip';
 
 // API Base URL

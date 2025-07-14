@@ -7,7 +7,7 @@ import {
 } from '../utils/TextUtils';
 import { renderLineWithClickableDates, getIndentFlags, getRawLines } from '../utils/genUtils';
 import AddTextModal from './AddTextModal';
-import { reorderMetaTags } from '../utils/TextUtils';
+import { reorderMetaTags } from '../utils/MetaTagUtils';
 
 /**
  * NoteContent - renders the body of a note, including headings, lines, inline editors,

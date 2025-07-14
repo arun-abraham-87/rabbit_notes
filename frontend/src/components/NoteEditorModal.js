@@ -11,7 +11,7 @@ import { useNoteEditor } from '../contexts/NoteEditorContext';
 import NoteEditor from './NoteEditor';
 import { getSettings, defaultSettings, loadTags } from '../utils/ApiUtils';
 import moment from 'moment';
-import { reorderMetaTags } from '../utils/TextUtils';
+import { reorderMetaTags } from '../utils/MetaTagUtils';
 
 const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
   const { isOpen, initialContent, mode, noteId, metaTags, closeEditor } = useNoteEditor();

@@ -1,7 +1,7 @@
 import React, { useState, useRef ,useEffect} from "react";
 import Calendar from "react-calendar"; // Install via `npm install react-calendar`
 import "react-calendar/dist/Calendar.css";
-import { reorderMetaTags } from '../utils/TextUtils';
+import { reorderMetaTags } from '../utils/MetaTagUtils';
 
 const AddNoteBar = ({ addNote, searchQuery, setSearchQuery, objList }) => {
   const [content, setContent] = useState(searchQuery || "");

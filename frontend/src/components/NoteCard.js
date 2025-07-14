@@ -5,7 +5,7 @@ import NoteTagBar from './NoteTagBar';
 import NoteFooter from './NoteFooter';
 import LinkedNotesSection from './LinkedNotesSection';
 import InlineEditor from './InlineEditor';
-import { reorderMetaTags } from '../utils/TextUtils';
+import { reorderMetaTags } from '../utils/MetaTagUtils';
 
 const NoteCard = ({
   note,

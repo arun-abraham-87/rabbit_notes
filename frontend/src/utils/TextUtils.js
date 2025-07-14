@@ -389,102 +389,140 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
       </span>
     );
     elements.push(urlElement);
-  } else if ((processedContent.includes("http:") || processedContent.includes("https:")) && processedContent.startsWith("[")) {
-    // Extract the custom text and URL
-    const textMatch = processedContent.match(/\[([^\]]+)\]/);
-    const urlMatch = processedContent.match(/\((https?:\/\/[^\s)]+)\)/);
-    
-    if (textMatch && urlMatch) {
-      const customText = textMatch[1];
-      const url = urlMatch[1];
-      const linkIndicator = getLinkTypeIndicator(url);
-      
-      let urlElement = (
-        <span key={`url-${lineIndex}`} className="inline-flex items-center gap-1">
-          <LinkWithPreview url={url}>
-            {linkIndicator ? (
-              <>
-                {customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
-              </>
-            ) : customText}
-          </LinkWithPreview>
-          <button
-            onClick={() => onEditText && onEditText(url, customText)}
-            className="px-1 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
-            title="Edit link text"
-          >
-            Edit
-          </button>
-        </span>
-      );
-      elements.push(urlElement);
-    }
   } else {
-    for (let i = 0; i < processedContent.length; i++) {
-      const char = processedContent[i];
-      const nextChar = processedContent[i + 1];
-
-      // Handle bold markers
-      if (char === '*' && nextChar === '*') {
-        if (currentText) {
-          elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
-          currentText = '';
-        }
-        isBold = !isBold;
-        i++; // Skip next asterisk
-        continue;
-      }
-
-      // Handle italic markers
-      if (char === '*' && !isBold) {
-        if (currentText) {
-          elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
-          currentText = '';
-        }
-        isItalic = !isItalic;
-        continue;
-      }
-
-      // Handle URLs
-      if (char === 'h' && processedContent.slice(i, i + 7) === 'http://' ||
-        char === 'h' && processedContent.slice(i, i + 8) === 'https://') {
-        if (currentText) {
-          elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
-          currentText = '';
-        }
-
-        // Find the end of the URL (space or end of string)
-        let urlEnd = i;
-        while (urlEnd < processedContent.length && processedContent[urlEnd] !== ' ') {
-          urlEnd++;
-        }
-        const url = processedContent.slice(i, urlEnd);
-        const hostname = new URL(url).hostname;
+    // Process mixed content with markdown links
+    let processedText = processedContent;
+    
+    // Find all markdown links in the content
+    const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+    let match;
+    let lastIndex = 0;
+    const linkMatches = [];
+    
+    // Collect all markdown link matches
+    while ((match = markdownLinkRegex.exec(processedText)) !== null) {
+      linkMatches.push({
+        fullMatch: match[0],
+        customText: match[1],
+        url: match[2],
+        startIndex: match.index,
+        endIndex: match.index + match[0].length
+      });
+    }
+    
+    // If we found markdown links, process them
+    if (linkMatches.length > 0) {
+      for (let i = 0; i < linkMatches.length; i++) {
+        const linkMatch = linkMatches[i];
         
-        elements.push(
+        // Add text before the link
+        if (linkMatch.startIndex > lastIndex) {
+          const textBefore = processedText.slice(lastIndex, linkMatch.startIndex);
+          if (textBefore) {
+            elements.push(...highlightSearchTerm(textBefore, searchTerm, `text-${lineIndex}-before-${i}`));
+          }
+        }
+        
+        // Add the markdown link
+        const linkIndicator = getLinkTypeIndicator(linkMatch.url);
+        const linkElement = (
           <span key={`url-${lineIndex}-${i}`} className="inline-flex items-center gap-1">
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
-            >
-              {hostname}
-            </a>
+            <LinkWithPreview url={linkMatch.url}>
+              {linkIndicator ? (
+                <>
+                  {linkMatch.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+                </>
+              ) : linkMatch.customText}
+            </LinkWithPreview>
             <button
-              onClick={() => onAddText && onAddText(url)}
-              className="px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150"
-              title="Add custom text for this link"
+              onClick={() => onEditText && onEditText(linkMatch.url, linkMatch.customText)}
+              className="px-1 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+              title="Edit link text"
             >
-              Add text
+              Edit
             </button>
           </span>
         );
-        i = urlEnd - 1;
-        continue;
+        elements.push(linkElement);
+        
+        lastIndex = linkMatch.endIndex;
       }
+      
+      // Add any remaining text after the last link
+      if (lastIndex < processedText.length) {
+        const textAfter = processedText.slice(lastIndex);
+        if (textAfter) {
+          elements.push(...highlightSearchTerm(textAfter, searchTerm, `text-${lineIndex}-after`));
+        }
+      }
+    } else {
+      // No markdown links found, process character by character
+      for (let i = 0; i < processedContent.length; i++) {
+        const char = processedContent[i];
+        const nextChar = processedContent[i + 1];
 
-      currentText += char;
+        // Handle bold markers
+        if (char === '*' && nextChar === '*') {
+          if (currentText) {
+            elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
+            currentText = '';
+          }
+          isBold = !isBold;
+          i++; // Skip next asterisk
+          continue;
+        }
+
+        // Handle italic markers
+        if (char === '*' && !isBold) {
+          if (currentText) {
+            elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
+            currentText = '';
+          }
+          isItalic = !isItalic;
+          continue;
+        }
+
+        // Handle URLs
+        if (char === 'h' && processedContent.slice(i, i + 7) === 'http://' ||
+          char === 'h' && processedContent.slice(i, i + 8) === 'https://') {
+          if (currentText) {
+            elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
+            currentText = '';
+          }
+
+          // Find the end of the URL (space or end of string)
+          let urlEnd = i;
+          while (urlEnd < processedContent.length && processedContent[urlEnd] !== ' ') {
+            urlEnd++;
+          }
+          const url = processedContent.slice(i, urlEnd);
+          const hostname = new URL(url).hostname;
+          
+          elements.push(
+            <span key={`url-${lineIndex}-${i}`} className="inline-flex items-center gap-1">
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-800"
+              >
+                {hostname}
+              </a>
+              <button
+                onClick={() => onAddText && onAddText(url)}
+                className="px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150"
+                title="Add custom text for this link"
+              >
+                Add text
+              </button>
+            </span>
+          );
+          i = urlEnd - 1;
+          continue;
+        }
+
+        currentText += char;
+      }
     }
   }
 
@@ -587,55 +625,7 @@ const wrapInContainer = ({ content, type, lineIndex }) => {
   }
 };
 
-/**
- * Reorders meta tags in note content to ensure they appear at the bottom in a consistent order.
- * @param {string} content - The note content to process
- * @returns {string} - The content with meta tags reordered to the bottom
- */
-export const reorderMetaTags = (content) => {
-  if (!content) return content;
 
-  const lines = content.split('\n');
-  const metaLines = [];
-  const nonMetaLines = [];
-
-  // Separate meta tags from regular content
-  lines.forEach(line => {
-    const trimmedLine = line.trim();
-    if (trimmedLine.startsWith('meta::') || trimmedLine.startsWith('meta_detail::')) {
-      metaLines.push(line);
-    } else {
-      nonMetaLines.push(line);
-    }
-  });
-
-  // Sort meta tags in a consistent order
-  const metaOrder = [
-    'meta::abbreviation',
-    'meta::bookmark',
-    'meta::quick_links',
-    'meta::pin',
-    'meta::event',
-    'meta::meeting',
-    'meta::todo',
-    'meta::end_date',
-    'meta_detail::dismissed'
-  ];
-
-  metaLines.sort((a, b) => {
-    const aPrefix = metaOrder.find(prefix => a.trim().startsWith(prefix)) || a;
-    const bPrefix = metaOrder.find(prefix => b.trim().startsWith(prefix)) || b;
-    return metaOrder.indexOf(aPrefix) - metaOrder.indexOf(bPrefix);
-  });
-
-  // Remove empty lines at the end of non-meta content
-  while (nonMetaLines.length > 0 && !nonMetaLines[nonMetaLines.length - 1].trim()) {
-    nonMetaLines.pop();
-  }
-
-  // Combine content with meta tags at the bottom
-  return [...nonMetaLines, '', ...metaLines].join('\n').trim();
-};
 
 // Export for use in tests
 export const __testing__ = {

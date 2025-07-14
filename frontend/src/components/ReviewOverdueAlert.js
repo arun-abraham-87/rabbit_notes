@@ -4,6 +4,7 @@ import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon,
 import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
 import AddLinkModal from './AddLinkModal';
+import AddTextModal from './AddTextModal';
 import { checkNeedsReview, formatTimeElapsed } from '../utils/watchlistUtils';
 import { Alerts } from './Alerts';
 import { addCurrentDateToLocalStorage, updateCadenceHoursMinutes, findwatchitemsOverdue, findDueRemindersAsNotes, parseReviewCadenceMeta, renderCadenceSummary, getNextReviewDate, getHumanFriendlyTimeDiff, handleCadenceChange } from '../utils/CadenceHelpUtils';
@@ -21,6 +22,9 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [searchText, setSearchText] = useState('');
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [noteIdForLink, setNoteIdForLink] = useState(null);
+  const [showAddTextModal, setShowAddTextModal] = useState(false);
+  const [noteIdForText, setNoteIdForText] = useState(null);
+  const [urlForText, setUrlForText] = useState('');
 
   useEffect(() => {
     const overdueNotes = findwatchitemsOverdue(notes);
@@ -141,7 +145,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         urlMatch.forEach((url, i) => {
           const index = line.indexOf(url, lastIndex);
           if (index > lastIndex) {
-            parts.push(line.slice(lastIndex, index));
+            parts.push(toSentenceCase(line.slice(lastIndex, index)));
           }
           const host = url.replace(/^https?:\/\//, '').split('/')[0];
           parts.push(
@@ -155,10 +159,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
                 {host}
               </a>
               <button
-                onClick={() => {
-                  // This button does nothing for now as requested
-                  console.log('Add text button clicked for URL:', url);
-                }}
+                onClick={() => handleAddText(note.id, url)}
                 className="px-1 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
                 title="Add custom text for this link"
               >
@@ -169,12 +170,12 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           lastIndex = index + url.length;
         });
         if (lastIndex < line.length) {
-          parts.push(line.slice(lastIndex));
+          parts.push(toSentenceCase(line.slice(lastIndex)));
         }
         return <span key={key}>{parts}</span>;
       }
-      // No URL, render as plain text
-      return <span key={key}>{line}</span>;
+      // No URL, render as plain text with sentence case
+      return <span key={key}>{toSentenceCase(line)}</span>;
     };
 
     // Function to convert text to sentence case
@@ -378,6 +379,44 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     } catch (error) {
       console.error('Error adding link:', error);
       Alerts.error('Failed to add link');
+    }
+  };
+
+  const handleAddText = (noteId, url) => {
+    setNoteIdForText(noteId);
+    setUrlForText(url);
+    setShowAddTextModal(true);
+  };
+
+  const handleSaveText = async (noteId, url, customText) => {
+    try {
+      const note = notes.find(n => n.id === noteId);
+      if (!note) return;
+
+      // Split content into lines
+      const lines = note.content.split('\n');
+      
+      // Find the line containing the URL and replace it with markdown format
+      const updatedLines = lines.map(line => {
+        if (line.trim() === url) {
+          return `[${customText}](${url})`;
+        }
+        return line;
+      });
+      
+      // Join lines back together
+      const updatedContent = updatedLines.join('\n');
+      
+      // Update the note
+      await updateNoteById(noteId, updatedContent);
+      
+      // Update the notes state
+      setNotes(notes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
+      
+      Alerts.success('Custom text added successfully');
+    } catch (error) {
+      console.error('Error adding custom text:', error);
+      Alerts.error('Failed to add custom text');
     }
   };
 
@@ -945,6 +984,15 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         onClose={() => setShowAddLinkModal(false)}
         onSave={handleSaveLink}
         noteId={noteIdForLink}
+      />
+
+      {/* Add Text Modal */}
+      <AddTextModal
+        isOpen={showAddTextModal}
+        onClose={() => setShowAddTextModal(false)}
+        onSave={handleSaveText}
+        noteId={noteIdForText}
+        url={urlForText}
       />
     </div>
   );

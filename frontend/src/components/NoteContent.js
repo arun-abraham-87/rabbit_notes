@@ -139,10 +139,7 @@ export default function NoteContent({
     const indentFlags = getIndentFlags(contentLines);
 
     if (editingLine?.noteId === note.id) {
-        console.log('editing line', editingLine);
-        console.log('note id:', note.id);
-        console.log('editingLine type:', typeof editingLine.noteId, typeof editingLine.lineIndex);
-        console.log('note.id type:', typeof note.id);
+        // Line is being edited
     }
     
     if (!Array.isArray(contentLines) || contentLines.length === 0) {

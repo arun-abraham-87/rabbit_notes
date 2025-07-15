@@ -200,11 +200,49 @@ export default function RightClickMenu({
           className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
           onClick={() => {
             const arr = note.content.split('\n');
-            const sentLine = arr[lineIndex].replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => {
+            let lineText = arr[lineIndex];
+            console.log('Original lineText:', lineText);
+            
+            // Handle H1 and H2 markers first
+            let isH1 = false;
+            let isH2 = false;
+            let cleanText = lineText;
+            
+            if (lineText.startsWith('###') && lineText.endsWith('###')) {
+              isH1 = true;
+              cleanText = lineText.slice(3, -3);
+            } else if (lineText.startsWith('##') && lineText.endsWith('##')) {
+              isH2 = true;
+              cleanText = lineText.slice(2, -2);
+            }
+            
+            // Handle markdown links
+            cleanText = cleanText.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => {
               const sent = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
               return `[${sent}](${url})`;
-            }).split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-            arr[lineIndex] = sentLine;
+            });
+            
+            // Split into words and capitalize each word
+            const words = cleanText.split(' ');
+            console.log('Words array:', words);
+            const capitalizedWords = words.map((word, index) => {
+              if (word.length === 0) return word;
+              const capitalized = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+              console.log(`Word ${index}: "${word}" -> "${capitalized}"`);
+              return capitalized;
+            });
+            
+            let result = capitalizedWords.join(' ');
+            console.log('Final result:', result);
+            
+            // Add back the markers if they were present
+            if (isH1) {
+              result = `###${result}###`;
+            } else if (isH2) {
+              result = `##${result}##`;
+            }
+            
+            arr[lineIndex] = result;
             updateNote(noteId, arr.join('\n'));
           }}
         >

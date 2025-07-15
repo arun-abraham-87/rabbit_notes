@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import NoteEditor from './NoteEditor';
 import InlineEditor from './InlineEditor';
 import { PlusIcon } from '@heroicons/react/24/solid';
@@ -40,6 +40,8 @@ export default function NoteContent({
     compressedView = false,
     updateNote
 }) {
+    const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
+    const [selectedRows, setSelectedRows] = useState(new Set());
     const [showAddTextModal, setShowAddTextModal] = React.useState(false);
     const [urlForText, setUrlForText] = React.useState('');
     const [isEditing, setIsEditing] = React.useState(false);
@@ -236,6 +238,39 @@ export default function NoteContent({
         }
     };
 
+    const toggleBulkDeleteMode = () => {
+        setBulkDeleteMode(!bulkDeleteMode);
+        setSelectedRows(new Set());
+    };
+
+    const toggleRowSelection = (idx) => {
+        const newSelectedRows = new Set(selectedRows);
+        if (newSelectedRows.has(idx)) {
+            newSelectedRows.delete(idx);
+        } else {
+            newSelectedRows.add(idx);
+        }
+        setSelectedRows(newSelectedRows);
+    };
+
+    const handleBulkDelete = () => {
+        const lines = note.content.split('\n');
+        const selectedIndices = Array.from(selectedRows).sort((a, b) => b - a); // Sort in descending order
+        
+        // Remove selected lines (in reverse order to maintain indices)
+        selectedIndices.forEach(idx => {
+            lines.splice(idx, 1);
+        });
+        
+        const updatedContent = lines.join('\n');
+        const reorderedContent = reorderMetaTags(updatedContent);
+        updateNote(note.id, reorderedContent);
+        
+        // Reset bulk delete mode
+        setBulkDeleteMode(false);
+        setSelectedRows(new Set());
+    };
+
     const renderInlineEditor = (idx, isH1, isH2) => (
         <InlineEditor
             key={idx}
@@ -306,6 +341,14 @@ export default function NoteContent({
                             rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                         }`}
                 >
+                    {bulkDeleteMode && (
+                        <input
+                            type="checkbox"
+                            checked={selectedRows.has(idx)}
+                            onChange={() => toggleRowSelection(idx)}
+                            className="mr-2"
+                        />
+                    )}
                     {shouldIndent && !isH1 && !isH2 && !hasNoBulletsTag() && (
                         <span className="mr-2 text-3xl self-start leading-none">•</span>
                     )}
@@ -384,6 +427,14 @@ export default function NoteContent({
                         isH2 ? 'text-lg font-semibold text-gray-900' : ''
                     }`}
             >
+                {bulkDeleteMode && (
+                    <input
+                        type="checkbox"
+                        checked={selectedRows.has(idx)}
+                        onChange={() => toggleRowSelection(idx)}
+                        className="mr-2"
+                    />
+                )}
                 {editingLine?.noteId === note.id && editingLine?.lineIndex === idx ? (
                     renderInlineEditor(idx, isH1, isH2)
                 ) : (
@@ -464,29 +515,53 @@ export default function NoteContent({
                 {/* Plus button at the end of the last line */}
                 {!compressedView && (
                     <div className="flex items-center justify-between mt-1">
-                        <button
-                            onClick={() => {
-                                setAddingLineNoteId(note.id);
-                                if (newLineInputRef.current) {
-                                    newLineInputRef.current.focus();
-                                }
-                            }}
-                            className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors duration-150"
-                            title="Add new line"
-                        >
-                            <PlusIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                            onClick={toggleNoBullets}
-                            className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
-                                hasNoBulletsTag() 
-                                    ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                            title={hasNoBulletsTag() ? 'Show bullets' : 'Hide bullets'}
-                        >
-                            {hasNoBulletsTag() ? 'Show Bullets' : 'Hide Bullets'}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => {
+                                    setAddingLineNoteId(note.id);
+                                    if (newLineInputRef.current) {
+                                        newLineInputRef.current.focus();
+                                    }
+                                }}
+                                className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors duration-150"
+                                title="Add new line"
+                            >
+                                <PlusIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={toggleBulkDeleteMode}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
+                                    bulkDeleteMode 
+                                        ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title={bulkDeleteMode ? 'Cancel bulk delete' : 'Bulk delete rows'}
+                            >
+                                {bulkDeleteMode ? 'Cancel' : 'Bulk Delete'}
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {bulkDeleteMode && selectedRows.size > 0 && (
+                                <button
+                                    onClick={handleBulkDelete}
+                                    className="px-3 py-1 text-xs font-medium bg-red-600 text-white rounded hover:bg-red-700 transition-colors duration-150"
+                                    title={`Delete ${selectedRows.size} selected row(s)`}
+                                >
+                                    Delete ({selectedRows.size})
+                                </button>
+                            )}
+                            <button
+                                onClick={toggleNoBullets}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
+                                    hasNoBulletsTag() 
+                                        ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title={hasNoBulletsTag() ? 'Show bullets' : 'Hide bullets'}
+                            >
+                                {hasNoBulletsTag() ? 'Show Bullets' : 'Hide Bullets'}
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

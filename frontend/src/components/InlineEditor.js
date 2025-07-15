@@ -15,9 +15,39 @@ import React, { useRef, useEffect, useState } from 'react';
  */
 const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '' }) => {
   const inputRef = useRef(null);
+  const [headerType, setHeaderType] = useState(null); // 'h1', 'h2', or null
+  const [displayText, setDisplayText] = useState('');
+  
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Detect if text is H1 (###) or H2 (##) and strip hash symbols for editing
+  useEffect(() => {
+    const trimmedText = text.trim();
+    let newDisplayText = text;
+    let newHeaderType = null;
+    
+    if (trimmedText.startsWith('###') && trimmedText.endsWith('###')) {
+      newHeaderType = 'h1';
+      newDisplayText = trimmedText.substring(3, trimmedText.length - 3); // Remove '###' prefix and '###' suffix
+    } else if (trimmedText.startsWith('##') && trimmedText.endsWith('##')) {
+      newHeaderType = 'h2';
+      newDisplayText = trimmedText.substring(2, trimmedText.length - 2); // Remove '##' prefix and '##' suffix
+    } else if (trimmedText.startsWith('### ')) {
+      newHeaderType = 'h1';
+      newDisplayText = trimmedText.substring(4); // Remove '### ' prefix only
+    } else if (trimmedText.startsWith('## ')) {
+      newHeaderType = 'h2';
+      newDisplayText = trimmedText.substring(3); // Remove '## ' prefix only
+    } else {
+      newHeaderType = null;
+      newDisplayText = text;
+    }
+    
+    setHeaderType(newHeaderType);
+    setDisplayText(newDisplayText);
+  }, [text]);
 
   // State for custom label popup on paste
   const [pendingUrl, setPendingUrl] = useState(null);
@@ -57,7 +87,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault(); // Prevent the event from bubbling up
       e.stopPropagation(); // Stop propagation to prevent global handler
-      onSave(text);
+      handleSave();
       return;
     }
 
@@ -65,7 +95,8 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
       // Add newline to current text
-      setText(text + '\n');
+      const newText = displayText + '\n';
+      setDisplayText(newText);
       // Trigger resize after the newline is added
       setTimeout(() => {
         if (inputRef.current) {
@@ -77,13 +108,27 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     }
   };
 
+  // Function to handle saving with proper header formatting
+  const handleSave = () => {
+    let finalText = displayText;
+    
+    // Add header symbols back if it was a header
+    if (headerType === 'h1') {
+      finalText = '###' + displayText + '###';
+    } else if (headerType === 'h2') {
+      finalText = '##' + displayText + '##';
+    }
+    
+    onSave(finalText);
+  };
+
   const closeUrlPopup = (newText) => {
     // Insert the new text at the cursor position
-    const before = text.slice(0, cursorPosition.start);
-    const after = text.slice(cursorPosition.end);
+    const before = displayText.slice(0, cursorPosition.start);
+    const after = displayText.slice(cursorPosition.end);
     const newContent = before + newText + after;
     
-    setText(newContent);
+    setDisplayText(newContent);
     setPendingUrl(null);
     setCursorPosition({ start: 0, end: 0 });
     
@@ -165,8 +210,8 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
 
       <textarea
         ref={inputRef}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
+        value={displayText}
+        onChange={(e) => setDisplayText(e.target.value)}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         className={`w-full border border-gray-300 pl-8 pr-16 py-1 rounded text-sm resize-none ${inputClass}`}
@@ -186,7 +231,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center pointer-events-none">
         <div className="flex items-center gap-1 pointer-events-auto">
           <button
-            onClick={() => onSave(text)}
+            onClick={handleSave}
             className="px-1.5 py-0.5 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-400 transition-colors duration-150 shadow-sm"
           >
             Save

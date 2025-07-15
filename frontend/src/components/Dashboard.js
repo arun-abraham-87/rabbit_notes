@@ -108,7 +108,7 @@ const Dashboard = ({notes,setNotes}) => {
             </div>
           </div>
         
-          <BookmarkedLinks notes={notes} />
+          <BookmarkedLinks notes={notes} setNotes={setNotes} />
         </div>
       </div>
 

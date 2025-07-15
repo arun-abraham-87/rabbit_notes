@@ -35,6 +35,7 @@ const NotesMainContainer = ({
     const [excludeWatchEvents, setExcludeWatchEvents] = useState(true); // Default to true to exclude watch events
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+    const [resetFilters, setResetFilters] = useState(false);
     const [focusMode, setFocusMode] = useState(() => {
         // Load focus mode state from localStorage on component mount
         const saved = localStorage.getItem('focusMode');
@@ -66,10 +67,30 @@ const NotesMainContainer = ({
         if (location.state?.searchQuery) {
             setSearchQuery(location.state.searchQuery);
             setLocalSearchQuery(location.state.searchQuery);
+            // Clear all filters when showing a specific note
+            setExcludeEvents(false);
+            setExcludeMeetings(false);
+            setExcludeEventNotes(false);
+            setExcludeBackupNotes(false);
+            setExcludeWatchEvents(false);
+            setShowDeadlinePassedFilter(false);
+            // Trigger UI filter reset
+            setResetFilters(true);
             // Clear the state to prevent it from persisting
             window.history.replaceState({}, document.title);
         }
     }, [location.state, setSearchQuery]);
+
+    // Reset the resetFilters flag after it's been processed
+    useEffect(() => {
+        if (resetFilters) {
+            // Reset the flag after a short delay to allow the NoteFilters component to process it
+            const timer = setTimeout(() => {
+                setResetFilters(false);
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [resetFilters]);
 
     // Global keyboard event listener for 'f' key to toggle focus mode and 'c' key to focus search
     useEffect(() => {
@@ -442,6 +463,7 @@ const NotesMainContainer = ({
                             onExcludeEventNotesChange={setExcludeEventNotes}
                             onExcludeBackupNotesChange={setExcludeBackupNotes}
                             onExcludeWatchEventsChange={setExcludeWatchEvents}
+                            resetFilters={resetFilters}
                         />
                         <button
                             onClick={() => setFocusMode(!focusMode)}

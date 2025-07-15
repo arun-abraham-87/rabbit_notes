@@ -12,7 +12,8 @@ const NoteFilters = ({
   onDeadlinePassedChange,
   onExcludeEventNotesChange,
   onExcludeBackupNotesChange,
-  onExcludeWatchEventsChange
+  onExcludeWatchEventsChange,
+  resetFilters = false
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
   const [showEventButtons, setShowEventButtons] = useState(false);
@@ -68,6 +69,23 @@ const NoteFilters = ({
       onExcludeWatchEventsChange(excludeWatchEvents);
     }
   }, [excludeWatchEvents, onExcludeWatchEventsChange]);
+
+  // Reset all filters when resetFilters prop is true
+  useEffect(() => {
+    if (resetFilters) {
+      setExcludeEvents(false);
+      setExcludeMeetings(false);
+      setExcludeEventNotes(false);
+      setExcludeBackupNotes(false);
+      setExcludeWatchEvents(false);
+      setShowDeadlinePassedFilter(false);
+      setShowTodoButtons(false);
+      setShowEventButtons(false);
+      setShowMeetingButtons(false);
+      setActivePriorityFilter('');
+      setActivePriority('');
+    }
+  }, [resetFilters]);
 
   const removeFilterFromQuery = (filterText) => {
     if (setSearchQuery) {

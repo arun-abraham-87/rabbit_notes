@@ -76,6 +76,14 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
       const newIndex = (selectedIndex - 1 + filteredNotes.length) % filteredNotes.length;
       setSelectedIndex(newIndex);
       return;
+    } else if (e.key === 'ArrowRight' && filteredNotes.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      const selectedNote = filteredNotes[selectedIndex];
+      if (selectedNote && selectedNote.content.split('\n').length > 4) {
+        toggleNoteExpand(selectedNote.id);
+      }
+      return;
     }
     
     // Handle other keys only when input is focused

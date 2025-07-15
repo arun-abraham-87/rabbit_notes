@@ -81,22 +81,40 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      onClose();
-    } else if (e.key === 'Enter' && filteredNotes.length > 0) {
-      e.preventDefault();
-      const selectedNote = filteredNotes[selectedIndex];
-      onSelectNote(selectedNote);
-      handleSearch(searchQuery);
-      onClose();
-    } else if (e.key === 'ArrowDown') {
+    // Handle arrow keys for navigation regardless of focus
+    if (e.key === 'ArrowDown' && filteredNotes.length > 0) {
       e.preventDefault();
       setSelectedIndex((prev) => (prev + 1) % filteredNotes.length);
-    } else if (e.key === 'ArrowUp') {
+      return;
+    } else if (e.key === 'ArrowUp' && filteredNotes.length > 0) {
       e.preventDefault();
       setSelectedIndex((prev) => (prev - 1 + filteredNotes.length) % filteredNotes.length);
+      return;
+    }
+    
+    // Handle other keys only when input is focused
+    if (e.target === inputRef.current) {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'Enter' && filteredNotes.length > 0) {
+        e.preventDefault();
+        const selectedNote = filteredNotes[selectedIndex];
+        onSelectNote(selectedNote);
+        handleSearch(searchQuery);
+        onClose();
+      }
     }
   };
+
+  // Auto-scroll to selected note when navigating with arrow keys
+  useEffect(() => {
+    if (selectedIndex >= 0 && noteRefs.current[selectedIndex]) {
+      noteRefs.current[selectedIndex].scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+      });
+    }
+  }, [selectedIndex]);
 
   // Update ESC key handling
   useEffect(() => {
@@ -293,7 +311,7 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                 tabIndex={0}
                 className={`group p-4 cursor-pointer transition-all duration-200 outline-none border-b border-gray-50 last:border-b-0 ${
                   index === selectedIndex 
-                    ? 'bg-blue-50/50 border-l-4 border-l-blue-500' 
+                    ? 'bg-blue-100 border-l-4 border-l-blue-500 shadow-sm' 
                     : isEven 
                       ? 'bg-gray-50' 
                       : 'bg-gray-100'

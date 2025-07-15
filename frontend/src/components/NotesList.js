@@ -55,7 +55,8 @@ const NotesList = ({
   onWordClick,
   settings,
   activePage = 'notes',
-  focusMode = false
+  focusMode = false,
+  refreshTags = () => {},
 }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
@@ -203,7 +204,7 @@ const NotesList = ({
   };
 
   const handleConvertToTag = () => {
-    addObjects(selectedText);
+    addObjects(selectedText, refreshTags);
     setPopupVisible(false);
     Alerts.success('Tag created successfully');
   };

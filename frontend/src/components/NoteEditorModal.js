@@ -20,6 +20,17 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
   const [selectedMetaTags, setSelectedMetaTags] = useState([`meta::watch::${moment().format('YYYY-MM-DD HH:mm:ss')}`]);
   const [showPriorityOptions, setShowPriorityOptions] = useState(metaTags?.some(tag => tag.startsWith('meta::todo')) || false);
 
+  // Move fetchTags and refreshTags to top level
+  const fetchTags = async () => {
+    try {
+      const tags = await loadTags();
+      setObjList(tags || []);
+    } catch (error) {
+      console.error('Failed to load tags:', error);
+    }
+  };
+  const refreshTags = fetchTags;
+
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && isOpen) {
@@ -44,16 +55,6 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
         console.error('Failed to load settings:', error);
       }
     };
-
-    const fetchTags = async () => {
-      try {
-        const tags = await loadTags();
-        setObjList(tags || []);
-      } catch (error) {
-        console.error('Failed to load tags:', error);
-      }
-    };
-
     loadSettings();
     fetchTags();
   }, []);
@@ -222,6 +223,7 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
           text={initialContent}
           objList={objList}
           settings={settings}
+          refreshTags={refreshTags}
         />
         <div className="flex flex-col items-center gap-4 mt-4 p-2 border-t border-gray-200">
           <div className="flex items-center justify-center gap-4">

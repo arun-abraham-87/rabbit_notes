@@ -20,6 +20,7 @@ const NotesMainContainer = ({
     setSearchQuery,
     addTag,
     settings = defaultSettings,
+    refreshTags = () => {},
 }) => {
     const [checked, setChecked] = useState(false);
     const [compressedView, setCompressedView] = useState(false);
@@ -37,6 +38,13 @@ const NotesMainContainer = ({
         return saved ? JSON.parse(saved) : false;
     });
     const searchInputRef = useRef(null);
+
+    // Add suggestion state
+    const [showPopup, setShowPopup] = useState(false);
+    const [filteredTags, setFilteredTags] = useState([]);
+    const [selectedTagIndex, setSelectedTagIndex] = useState(-1);
+    const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+    const throttleRef = useRef(null);
 
     // Focus search input on mount
     useEffect(() => {
@@ -58,21 +66,131 @@ const NotesMainContainer = ({
         []
     );
 
+    // Get cursor coordinates for popup positioning
+    const getCursorCoordinates = (event) => {
+        const textarea = event.target;
+        const rect = textarea.getBoundingClientRect();
+        
+        // Get cursor position within the textarea
+        const textBeforeCursor = textarea.value.substring(0, textarea.selectionStart);
+        const lines = textBeforeCursor.split('\n');
+        const currentLine = lines[lines.length - 1];
+        
+        // Create a temporary element to measure text width
+        const temp = document.createElement('span');
+        temp.style.font = window.getComputedStyle(textarea).font;
+        temp.style.whiteSpace = 'pre';
+        temp.style.position = 'absolute';
+        temp.style.visibility = 'hidden';
+        temp.textContent = currentLine;
+        document.body.appendChild(temp);
+        
+        const charWidth = temp.offsetWidth / currentLine.length;
+        const cursorX = rect.left + (currentLine.length * charWidth) + 10; // Add some padding
+        const cursorY = rect.bottom + 5; // Position below the textarea
+        
+        document.body.removeChild(temp);
+        
+        return { x: cursorX, y: cursorY };
+    };
+
     // Update local search query immediately, but debounce the actual search
     const handleSearchChange = (e) => {
         const query = e.target.value;
         setLocalSearchQuery(query);
         debouncedSetSearchQuery(query);
+
+        // Add suggestion logic
+        const match = query.match(/(\S+)$/); // Match the last word
+        if (match) {
+            const filterText = match[1].toLowerCase();
+            let filtered = [];
+            
+            // Throttle logic
+            if (filterText !== "") {
+                clearTimeout(throttleRef.current); // Clear the existing timeout
+                throttleRef.current = setTimeout(() => {
+                    filtered = mergedObjList.filter((tag) =>
+                        tag && tag.text && tag.text.toLowerCase().startsWith(filterText)
+                    );
+
+                    setFilteredTags(filtered.map(tag => tag.text));
+                    
+                    if (filtered.length > 0) {
+                        const { x, y } = getCursorCoordinates(e);
+                        setCursorPosition({ x, y });
+                        setShowPopup(true);
+                    } else {
+                        setShowPopup(false);
+                    }
+                }, 300); // 300ms delay for throttling
+            }
+        } else {
+            setShowPopup(false);
+        }
+    };
+
+    // Handle tag selection
+    const handleSelectTag = (tag) => {
+        const lastSpaceIndex = localSearchQuery.lastIndexOf(" ");
+        const updatedText =
+            (lastSpaceIndex === -1 ? "" : localSearchQuery.slice(0, lastSpaceIndex + 1)) +
+            `${tag} `;
+        setLocalSearchQuery(updatedText);
+        setSearchQuery(updatedText);
+        setShowPopup(false);
+        setSelectedTagIndex(-1);
+        
+        // Focus back to textarea
+        if (searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
     };
 
     // Handle keyboard shortcuts
     const handleKeyDown = (e) => {
-        // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
-        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && localSearchQuery.trim()) {
-            e.preventDefault();
-            addNote(localSearchQuery);
-            setLocalSearchQuery('');
-            setSearchQuery('');
+        // Handle suggestion navigation
+        if (showPopup) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setSelectedTagIndex((prev) =>
+                    prev < filteredTags.length - 1 ? prev + 1 : 0
+                );
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setSelectedTagIndex((prev) =>
+                    prev > 0 ? prev - 1 : filteredTags.length - 1
+                );
+            } else if (e.key === "Enter") {
+                e.preventDefault();
+                if (selectedTagIndex >= 0) {
+                    handleSelectTag(filteredTags[selectedTagIndex]);
+                } else if (filteredTags.length > 0) {
+                    handleSelectTag(filteredTags[0]);
+                } else {
+                    // Create note if no suggestions
+                    if (localSearchQuery.trim()) {
+                        addNote(localSearchQuery);
+                        setLocalSearchQuery('');
+                        setSearchQuery('');
+                    }
+                }
+            } else if (e.key === "Tab") {
+                e.preventDefault();
+                if (filteredTags.length > 0) {
+                    handleSelectTag(filteredTags[0]);
+                }
+            } else if (e.key === "Escape") {
+                setShowPopup(false);
+            }
+        } else {
+            // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && localSearchQuery.trim()) {
+                e.preventDefault();
+                addNote(localSearchQuery);
+                setLocalSearchQuery('');
+                setSearchQuery('');
+            }
         }
     };
 
@@ -159,6 +277,7 @@ const NotesMainContainer = ({
                                 onClick={() => {
                                     setLocalSearchQuery('');
                                     setSearchQuery('');
+                                    setShowPopup(false);
                                     searchInputRef.current?.focus();
                                 }}
                                 className="absolute right-2 top-2 p-1 text-gray-500 hover:text-gray-700 focus:outline-none"
@@ -168,6 +287,35 @@ const NotesMainContainer = ({
                             </button>
                         )}
                     </div>
+
+                    {/* Suggestion popup */}
+                    {showPopup && (
+                        <div
+                            className="absolute bg-white border-2 border-purple-500 rounded-lg shadow-lg p-2 z-[9999] max-h-40 overflow-y-auto no-scrollbar text-sm w-52"
+                            style={{
+                                left: cursorPosition.x,
+                                top: cursorPosition.y,
+                                minHeight: '40px'
+                            }}
+                        >
+                            {filteredTags.length === 0 ? (
+                                <div className="p-2 text-gray-500">No matching tags</div>
+                            ) : (
+                                filteredTags.map((tag, index) => (
+                                    <div
+                                        key={tag}
+                                        onClick={() => handleSelectTag(tag)}
+                                        className={`p-2 cursor-pointer hover:bg-purple-100 ${
+                                            selectedTagIndex === index ? "bg-purple-200" : ""
+                                        }`}
+                                    >
+                                        {tag}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+
                     {/* <InfoPanel
                         totals={totals}
                     /> */}
@@ -221,6 +369,7 @@ const NotesMainContainer = ({
                         onWordClick={handleTagClick}
                         settings={settings}
                         focusMode={focusMode}
+                        refreshTags={refreshTags}
                     />
                 </div>
             </div>

@@ -11,7 +11,7 @@ import Journals from './pages/Journals';
 import Manage from './pages/Manage';
 import EventsPage from './pages/EventsPage';
 import PeopleList from './components/PeopleList';
-import { createNote, loadAllNotes, updateNoteById, getSettings, defaultSettings } from './utils/ApiUtils';
+import { createNote, loadAllNotes, updateNoteById, getSettings, defaultSettings, addNewTag } from './utils/ApiUtils';
 import { SearchModalProvider } from './contexts/SearchModalContext';
 import { NoteEditorProvider } from './contexts/NoteEditorContext';
 import { NotesProvider} from './contexts/NotesContext';
@@ -198,13 +198,12 @@ const AppContent = () => {
     setAllNotes(allNotes.map(note => note.id === id ? response : note));
   };
 
-  const addTag = async (tagText) => {
+  const addTag = async (tagText, callback) => {
     try {
-      // Create a new note with the tag text as content
-      const response = await createNote(tagText);
-      setAllNotes([response, ...allNotes]);
-      // Add to search index
-      addNoteToIndex(response);
+      // Create a new tag using the proper API
+      const response = await addNewTag(tagText);
+      if (callback) await callback();
+      console.log('Tag created successfully:', response);
     } catch (error) {
       console.error('Error adding tag:', error);
     }
@@ -283,6 +282,7 @@ const AppContent = () => {
                           setNoteDate={setNoteDate}
                           settings={settings}
                           addTag={addTag}
+                          refreshTags={() => {}}
                         />
                       </NotesProvider>
                     } />

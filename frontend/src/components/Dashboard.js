@@ -103,29 +103,62 @@ const Dashboard = ({notes,setNotes}) => {
   };
 
   // Get compact timezone display
+  // Smooth scroll function with easing
+  const smoothScroll = (element, targetScrollLeft, duration = 500) => {
+    const startScrollLeft = element.scrollLeft;
+    const distance = targetScrollLeft - startScrollLeft;
+    const startTime = performance.now();
+
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+    const animateScroll = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easedProgress = easeOutCubic(progress);
+      
+      element.scrollLeft = startScrollLeft + (distance * easedProgress);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animateScroll);
+      }
+    };
+
+    requestAnimationFrame(animateScroll);
+  };
+
   // Horizontal scroll functions for events
   const scrollEventsLeft = () => {
     if (eventsScrollRef.current) {
-      eventsScrollRef.current.scrollLeft -= 300;
+      const currentScroll = eventsScrollRef.current.scrollLeft;
+      const targetScroll = Math.max(0, currentScroll - 300);
+      smoothScroll(eventsScrollRef.current, targetScroll);
     }
   };
 
   const scrollEventsRight = () => {
     if (eventsScrollRef.current) {
-      eventsScrollRef.current.scrollLeft += 300;
+      const currentScroll = eventsScrollRef.current.scrollLeft;
+      const maxScroll = eventsScrollRef.current.scrollWidth - eventsScrollRef.current.clientWidth;
+      const targetScroll = Math.min(maxScroll, currentScroll + 300);
+      smoothScroll(eventsScrollRef.current, targetScroll);
     }
   };
 
   // Horizontal scroll functions for notes
   const scrollNotesLeft = () => {
     if (notesScrollRef.current) {
-      notesScrollRef.current.scrollLeft -= 300;
+      const currentScroll = notesScrollRef.current.scrollLeft;
+      const targetScroll = Math.max(0, currentScroll - 300);
+      smoothScroll(notesScrollRef.current, targetScroll);
     }
   };
 
   const scrollNotesRight = () => {
     if (notesScrollRef.current) {
-      notesScrollRef.current.scrollLeft += 300;
+      const currentScroll = notesScrollRef.current.scrollLeft;
+      const maxScroll = notesScrollRef.current.scrollWidth - notesScrollRef.current.clientWidth;
+      const targetScroll = Math.min(maxScroll, currentScroll + 300);
+      smoothScroll(notesScrollRef.current, targetScroll);
     }
   };
 
@@ -373,7 +406,6 @@ const Dashboard = ({notes,setNotes}) => {
                 ref={eventsScrollRef}
                 className="flex-1 overflow-x-auto"
                 style={{ 
-                  scrollBehavior: 'smooth',
                   scrollbarWidth: 'none',
                   msOverflowStyle: 'none'
                 }}
@@ -419,7 +451,6 @@ const Dashboard = ({notes,setNotes}) => {
                 ref={notesScrollRef}
                 className="flex-1 overflow-x-auto"
                 style={{ 
-                  scrollBehavior: 'smooth',
                   scrollbarWidth: 'none',
                   msOverflowStyle: 'none'
                 }}

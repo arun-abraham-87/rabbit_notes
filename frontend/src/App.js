@@ -458,13 +458,16 @@ const AppContent = () => {
               autoClose={1500}
               hideProgressBar={false}
               newestOnTop={false}
-              closeOnClick
+              closeOnClick={false}
               rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
+              pauseOnFocusLoss={false}
+              draggable={false}
+              pauseOnHover={false}
               theme="light"
               closeButton={false}
+              limit={1}
+              enableMultiContainer={false}
+              preventDuplicates={true}
             />
             <NoteEditorModal addNote={addNote} updateNote={updateNote} />
             {showPastePopup && (
@@ -485,6 +488,8 @@ const AppContent = () => {
                 isWatchSelected={isWatchSelected}
                 setIsWatchSelected={setIsWatchSelected}
                 onSave={handlePasteSubmit}
+                objList={objList}
+                allNotes={allNotes}
               />
             )}
           </div>

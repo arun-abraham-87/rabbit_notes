@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { XMarkIcon, EyeIcon } from '@heroicons/react/24/solid';
+import { buildSuggestionsFromNotes } from '../utils/NotesUtils';
 
 const TextPastePopup = ({
   isOpen,
@@ -12,8 +13,23 @@ const TextPastePopup = ({
   isWatchSelected,
   setIsWatchSelected,
   onSave,
+  objList = [], // Add objList prop for tag suggestions
+  allNotes = [], // Add allNotes prop for people and workstreams
 }) => {
   const textareaRef = useRef(null);
+  
+  // Add state for tag suggestions
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredTags, setFilteredTags] = useState([]);
+  const [selectedTagIndex, setSelectedTagIndex] = useState(-1);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+  const [throttleRef] = useState({ current: null });
+
+  // Build merged suggestions from objList and allNotes (people and workstreams)
+  const mergedObjList = useMemo(() =>
+    buildSuggestionsFromNotes(allNotes, objList),
+    [allNotes, objList]
+  );
 
   // Auto focus and clear textarea when popup opens
   useEffect(() => {
@@ -25,28 +41,127 @@ const TextPastePopup = ({
     }
   }, [isOpen, setNewNoteText]);
 
+  // Handle text change with tag suggestions
+  const handleTextChange = (e) => {
+    const value = e.target.value;
+    setNewNoteText(value);
+
+    // Handle tag suggestions
+    if (value.trim().length === 0) {
+      setShowSuggestions(false);
+      return;
+    }
+
+    const match = value.trim().match(/(\S+)$/);
+    if (match) {
+      const filterText = match[1].toLowerCase();
+
+      clearTimeout(throttleRef.current);
+      throttleRef.current = setTimeout(() => {
+        const filtered = mergedObjList.filter((tag) =>
+          tag && tag.text && tag.text.toLowerCase().includes(filterText)
+        );
+
+        if (filtered.length > 0) {
+          const textarea = textareaRef.current;
+          if (textarea) {
+            // Get the textarea's position
+            const rect = textarea.getBoundingClientRect();
+            
+            // Calculate cursor position using textarea properties
+            const textBeforeCursor = value.substring(0, textarea.selectionStart);
+            const lines = textBeforeCursor.split('\n');
+            const currentLineIndex = lines.length - 1;
+            const currentLine = lines[currentLineIndex];
+            
+            // Estimate character width (approximate)
+            const charWidth = 8; // Approximate character width
+            const cursorX = rect.left + (currentLine.length * charWidth) + 20; // Add padding
+            
+            // Calculate vertical position
+            const lineHeight = 20; // Approximate line height
+            const cursorY = rect.top + (currentLineIndex * lineHeight) + lineHeight + 10;
+            
+            setCursorPosition({ x: cursorX, y: cursorY });
+            setFilteredTags(filtered.map(tag => tag.text));
+            setShowSuggestions(true);
+          }
+        } else {
+          setShowSuggestions(false);
+        }
+      }, 150);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  // Handle tag selection
+  const handleSelectTag = (tag) => {
+    const lastSpaceIndex = newNoteText.lastIndexOf(" ");
+    const updatedText =
+      (lastSpaceIndex === -1 ? "" : newNoteText.slice(0, lastSpaceIndex + 1)) +
+      `${tag} `;
+    setNewNoteText(updatedText);
+    setShowSuggestions(false);
+    setSelectedTagIndex(-1);
+    
+    // Focus back to textarea
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!isOpen) return;
 
-      // Handle Cmd+Enter (or Ctrl+Enter) to save
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault();
-        onSave();
-        return;
-      }
+      // Handle suggestion navigation
+      if (showSuggestions) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setSelectedTagIndex((prev) =>
+            prev < filteredTags.length - 1 ? prev + 1 : 0
+          );
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setSelectedTagIndex((prev) =>
+            prev > 0 ? prev - 1 : filteredTags.length - 1
+          );
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          if (selectedTagIndex >= 0) {
+            handleSelectTag(filteredTags[selectedTagIndex]);
+          } else if (filteredTags.length > 0) {
+            handleSelectTag(filteredTags[0]);
+          }
+        } else if (e.key === "Tab") {
+          e.preventDefault();
+          if (filteredTags.length > 0) {
+            handleSelectTag(filteredTags[0]);
+          }
+        } else if (e.key === "Escape") {
+          setShowSuggestions(false);
+        }
+      } else {
+        // Handle Cmd+Enter (or Ctrl+Enter) to save
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+          e.preventDefault();
+          onSave();
+          return;
+        }
 
-      // Handle Escape to close
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
+        // Handle Escape to close
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onClose();
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onSave, onClose]);
+  }, [isOpen, onSave, onClose, showSuggestions, filteredTags, selectedTagIndex]);
 
   if (!isOpen) return null;
 
@@ -69,15 +184,42 @@ const TextPastePopup = ({
           </button>
         </div>
         <div className="space-y-4">
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">New Note Content</label>
             <textarea
               ref={textareaRef}
               value={newNoteText}
-              onChange={(e) => setNewNoteText(e.target.value)}
+              onChange={handleTextChange}
               className="w-full h-32 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="Type your note here... (Press Cmd+Enter to save)"
             />
+            {/* Tag suggestions popup */}
+            {showSuggestions && (
+              <div
+                className="fixed bg-white border-2 border-purple-500 rounded-lg shadow-lg p-2 z-[9999] max-h-40 overflow-y-auto no-scrollbar text-sm w-52"
+                style={{
+                  left: cursorPosition.x,
+                  top: cursorPosition.y,
+                  minHeight: '40px'
+                }}
+              >
+                {filteredTags.length === 0 ? (
+                  <div className="p-2 text-gray-500">No matching tags</div>
+                ) : (
+                  filteredTags.map((tag, index) => (
+                    <div
+                      key={tag}
+                      onClick={() => handleSelectTag(tag)}
+                      className={`p-2 cursor-pointer hover:bg-purple-100 ${
+                        selectedTagIndex === index ? "bg-purple-200" : ""
+                      }`}
+                    >
+                      {tag}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Clipboard Content (Reference Only)</label>

@@ -214,6 +214,13 @@ const NotesMainContainer = ({
                 setShowPopup(false);
             }
         } else {
+            // Handle Escape key to remove focus from search bar
+            if (e.key === "Escape") {
+                e.preventDefault();
+                searchInputRef.current?.blur();
+                return;
+            }
+            
             // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && localSearchQuery.trim()) {
                 e.preventDefault();

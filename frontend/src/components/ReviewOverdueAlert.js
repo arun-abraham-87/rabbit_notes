@@ -587,7 +587,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
 
   const handleCadence = async (note, hours, minutes = 0) => {
     try {
-      console.log('Setting cadence for note:', note.id, 'hours:', hours, 'minutes:', minutes);
+      
       const updatedContent = updateCadenceHoursMinutes(note, hours, minutes);
       if (updatedContent) {
         await updateNoteById(note.id, updatedContent);

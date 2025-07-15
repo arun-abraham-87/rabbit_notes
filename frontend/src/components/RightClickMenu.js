@@ -77,7 +77,6 @@ export default function RightClickMenu({
             const arr = note.content.split('\n');
             setEditedLineContent(arr[lineIndex]);
             setEditingLine({ noteId, lineIndex });
-            console.log({ noteId, lineIndex });
           }}
         >
           Edit
@@ -201,7 +200,6 @@ export default function RightClickMenu({
           onClick={() => {
             const arr = note.content.split('\n');
             let lineText = arr[lineIndex];
-            console.log('Original lineText:', lineText);
             
             // Handle H1 and H2 markers first
             let isH1 = false;
@@ -224,16 +222,13 @@ export default function RightClickMenu({
             
             // Split into words and capitalize each word
             const words = cleanText.split(' ');
-            console.log('Words array:', words);
             const capitalizedWords = words.map((word, index) => {
               if (word.length === 0) return word;
               const capitalized = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-              console.log(`Word ${index}: "${word}" -> "${capitalized}"`);
               return capitalized;
             });
             
             let result = capitalizedWords.join(' ');
-            console.log('Final result:', result);
             
             // Add back the markers if they were present
             if (isH1) {

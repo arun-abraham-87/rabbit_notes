@@ -80,7 +80,7 @@ const ExchangeRates = () => {
           audToInr: audRes.data.conversion_rates.INR,
           timestamp: new Date().getTime()
         };
-        console.log('Fetched rates:', newRates); // Debug log
+
         setRates(newRates);
         setError('');
         

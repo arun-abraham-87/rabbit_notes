@@ -135,7 +135,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const handleAddPerson = async (content) => {
     try {
       const response = await createNote(content);
-      console.log('API Response:', response);
+
       setAllNotes([...allNotes, response.content]);
       return response;
     } catch (error) {

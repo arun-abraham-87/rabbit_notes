@@ -223,7 +223,6 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   const debouncedSetSearchQuery = useCallback(
     debounce((value) => {
       if (setSearchQuery) {
-        console.log('Setting searchQuery in handleTextChange:', value);
         setSearchQuery(value);
       }
     }, 300),
@@ -532,24 +531,19 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   };
 
   const saveNote = () => {
-    console.log('Saving note with lines:', lines);
     
     // Remove empty lines from the end and trim all lines
     const trimmedLines = lines
       .map(line => line.text.trim()) // Trim each line
       .filter(text => text !== ''); // Remove empty lines
     
-    console.log('Trimmed lines:', trimmedLines);
-    
     // Join lines with newlines
     const merged = trimmedLines.join('\n');
-    console.log('Merged content:', merged);
     
     // Check if note is empty or only contains whitespace
     if (!merged || !merged.trim()) {
       return;
     }
-   console.log('isAddMode', isAddMode);
     if (isAddMode) {
         addNote(merged);
         setLines([{ id: 'line-0', text: '', isTitle: false }]);
@@ -576,7 +570,6 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         if (!hasContent) {
           return; // Don't do anything if all lines are empty
         }
-       console.log('isAddMode', isAddMode);
         saveNote();
       }
     };
@@ -898,7 +891,6 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
             setLines(updatedLines);
             // Update search query if in add mode
             if (isAddMode && setSearchQuery) {
-              console.log('Setting searchQuery in textarea mode:', e.target.value);
               setSearchQuery(e.target.value);
             }
           }}

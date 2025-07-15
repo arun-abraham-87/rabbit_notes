@@ -290,7 +290,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all' }) => {
         })()}
 
         {/* Note Cards */}
-        {(() => {
+        {(type === 'all' || type === 'notes') && (() => {
           const noteItems = events.filter(ev => ev.type === 'note');
           
           return noteItems.map(ev => {

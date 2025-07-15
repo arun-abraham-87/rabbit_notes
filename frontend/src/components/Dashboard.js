@@ -357,20 +357,30 @@ const Dashboard = ({notes,setNotes}) => {
             {/* Events Row */}
             <div className="flex items-center gap-2 mb-6">
               {/* Left Arrow */}
-              {eventsHasOverflow && (
-                <button
-                  onClick={scrollEventsLeft}
-                  className="flex-shrink-0 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                >
-                  <ChevronLeftIcon className="h-5 w-5" />
-                </button>
-              )}
+              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                {eventsHasOverflow && (
+                  <button
+                    onClick={scrollEventsLeft}
+                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                  >
+                    <ChevronLeftIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
               
               {/* Events Container */}
               <div 
                 ref={eventsScrollRef}
-                className="flex-1 overflow-x-auto scrollbar-hide"
-                style={{ scrollBehavior: 'smooth' }}
+                className="flex-1 overflow-x-auto"
+                style={{ 
+                  scrollBehavior: 'smooth',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+                onScroll={(e) => {
+                  // Prevent manual scrolling, only allow programmatic scrolling
+                  e.preventDefault();
+                }}
               >
                 <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
                   <EventManager type="events" />
@@ -378,33 +388,41 @@ const Dashboard = ({notes,setNotes}) => {
               </div>
               
               {/* Right Arrow */}
-              {eventsHasOverflow && (
-                <button
-                  onClick={scrollEventsRight}
-                  className="flex-shrink-0 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                >
-                  <ChevronRightIcon className="h-5 w-5" />
+              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                {eventsHasOverflow && (
+                  <button
+                    onClick={scrollEventsRight}
+                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                  >
+                    <ChevronRightIcon className="h-5 w-5" />
                 </button>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Notes Row */}
             <div className="flex items-center gap-2">
               {/* Left Arrow */}
-              {notesHasOverflow && (
-                <button
-                  onClick={scrollNotesLeft}
-                  className="flex-shrink-0 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                >
-                  <ChevronLeftIcon className="h-5 w-5" />
-                </button>
-              )}
+              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                {notesHasOverflow && (
+                  <button
+                    onClick={scrollNotesLeft}
+                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                  >
+                    <ChevronLeftIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
               
               {/* Notes Container */}
               <div 
                 ref={notesScrollRef}
-                className="flex-1 overflow-x-auto scrollbar-hide"
-                style={{ scrollBehavior: 'smooth' }}
+                className="flex-1 overflow-x-auto"
+                style={{ 
+                  scrollBehavior: 'smooth',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
               >
                 <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
                   <EventManager type="notes" />
@@ -412,14 +430,16 @@ const Dashboard = ({notes,setNotes}) => {
               </div>
               
               {/* Right Arrow */}
-              {notesHasOverflow && (
-                <button
-                  onClick={scrollNotesRight}
-                  className="flex-shrink-0 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                >
-                  <ChevronRightIcon className="h-5 w-5" />
-              </button>
-              )}
+              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                {notesHasOverflow && (
+                  <button
+                    onClick={scrollNotesRight}
+                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                  >
+                    <ChevronRightIcon className="h-5 w-5" />
+                </button>
+                )}
+              </div>
             </div>
           </>
         )}

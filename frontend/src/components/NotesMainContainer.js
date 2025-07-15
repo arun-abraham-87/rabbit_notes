@@ -53,6 +53,13 @@ const NotesMainContainer = ({
         }
     }, []);
 
+    // Debug: Log objList
+    useEffect(() => {
+        console.log('NotesMainContainer - objList received:', objList);
+        console.log('NotesMainContainer - objList length:', objList?.length);
+        console.log('NotesMainContainer - Sample objList items:', objList?.slice(0, 3));
+    }, [objList]);
+
     // Save focus mode state to localStorage whenever it changes
     useEffect(() => {
         localStorage.setItem('focusMode', JSON.stringify(focusMode));
@@ -110,17 +117,39 @@ const NotesMainContainer = ({
             if (filterText !== "") {
                 clearTimeout(throttleRef.current); // Clear the existing timeout
                 throttleRef.current = setTimeout(() => {
-                    filtered = mergedObjList.filter((tag) =>
-                        tag && tag.text && tag.text.toLowerCase().startsWith(filterText)
-                    );
+                    // Filter based on the text property of each object
+                    filtered = mergedObjList.filter((tag) => {
+                        if (!tag || !tag.text) return false;
+                        return tag.text.toLowerCase().includes(filterText);
+                    });
+
+                    console.log('Filter text:', filterText);
+                    console.log('Filtered results:', filtered);
+                    console.log('Total mergedObjList:', mergedObjList.length);
+                    console.log('Sample mergedObjList items:', mergedObjList.slice(0, 5));
+                    console.log('All mergedObjList texts:', mergedObjList.map(tag => tag.text));
+                    
+                    // Debug: Check if any tags contain the filter text
+                    const debugMatches = mergedObjList.filter(tag => {
+                        if (!tag || !tag.text) return false;
+                        const contains = tag.text.toLowerCase().includes(filterText);
+                        if (contains) {
+                            console.log('Match found:', tag.text, 'contains', filterText);
+                        }
+                        return contains;
+                    });
+                    console.log('Debug matches found:', debugMatches.length);
 
                     setFilteredTags(filtered.map(tag => tag.text));
                     
                     if (filtered.length > 0) {
                         const { x, y } = getCursorCoordinates(e);
+                        console.log('Popup position:', { x, y });
+                        console.log('Setting popup to show with', filtered.length, 'items');
                         setCursorPosition({ x, y });
                         setShowPopup(true);
                     } else {
+                        console.log('No matches found, hiding popup');
                         setShowPopup(false);
                     }
                 }, 300); // 300ms delay for throttling
@@ -249,6 +278,13 @@ const NotesMainContainer = ({
         [allNotes, objList]
     );
 
+    // Debug: Log mergedObjList
+    useEffect(() => {
+        console.log('NotesMainContainer - mergedObjList:', mergedObjList);
+        console.log('NotesMainContainer - mergedObjList length:', mergedObjList?.length);
+        console.log('NotesMainContainer - Sample mergedObjList items:', mergedObjList?.slice(0, 3));
+    }, [mergedObjList]);
+
     return (
         <div className="flex flex-col h-full">
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
@@ -298,6 +334,7 @@ const NotesMainContainer = ({
                                 minHeight: '40px'
                             }}
                         >
+                            {console.log('Rendering popup with', filteredTags.length, 'tags:', filteredTags)}
                             {filteredTags.length === 0 ? (
                                 <div className="p-2 text-gray-500">No matching tags</div>
                             ) : (

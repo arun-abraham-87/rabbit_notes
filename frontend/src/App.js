@@ -11,7 +11,7 @@ import Journals from './pages/Journals';
 import Manage from './pages/Manage';
 import EventsPage from './pages/EventsPage';
 import PeopleList from './components/PeopleList';
-import { createNote, loadAllNotes, updateNoteById, getSettings, defaultSettings, addNewTag } from './utils/ApiUtils';
+import { createNote, loadAllNotes, updateNoteById, getSettings, defaultSettings, addNewTag, loadTags } from './utils/ApiUtils';
 import { SearchModalProvider } from './contexts/SearchModalContext';
 import { NoteEditorProvider } from './contexts/NoteEditorContext';
 import { NotesProvider} from './contexts/NotesContext';
@@ -45,6 +45,7 @@ const AppContent = () => {
   const [newNoteText, setNewNoteText] = useState('');
   const [selectedPriority, setSelectedPriority] = useState(null);
   const [isWatchSelected, setIsWatchSelected] = useState(false);
+  const [objList, setObjList] = useState([]);
 
   // Get active page from URL hash
   const activePage = location.pathname.split('/')[1] || 'dashboard';
@@ -179,6 +180,16 @@ const AppContent = () => {
     setAllNotes(data.notes);
   };
 
+  // Load tags
+  const fetchTags = async () => {
+    try {
+      const tags = await loadTags();
+      setObjList(tags || []);
+    } catch (error) {
+      console.error('Failed to load tags:', error);
+    }
+  };
+
  
 
   const addNote = async (content, tags) => {
@@ -211,6 +222,7 @@ const AppContent = () => {
 
   useEffect(() => {
     fetchAllNotesFromServer()
+    fetchTags()
   }, []);
 
   useEffect(() => {
@@ -282,7 +294,8 @@ const AppContent = () => {
                           setNoteDate={setNoteDate}
                           settings={settings}
                           addTag={addTag}
-                          refreshTags={() => {}}
+                          refreshTags={fetchTags}
+                          objList={objList}
                         />
                       </NotesProvider>
                     } />

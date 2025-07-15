@@ -3,6 +3,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 
 const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false, initialText = '' }) => {
   const [customText, setCustomText] = useState(initialText);
+  const [customUrl, setCustomUrl] = useState(url);
 
   const handleSubmit = (e) => {
     e.preventDefault();

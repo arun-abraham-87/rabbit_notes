@@ -198,6 +198,18 @@ const AppContent = () => {
     setAllNotes(allNotes.map(note => note.id === id ? response : note));
   };
 
+  const addTag = async (tagText) => {
+    try {
+      // Create a new note with the tag text as content
+      const response = await createNote(tagText);
+      setAllNotes([response, ...allNotes]);
+      // Add to search index
+      addNoteToIndex(response);
+    } catch (error) {
+      console.error('Error adding tag:', error);
+    }
+  };
+
   useEffect(() => {
     fetchAllNotesFromServer()
   }, []);
@@ -270,6 +282,7 @@ const AppContent = () => {
                           setSearchQuery={setSearchQuery}
                           setNoteDate={setNoteDate}
                           settings={settings}
+                          addTag={addTag}
                         />
                       </NotesProvider>
                     } />

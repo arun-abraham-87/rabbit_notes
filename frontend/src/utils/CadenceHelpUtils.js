@@ -139,6 +139,10 @@ function isReminderDue(note, now = new Date()) {
   // Skip dismissed or snoozed reminders
   if (note.content.includes('meta::reminder_dismissed')) return false;
 
+  // If never reviewed, consider it overdue!
+  const lastReview = getLastReviewTime(note.id);
+  if (!lastReview) return true;
+
   // Get the next review time
   const nextReview = getNextReviewDate(note);
   if (!nextReview) return false;

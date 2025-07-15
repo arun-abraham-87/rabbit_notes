@@ -355,75 +355,71 @@ const Dashboard = ({notes,setNotes}) => {
         {!isEventManagerCollapsed && (
           <>
             {/* Events Row */}
-            <div className="relative mb-6">
-              
+            <div className="flex items-center gap-2 mb-6">
               {/* Left Arrow */}
               {eventsHasOverflow && (
                 <button
                   onClick={scrollEventsLeft}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                  style={{ transform: `translateY(-50%)` }}
+                  className="flex-shrink-0 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
                 >
                   <ChevronLeftIcon className="h-5 w-5" />
-                </button>
-              )}
-              
-              {/* Right Arrow */}
-              {eventsHasOverflow && (
-                <button
-                  onClick={scrollEventsRight}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                >
-                  <ChevronRightIcon className="h-5 w-5" />
                 </button>
               )}
               
               {/* Events Container */}
               <div 
                 ref={eventsScrollRef}
-                className="overflow-x-auto scrollbar-hide"
+                className="flex-1 overflow-x-auto scrollbar-hide"
                 style={{ scrollBehavior: 'smooth' }}
               >
-                <div className="inline-flex gap-4 pb-4" style={{ minWidth: 'max-content' }}>
+                <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
                   <EventManager type="events" />
                 </div>
               </div>
+              
+              {/* Right Arrow */}
+              {eventsHasOverflow && (
+                <button
+                  onClick={scrollEventsRight}
+                  className="flex-shrink-0 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                >
+                  <ChevronRightIcon className="h-5 w-5" />
+                </button>
+              )}
             </div>
 
             {/* Notes Row */}
-            <div className="relative">
-              
+            <div className="flex items-center gap-2">
               {/* Left Arrow */}
               {notesHasOverflow && (
                 <button
                   onClick={scrollNotesLeft}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                  style={{ transform: `translateY(-50%)` }}
+                  className="flex-shrink-0 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
                 >
                   <ChevronLeftIcon className="h-5 w-5" />
                 </button>
               )}
               
+              {/* Notes Container */}
+              <div 
+                ref={notesScrollRef}
+                className="flex-1 overflow-x-auto scrollbar-hide"
+                style={{ scrollBehavior: 'smooth' }}
+              >
+                <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
+                  <EventManager type="notes" />
+                </div>
+              </div>
+              
               {/* Right Arrow */}
               {notesHasOverflow && (
                 <button
                   onClick={scrollNotesRight}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                  className="flex-shrink-0 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
                 >
                   <ChevronRightIcon className="h-5 w-5" />
               </button>
               )}
-              
-              {/* Notes Container */}
-              <div 
-                ref={notesScrollRef}
-                className="overflow-x-auto scrollbar-hide"
-                style={{ scrollBehavior: 'smooth' }}
-              >
-                <div className="inline-flex gap-4 pb-4" style={{ minWidth: 'max-content' }}>
-                  <EventManager type="notes" />
-                </div>
-              </div>
             </div>
           </>
         )}

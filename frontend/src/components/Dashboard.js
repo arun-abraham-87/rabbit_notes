@@ -104,17 +104,17 @@ const Dashboard = ({notes,setNotes}) => {
 
   // Get compact timezone display
   // Smooth scroll function with easing
-  const smoothScroll = (element, targetScrollLeft, duration = 500) => {
+  const smoothScroll = (element, targetScrollLeft, duration = 600) => {
     const startScrollLeft = element.scrollLeft;
     const distance = targetScrollLeft - startScrollLeft;
     const startTime = performance.now();
 
-    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+    const easeOutQuart = (t) => 1 - Math.pow(1 - t, 4);
 
     const animateScroll = (currentTime) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      const easedProgress = easeOutCubic(progress);
+      const easedProgress = easeOutQuart(progress);
       
       element.scrollLeft = startScrollLeft + (distance * easedProgress);
       

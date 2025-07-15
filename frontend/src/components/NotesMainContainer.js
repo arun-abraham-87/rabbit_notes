@@ -31,7 +31,11 @@ const NotesMainContainer = ({
     const [excludeBackupNotes, setExcludeBackupNotes] = useState(true); // Default to true to exclude backup notes
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
-    const [focusMode, setFocusMode] = useState(false);
+    const [focusMode, setFocusMode] = useState(() => {
+        // Load focus mode state from localStorage on component mount
+        const saved = localStorage.getItem('focusMode');
+        return saved ? JSON.parse(saved) : false;
+    });
     const searchInputRef = useRef(null);
 
     // Focus search input on mount
@@ -40,6 +44,11 @@ const NotesMainContainer = ({
             searchInputRef.current.focus();
         }
     }, []);
+
+    // Save focus mode state to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem('focusMode', JSON.stringify(focusMode));
+    }, [focusMode]);
 
     // Debounced search function
     const debouncedSetSearchQuery = useCallback(
@@ -180,7 +189,7 @@ const NotesMainContainer = ({
                             onClick={() => setFocusMode(!focusMode)}
                             className={`flex items-center gap-2 px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
                                 focusMode 
-                                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                                    ? 'bg-green-100 text-green-700 hover:bg-green-200' 
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                             title={focusMode ? 'Exit focus mode' : 'Enter focus mode'}

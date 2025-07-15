@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BookmarkIcon, PencilIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, createNote } from '../utils/ApiUtils';
 
 const BookmarkEditModal = ({ isOpen, onClose, bookmark, onSave }) => {
@@ -276,6 +276,32 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
     }
   };
 
+  const handleRemoveBookmark = async (bookmark) => {
+    try {
+      // Find the note containing this bookmark
+      const note = notes.find(n => n.id === bookmark.noteId);
+      if (!note) return;
+
+      // Split content into lines
+      const lines = note.content.split('\n');
+      
+      // Remove the meta::bookmark tag
+      const updatedLines = lines.filter(line => line.trim() !== 'meta::bookmark');
+      
+      // Join lines back together
+      const updatedContent = updatedLines.join('\n');
+      
+      // Update the note
+      await updateNoteById(note.id, updatedContent);
+      
+      // Update the notes state
+      setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+      
+    } catch (error) {
+      console.error('Error removing bookmark:', error);
+    }
+  };
+
   if (bookmarkedUrls.length === 0) return null;
 
   return (
@@ -306,13 +332,22 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
                     {displayText}
                   </a>
                   {editMode && (
-                    <button
-                      onClick={() => handleEditBookmark({ url, label, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId })}
-                      className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                      title="Edit bookmark"
-                    >
-                      <PencilIcon className="h-3 w-3" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleEditBookmark({ url, label, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId })}
+                        className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                        title="Edit bookmark"
+                      >
+                        <PencilIcon className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveBookmark({ url, label, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId })}
+                        className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Remove from bookmarks"
+                      >
+                        <TrashIcon className="h-3 w-3" />
+                      </button>
+                    </>
                   )}
                 </div>
               </React.Fragment>

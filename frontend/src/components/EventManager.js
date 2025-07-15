@@ -221,11 +221,8 @@ const EventManager = ({ selectedDate, onClose }) => {
                         title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
                       >
                         <div className="text-2xl font-bold text-gray-600">{displayText}</div>
-                        <div className="font-medium text-gray-900 w-full break-words truncate" style={{ wordBreak: 'break-word' }}>{ev.name}</div>
+                        <div className="font-medium text-gray-900 w-full break-words leading-relaxed" style={{ wordBreak: 'break-word', lineHeight: '1.6' }}>{ev.name}</div>
                         <div className="text-sm text-gray-500">{new Date(ev.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
-                        <div className="text-sm font-medium text-gray-600 -mt-1">
-                          {age}
-                        </div>
                         {ev.endDate && (
                           <div className="text-xs text-gray-500 mt-1">to {new Date(ev.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</div>
                         )}

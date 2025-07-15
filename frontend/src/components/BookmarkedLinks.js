@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { BookmarkIcon, PencilIcon } from '@heroicons/react/24/outline';
-import { updateNoteById } from '../utils/ApiUtils';
+import { BookmarkIcon, PencilIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { updateNoteById, createNote } from '../utils/ApiUtils';
 
 const BookmarkEditModal = ({ isOpen, onClose, bookmark, onSave }) => {
   const [customText, setCustomText] = useState(bookmark?.label || '');
@@ -97,10 +97,99 @@ const BookmarkEditModal = ({ isOpen, onClose, bookmark, onSave }) => {
   );
 };
 
+const AddBookmarkModal = ({ isOpen, onClose, onSave }) => {
+  const [customText, setCustomText] = useState('');
+  const [url, setUrl] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (url.trim()) {
+      onSave(customText.trim(), url.trim());
+      onClose();
+    }
+  };
+
+  const handleClose = () => {
+    setCustomText('');
+    setUrl('');
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-96 max-w-md mx-4">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">
+            Add Bookmark
+          </h3>
+          <button
+            onClick={handleClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="mb-4">
+            <label htmlFor="customText" className="block text-sm font-medium text-gray-700 mb-2">
+              Custom Text (optional)
+            </label>
+            <input
+              type="text"
+              id="customText"
+              value={customText}
+              onChange={(e) => setCustomText(e.target.value)}
+              placeholder="Enter custom text for the link"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-2">
+              URL
+            </label>
+            <input
+              type="url"
+              id="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Enter URL"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Add Bookmark
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const BookmarkedLinks = ({ notes, setNotes }) => {
   const [editMode, setEditMode] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const bookmarkedUrls = useMemo(() => {
     const seen = new Set();
@@ -170,6 +259,23 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
     }
   };
 
+  const handleAddBookmark = async (customText, url) => {
+    try {
+      // Create a new note with the bookmark
+      const bookmarkContent = customText 
+        ? `[${customText}](${url})\nmeta::bookmark`
+        : `${url}\nmeta::bookmark`;
+      
+      const newNote = await createNote(bookmarkContent);
+      
+      // Add the new note to the notes state
+      setNotes([...notes, newNote]);
+      
+    } catch (error) {
+      console.error('Error adding bookmark:', error);
+    }
+  };
+
   if (bookmarkedUrls.length === 0) return null;
 
   return (
@@ -213,17 +319,26 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
             );
           })}
         </div>
-        <button
-          onClick={() => setEditMode(!editMode)}
-          className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
-            editMode 
-              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-          title={editMode ? 'Exit edit mode' : 'Edit bookmarks'}
-        >
-          {editMode ? 'Done' : 'Edit'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+            title="Add bookmark"
+          >
+            <PlusIcon className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setEditMode(!editMode)}
+            className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
+              editMode 
+                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            title={editMode ? 'Exit edit mode' : 'Edit bookmarks'}
+          >
+            {editMode ? 'Done' : 'Edit'}
+          </button>
+        </div>
       </div>
 
       <BookmarkEditModal
@@ -231,6 +346,12 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
         onClose={() => setShowEditModal(false)}
         bookmark={editingBookmark}
         onSave={handleSaveBookmark}
+      />
+
+      <AddBookmarkModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSave={handleAddBookmark}
       />
     </>
   );

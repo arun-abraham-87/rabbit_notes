@@ -74,42 +74,45 @@ const Dashboard = ({notes,setNotes}) => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Date and Time Section */}
+      {/* First Row: Date and Timezone Display (Full Width) */}
       <div className="mb-8">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-shrink-0 w-auto">
-              <h1 className="text-3xl font-bold mb-4">{formattedDate}</h1>
-              <div
-                className="relative group"
-                onMouseEnter={() => setShowTimezones(true)}
-                onMouseLeave={() => setShowTimezones(false)}
-              >
-                <div className="flex items-center gap-4 cursor-pointer">
-                  <div className="text-base font-medium">{formattedTime}</div>
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
-                    <span>🇦🇺</span>
-                    <span>AEST</span>
-                    <ChevronDownIcon className="h-4 w-4 text-gray-400" />
-                  </div>
-                </div>
-                {showTimezones && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
-                    <TimeZoneDisplay selectedTimezones={selectedTimezones} />
-                  </div>
-                )}
+        <div className="flex flex-col items-center">
+          <h1 className="text-3xl font-bold mb-4">{formattedDate}</h1>
+          <div
+            className="relative group"
+            onMouseEnter={() => setShowTimezones(true)}
+            onMouseLeave={() => setShowTimezones(false)}
+          >
+            <div className="flex items-center gap-4 cursor-pointer">
+              <div className="text-base font-medium">{formattedTime}</div>
+              <div className="flex items-center gap-1 text-sm text-gray-500">
+                <span>🇦🇺</span>
+                <span>AEST</span>
+                <ChevronDownIcon className="h-4 w-4 text-gray-400" />
               </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <EventManager />
-            </div>
-            <div className="ml-4 flex-shrink-0">
-              <Pomodoro />
-            </div>
+            {showTimezones && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
+                <TimeZoneDisplay selectedTimezones={selectedTimezones} />
+              </div>
+            )}
           </div>
-        
-          <BookmarkedLinks notes={notes} setNotes={setNotes} />
         </div>
+      </div>
+
+      {/* Second Row: Event Manager Cards */}
+      <div className="mb-8">
+        <EventManager />
+      </div>
+
+      {/* Third Row: Pomodoro Button */}
+      <div className="mb-8 flex justify-center">
+        <Pomodoro />
+      </div>
+
+      {/* Bookmarked Links */}
+      <div className="mb-8">
+        <BookmarkedLinks notes={notes} setNotes={setNotes} />
       </div>
 
       {/* Alerts Section */}

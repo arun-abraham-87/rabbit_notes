@@ -11,7 +11,8 @@ const NoteFilters = ({
   onExcludeMeetingsChange,
   onDeadlinePassedChange,
   onExcludeEventNotesChange,
-  onExcludeBackupNotesChange
+  onExcludeBackupNotesChange,
+  onExcludeWatchEventsChange
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
   const [showEventButtons, setShowEventButtons] = useState(false);
@@ -21,6 +22,7 @@ const NoteFilters = ({
   const [excludeMeetings, setExcludeMeetings] = useState(settings.excludeMeetingsByDefault || false);
   const [excludeEventNotes, setExcludeEventNotes] = useState(true); // Default to true to exclude event notes
   const [excludeBackupNotes, setExcludeBackupNotes] = useState(true); // Default to true to exclude backup notes
+  const [excludeWatchEvents, setExcludeWatchEvents] = useState(true); // Default to true to exclude watch events
   const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
 
   // Only set the initial state of checkboxes
@@ -60,6 +62,12 @@ const NoteFilters = ({
       onExcludeBackupNotesChange(excludeBackupNotes);
     }
   }, [excludeBackupNotes, onExcludeBackupNotesChange]);
+
+  useEffect(() => {
+    if (onExcludeWatchEventsChange) {
+      onExcludeWatchEventsChange(excludeWatchEvents);
+    }
+  }, [excludeWatchEvents, onExcludeWatchEventsChange]);
 
   const removeFilterFromQuery = (filterText) => {
     if (setSearchQuery) {
@@ -285,6 +293,10 @@ const NoteFilters = ({
     setExcludeBackupNotes(checked);
   };
 
+  const handleExcludeWatchEventsChange = (checked) => {
+    setExcludeWatchEvents(checked);
+  };
+
   const handleClear = () => {
     setShowTodoButtons(false);
     setShowEventButtons(false);
@@ -296,6 +308,7 @@ const NoteFilters = ({
     setExcludeMeetings(false);
     setExcludeEventNotes(false); // Clear all checkboxes
     setExcludeBackupNotes(false); // Clear all checkboxes
+    setExcludeWatchEvents(false); // Clear watch events checkbox
     setLines([{ id: 'line-0', text: '', isTitle: false }]);
     setSearchQuery('');
   };
@@ -481,6 +494,15 @@ const NoteFilters = ({
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Backup
+        </label>
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input
+            type="checkbox"
+            checked={excludeWatchEvents}
+            onChange={(e) => handleExcludeWatchEventsChange(e.target.checked)}
+            className="form-checkbox h-3 w-3 text-purple-600"
+          />
+          Exclude Watch Events
         </label>
       </div>
 

@@ -30,6 +30,7 @@ const NotesMainContainer = ({
     const [excludeMeetings, setExcludeMeetings] = useState(settings?.excludeMeetingsByDefault || false);
     const [excludeEventNotes, setExcludeEventNotes] = useState(true); // Default to true to exclude event notes
     const [excludeBackupNotes, setExcludeBackupNotes] = useState(true); // Default to true to exclude backup notes
+    const [excludeWatchEvents, setExcludeWatchEvents] = useState(true); // Default to true to exclude watch events
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
     const [focusMode, setFocusMode] = useState(() => {
@@ -241,11 +242,15 @@ const NotesMainContainer = ({
             if (excludeBackupNotes && note.content && note.content.includes('meta::notes_backup_date')) {
                 return false;
             }
+            // Exclude watch events if the filter is enabled
+            if (excludeWatchEvents && note.content && note.content.includes('meta::watch')) {
+                return false;
+            }
             return (!searchQuery && isSameAsTodaysDate(note.created_datetime)) || searchInNote(note, searchQuery);
         });
         setTotals({ totals: filtered.length });
         return filtered;
-    }, [allNotes, searchQuery, excludeEventNotes, excludeBackupNotes]);
+    }, [allNotes, searchQuery, excludeEventNotes, excludeBackupNotes, excludeWatchEvents]);
 
     const handleTagClick = (tag) => {
         setLocalSearchQuery(tag);
@@ -381,6 +386,7 @@ const NotesMainContainer = ({
                             onDeadlinePassedChange={setShowDeadlinePassedFilter}
                             onExcludeEventNotesChange={setExcludeEventNotes}
                             onExcludeBackupNotesChange={setExcludeBackupNotes}
+                            onExcludeWatchEventsChange={setExcludeWatchEvents}
                         />
                         <button
                             onClick={() => setFocusMode(!focusMode)}

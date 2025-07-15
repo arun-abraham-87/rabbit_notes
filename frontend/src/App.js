@@ -82,9 +82,9 @@ const AppContent = () => {
       }
 
       // Handle navigation shortcuts
-      // 'gt' to go to /tags, 'gn' to go to /notes, 'gh' to go to /dashboard
+      // 'gt' to go to /tags, 'gn' to go to /notes, 'gh' to go to /dashboard, 'ge' to go to /events
       if (e.key === 'g') {
-        // Start tracking for 'gt', 'gn', or 'gh' sequence
+        // Start tracking for 'gt', 'gn', 'gh', or 'ge' sequence
         const handleNextKey = (nextEvent) => {
           if (nextEvent.key === 't') {
             e.preventDefault();
@@ -101,8 +101,13 @@ const AppContent = () => {
             nextEvent.preventDefault();
             navigate('/dashboard');
             window.removeEventListener('keydown', handleNextKey);
+          } else if (nextEvent.key === 'e') {
+            e.preventDefault();
+            nextEvent.preventDefault();
+            navigate('/events');
+            window.removeEventListener('keydown', handleNextKey);
           } else {
-            // If next key is not 't', 'n', or 'h', stop tracking
+            // If next key is not 't', 'n', 'h', or 'e', stop tracking
             window.removeEventListener('keydown', handleNextKey);
           }
         };

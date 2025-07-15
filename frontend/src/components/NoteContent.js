@@ -528,17 +528,6 @@ export default function NoteContent({
                             >
                                 <PlusIcon className="w-4 h-4" />
                             </button>
-                            <button
-                                onClick={toggleBulkDeleteMode}
-                                className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
-                                    bulkDeleteMode 
-                                        ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                                title={bulkDeleteMode ? 'Cancel bulk delete' : 'Bulk delete rows'}
-                            >
-                                {bulkDeleteMode ? 'Cancel' : 'Bulk Delete'}
-                            </button>
                         </div>
                         <div className="flex items-center gap-2">
                             {bulkDeleteMode && selectedRows.size > 0 && (
@@ -551,10 +540,21 @@ export default function NoteContent({
                                 </button>
                             )}
                             <button
+                                onClick={toggleBulkDeleteMode}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
+                                    bulkDeleteMode 
+                                        ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title={bulkDeleteMode ? 'Cancel bulk delete' : 'Bulk delete rows'}
+                            >
+                                {bulkDeleteMode ? 'Cancel' : 'Bulk Delete'}
+                            </button>
+                            <button
                                 onClick={toggleNoBullets}
                                 className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
                                     hasNoBulletsTag() 
-                                        ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                                        ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' 
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
                                 title={hasNoBulletsTag() ? 'Show bullets' : 'Hide bullets'}

@@ -7,7 +7,7 @@ import {
   CheckIcon,
   ExclamationCircleIcon
 } from '@heroicons/react/24/solid';
-import { loadTags, addNewTag, deleteTag, editTag } from '../utils/ApiUtils';
+import { loadTags, addNewTag, deleteTag, editTag, loadWorkstreams, deleteWorkstream } from '../utils/ApiUtils';
 import { loadNotes } from '../utils/ApiUtils';
 import { addNewNoteCommon } from '../utils/ApiUtils';
 import moment from 'moment';
@@ -38,6 +38,9 @@ const TagListing = () => {
       setIsLoading(true);
       setError(null);
       const fetchedTags = await loadTags();
+      console.log('TagListing - fetchedTags:', fetchedTags);
+      console.log('TagListing - fetchedTags length:', fetchedTags?.length);
+      console.log('TagListing - suggestions in fetchedTags:', fetchedTags?.filter(tag => tag.text.toLowerCase().includes('suggestions')));
       if (Array.isArray(fetchedTags)) {
         setTags(fetchedTags);
       } else {
@@ -57,11 +60,13 @@ const TagListing = () => {
     try {
       setIsLoadingWorkstreams(true);
       setWorkstreamsError(null);
-      const notes = await loadNotes();
-      const workstreamNotes = (Array.isArray(notes) ? notes : notes?.notes || []).filter(note =>
-        note.content && note.content.split('\n').some(line => line.trim().startsWith('meta::workstream'))
-      );
-      setWorkstreams(workstreamNotes);
+      const fetchedWorkstreams = await loadWorkstreams();
+      if (Array.isArray(fetchedWorkstreams)) {
+        setWorkstreams(fetchedWorkstreams);
+      } else {
+        console.error('Unexpected workstreams format:', fetchedWorkstreams);
+        setWorkstreams([]);
+      }
     } catch (err) {
       setWorkstreamsError('Failed to load workstreams. Please try again.');
       setWorkstreams([]);
@@ -94,6 +99,17 @@ const TagListing = () => {
     } catch (err) {
       setError('Failed to delete tag. Please try again.');
       console.error('Error deleting tag:', err);
+    }
+  };
+
+  const handleDeleteWorkstream = async (workstream) => {
+    try {
+      setWorkstreamsError(null);
+      await deleteWorkstream(workstream.id);
+      await loadWorkstreamsList();
+    } catch (err) {
+      setWorkstreamsError('Failed to delete workstream. Please try again.');
+      console.error('Error deleting workstream:', err);
     }
   };
 
@@ -336,7 +352,7 @@ const TagListing = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {workstreams.filter(note => note.content.split('\n')[0].toLowerCase().includes(workstreamSearch.toLowerCase())).length === 0 ? (
+          {workstreams.filter(workstream => workstream.text.toLowerCase().includes(workstreamSearch.toLowerCase())).length === 0 ? (
             <div className="col-span-full text-center py-8 text-gray-500">
               {workstreamSearch ? (
                 <p>No workstreams match your search</p>
@@ -346,13 +362,22 @@ const TagListing = () => {
             </div>
           ) : (
             workstreams
-              .filter(note => note.content.split('\n')[0].toLowerCase().includes(workstreamSearch.toLowerCase()))
-              .map((note) => (
+              .filter(workstream => workstream.text.toLowerCase().includes(workstreamSearch.toLowerCase()))
+              .map((workstream) => (
                 <div
-                  key={note.id}
-                  className="flex items-center justify-between p-2 rounded-full border bg-purple-50 hover:bg-purple-100 transition-all duration-200"
+                  key={workstream.id}
+                  className="group flex items-center justify-between p-2 rounded-full border bg-purple-50 hover:bg-purple-100 transition-all duration-200"
                 >
-                  <span className="text-purple-700 px-3 truncate font-medium">{note.content.split('\n')[0]}</span>
+                  <span className="text-purple-700 px-3 truncate font-medium">{workstream.text}</span>
+                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pr-2">
+                    <button
+                      onClick={() => handleDeleteWorkstream(workstream)}
+                      className="p-1 rounded-full hover:bg-red-100 text-red-600"
+                      title="Delete workstream"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))
           )}

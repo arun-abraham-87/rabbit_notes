@@ -132,14 +132,48 @@ export const listJournals = async () => {
 // Tag Operations
 export const loadTags = async () => {
     try {
+        console.log('loadTags - making request to /api/objects');
         const response = await fetch(`${API_BASE_URL}/objects`);
+        console.log('loadTags - response status:', response.status);
         if (!response.ok) {
             console.warn('Failed to fetch tags, returning empty array');
             return [];
         }
-        return await response.json();
+        const data = await response.json();
+        console.log('loadTags - received data:', data);
+        console.log('loadTags - data length:', data?.length);
+        console.log('loadTags - suggestions in data:', data?.filter(tag => tag.text.toLowerCase().includes('suggestions')));
+        return data;
     } catch (error) {
         console.warn('Error fetching tags:', error);
+        return [];
+    }
+};
+
+export const loadWorkstreams = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/workstreams`);
+        if (!response.ok) {
+            console.warn('Failed to fetch workstreams, returning empty array');
+            return [];
+        }
+        return await response.json();
+    } catch (error) {
+        console.warn('Error fetching workstreams:', error);
+        return [];
+    }
+};
+
+export const loadPeople = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/people`);
+        if (!response.ok) {
+            console.warn('Failed to fetch people, returning empty array');
+            return [];
+        }
+        return await response.json();
+    } catch (error) {
+        console.warn('Error fetching people:', error);
         return [];
     }
 };
@@ -169,13 +203,37 @@ export const deleteTag = async (tagId) => {
     return await response.json();
 };
 
+export const deleteWorkstream = async (workstreamId) => {
+    const response = await fetch(`${API_BASE_URL}/workstreams/${workstreamId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) throw new Error('Failed to delete workstream');
+    return await response.json();
+};
+
+export const deletePerson = async (personId) => {
+    const response = await fetch(`${API_BASE_URL}/people/${personId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) throw new Error('Failed to delete person');
+    return await response.json();
+};
+
 export const editTag = async (tagId, newText) => {
+    console.log('editTag called with:', { tagId, newText });
     const response = await fetch(`${API_BASE_URL}/objects/${tagId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: newText }),
     });
-    if (!response.ok) throw new Error('Failed to edit tag');
+    console.log('editTag response status:', response.status);
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.log('editTag error response:', errorText);
+        throw new Error('Failed to edit tag');
+    }
     return await response.json();
 };
 

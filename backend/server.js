@@ -467,7 +467,7 @@ app.get('/api/objects', (req, res) => {
       }
     }
 
-    // Get all notes to count tag occurrences and find workstreams/people
+    // Get all notes to count tag occurrences
     const files = fs.readdirSync(NOTES_DIR);
     let allNotes = [];
 
@@ -502,35 +502,13 @@ app.get('/api/objects', (req, res) => {
       }
     });
 
-    // Add counts to the objects array
+    // Add counts to the objects array - only return objects from objects.md file
     const objectsWithCounts = objectsArray.map(obj => ({
       ...obj,
       count: tagCounts[obj.text.trim()] || 0
     }));
 
-    // Add workstreams and people to the objects array
-    const workstreams = allNotes
-      .filter(note => note.content.includes('meta::workstream'))
-      .map(note => ({
-        id: note.id,
-        text: note.content.split('\n')[0],
-        type: 'workstream',
-        count: 1
-      }));
-
-    const people = allNotes
-      .filter(note => note.content.includes('meta::person::'))
-      .map(note => ({
-        id: note.id,
-        text: note.content.split('\n')[0],
-        type: 'person',
-        count: 1
-      }));
-
-    // Combine all objects
-    const allObjects = [...objectsWithCounts, ...workstreams, ...people];
-
-    res.json(allObjects);
+    res.json(objectsWithCounts);
   } catch (err) {
     console.error('Error processing the request:', err.message);
     res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
@@ -600,25 +578,190 @@ app.put('/api/objects/:id', (req, res) => {
   try {
     const id = req.params.id;
     const { text } = req.body;
+    
+    console.log('PUT /api/objects/:id - Request received');
+    console.log('ID:', id);
+    console.log('Text:', text);
+    console.log('Body:', req.body);
+    
     const fileName = `objects.md`;
     const filePath = path.join(NOTES_DIR, fileName);
 
     if (!fs.existsSync(filePath)) {
+      console.log('Objects file not found');
       return res.status(404).json({ error: 'Objects not found' });
     }
 
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     let objects = JSON.parse(fileContent || '[]');
+    
+    console.log('Current objects:', objects.length);
+    console.log('Looking for object with ID:', id);
 
     const objectIndex = objects.findIndex(obj => obj.id === id);
+    console.log('Object index found:', objectIndex);
+    
     if (objectIndex === -1) {
+      console.log('Object not found in file');
       return res.status(404).json({ error: 'Object not found' });
     }
 
+    console.log('Updating object:', objects[objectIndex]);
     objects[objectIndex].text = text;
+    console.log('Updated object:', objects[objectIndex]);
 
     fs.writeFileSync(filePath, JSON.stringify(objects, null, 2));
     res.json({ message: 'Object updated successfully', object: objects[objectIndex] });
+  } catch (err) {
+    console.error('Error processing the request:', err.message);
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
+  }
+});
+
+// GET: Get all workstreams
+app.get('/api/workstreams', (req, res) => {
+  try {
+    const files = fs.readdirSync(NOTES_DIR);
+    let allNotes = [];
+
+    files.forEach((file) => {
+      try {
+        if (file === 'objects.md' || file === 'images') return;
+
+        const notesFilePath = path.join(NOTES_DIR, file);
+        if (fs.lstatSync(notesFilePath).isDirectory()) return;
+
+        const fileContent = fs.readFileSync(notesFilePath, 'utf-8');
+        const notesInFile = JSON.parse(fileContent);
+
+        if (Array.isArray(notesInFile)) {
+          allNotes = allNotes.concat(notesInFile);
+        }
+      } catch (err) {
+        console.error(`Failed to process file: ${file}`, err.message);
+      }
+    });
+
+    const workstreams = allNotes
+      .filter(note => note.content.includes('meta::workstream'))
+      .map(note => ({
+        id: note.id,
+        text: note.content.split('\n')[0],
+        type: 'workstream',
+        count: 1
+      }));
+
+    res.json(workstreams);
+  } catch (err) {
+    console.error('Error processing the request:', err.message);
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
+  }
+});
+
+// GET: Get all people
+app.get('/api/people', (req, res) => {
+  try {
+    const files = fs.readdirSync(NOTES_DIR);
+    let allNotes = [];
+
+    files.forEach((file) => {
+      try {
+        if (file === 'objects.md' || file === 'images') return;
+
+        const notesFilePath = path.join(NOTES_DIR, file);
+        if (fs.lstatSync(notesFilePath).isDirectory()) return;
+
+        const fileContent = fs.readFileSync(notesFilePath, 'utf-8');
+        const notesInFile = JSON.parse(fileContent);
+
+        if (Array.isArray(notesInFile)) {
+          allNotes = allNotes.concat(notesInFile);
+        }
+      } catch (err) {
+        console.error(`Failed to process file: ${file}`, err.message);
+      }
+    });
+
+    const people = allNotes
+      .filter(note => note.content.includes('meta::person::'))
+      .map(note => ({
+        id: note.id,
+        text: note.content.split('\n')[0],
+        type: 'person',
+        count: 1
+      }));
+
+    res.json(people);
+  } catch (err) {
+    console.error('Error processing the request:', err.message);
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
+  }
+});
+
+// DELETE: Delete a workstream by note ID
+app.delete('/api/workstreams/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    const files = fs.readdirSync(NOTES_DIR);
+    
+    for (const file of files) {
+      if (file === 'objects.md' || file === 'images') continue;
+      
+      const notesFilePath = path.join(NOTES_DIR, file);
+      if (fs.lstatSync(notesFilePath).isDirectory()) continue;
+
+      const fileContent = fs.readFileSync(notesFilePath, 'utf-8');
+      let notes = JSON.parse(fileContent);
+
+      if (Array.isArray(notes)) {
+        const noteIndex = notes.findIndex(note => note.id === id);
+        if (noteIndex !== -1) {
+          // Check if this note is a workstream
+          if (notes[noteIndex].content.includes('meta::workstream')) {
+            notes.splice(noteIndex, 1);
+            fs.writeFileSync(notesFilePath, JSON.stringify(notes, null, 2));
+            return res.json({ message: 'Workstream deleted successfully' });
+          }
+        }
+      }
+    }
+
+    return res.status(404).json({ error: 'Workstream not found' });
+  } catch (err) {
+    console.error('Error processing the request:', err.message);
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
+  }
+});
+
+// DELETE: Delete a person by note ID
+app.delete('/api/people/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    const files = fs.readdirSync(NOTES_DIR);
+    
+    for (const file of files) {
+      if (file === 'objects.md' || file === 'images') continue;
+      
+      const notesFilePath = path.join(NOTES_DIR, file);
+      if (fs.lstatSync(notesFilePath).isDirectory()) continue;
+
+      const fileContent = fs.readFileSync(notesFilePath, 'utf-8');
+      let notes = JSON.parse(fileContent);
+
+      if (Array.isArray(notes)) {
+        const noteIndex = notes.findIndex(note => note.id === id);
+        if (noteIndex !== -1) {
+          // Check if this note is a person
+          if (notes[noteIndex].content.includes('meta::person::')) {
+            notes.splice(noteIndex, 1);
+            fs.writeFileSync(notesFilePath, JSON.stringify(notes, null, 2));
+            return res.json({ message: 'Person deleted successfully' });
+          }
+        }
+      }
+    }
+
+    return res.status(404).json({ error: 'Person not found' });
   } catch (err) {
     console.error('Error processing the request:', err.message);
     res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });

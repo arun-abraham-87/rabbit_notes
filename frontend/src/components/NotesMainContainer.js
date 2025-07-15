@@ -140,7 +140,7 @@ const NotesMainContainer = ({
                     });
                     console.log('Debug matches found:', debugMatches.length);
 
-                    setFilteredTags(filtered.map(tag => tag.text));
+                    setFilteredTags(filtered);
                     
                     if (filtered.length > 0) {
                         const { x, y } = getCursorCoordinates(e);
@@ -164,7 +164,7 @@ const NotesMainContainer = ({
         const lastSpaceIndex = localSearchQuery.lastIndexOf(" ");
         const updatedText =
             (lastSpaceIndex === -1 ? "" : localSearchQuery.slice(0, lastSpaceIndex + 1)) +
-            `${tag} `;
+            `${tag.text} `;
         setLocalSearchQuery(updatedText);
         setSearchQuery(updatedText);
         setShowPopup(false);
@@ -338,17 +338,29 @@ const NotesMainContainer = ({
                             {filteredTags.length === 0 ? (
                                 <div className="p-2 text-gray-500">No matching tags</div>
                             ) : (
-                                filteredTags.map((tag, index) => (
-                                    <div
-                                        key={tag}
-                                        onClick={() => handleSelectTag(tag)}
-                                        className={`p-2 cursor-pointer hover:bg-purple-100 ${
-                                            selectedTagIndex === index ? "bg-purple-200" : ""
-                                        }`}
-                                    >
-                                        {tag}
-                                    </div>
-                                ))
+                                filteredTags.map((tag, index) => {
+                                    // Determine type indicator
+                                    let typeIndicator = '';
+                                    if (tag.type === 'person') {
+                                        typeIndicator = ' (P)';
+                                    } else if (tag.type === 'workstream') {
+                                        typeIndicator = ' (W)';
+                                    } else {
+                                        typeIndicator = ' (T)'; // Default to tag
+                                    }
+                                    
+                                    return (
+                                        <div
+                                            key={tag.id || tag.text}
+                                            onClick={() => handleSelectTag(tag)}
+                                            className={`p-2 cursor-pointer hover:bg-purple-100 ${
+                                                selectedTagIndex === index ? "bg-purple-200" : ""
+                                            }`}
+                                        >
+                                            {tag.text}{typeIndicator}
+                                        </div>
+                                    );
+                                })
                             )}
                         </div>
                     )}

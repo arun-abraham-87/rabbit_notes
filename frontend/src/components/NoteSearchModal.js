@@ -58,6 +58,8 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
 
   const handleSearch = (query) => {
     setSearchQuery(query);
+    // Reset selected index when search query changes
+    setSelectedIndex(0);
     if (query.trim()) {
       // Get current recent searches
       const currentSearches = getRecentSearches();
@@ -84,11 +86,17 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
     // Handle arrow keys for navigation regardless of focus
     if (e.key === 'ArrowDown' && filteredNotes.length > 0) {
       e.preventDefault();
-      setSelectedIndex((prev) => (prev + 1) % filteredNotes.length);
+      e.stopPropagation();
+      const newIndex = (selectedIndex + 1) % filteredNotes.length;
+      console.log('ArrowDown pressed: current selectedIndex =', selectedIndex, 'new selectedIndex =', newIndex, 'timestamp =', Date.now());
+      setSelectedIndex(newIndex);
       return;
     } else if (e.key === 'ArrowUp' && filteredNotes.length > 0) {
       e.preventDefault();
-      setSelectedIndex((prev) => (prev - 1 + filteredNotes.length) % filteredNotes.length);
+      e.stopPropagation();
+      const newIndex = (selectedIndex - 1 + filteredNotes.length) % filteredNotes.length;
+      console.log('ArrowUp pressed: current selectedIndex =', selectedIndex, 'new selectedIndex =', newIndex, 'timestamp =', Date.now());
+      setSelectedIndex(newIndex);
       return;
     }
     
@@ -115,6 +123,13 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
       });
     }
   }, [selectedIndex]);
+
+  // Ensure selectedIndex is valid when filtered results change
+  useEffect(() => {
+    if (filteredNotes.length > 0 && selectedIndex >= filteredNotes.length) {
+      setSelectedIndex(0);
+    }
+  }, [filteredNotes, selectedIndex]);
 
   // Update ESC key handling
   useEffect(() => {
@@ -261,6 +276,15 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
           </button>
         </div>
 
+        {/* Selected Index Indicator */}
+        {filteredNotes.length > 0 && (
+          <div className="px-4 py-2 bg-blue-50 border-b border-gray-100">
+            <div className="text-sm text-blue-700 font-medium">
+              Selected: Index {selectedIndex} of {filteredNotes.length - 1}
+            </div>
+          </div>
+        )}
+
         {/* Results Container */}
         <div 
           ref={resultsRef}
@@ -303,6 +327,7 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
             const lines = note.content.split('\n');
             const displayLines = isExpanded ? lines : lines.slice(0, 4);
             const isEven = index % 2 === 0;
+            const isSelected = index === selectedIndex;
             
             return (
               <div
@@ -310,8 +335,8 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                 ref={el => noteRefs.current[index] = el}
                 tabIndex={0}
                 className={`group p-4 cursor-pointer transition-all duration-200 outline-none border-b border-gray-50 last:border-b-0 ${
-                  index === selectedIndex 
-                    ? 'bg-blue-100 border-l-4 border-l-blue-500 shadow-sm' 
+                  isSelected
+                    ? 'bg-yellow-300 border-l-4 border-l-red-600 shadow-md ring-2 ring-red-400 font-bold' 
                     : isEven 
                       ? 'bg-gray-50' 
                       : 'bg-gray-100'
@@ -333,6 +358,13 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                     <div className="flex items-center gap-2 text-xs text-gray-400">
                       <span className="bg-gray-100 px-2 py-0.5 rounded-full">
                         Added {getAgeInStringFmt(note.created_datetime)}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full font-bold ${
+                        isSelected 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        Index: {index} {isSelected ? '(SELECTED)' : ''}
                       </span>
                     </div>
                     <button

@@ -18,6 +18,7 @@ export default function NoteTagBar({
   duplicateUrlNoteIds,
   duplicateWithinNoteIds,
   urlShareSpaceNoteIds,
+  focusMode = false
 }) {
   const metaTags = extractMetaTags(note.content);
 
@@ -117,114 +118,118 @@ export default function NoteTagBar({
   };
 
   return (
-    <div className="flex flex-wrap gap-2 px-4 pb-2">
-      {/* Todo Tags with Priority */}
-      {metaTags.todo.map((todoDate, index) => (
-        <React.Fragment key={`todo-group-${index}`}>
-          <TagPill
-            key={`todo-${index}`}
-            type="todo"
-            details={todoDate}
-            onRemove={() => removeTag('todo', todoDate)}
-          />
-          {metaTags.priority.map((priority) => (
+    <>
+      {!focusMode && (
+        <div className="flex flex-wrap gap-2 px-4 pb-2">
+          {/* Todo Tags with Priority */}
+          {metaTags.todo.map((todoDate, index) => (
+            <React.Fragment key={`todo-group-${index}`}>
+              <TagPill
+                key={`todo-${index}`}
+                type="todo"
+                details={todoDate}
+                onRemove={() => removeTag('todo', todoDate)}
+              />
+              {metaTags.priority.map((priority) => (
+                <TagPill
+                  key={`${priority}-${index}`}
+                  type={priority}
+                  onRemove={() => removeTag(priority)}
+                />
+              ))}
+            </React.Fragment>
+          ))}
+
+          {/* Abbreviation Tag */}
+          {metaTags.abbreviations.length > 0 && (
             <TagPill
-              key={`${priority}-${index}`}
-              type={priority}
-              onRemove={() => removeTag(priority)}
+              type="abbreviation"
+              onRemove={() => removeTag('abbreviation')}
+            />
+          )}
+
+          {/* Bookmark Tag */}
+          {metaTags.bookmarks.length > 0 && (
+            <TagPill
+              type="bookmark"
+              onRemove={() => removeTag('bookmark')}
+            />
+          )}
+
+          {/* Event Tags */}
+          {metaTags.events.map((eventDate, index) => (
+            <TagPill
+              key={`event-${index}`}
+              type="event"
+              details={eventDate}
+              onRemove={() => removeTag('event', eventDate)}
             />
           ))}
-        </React.Fragment>
-      ))}
 
-      {/* Abbreviation Tag */}
-      {metaTags.abbreviations.length > 0 && (
-        <TagPill
-          type="abbreviation"
-          onRemove={() => removeTag('abbreviation')}
-        />
-      )}
+          {/* Meeting Tags */}
+          {metaTags.meetings.map((meetingDate, index) => (
+            <TagPill
+              key={`meeting-${index}`}
+              type="meeting"
+              details={meetingDate}
+              onRemove={() => removeTag('meeting', meetingDate)}
+            />
+          ))}
 
-      {/* Bookmark Tag */}
-      {metaTags.bookmarks.length > 0 && (
-        <TagPill
-          type="bookmark"
-          onRemove={() => removeTag('bookmark')}
-        />
-      )}
+          {/* Date Tags */}
+          {metaTags.dates.map((date, index) => (
+            <TagPill
+              key={`date-${index}`}
+              type="due"
+              details={date}
+              onRemove={() => removeTag('end_date', date)}
+            />
+          ))}
 
-      {/* Event Tags */}
-      {metaTags.events.map((eventDate, index) => (
-        <TagPill
-          key={`event-${index}`}
-          type="event"
-          details={eventDate}
-          onRemove={() => removeTag('event', eventDate)}
-        />
-      ))}
+          {/* Other Meta Tags */}
+          {metaTags.other.map((tag, index) => {
+            const parts = tag.split('::');
+            return (
+              <TagPill
+                key={`other-${index}`}
+                type={parts[1]}
+                details={parts.slice(2).join('::')}
+                onRemove={() => removeTag(parts[1], parts.slice(2).join(':'))}
+              />
+            );
+          })}
 
-      {/* Meeting Tags */}
-      {metaTags.meetings.map((meetingDate, index) => (
-        <TagPill
-          key={`meeting-${index}`}
-          type="meeting"
-          details={meetingDate}
-          onRemove={() => removeTag('meeting', meetingDate)}
-        />
-      ))}
+          {/* Duplicate URL Indicators */}
+          {duplicateUrlNoteIds.has(note.id) && (
+            <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium">
+              Duplicate URL
+            </div>
+          )}
 
-      {/* Date Tags */}
-      {metaTags.dates.map((date, index) => (
-        <TagPill
-          key={`date-${index}`}
-          type="due"
-          details={date}
-          onRemove={() => removeTag('end_date', date)}
-        />
-      ))}
-
-      {/* Other Meta Tags */}
-      {metaTags.other.map((tag, index) => {
-        const parts = tag.split('::');
-        return (
-          <TagPill
-            key={`other-${index}`}
-            type={parts[1]}
-            details={parts.slice(2).join('::')}
-            onRemove={() => removeTag(parts[1], parts.slice(2).join(':'))}
-          />
-        );
-      })}
-
-      {/* Duplicate URL Indicators */}
-      {duplicateUrlNoteIds.has(note.id) && (
-        <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium">
-          Duplicate URL
+          {/* Duplicate Within Note Indicators */}
+          {duplicateWithinNoteIds.has(note.id) && (
+            <>
+              <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-medium">
+                Duplicate URL In Note
+              </div>
+              <button
+                onClick={() => {
+                  const seen = new Set();
+                  const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
+                    if (seen.has(url)) return '';
+                    seen.add(url);
+                    return url;
+                  });
+                  updateNote(note.id, cleanedContent);
+                }}
+                className="inline-flex items-center px-2.5 py-1 rounded-full bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
+              >
+                Remove Duplicates
+              </button>
+            </>
+          )}
         </div>
       )}
-
-      {/* Duplicate Within Note Indicators */}
-      {duplicateWithinNoteIds.has(note.id) && (
-        <>
-          <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-medium">
-            Duplicate URL In Note
-          </div>
-          <button
-            onClick={() => {
-              const seen = new Set();
-              const cleanedContent = note.content.replace(/https?:\/\/[^\s)]+/g, url => {
-                if (seen.has(url)) return '';
-                seen.add(url);
-                return url;
-              });
-              updateNote(note.id, cleanedContent);
-            }}
-            className="inline-flex items-center px-2.5 py-1 rounded-full bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
-          >
-            Remove Duplicates
-          </button>
-        </>
-      )}
-    </div>
+    </>
   );
 }

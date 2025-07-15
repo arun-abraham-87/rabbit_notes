@@ -54,7 +54,8 @@ const NotesList = ({
   setSearchQuery,
   onWordClick,
   settings,
-  activePage = 'notes'
+  activePage = 'notes',
+  focusMode = false
 }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
@@ -501,6 +502,7 @@ const NotesList = ({
                     duplicateUrlNoteIds={duplicateUrlNoteIds}
                     duplicateWithinNoteIds={duplicateWithinNoteIds}
                     urlShareSpaceNoteIds={urlShareSpaceNoteIds}
+                    focusMode={focusMode}
                   />
                 ))}
               </div>
@@ -566,6 +568,7 @@ const NotesList = ({
                     duplicateUrlNoteIds={duplicateUrlNoteIds}
                     duplicateWithinNoteIds={duplicateWithinNoteIds}
                     urlShareSpaceNoteIds={urlShareSpaceNoteIds}
+                    focusMode={focusMode}
                   />
                 ))}
               </div>
@@ -632,6 +635,7 @@ const NotesList = ({
                   duplicateUrlNoteIds={duplicateUrlNoteIds}
                   duplicateWithinNoteIds={duplicateWithinNoteIds}
                   urlShareSpaceNoteIds={urlShareSpaceNoteIds}
+                  focusMode={focusMode}
                 />
               ))}
             </div>

@@ -51,7 +51,8 @@ const NoteCard = ({
   setEditingEventNote,
   duplicateUrlNoteIds,
   duplicateWithinNoteIds,
-  urlShareSpaceNoteIds
+  urlShareSpaceNoteIds,
+  focusMode = false
 }) => {
   return (
     <div
@@ -93,6 +94,7 @@ const NoteCard = ({
             setNewLineText={setNewLineText}
             newLineInputRef={newLineInputRef}
             updateNote={updateNote}
+            focusMode={focusMode}
           />
         </div>
 
@@ -123,6 +125,7 @@ const NoteCard = ({
             duplicateUrlNoteIds={duplicateUrlNoteIds}
             duplicateWithinNoteIds={duplicateWithinNoteIds}
             urlShareSpaceNoteIds={urlShareSpaceNoteIds}
+            focusMode={focusMode}
           />
         </div>
 
@@ -138,6 +141,7 @@ const NoteCard = ({
           selectedNotes={selectedNotes}
           toggleNoteSelection={toggleNoteSelection}
           updateNote={updateNote}
+          focusMode={focusMode}
         />
 
         <LinkedNotesSection

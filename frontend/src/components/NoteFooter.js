@@ -58,6 +58,7 @@ const NoteFooter = ({
   selectedNotes,
   toggleNoteSelection,
   updateNote,
+  focusMode = false
 }) => {
   const [showPinPopup, setShowPinPopup] = useState(false);
   const [selectedPinLines, setSelectedPinLines] = useState([]);
@@ -265,6 +266,7 @@ const NoteFooter = ({
         )}
       </div>
 
+      {!focusMode && (
       <div className="flex items-center bg-gray-50 rounded-lg">
         {/* Todo Group */}
         <div className="flex items-center space-x-1 px-2 py-1">
@@ -470,6 +472,7 @@ const NoteFooter = ({
           </Tooltip>
         </div>
       </div>
+      )}
 
       {showRawNote && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

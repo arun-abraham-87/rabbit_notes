@@ -38,7 +38,8 @@ export default function NoteContent({
     setNewLineText,
     newLineInputRef,
     compressedView = false,
-    updateNote
+    updateNote,
+    focusMode = false
 }) {
     const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
     const [selectedRows, setSelectedRows] = useState(new Set());
@@ -320,6 +321,16 @@ export default function NoteContent({
     );
 
     const renderLine = (line, idx) => {
+        // Check if this line contains only a URL
+        let isUrlOnly = false;
+        if (note && note.content) {
+            const rawLines = getRawLines(note.content);
+            const originalLine = rawLines[idx];
+            const urlRegex = /^(https?:\/\/[^\s]+)$/;
+            const markdownUrlRegex = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/;
+            isUrlOnly = originalLine && (urlRegex.test(originalLine.trim()) || markdownUrlRegex.test(originalLine.trim()));
+        }
+
         if (React.isValidElement(line)) {
             if (editingLine?.noteId === note.id && editingLine?.lineIndex === idx) {
                 return renderInlineEditor(idx, false, false);
@@ -360,7 +371,7 @@ export default function NoteContent({
                                 rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                             }`,
                         })}
-                        {isFirstLine && !isH1 && (
+                        {!focusMode && isFirstLine && !isH1 && (
                             <button
                                 onClick={() => handleConvertToH1(note, line.props.children)}
                                 className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
@@ -369,7 +380,7 @@ export default function NoteContent({
                                 H1
                             </button>
                         )}
-                        {!isFirstLine && isH1 && (
+                        {!focusMode && !isFirstLine && isH1 && (
                             <button
                                 onClick={() => handleMoveH1ToTop(idx)}
                                 className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
@@ -477,7 +488,7 @@ export default function NoteContent({
                                     );
                                 }
                             })()}
-                            {isFirstLine && !isFirstLineH1 && (
+                            {!focusMode && !isUrlOnly && isFirstLine && !isFirstLineH1 && (
                                 <button
                                     onClick={() => handleConvertToH1(note, lineContent)}
                                     className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
@@ -486,7 +497,7 @@ export default function NoteContent({
                                     H1
                                 </button>
                             )}
-                            {!isFirstLine && (() => {
+                            {!focusMode && !isUrlOnly && !isFirstLine && (() => {
                                 // Check if this line is an H1 by looking at the raw content
                                 const rawLines = getRawLines(note.content);
                                 const originalLine = rawLines[idx];
@@ -513,7 +524,7 @@ export default function NoteContent({
             <div className="whitespace-pre-wrap break-words break-all space-y-1">
                 {contentLines.map((line, idx) => renderLine(line, idx))}
                 {/* Plus button at the end of the last line */}
-                {!compressedView && (
+                {!compressedView && !focusMode && (
                     <div className="flex items-center justify-between mt-1">
                         <div className="flex items-center gap-2">
                             <button

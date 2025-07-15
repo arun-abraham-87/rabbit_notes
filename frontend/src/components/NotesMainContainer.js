@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { debounce } from 'lodash';
-import { XMarkIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/solid';
 
 import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
@@ -31,6 +31,7 @@ const NotesMainContainer = ({
     const [excludeBackupNotes, setExcludeBackupNotes] = useState(true); // Default to true to exclude backup notes
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+    const [focusMode, setFocusMode] = useState(false);
     const searchInputRef = useRef(null);
 
     // Focus search input on mount
@@ -161,19 +162,42 @@ const NotesMainContainer = ({
                     {/* <InfoPanel
                         totals={totals}
                     /> */}
-                    <NoteFilters
-                        setLines={() => {}}
-                        setShowTodoSubButtons={() => {}}
-                        setActivePriority={() => {}}
-                        setSearchQuery={setSearchQuery}
-                        searchQuery={searchQuery}
-                        settings={settings}
-                        onExcludeEventsChange={setExcludeEvents}
-                        onExcludeMeetingsChange={setExcludeMeetings}
-                        onDeadlinePassedChange={setShowDeadlinePassedFilter}
-                        onExcludeEventNotesChange={setExcludeEventNotes}
-                        onExcludeBackupNotesChange={setExcludeBackupNotes}
-                    />
+                    <div className="flex items-center justify-between mt-4 mb-2">
+                        <NoteFilters
+                            setLines={() => {}}
+                            setShowTodoSubButtons={() => {}}
+                            setActivePriority={() => {}}
+                            setSearchQuery={setSearchQuery}
+                            searchQuery={searchQuery}
+                            settings={settings}
+                            onExcludeEventsChange={setExcludeEvents}
+                            onExcludeMeetingsChange={setExcludeMeetings}
+                            onDeadlinePassedChange={setShowDeadlinePassedFilter}
+                            onExcludeEventNotesChange={setExcludeEventNotes}
+                            onExcludeBackupNotesChange={setExcludeBackupNotes}
+                        />
+                        <button
+                            onClick={() => setFocusMode(!focusMode)}
+                            className={`flex items-center gap-2 px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
+                                focusMode 
+                                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                            title={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
+                        >
+                            {focusMode ? (
+                                <>
+                                    <EyeSlashIcon className="h-4 w-4" />
+                                    Focus Mode
+                                </>
+                            ) : (
+                                <>
+                                    <EyeIcon className="h-4 w-4" />
+                                    Focus Mode
+                                </>
+                            )}
+                        </button>
+                    </div>
                     <NotesList
                         objList={mergedObjList}
                         allNotes={filteredNotes}
@@ -187,6 +211,7 @@ const NotesMainContainer = ({
                         setSearchQuery={setSearchQuery}
                         onWordClick={handleTagClick}
                         settings={settings}
+                        focusMode={focusMode}
                     />
                 </div>
             </div>

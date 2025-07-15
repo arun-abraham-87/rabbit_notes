@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Cog6ToothIcon } from '@heroicons/react/24/solid';
+import { Cog6ToothIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 import QuickPasteToggle from './QuickPasteToggle';
 import StockInfoPanel from './StockInfoPanel';
 
 const Navbar = ({ activePage, setActivePage }) => {
   const [navbarPagesVisibility, setNavbarPagesVisibility] = useState({});
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('navbarPagesVisibility');
@@ -37,12 +38,30 @@ const Navbar = ({ activePage, setActivePage }) => {
     { id: 'stock-vesting', label: 'Stock Vesting' },
   ].filter(button => navbarPagesVisibility[button.id]);
 
+  // Split navigation buttons: first 10 in main menu, rest in dropdown
+  const mainMenuButtons = navigationButtons.slice(0, 10);
+  const dropdownButtons = navigationButtons.slice(10);
+
   const NavButton = ({ id, label }) => (
     <button
       onClick={() => setActivePage(id)}
       className={`text-sm ${
         activePage === id ? 'text-black font-medium' : 'text-gray-600'
       } hover:text-black transition`}
+    >
+      {label}
+    </button>
+  );
+
+  const DropdownButton = ({ id, label }) => (
+    <button
+      onClick={() => {
+        setActivePage(id);
+        setShowDropdown(false);
+      }}
+      className={`w-full text-left px-4 py-2 text-sm ${
+        activePage === id ? 'bg-gray-100 text-black font-medium' : 'text-gray-600'
+      } hover:bg-gray-50 hover:text-black transition`}
     >
       {label}
     </button>
@@ -61,12 +80,35 @@ const Navbar = ({ activePage, setActivePage }) => {
 
         {/* Right: Navigation Buttons */}
         <div className="flex items-center space-x-4">
-          {/* All navigation buttons */}
+          {/* Main menu navigation buttons (max 10) */}
           <div className="flex items-center space-x-4 overflow-x-auto">
-            {navigationButtons.map(button => (
+            {mainMenuButtons.map(button => (
               <NavButton key={button.id} id={button.id} label={button.label} />
             ))}
           </div>
+
+          {/* Dropdown for additional navigation buttons */}
+          {dropdownButtons.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="flex items-center space-x-1 text-sm text-gray-600 hover:text-black transition"
+              >
+                <span>More</span>
+                <ChevronDownIcon className="h-4 w-4" />
+              </button>
+              
+              {showDropdown && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                  <div className="py-1">
+                    {dropdownButtons.map(button => (
+                      <DropdownButton key={button.id} id={button.id} label={button.label} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Stock Info Panel */}
           <StockInfoPanel />
@@ -85,6 +127,14 @@ const Navbar = ({ activePage, setActivePage }) => {
           </button>
         </div>
       </div>
+      
+      {/* Click outside to close dropdown */}
+      {showDropdown && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setShowDropdown(false)}
+        />
+      )}
     </nav>
   );
 };

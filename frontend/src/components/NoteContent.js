@@ -403,20 +403,24 @@ export default function NoteContent({
         <div className="relative bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
             <div className="whitespace-pre-wrap break-words break-all space-y-1">
                 {contentLines.map((line, idx) => renderLine(line, idx))}
+                {/* Plus button at the end of the last line */}
+                {!compressedView && (
+                    <div className="flex items-center mt-1">
+                        <button
+                            onClick={() => {
+                                setAddingLineNoteId(note.id);
+                                if (newLineInputRef.current) {
+                                    newLineInputRef.current.focus();
+                                }
+                            }}
+                            className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors duration-150"
+                            title="Add new line"
+                        >
+                            <PlusIcon className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
             </div>
-            {!compressedView && (
-                <button
-                    onClick={() => {
-                        setAddingLineNoteId(note.id);
-                        if (newLineInputRef.current) {
-                            newLineInputRef.current.focus();
-                        }
-                    }}
-                    className="absolute bottom-2 right-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"
-                >
-                    <PlusIcon className="w-4 h-4" />
-                </button>
-            )}
             <AddTextModal
                 isOpen={showAddTextModal}
                 onClose={() => setShowAddTextModal(false)}

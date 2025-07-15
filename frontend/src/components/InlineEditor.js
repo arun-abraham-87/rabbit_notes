@@ -19,8 +19,13 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   const [displayText, setDisplayText] = useState('');
   
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (inputRef.current) {
+      inputRef.current.focus();
+      // Position cursor at the end of the text
+      const textLength = displayText.length;
+      inputRef.current.setSelectionRange(textLength, textLength);
+    }
+  }, [displayText]);
 
   // Detect if text is H1 (###) or H2 (##) and strip hash symbols for editing
   useEffect(() => {

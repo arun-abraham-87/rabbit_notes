@@ -59,6 +59,32 @@ const NotesMainContainer = ({
         setLocalSearchQuery(searchQuery);
     }, [searchQuery]);
 
+    // Global keyboard event listener for 'f' key to toggle focus mode and 'c' key to focus search
+    useEffect(() => {
+        const handleGlobalKeyDown = (e) => {
+            // Only handle keys when not in an input/textarea and no modifier keys
+            if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
+                e.target.tagName !== 'INPUT' && 
+                e.target.tagName !== 'TEXTAREA' &&
+                e.target.contentEditable !== 'true') {
+                
+                if (e.key === "f") {
+                    e.preventDefault();
+                    setFocusMode(!focusMode);
+                } else if (e.key === "c") {
+                    e.preventDefault();
+                    searchInputRef.current?.focus();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleGlobalKeyDown);
+        
+        return () => {
+            document.removeEventListener('keydown', handleGlobalKeyDown);
+        };
+    }, [focusMode]);
+
     // Debug: Log objList
     useEffect(() => {
         console.log('NotesMainContainer - objList received:', objList);
@@ -228,6 +254,8 @@ const NotesMainContainer = ({
                 searchInputRef.current?.blur();
                 return;
             }
+            
+
             
             // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && localSearchQuery.trim()) {

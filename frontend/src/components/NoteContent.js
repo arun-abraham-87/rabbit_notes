@@ -198,6 +198,21 @@ export default function NoteContent({
         setEditedLineContent('');
     };
 
+    const handleMoveH1ToTop = (idx) => {
+        const lines = note.content.split('\n');
+        const h1Line = lines[idx];
+        
+        // Remove the H1 line from its current position
+        lines.splice(idx, 1);
+        
+        // Insert the H1 line at the beginning
+        lines.unshift(h1Line);
+        
+        const updatedContent = lines.join('\n');
+        const reorderedContent = reorderMetaTags(updatedContent);
+        updateNote(note.id, reorderedContent);
+    };
+
     const renderInlineEditor = (idx, isH1, isH2) => (
         <InlineEditor
             key={idx}
@@ -286,6 +301,15 @@ export default function NoteContent({
                                 title="Convert to H1"
                             >
                                 H1
+                            </button>
+                        )}
+                        {!isFirstLine && isH1 && (
+                            <button
+                                onClick={() => handleMoveH1ToTop(idx)}
+                                className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+                                title="Move H1 to top"
+                            >
+                                ↑
                             </button>
                         )}
                     </div>
@@ -386,6 +410,20 @@ export default function NoteContent({
                                     title="Convert to H1"
                                 >
                                     H1
+                                </button>
+                            )}
+                            {!isFirstLine && (() => {
+                                // Check if this line is an H1 by looking at the raw content
+                                const rawLines = getRawLines(note.content);
+                                const originalLine = rawLines[idx];
+                                return originalLine && originalLine.trim().startsWith('###') && originalLine.trim().endsWith('###');
+                            })() && (
+                                <button
+                                    onClick={() => handleMoveH1ToTop(idx)}
+                                    className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+                                    title="Move H1 to top"
+                                >
+                                    ↑
                                 </button>
                             )}
                         </div>

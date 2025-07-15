@@ -142,6 +142,12 @@ const EventManager = ({ selectedDate, onClose }) => {
     }
   };
 
+  const handleColorChange = (eventId, newColor) => {
+    setEvents(prev => prev.map(ev => 
+      ev.id === eventId ? { ...ev, bgColor: newColor } : ev
+    ));
+  };
+
   const colorOptions = [
     '#ffffff', // white
     '#fef9c3', // yellow
@@ -223,6 +229,21 @@ const EventManager = ({ selectedDate, onClose }) => {
                   <div className="text-xs text-gray-500 mt-1">to {new Date(ev.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</div>
                 )}
                 <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Color Options */}
+                  <div className="flex gap-1 mr-2">
+                    {colorOptions.map(color => (
+                      <button
+                        key={color}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleColorChange(ev.id, color);
+                        }}
+                        className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-110 ${ev.bgColor === color ? 'border-gray-700' : 'border-gray-300'}`}
+                        style={{ backgroundColor: color }}
+                        title={`Set color to ${color}`}
+                      />
+                    ))}
+                  </div>
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -266,6 +287,21 @@ const EventManager = ({ selectedDate, onClose }) => {
                   </div>
                 )}
                 <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Color Options */}
+                  <div className="flex gap-1 mr-2">
+                    {colorOptions.map(color => (
+                      <button
+                        key={color}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleColorChange(ev.id, color);
+                        }}
+                        className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-110 ${ev.bgColor === color ? 'border-gray-700' : 'border-gray-300'}`}
+                        style={{ backgroundColor: color }}
+                        title={`Set color to ${color}`}
+                      />
+                    ))}
+                  </div>
                   <button 
                     onClick={() => handleEditEvent(ev)} 
                     className="text-blue-500 hover:text-blue-700 p-1"

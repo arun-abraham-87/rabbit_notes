@@ -213,6 +213,29 @@ export default function NoteContent({
         updateNote(note.id, reorderedContent);
     };
 
+    const hasNoBulletsTag = () => {
+        return note.content.includes('meta::no_bullets');
+    };
+
+    const toggleNoBullets = () => {
+        const lines = note.content.split('\n');
+        const hasTag = hasNoBulletsTag();
+        
+        if (hasTag) {
+            // Remove the meta tag
+            const filteredLines = lines.filter(line => line.trim() !== 'meta::no_bullets');
+            const updatedContent = filteredLines.join('\n');
+            const reorderedContent = reorderMetaTags(updatedContent);
+            updateNote(note.id, reorderedContent);
+        } else {
+            // Add the meta tag
+            lines.push('meta::no_bullets');
+            const updatedContent = lines.join('\n');
+            const reorderedContent = reorderMetaTags(updatedContent);
+            updateNote(note.id, reorderedContent);
+        }
+    };
+
     const renderInlineEditor = (idx, isH1, isH2) => (
         <InlineEditor
             key={idx}
@@ -283,7 +306,7 @@ export default function NoteContent({
                             rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                         }`}
                 >
-                    {shouldIndent && !isH1 && !isH2 && (
+                    {shouldIndent && !isH1 && !isH2 && !hasNoBulletsTag() && (
                         <span className="mr-2 text-3xl self-start leading-none">•</span>
                     )}
                     <div className="flex items-center gap-2">
@@ -365,7 +388,7 @@ export default function NoteContent({
                     renderInlineEditor(idx, isH1, isH2)
                 ) : (
                     <>
-                        {(indentFlags[idx] || isListItem) && !isH1 && !isH2 && (
+                        {(indentFlags[idx] || isListItem) && !isH1 && !isH2 && !hasNoBulletsTag() && (
                             <span className="mr-2 text-3xl self-start leading-none">•</span>
                         )}
                         <div className="flex items-center gap-2">
@@ -440,7 +463,7 @@ export default function NoteContent({
                 {contentLines.map((line, idx) => renderLine(line, idx))}
                 {/* Plus button at the end of the last line */}
                 {!compressedView && (
-                    <div className="flex items-center mt-1">
+                    <div className="flex items-center justify-between mt-1">
                         <button
                             onClick={() => {
                                 setAddingLineNoteId(note.id);
@@ -452,6 +475,17 @@ export default function NoteContent({
                             title="Add new line"
                         >
                             <PlusIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={toggleNoBullets}
+                            className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
+                                hasNoBulletsTag() 
+                                    ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                            title={hasNoBulletsTag() ? 'Show bullets' : 'Hide bullets'}
+                        >
+                            {hasNoBulletsTag() ? 'Show Bullets' : 'Hide Bullets'}
                         </button>
                     </div>
                 )}

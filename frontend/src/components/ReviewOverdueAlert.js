@@ -507,14 +507,22 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
         })}
         
         {/* Add link button for all notes as last line */}
-        {firstFiveLines.length > 0 && (
-          <div className="mt-2">
+        {firstFiveLines.length > 0 && !note.content.includes('meta::no_link') && (
+          <div className="mt-2 flex gap-2">
             <button
               onClick={() => handleAddLink(note.id)}
               className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
             >
               Add link
             </button>
+            {!hasAnyLinks && (
+              <button
+                onClick={() => handleAddNoLink(note.id)}
+                className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-150"
+              >
+                No link
+              </button>
+            )}
           </div>
         )}
         
@@ -635,6 +643,27 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const handleAddLink = (noteId) => {
     setNoteIdForLink(noteId);
     setShowAddLinkModal(true);
+  };
+
+  const handleAddNoLink = async (noteId) => {
+    try {
+      const note = notes.find(n => n.id === noteId);
+      if (!note) return;
+
+      // Add the no_link meta tag
+      const updatedContent = `${note.content}\nmeta::no_link`;
+      
+      // Update the note
+      await updateNoteById(noteId, updatedContent);
+      
+      // Update the notes state
+      setNotes(notes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
+      
+      Alerts.success('No link preference added');
+    } catch (error) {
+      console.error('Error adding no link preference:', error);
+      Alerts.error('Failed to add no link preference');
+    }
   };
 
   const handleSaveLink = async (noteId, linkUrl) => {

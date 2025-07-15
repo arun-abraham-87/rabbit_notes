@@ -7,22 +7,27 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (customText.trim()) {
-      onSave(noteId, url, customText.trim());
+    if (customText.trim() && customUrl.trim()) {
+      onSave(noteId, customUrl.trim(), customText.trim());
       setCustomText('');
+      setCustomUrl('');
       onClose();
     }
   };
 
   const handleClose = () => {
     setCustomText('');
+    setCustomUrl('');
     onClose();
   };
 
   // Update customText when initialText changes (for editing mode)
   React.useEffect(() => {
-    setCustomText(initialText);
-  }, [initialText]);
+    if (isOpen) {
+      setCustomText(initialText);
+      setCustomUrl(url);
+    }
+  }, [initialText, url, isOpen]);
 
   if (!isOpen) return null;
 
@@ -59,12 +64,18 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
           </div>
           
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="customUrl" className="block text-sm font-medium text-gray-700 mb-2">
               URL
             </label>
-            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-600">
-              {url}
-            </div>
+            <input
+              type="url"
+              id="customUrl"
+              value={customUrl}
+              onChange={(e) => setCustomUrl(e.target.value)}
+              placeholder="Enter URL"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
           </div>
           
           <div className="flex justify-end space-x-3">
@@ -79,7 +90,7 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
               type="submit"
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              {isEditing ? 'Update Text' : 'Add Text'}
+              {isEditing ? 'Update Link' : 'Add Link'}
             </button>
           </div>
         </form>

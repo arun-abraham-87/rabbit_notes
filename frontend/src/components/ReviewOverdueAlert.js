@@ -271,6 +271,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
   const [urlForText, setUrlForText] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [currentCustomText, setCurrentCustomText] = useState('');
+  const [editingLinkText, setEditingLinkText] = useState('');
 
   useEffect(() => {
     const overdueNotes = findwatchitemsOverdue(notes);
@@ -514,8 +515,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
           );
         })}
         
-        {/* Add link button after first line if no links exist */}
-        {!hasAnyLinks && firstFiveLines.length > 0 && (
+        {/* Add link button for all notes as last line */}
+        {firstFiveLines.length > 0 && (
           <div className="mt-2">
             <button
               onClick={() => handleAddLink(note.id)}
@@ -691,10 +692,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
     setUrlForText(url);
     setIsEditing(true);
     setCurrentCustomText(customText);
+    setEditingLinkText(customText); // Store the original text being edited
     setShowAddTextModal(true);
   };
 
-  const handleSaveText = async (noteId, url, customText) => {
+  const handleSaveText = async (noteId, newUrl, customText) => {
     try {
       const note = notes.find(n => n.id === noteId);
       if (!note) return;
@@ -705,15 +707,18 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       // Find the line containing the URL and replace it with markdown format
       const updatedLines = lines.map(line => {
         if (isEditing) {
-          // For editing, replace existing markdown link
-          const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`);
+          // For editing, replace existing markdown link with new URL and text
+          // Use a more specific regex that matches the exact text and URL being edited
+          const escapedUrl = urlForText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const escapedText = editingLinkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const markdownRegex = new RegExp(`\\[${escapedText}\\]\\(${escapedUrl}\\)`);
           if (markdownRegex.test(line)) {
-            return line.replace(markdownRegex, `[${customText}](${url})`);
+            return line.replace(markdownRegex, `[${customText}](${newUrl})`);
           }
         } else {
           // For adding, replace plain URL with markdown format
-          if (line.trim() === url) {
-            return `[${customText}](${url})`;
+          if (line.trim() === urlForText) {
+            return `[${customText}](${newUrl})`;
           }
         }
         return line;
@@ -731,11 +736,13 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
       setShowAddTextModal(false);
       setIsEditing(false);
       setCurrentCustomText('');
+      setEditingLinkText(''); // Clear the editing link text
+      setUrlForText(newUrl); // Update the URL state with the new URL after successful edit
       
-      Alerts.success(isEditing ? 'Link text updated successfully' : 'Custom text added successfully');
+      Alerts.success(isEditing ? 'Link updated successfully' : 'Link added successfully');
     } catch (error) {
-      console.error('Error saving custom text:', error);
-      Alerts.error('Failed to save custom text');
+      console.error('Error saving link:', error);
+      Alerts.error('Failed to save link');
     }
   };
 

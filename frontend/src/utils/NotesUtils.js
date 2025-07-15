@@ -15,6 +15,12 @@ export const searchInNote = (note, searchText) => {
         return false;
     }
 
+    // Handle special id: prefix for exact note ID matching
+    if (searchText.startsWith('id:')) {
+        const targetId = searchText.substring(3); // Remove 'id:' prefix
+        return note.id.toString() === targetId;
+    }
+
     // Split search text into individual terms and trim whitespace
     const searchTerms = searchText.toLowerCase().split(/\s+/).filter(term => term.length > 0);
     

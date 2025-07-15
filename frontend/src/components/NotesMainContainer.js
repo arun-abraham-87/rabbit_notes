@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { debounce } from 'lodash';
+import { useLocation } from 'react-router-dom';
 import { XMarkIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/solid';
 
 import InfoPanel from './InfoPanel.js';
@@ -22,6 +23,7 @@ const NotesMainContainer = ({
     settings = defaultSettings,
     refreshTags = () => {},
 }) => {
+    const location = useLocation();
     const [checked, setChecked] = useState(false);
     const [compressedView, setCompressedView] = useState(false);
     const [totals, setTotals] = useState({ totals: 0 });
@@ -58,6 +60,16 @@ const NotesMainContainer = ({
     useEffect(() => {
         setLocalSearchQuery(searchQuery);
     }, [searchQuery]);
+
+    // Handle navigation state from search modal
+    useEffect(() => {
+        if (location.state?.searchQuery) {
+            setSearchQuery(location.state.searchQuery);
+            setLocalSearchQuery(location.state.searchQuery);
+            // Clear the state to prevent it from persisting
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state, setSearchQuery]);
 
     // Global keyboard event listener for 'f' key to toggle focus mode and 'c' key to focus search
     useEffect(() => {

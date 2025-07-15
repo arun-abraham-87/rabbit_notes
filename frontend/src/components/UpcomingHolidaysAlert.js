@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import {
   XMarkIcon,
   CalendarIcon,
@@ -114,6 +115,35 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
         price
       });
       setShowEditEventModal(true);
+    }
+  };
+
+  const handlePinEvent = async (holiday) => {
+    try {
+      // Get the current events from localStorage
+      const stored = localStorage.getItem('tempEvents');
+      const currentEvents = stored && stored !== '[]' ? JSON.parse(stored) : [];
+      
+      // Create a new event object
+      const newEvent = {
+        id: Date.now(),
+        name: holiday.description,
+        date: holiday.date.toISOString().split('T')[0], // Format as YYYY-MM-DD
+        type: 'event',
+        bgColor: '#ffffff'
+      };
+      
+      // Add the new event to the existing events
+      const updatedEvents = [...currentEvents, newEvent];
+      
+      // Save back to localStorage
+      localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
+      
+      // Show success message
+      toast.success('Holiday pinned to EventManager');
+    } catch (error) {
+      console.error('Error pinning holiday:', error);
+      toast.error('Failed to pin holiday');
     }
   };
 
@@ -308,6 +338,13 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
                                   title="Edit holiday"
                                 >
                                   <PencilIcon className="h-5 w-5" />
+                                </button>
+                                <button
+                                  onClick={() => handlePinEvent(holiday)}
+                                  className="text-green-600 hover:text-green-800 focus:outline-none ml-2"
+                                  title="Pin Event"
+                                >
+                                  <PlusIcon className="h-5 w-5" />
                                 </button>
                               </div>
                               <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">

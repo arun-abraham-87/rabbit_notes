@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronUpIcon, ChevronDownIcon, ArrowSmallUpIcon, ArrowSmallDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
+import { ChevronUpIcon, ChevronDownIcon, ArrowSmallUpIcon, ArrowSmallDownIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 
 /**
@@ -18,13 +18,17 @@ export default function LinkedNotesSection({
   const [showMetaTags, setShowMetaTags] = useState({});
   const [hoveredNote, setHoveredNote] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deletingLinkId, setDeletingLinkId] = useState(null);
 
   // Extract linked IDs in order
   const orderedIds = useMemo(() => {
-    return note.content
+    const ids = note.content
       .split('\n')
       .filter(line => line.trim().toLowerCase().startsWith('meta::link'))
       .map(line => line.split('::').pop().trim());
+    console.log('LinkedNotesSection - orderedIds:', ids);
+    console.log('LinkedNotesSection - note.content:', note.content);
+    return ids;
   }, [note.content]);
 
   // Filter notes based on search query
@@ -74,6 +78,28 @@ export default function LinkedNotesSection({
     updateNote(note.id, newContent);
   };
 
+  // Function to delete a linked note
+  const deleteLink = (linkId) => {
+    const linkedNote = allNotes.find(n => String(n.id) === String(linkId));
+    const noteTitle = linkedNote ? linkedNote.content.split('\n')[0]?.trim() || 'Unknown note' : 'Unknown note';
+    
+    if (window.confirm(`Are you sure you want to remove the link to "${noteTitle}"?`)) {
+      const lines = note.content.split('\n');
+      const filteredLines = lines.filter(line => {
+        const trimmedLine = line.trim().toLowerCase();
+        // Remove the specific link line
+        if (trimmedLine.startsWith('meta::link')) {
+          const lineId = line.split('::').pop().trim();
+          return lineId !== String(linkId);
+        }
+        return true;
+      });
+      
+      const newContent = filteredLines.join('\n');
+      updateNote(note.id, newContent);
+    }
+  };
+
   // No links → no section
   if (orderedIds.length === 0) return null;
 
@@ -100,8 +126,31 @@ export default function LinkedNotesSection({
           </div>
           <div className="pl-4 border-l border-gray-300 space-y-4">
             {filteredNotes.map((id, index) => {
-              const ln = allNotes.find(n => String(n.id) === id);
-              if (!ln) return null;
+              console.log('LinkedNotesSection - looking for note with id:', id);
+              console.log('LinkedNotesSection - allNotes length:', allNotes.length);
+              console.log('LinkedNotesSection - allNotes ids:', allNotes.map(n => n.id));
+              const ln = allNotes.find(n => String(n.id) === String(id));
+              console.log('LinkedNotesSection - found note:', ln);
+              if (!ln) {
+                console.log('LinkedNotesSection - note not found for id:', id);
+                return (
+                  <div
+                    key={id}
+                    className="bg-red-50 border border-red-200 rounded-lg shadow-sm overflow-hidden"
+                  >
+                    <div className="p-4 text-red-600 flex items-center justify-between">
+                      <span>Linked note not found (ID: {id})</span>
+                      <button
+                        onClick={() => deleteLink(id)}
+                        className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded shadow-sm"
+                        title="Delete broken link"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
               
               return (
                 <div
@@ -148,6 +197,13 @@ export default function LinkedNotesSection({
                               <ArrowSmallDownIcon className="h-4 w-4" />
                             </button>
                           )}
+                          <button
+                            onClick={() => deleteLink(id)}
+                            className="text-red-400 hover:text-red-700 p-1 bg-white/80 rounded shadow-sm"
+                            title="Delete link"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                     </div>

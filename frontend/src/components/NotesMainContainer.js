@@ -33,6 +33,8 @@ const NotesMainContainer = ({
     const [excludeEventNotes, setExcludeEventNotes] = useState(true); // Default to true to exclude event notes
     const [excludeBackupNotes, setExcludeBackupNotes] = useState(true); // Default to true to exclude backup notes
     const [excludeWatchEvents, setExcludeWatchEvents] = useState(true); // Default to true to exclude watch events
+    const [excludeBookmarks, setExcludeBookmarks] = useState(true); // Default to true to exclude bookmarks
+    const [excludeExpenses, setExcludeExpenses] = useState(true); // Default to true to exclude expenses
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
     const [resetFilters, setResetFilters] = useState(false);
@@ -322,11 +324,19 @@ const NotesMainContainer = ({
             if (excludeWatchEvents && note.content && note.content.includes('meta::watch')) {
                 return false;
             }
+            // Exclude bookmarks if the filter is enabled
+            if (excludeBookmarks && note.content && (note.content.includes('meta::bookmark') || note.content.includes('meta::web_bookmark'))) {
+                return false;
+            }
+            // Exclude expenses if the filter is enabled
+            if (excludeExpenses && note.content && note.content.includes('meta::expense')) {
+                return false;
+            }
             return (!searchQuery && isSameAsTodaysDate(note.created_datetime)) || searchInNote(note, searchQuery);
         });
         setTotals({ totals: filtered.length });
         return filtered;
-    }, [allNotes, searchQuery, excludeEventNotes, excludeBackupNotes, excludeWatchEvents]);
+    }, [allNotes, searchQuery, excludeEventNotes, excludeBackupNotes, excludeWatchEvents, excludeBookmarks, excludeExpenses]);
 
     const handleTagClick = (tag) => {
         setLocalSearchQuery(tag);

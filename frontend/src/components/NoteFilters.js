@@ -13,6 +13,8 @@ const NoteFilters = ({
   onExcludeEventNotesChange,
   onExcludeBackupNotesChange,
   onExcludeWatchEventsChange,
+  onExcludeBookmarksChange,
+  onExcludeExpensesChange,
   resetFilters = false
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
@@ -24,6 +26,8 @@ const NoteFilters = ({
   const [excludeEventNotes, setExcludeEventNotes] = useState(true); // Default to true to exclude event notes
   const [excludeBackupNotes, setExcludeBackupNotes] = useState(true); // Default to true to exclude backup notes
   const [excludeWatchEvents, setExcludeWatchEvents] = useState(true); // Default to true to exclude watch events
+  const [excludeBookmarks, setExcludeBookmarks] = useState(true); // Default to true to exclude bookmarks
+  const [excludeExpenses, setExcludeExpenses] = useState(true); // Default to true to exclude expenses
   const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
 
   // Only set the initial state of checkboxes
@@ -70,6 +74,18 @@ const NoteFilters = ({
     }
   }, [excludeWatchEvents, onExcludeWatchEventsChange]);
 
+  useEffect(() => {
+    if (onExcludeBookmarksChange) {
+      onExcludeBookmarksChange(excludeBookmarks);
+    }
+  }, [excludeBookmarks, onExcludeBookmarksChange]);
+
+  useEffect(() => {
+    if (onExcludeExpensesChange) {
+      onExcludeExpensesChange(excludeExpenses);
+    }
+  }, [excludeExpenses, onExcludeExpensesChange]);
+
   // Reset all filters when resetFilters prop is true
   useEffect(() => {
     if (resetFilters) {
@@ -78,6 +94,8 @@ const NoteFilters = ({
       setExcludeEventNotes(false);
       setExcludeBackupNotes(false);
       setExcludeWatchEvents(false);
+      setExcludeBookmarks(false);
+      setExcludeExpenses(false);
       setShowDeadlinePassedFilter(false);
       setShowTodoButtons(false);
       setShowEventButtons(false);
@@ -315,6 +333,14 @@ const NoteFilters = ({
     setExcludeWatchEvents(checked);
   };
 
+  const handleExcludeBookmarksChange = (checked) => {
+    setExcludeBookmarks(checked);
+  };
+
+  const handleExcludeExpensesChange = (checked) => {
+    setExcludeExpenses(checked);
+  };
+
   const handleClear = () => {
     setShowTodoButtons(false);
     setShowEventButtons(false);
@@ -327,165 +353,178 @@ const NoteFilters = ({
     setExcludeEventNotes(false); // Clear all checkboxes
     setExcludeBackupNotes(false); // Clear all checkboxes
     setExcludeWatchEvents(false); // Clear watch events checkbox
+    setExcludeBookmarks(false); // Clear bookmarks checkbox
+    setExcludeExpenses(false); // Clear expenses checkbox
     setLines([{ id: 'line-0', text: '', isTitle: false }]);
     setSearchQuery('');
   };
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        onClick={handleTodoClick}
-        className={`px-3 py-1 text-xs rounded transition-all transform ${
-          showTodoButtons
-            ? 'opacity-100 scale-105 bg-purple-300 border border-purple-700'
-            : 'opacity-30 hover:opacity-60 border'
-        }`}
-      >
-        Todos
-      </button>
-
-      <button
-        onClick={handleEventClick}
-        className={`px-3 py-1 text-xs rounded transition-all transform ${
-          showEventButtons
-            ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700'
-            : 'opacity-30 hover:opacity-60 border'
-        }`}
-      >
-        Events
-      </button>
-
-      <button
-        onClick={handleMeetingClick}
-        className={`px-3 py-1 text-xs rounded transition-all transform ${
-          showMeetingButtons
-            ? 'opacity-100 scale-105 bg-green-300 border border-green-700'
-            : 'opacity-30 hover:opacity-60 border'
-        }`}
-      >
-        Meetings
-      </button>
-
-      {showTodoButtons && (
-        <div className="flex gap-1">
-          <button
-            onClick={() => handlePriorityClick('high', 'meta::high')}
-            className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 
-              ${activePriorityFilter === 'high' ? 'bg-red-300 border border-red-700' : 'bg-red-100 hover:bg-red-200 text-red-800'}`}
-          >
-            High
-          </button>
-          <button
-            onClick={() => handlePriorityClick('medium', 'meta::medium')}
-            className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 
-              ${activePriorityFilter === 'medium' ? 'bg-yellow-300 border border-yellow-700' : 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800'}`}
-          >
-            Medium
-          </button>
-          <button
-            onClick={() => handlePriorityClick('low', 'meta::low')}
-            className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 
-              ${activePriorityFilter === 'low' ? 'bg-green-300 border border-green-700' : 'bg-green-100 hover:bg-green-200 text-green-800'}`}
-          >
-            Low
-          </button>
-        </div>
-      )}
-
-      <button
-        onClick={() => handleFilterClick('meta::watch')}
-        className={`px-3 py-1 text-xs rounded transition-all transform ${
-          searchQuery?.includes('#watch')
-            ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700'
-            : 'opacity-30 hover:opacity-60 border'
-        }`}
-      >
-        Watch List
-      </button>
-
-      <button
-        onClick={() => handleFilterClick('meta::today::')}
-        className={`px-3 py-1 text-xs rounded transition-all transform ${
-          searchQuery?.includes('meta::today::')
-            ? 'opacity-100 scale-105 bg-green-300 border border-green-700'
-            : 'opacity-30 hover:opacity-60 border'
-        }`}
-      >
-        Today
-      </button>
-
-      <button
-        onClick={() => {
-          const filterAdded = toggleFilter('meta::end_date::');
-          setShowDeadlinePassedFilter(filterAdded);
-        }}
-        className={`px-3 py-1 text-xs rounded transition-all transform ${
-          searchQuery?.includes('meta::end_date::')
-            ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700'
-            : 'opacity-30 hover:opacity-60 border'
-        }`}
-      >
-        End Date
-      </button>
-
-      {showDeadlinePassedFilter && (
+    <div className="flex flex-col gap-2">
+      {/* Main filter buttons */}
+      <div className="flex flex-wrap gap-2">
         <button
-          onClick={() => setShowDeadlinePassedFilter(prev => !prev)}
+          onClick={handleTodoClick}
           className={`px-3 py-1 text-xs rounded transition-all transform ${
-            showDeadlinePassedFilter
-              ? 'opacity-100 scale-105 bg-red-300 border border-red-700'
+            showTodoButtons
+              ? 'opacity-100 scale-105 bg-purple-300 border border-purple-700'
               : 'opacity-30 hover:opacity-60 border'
           }`}
         >
-          Deadline Passed
+          Todos
         </button>
-      )}
 
-      <button
-        onClick={() => handleFilterClick('meta::Abbreviation::')}
-        className={`px-3 py-1 text-xs rounded transition-all transform ${
-          searchQuery?.includes('meta::Abbreviation::')
-            ? 'opacity-100 scale-105 bg-indigo-300 border border-indigo-700'
-            : 'opacity-30 hover:opacity-60 border'
-        }`}
-      >
-        Abbreviation
-      </button>
+        <button
+          onClick={handleEventClick}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${
+            showEventButtons
+              ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700'
+              : 'opacity-30 hover:opacity-60 border'
+          }`}
+        >
+          Events
+        </button>
 
-      <button
-        onClick={handleWorkstreamClick}
-        className={`px-3 py-1 text-xs rounded transition-all transform ${
-          searchQuery?.includes('meta::workstream')
-            ? 'opacity-100 scale-105 bg-orange-300 border border-orange-700'
-            : 'opacity-30 hover:opacity-60 border'
-        }`}
-      >
-        Workstream
-      </button>
+        <button
+          onClick={handleMeetingClick}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${
+            showMeetingButtons
+              ? 'opacity-100 scale-105 bg-green-300 border border-green-700'
+              : 'opacity-30 hover:opacity-60 border'
+          }`}
+        >
+          Meetings
+        </button>
 
-      <button
-        onClick={() => handleFilterClick('meta::review_pending')}
-        className={`px-3 py-1 text-xs rounded transition-all transform ${
-          searchQuery?.includes('meta::review_pending')
-            ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700'
-            : 'opacity-30 hover:opacity-60 border'
-        }`}
-      >
-        Review Pending
-      </button>
+        {showTodoButtons && (
+          <div className="flex gap-1">
+            <button
+              onClick={() => handlePriorityClick('high', 'meta::high')}
+              className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 
+                ${activePriorityFilter === 'high' ? 'bg-red-300 border border-red-700' : 'bg-red-100 hover:bg-red-200 text-red-800'}`}
+            >
+              High
+            </button>
+            <button
+              onClick={() => handlePriorityClick('medium', 'meta::medium')}
+              className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 
+                ${activePriorityFilter === 'medium' ? 'bg-yellow-300 border border-yellow-700' : 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800'}`}
+            >
+              Medium
+            </button>
+            <button
+              onClick={() => handlePriorityClick('low', 'meta::low')}
+              className={`px-2 py-1 text-xs rounded transition-all transform hover:opacity-100 hover:scale-105 
+                ${activePriorityFilter === 'low' ? 'bg-green-300 border border-green-700' : 'bg-green-100 hover:bg-green-200 text-green-800'}`}
+            >
+              Low
+            </button>
+          </div>
+        )}
 
-      <button
-        onClick={() => handleFilterClick('meta::people')}
-        className={`px-3 py-1 text-xs rounded transition-all transform ${
-          searchQuery?.includes('meta::people')
-            ? 'opacity-100 scale-105 bg-pink-300 border border-pink-700'
-            : 'opacity-30 hover:opacity-60 border'
-        }`}
-      >
-        People
-      </button>
+        <button
+          onClick={() => handleFilterClick('meta::watch')}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${
+            searchQuery?.includes('#watch')
+              ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700'
+              : 'opacity-30 hover:opacity-60 border'
+          }`}
+        >
+          Watch List
+        </button>
 
-      <div className="flex items-center gap-3 ml-2">
+        <button
+          onClick={() => handleFilterClick('meta::today::')}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${
+            searchQuery?.includes('meta::today::')
+              ? 'opacity-100 scale-105 bg-green-300 border border-green-700'
+              : 'opacity-30 hover:opacity-60 border'
+          }`}
+        >
+          Today
+        </button>
+
+        <button
+          onClick={() => {
+            const filterAdded = toggleFilter('meta::end_date::');
+            setShowDeadlinePassedFilter(filterAdded);
+          }}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${
+            searchQuery?.includes('meta::end_date::')
+              ? 'opacity-100 scale-105 bg-blue-300 border border-blue-700'
+              : 'opacity-30 hover:opacity-60 border'
+          }`}
+        >
+          End Date
+        </button>
+
+        {showDeadlinePassedFilter && (
+          <button
+            onClick={() => setShowDeadlinePassedFilter(prev => !prev)}
+            className={`px-3 py-1 text-xs rounded transition-all transform ${
+              showDeadlinePassedFilter
+                ? 'opacity-100 scale-105 bg-red-300 border border-red-700'
+                : 'opacity-30 hover:opacity-60 border'
+            }`}
+          >
+            Deadline Passed
+          </button>
+        )}
+
+        <button
+          onClick={() => handleFilterClick('meta::Abbreviation::')}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${
+            searchQuery?.includes('meta::Abbreviation::')
+              ? 'opacity-100 scale-105 bg-indigo-300 border border-indigo-700'
+              : 'opacity-30 hover:opacity-60 border'
+          }`}
+        >
+          Abbreviation
+        </button>
+
+        <button
+          onClick={handleWorkstreamClick}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${
+            searchQuery?.includes('meta::workstream')
+              ? 'opacity-100 scale-105 bg-orange-300 border border-orange-700'
+              : 'opacity-30 hover:opacity-60 border'
+          }`}
+        >
+          Workstream
+        </button>
+
+        <button
+          onClick={() => handleFilterClick('meta::review_pending')}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${
+            searchQuery?.includes('meta::review_pending')
+              ? 'opacity-100 scale-105 bg-yellow-300 border border-yellow-700'
+              : 'opacity-30 hover:opacity-60 border'
+          }`}
+        >
+          Review Pending
+        </button>
+
+        <button
+          onClick={() => handleFilterClick('meta::people')}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${
+            searchQuery?.includes('meta::people')
+              ? 'opacity-100 scale-105 bg-pink-300 border border-pink-700'
+              : 'opacity-30 hover:opacity-60 border'
+          }`}
+        >
+          People
+        </button>
+
+        <button
+          onClick={handleClear}
+          className="px-3 py-1 text-xs rounded bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+        >
+          Clear
+        </button>
+      </div>
+
+      {/* Exclude filters on a new line */}
+      <div className="flex items-center gap-3">
         <label className="flex items-center gap-2 text-xs text-gray-600">
           <input
             type="checkbox"
@@ -522,14 +561,25 @@ const NoteFilters = ({
           />
           Exclude Watch Events
         </label>
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input
+            type="checkbox"
+            checked={excludeBookmarks}
+            onChange={(e) => handleExcludeBookmarksChange(e.target.checked)}
+            className="form-checkbox h-3 w-3 text-purple-600"
+          />
+          Exclude Bookmarks
+        </label>
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input
+            type="checkbox"
+            checked={excludeExpenses}
+            onChange={(e) => handleExcludeExpensesChange(e.target.checked)}
+            className="form-checkbox h-3 w-3 text-purple-600"
+          />
+          Exclude Expenses
+        </label>
       </div>
-
-      <button
-        onClick={handleClear}
-        className="px-3 py-1 text-xs rounded bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
-      >
-        Clear
-      </button>
     </div>
   );
 };

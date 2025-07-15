@@ -121,6 +121,8 @@ export const addOrReplaceMetaLineTag = (line, metaTag, value) => {
  *   pins: string[],        // meta::pin::INDICES - Pinned sections in the note
  *   abbreviations: boolean[], // meta::abbreviation - Notes that are abbreviations
  *   bookmarks: boolean[],    // meta::bookmark - Bookmarked notes
+ *   webBookmarks: boolean[], // meta::web_bookmark - Web bookmarks
+ *   expenses: boolean[],     // meta::expense - Expense notes
  *   recurring: string[],    // meta::recurring::TYPE - Recurring events/todos
  *   recurringEnd: string[], // meta::recurring_end::DATE - End date for recurring items
  *   other: string[]        // Any other meta:: tags not explicitly handled
@@ -149,6 +151,8 @@ export const extractMetaTags = (content) => {
     pins: [],        // meta::pin::INDICES
     abbreviations: [], // meta::abbreviation
     bookmarks: [],    // meta::bookmark
+    webBookmarks: [], // meta::web_bookmark
+    expenses: [],     // meta::expense
     recurring: [],    // meta::recurring::TYPE
     recurringEnd: [], // meta::recurring_end::DATE
     other: []        // Any other meta:: tags
@@ -191,6 +195,12 @@ export const extractMetaTags = (content) => {
       case 'bookmark':
         metaTags.bookmarks.push(true);
         break;
+      case 'web_bookmark':
+        metaTags.webBookmarks.push(true);
+        break;
+      case 'expense':
+        metaTags.expenses.push(true);
+        break;
       case 'recurring':
         metaTags.recurring.push(parts[2]);
         break;
@@ -231,6 +241,8 @@ export const reorderMetaTags = (content) => {
   const metaOrder = [
     'meta::abbreviation',
     'meta::bookmark',
+    'meta::web_bookmark',
+    'meta::expense',
     'meta::quick_links',
     'meta::pin',
     'meta::event',

@@ -520,7 +520,11 @@ export default function NoteContent({
     };
 
     return (
-        <div className="relative bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed">
+        <div className={`relative ${
+            focusMode 
+                ? 'bg-transparent p-2 border-0' 
+                : 'bg-gray-50 p-4 rounded-md border text-gray-800 text-sm leading-relaxed'
+        }`}>
             <div className="whitespace-pre-wrap break-words break-all space-y-1">
                 {contentLines.map((line, idx) => renderLine(line, idx))}
                 {/* Plus button at the end of the last line */}

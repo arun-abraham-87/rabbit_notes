@@ -16,6 +16,8 @@ const Dashboard = ({notes,setNotes}) => {
   const [isEventManagerCollapsed, setIsEventManagerCollapsed] = useState(false);
   const [eventScrollPosition, setEventScrollPosition] = useState(0);
   const [notesScrollPosition, setNotesScrollPosition] = useState(0);
+  const [eventsHasOverflow, setEventsHasOverflow] = useState(false);
+  const [notesHasOverflow, setNotesHasOverflow] = useState(false);
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -126,6 +128,26 @@ const Dashboard = ({notes,setNotes}) => {
       notesScrollRef.current.scrollLeft += 300;
     }
   };
+
+  // Check for overflow in containers
+  const checkOverflow = () => {
+    if (eventsScrollRef.current) {
+      const hasOverflow = eventsScrollRef.current.scrollWidth > eventsScrollRef.current.clientWidth;
+      setEventsHasOverflow(hasOverflow);
+    }
+    if (notesScrollRef.current) {
+      const hasOverflow = notesScrollRef.current.scrollWidth > notesScrollRef.current.clientWidth;
+      setNotesHasOverflow(hasOverflow);
+    }
+  };
+
+  // Check overflow when component mounts and when events/notes change
+  useEffect(() => {
+    checkOverflow();
+    // Add a small delay to ensure content is rendered
+    const timer = setTimeout(checkOverflow, 100);
+    return () => clearTimeout(timer);
+  }, [events, notes]);
 
   const getCompactTimezones = () => {
     const timezonesToShow = selectedTimezones.length > 0 ? selectedTimezones : [
@@ -336,21 +358,25 @@ const Dashboard = ({notes,setNotes}) => {
             <div className="relative mb-6">
               
               {/* Left Arrow */}
-              <button
-                onClick={scrollEventsLeft}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                style={{ transform: `translateY(-50%)` }}
-              >
-                <ChevronLeftIcon className="h-5 w-5" />
-              </button>
+              {eventsHasOverflow && (
+                <button
+                  onClick={scrollEventsLeft}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                  style={{ transform: `translateY(-50%)` }}
+                >
+                  <ChevronLeftIcon className="h-5 w-5" />
+                </button>
+              )}
               
               {/* Right Arrow */}
-              <button
-                onClick={scrollEventsRight}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-              >
-                <ChevronRightIcon className="h-5 w-5" />
-              </button>
+              {eventsHasOverflow && (
+                <button
+                  onClick={scrollEventsRight}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                >
+                  <ChevronRightIcon className="h-5 w-5" />
+                </button>
+              )}
               
               {/* Events Container */}
               <div 
@@ -368,21 +394,25 @@ const Dashboard = ({notes,setNotes}) => {
             <div className="relative">
               
               {/* Left Arrow */}
-              <button
-                onClick={scrollNotesLeft}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                style={{ transform: `translateY(-50%)` }}
-              >
-                <ChevronLeftIcon className="h-5 w-5" />
-              </button>
+              {notesHasOverflow && (
+                <button
+                  onClick={scrollNotesLeft}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                  style={{ transform: `translateY(-50%)` }}
+                >
+                  <ChevronLeftIcon className="h-5 w-5" />
+                </button>
+              )}
               
               {/* Right Arrow */}
-              <button
-                onClick={scrollNotesRight}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-              >
-                <ChevronRightIcon className="h-5 w-5" />
+              {notesHasOverflow && (
+                <button
+                  onClick={scrollNotesRight}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                >
+                  <ChevronRightIcon className="h-5 w-5" />
               </button>
+              )}
               
               {/* Notes Container */}
               <div 

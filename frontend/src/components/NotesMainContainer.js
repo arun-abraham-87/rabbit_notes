@@ -54,6 +54,11 @@ const NotesMainContainer = ({
         }
     }, []);
 
+    // Synchronize localSearchQuery with searchQuery prop
+    useEffect(() => {
+        setLocalSearchQuery(searchQuery);
+    }, [searchQuery]);
+
     // Debug: Log objList
     useEffect(() => {
         console.log('NotesMainContainer - objList received:', objList);
@@ -214,9 +219,12 @@ const NotesMainContainer = ({
                 setShowPopup(false);
             }
         } else {
-            // Handle Escape key to remove focus from search bar
+            // Handle Escape key to remove focus from search bar and clear text
             if (e.key === "Escape") {
                 e.preventDefault();
+                setLocalSearchQuery('');
+                setSearchQuery('');
+                setShowPopup(false);
                 searchInputRef.current?.blur();
                 return;
             }

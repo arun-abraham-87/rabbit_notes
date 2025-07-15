@@ -501,15 +501,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
             >
               <div className="flex items-center gap-2">
                 {renderLine(line, 'line-' + index)}
-                {isFirstLine && !isFirstLineH1 && (
-                  <button
-                    onClick={() => handleConvertToH1(note, line)}
-                    className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
-                    title="Convert to H1"
-                  >
-                    H1
-                  </button>
-                )}
               </div>
             </div>
           );

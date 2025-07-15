@@ -259,7 +259,7 @@ const NoteFooter = ({
     <div className="flex items-center justify-between px-4 py-2 text-xs text-gray-500">
       <div className="flex items-center space-x-2">
         {/* Left side - Created date */}
-        {showCreatedDate && (
+        {showCreatedDate && !focusMode && (
           <span className="text-gray-400">
             Created: {getDateInDDMMYYYYFormat(note.created_datetime)}({getAgeInStringFmt(note.created_datetime)})
           </span>

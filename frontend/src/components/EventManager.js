@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 
-const EventManager = ({ selectedDate, onClose }) => {
+const EventManager = ({ selectedDate, onClose, type = 'all' }) => {
   const [events, setEvents] = useState(() => {
     try {
       const stored = localStorage.getItem('tempEvents');
@@ -66,6 +66,26 @@ const EventManager = ({ selectedDate, onClose }) => {
       }
     }
   }, [events]);
+
+  // Listen for add event from Dashboard
+  useEffect(() => {
+    const handleAddEvent = () => {
+      setEventForm({
+        name: '',
+        date: selectedDate ? formatDate(selectedDate) : formatDate(new Date()),
+        endDate: '',
+        type: 'event',
+        bgColor: '#ffffff'
+      });
+      setIsEditMode(false);
+      setIsModalOpen(true);
+    };
+
+    document.addEventListener('addEvent', handleAddEvent);
+    return () => {
+      document.removeEventListener('addEvent', handleAddEvent);
+    };
+  }, [selectedDate]);
 
   const handleEventInput = (e) => {
     const { name, value } = e.target;
@@ -158,22 +178,21 @@ const EventManager = ({ selectedDate, onClose }) => {
     '#f1f5f9'  // gray
   ];
 
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-row flex-wrap gap-3 items-stretch">
-        {/* Events */}
-        {(() => {
-          const eventItems = events.filter(ev => ev.type === 'event');
-          const sortedEvents = eventItems.sort((a, b) => {
-            const dateA = new Date(a.date + 'T00:00');
-            const dateB = new Date(b.date + 'T00:00');
-            const now = new Date();
-            const daysA = Math.ceil((dateA - now) / (1000 * 60 * 60 * 24));
-            const daysB = Math.ceil((dateB - now) / (1000 * 60 * 60 * 24));
-            return Math.abs(daysA) - Math.abs(daysB);
-          });
+    return (
+    <div className="flex flex-row gap-3 items-stretch">
+      {/* Events */}
+      {(type === 'all' || type === 'events') && (() => {
+        const eventItems = events.filter(ev => ev.type === 'event');
+        const sortedEvents = eventItems.sort((a, b) => {
+          const dateA = new Date(a.date + 'T00:00');
+          const dateB = new Date(b.date + 'T00:00');
+          const now = new Date();
+          const daysA = Math.ceil((dateA - now) / (1000 * 60 * 60 * 24));
+          const daysB = Math.ceil((dateB - now) / (1000 * 60 * 60 * 24));
+          return Math.abs(daysA) - Math.abs(daysB);
+        });
 
-          return sortedEvents.map(ev => {
+        return sortedEvents.map(ev => {
             const eventDate = new Date(ev.date + 'T' + (ev.start || '00:00'));
             const now = new Date();
             const totalDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
@@ -322,24 +341,7 @@ const EventManager = ({ selectedDate, onClose }) => {
           });
         })()}
 
-        {/* Add Button */}
-        <button
-          onClick={() => {
-            setEventForm({
-              name: '',
-              date: selectedDate ? formatDate(selectedDate) : formatDate(new Date()),
-              endDate: '',
-              type: 'event',
-              bgColor: '#ffffff'
-            });
-            setIsEditMode(false);
-            setIsModalOpen(true);
-          }}
-          className="w-8 h-8 bg-gray-200/60 text-gray-400 rounded-full shadow-sm hover:bg-gray-300/80 transition-colors flex items-center justify-center self-center"
-        >
-          <PlusIcon className="h-3 w-3" />
-        </button>
-      </div>
+
 
       {/* Event Modal */}
       {isModalOpen && (

@@ -60,26 +60,6 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
     setSearchQuery(query);
     // Reset selected index when search query changes
     setSelectedIndex(0);
-    if (query.trim()) {
-      // Get current recent searches
-      const currentSearches = getRecentSearches();
-      
-      // Filter out searches that are subsets of the current query
-      const filteredSearches = currentSearches.filter(
-        search => !query.toLowerCase().includes(search.toLowerCase())
-      );
-      
-      // Add the new search if it's not already in the list
-      if (!filteredSearches.includes(query)) {
-        filteredSearches.unshift(query);
-      }
-      
-      // Update localStorage with the new list
-      localStorage.setItem('recentSearches', JSON.stringify(filteredSearches));
-      
-      // Update the state
-      setRecentSearches(filteredSearches);
-    }
   };
 
   const handleKeyDown = (e) => {
@@ -88,14 +68,12 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
       e.preventDefault();
       e.stopPropagation();
       const newIndex = (selectedIndex + 1) % filteredNotes.length;
-      console.log('ArrowDown pressed: current selectedIndex =', selectedIndex, 'new selectedIndex =', newIndex, 'timestamp =', Date.now());
       setSelectedIndex(newIndex);
       return;
     } else if (e.key === 'ArrowUp' && filteredNotes.length > 0) {
       e.preventDefault();
       e.stopPropagation();
       const newIndex = (selectedIndex - 1 + filteredNotes.length) % filteredNotes.length;
-      console.log('ArrowUp pressed: current selectedIndex =', selectedIndex, 'new selectedIndex =', newIndex, 'timestamp =', Date.now());
       setSelectedIndex(newIndex);
       return;
     }
@@ -107,8 +85,23 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
       } else if (e.key === 'Enter' && filteredNotes.length > 0) {
         e.preventDefault();
         const selectedNote = filteredNotes[selectedIndex];
+        
+        // Save search term to recent searches when a note is selected via Enter
+        if (searchQuery.trim()) {
+          const currentSearches = getRecentSearches();
+          const filteredSearches = currentSearches.filter(
+            search => search !== searchQuery
+          );
+          filteredSearches.unshift(searchQuery);
+          
+          // Keep only last 5 searches
+          const limitedSearches = filteredSearches.slice(0, 5);
+          
+          localStorage.setItem('recentSearches', JSON.stringify(limitedSearches));
+          setRecentSearches(limitedSearches);
+        }
+        
         onSelectNote(selectedNote);
-        handleSearch(searchQuery);
         onClose();
       }
     }
@@ -276,14 +269,7 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Selected Index Indicator */}
-        {filteredNotes.length > 0 && (
-          <div className="px-4 py-2 bg-blue-50 border-b border-gray-100">
-            <div className="text-sm text-blue-700 font-medium">
-              Selected: Index {selectedIndex} of {filteredNotes.length - 1}
-            </div>
-          </div>
-        )}
+
 
         {/* Results Container */}
         <div 
@@ -336,14 +322,28 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                 tabIndex={0}
                 className={`group p-4 cursor-pointer transition-all duration-200 outline-none border-b border-gray-50 last:border-b-0 ${
                   isSelected
-                    ? 'bg-yellow-300 border-l-4 border-l-red-600 shadow-md ring-2 ring-red-400 font-bold' 
+                    ? 'bg-blue-200 border-l-4 border-l-blue-600 shadow-md' 
                     : isEven 
                       ? 'bg-gray-50' 
                       : 'bg-gray-100'
                 }`}
                 onClick={() => {
+                  // Save search term to recent searches when a note is clicked
+                  if (searchQuery.trim()) {
+                    const currentSearches = getRecentSearches();
+                    const filteredSearches = currentSearches.filter(
+                      search => search !== searchQuery
+                    );
+                    filteredSearches.unshift(searchQuery);
+                    
+                    // Keep only last 5 searches
+                    const limitedSearches = filteredSearches.slice(0, 5);
+                    
+                    localStorage.setItem('recentSearches', JSON.stringify(limitedSearches));
+                    setRecentSearches(limitedSearches);
+                  }
+                  
                   onSelectNote(note);
-                  handleSearch(searchQuery);
                   onClose();
                 }}
                 onKeyDown={(e) => {
@@ -359,13 +359,7 @@ const NoteSearchModal = ({ notes, onSelectNote, isOpen, onClose }) => {
                       <span className="bg-gray-100 px-2 py-0.5 rounded-full">
                         Added {getAgeInStringFmt(note.created_datetime)}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full font-bold ${
-                        isSelected 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-red-100 text-red-700'
-                      }`}>
-                        Index: {index} {isSelected ? '(SELECTED)' : ''}
-                      </span>
+
                     </div>
                     <button
                       onClick={(e) => {

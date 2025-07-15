@@ -50,17 +50,19 @@ const AppContent = () => {
   // Get active page from URL hash
   const activePage = location.pathname.split('/')[1] || 'dashboard';
 
-  // Handle global Cmd+V (or Ctrl+V) event
+  // Handle global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = async (e) => {
-      // Check if Cmd+V (Mac) or Ctrl+V (Windows/Linux) is pressed
+      // Check if we're in an input or textarea - don't handle navigation shortcuts
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Handle Cmd+V (or Ctrl+V) for quick paste
       if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
         // Check if quick paste is enabled
         const isQuickPasteEnabled = localStorage.getItem('quickPasteEnabled') !== 'false';
         if (!isQuickPasteEnabled) return;
-
-        // Check if we're not in an input or textarea
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
         e.preventDefault();
         try {
@@ -76,12 +78,39 @@ const AppContent = () => {
           console.error('Failed to read clipboard:', err);
           Alerts.error('Failed to read clipboard content');
         }
+        return;
+      }
+
+      // Handle navigation shortcuts
+      // 'gt' to go to /tags, 'gn' to go to /notes
+      if (e.key === 'g') {
+        // Start tracking for 'gt' or 'gn' sequence
+        const handleNextKey = (nextEvent) => {
+          if (nextEvent.key === 't') {
+            e.preventDefault();
+            nextEvent.preventDefault();
+            navigate('/tags');
+            window.removeEventListener('keydown', handleNextKey);
+          } else if (nextEvent.key === 'n') {
+            e.preventDefault();
+            nextEvent.preventDefault();
+            navigate('/notes');
+            window.removeEventListener('keydown', handleNextKey);
+          } else {
+            // If next key is not 't' or 'n', stop tracking
+            window.removeEventListener('keydown', handleNextKey);
+          }
+        };
+        
+        // Listen for the next key press
+        window.addEventListener('keydown', handleNextKey, { once: true });
+        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [navigate]);
 
   const handlePasteSubmit = async () => {
     try {

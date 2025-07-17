@@ -332,6 +332,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [totals, setTotals] = useState(defaultSettings.totals);
   const [showAddBookmarkModal, setShowAddBookmarkModal] = useState(false);
   const [pinUpdateTrigger, setPinUpdateTrigger] = useState(0);
+  const [showBookmarkLimitPopup, setShowBookmarkLimitPopup] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
@@ -479,16 +480,39 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       // Check if already pinned
       const isCurrentlyPinned = lines.some(line => line.trim().startsWith('meta::bookmark_pinned'));
       
-      let updatedLines;
+      // If unpinning, allow it
       if (isCurrentlyPinned) {
         // Remove the pinned tag
-        updatedLines = lines.filter(line => !line.trim().startsWith('meta::bookmark_pinned'));
-      } else {
-        // Add the pinned tag
-        updatedLines = [...lines, 'meta::bookmark_pinned'];
+        const updatedLines = lines.filter(line => !line.trim().startsWith('meta::bookmark_pinned'));
+        const updatedContent = updatedLines.join('\n');
+        
+        // Update the note
+        await updateNoteById(note.id, updatedContent);
+        
+        // Update the notes state immediately using functional update
+        setNotes(prevNotes => {
+          const updatedNotes = prevNotes.map(n => 
+            n.id === note.id ? { ...n, content: updatedContent } : n
+          );
+          return updatedNotes;
+        });
+        
+        // Force a re-render by updating the trigger
+        setPinUpdateTrigger(prev => prev + 1);
+        return;
       }
       
-      // Join lines back together
+      // If pinning, check the limit first
+      const pinnedBookmarksCount = bookmarkedUrls.filter(b => b.isPinned).length;
+      if (pinnedBookmarksCount >= 7) {
+        setShowBookmarkLimitPopup(true);
+        // Hide the popup after 3 seconds
+        setTimeout(() => setShowBookmarkLimitPopup(false), 3000);
+        return;
+      }
+      
+      // Add the pinned tag
+      const updatedLines = [...lines, 'meta::bookmark_pinned'];
       const updatedContent = updatedLines.join('\n');
       
       // Update the note
@@ -499,14 +523,11 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         const updatedNotes = prevNotes.map(n => 
           n.id === note.id ? { ...n, content: updatedContent } : n
         );
-        //console.log('Notes updated, new content for note', note.id, ':', updatedContent);
         return updatedNotes;
       });
       
       // Force a re-render by updating the trigger
       setPinUpdateTrigger(prev => prev + 1);
-      
-      //console.log('Pin status updated:', !isCurrentlyPinned, 'for bookmark:', bookmark.url);
       
     } catch (error) {
       console.error('Error updating bookmark pin status:', error);
@@ -728,7 +749,12 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               onMouseLeave={() => !lockedSections.bookmarks && setActiveSection(null)}
             >
               <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
-                <span>Bookmarks</span>
+                <span className="flex items-center gap-2">
+                  Bookmarks
+                  <span className="text-xs text-gray-500 font-normal">
+                    ({bookmarkedUrls.filter(b => b.isPinned).length}/7 pinned)
+                  </span>
+                </span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={(e) => {
@@ -794,10 +820,21 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                             e.stopPropagation();
                             handlePinBookmark({ url, label, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId });
                           }}
-                          className={`ml-2 p-1 rounded hover:bg-indigo-100 transition-colors ${
-                            isPinned ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'
+                          className={`ml-2 p-1 rounded transition-colors ${
+                            isPinned 
+                              ? 'text-indigo-600 hover:bg-indigo-100' 
+                              : bookmarkedUrls.filter(b => b.isPinned).length >= 7
+                                ? 'text-gray-300 cursor-not-allowed'
+                                : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-100'
                           }`}
-                          title={isPinned ? 'Unpin bookmark' : 'Pin bookmark'}
+                          title={
+                            isPinned 
+                              ? 'Unpin bookmark' 
+                              : bookmarkedUrls.filter(b => b.isPinned).length >= 7
+                                ? 'Maximum pinned bookmarks reached (7)'
+                                : 'Pin bookmark'
+                          }
+                          disabled={!isPinned && bookmarkedUrls.filter(b => b.isPinned).length >= 7}
                         >
                           <svg className="h-4 w-4" fill={isPinned ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -856,6 +893,32 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         onClose={() => setShowAddBookmarkModal(false)}
         onSave={handleAddBookmark}
       />
+
+      {/* Bookmark Limit Popup */}
+      {showBookmarkLimitPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Bookmark Limit Reached</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                You can only pin a maximum of 7 bookmarks at a time. 
+                Please unpin some bookmarks to add more.
+              </p>
+              <button
+                onClick={() => setShowBookmarkLimitPopup(false)}
+                className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isContextMenuOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

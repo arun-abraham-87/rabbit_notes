@@ -19,6 +19,7 @@ import { toast } from 'react-toastify';
 import { formatAndAgeDate, getAge, getDateInDDMMYYYYFormat } from '../utils/DateUtils';
 import moment from 'moment';
 import Settings from './Settings';
+import { useLeftPanel } from '../contexts/LeftPanelContext';
 
 // Common timezones with their offsets and locations
 const timeZones = [
@@ -218,6 +219,7 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
 };
 
 const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery, settings, setSettings }) => {
+  const { isPinned, isHovered, isVisible, togglePinned, setHovered } = useLeftPanel();
   const [now, setNow] = useState(Date.now());
   const [activeSection, setActiveSection] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -240,11 +242,6 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const quickNoteInputRef = useRef(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [totals, setTotals] = useState(defaultSettings.totals);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isPermanentlyVisible, setIsPermanentlyVisible] = useState(() => {
-    const saved = localStorage.getItem('sidebarPermanentlyVisible');
-    return saved ? JSON.parse(saved) : false;
-  });
 
   useEffect(() => {
     localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
@@ -440,10 +437,10 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       )}
 
       {/* Small visible panel */}
-      {!isPermanentlyVisible && (
+      {!isPinned && (
         <div 
           className="fixed left-0 top-0 h-full w-2 bg-indigo-600 hover:bg-indigo-700 transition-colors z-40 cursor-pointer"
-          onMouseEnter={() => setIsHovered(true)}
+          onMouseEnter={() => setHovered(true)}
           style={{ pointerEvents: 'auto' }}
         />
       )}
@@ -451,29 +448,22 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       {/* Main sliding panel */}
       <div 
         className={`fixed left-0 top-0 h-full bg-slate-50 shadow-lg transition-all duration-300 ease-in-out z-30 ${
-          (isHovered || isPermanentlyVisible) ? 'w-80 opacity-100' : 'w-0 opacity-0'
+          isVisible ? 'w-80 opacity-100' : 'w-0 opacity-0'
         }`}
-        onMouseLeave={() => !isPermanentlyVisible && setIsHovered(false)}
-        style={{ pointerEvents: (isHovered || isPermanentlyVisible) ? 'auto' : 'none' }}
+        onMouseLeave={() => !isPinned && setHovered(false)}
+        style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
       >
         <div className={`w-80 h-full p-3 flex flex-col overflow-hidden transition-opacity duration-300 ${
-          (isHovered || isPermanentlyVisible) ? 'opacity-100' : 'opacity-0'
+          isVisible ? 'opacity-100' : 'opacity-0'
         }`}>
           {/* Pin/unpin sidebar button */}
           <div className="flex justify-end mb-2">
             <button
-              onClick={() => {
-                setIsPermanentlyVisible(v => {
-                  const newVal = !v;
-                  localStorage.setItem('sidebarPermanentlyVisible', JSON.stringify(newVal));
-                  if (!newVal) setIsHovered(false); // Hide if unpinned and not hovered
-                  return newVal;
-                });
-              }}
+              onClick={togglePinned}
               className="p-1 rounded hover:bg-indigo-100"
-              title={isPermanentlyVisible ? 'Unpin sidebar' : 'Pin sidebar open'}
+              title={isPinned ? 'Unpin sidebar' : 'Pin sidebar open'}
             >
-              {isPermanentlyVisible ? (
+              {isPinned ? (
                 <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 19V5h12v14" />
                 </svg>

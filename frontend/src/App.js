@@ -15,6 +15,7 @@ import { createNote, loadAllNotes, updateNoteById, getSettings, defaultSettings,
 import { SearchModalProvider } from './contexts/SearchModalContext';
 import { NoteEditorProvider } from './contexts/NoteEditorContext';
 import { NotesProvider} from './contexts/NotesContext';
+import { LeftPanelProvider, useLeftPanel } from './contexts/LeftPanelContext';
 import NoteEditorModal from './components/NoteEditorModal';
 import WatchList from './components/WatchList';
 import News from './components/News';
@@ -30,6 +31,209 @@ import Assets from './components/Assets';
 import CountdownsPage from './pages/CountdownsPage';
 import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceHelpUtils';
 import StockVesting from './components/StockVesting';
+
+// MainContentArea component that adjusts based on left panel state
+const MainContentArea = ({ 
+  allNotes, 
+  setAllNotes, 
+  addNote, 
+  searchQuery, 
+  setSearchQuery, 
+  setNoteDate, 
+  settings, 
+  addTag, 
+  refreshTags, 
+  objList, 
+  updateNote 
+}) => {
+  const { isVisible } = useLeftPanel();
+  
+  return (
+    <div 
+      className={`flex-1 overflow-y-auto transition-all duration-300 ease-in-out ${
+        isVisible ? 'ml-80' : 'ml-0'
+      }`}
+    >
+      <div className="h-full">
+        <Routes>
+          <Route path="/" element={
+            <NotesProvider>
+              <Dashboard notes={allNotes} setNotes={setAllNotes} />
+            </NotesProvider>
+          } />
+          <Route path="/notes" element={
+            <NotesProvider>
+              <NotesMainContainer
+                allNotes={allNotes}
+                setAllNotes={setAllNotes}
+                addNote={addNote}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                setNoteDate={setNoteDate}
+                settings={settings}
+                addTag={addTag}
+                refreshTags={refreshTags}
+                objList={objList}
+              />
+            </NotesProvider>
+          } />
+          <Route path="/watch" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                  <WatchList
+                    allNotes={allNotes}
+                    updateNote={updateNote}
+                  />
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/tags" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <TagListing />
+              </div>
+            </div>
+          } />
+          <Route path="/todos" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                  <TodoList
+                    allNotes={allNotes}
+                    setAllNotes={setAllNotes}
+                    updateNote={updateNote}
+                  />
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/journals" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <Journals />
+              </div>
+            </div>
+          } />
+          <Route path="/manage-notes" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <Manage />
+              </div>
+            </div>
+          } />
+          <Route path="/events" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <EventsPage
+                  notes={allNotes}
+                  setAllNotes={setAllNotes}
+                  allNotes={allNotes}
+                />
+              </div>
+            </div>
+          } />
+          <Route path="/people" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                  <PeopleList
+                    allNotes={allNotes}
+                    setAllNotes={setAllNotes}
+                  />
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/news" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="min-h-screen bg-gray-50">
+                  <News />
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/dashboard" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="min-h-screen bg-gray-50">
+                  <Dashboard notes={allNotes} setNotes={setAllNotes} />
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/expense" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto h-full">
+                <div className="h-full w-full bg-gray-50">
+                  <div className="h-full w-full">
+                    <NotesProvider>
+                      <ExpenseTracker />
+                    </NotesProvider>
+                  </div>
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/trackers" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="min-h-screen bg-gray-50">
+                  <TrackerListing />
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/calendar" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="min-h-screen bg-gray-50 p-4">
+                  <CustomCalendar notes={allNotes} setNotes={setAllNotes} />
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/bookmarks" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="min-h-screen bg-gray-50 p-4">
+                  <BookmarkManager allNotes={allNotes} />
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/assets" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="min-h-screen bg-gray-50 p-4">
+                  <Assets />
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/countdowns" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <CountdownsPage notes={allNotes} />
+              </div>
+            </div>
+          } />
+          <Route path="/stock-vesting" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <StockVesting notes={allNotes} />
+              </div>
+            </div>
+          } />
+        </Routes>
+      </div>
+    </div>
+  );
+};
+
+
 
 const AppContent = () => {
   const navigate = useNavigate();
@@ -297,241 +501,79 @@ const AppContent = () => {
     <NoteEditorProvider>
       <SearchModalProvider notes={allNotes}>
         <NotesProvider>
-          <div className="App flex flex-col h-screen overflow-hidden">
-            <Navbar activePage={activePage} setActivePage={(page) => navigate(`/${page}`)} settings={settings} />
-            <div className="flex flex-1 overflow-hidden">
-              {/* Left panel */}
-              <div className="relative">
-                <LeftPanel
-                  notes={allNotes}
+          <LeftPanelProvider>
+            <div className="App flex flex-col h-screen overflow-hidden">
+              <Navbar activePage={activePage} setActivePage={(page) => navigate(`/${page}`)} settings={settings} />
+              <div className="flex flex-1 overflow-hidden">
+                {/* Left panel */}
+                <div className="relative">
+                  <LeftPanel
+                    notes={allNotes}
+                    searchQuery={searchQuery}
+                    settings={settings}
+                    setSettings={setSettings}
+                    activePage={activePage}
+                    setActivePage={(page) => navigate(`/${page}`)}
+                    setShowPastePopup={setShowPastePopup}
+                  />
+                </div>
+
+                {/* Right panel: main content */}
+                <MainContentArea 
+                  allNotes={allNotes}
+                  setAllNotes={setAllNotes}
+                  addNote={addNote}
                   searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  setNoteDate={setNoteDate}
                   settings={settings}
-                  setSettings={setSettings}
-                  activePage={activePage}
-                  setActivePage={(page) => navigate(`/${page}`)}
-                  setShowPastePopup={setShowPastePopup}
+                  addTag={addTag}
+                  refreshTags={fetchTags}
+                  objList={objList}
+                  updateNote={updateNote}
                 />
               </div>
-
-              {/* Right panel: main content */}
-              <div className="flex-1 overflow-y-auto">
-                <div className="h-full">
-                  <Routes>
-                    <Route path="/" element={
-                      <NotesProvider>
-                        <Dashboard notes={allNotes} setNotes={setAllNotes} />
-                      </NotesProvider>
-                    } />
-                    <Route path="/notes" element={
-                      <NotesProvider>
-                        <NotesMainContainer
-                          allNotes={allNotes}
-                          setAllNotes={setAllNotes}
-                          addNote={addNote}
-                          searchQuery={searchQuery}
-                          setSearchQuery={setSearchQuery}
-                          setNoteDate={setNoteDate}
-                          settings={settings}
-                          addTag={addTag}
-                          refreshTags={fetchTags}
-                          objList={objList}
-                        />
-                      </NotesProvider>
-                    } />
-                    <Route path="/watch" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                            <WatchList
-                              allNotes={allNotes}
-                              updateNote={updateNote}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/tags" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <TagListing />
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/todos" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                            <TodoList
-                              allNotes={allNotes}
-                              setAllNotes={setAllNotes}
-                              updateNote={updateNote}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/journals" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <Journals />
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/manage-notes" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <Manage />
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/events" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <EventsPage
-                            notes={allNotes}
-                            setAllNotes={setAllNotes}
-                            allNotes={allNotes}
-                          />
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/people" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
-                            <PeopleList
-                              allNotes={allNotes}
-                              setAllNotes={setAllNotes}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/news" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <div className="min-h-screen bg-gray-50">
-                            <News />
-                          </div>
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/dashboard" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <div className="min-h-screen bg-gray-50">
-                            <Dashboard notes={allNotes} setNotes={setAllNotes} />
-                          </div>
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/expense" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto h-full">
-                          <div className="h-full w-full bg-gray-50">
-                            <div className="h-full w-full">
-                              <NotesProvider>
-                                <ExpenseTracker />
-                              </NotesProvider>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/trackers" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <div className="min-h-screen bg-gray-50">
-                            <TrackerListing />
-                          </div>
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/calendar" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <div className="min-h-screen bg-gray-50 p-4">
-                            <CustomCalendar notes={allNotes} setNotes={setAllNotes} />
-                          </div>
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/bookmarks" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <div className="min-h-screen bg-gray-50 p-4">
-                            <BookmarkManager allNotes={allNotes} />
-                          </div>
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/assets" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <div className="min-h-screen bg-gray-50 p-4">
-                            <Assets />
-                          </div>
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/countdowns" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <CountdownsPage notes={allNotes} />
-                        </div>
-                      </div>
-                    } />
-                    <Route path="/stock-vesting" element={
-                      <div className="h-full overflow-y-auto">
-                        <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                          <StockVesting notes={allNotes} />
-                        </div>
-                      </div>
-                    } />
-                  </Routes>
-                </div>
-              </div>
-            </div>
-            <ToastContainer
-              position="bottom-right"
-              autoClose={1500}
-              hideProgressBar={false}
-              newestOnTop={false}
-              closeOnClick={false}
-              rtl={false}
-              pauseOnFocusLoss={false}
-              draggable={false}
-              pauseOnHover={false}
-              theme="light"
-              closeButton={false}
-              limit={1}
-              enableMultiContainer={false}
-              preventDuplicates={true}
-            />
-            <NoteEditorModal addNote={addNote} updateNote={updateNote} />
-            {showPastePopup && (
-              <TextPastePopup
-                isOpen={showPastePopup}
-                onClose={() => {
-                  setShowPastePopup(false);
-                  setPasteText('');
-                  setNewNoteText('');
-                  setSelectedPriority(null);
-                  setIsWatchSelected(false);
-                }}
-                newNoteText={newNoteText}
-                setNewNoteText={setNewNoteText}
-                pasteText={pasteText}
-                selectedPriority={selectedPriority}
-                setSelectedPriority={setSelectedPriority}
-                isWatchSelected={isWatchSelected}
-                setIsWatchSelected={setIsWatchSelected}
-                onSave={handlePasteSubmit}
-                objList={objList}
-                allNotes={allNotes}
+              <ToastContainer
+                position="bottom-right"
+                autoClose={1500}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick={false}
+                rtl={false}
+                pauseOnFocusLoss={false}
+                draggable={false}
+                pauseOnHover={false}
+                theme="light"
+                closeButton={false}
+                limit={1}
+                enableMultiContainer={false}
+                preventDuplicates={true}
               />
-            )}
-          </div>
+              <NoteEditorModal addNote={addNote} updateNote={updateNote} />
+              {showPastePopup && (
+                <TextPastePopup
+                  isOpen={showPastePopup}
+                  onClose={() => {
+                    setShowPastePopup(false);
+                    setPasteText('');
+                    setNewNoteText('');
+                    setSelectedPriority(null);
+                    setIsWatchSelected(false);
+                  }}
+                  newNoteText={newNoteText}
+                  setNewNoteText={setNewNoteText}
+                  pasteText={pasteText}
+                  selectedPriority={selectedPriority}
+                  setSelectedPriority={setSelectedPriority}
+                  isWatchSelected={isWatchSelected}
+                  setIsWatchSelected={setIsWatchSelected}
+                  onSave={handlePasteSubmit}
+                  objList={objList}
+                  allNotes={allNotes}
+                />
+              )}
+            </div>
+          </LeftPanelProvider>
         </NotesProvider>
       </SearchModalProvider>
     </NoteEditorProvider>

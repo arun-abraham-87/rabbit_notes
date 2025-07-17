@@ -250,6 +250,11 @@ const AppContent = () => {
   const [selectedPriority, setSelectedPriority] = useState(null);
   const [isWatchSelected, setIsWatchSelected] = useState(false);
   const [objList, setObjList] = useState([]);
+  const [lastAddedNoteId, setLastAddedNoteId] = useState(() => {
+    // Load last added note ID from localStorage on mount
+    const saved = localStorage.getItem('lastAddedNoteId');
+    return saved ? parseInt(saved) : null;
+  });
 
   // Get active page from URL hash
   const activePage = location.pathname.split('/')[1] || 'dashboard';
@@ -286,9 +291,9 @@ const AppContent = () => {
       }
 
       // Handle navigation shortcuts
-      // 'gt' to go to /tags, 'gn' to go to /notes, 'gh' to go to /dashboard, 'ge' to go to /events
+      // 'gt' to go to /tags, 'gn' to go to /notes, 'gh' to go to /dashboard, 'ge' to go to /events, 'gl' to go to last note
       if (e.key === 'g') {
-        // Start tracking for 'gt', 'gn', 'gh', or 'ge' sequence
+        // Start tracking for 'gt', 'gn', 'gh', 'ge', or 'gl' sequence
         const handleNextKey = (nextEvent) => {
           if (nextEvent.key === 't') {
             e.preventDefault();
@@ -310,8 +315,21 @@ const AppContent = () => {
             nextEvent.preventDefault();
             navigate('/events');
             window.removeEventListener('keydown', handleNextKey);
+          } else if (nextEvent.key === 'l') {
+            e.preventDefault();
+            nextEvent.preventDefault();
+            // Navigate to last added note
+            if (lastAddedNoteId) {
+              navigate('/notes', { state: { searchQuery: `id:${lastAddedNoteId}` } });
+              Alerts.success('Navigated to last added note');
+            } else {
+              // If no last note, just go to notes page
+              navigate('/notes');
+              Alerts.error('No last added note found');
+            }
+            window.removeEventListener('keydown', handleNextKey);
           } else {
-            // If next key is not 't', 'n', 'h', or 'e', stop tracking
+            // If next key is not 't', 'n', 'h', 'e', or 'l', stop tracking
             window.removeEventListener('keydown', handleNextKey);
           }
         };
@@ -324,7 +342,7 @@ const AppContent = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate]);
+  }, [navigate, lastAddedNoteId]);
 
   const handlePasteSubmit = async () => {
     try {
@@ -376,6 +394,10 @@ const AppContent = () => {
       noteContent += '\nmeta::review_pending';
       
       const newNote = await createNote(noteContent);
+      
+      // Track the last added note
+      setLastAddedNoteId(newNote.id);
+      localStorage.setItem('lastAddedNoteId', newNote.id.toString());
       
       // Refresh the notes list with the current search query and date
       const data = await loadAllNotes(searchQuery, noteDate);
@@ -440,6 +462,9 @@ const AppContent = () => {
       const response = await createNote(content);
       setSearchQuery('');
       setAllNotes([response, ...allNotes]);
+      // Track the last added note
+      setLastAddedNoteId(response.id);
+      localStorage.setItem('lastAddedNoteId', response.id.toString());
       // Add to search index
       addNoteToIndex(response);
     } catch (error) {

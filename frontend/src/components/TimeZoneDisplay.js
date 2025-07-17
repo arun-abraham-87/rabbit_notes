@@ -9,9 +9,12 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     return () => clearInterval(timer);
   }, []);
 
+  // Get base timezone from localStorage, default to AEST if not set
+  const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
+
   // Default timezones if none are selected
   const defaultTimezones = [
-    { label: 'AEST', timeZone: 'Australia/Sydney' },
+    { label: baseTimezone.split('/').pop().replace('_', ' '), timeZone: baseTimezone },
     { label: 'IST', timeZone: 'Asia/Kolkata' },
     { label: 'EST', timeZone: 'America/New_York' },
     { label: 'PST', timeZone: 'America/Los_Angeles' },
@@ -48,12 +51,12 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     }).format(date);
 
   /**
-   * Compute the hour‑difference between AEST and any other zone.
+   * Compute the hour‑difference between base timezone and any other zone.
    */
-  const getTimeDiffFromAEST = (targetZone) => {
-    const aestDate   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
+  const getTimeDiffFromBase = (targetZone) => {
+    const baseDate   = new Date(new Date().toLocaleString('en-US', { timeZone: baseTimezone }));
     const targetDate = new Date(new Date().toLocaleString('en-US', { timeZone: targetZone }));
-    const diffMs     = aestDate - targetDate;
+    const diffMs     = baseDate - targetDate;
     const diffHrs    = Math.round(diffMs / 3600000);
     if (diffHrs === 0) return '';
     return diffHrs > 0
@@ -62,12 +65,12 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
   };
 
   /**
-   * Returns the numeric hour-difference between AEST and the given zone.
+   * Returns the numeric hour-difference between base timezone and the given zone.
    */
   const getTimeDiffHours = (targetZone) => {
-    const aestDate   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
+    const baseDate   = new Date(new Date().toLocaleString('en-US', { timeZone: baseTimezone }));
     const targetDate = new Date(new Date().toLocaleString('en-US', { timeZone: targetZone }));
-    return Math.round((aestDate - targetDate) / 3600000);
+    return Math.round((baseDate - targetDate) / 3600000);
   };
 
   /**
@@ -101,15 +104,16 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
       ? 'bg-gradient-to-br from-yellow-100 via-white to-blue-100 text-gray-700'
       : 'bg-gradient-to-br from-blue-900 via-black to-blue-800 text-white';
 
-    // Compute offset relative to AEST
-    const diff = label === 'AEST' ? null : getTimeDiffFromAEST(timeZone);
+    // Compute offset relative to base timezone
+    const baseLabel = baseTimezone.split('/').pop().replace('_', ' ');
+    const diff = label === baseLabel ? null : getTimeDiffFromBase(timeZone);
 
-    // Determine if this zone's date is before/after AEST date
+    // Determine if this zone's date is before/after base timezone date
     const zoneYMD = formatYMD(now, timeZone);
-    const aestYMD = formatYMD(now, 'Australia/Sydney');
+    const baseYMD = formatYMD(now, baseTimezone);
     let dayLabel = 'Same Day';
-    if (zoneYMD < aestYMD) dayLabel = 'Previous Day';
-    else if (zoneYMD > aestYMD) dayLabel = 'Next Day';
+    if (zoneYMD < baseYMD) dayLabel = 'Previous Day';
+    else if (zoneYMD > baseYMD) dayLabel = 'Next Day';
 
     const formattedDate = new Intl.DateTimeFormat('en-US', {
       timeZone,
@@ -154,22 +158,22 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
       }))
     : defaultTimezones;
 
-  // Enrich with numeric diff, dayLabel, and sort by diffHrs ascending (least behind first)
+  // Enrich with numeric diff, dayLabel, and sort by absolute distance from base timezone (nearest to farthest)
   const sortedZones = timezonesToShow
     .map(z => {
       const diffHrs = getTimeDiffHours(z.timeZone);
       const now = new Date();
       const zoneYMD = formatYMD(now, z.timeZone);
-      const aestYMD = formatYMD(now, 'Australia/Sydney');
+      const baseYMD = formatYMD(now, baseTimezone);
       const dayLabel =
-        zoneYMD < aestYMD
+        zoneYMD < baseYMD
           ? 'Previous Day'
-          : zoneYMD > aestYMD
+          : zoneYMD > baseYMD
             ? 'Next Day'
             : 'Same Day';
       return { ...z, diffHrs, dayLabel };
     })
-    .sort((a, b) => a.diffHrs - b.diffHrs);
+    .sort((a, b) => Math.abs(a.diffHrs) - Math.abs(b.diffHrs));
 
   return (
     <div className="bg-gray-100 p-4 rounded-lg">

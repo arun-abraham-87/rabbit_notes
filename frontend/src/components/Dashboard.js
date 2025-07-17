@@ -191,6 +191,9 @@ const Dashboard = ({notes,setNotes}) => {
       'Europe/London'
     ];
 
+    // Get base timezone from localStorage, default to AEST if not set
+    const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
+
     const flagMap = {
       'Australia/Sydney': '🇦🇺',
       'Asia/Kolkata': '🇮🇳',
@@ -217,24 +220,31 @@ const Dashboard = ({notes,setNotes}) => {
         day: '2-digit',
       }).format(date);
 
+    // Helper function to get time difference from base timezone
+    const getTimeDiffHours = (targetZone) => {
+      const baseDate = new Date(new Date().toLocaleString('en-US', { timeZone: baseTimezone }));
+      const targetDate = new Date(new Date().toLocaleString('en-US', { timeZone: targetZone }));
+      return Math.round((baseDate - targetDate) / 3600000);
+    };
+
     const timezoneData = timezonesToShow.map(timeZone => {
       const label = timeZone.split('/').pop().replace('_', ' ');
       const flag = flagMap[timeZone] || '';
       const time = formatTimezoneTime(timeZone);
       
-      // Determine if this zone's date is before AEST date
+      // Determine if this zone's date is before base timezone date
       const zoneYMD = formatYMD(new Date(), timeZone);
-      const aestYMD = formatYMD(new Date(), 'Australia/Sydney');
-      const isPreviousDay = zoneYMD < aestYMD;
+      const baseYMD = formatYMD(new Date(), baseTimezone);
+      const isPreviousDay = zoneYMD < baseYMD;
       
-      // Calculate date difference (0 = same day, -1 = previous day, 1 = next day)
-      const dateDiff = zoneYMD === aestYMD ? 0 : (zoneYMD < aestYMD ? -1 : 1);
+      // Calculate time difference from base timezone
+      const timeDiffHours = getTimeDiffHours(timeZone);
       
-      return { label, flag, time, timeZone, isPreviousDay, dateDiff };
+      return { label, flag, time, timeZone, isPreviousDay, timeDiffHours };
     });
 
-    // Sort by date difference: next day first, then previous day, then same day (farthest to nearest)
-    return timezoneData.sort((a, b) => b.dateDiff - a.dateDiff);
+    // Sort by absolute distance from base timezone (nearest to farthest)
+    return timezoneData.sort((a, b) => Math.abs(a.timeDiffHours) - Math.abs(b.timeDiffHours));
   };
 
   useEffect(() => {
@@ -268,6 +278,26 @@ const Dashboard = ({notes,setNotes}) => {
     );
   }
 
+  // Get base timezone for display
+  const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
+  const baseTimezoneLabel = baseTimezone.split('/').pop().replace('_', ' ');
+  const baseTimezoneFlag = {
+    'Australia/Sydney': '🇦🇺',
+    'Asia/Kolkata': '🇮🇳',
+    'America/New_York': '🇺🇸',
+    'America/Los_Angeles': '🇺🇸',
+    'Europe/London': '🇬🇧',
+    'Europe/Paris': '🇫🇷',
+    'Asia/Tokyo': '🇯🇵',
+    'Asia/Singapore': '🇸🇬',
+    'Asia/Hong_Kong': '🇭🇰',
+    'Asia/Shanghai': '🇨🇳',
+    'Europe/Moscow': '🇷🇺',
+    'Africa/Johannesburg': '🇿🇦',
+    'America/Sao_Paulo': '🇧🇷',
+    'Pacific/Auckland': '🇳🇿',
+  }[baseTimezone] || '🌐';
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* First Row: Date and Timezone Display (Full Width) */}
@@ -284,8 +314,8 @@ const Dashboard = ({notes,setNotes}) => {
               <div className="flex items-center gap-4 cursor-pointer">
                 <div className="text-base font-medium">{formattedTime}</div>
                 <div className="flex items-center gap-1 text-sm text-gray-500">
-                  <span>🇦🇺</span>
-                  <span>AEST</span>
+                  <span>{baseTimezoneFlag}</span>
+                  <span>{baseTimezoneLabel}</span>
                   <ChevronDownIcon className="h-4 w-4 text-gray-400" />
                 </div>
               </div>

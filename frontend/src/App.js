@@ -60,7 +60,7 @@ const MainContentArea = ({
         <Routes>
           <Route path="/" element={
             <NotesProvider>
-              <Dashboard notes={allNotes} setNotes={setAllNotes} setActivePage={(page) => window.location.href = `/${page}`} />
+              <Dashboard notes={allNotes} setNotes={setAllNotes} setActivePage={(page) => navigate(`/${page}`)} />
             </NotesProvider>
           } />
           <Route path="/notes" element={
@@ -161,7 +161,7 @@ const MainContentArea = ({
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                 <div className="min-h-screen bg-gray-50">
-                  <Dashboard notes={allNotes} setNotes={setAllNotes} setActivePage={(page) => window.location.href = `/${page}`} />
+                  <Dashboard notes={allNotes} setNotes={setAllNotes} setActivePage={(page) => navigate(`/${page}`)} />
                 </div>
               </div>
             </div>

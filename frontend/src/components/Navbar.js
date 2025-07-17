@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Cog6ToothIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 import QuickPasteToggle from './QuickPasteToggle';
 import StockInfoPanel from './StockInfoPanel';
+import { useLeftPanel } from '../contexts/LeftPanelContext';
 
 const Navbar = ({ activePage, setActivePage }) => {
   const [navbarPagesVisibility, setNavbarPagesVisibility] = useState({});
   const [showDropdown, setShowDropdown] = useState(false);
+  const { isVisible } = useLeftPanel();
 
   useEffect(() => {
     const saved = localStorage.getItem('navbarPagesVisibility');
@@ -68,7 +70,9 @@ const Navbar = ({ activePage, setActivePage }) => {
   );
 
   return (
-    <nav className="border-b py-4 px-8 bg-background hover:shadow-sm transition-shadow">
+    <nav className={`border-b py-4 px-8 bg-background hover:shadow-sm transition-all duration-300 ease-in-out ${
+      isVisible ? 'ml-80' : 'ml-0'
+    }`}>
       <div className="w-full mx-auto flex justify-between items-center">
         {/* Left: Brand */}
         <div className="flex items-center gap-2 cursor-pointer">

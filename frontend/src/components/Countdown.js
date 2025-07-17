@@ -3,6 +3,7 @@ import { ClockIcon, PlusIcon } from '@heroicons/react/24/solid';
 
 const Countdown = () => {
   const [showSetup, setShowSetup] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [active, setActive] = useState(false);
   const [remaining, setRemaining] = useState(0);
   const [targetTime, setTargetTime] = useState('');
@@ -117,21 +118,27 @@ const Countdown = () => {
       return;
     }
     
-    const diffSecs = Math.floor((target - now) / 1000);
-    setRemaining(diffSecs);
-    setActive(true);
-    setShowSetup(false);
-    
-    // Add meeting to list if not already there
+    // Add meeting to list
     const newMeeting = { name: meetingName.trim(), time: targetTime };
     const updatedMeetings = [...meetings, newMeeting];
     setMeetings(updatedMeetings);
     saveMeetings(updatedMeetings);
     
-    setCurrentMeetingIndex(updatedMeetings.length - 1);
-    saveState(targetTime, true, updatedMeetings.length - 1);
+    // If no countdown is currently running, start one
+    if (!active) {
+      const diffSecs = Math.floor((target - now) / 1000);
+      setRemaining(diffSecs);
+      setActive(true);
+      setShowSetup(false);
+      setCurrentMeetingIndex(updatedMeetings.length - 1);
+      saveState(targetTime, true, updatedMeetings.length - 1);
+    } else {
+      // Just add to the list, don't start a new countdown
+      setShowAddForm(false);
+    }
     
     setMeetingName('');
+    setTargetTime('');
   };
 
   const handleReset = () => {
@@ -233,7 +240,15 @@ const Countdown = () => {
 
           {/* Upcoming Meetings List */}
           <div className="bg-white rounded-xl p-4 shadow-lg min-w-[250px]">
-            <h3 className="text-lg font-semibold mb-3 text-gray-800">Upcoming Meetings</h3>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-semibold text-gray-800">Upcoming Meetings</h3>
+              <button
+                className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                onClick={() => setShowAddForm(true)}
+              >
+                Add Meeting
+              </button>
+            </div>
             {getUpcomingMeetings().length === 0 ? (
               <p className="text-gray-500 text-sm">No upcoming meetings</p>
             ) : (
@@ -252,6 +267,47 @@ const Countdown = () => {
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+            
+            {/* Add Meeting Form when countdown is active */}
+            {showAddForm && (
+              <div className="mt-4 p-3 bg-gray-50 rounded">
+                <div className="text-sm font-semibold mb-2">Add New Meeting</div>
+                <input
+                  type="text"
+                  placeholder="Meeting name"
+                  className="border rounded px-2 py-1 text-sm w-full mb-2"
+                  value={meetingName}
+                  onChange={e => setMeetingName(e.target.value)}
+                />
+                <input
+                  type="time"
+                  className="border rounded px-2 py-1 text-sm w-full mb-2"
+                  value={targetTime}
+                  onChange={e => handleTimeChange(e.target.value)}
+                />
+                {error && <div className="text-red-500 text-xs mb-2">{error}</div>}
+                <div className="flex gap-2">
+                  <button
+                    className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-50"
+                    onClick={handleStart}
+                    disabled={!targetTime || !meetingName.trim()}
+                  >
+                    Add Meeting
+                  </button>
+                  <button
+                    className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setMeetingName('');
+                      setTargetTime('');
+                      setError('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>

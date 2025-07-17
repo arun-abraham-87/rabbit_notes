@@ -491,7 +491,7 @@ export default function NoteContent({
                             {!focusMode && !isUrlOnly && isFirstLine && !isFirstLineH1 && (
                                 <button
                                     onClick={() => handleConvertToH1(note, lineContent)}
-                                    className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+                                    className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                                     title="Convert to H1"
                                 >
                                     H1
@@ -505,7 +505,7 @@ export default function NoteContent({
                             })() && (
                                 <button
                                     onClick={() => handleMoveH1ToTop(idx)}
-                                    className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+                                    className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                                     title="Move H1 to top"
                                 >
                                     ↑
@@ -529,7 +529,7 @@ export default function NoteContent({
                 {contentLines.map((line, idx) => renderLine(line, idx))}
                 {/* Plus button at the end of the last line */}
                 {!compressedView && !focusMode && (
-                    <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center justify-between mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => {

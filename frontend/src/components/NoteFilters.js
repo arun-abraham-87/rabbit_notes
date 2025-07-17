@@ -516,6 +516,17 @@ const NoteFilters = ({
         </button>
 
         <button
+          onClick={() => handleFilterClick('meta::notes_pinned')}
+          className={`px-3 py-1 text-xs rounded transition-all transform ${
+            searchQuery?.includes('meta::notes_pinned')
+              ? 'opacity-100 scale-105 bg-red-300 border border-red-700'
+              : 'opacity-30 hover:opacity-60 border'
+          }`}
+        >
+          Pinned Notes
+        </button>
+
+        <button
           onClick={handleClear}
           className="px-3 py-1 text-xs rounded bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
         >

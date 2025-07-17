@@ -17,6 +17,7 @@ import {
   CodeBracketIcon,
   XMarkIcon,
   FolderIcon,
+  StarIcon,
 } from '@heroicons/react/24/solid';
 import { MapPinIcon } from '@heroicons/react/24/outline';
 import { getDateInDDMMYYYYFormat, getAgeInStringFmt } from '../utils/DateUtils';
@@ -191,6 +192,27 @@ const NoteFooter = ({
     }
   };
 
+  // Handle pin/unpin note functionality
+  const handlePinNote = () => {
+    const lines = note.content.split('\n');
+    const isPinned = lines.some(l => l.trim().startsWith('meta::notes_pinned'));
+
+    if (isPinned) {
+      // Remove the pin tag
+      const without = lines
+        .filter(l => !l.trim().startsWith('meta::notes_pinned'))
+        .join('\n')
+        .trim();
+      updateNote(note.id, without);
+      toast.success('Note unpinned');
+    } else {
+      // Add the pin tag
+      const ts = new Date().toISOString();
+      updateNote(note.id, `${note.content}\nmeta::notes_pinned::${ts}`);
+      toast.success('Note pinned to right panel');
+    }
+  };
+
   const handleTodoAction = (priority = null) => {
     const timestamp = new Date().toISOString();
     const lines = note.content.split('\n');
@@ -269,7 +291,7 @@ const NoteFooter = ({
       {!focusMode && (
       <div className="flex items-center bg-gray-50 rounded-lg">
         {/* Todo Group */}
-        <div className="flex items-center space-x-1 px-2 py-1">
+        <div className="flex items-center space-x-1 px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <Tooltip text={isTodo ? 'Remove Todo Status' : 'Mark as Todo'}>
             <button
               onClick={() => handleTodoAction()}
@@ -320,10 +342,10 @@ const NoteFooter = ({
         </div>
 
         {/* Separator */}
-        <div className="h-6 w-px bg-gray-200 mx-px"></div>
+        <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
 
         {/* Organization Group */}
-        <div className="flex items-center space-x-1 px-2 py-1 bg-white">
+        <div className="flex items-center space-x-1 px-2 py-1 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <Tooltip text="Bookmark">
             <button
               onClick={() => handleAction('bookmark')}
@@ -368,6 +390,17 @@ const NoteFooter = ({
             </button>
           </Tooltip>
 
+          <Tooltip text={note.content.includes('meta::notes_pinned') ? 'Unpin Note' : 'Pin Note to Right Panel'}>
+            <button
+              onClick={handlePinNote}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::notes_pinned') ? 'bg-red-100' : ''
+                }`}
+            >
+              <StarIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::notes_pinned') ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+                }`} />
+            </button>
+          </Tooltip>
+
           <Tooltip text="Remove All Tags">
             <button
               onClick={() => setShowRemoveTagsConfirm(true)}
@@ -379,10 +412,10 @@ const NoteFooter = ({
         </div>
 
         {/* Separator */}
-        <div className="h-6 w-px bg-gray-200 mx-px"></div>
+        <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
 
         {/* Link Group */}
-        <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50">
+        <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <Tooltip text="Link Note">
             <button
               onClick={() => {
@@ -409,10 +442,10 @@ const NoteFooter = ({
         </div>
 
         {/* Separator */}
-        <div className="h-6 w-px bg-gray-200 mx-px"></div>
+        <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
 
         {/* View and Copy Group */}
-        <div className="flex items-center space-x-1 px-2 py-1 bg-white">
+        <div className="flex items-center space-x-1 px-2 py-1 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <Tooltip text="Copy to Clipboard">
             <button
               onClick={() => {
@@ -449,10 +482,10 @@ const NoteFooter = ({
         </div>
 
         {/* Separator */}
-        <div className="h-6 w-px bg-gray-200 mx-px"></div>
+        <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
 
         {/* Edit/Delete Group */}
-        <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50">
+        <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <Tooltip text="Edit Note">
             <button
               onClick={() => setPopupNoteText(note.id)}

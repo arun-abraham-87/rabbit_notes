@@ -117,10 +117,26 @@ const Countdown = () => {
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
     const s = secs % 60;
+    
     if (h > 0) {
-      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      return `${h}h ${m}m ${s}s`;
+    } else if (m > 0) {
+      return `${m}m ${s}s`;
+    } else {
+      return `${s}s`;
     }
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const formatMeetingTime = (timeString) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   return (
@@ -130,7 +146,7 @@ const Countdown = () => {
           <div className="text-white text-6xl font-extrabold mb-4 tracking-widest select-none">
             {formatTime(remaining)}
           </div>
-          <div className="text-white text-lg mb-2">Meeting at {targetTime}</div>
+          <div className="text-white text-lg mb-2">Meeting at {formatMeetingTime(targetTime)}</div>
           <button
             className="mt-2 px-4 py-2 bg-gray-200 rounded text-gray-700 hover:bg-gray-300 font-semibold"
             onClick={handleReset}

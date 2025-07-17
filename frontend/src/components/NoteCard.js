@@ -191,20 +191,92 @@ const NoteCard = ({
             setHighlightedLineIndex(-1);
             setHighlightedLineText('');
         }
-      } else if (e.key === 'a') {
+      } else if (e.key === 'a' || e.key === 'A') {
         e.preventDefault();
         e.stopPropagation();
         
-        // Show inline editor at the end of the note to add a new line
-        setAddingLineNoteId(note.id);
-        setNewLineText('');
-        
-        // Focus the new line input after a short delay to ensure it's rendered
-        setTimeout(() => {
-          if (newLineInputRef.current) {
-            newLineInputRef.current.focus();
+        // Check if Shift is pressed for uppercase conversion
+        if (e.shiftKey) {
+          // Convert the highlighted line to uppercase
+          const lines = note.content.split('\n');
+          
+          if (highlightedLineIndex !== -1) {
+            const updatedLines = [...lines];
+            updatedLines[highlightedLineIndex] = updatedLines[highlightedLineIndex].toUpperCase();
+            
+            const updatedContent = updatedLines.join('\n');
+            updateNote(note.id, updatedContent);
+            
+            // Update the highlighted line text
+            setHighlightedLineText(updatedLines[highlightedLineIndex].trim());
           }
-        }, 100);
+        } else {
+          // Show inline editor at the end of the note to add a new line
+          setAddingLineNoteId(note.id);
+          setNewLineText('');
+          
+          // Focus the new line input after a short delay to ensure it's rendered
+          setTimeout(() => {
+            if (newLineInputRef.current) {
+              newLineInputRef.current.focus();
+            }
+          }, 100);
+        }
+      } else if ((e.key === '`' || e.key === '~') && e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('Shift+~ pressed, cycling text case');
+        
+        // Cycle between different text cases: lowercase -> sentence case -> uppercase
+        const lines = note.content.split('\n');
+        
+        if (highlightedLineIndex !== -1) {
+          const updatedLines = [...lines];
+          const currentText = updatedLines[highlightedLineIndex];
+          
+          console.log('Current text:', currentText);
+          
+          // Helper function to convert to sentence case
+          const toSentenceCase = (text) => {
+            return text.toLowerCase().replace(/(^\w|\.\s+\w)/g, letter => letter.toUpperCase());
+          };
+          
+          // Helper function to convert to title case (first letter of each word capitalized)
+          const toTitleCase = (text) => {
+            return text.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+          };
+          
+          // Determine current case and cycle to next: lowercase -> sentence case -> title case -> uppercase -> lowercase
+          let newText;
+          if (currentText === currentText.toUpperCase()) {
+            // Currently uppercase, convert to lowercase
+            newText = currentText.toLowerCase();
+            console.log('Converting from uppercase to lowercase');
+          } else if (currentText === toSentenceCase(currentText)) {
+            // Currently sentence case, convert to title case
+            newText = toTitleCase(currentText);
+            console.log('Converting from sentence case to title case');
+          } else if (currentText === toTitleCase(currentText)) {
+            // Currently title case, convert to uppercase
+            newText = currentText.toUpperCase();
+            console.log('Converting from title case to uppercase');
+          } else {
+            // Currently lowercase or mixed, convert to sentence case
+            newText = toSentenceCase(currentText);
+            console.log('Converting to sentence case');
+          }
+          
+          console.log('New text:', newText);
+          
+          updatedLines[highlightedLineIndex] = newText;
+          
+          const updatedContent = updatedLines.join('\n');
+          updateNote(note.id, updatedContent);
+          
+          // Update the highlighted line text
+          setHighlightedLineText(newText.trim());
+        }
       } else if (e.key === 'Escape') {
         // Exit super edit mode
         setIsSuperEditMode(false);
@@ -359,7 +431,7 @@ const NoteCard = ({
     >
       {isSuperEditMode && (
         <div className="absolute top-2 right-2 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
-          Super Edit Mode - Press 1 for H1, 0 to clear format, x to delete line, a to add line, ↑↓ to navigate, Shift+↑↓ to move lines, Esc to exit
+          Super Edit Mode - Press 1 for H1, 0 to clear format, x to delete line, a to add line, Shift+A for caps, Shift+~ to cycle case (lower→sentence→title→upper), ↑↓ to navigate, Shift+↑↓ to move lines, Esc to exit
         </div>
       )}
       

@@ -392,12 +392,12 @@ const NotesList = ({
         return;
       }
       
-      // Only handle keys when not in an input/textarea and no modifier keys (except Shift+G)
+      // Only handle keys when not in an input/textarea and no modifier keys (except Shift+G and Shift+~)
       if (!e.metaKey && !e.ctrlKey && !e.altKey && 
           e.target.tagName !== 'INPUT' && 
           e.target.tagName !== 'TEXTAREA' &&
           e.target.contentEditable !== 'true' &&
-          !(e.shiftKey && e.key !== 'G')) {
+          !(e.shiftKey && e.key !== 'G' && e.key !== '~')) {
         
         // Check if any note is in super edit mode - look for the specific purple ring class
         const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');

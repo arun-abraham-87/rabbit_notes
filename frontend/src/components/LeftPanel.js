@@ -206,8 +206,8 @@ const formatDateString = (date) => {
 };
 
 const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [], content = '') => {
-  //console.log('finding occurence');
-  //console.log(recurrenceType);
+  ////console.log('finding occurence');
+  ////console.log(recurrenceType);
   // Ensure meetingTime is a Date object
   const meetingDateObj = meetingTime instanceof Date ? meetingTime : new Date(meetingTime);
   const now = new Date();
@@ -287,8 +287,8 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
           nextDay = dayIndex;
         }
       });
-      //console.log(recurrenceType);
-      //console.log('Next day:', nextDay);
+      ////console.log(recurrenceType);
+      ////console.log('Next day:', nextDay);
       if (nextDay === null) return null;
 
       nextDate.setDate(now.getDate() + minDiff);
@@ -442,7 +442,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   }, [notes]);
 
   const bookmarkedUrls = useMemo(() => {
-    console.log('LeftPanel: Recalculating bookmarkedUrls, notes count:', notes.length, 'pinUpdateTrigger:', pinUpdateTrigger);
+    //console.log('LeftPanel: Recalculating bookmarkedUrls, notes count:', notes.length, 'pinUpdateTrigger:', pinUpdateTrigger);
     const seen = new Set();
     const list = [];
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
@@ -457,13 +457,13 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           if (!seen.has(key)) {
             seen.add(key);
             const isPinned = note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark_pinned'));
-            console.log('LeftPanel: Bookmark', url, 'isPinned:', isPinned, 'noteId:', note.id);
+            //console.log('LeftPanel: Bookmark', url, 'isPinned:', isPinned, 'noteId:', note.id);
             list.push({ url, label, noteId: note.id, isPinned });
           }
         }
       }
     });
-    console.log('LeftPanel: Final list has', list.length, 'bookmarks');
+    //console.log('LeftPanel: Final list has', list.length, 'bookmarks');
     return list;
   }, [notes, pinUpdateTrigger]);
 
@@ -499,14 +499,14 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         const updatedNotes = prevNotes.map(n => 
           n.id === note.id ? { ...n, content: updatedContent } : n
         );
-        console.log('Notes updated, new content for note', note.id, ':', updatedContent);
+        //console.log('Notes updated, new content for note', note.id, ':', updatedContent);
         return updatedNotes;
       });
       
       // Force a re-render by updating the trigger
       setPinUpdateTrigger(prev => prev + 1);
       
-      console.log('Pin status updated:', !isCurrentlyPinned, 'for bookmark:', bookmark.url);
+      //console.log('Pin status updated:', !isCurrentlyPinned, 'for bookmark:', bookmark.url);
       
     } catch (error) {
       console.error('Error updating bookmark pin status:', error);

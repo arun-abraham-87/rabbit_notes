@@ -192,7 +192,7 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
   const [showAddModal, setShowAddModal] = useState(false);
 
   const bookmarkedUrls = useMemo(() => {
-    console.log('BookmarkedLinks: Recalculating bookmarkedUrls, notes count:', notes.length);
+    //console.log('BookmarkedLinks: Recalculating bookmarkedUrls, notes count:', notes.length);
     const seen = new Set();
     const list = [];
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
@@ -200,7 +200,7 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
       if (note?.content && note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark'))) {
         // Only include bookmarks that are pinned
         const isPinned = note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark_pinned'));
-        console.log('BookmarkedLinks: Note', note.id, 'has bookmark, isPinned:', isPinned);
+        //console.log('BookmarkedLinks: Note', note.id, 'has bookmark, isPinned:', isPinned);
         if (!isPinned) return;
         
         linkRegex.lastIndex = 0;
@@ -212,12 +212,12 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
           if (!seen.has(key)) {
             seen.add(key);
             list.push({ url, label, noteId: note.id });
-            console.log('BookmarkedLinks: Added pinned bookmark:', url, label);
+            //console.log('BookmarkedLinks: Added pinned bookmark:', url, label);
           }
         }
       }
     });
-    console.log('BookmarkedLinks: Final list has', list.length, 'pinned bookmarks');
+    //console.log('BookmarkedLinks: Final list has', list.length, 'pinned bookmarks');
     return list;
   }, [notes]);
 

@@ -39,7 +39,11 @@ export default function NoteContent({
     newLineInputRef,
     compressedView = false,
     updateNote,
-    focusMode = false
+    focusMode = false,
+    // Super edit mode props
+    isSuperEditMode = false,
+    highlightedLineIndex = -1,
+    highlightedLineText = ''
 }) {
     const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
     const [selectedRows, setSelectedRows] = useState(new Set());
@@ -331,6 +335,9 @@ export default function NoteContent({
             isUrlOnly = originalLine && (urlRegex.test(originalLine.trim()) || markdownUrlRegex.test(originalLine.trim()));
         }
 
+        // Check if this line is highlighted in super edit mode
+        const isHighlightedInSuperEdit = isSuperEditMode && idx === highlightedLineIndex;
+
         if (React.isValidElement(line)) {
             if (editingLine?.noteId === note.id && editingLine?.lineIndex === idx) {
                 return renderInlineEditor(idx, false, false);
@@ -350,6 +357,8 @@ export default function NoteContent({
                     className={`${shouldIndent ? 'pl-8 ' : ''}
                         group cursor-text flex items-center ${
                             rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
+                        } ${
+                            isHighlightedInSuperEdit ? 'bg-purple-100 border-l-4 border-purple-500' : ''
                         }`}
                 >
                     {bulkDeleteMode && (
@@ -436,6 +445,8 @@ export default function NoteContent({
                     } ${
                         isH1 ? 'text-2xl font-bold text-gray-900' :
                         isH2 ? 'text-lg font-semibold text-gray-900' : ''
+                    } ${
+                        isHighlightedInSuperEdit ? 'bg-purple-100 border-l-4 border-purple-500' : ''
                     }`}
             >
                 {bulkDeleteMode && (

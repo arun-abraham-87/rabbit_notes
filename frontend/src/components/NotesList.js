@@ -504,6 +504,7 @@ const NotesList = ({
                     duplicateWithinNoteIds={duplicateWithinNoteIds}
                     urlShareSpaceNoteIds={urlShareSpaceNoteIds}
                     focusMode={focusMode}
+                    setSearchQuery={setSearchQuery}
                   />
                 ))}
               </div>
@@ -570,6 +571,7 @@ const NotesList = ({
                     duplicateWithinNoteIds={duplicateWithinNoteIds}
                     urlShareSpaceNoteIds={urlShareSpaceNoteIds}
                     focusMode={focusMode}
+                    setSearchQuery={setSearchQuery}
                   />
                 ))}
               </div>
@@ -637,6 +639,7 @@ const NotesList = ({
                   duplicateWithinNoteIds={duplicateWithinNoteIds}
                   urlShareSpaceNoteIds={urlShareSpaceNoteIds}
                   focusMode={focusMode}
+                  setSearchQuery={setSearchQuery}
                 />
               ))}
             </div>

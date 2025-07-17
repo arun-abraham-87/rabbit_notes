@@ -18,7 +18,10 @@ export default function NoteTagBar({
   duplicateUrlNoteIds,
   duplicateWithinNoteIds,
   urlShareSpaceNoteIds,
-  focusMode = false
+  focusMode = false,
+  onNavigate,
+  allNotes,
+  setSearchQuery
 }) {
   const metaTags = extractMetaTags(note.content);
 
@@ -61,6 +64,21 @@ export default function NoteTagBar({
           return null;
         }
         return <HashtagIcon className="h-3 w-3" />;
+    }
+  };
+
+  const handleDuplicateUrlClick = () => {
+    if (!allNotes) return;
+    // Find the URLs in this note
+    const urlPattern = /https?:\/\/[^\s]+/g;
+    const urls = note.content.match(urlPattern) || [];
+    if (urls.length === 0) return;
+    // Just use the first URL
+    const urlSearchTerm = urls[0];
+    if (typeof setSearchQuery === 'function') {
+      setSearchQuery(urlSearchTerm);
+    } else if (onNavigate) {
+      onNavigate('notes', { searchQuery: urlSearchTerm });
     }
   };
 
@@ -201,9 +219,13 @@ export default function NoteTagBar({
 
           {/* Duplicate URL Indicators */}
           {duplicateUrlNoteIds.has(note.id) && (
-            <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium">
+            <button
+              onClick={handleDuplicateUrlClick}
+              className="inline-flex items-center px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium hover:bg-orange-100 transition-colors cursor-pointer"
+              title="Click to view all notes with duplicate URLs"
+            >
               Duplicate URL
-            </div>
+            </button>
           )}
 
           {/* Duplicate Within Note Indicators */}

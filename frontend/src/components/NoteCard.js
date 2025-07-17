@@ -52,7 +52,8 @@ const NoteCard = ({
   duplicateUrlNoteIds,
   duplicateWithinNoteIds,
   urlShareSpaceNoteIds,
-  focusMode = false
+  focusMode = false,
+  setSearchQuery
 }) => {
   return (
     <div
@@ -131,6 +132,9 @@ const NoteCard = ({
               duplicateWithinNoteIds={duplicateWithinNoteIds}
               urlShareSpaceNoteIds={urlShareSpaceNoteIds}
               focusMode={focusMode}
+              onNavigate={onNavigate}
+              allNotes={allNotes}
+              setSearchQuery={setSearchQuery}
             />
           </div>
         )}

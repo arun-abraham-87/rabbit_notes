@@ -54,11 +54,21 @@ const NoteCard = ({
   duplicateWithinNoteIds,
   urlShareSpaceNoteIds,
   focusMode = false,
-  setSearchQuery
+  setSearchQuery,
+  focusedNoteIndex = -1,
+  noteIndex = -1
 }) => {
   const [isSuperEditMode, setIsSuperEditMode] = useState(false);
   const [highlightedLineIndex, setHighlightedLineIndex] = useState(-1);
   const [highlightedLineText, setHighlightedLineText] = useState('');
+
+  // Check if this note is focused
+  const isFocused = focusedNoteIndex === noteIndex;
+  
+  // Debug logging
+  if (isFocused) {
+    console.log(`Note ${note.id} is focused, index: ${noteIndex}, focusedNoteIndex: ${focusedNoteIndex}`);
+  }
 
   const handleSuperEdit = () => {
     // Find the first non-empty line in the note
@@ -101,16 +111,64 @@ const NoteCard = ({
           const updatedContent = updatedLines.join('\n');
           updateNote(note.id, updatedContent);
           
-          // Exit super edit mode immediately
-          setIsSuperEditMode(false);
-          setHighlightedLineIndex(-1);
-          setHighlightedLineText('');
+          // Stay in super edit mode - don't exit automatically
+          // The user can continue navigating and converting other lines
+        }
+      } else if (e.key === '0') {
+        e.preventDefault();
+        
+        // Find the line in the note content and clear all formatting
+        const lines = note.content.split('\n');
+        
+        if (highlightedLineIndex !== -1) {
+          const updatedLines = [...lines];
+          // Clear all formatting: remove ###, ##, **, etc.
+          let cleanText = updatedLines[highlightedLineIndex].trim();
+          cleanText = cleanText.replace(/^###\s*/, '').replace(/\s*###$/, ''); // Remove H1
+          cleanText = cleanText.replace(/^##\s*/, '').replace(/\s*##$/, ''); // Remove H2
+          cleanText = cleanText.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove bold
+          cleanText = cleanText.replace(/^-\s*/, ''); // Remove bullet points
+          
+          updatedLines[highlightedLineIndex] = cleanText;
+          
+          const updatedContent = updatedLines.join('\n');
+          updateNote(note.id, updatedContent);
+          
+          // Stay in super edit mode - don't exit automatically
         }
       } else if (e.key === 'Escape') {
         // Exit super edit mode
         setIsSuperEditMode(false);
         setHighlightedLineIndex(-1);
         setHighlightedLineText('');
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        
+        // Get all non-tag lines (lines that don't start with meta::)
+        const lines = note.content.split('\n');
+        const nonTagLineIndices = lines
+          .map((line, index) => ({ line: line.trim(), index }))
+          .filter(({ line }) => line !== '' && !line.startsWith('meta::'))
+          .map(({ index }) => index);
+        
+        if (nonTagLineIndices.length > 0) {
+          const currentIndex = nonTagLineIndices.indexOf(highlightedLineIndex);
+          let newIndex;
+          
+          if (e.key === 'ArrowUp') {
+            // Move to previous non-tag line
+            newIndex = currentIndex > 0 ? currentIndex - 1 : nonTagLineIndices.length - 1;
+          } else {
+            // Move to next non-tag line
+            newIndex = currentIndex < nonTagLineIndices.length - 1 ? currentIndex + 1 : 0;
+          }
+          
+          const newLineIndex = nonTagLineIndices[newIndex];
+          const newLineText = lines[newLineIndex].trim();
+          
+          setHighlightedLineIndex(newLineIndex);
+          setHighlightedLineText(newLineText);
+        }
       }
     };
 
@@ -124,6 +182,7 @@ const NoteCard = ({
     };
 
     if (isSuperEditMode) {
+      // Only add event listeners when super edit mode is active
       document.addEventListener('keydown', handleKeyDown);
       document.addEventListener('click', handleClickOutside);
       return () => {
@@ -175,11 +234,18 @@ const NoteCard = ({
         focusMode 
           ? 'px-3 py-3 mb-3 rounded border border-gray-200 bg-white' 
           : 'px-6 py-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100'
-      } relative ${isSuperEditMode ? 'ring-2 ring-purple-500' : ''}`}
+      } relative ${isSuperEditMode ? 'ring-2 ring-purple-500' : ''} ${
+        isFocused ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-300' : ''
+      }`}
+      style={{
+        backgroundColor: isFocused ? '#eff6ff' : undefined,
+        borderColor: isFocused ? '#3b82f6' : undefined,
+        boxShadow: isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : undefined
+      }}
     >
       {isSuperEditMode && (
         <div className="absolute top-2 right-2 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
-          Super Edit Mode - Press 1 to make H1, Esc to exit
+          Super Edit Mode - Press 1 for H1, 0 to clear format, ↑↓ to navigate, Esc to exit
         </div>
       )}
       

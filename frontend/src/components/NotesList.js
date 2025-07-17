@@ -105,6 +105,9 @@ const NotesList = ({
   const [selectedDate, setSelectedDate] = useState(null);
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'age'
   const [rawNote, setRawNote] = useState(null);
+  
+  // Note navigation state
+  const [focusedNoteIndex, setFocusedNoteIndex] = useState(-1);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -319,6 +322,54 @@ const NotesList = ({
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
+  // Handle keyboard navigation between notes
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only handle arrow keys when not in an input/textarea and no modifier keys
+      if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
+          e.target.tagName !== 'INPUT' && 
+          e.target.tagName !== 'TEXTAREA' &&
+          e.target.contentEditable !== 'true') {
+        
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          if (safeNotes.length === 0) return;
+          
+          let newIndex;
+          if (e.key === 'ArrowUp') {
+            // Move to previous note
+            newIndex = focusedNoteIndex > 0 ? focusedNoteIndex - 1 : safeNotes.length - 1;
+          } else {
+            // Move to next note
+            newIndex = focusedNoteIndex < safeNotes.length - 1 ? focusedNoteIndex + 1 : 0;
+          }
+          
+          console.log(`Navigating from ${focusedNoteIndex} to ${newIndex}, key: ${e.key}`);
+          setFocusedNoteIndex(newIndex);
+          
+          // Scroll to the focused note
+          const focusedNote = safeNotes[newIndex];
+          if (focusedNote) {
+            const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
+            if (noteElement) {
+              noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [focusedNoteIndex, safeNotes]);
+
+  // Reset focused note when notes change
+  useEffect(() => {
+    setFocusedNoteIndex(-1);
+  }, [safeNotes]);
+
   // Helper function to check if a note is a meeting note
   const isMeetingNote = (note) => {
     return note.content.includes('meta::meeting::');
@@ -456,7 +507,7 @@ const NotesList = ({
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-gray-900">Pinned Notes</h2>
               <div className="grid grid-cols-1 gap-4">
-                {safeNotes.filter(note => note.pinned).map((note) => (
+                {safeNotes.filter(note => note.pinned).map((note, index) => (
                   <NoteCard
                     key={note.id}
                     note={note}
@@ -505,6 +556,8 @@ const NotesList = ({
                     urlShareSpaceNoteIds={urlShareSpaceNoteIds}
                     focusMode={focusMode}
                     setSearchQuery={setSearchQuery}
+                    focusedNoteIndex={focusedNoteIndex}
+                    noteIndex={index}
                   />
                 ))}
               </div>
@@ -523,7 +576,7 @@ const NotesList = ({
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                {safeNotes.filter(note => !note.pinned).map(note => (
+                {safeNotes.filter(note => !note.pinned).map((note, index) => (
                   <NoteCard
                     key={note.id}
                     note={note}
@@ -572,6 +625,8 @@ const NotesList = ({
                     urlShareSpaceNoteIds={urlShareSpaceNoteIds}
                     focusMode={focusMode}
                     setSearchQuery={setSearchQuery}
+                    focusedNoteIndex={focusedNoteIndex}
+                    noteIndex={safeNotes.filter(note => note.pinned).length + index}
                   />
                 ))}
               </div>
@@ -591,7 +646,7 @@ const NotesList = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
-              {safeNotes.map(note => (
+              {safeNotes.map((note, index) => (
                 <NoteCard
                   key={note.id}
                   note={note}
@@ -640,6 +695,8 @@ const NotesList = ({
                   urlShareSpaceNoteIds={urlShareSpaceNoteIds}
                   focusMode={focusMode}
                   setSearchQuery={setSearchQuery}
+                  focusedNoteIndex={focusedNoteIndex}
+                  noteIndex={index}
                 />
               ))}
             </div>

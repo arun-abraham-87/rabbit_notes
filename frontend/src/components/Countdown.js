@@ -3,6 +3,15 @@ import { ClockIcon, PlusIcon } from '@heroicons/react/24/solid';
 
 const Countdown = () => {
   const [showSetup, setShowSetup] = useState(false);
+  
+  // Allowed minutes for time selection
+  const allowedMinutes = ['00', '05', '15', '30', '35', '45'];
+  
+  // Generate hours array for 12-hour format (1-12)
+  const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+  
+  // AM/PM options
+  const ampmOptions = ['AM', 'PM'];
   const [showAddForm, setShowAddForm] = useState(false);
   const [active, setActive] = useState(false);
   const [remaining, setRemaining] = useState(0);
@@ -13,6 +22,12 @@ const Countdown = () => {
   const [editingMeetingIndex, setEditingMeetingIndex] = useState(-1);
   const [editMeetingName, setEditMeetingName] = useState('');
   const [editMeetingTime, setEditMeetingTime] = useState('');
+  const [selectedHour, setSelectedHour] = useState('');
+  const [selectedMinute, setSelectedMinute] = useState('');
+  const [selectedAmPm, setSelectedAmPm] = useState('');
+  const [editSelectedHour, setEditSelectedHour] = useState('');
+  const [editSelectedMinute, setEditSelectedMinute] = useState('');
+  const [editSelectedAmPm, setEditSelectedAmPm] = useState('');
   const intervalRef = useRef();
   const [error, setError] = useState('');
 
@@ -293,6 +308,12 @@ const Countdown = () => {
     setEditingMeetingIndex(index);
     setEditMeetingName(meeting.name);
     setEditMeetingTime(meeting.time);
+    
+    // Convert 24-hour time to 12-hour format for display
+    const time12 = convertTo12Hour(meeting.time);
+    setEditSelectedHour(time12.hour);
+    setEditSelectedMinute(time12.minute);
+    setEditSelectedAmPm(time12.ampm);
   };
 
   const saveEdit = () => {
@@ -363,6 +384,62 @@ const Countdown = () => {
       minute: '2-digit',
       hour12: true
     });
+  };
+
+  // Convert 12-hour format to 24-hour format
+  const convertTo24Hour = (hour, minute, ampm) => {
+    if (!hour || !minute || !ampm) return '';
+    
+    let hour24 = parseInt(hour);
+    if (ampm === 'PM' && hour24 !== 12) {
+      hour24 += 12;
+    } else if (ampm === 'AM' && hour24 === 12) {
+      hour24 = 0;
+    }
+    
+    return `${hour24.toString().padStart(2, '0')}:${minute}`;
+  };
+
+  // Convert 24-hour format to 12-hour format
+  const convertTo12Hour = (time24) => {
+    if (!time24) return { hour: '', minute: '', ampm: '' };
+    
+    const [hour24, minute] = time24.split(':');
+    const hour24Num = parseInt(hour24);
+    
+    let hour12 = hour24Num;
+    let ampm = 'AM';
+    
+    if (hour24Num === 0) {
+      hour12 = 12;
+    } else if (hour24Num > 12) {
+      hour12 = hour24Num - 12;
+      ampm = 'PM';
+    } else if (hour24Num === 12) {
+      ampm = 'PM';
+    }
+    
+    return {
+      hour: hour12.toString().padStart(2, '0'),
+      minute,
+      ampm
+    };
+  };
+
+  const handleCustomTimeChange = (hour, minute, ampm) => {
+    setSelectedHour(hour);
+    setSelectedMinute(minute);
+    setSelectedAmPm(ampm);
+    const time24 = convertTo24Hour(hour, minute, ampm);
+    setTargetTime(time24);
+  };
+
+  const handleEditCustomTimeChange = (hour, minute, ampm) => {
+    setEditSelectedHour(hour);
+    setEditSelectedMinute(minute);
+    setEditSelectedAmPm(ampm);
+    const time24 = convertTo24Hour(hour, minute, ampm);
+    setEditMeetingTime(time24);
   };
 
   const getUpcomingMeetings = () => {
@@ -462,12 +539,39 @@ const Countdown = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Time
                 </label>
-                <input
-                  type="time"
-                  value={targetTime}
-                  onChange={(e) => setTargetTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <div className="flex gap-2">
+                  <select
+                    value={selectedHour}
+                    onChange={(e) => handleCustomTimeChange(e.target.value, selectedMinute, selectedAmPm)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Hour</option>
+                    {hours.map(hour => (
+                      <option key={hour} value={hour}>{hour}</option>
+                    ))}
+                  </select>
+                  <span className="flex items-center text-gray-500">:</span>
+                  <select
+                    value={selectedMinute}
+                    onChange={(e) => handleCustomTimeChange(selectedHour, e.target.value, selectedAmPm)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Min</option>
+                    {allowedMinutes.map(minute => (
+                      <option key={minute} value={minute}>{minute}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={selectedAmPm}
+                    onChange={(e) => handleCustomTimeChange(selectedHour, selectedMinute, e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">AM/PM</option>
+                    {ampmOptions.map(ampm => (
+                      <option key={ampm} value={ampm}>{ampm}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               {error && (
                 <div className="text-red-600 text-sm">{error}</div>
@@ -478,6 +582,9 @@ const Countdown = () => {
                     setShowAddForm(false);
                     setMeetingName('');
                     setTargetTime('');
+                    setSelectedHour('');
+                    setSelectedMinute('');
+                    setSelectedAmPm('');
                     setError('');
                   }}
                   className="px-4 py-2 text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
@@ -518,12 +625,39 @@ const Countdown = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Time
                 </label>
-                <input
-                  type="time"
-                  value={editMeetingTime}
-                  onChange={(e) => setEditMeetingTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <div className="flex gap-2">
+                  <select
+                    value={editSelectedHour}
+                    onChange={(e) => handleEditCustomTimeChange(e.target.value, editSelectedMinute, editSelectedAmPm)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Hour</option>
+                    {hours.map(hour => (
+                      <option key={hour} value={hour}>{hour}</option>
+                    ))}
+                  </select>
+                  <span className="flex items-center text-gray-500">:</span>
+                  <select
+                    value={editSelectedMinute}
+                    onChange={(e) => handleEditCustomTimeChange(editSelectedHour, e.target.value, editSelectedAmPm)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Min</option>
+                    {allowedMinutes.map(minute => (
+                      <option key={minute} value={minute}>{minute}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={editSelectedAmPm}
+                    onChange={(e) => handleEditCustomTimeChange(editSelectedHour, editSelectedMinute, e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">AM/PM</option>
+                    {ampmOptions.map(ampm => (
+                      <option key={ampm} value={ampm}>{ampm}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <button

@@ -3,7 +3,7 @@ import { ChevronLeftIcon, ChevronRightIcon, MapPinIcon, LinkIcon } from '@heroic
 import { useLocation } from 'react-router-dom';
 
 const RightPanel = ({ notes, setNotes, setActivePage }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed by default
   const [hoveredNote, setHoveredNote] = useState(null);
   const location = useLocation();
 

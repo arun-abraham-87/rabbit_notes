@@ -227,20 +227,56 @@ const Dashboard = ({notes,setNotes}) => {
       return Math.round((baseDate - targetDate) / 3600000);
     };
 
+    // Helper function to get time-based description
+    const getTimeDescription = (hour) => {
+      if (hour >= 0 && hour < 6) return 'pre-dawn';
+      if (hour >= 6 && hour < 8) return 'early morning';
+      if (hour >= 8 && hour < 10) return 'mid-morning';
+      if (hour >= 10 && hour < 12) return 'late morning';
+      if (hour >= 12 && hour < 14) return 'early afternoon';
+      if (hour >= 14 && hour < 16) return 'mid-afternoon';
+      if (hour >= 16 && hour < 18) return 'early evening';
+      if (hour >= 18 && hour < 20) return 'evening';
+      if (hour >= 20 && hour < 21) return 'late evening';
+      if (hour >= 21 && hour < 24) return 'night';
+      return 'night';
+    };
+
     const timezoneData = timezonesToShow.map(timeZone => {
       const label = timeZone.split('/').pop().replace('_', ' ');
       const flag = flagMap[timeZone] || '';
       const time = formatTimezoneTime(timeZone);
       
-      // Determine if this zone's date is before base timezone date
+      // Determine if this zone's date is before/after base timezone date
       const zoneYMD = formatYMD(new Date(), timeZone);
       const baseYMD = formatYMD(new Date(), baseTimezone);
       const isPreviousDay = zoneYMD < baseYMD;
+      const isNextDay = zoneYMD > baseYMD;
+      
+      // Calculate relative day text
+      let relativeDayText = 'today';
+      if (isPreviousDay) {
+        relativeDayText = 'yesterday';
+      } else if (isNextDay) {
+        relativeDayText = 'tomorrow';
+      }
+      
+      // Get hour in the timezone for time description
+      const timeInZone = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour12: false,
+        hour: 'numeric',
+      }).format(new Date());
+      const hourNum = parseInt(timeInZone, 10);
+      
+      // Get time-based description and combine with day
+      const timeDescription = getTimeDescription(hourNum);
+      const enhancedRelativeDayText = `${relativeDayText} ${timeDescription}`;
       
       // Calculate time difference from base timezone
       const timeDiffHours = getTimeDiffHours(timeZone);
       
-      return { label, flag, time, timeZone, isPreviousDay, timeDiffHours };
+      return { label, flag, time, timeZone, timeDiffHours, relativeDayText: enhancedRelativeDayText };
     });
 
     // Sort by absolute distance from base timezone (nearest to farthest)
@@ -364,18 +400,22 @@ const Dashboard = ({notes,setNotes}) => {
           
           {/* Compact Timezone Display Line */}
           <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-            {getCompactTimezones().map(({ label, flag, time, isPreviousDay }, index) => (
-              <div key={label} className="flex items-center gap-1">
-                <span>{flag}</span>
-                <span className="font-medium">{label}:</span>
-                <span className="text-gray-800">{time}</span>
-                {isPreviousDay && (
-                  <span className="text-gray-500 text-xs">(P)</span>
-                )}
+            {getCompactTimezones().map(({ label, flag, time, relativeDayText }, index) => (
+              <React.Fragment key={label}>
+                <div className="flex flex-col items-center gap-1">
+                                  <div className="flex items-center gap-1">
+                  <span>{flag}</span>
+                  <span className="font-medium">{label}:</span>
+                  <span className="text-gray-800">{time}</span>
+                </div>
+                  <div className="text-xs text-gray-400">
+                    {relativeDayText}
+                  </div>
+                </div>
                 {index < getCompactTimezones().length - 1 && (
                   <span className="mx-2 text-gray-400">•</span>
                 )}
-              </div>
+              </React.Fragment>
             ))}
           </div>
         </div>

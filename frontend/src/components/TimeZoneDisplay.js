@@ -74,6 +74,23 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
   };
 
   /**
+   * Get time-based description based on hour
+   */
+  const getTimeDescription = (hour) => {
+    if (hour >= 0 && hour < 6) return 'pre-dawn';
+    if (hour >= 6 && hour < 8) return 'early morning';
+    if (hour >= 8 && hour < 10) return 'mid-morning';
+    if (hour >= 10 && hour < 12) return 'late morning';
+    if (hour >= 12 && hour < 14) return 'early afternoon';
+    if (hour >= 14 && hour < 16) return 'mid-afternoon';
+    if (hour >= 16 && hour < 18) return 'early evening';
+    if (hour >= 18 && hour < 20) return 'evening';
+    if (hour >= 20 && hour < 21) return 'late evening';
+    if (hour >= 21 && hour < 24) return 'night';
+    return 'night';
+  };
+
+  /**
    * A single card showing the time in one zone.
    */
   const ZoneCard = ({ label, timeZone }) => {
@@ -112,8 +129,18 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     const zoneYMD = formatYMD(now, timeZone);
     const baseYMD = formatYMD(now, baseTimezone);
     let dayLabel = 'Same Day';
-    if (zoneYMD < baseYMD) dayLabel = 'Previous Day';
-    else if (zoneYMD > baseYMD) dayLabel = 'Next Day';
+    let relativeDayText = 'today';
+    if (zoneYMD < baseYMD) {
+      dayLabel = 'Previous Day';
+      relativeDayText = 'yesterday';
+    } else if (zoneYMD > baseYMD) {
+      dayLabel = 'Next Day';
+      relativeDayText = 'tomorrow';
+    }
+
+    // Get time-based description
+    const timeDescription = getTimeDescription(hourNum);
+    const enhancedRelativeDayText = `${relativeDayText} ${timeDescription}`;
 
     const formattedDate = new Intl.DateTimeFormat('en-US', {
       timeZone,
@@ -145,6 +172,11 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
               {diff}
             </span>
           )}
+        </div>
+        
+        {/* Add relative day text in small font */}
+        <div className="text-xs text-gray-400 mt-1 text-center">
+          {enhancedRelativeDayText}
         </div>
       </div>
     );

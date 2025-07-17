@@ -331,30 +331,60 @@ const NotesList = ({
           e.target.tagName !== 'TEXTAREA' &&
           e.target.contentEditable !== 'true') {
         
+        // Check if any note is in super edit mode
+        const isAnyNoteInSuperEditMode = document.querySelector('.ring-purple-500');
+        
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          // Only handle note navigation if no note is in super edit mode
+          if (!isAnyNoteInSuperEditMode) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (safeNotes.length === 0) return;
+            
+            let newIndex;
+            if (e.key === 'ArrowUp') {
+              // Move to previous note
+              newIndex = focusedNoteIndex > 0 ? focusedNoteIndex - 1 : safeNotes.length - 1;
+            } else {
+              // Move to next note
+              newIndex = focusedNoteIndex < safeNotes.length - 1 ? focusedNoteIndex + 1 : 0;
+            }
+            
+            console.log(`Navigating from ${focusedNoteIndex} to ${newIndex}, key: ${e.key}`);
+            setFocusedNoteIndex(newIndex);
+            
+            // Scroll to the focused note
+            const focusedNote = safeNotes[newIndex];
+            if (focusedNote) {
+              const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
+              if (noteElement) {
+                noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }
+          }
+        } else if (e.key === 's' && focusedNoteIndex >= 0) {
           e.preventDefault();
           e.stopPropagation();
           
-          if (safeNotes.length === 0) return;
-          
-          let newIndex;
-          if (e.key === 'ArrowUp') {
-            // Move to previous note
-            newIndex = focusedNoteIndex > 0 ? focusedNoteIndex - 1 : safeNotes.length - 1;
-          } else {
-            // Move to next note
-            newIndex = focusedNoteIndex < safeNotes.length - 1 ? focusedNoteIndex + 1 : 0;
-          }
-          
-          console.log(`Navigating from ${focusedNoteIndex} to ${newIndex}, key: ${e.key}`);
-          setFocusedNoteIndex(newIndex);
-          
-          // Scroll to the focused note
-          const focusedNote = safeNotes[newIndex];
+          // Enter super edit mode for the focused note
+          const focusedNote = safeNotes[focusedNoteIndex];
           if (focusedNote) {
             const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
             if (noteElement) {
-              noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // Check if super edit mode is already active
+              const isInSuperEditMode = noteElement.querySelector('.ring-purple-500');
+              if (isInSuperEditMode) {
+                // Exit super edit mode by pressing Escape
+                const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
+                document.dispatchEvent(escapeEvent);
+              } else {
+                // Trigger the super edit button click
+                const superEditButton = noteElement.querySelector('button[title="Focus on first line in this note"]');
+                if (superEditButton) {
+                  superEditButton.click();
+                }
+              }
             }
           }
         }

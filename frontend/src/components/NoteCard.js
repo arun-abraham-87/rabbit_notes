@@ -143,6 +143,7 @@ const NoteCard = ({
         setHighlightedLineText('');
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
+        e.stopPropagation();
         
         // Get all non-tag lines (lines that don't start with meta::)
         const lines = note.content.split('\n');
@@ -183,10 +184,10 @@ const NoteCard = ({
 
     if (isSuperEditMode) {
       // Only add event listeners when super edit mode is active
-      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('keydown', handleKeyDown, true);
       document.addEventListener('click', handleClickOutside);
       return () => {
-        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keydown', handleKeyDown, true);
         document.removeEventListener('click', handleClickOutside);
       };
     }
@@ -246,6 +247,12 @@ const NoteCard = ({
       {isSuperEditMode && (
         <div className="absolute top-2 right-2 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
           Super Edit Mode - Press 1 for H1, 0 to clear format, ↑↓ to navigate, Esc to exit
+        </div>
+      )}
+      
+      {isFocused && !isSuperEditMode && (
+        <div className="absolute top-2 right-2 bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+          Press 's' to enter Super Edit Mode
         </div>
       )}
       

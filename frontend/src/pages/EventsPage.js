@@ -152,6 +152,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           e.preventDefault();
           e.stopPropagation();
           setShowTodaysEventsOnly(!showTodaysEventsOnly);
+        } else if (e.key === 'h') {
+          e.preventDefault();
+          e.stopPropagation();
+          window.location.href = '/dashboard';
         }
       }
     };
@@ -271,8 +275,8 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
             // Check if it's a recurring event with anniversary today
             let isAnniversaryToday = false;
             
+            // For any recurring event (including yearly), check if today's date matches the original event date
             if (recurrence && recurrence !== 'none') {
-              // For recurring events, check if today's date matches the original event date
               const originalEventDay = eventDate.getDate();
               const originalEventMonth = eventDate.getMonth();
               
@@ -284,6 +288,17 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
             matchesDate = matchesDate && (isOneTimeToday || isAnniversaryToday);
             
             // Debug logging
+            console.log('Filtering event:', {
+              description,
+              dateTime,
+              recurrence,
+              eventDate: eventDate.toDateString(),
+              today: new Date().toDateString(),
+              isOneTimeToday,
+              isAnniversaryToday,
+              showTodaysEventsOnly
+            });
+            
             if (isOneTimeToday || isAnniversaryToday) {
               console.log('Today\'s event found:', {
                 description,

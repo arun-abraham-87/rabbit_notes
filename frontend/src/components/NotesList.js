@@ -544,13 +544,20 @@ const NotesList = ({
           console.log('C key pressed - focusing search bar');
           onReturnToSearch();
         } else if (e.key === 'x' && focusedNoteIndexRef.current >= 0) {
-          // Delete the focused note with confirmation
-          e.preventDefault();
-          e.stopPropagation();
-          console.log('X key pressed - deleting focused note');
-          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
-          if (focusedNote) {
-            handleModalDelete(focusedNote.id);
+          // Check if any note is in super edit mode - if so, don't handle note deletion
+          const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
+          
+          if (!isAnyNoteInSuperEditMode) {
+            // Delete the focused note with confirmation
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('X key pressed - deleting focused note');
+            const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+            if (focusedNote) {
+              handleModalDelete(focusedNote.id);
+            }
+          } else {
+            console.log('X key pressed but super edit mode is active, ignoring note deletion');
           }
         }
       }

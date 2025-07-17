@@ -137,6 +137,74 @@ const NoteCard = ({
           
           // Stay in super edit mode - don't exit automatically
         }
+            } else if (e.key === 'x') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Delete the current line and move focus to next line (or previous if at end)
+        const lines = note.content.split('\n');
+        
+        if (highlightedLineIndex !== -1 && lines.length > 1) {
+          const updatedLines = [...lines];
+          updatedLines.splice(highlightedLineIndex, 1); // Remove the current line
+          
+          const updatedContent = updatedLines.join('\n');
+          updateNote(note.id, updatedContent);
+          
+          // Determine where to move focus after deletion
+          let newHighlightedIndex = highlightedLineIndex;
+          
+          if (highlightedLineIndex >= updatedLines.length) {
+            // If we were at the last line, move to the previous line
+            newHighlightedIndex = Math.max(0, updatedLines.length - 1);
+          }
+          // If we're not at the end, stay at the same index (which now points to the next line)
+          
+          // Find the next non-empty, non-tag line to highlight
+          const nonTagLineIndices = updatedLines
+            .map((line, index) => ({ line: line.trim(), index }))
+            .filter(({ line }) => line !== '' && !line.startsWith('meta::'))
+            .map(({ index }) => index);
+          
+          if (nonTagLineIndices.length > 0) {
+            // Find the closest line to our new position
+            let targetIndex = nonTagLineIndices[0];
+            for (let i = 0; i < nonTagLineIndices.length; i++) {
+              if (nonTagLineIndices[i] >= newHighlightedIndex) {
+                targetIndex = nonTagLineIndices[i];
+                break;
+              }
+            }
+            
+            setHighlightedLineIndex(targetIndex);
+            setHighlightedLineText(updatedLines[targetIndex].trim());
+          } else {
+            // If no non-tag lines remain, exit super edit mode
+            setIsSuperEditMode(false);
+            setHighlightedLineIndex(-1);
+            setHighlightedLineText('');
+          }
+        } else if (lines.length === 1) {
+          // If this is the only line, just clear it
+          updateNote(note.id, '');
+          setIsSuperEditMode(false);
+            setHighlightedLineIndex(-1);
+            setHighlightedLineText('');
+        }
+      } else if (e.key === 'a') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Show inline editor at the end of the note to add a new line
+        setAddingLineNoteId(note.id);
+        setNewLineText('');
+        
+        // Focus the new line input after a short delay to ensure it's rendered
+        setTimeout(() => {
+          if (newLineInputRef.current) {
+            newLineInputRef.current.focus();
+          }
+        }, 100);
       } else if (e.key === 'Escape') {
         // Exit super edit mode
         setIsSuperEditMode(false);
@@ -291,7 +359,7 @@ const NoteCard = ({
     >
       {isSuperEditMode && (
         <div className="absolute top-2 right-2 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
-          Super Edit Mode - Press 1 for H1, 0 to clear format, ↑↓ to navigate, Shift+↑↓ to move lines, Esc to exit
+          Super Edit Mode - Press 1 for H1, 0 to clear format, x to delete line, a to add line, ↑↓ to navigate, Shift+↑↓ to move lines, Esc to exit
         </div>
       )}
       

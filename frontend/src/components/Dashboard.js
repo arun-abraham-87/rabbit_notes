@@ -6,9 +6,10 @@ import TimeZoneDisplay from './TimeZoneDisplay';
 import BookmarkedLinks from './BookmarkedLinks';
 import EventManager from './EventManager';
 import Pomodoro from './Pomodoro';
-
+import { useLeftPanel } from '../contexts/LeftPanelContext';
 
 const Dashboard = ({notes, setNotes, setActivePage}) => {
+  const { isPinned } = useLeftPanel();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(new Date());
@@ -553,13 +554,15 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
       </div>
 
       {/* Bookmarked Links */}
-      <div className="mb-8">
-        <BookmarkedLinks 
-          key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
-          notes={notes} 
-          setNotes={setNotes} 
-        />
-      </div>
+      {!isPinned && (
+        <div className="mb-8">
+          <BookmarkedLinks 
+            key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
+            notes={notes} 
+            setNotes={setNotes} 
+          />
+        </div>
+      )}
 
       {/* Alerts Section */}
       <div className="mb-8">

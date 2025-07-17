@@ -360,7 +360,34 @@ const NotesList = ({
         // Check if any note is in super edit mode - look for the specific purple ring class
         const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
         
-        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        if (showLinkPopup) {
+          // Handle link popup keyboard navigation
+          console.log('Link popup keyboard event:', e.key, 'selectedLinkIndex:', selectedLinkIndex, 'linkPopupLinks.length:', linkPopupLinks.length);
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            setSelectedLinkIndex(prev => prev > 0 ? prev - 1 : linkPopupLinks.length - 1);
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            setSelectedLinkIndex(prev => prev < linkPopupLinks.length - 1 ? prev + 1 : 0);
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (linkPopupLinks[selectedLinkIndex]) {
+              window.open(linkPopupLinks[selectedLinkIndex], '_blank');
+            }
+            setShowLinkPopup(false);
+            setLinkPopupLinks([]);
+            setSelectedLinkIndex(0);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowLinkPopup(false);
+            setLinkPopupLinks([]);
+            setSelectedLinkIndex(0);
+          }
+        } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
           // Only handle note navigation if no note is in super edit mode
           if (!isAnyNoteInSuperEditMode) {
             e.preventDefault();
@@ -487,28 +514,6 @@ const NotesList = ({
           if (focusedNote) {
             handleModalDelete(focusedNote.id);
           }
-        } else if (showLinkPopup) {
-          // Handle link popup keyboard navigation
-          if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            setSelectedLinkIndex(prev => prev > 0 ? prev - 1 : linkPopupLinks.length - 1);
-          } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            setSelectedLinkIndex(prev => prev < linkPopupLinks.length - 1 ? prev + 1 : 0);
-          } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (linkPopupLinks[selectedLinkIndex]) {
-              window.open(linkPopupLinks[selectedLinkIndex], '_blank');
-            }
-            setShowLinkPopup(false);
-            setLinkPopupLinks([]);
-            setSelectedLinkIndex(0);
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            setShowLinkPopup(false);
-            setLinkPopupLinks([]);
-            setSelectedLinkIndex(0);
-          }
         }
       }
     };
@@ -525,6 +530,18 @@ const NotesList = ({
   useEffect(() => {
     setFocusedNoteIndex(-1);
   }, [safeNotes]);
+
+  // Focus link popup when it opens
+  useEffect(() => {
+    if (showLinkPopup) {
+      console.log('Link popup opened, focusing on navigation');
+      // Focus the popup container to ensure keyboard events are captured
+      const popupElement = document.querySelector('[data-link-popup]');
+      if (popupElement) {
+        popupElement.focus();
+      }
+    }
+  }, [showLinkPopup]);
 
   // Listen for focus first note event from search bar
   useEffect(() => {
@@ -1012,7 +1029,11 @@ const NotesList = ({
 
       {/* Link Selection Popup */}
       {showLinkPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          data-link-popup
+          tabIndex={0}
+        >
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-800">Select Link to Open</h2>

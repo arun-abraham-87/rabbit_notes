@@ -22,6 +22,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [notesScrollPosition, setNotesScrollPosition] = useState(0);
   const [eventsHasOverflow, setEventsHasOverflow] = useState(false);
   const [notesHasOverflow, setNotesHasOverflow] = useState(false);
+  const [showRemindersOnly, setShowRemindersOnly] = useState(false);
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -189,20 +190,31 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   // Add keyboard shortcut for 'c' key to open note editor without watch option
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Only handle 'c' key when not in an input/textarea and no modifier keys
+      // Only handle keys when not in an input/textarea and no modifier keys
       if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
           e.target.tagName !== 'INPUT' && 
           e.target.tagName !== 'TEXTAREA' &&
-          e.target.contentEditable !== 'true' &&
-          e.key === 'c') {
-        e.preventDefault();
-        openEditor('add', '', null, []); // No meta tags, so watch option is not selected
+          e.target.contentEditable !== 'true') {
+        
+        if (e.key === 'c') {
+          e.preventDefault();
+          openEditor('add', '', null, []); // No meta tags, so watch option is not selected
+        } else if (e.key === 'r') {
+          e.preventDefault();
+          setShowRemindersOnly(true);
+        } else if (e.key === 'n') {
+          e.preventDefault();
+          setActivePage('notes');
+        } else if (e.key === 'Escape' && showRemindersOnly) {
+          e.preventDefault();
+          setShowRemindersOnly(false);
+        }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [openEditor]);
+  }, [openEditor, showRemindersOnly]);
 
   const getCompactTimezones = () => {
     const timezonesToShow = selectedTimezones.length > 0 ? selectedTimezones : [
@@ -357,243 +369,262 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
 
   return (
     <div className="container mx-auto px-4 pb-8">
-      {/* Bookmarked Links - Topmost Item */}
-      {!isPinned && (
+      {/* Show only reminders when showRemindersOnly is true */}
+      {showRemindersOnly ? (
         <div className="mb-8">
-          <BookmarkedLinks 
-            key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">Reminders Only</h2>
+            <div className="text-sm text-gray-500">Press Escape to return to normal view</div>
+          </div>
+          <AlertsProvider 
             notes={notes} 
-            setNotes={setNotes} 
-          />
+            events={events}
+            setNotes={setNotes}
+          >
+            {/* Only show reminders section */}
+          </AlertsProvider>
         </div>
-      )}
+      ) : (
+        <>
+          {/* Bookmarked Links - Topmost Item */}
+          {!isPinned && (
+            <div className="mb-8">
+              <BookmarkedLinks 
+                key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
+                notes={notes} 
+                setNotes={setNotes} 
+              />
+            </div>
+          )}
 
-      {/* First Row: Date and Timezone Display (Full Width) */}
-      <div className={`mb-8 ${isPinned ? 'pt-8' : ''}`}>
-        <div className="flex flex-col items-center">
-          {/* First Row: Date and Current Time */}
-          <div className="flex items-center gap-6 mb-4">
-            <h1 className="text-3xl font-bold">{formattedDate}</h1>
-            <div
-              className="relative group"
-              onMouseEnter={() => setShowTimezones(true)}
-              onMouseLeave={() => setShowTimezones(false)}
-            >
-              <div className="flex items-center gap-4 cursor-pointer">
-                <div className="text-base font-medium">{formattedTime}</div>
-                <div className="flex items-center gap-1 text-sm text-gray-500">
-                  <span>{baseTimezoneFlag}</span>
-                  <span>{baseTimezoneLabel}</span>
-                  <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+          {/* First Row: Date and Timezone Display (Full Width) */}
+          <div className={`mb-8 ${isPinned ? 'pt-8' : ''}`}>
+            <div className="flex flex-col items-center">
+              {/* First Row: Date and Current Time */}
+              <div className="flex items-center gap-6 mb-4">
+                <h1 className="text-3xl font-bold">{formattedDate}</h1>
+                <div
+                  className="relative group"
+                  onMouseEnter={() => setShowTimezones(true)}
+                  onMouseLeave={() => setShowTimezones(false)}
+                >
+                  <div className="flex items-center gap-4 cursor-pointer">
+                    <div className="text-base font-medium">{formattedTime}</div>
+                    <div className="flex items-center gap-1 text-sm text-gray-500">
+                      <span>{baseTimezoneFlag}</span>
+                      <span>{baseTimezoneLabel}</span>
+                      <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                    </div>
+                  </div>
+                  {showTimezones && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
+                      <TimeZoneDisplay selectedTimezones={selectedTimezones} />
+                    </div>
+                  )}
                 </div>
               </div>
-              {showTimezones && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
-                  <TimeZoneDisplay selectedTimezones={selectedTimezones} />
-                </div>
+              
+              {/* Fun Facts Line */}
+              <div className="text-sm text-gray-600 mb-4 text-center">
+                {(() => {
+                  const facts = getFunFacts();
+                  const factItems = [];
+                  
+                  // End of year countdown (days/weeks/months)
+                  if (facts.daysToEndOfYear > 0) {
+                    let yearCountdown = `${facts.daysToEndOfYear} days`;
+                    if (facts.weeksToEndOfYear > 0) {
+                      yearCountdown += ` / ${facts.weeksToEndOfYear} weeks`;
+                    }
+                    if (facts.monthsToEndOfYear > 0) {
+                      yearCountdown += ` / ${facts.monthsToEndOfYear} months`;
+                    }
+                    factItems.push(`${yearCountdown} to end of year`);
+                  }
+                  
+                  // End of month countdown
+                  if (facts.daysToEndOfMonth > 0) {
+                    factItems.push(`${facts.daysToEndOfMonth} days to end of month`);
+                  }
+                  
+                  // End of week countdown
+                  if (facts.daysToEndOfWeek > 0) {
+                    factItems.push(`${facts.daysToEndOfWeek} days to end of week`);
+                  }
+                  
+                  // Year progress
+                  factItems.push(`${facts.yearProgress}% through the year`);
+                  
+                  return factItems.join(' • ');
+                })()}
+              </div>
+              
+              {/* Compact Timezone Display Line */}
+              <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+                {getCompactTimezones().map(({ label, flag, time, relativeDayText }, index) => (
+                  <React.Fragment key={label}>
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-1">
+                        <span>{flag}</span>
+                        <span className="font-medium">{label}:</span>
+                        <span className="text-gray-800">{time}</span>
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {relativeDayText}
+                      </div>
+                    </div>
+                    {index < getCompactTimezones().length - 1 && (
+                      <span className="mx-2 text-gray-400">•</span>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Second Row: Event Manager Cards */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <button
+                onClick={() => setIsEventManagerCollapsed(!isEventManagerCollapsed)}
+                className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                {isEventManagerCollapsed ? (
+                  <>
+                    <ChevronDownIcon className="h-4 w-4" />
+                    Show Events
+                  </>
+                ) : (
+                  <>
+                    <ChevronUpIcon className="h-4 w-4" />
+                    Hide Events
+                  </>
+                )}
+              </button>
+              
+              {!isEventManagerCollapsed && (
+                <button
+                  onClick={() => {
+                    // This will trigger the add event functionality
+                    // We need to pass this through to EventManager
+                    const event = new CustomEvent('addEvent');
+                    document.dispatchEvent(event);
+                  }}
+                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Add Event
+                </button>
               )}
             </div>
-          </div>
-          
-          {/* Fun Facts Line */}
-          <div className="text-sm text-gray-600 mb-4 text-center">
-            {(() => {
-              const facts = getFunFacts();
-              const factItems = [];
-              
-              // End of year countdown (days/weeks/months)
-              if (facts.daysToEndOfYear > 0) {
-                let yearCountdown = `${facts.daysToEndOfYear} days`;
-                if (facts.weeksToEndOfYear > 0) {
-                  yearCountdown += ` / ${facts.weeksToEndOfYear} weeks`;
-                }
-                if (facts.monthsToEndOfYear > 0) {
-                  yearCountdown += ` / ${facts.monthsToEndOfYear} months`;
-                }
-                factItems.push(`${yearCountdown} to end of year`);
-              }
-              
-              // End of month countdown
-              if (facts.daysToEndOfMonth > 0) {
-                factItems.push(`${facts.daysToEndOfMonth} days to end of month`);
-              }
-              
-              // End of week countdown
-              if (facts.daysToEndOfWeek > 0) {
-                factItems.push(`${facts.daysToEndOfWeek} days to end of week`);
-              }
-              
-              // Year progress
-              factItems.push(`${facts.yearProgress}% through the year`);
-              
-              return factItems.join(' • ');
-            })()}
-          </div>
-          
-          {/* Compact Timezone Display Line */}
-          <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-            {getCompactTimezones().map(({ label, flag, time, relativeDayText }, index) => (
-              <React.Fragment key={label}>
-                <div className="flex flex-col items-center gap-1">
-                                  <div className="flex items-center gap-1">
-                  <span>{flag}</span>
-                  <span className="font-medium">{label}:</span>
-                  <span className="text-gray-800">{time}</span>
-                </div>
-                  <div className="text-xs text-gray-400">
-                    {relativeDayText}
+            {!isEventManagerCollapsed && (
+              <>
+                {/* Events Row */}
+                <div className="flex items-center gap-2 mb-6">
+                  {/* Left Arrow */}
+                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                    {eventsHasOverflow && (
+                      <button
+                        onClick={scrollEventsLeft}
+                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                      >
+                        <ChevronLeftIcon className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Events Container */}
+                  <div 
+                    ref={eventsScrollRef}
+                    className="flex-1 overflow-x-auto"
+                    style={{ 
+                      scrollbarWidth: 'none',
+                      msOverflowStyle: 'none'
+                    }}
+                    onScroll={(e) => {
+                      // Prevent manual scrolling, only allow programmatic scrolling
+                      e.preventDefault();
+                    }}
+                  >
+                    <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
+                      <EventManager type="events" notes={notes} setActivePage={setActivePage} />
+                    </div>
+                  </div>
+                  
+                  {/* Right Arrow */}
+                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                    {eventsHasOverflow && (
+                      <button
+                        onClick={scrollEventsRight}
+                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                      >
+                        <ChevronRightIcon className="h-5 w-5" />
+                      </button>
+                    )}
                   </div>
                 </div>
-                {index < getCompactTimezones().length - 1 && (
-                  <span className="mx-2 text-gray-400">•</span>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* Second Row: Event Manager Cards */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <button
-            onClick={() => setIsEventManagerCollapsed(!isEventManagerCollapsed)}
-            className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-          >
-            {isEventManagerCollapsed ? (
-              <>
-                <ChevronDownIcon className="h-4 w-4" />
-                Show Events
-              </>
-            ) : (
-              <>
-                <ChevronUpIcon className="h-4 w-4" />
-                Hide Events
+                {/* Notes Row */}
+                <div className="flex items-center gap-2">
+                  {/* Left Arrow */}
+                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                    {notesHasOverflow && (
+                      <button
+                        onClick={scrollNotesLeft}
+                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                      >
+                        <ChevronLeftIcon className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Notes Container */}
+                  <div 
+                    ref={notesScrollRef}
+                    className="flex-1 overflow-x-auto"
+                    style={{ 
+                      scrollbarWidth: 'none',
+                      msOverflowStyle: 'none'
+                    }}
+                  >
+                    <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
+                      <EventManager type="notes" notes={notes} setActivePage={setActivePage} />
+                    </div>
+                  </div>
+                  
+                  {/* Right Arrow */}
+                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                    {notesHasOverflow && (
+                      <button
+                        onClick={scrollNotesRight}
+                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                      >
+                        <ChevronRightIcon className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </>
             )}
-          </button>
-          
-          {!isEventManagerCollapsed && (
-            <button
-              onClick={() => {
-                // This will trigger the add event functionality
-                // We need to pass this through to EventManager
-                const event = new CustomEvent('addEvent');
-                document.dispatchEvent(event);
-              }}
-              className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+          </div>
+
+          {/* Third Row: Pomodoro */}
+          <div className="mb-8 flex justify-center">
+            <Pomodoro />
+          </div>
+
+          {/* Alerts Section */}
+          <div className="mb-8">
+            <AlertsProvider 
+              notes={notes} 
+              events={events}
+              setNotes={setNotes}
             >
-              <PlusIcon className="h-4 w-4" />
-              Add Event
-            </button>
-          )}
-        </div>
-        {!isEventManagerCollapsed && (
-          <>
-            {/* Events Row */}
-            <div className="flex items-center gap-2 mb-6">
-              {/* Left Arrow */}
-              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                {eventsHasOverflow && (
-                  <button
-                    onClick={scrollEventsLeft}
-                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                  >
-                    <ChevronLeftIcon className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-              
-              {/* Events Container */}
-              <div 
-                ref={eventsScrollRef}
-                className="flex-1 overflow-x-auto"
-                style={{ 
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none'
-                }}
-                onScroll={(e) => {
-                  // Prevent manual scrolling, only allow programmatic scrolling
-                  e.preventDefault();
-                }}
-              >
-                <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
-                  <EventManager type="events" notes={notes} setActivePage={setActivePage} />
-                </div>
-              </div>
-              
-              {/* Right Arrow */}
-              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                {eventsHasOverflow && (
-                  <button
-                    onClick={scrollEventsRight}
-                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                  >
-                    <ChevronRightIcon className="h-5 w-5" />
-                </button>
-                )}
-              </div>
-            </div>
-
-            {/* Notes Row */}
-            <div className="flex items-center gap-2">
-              {/* Left Arrow */}
-              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                {notesHasOverflow && (
-                  <button
-                    onClick={scrollNotesLeft}
-                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                  >
-                    <ChevronLeftIcon className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-              
-              {/* Notes Container */}
-              <div 
-                ref={notesScrollRef}
-                className="flex-1 overflow-x-auto"
-                style={{ 
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none'
-                }}
-              >
-                <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
-                  <EventManager type="notes" notes={notes} setActivePage={setActivePage} />
-                </div>
-              </div>
-              
-              {/* Right Arrow */}
-              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                {notesHasOverflow && (
-                  <button
-                    onClick={scrollNotesRight}
-                    className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                  >
-                    <ChevronRightIcon className="h-5 w-5" />
-                </button>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Third Row: Pomodoro */}
-      <div className="mb-8 flex justify-center">
-        <Pomodoro />
-      </div>
-
-      {/* Alerts Section */}
-      <div className="mb-8">
-        <AlertsProvider 
-          notes={notes} 
-          events={events}
-          setNotes={setNotes}
-        >
-          {/* Additional dashboard content can be added here */}
-        </AlertsProvider>
-      </div>
+              {/* Additional dashboard content can be added here */}
+            </AlertsProvider>
+          </div>
+        </>
+      )}
     </div>
   );
 };

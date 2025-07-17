@@ -1,6 +1,21 @@
 import ReactDOM from 'react-dom';
+import { useEffect } from 'react';
 
 function ConfirmationModal({ isOpen, onClose, onConfirm }) {
+    // Handle Escape key to close modal
+    useEffect(() => {
+        if (!isOpen) return;
+        
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+    }, [isOpen, onClose]);
+
     if (!isOpen) return null;
 
     // Close modal when clicking outside the modal content

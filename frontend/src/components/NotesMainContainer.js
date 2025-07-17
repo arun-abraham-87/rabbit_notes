@@ -126,9 +126,6 @@ const NotesMainContainer = ({
                 if (e.key === "f") {
                     e.preventDefault();
                     setFocusMode(!focusMode);
-                } else if (e.key === "c") {
-                    e.preventDefault();
-                    searchInputRef.current?.focus();
                 }
             }
         };

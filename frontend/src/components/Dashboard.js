@@ -7,9 +7,11 @@ import BookmarkedLinks from './BookmarkedLinks';
 import EventManager from './EventManager';
 import Pomodoro from './Pomodoro';
 import { useLeftPanel } from '../contexts/LeftPanelContext';
+import { useNoteEditor } from '../contexts/NoteEditorContext';
 
 const Dashboard = ({notes, setNotes, setActivePage}) => {
   const { isPinned } = useLeftPanel();
+  const { openEditor } = useNoteEditor();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(new Date());
@@ -183,6 +185,24 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
     const timer = setTimeout(checkOverflow, 100);
     return () => clearTimeout(timer);
   }, [events, notes]);
+
+  // Add keyboard shortcut for 'c' key to open note editor without watch option
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only handle 'c' key when not in an input/textarea and no modifier keys
+      if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
+          e.target.tagName !== 'INPUT' && 
+          e.target.tagName !== 'TEXTAREA' &&
+          e.target.contentEditable !== 'true' &&
+          e.key === 'c') {
+        e.preventDefault();
+        openEditor('add', '', null, []); // No meta tags, so watch option is not selected
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [openEditor]);
 
   const getCompactTimezones = () => {
     const timezonesToShow = selectedTimezones.length > 0 ? selectedTimezones : [

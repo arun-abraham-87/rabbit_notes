@@ -17,7 +17,7 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
   const { isOpen, initialContent, mode, noteId, metaTags, closeEditor } = useNoteEditor();
   const [settings, setSettings] = useState({});
   const [objList, setObjList] = useState([]);
-  const [selectedMetaTags, setSelectedMetaTags] = useState([`meta::watch::${moment().format('YYYY-MM-DD HH:mm:ss')}`]);
+  const [selectedMetaTags, setSelectedMetaTags] = useState([]);
   const [showPriorityOptions, setShowPriorityOptions] = useState(metaTags?.some(tag => tag.startsWith('meta::todo')) || false);
 
   // Move fetchTags and refreshTags to top level
@@ -64,7 +64,7 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
     if (metaTags && metaTags.length > 0) {
       setSelectedMetaTags(metaTags);
     } else {
-      setSelectedMetaTags([`meta::watch::${moment().format('YYYY-MM-DD HH:mm:ss')}`]);
+      setSelectedMetaTags([]);
     }
     setShowPriorityOptions(metaTags?.some(tag => tag.startsWith('meta::todo')) || false);
   }, [metaTags]);

@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, MapPinIcon, LinkIcon } from '@heroicons/react/24/solid';
+import { useLocation } from 'react-router-dom';
 
 const RightPanel = ({ notes, setNotes, setActivePage }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hoveredNote, setHoveredNote] = useState(null);
+  const location = useLocation();
 
   // Extract pinned notes (notes with meta::notes_pinned tag)
   const pinnedNotes = useMemo(() => {
@@ -69,8 +71,10 @@ const RightPanel = ({ notes, setNotes, setActivePage }) => {
     return urls;
   };
 
-  if (pinnedNotes.length === 0) {
-    return null; // Don't render if no pinned notes
+  // Only show on dashboard page
+  const isDashboard = location.pathname === '/' || location.pathname === '/dashboard';
+  if (!isDashboard || pinnedNotes.length === 0) {
+    return null;
   }
 
   return (

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
+import moment from 'moment';
 
 const NoteEditorContext = createContext();
 
@@ -10,15 +11,16 @@ export function NoteEditorProvider({ children }) {
   const [noteId, setNoteId] = useState(null);
   const [metaTags, setMetaTags] = useState([]);
 
-  // Add keyboard shortcut for opening note editor in add mode
+  // Add keyboard shortcut for opening note editor in add mode with watch option
   useHotkeys('meta+k', (e) => {
     e.preventDefault();
     console.log('Command+K pressed'); // Debug log
+    const formattedDate = moment().format('YYYY-MM-DD HH:mm:ss');
     setIsOpen(true);
     setInitialContent('');
     setMode('add');
     setNoteId(null);
-    setMetaTags([]);
+    setMetaTags([`meta::watch::${formattedDate}`]);
   }, {
     enableOnFormTags: true,
     keydown: true,
@@ -56,10 +58,10 @@ export function NoteEditorProvider({ children }) {
   );
 }
 
-export function useNoteEditor() {
+export const useNoteEditor = () => {
   const context = useContext(NoteEditorContext);
   if (!context) {
     throw new Error('useNoteEditor must be used within a NoteEditorProvider');
   }
   return context;
-} 
+}; 

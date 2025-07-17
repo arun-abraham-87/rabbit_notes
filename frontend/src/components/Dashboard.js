@@ -555,7 +555,11 @@ const Dashboard = ({notes,setNotes}) => {
 
       {/* Bookmarked Links */}
       <div className="mb-8">
-        <BookmarkedLinks notes={notes} setNotes={setNotes} />
+        <BookmarkedLinks 
+          key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
+          notes={notes} 
+          setNotes={setNotes} 
+        />
       </div>
 
       {/* Alerts Section */}

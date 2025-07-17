@@ -21,11 +21,8 @@ const Countdown = () => {
     const savedMeetings = localStorage.getItem('meetingCountdownMeetings');
     const savedState = localStorage.getItem('meetingCountdownState');
     
-    console.log('Loading saved data:', { savedMeetings, savedState });
-    
     if (savedMeetings) {
       const parsedMeetings = JSON.parse(savedMeetings);
-      console.log('Parsed meetings:', parsedMeetings);
       setMeetings(parsedMeetings);
     }
     
@@ -40,8 +37,6 @@ const Countdown = () => {
         const { targetTime: savedTargetTime, active: savedActive, currentMeetingIndex: savedIndex } = parsedState;
         
         if (savedActive && savedTargetTime) {
-          console.log('Auto-restarting countdown on mount:', parsedState);
-          
           // Recalculate remaining time
           const now = new Date();
           const [targetHour, targetMinute] = savedTargetTime.split(':').map(Number);
@@ -72,20 +67,13 @@ const Countdown = () => {
   // Continuous check for saved countdown state
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('Interval check - active:', active);
       if (!active) {
         const savedState = localStorage.getItem('meetingCountdownState');
-        console.log('Saved state from localStorage:', savedState);
         if (savedState) {
           const parsedState = JSON.parse(savedState);
-          console.log('Parsed state:', parsedState);
           const { targetTime: savedTargetTime, active: savedActive, currentMeetingIndex: savedIndex } = parsedState;
           
-          console.log('Checking conditions:', { savedActive, savedTargetTime, savedIndex });
-          
           if (savedTargetTime) { // Changed condition: only check for targetTime, not savedActive
-            console.log('Auto-restarting countdown via interval:', parsedState);
-            
             // Recalculate remaining time
             const now = new Date();
             const [targetHour, targetMinute] = savedTargetTime.split(':').map(Number);
@@ -93,27 +81,17 @@ const Countdown = () => {
             target.setHours(targetHour, targetMinute, 0, 0);
             const diffSecs = Math.floor((target - now) / 1000);
             
-            console.log('Calculated diffSecs:', diffSecs);
-            
             if (diffSecs > 0) {
-              console.log('Setting countdown state...');
               setTargetTime(savedTargetTime);
               setActive(true);
               setRemaining(diffSecs);
               setCurrentMeetingIndex(savedIndex || 0);
             } else {
               // Countdown finished, clear state
-              console.log('Countdown finished, clearing state');
               localStorage.removeItem('meetingCountdownState');
             }
-          } else {
-            console.log('Conditions not met for auto-restart');
           }
-        } else {
-          console.log('No saved state found');
         }
-      } else {
-        console.log('Countdown already active, skipping check');
       }
     }, 1000); // Check every second
     
@@ -128,8 +106,6 @@ const Countdown = () => {
       const { targetTime: savedTargetTime, active: savedActive, currentMeetingIndex: savedIndex } = parsedState;
       
       if (savedActive && savedTargetTime && meetings.length > 0) {
-        console.log('Auto-restarting countdown:', parsedState);
-        
         // Recalculate remaining time
         const now = new Date();
         const [targetHour, targetMinute] = savedTargetTime.split(':').map(Number);
@@ -163,7 +139,6 @@ const Countdown = () => {
       currentMeetingIndex: currentIndex,
       startTime: active ? new Date().toISOString() : null
     };
-    console.log('Saving state to localStorage:', state);
     localStorage.setItem('meetingCountdownState', JSON.stringify(state));
   };
 
@@ -264,68 +239,52 @@ const Countdown = () => {
   };
 
   const removeMeeting = (index) => {
-    console.log('Removing meeting at index:', index, 'Current meeting index:', currentMeetingIndex);
-    console.log('Current meetings:', meetings);
+    const newMeetings = meetings.filter((_, i) => i !== index);
+    setMeetings(newMeetings);
+    saveMeetings(newMeetings);
     
-    const updatedMeetings = meetings.filter((_, i) => i !== index);
-    setMeetings(updatedMeetings);
-    saveMeetings(updatedMeetings);
-    
-    // If we're removing the current meeting, try to start the next meeting
-    if (index === currentMeetingIndex) {
-      console.log('Removing current meeting, looking for next meeting...');
-      
-      // Get upcoming meetings after removal
-      const upcomingMeetings = updatedMeetings
+    // If we're removing the current meeting, find the next one
+    if (index === currentMeetingIndex && active) {
+      // Find the next upcoming meeting
+      const now = new Date();
+      const upcomingMeetings = newMeetings
         .map((meeting, idx) => {
-          const [hours, minutes] = meeting.time.split(':').map(Number);
-          const meetingTime = new Date();
-          meetingTime.setHours(hours, minutes, 0, 0);
-          const diffMs = meetingTime - new Date();
-          return {
-            ...meeting,
-            index: idx,
-            diffMs,
-            isPast: diffMs <= 0
-          };
+          const [hour, minute] = meeting.time.split(':').map(Number);
+          const meetingTime = new Date(now);
+          meetingTime.setHours(hour, minute, 0, 0);
+          const diffSecs = Math.floor((meetingTime - now) / 1000);
+          return { ...meeting, index: idx, diffSecs };
         })
-        .filter(meeting => !meeting.isPast)
-        .sort((a, b) => a.diffMs - b.diffMs);
-      
-      console.log('Upcoming meetings after removal:', upcomingMeetings);
+        .filter(meeting => meeting.diffSecs > 0)
+        .sort((a, b) => a.diffSecs - b.diffSecs);
       
       if (upcomingMeetings.length > 0) {
-        // Start countdown for the next meeting
         const nextMeeting = upcomingMeetings[0];
-        const now = new Date();
         const [targetHour, targetMinute] = nextMeeting.time.split(':').map(Number);
         const target = new Date(now);
         target.setHours(targetHour, targetMinute, 0, 0);
         const diffSecs = Math.floor((target - now) / 1000);
         
-        console.log('Next meeting:', nextMeeting, 'diffSecs:', diffSecs);
-        
         if (diffSecs > 0) {
           setTargetTime(nextMeeting.time);
-          setActive(true);
           setRemaining(diffSecs);
           setCurrentMeetingIndex(nextMeeting.index);
           saveState(nextMeeting.time, true, nextMeeting.index);
-          console.log('Switched to next meeting:', nextMeeting.name, 'at index:', nextMeeting.index);
         } else {
           // Next meeting is in the past, stop countdown
-          console.log('Next meeting is in the past, stopping countdown');
-          handleReset();
+          setActive(false);
+          setCurrentMeetingIndex(-1);
+          localStorage.removeItem('meetingCountdownState');
         }
       } else {
         // No upcoming meetings, stop countdown
-        console.log('No upcoming meetings, stopping countdown');
-        handleReset();
+        setActive(false);
+        setCurrentMeetingIndex(-1);
+        localStorage.removeItem('meetingCountdownState');
       }
     } else if (index < currentMeetingIndex) {
-      // Adjust current meeting index
+      // Adjust the current meeting index if we removed a meeting before it
       setCurrentMeetingIndex(currentMeetingIndex - 1);
-      console.log('Adjusted current meeting index to:', currentMeetingIndex - 1);
     }
   };
 
@@ -426,286 +385,186 @@ const Countdown = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center">
-      {console.log('Countdown state:', { active, remaining, targetTime, currentMeetingIndex })}
-      {console.log('Should show countdown:', active)}
-      {console.log('Remaining time:', remaining)}
+    <div className="bg-white rounded-lg shadow-sm p-4">
       {active ? (
-        <div className="flex items-start gap-6">
-          {/* Countdown Timer */}
-          <div className="flex flex-col items-center bg-black/90 rounded-xl p-6 shadow-lg">
-            <div className="text-white text-6xl font-extrabold mb-4 tracking-widest select-none">
-              {formatTime(remaining)}
-            </div>
-            <div className="text-white text-lg mb-2">
-              {meetings[currentMeetingIndex]?.name || 'Meeting'} at {formatMeetingTime(targetTime) || 'unknown time'}
-            </div>
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <ClockIcon className="h-5 w-5 text-indigo-600" />
+            <span className="text-lg font-semibold text-gray-800">
+              {meetings[currentMeetingIndex]?.name || 'Meeting'}
+            </span>
+          </div>
+          <div className="text-3xl font-bold text-indigo-600 mb-4">
+            {formatTime(remaining)}
+          </div>
+          <div className="text-sm text-gray-600 mb-4">
+            {meetings[currentMeetingIndex]?.time && formatMeetingTime(meetings[currentMeetingIndex].time)}
+          </div>
+          <div className="flex justify-center gap-2">
             <button
-              className="mt-2 px-4 py-2 bg-gray-200 rounded text-gray-700 hover:bg-gray-300 font-semibold"
               onClick={handleReset}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
             >
-              Cancel Meeting
+              Reset
             </button>
           </div>
-
-          {/* Upcoming Meetings List */}
-          <div className="bg-white rounded-xl p-4 shadow-lg min-w-[250px]">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-semibold text-gray-800">Upcoming Meetings</h3>
-              <button
-                className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-                onClick={() => setShowAddForm(true)}
-              >
-                Add Meeting
-              </button>
-            </div>
-            {getUpcomingMeetings().length === 0 ? (
-              <p className="text-gray-500 text-sm">No upcoming meetings</p>
-            ) : (
-              <div className="space-y-2">
-                {getUpcomingMeetings().map((meeting, listIndex) => (
-                  <div key={meeting.index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    {editingMeetingIndex === meeting.index ? (
-                      // Edit form
-                      <div className="flex-1 space-y-2">
-                        <input
-                          type="text"
-                          placeholder="Meeting name"
-                          className="border rounded px-2 py-1 text-sm w-full"
-                          value={editMeetingName}
-                          onChange={e => setEditMeetingName(e.target.value)}
-                        />
-                        <input
-                          type="time"
-                          className="border rounded px-2 py-1 text-sm w-full"
-                          value={editMeetingTime}
-                          onChange={e => setEditMeetingTime(e.target.value)}
-                        />
-                        {error && <div className="text-red-500 text-xs">{error}</div>}
-                        <div className="flex gap-1">
-                          <button
-                            onClick={saveEdit}
-                            className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={cancelEdit}
-                            className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      // Normal display
-                      <>
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-800">{meeting.name}</div>
-                          <div className="text-sm text-gray-600">{formatMeetingTime(meeting.time)}</div>
-                        </div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => startEdit(meeting.index)}
-                            className="text-blue-500 hover:text-blue-700 text-sm"
-                            title="Edit meeting"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => removeMeeting(meeting.index)}
-                            className="text-red-500 hover:text-red-700 text-sm"
-                            title="Remove meeting"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {/* Add Meeting Form when countdown is active */}
-            {showAddForm && (
-              <div className="mt-4 p-3 bg-gray-50 rounded">
-                <div className="text-sm font-semibold mb-2">Add New Meeting</div>
-                <input
-                  type="text"
-                  placeholder="Meeting name"
-                  className="border rounded px-2 py-1 text-sm w-full mb-2"
-                  value={meetingName}
-                  onChange={e => setMeetingName(e.target.value)}
-                />
-                <input
-                  type="time"
-                  className="border rounded px-2 py-1 text-sm w-full mb-2"
-                  value={targetTime}
-                  onChange={e => handleTimeChange(e.target.value)}
-                />
-                {error && <div className="text-red-500 text-xs mb-2">{error}</div>}
-                <div className="flex gap-2">
-                  <button
-                    className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-50"
-                    onClick={handleStart}
-                    disabled={!targetTime || !meetingName.trim()}
-                  >
-                    Add Meeting
-                  </button>
-                  <button
-                    className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
-                    onClick={() => {
-                      setShowAddForm(false);
-                      setMeetingName('');
-                      setTargetTime('');
-                      setError('');
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : showSetup ? (
-        <div className="flex flex-col items-center gap-4 bg-white p-4 rounded shadow-md">
-          <div className="text-lg font-semibold mb-2">Add New Meeting</div>
-          <input
-            type="text"
-            placeholder="Meeting name"
-            className="border rounded px-3 py-2 text-center text-lg w-full"
-            value={meetingName}
-            onChange={e => setMeetingName(e.target.value)}
-          />
-          <input
-            type="time"
-            className="border rounded px-2 py-1 text-center text-lg"
-            value={targetTime}
-            onChange={e => handleTimeChange(e.target.value)}
-          />
-          {error && <div className="text-red-500 text-sm">{error}</div>}
-          <button
-            className="mt-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-            onClick={handleStart}
-            disabled={!targetTime || !meetingName.trim()}
-          >
-            Start Meeting Countdown
-          </button>
-          <button
-            className="mt-1 text-xs text-gray-400 hover:underline"
-            onClick={handleReset}
-          >
-            Cancel
-          </button>
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-4">
-          <button
-            className="px-4 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2"
-            onClick={() => setShowSetup(true)}
-          >
-            <PlusIcon className="h-5 w-5" />
-            Add Meeting
-          </button>
-          
-          {/* Manual restart button for saved countdowns */}
-          {!active && localStorage.getItem('meetingCountdownState') && (
-            <button
-              className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-semibold text-lg"
-              onClick={() => {
-                const savedState = localStorage.getItem('meetingCountdownState');
-                if (savedState) {
-                  const { targetTime: savedTargetTime, currentMeetingIndex: savedIndex } = JSON.parse(savedState);
-                  const now = new Date();
-                  const [targetHour, targetMinute] = savedTargetTime.split(':').map(Number);
-                  const target = new Date(now);
-                  target.setHours(targetHour, targetMinute, 0, 0);
-                  const diffSecs = Math.floor((target - now) / 1000);
-                  
-                  if (diffSecs > 0) {
-                    setTargetTime(savedTargetTime);
-                    setActive(true);
-                    setRemaining(diffSecs);
-                    setCurrentMeetingIndex(savedIndex || 0);
-                  }
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <ClockIcon className="h-5 w-5 text-gray-600" />
+            <span className="text-lg font-semibold text-gray-800">Meeting Countdown</span>
+          </div>
+          {meetings.length > 0 ? (
+            <div className="space-y-2">
+              <div className="text-sm text-gray-600 mb-4">
+                {getUpcomingMeetings().length > 0 
+                  ? `${getUpcomingMeetings().length} upcoming meeting${getUpcomingMeetings().length > 1 ? 's' : ''}`
+                  : 'No upcoming meetings'
                 }
-              }}
-            >
-              🔄 Resume Countdown
-            </button>
-          )}
-          
-          {/* Show existing meetings if any */}
-          {meetings.length > 0 && (
-            <div className="bg-white rounded-lg p-4 shadow-md min-w-[250px]">
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">Your Meetings</h3>
-              <div className="space-y-2">
-                {getUpcomingMeetings().map((meeting, listIndex) => (
-                  <div key={meeting.index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    {editingMeetingIndex === meeting.index ? (
-                      // Edit form
-                      <div className="flex-1 space-y-2">
-                        <input
-                          type="text"
-                          placeholder="Meeting name"
-                          className="border rounded px-2 py-1 text-sm w-full"
-                          value={editMeetingName}
-                          onChange={e => setEditMeetingName(e.target.value)}
-                        />
-                        <input
-                          type="time"
-                          className="border rounded px-2 py-1 text-sm w-full"
-                          value={editMeetingTime}
-                          onChange={e => setEditMeetingTime(e.target.value)}
-                        />
-                        {error && <div className="text-red-500 text-xs">{error}</div>}
-                        <div className="flex gap-1">
-                          <button
-                            onClick={saveEdit}
-                            className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={cancelEdit}
-                            className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      // Normal display
-                      <>
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-800">{meeting.name}</div>
-                          <div className="text-sm text-gray-600">{formatMeetingTime(meeting.time)}</div>
-                        </div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => startEdit(meeting.index)}
-                            className="text-blue-500 hover:text-blue-700 text-sm"
-                            title="Edit meeting"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => removeMeeting(meeting.index)}
-                            className="text-red-500 hover:text-red-700 text-sm"
-                            title="Remove meeting"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </>
-                    )}
+              </div>
+              {getUpcomingMeetings().slice(0, 3).map((meeting, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <span className="text-sm text-gray-700">{meeting.name}</span>
+                  <span className="text-sm text-gray-500">{meeting.time}</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => startEdit(meeting.index)}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => removeMeeting(meeting.index)}
+                      className="text-xs text-red-600 hover:text-red-800"
+                    >
+                      Remove
+                    </button>
                   </div>
-                ))}
+                </div>
+              ))}
+              {getUpcomingMeetings().length > 3 && (
+                <div className="text-xs text-gray-500">
+                  +{getUpcomingMeetings().length - 3} more
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-gray-500 mb-4">No meetings scheduled</div>
+          )}
+          <div className="flex justify-center gap-2">
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+            >
+              <PlusIcon className="h-4 w-4 inline mr-1" />
+              Add Meeting
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Meeting Form */}
+      {showAddForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-lg font-semibold mb-4">Add Meeting</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Meeting Name
+                </label>
+                <input
+                  type="text"
+                  value={meetingName}
+                  onChange={(e) => setMeetingName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter meeting name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Time
+                </label>
+                <input
+                  type="time"
+                  value={targetTime}
+                  onChange={(e) => setTargetTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              {error && (
+                <div className="text-red-600 text-sm">{error}</div>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setMeetingName('');
+                    setTargetTime('');
+                    setError('');
+                  }}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleStart}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                >
+                  Add Meeting
+                </button>
               </div>
             </div>
-          )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Meeting Form */}
+      {editingMeetingIndex !== -1 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-lg font-semibold mb-4">Edit Meeting</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Meeting Name
+                </label>
+                <input
+                  type="text"
+                  value={editMeetingName}
+                  onChange={(e) => setEditMeetingName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter meeting name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Time
+                </label>
+                <input
+                  type="time"
+                  value={editMeetingTime}
+                  onChange={(e) => setEditMeetingTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={cancelEdit}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveEdit}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

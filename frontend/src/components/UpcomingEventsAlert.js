@@ -298,14 +298,7 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
             sevenDaysFromNow.setHours(23, 59, 59, 999);
   
             // Debug logging
-            console.log('Event:', {
-              description: description.replace('event_description:', '').trim(),
-              eventDate: eventDate.toISOString(),
-              todayStart: todayStart.toISOString(),
-              todayEnd: todayEnd.toISOString(),
-              isToday: eventDate >= todayStart && eventDate <= todayEnd,
-              recurrenceType: recurrenceType
-            });
+           
   
             // Check if event is today or tomorrow for indicators
             if (eventDate >= todayStart && eventDate <= todayEnd) {

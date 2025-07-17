@@ -534,6 +534,7 @@ const AppContent = () => {
                 <div className="relative">
                   <LeftPanel
                     notes={allNotes}
+                    setNotes={setAllNotes}
                     searchQuery={searchQuery}
                     settings={settings}
                     setSettings={setSettings}

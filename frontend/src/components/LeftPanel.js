@@ -331,6 +331,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [currentDate, setCurrentDate] = useState(new Date());
   const [totals, setTotals] = useState(defaultSettings.totals);
   const [showAddBookmarkModal, setShowAddBookmarkModal] = useState(false);
+  const [pinUpdateTrigger, setPinUpdateTrigger] = useState(0);
 
   useEffect(() => {
     localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
@@ -441,6 +442,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   }, [notes]);
 
   const bookmarkedUrls = useMemo(() => {
+    console.log('LeftPanel: Recalculating bookmarkedUrls, notes count:', notes.length, 'pinUpdateTrigger:', pinUpdateTrigger);
     const seen = new Set();
     const list = [];
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
@@ -455,13 +457,15 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           if (!seen.has(key)) {
             seen.add(key);
             const isPinned = note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark_pinned'));
+            console.log('LeftPanel: Bookmark', url, 'isPinned:', isPinned, 'noteId:', note.id);
             list.push({ url, label, noteId: note.id, isPinned });
           }
         }
       }
     });
+    console.log('LeftPanel: Final list has', list.length, 'bookmarks');
     return list;
-  }, [notes]);
+  }, [notes, pinUpdateTrigger]);
 
   const handlePinBookmark = async (bookmark) => {
     try {
@@ -490,8 +494,19 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       // Update the note
       await updateNoteById(note.id, updatedContent);
       
-      // Update the notes state
-      setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+      // Update the notes state immediately using functional update
+      setNotes(prevNotes => {
+        const updatedNotes = prevNotes.map(n => 
+          n.id === note.id ? { ...n, content: updatedContent } : n
+        );
+        console.log('Notes updated, new content for note', note.id, ':', updatedContent);
+        return updatedNotes;
+      });
+      
+      // Force a re-render by updating the trigger
+      setPinUpdateTrigger(prev => prev + 1);
+      
+      console.log('Pin status updated:', !isCurrentlyPinned, 'for bookmark:', bookmark.url);
       
     } catch (error) {
       console.error('Error updating bookmark pin status:', error);

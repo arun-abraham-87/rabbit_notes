@@ -192,11 +192,17 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
   const [showAddModal, setShowAddModal] = useState(false);
 
   const bookmarkedUrls = useMemo(() => {
+    console.log('BookmarkedLinks: Recalculating bookmarkedUrls, notes count:', notes.length);
     const seen = new Set();
     const list = [];
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
     notes.forEach(note => {
       if (note?.content && note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark'))) {
+        // Only include bookmarks that are pinned
+        const isPinned = note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark_pinned'));
+        console.log('BookmarkedLinks: Note', note.id, 'has bookmark, isPinned:', isPinned);
+        if (!isPinned) return;
+        
         linkRegex.lastIndex = 0;
         let match;
         while ((match = linkRegex.exec(note.content)) !== null) {
@@ -206,10 +212,12 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
           if (!seen.has(key)) {
             seen.add(key);
             list.push({ url, label, noteId: note.id });
+            console.log('BookmarkedLinks: Added pinned bookmark:', url, label);
           }
         }
       }
     });
+    console.log('BookmarkedLinks: Final list has', list.length, 'pinned bookmarks');
     return list;
   }, [notes]);
 
@@ -309,7 +317,7 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
       <div className="flex items-center gap-4 px-4 py-2 bg-white rounded-lg shadow-sm">
         <div className="flex items-center gap-2 text-gray-600">
           <BookmarkIcon className="h-5 w-5" />
-          <span className="text-sm font-medium">Bookmarks:</span>
+          <span className="text-sm font-medium">Pinned Bookmarks:</span>
         </div>
         <div className="flex items-center gap-3 overflow-x-auto flex-1">
           {bookmarkedUrls.map(({ url, label }, index) => {

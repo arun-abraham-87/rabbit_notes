@@ -6,6 +6,7 @@ import TimeZoneDisplay from './TimeZoneDisplay';
 import BookmarkedLinks from './BookmarkedLinks';
 import EventManager from './EventManager';
 import Pomodoro from './Pomodoro';
+import Countdown from './Countdown';
 
 const Dashboard = ({notes,setNotes}) => {
   const [events, setEvents] = useState([]);
@@ -476,9 +477,10 @@ const Dashboard = ({notes,setNotes}) => {
         )}
       </div>
 
-      {/* Third Row: Pomodoro Button */}
-      <div className="mb-8 flex justify-center">
+      {/* Third Row: Pomodoro and Countdown */}
+      <div className="mb-8 flex justify-center gap-8">
         <Pomodoro />
+        <Countdown />
       </div>
 
       {/* Bookmarked Links */}

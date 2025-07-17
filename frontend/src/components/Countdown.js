@@ -10,6 +10,9 @@ const Countdown = () => {
   const [meetingName, setMeetingName] = useState('');
   const [meetings, setMeetings] = useState([]);
   const [currentMeetingIndex, setCurrentMeetingIndex] = useState(-1);
+  const [editingMeetingIndex, setEditingMeetingIndex] = useState(-1);
+  const [editMeetingName, setEditMeetingName] = useState('');
+  const [editMeetingTime, setEditMeetingTime] = useState('');
   const intervalRef = useRef();
   const [error, setError] = useState('');
 
@@ -18,38 +21,135 @@ const Countdown = () => {
     const savedMeetings = localStorage.getItem('meetingCountdownMeetings');
     const savedState = localStorage.getItem('meetingCountdownState');
     
+    console.log('Loading saved data:', { savedMeetings, savedState });
+    
     if (savedMeetings) {
-      setMeetings(JSON.parse(savedMeetings));
+      const parsedMeetings = JSON.parse(savedMeetings);
+      console.log('Parsed meetings:', parsedMeetings);
+      setMeetings(parsedMeetings);
     }
     
-    if (savedState) {
-      const { targetTime: savedTargetTime, active: savedActive, startTime, currentMeetingIndex: savedIndex } = JSON.parse(savedState);
-      setTargetTime(savedTargetTime);
-      setActive(savedActive);
-      setCurrentMeetingIndex(savedIndex || -1);
+  }, []);
+  
+  // Immediate auto-restart on mount
+  useEffect(() => {
+    const checkAndRestart = () => {
+      const savedState = localStorage.getItem('meetingCountdownState');
+      if (savedState && !active) {
+        const parsedState = JSON.parse(savedState);
+        const { targetTime: savedTargetTime, active: savedActive, currentMeetingIndex: savedIndex } = parsedState;
+        
+        if (savedActive && savedTargetTime) {
+          console.log('Auto-restarting countdown on mount:', parsedState);
+          
+          // Recalculate remaining time
+          const now = new Date();
+          const [targetHour, targetMinute] = savedTargetTime.split(':').map(Number);
+          const target = new Date(now);
+          target.setHours(targetHour, targetMinute, 0, 0);
+          const diffSecs = Math.floor((target - now) / 1000);
+          
+          if (diffSecs > 0) {
+            setTargetTime(savedTargetTime);
+            setActive(true);
+            setRemaining(diffSecs);
+            setCurrentMeetingIndex(savedIndex || 0);
+          } else {
+            // Countdown finished, clear state
+            localStorage.removeItem('meetingCountdownState');
+          }
+        }
+      }
+    };
+    
+    // Check immediately
+    checkAndRestart();
+    
+    // Also check after a short delay to ensure meetings are loaded
+    setTimeout(checkAndRestart, 500);
+  }, []); // Run only on mount
+  
+  // Continuous check for saved countdown state
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('Interval check - active:', active);
+      if (!active) {
+        const savedState = localStorage.getItem('meetingCountdownState');
+        console.log('Saved state from localStorage:', savedState);
+        if (savedState) {
+          const parsedState = JSON.parse(savedState);
+          console.log('Parsed state:', parsedState);
+          const { targetTime: savedTargetTime, active: savedActive, currentMeetingIndex: savedIndex } = parsedState;
+          
+          console.log('Checking conditions:', { savedActive, savedTargetTime, savedIndex });
+          
+          if (savedTargetTime) { // Changed condition: only check for targetTime, not savedActive
+            console.log('Auto-restarting countdown via interval:', parsedState);
+            
+            // Recalculate remaining time
+            const now = new Date();
+            const [targetHour, targetMinute] = savedTargetTime.split(':').map(Number);
+            const target = new Date(now);
+            target.setHours(targetHour, targetMinute, 0, 0);
+            const diffSecs = Math.floor((target - now) / 1000);
+            
+            console.log('Calculated diffSecs:', diffSecs);
+            
+            if (diffSecs > 0) {
+              console.log('Setting countdown state...');
+              setTargetTime(savedTargetTime);
+              setActive(true);
+              setRemaining(diffSecs);
+              setCurrentMeetingIndex(savedIndex || 0);
+            } else {
+              // Countdown finished, clear state
+              console.log('Countdown finished, clearing state');
+              localStorage.removeItem('meetingCountdownState');
+            }
+          } else {
+            console.log('Conditions not met for auto-restart');
+          }
+        } else {
+          console.log('No saved state found');
+        }
+      } else {
+        console.log('Countdown already active, skipping check');
+      }
+    }, 1000); // Check every second
+    
+    return () => clearInterval(interval);
+  }, [active]); // Run when active state changes
+  
+  // Simple countdown restoration check
+  useEffect(() => {
+    const savedState = localStorage.getItem('meetingCountdownState');
+    if (savedState && !active) {
+      const parsedState = JSON.parse(savedState);
+      const { targetTime: savedTargetTime, active: savedActive, currentMeetingIndex: savedIndex } = parsedState;
       
-      if (savedActive && startTime) {
+      if (savedActive && savedTargetTime && meetings.length > 0) {
+        console.log('Auto-restarting countdown:', parsedState);
+        
         // Recalculate remaining time
         const now = new Date();
-        const start = new Date(startTime);
         const [targetHour, targetMinute] = savedTargetTime.split(':').map(Number);
-        const target = new Date(start);
+        const target = new Date(now);
         target.setHours(targetHour, targetMinute, 0, 0);
-        
         const diffSecs = Math.floor((target - now) / 1000);
+        
         if (diffSecs > 0) {
+          setTargetTime(savedTargetTime);
+          setActive(true);
           setRemaining(diffSecs);
+          setCurrentMeetingIndex(savedIndex || 0);
         } else {
-          // Countdown has finished, clear saved state
+          // Countdown finished, clear state
           localStorage.removeItem('meetingCountdownState');
-          setActive(false);
-          setRemaining(0);
-          setCurrentMeetingIndex(-1);
         }
       }
     }
-  }, []);
-
+  }, [active, meetings]); // Run when active state or meetings change
+  
   // Save meetings to localStorage
   const saveMeetings = (meetingsList) => {
     localStorage.setItem('meetingCountdownMeetings', JSON.stringify(meetingsList));
@@ -63,6 +163,7 @@ const Countdown = () => {
       currentMeetingIndex: currentIndex,
       startTime: active ? new Date().toISOString() : null
     };
+    console.log('Saving state to localStorage:', state);
     localStorage.setItem('meetingCountdownState', JSON.stringify(state));
   };
 
@@ -124,13 +225,16 @@ const Countdown = () => {
     setMeetings(updatedMeetings);
     saveMeetings(updatedMeetings);
     
+    // Calculate remaining time
+    const diffSecs = Math.floor((target - now) / 1000);
+    
     // If no countdown is currently running, start one
     if (!active) {
-      const diffSecs = Math.floor((target - now) / 1000);
       setRemaining(diffSecs);
       setActive(true);
       setShowSetup(false);
       setCurrentMeetingIndex(updatedMeetings.length - 1);
+      setTargetTime(targetTime); // Make sure targetTime is set
       saveState(targetTime, true, updatedMeetings.length - 1);
     } else {
       // Just add to the list, don't start a new countdown
@@ -171,6 +275,57 @@ const Countdown = () => {
       // Adjust current meeting index
       setCurrentMeetingIndex(currentMeetingIndex - 1);
     }
+  };
+
+  const startEdit = (index) => {
+    const meeting = meetings[index];
+    setEditingMeetingIndex(index);
+    setEditMeetingName(meeting.name);
+    setEditMeetingTime(meeting.time);
+  };
+
+  const saveEdit = () => {
+    if (!editMeetingName.trim()) {
+      setError('Please enter a meeting name.');
+      return;
+    }
+    if (!editMeetingTime) {
+      setError('Please select a meeting time.');
+      return;
+    }
+    
+    const updatedMeetings = [...meetings];
+    updatedMeetings[editingMeetingIndex] = {
+      name: editMeetingName.trim(),
+      time: editMeetingTime
+    };
+    
+    setMeetings(updatedMeetings);
+    saveMeetings(updatedMeetings);
+    
+    // If editing the current meeting, update the countdown
+    if (editingMeetingIndex === currentMeetingIndex) {
+      const now = new Date();
+      const [targetHour, targetMinute] = editMeetingTime.split(':').map(Number);
+      const target = new Date(now);
+      target.setHours(targetHour, targetMinute, 0, 0);
+      const diffSecs = Math.floor((target - now) / 1000);
+      setRemaining(diffSecs);
+      setTargetTime(editMeetingTime);
+      saveState(editMeetingTime, true, currentMeetingIndex);
+    }
+    
+    setEditingMeetingIndex(-1);
+    setEditMeetingName('');
+    setEditMeetingTime('');
+    setError('');
+  };
+
+  const cancelEdit = () => {
+    setEditingMeetingIndex(-1);
+    setEditMeetingName('');
+    setEditMeetingTime('');
+    setError('');
   };
 
   const formatTime = (secs) => {
@@ -220,6 +375,9 @@ const Countdown = () => {
 
   return (
     <div className="flex flex-col items-center justify-center">
+      {console.log('Countdown state:', { active, remaining, targetTime, currentMeetingIndex })}
+      {console.log('Should show countdown:', active)}
+      {console.log('Remaining time:', remaining)}
       {active ? (
         <div className="flex items-start gap-6">
           {/* Countdown Timer */}
@@ -228,7 +386,7 @@ const Countdown = () => {
               {formatTime(remaining)}
             </div>
             <div className="text-white text-lg mb-2">
-              {meetings[currentMeetingIndex]?.name} at {formatMeetingTime(targetTime)}
+              {meetings[currentMeetingIndex]?.name || 'Meeting'} at {formatMeetingTime(targetTime) || 'unknown time'}
             </div>
             <button
               className="mt-2 px-4 py-2 bg-gray-200 rounded text-gray-700 hover:bg-gray-300 font-semibold"
@@ -255,16 +413,63 @@ const Countdown = () => {
               <div className="space-y-2">
                 {getUpcomingMeetings().map((meeting, listIndex) => (
                   <div key={meeting.index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-800">{meeting.name}</div>
-                      <div className="text-sm text-gray-600">{formatMeetingTime(meeting.time)}</div>
-                    </div>
-                    <button
-                      onClick={() => removeMeeting(meeting.index)}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      ×
-                    </button>
+                    {editingMeetingIndex === meeting.index ? (
+                      // Edit form
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="text"
+                          placeholder="Meeting name"
+                          className="border rounded px-2 py-1 text-sm w-full"
+                          value={editMeetingName}
+                          onChange={e => setEditMeetingName(e.target.value)}
+                        />
+                        <input
+                          type="time"
+                          className="border rounded px-2 py-1 text-sm w-full"
+                          value={editMeetingTime}
+                          onChange={e => setEditMeetingTime(e.target.value)}
+                        />
+                        {error && <div className="text-red-500 text-xs">{error}</div>}
+                        <div className="flex gap-1">
+                          <button
+                            onClick={saveEdit}
+                            className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      // Normal display
+                      <>
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">{meeting.name}</div>
+                          <div className="text-sm text-gray-600">{formatMeetingTime(meeting.time)}</div>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => startEdit(meeting.index)}
+                            className="text-blue-500 hover:text-blue-700 text-sm"
+                            title="Edit meeting"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => removeMeeting(meeting.index)}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                            title="Remove meeting"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -353,6 +558,46 @@ const Countdown = () => {
             Add Meeting
           </button>
           
+          {/* Test button to manually start countdown */}
+          <button
+            className="px-4 bg-green-500 text-white rounded hover:bg-green-600"
+            onClick={() => {
+              setActive(true);
+              setRemaining(300); // 5 minutes
+              setTargetTime('19:30');
+              setCurrentMeetingIndex(0);
+            }}
+          >
+            Test Countdown (5 min)
+          </button>
+          
+          {/* Manual restart button for saved countdowns */}
+          {!active && localStorage.getItem('meetingCountdownState') && (
+            <button
+              className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-semibold text-lg"
+              onClick={() => {
+                const savedState = localStorage.getItem('meetingCountdownState');
+                if (savedState) {
+                  const { targetTime: savedTargetTime, currentMeetingIndex: savedIndex } = JSON.parse(savedState);
+                  const now = new Date();
+                  const [targetHour, targetMinute] = savedTargetTime.split(':').map(Number);
+                  const target = new Date(now);
+                  target.setHours(targetHour, targetMinute, 0, 0);
+                  const diffSecs = Math.floor((target - now) / 1000);
+                  
+                  if (diffSecs > 0) {
+                    setTargetTime(savedTargetTime);
+                    setActive(true);
+                    setRemaining(diffSecs);
+                    setCurrentMeetingIndex(savedIndex || 0);
+                  }
+                }
+              }}
+            >
+              🔄 Resume Countdown
+            </button>
+          )}
+          
           {/* Show existing meetings if any */}
           {meetings.length > 0 && (
             <div className="bg-white rounded-lg p-4 shadow-md min-w-[250px]">
@@ -360,16 +605,63 @@ const Countdown = () => {
               <div className="space-y-2">
                 {getUpcomingMeetings().map((meeting, listIndex) => (
                   <div key={meeting.index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-800">{meeting.name}</div>
-                      <div className="text-sm text-gray-600">{formatMeetingTime(meeting.time)}</div>
-                    </div>
-                    <button
-                      onClick={() => removeMeeting(meeting.index)}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      ×
-                    </button>
+                    {editingMeetingIndex === meeting.index ? (
+                      // Edit form
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="text"
+                          placeholder="Meeting name"
+                          className="border rounded px-2 py-1 text-sm w-full"
+                          value={editMeetingName}
+                          onChange={e => setEditMeetingName(e.target.value)}
+                        />
+                        <input
+                          type="time"
+                          className="border rounded px-2 py-1 text-sm w-full"
+                          value={editMeetingTime}
+                          onChange={e => setEditMeetingTime(e.target.value)}
+                        />
+                        {error && <div className="text-red-500 text-xs">{error}</div>}
+                        <div className="flex gap-1">
+                          <button
+                            onClick={saveEdit}
+                            className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      // Normal display
+                      <>
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">{meeting.name}</div>
+                          <div className="text-sm text-gray-600">{formatMeetingTime(meeting.time)}</div>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => startEdit(meeting.index)}
+                            className="text-blue-500 hover:text-blue-700 text-sm"
+                            title="Edit meeting"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => removeMeeting(meeting.index)}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                            title="Remove meeting"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>

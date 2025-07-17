@@ -18,14 +18,18 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   const [headerType, setHeaderType] = useState(null); // 'h1', 'h2', or null
   const [displayText, setDisplayText] = useState('');
   
+  // Track if this is the initial mount
+  const [isInitialMount, setIsInitialMount] = useState(true);
+  
   useEffect(() => {
-    if (inputRef.current) {
+    if (inputRef.current && isInitialMount) {
       inputRef.current.focus();
-      // Position cursor at the end of the text
+      // Only position cursor at the end on initial mount
       const textLength = displayText.length;
       inputRef.current.setSelectionRange(textLength, textLength);
+      setIsInitialMount(false);
     }
-  }, [displayText]);
+  }, [displayText, isInitialMount]);
 
   // Detect if text is H1 (###) or H2 (##) and strip hash symbols for editing
   useEffect(() => {

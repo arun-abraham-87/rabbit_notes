@@ -336,9 +336,20 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   }[baseTimezone] || '🌐';
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 pb-8">
+      {/* Bookmarked Links - Topmost Item */}
+      {!isPinned && (
+        <div className="mb-8">
+          <BookmarkedLinks 
+            key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
+            notes={notes} 
+            setNotes={setNotes} 
+          />
+        </div>
+      )}
+
       {/* First Row: Date and Timezone Display (Full Width) */}
-      <div className="mb-8">
+      <div className={`mb-8 ${isPinned ? 'pt-8' : ''}`}>
         <div className="flex flex-col items-center">
           {/* First Row: Date and Current Time */}
           <div className="flex items-center gap-6 mb-4">
@@ -552,17 +563,6 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
       <div className="mb-8 flex justify-center">
         <Pomodoro />
       </div>
-
-      {/* Bookmarked Links */}
-      {!isPinned && (
-        <div className="mb-8">
-          <BookmarkedLinks 
-            key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
-            notes={notes} 
-            setNotes={setNotes} 
-          />
-        </div>
-      )}
 
       {/* Alerts Section */}
       <div className="mb-8">

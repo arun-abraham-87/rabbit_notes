@@ -137,6 +137,32 @@ const NotesMainContainer = ({
         };
     }, [focusMode]);
 
+    // Listen for return to search event from notes navigation
+    useEffect(() => {
+        console.log('Setting up returnToSearch event listener in NotesMainContainer');
+        
+        const handleReturnToSearch = () => {
+            console.log('Return to search event received');
+            // Focus the search input
+            if (searchInputRef.current) {
+                searchInputRef.current.focus();
+                // Move cursor to end of text
+                const length = searchInputRef.current.value.length;
+                searchInputRef.current.setSelectionRange(length, length);
+            }
+            // Clear the focused note by dispatching a custom event
+            const clearFocusedNoteEvent = new CustomEvent('clearFocusedNote');
+            document.dispatchEvent(clearFocusedNoteEvent);
+            console.log('Clear focused note event dispatched');
+        };
+
+        document.addEventListener('returnToSearch', handleReturnToSearch);
+        return () => {
+            console.log('Cleaning up returnToSearch event listener in NotesMainContainer');
+            document.removeEventListener('returnToSearch', handleReturnToSearch);
+        };
+    }, []);
+
     // Debug: Log objList
     useEffect(() => {
         console.log('NotesMainContainer - objList received:', objList);
@@ -540,6 +566,20 @@ const NotesMainContainer = ({
                         settings={settings}
                         focusMode={focusMode}
                         refreshTags={refreshTags}
+                        onReturnToSearch={() => {
+                            console.log('Return to search callback called');
+                            // Focus the search input
+                            if (searchInputRef.current) {
+                                searchInputRef.current.focus();
+                                // Move cursor to end of text
+                                const length = searchInputRef.current.value.length;
+                                searchInputRef.current.setSelectionRange(length, length);
+                            }
+                            // Clear the focused note by dispatching a custom event
+                            const clearFocusedNoteEvent = new CustomEvent('clearFocusedNote');
+                            document.dispatchEvent(clearFocusedNoteEvent);
+                            console.log('Clear focused note event dispatched');
+                        }}
                     />
                 </div>
             </div>

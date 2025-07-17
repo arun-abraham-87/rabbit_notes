@@ -57,6 +57,7 @@ const NotesList = ({
   activePage = 'notes',
   focusMode = false,
   refreshTags = () => {},
+  onReturnToSearch = () => {},
 }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
@@ -363,8 +364,18 @@ const NotesList = ({
             
             let newIndex;
             if (e.key === 'ArrowUp') {
-              // Move to previous note
-              newIndex = currentIndex > 0 ? currentIndex - 1 : safeNotesRef.current.length - 1;
+              console.log(`Up arrow pressed, currentIndex: ${currentIndex}, checking if === 0`);
+              // If we're on the first note, move focus back to search bar
+              if (currentIndex === 0) {
+                console.log('Up arrow pressed on first note, calling onReturnToSearch callback');
+                // Call the callback to return focus to search bar
+                onReturnToSearch();
+                return;
+              } else {
+                console.log(`Not on first note (currentIndex: ${currentIndex}), moving to previous note`);
+                // Move to previous note
+                newIndex = currentIndex - 1;
+              }
             } else {
               // Move to next note
               newIndex = currentIndex < safeNotesRef.current.length - 1 ? currentIndex + 1 : 0;
@@ -443,8 +454,20 @@ const NotesList = ({
       }
     };
 
+    const handleClearFocusedNote = () => {
+      console.log('Clear focused note event received, current focusedNoteIndex:', focusedNoteIndex);
+      setFocusedNoteIndex(-1);
+      console.log('Note focus cleared - returning to search');
+    };
+
+    console.log('Setting up note navigation event listeners');
     document.addEventListener('focusFirstNote', handleFocusFirstNote);
-    return () => document.removeEventListener('focusFirstNote', handleFocusFirstNote);
+    document.addEventListener('clearFocusedNote', handleClearFocusedNote);
+    return () => {
+      console.log('Cleaning up note navigation event listeners');
+      document.removeEventListener('focusFirstNote', handleFocusFirstNote);
+      document.removeEventListener('clearFocusedNote', handleClearFocusedNote);
+    };
   }, [safeNotes]);
 
   // Helper function to check if a note is a meeting note

@@ -264,16 +264,68 @@ const Countdown = () => {
   };
 
   const removeMeeting = (index) => {
+    console.log('Removing meeting at index:', index, 'Current meeting index:', currentMeetingIndex);
+    console.log('Current meetings:', meetings);
+    
     const updatedMeetings = meetings.filter((_, i) => i !== index);
     setMeetings(updatedMeetings);
     saveMeetings(updatedMeetings);
     
-    // If we're removing the current meeting, stop the countdown
+    // If we're removing the current meeting, try to start the next meeting
     if (index === currentMeetingIndex) {
-      handleReset();
+      console.log('Removing current meeting, looking for next meeting...');
+      
+      // Get upcoming meetings after removal
+      const upcomingMeetings = updatedMeetings
+        .map((meeting, idx) => {
+          const [hours, minutes] = meeting.time.split(':').map(Number);
+          const meetingTime = new Date();
+          meetingTime.setHours(hours, minutes, 0, 0);
+          const diffMs = meetingTime - new Date();
+          return {
+            ...meeting,
+            index: idx,
+            diffMs,
+            isPast: diffMs <= 0
+          };
+        })
+        .filter(meeting => !meeting.isPast)
+        .sort((a, b) => a.diffMs - b.diffMs);
+      
+      console.log('Upcoming meetings after removal:', upcomingMeetings);
+      
+      if (upcomingMeetings.length > 0) {
+        // Start countdown for the next meeting
+        const nextMeeting = upcomingMeetings[0];
+        const now = new Date();
+        const [targetHour, targetMinute] = nextMeeting.time.split(':').map(Number);
+        const target = new Date(now);
+        target.setHours(targetHour, targetMinute, 0, 0);
+        const diffSecs = Math.floor((target - now) / 1000);
+        
+        console.log('Next meeting:', nextMeeting, 'diffSecs:', diffSecs);
+        
+        if (diffSecs > 0) {
+          setTargetTime(nextMeeting.time);
+          setActive(true);
+          setRemaining(diffSecs);
+          setCurrentMeetingIndex(nextMeeting.index);
+          saveState(nextMeeting.time, true, nextMeeting.index);
+          console.log('Switched to next meeting:', nextMeeting.name, 'at index:', nextMeeting.index);
+        } else {
+          // Next meeting is in the past, stop countdown
+          console.log('Next meeting is in the past, stopping countdown');
+          handleReset();
+        }
+      } else {
+        // No upcoming meetings, stop countdown
+        console.log('No upcoming meetings, stopping countdown');
+        handleReset();
+      }
     } else if (index < currentMeetingIndex) {
       // Adjust current meeting index
       setCurrentMeetingIndex(currentMeetingIndex - 1);
+      console.log('Adjusted current meeting index to:', currentMeetingIndex - 1);
     }
   };
 
@@ -401,10 +453,10 @@ const Countdown = () => {
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-lg font-semibold text-gray-800">Upcoming Meetings</h3>
               <button
-                className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                className="px-2 py-1 bg-blue-500 text-white rounded-full text-lg font-bold hover:bg-blue-600"
                 onClick={() => setShowAddForm(true)}
               >
-                Add Meeting
+                +
               </button>
             </div>
             {getUpcomingMeetings().length === 0 ? (
@@ -551,52 +603,11 @@ const Countdown = () => {
       ) : (
         <div className="flex flex-col items-center gap-4">
           <button
-            className="px-4 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2"
+            className="px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 text-2xl font-bold"
             onClick={() => setShowSetup(true)}
           >
-            <PlusIcon className="h-5 w-5" />
-            Add Meeting
+            +
           </button>
-          
-          {/* Test button to manually start countdown */}
-          <button
-            className="px-4 bg-green-500 text-white rounded hover:bg-green-600"
-            onClick={() => {
-              setActive(true);
-              setRemaining(300); // 5 minutes
-              setTargetTime('19:30');
-              setCurrentMeetingIndex(0);
-            }}
-          >
-            Test Countdown (5 min)
-          </button>
-          
-          {/* Manual restart button for saved countdowns */}
-          {!active && localStorage.getItem('meetingCountdownState') && (
-            <button
-              className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-semibold text-lg"
-              onClick={() => {
-                const savedState = localStorage.getItem('meetingCountdownState');
-                if (savedState) {
-                  const { targetTime: savedTargetTime, currentMeetingIndex: savedIndex } = JSON.parse(savedState);
-                  const now = new Date();
-                  const [targetHour, targetMinute] = savedTargetTime.split(':').map(Number);
-                  const target = new Date(now);
-                  target.setHours(targetHour, targetMinute, 0, 0);
-                  const diffSecs = Math.floor((target - now) / 1000);
-                  
-                  if (diffSecs > 0) {
-                    setTargetTime(savedTargetTime);
-                    setActive(true);
-                    setRemaining(diffSecs);
-                    setCurrentMeetingIndex(savedIndex || 0);
-                  }
-                }
-              }}
-            >
-              🔄 Resume Countdown
-            </button>
-          )}
           
           {/* Show existing meetings if any */}
           {meetings.length > 0 && (

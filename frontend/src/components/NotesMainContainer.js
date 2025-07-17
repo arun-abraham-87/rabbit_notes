@@ -493,6 +493,8 @@ const NotesMainContainer = ({
                             onExcludeEventNotesChange={setExcludeEventNotes}
                             onExcludeBackupNotesChange={setExcludeBackupNotes}
                             onExcludeWatchEventsChange={setExcludeWatchEvents}
+                            onExcludeBookmarksChange={setExcludeBookmarks}
+                            onExcludeExpensesChange={setExcludeExpenses}
                             resetFilters={resetFilters}
                         />
                         <button

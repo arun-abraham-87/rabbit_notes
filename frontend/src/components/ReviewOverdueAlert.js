@@ -253,38 +253,38 @@ const getLinkTypeIndicator = (url) => {
   }
 };
 
-const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes }) => {
+const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes, isReviewsOverdueOnlyMode = false }) => {
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
+  const [searchText, setSearchText] = useState('');
   const [expandedNotes, setExpandedNotes] = useState({});
-  const [showNoteEditor, setShowNoteEditor] = useState(false);
-  const [selectedNote, setSelectedNote] = useState(null);
+  const [showCadenceSelector, setShowCadenceSelector] = useState(null);
+  const [showAddLinkModal, setShowAddLinkModal] = useState(null);
+  const [showAddTextModal, setShowAddTextModal] = useState(null);
+  const [editingNote, setEditingNote] = useState(null);
+  const [focusedReviewIndex, setFocusedReviewIndex] = useState(-1);
   const [showPriorityPopup, setShowPriorityPopup] = useState(false);
   const [noteToConvert, setNoteToConvert] = useState(null);
-  const [showCadenceSelector, setShowCadenceSelector] = useState(null);
-  const [overdueNotes, setOverdueNotes] = useState([]);
-  const [snoozedNotes, setSnoozedNotes] = useState([]);
-  const [isSnoozedExpanded, setIsSnoozedExpanded] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [noteIdForLink, setNoteIdForLink] = useState(null);
-  const [showAddTextModal, setShowAddTextModal] = useState(false);
   const [noteIdForText, setNoteIdForText] = useState(null);
   const [urlForText, setUrlForText] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [currentCustomText, setCurrentCustomText] = useState('');
   const [editingLinkText, setEditingLinkText] = useState('');
+  const [overdueNotes, setOverdueNotes] = useState([]);
+  const [snoozedNotes, setSnoozedNotes] = useState([]);
+  const [selectedNote, setSelectedNote] = useState(null);
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [isSnoozedExpanded, setIsSnoozedExpanded] = useState(true);
 
   useEffect(() => {
-    const overdueNotes = findwatchitemsOverdue(notes);
-    // Filter out notes with reminder tag
-    const filteredOverdue = overdueNotes.filter(note => !note.content.includes('meta::reminder'));
-    setOverdueNotes(filteredOverdue);
-    
-    // Get all watch notes that are not overdue and don't have reminder tag
-    const allWatchNotes = notes.filter(note => 
-      note.content.includes('meta::watch') && 
+    const overdue = findwatchitemsOverdue(notes).filter(note => !note.content.includes('meta::reminder'));
+    setOverdueNotes(overdue);
+
+    const allWatchNotes = notes.filter(note =>
+      note.content.includes('meta::watch') &&
       !note.content.includes('meta::reminder')
     );
-    const snoozed = allWatchNotes.filter(note => !overdueNotes.some(overdue => overdue.id === note.id));
+    const snoozed = allWatchNotes.filter(note => !overdue.some(overdueNote => overdueNote.id === note.id));
     setSnoozedNotes(snoozed);
   }, [notes]);
 
@@ -306,6 +306,63 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
 
   const filteredOverdueNotes = filterNotesBySearch(overdueNotes);
   const filteredSnoozedNotes = filterNotesBySearch(snoozedNotes);
+
+  // Add keyboard navigation for reviews-overdue-only mode
+  useEffect(() => {
+    if (!isReviewsOverdueOnlyMode) return;
+
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const totalReviews = filteredOverdueNotes.length;
+      if (totalReviews === 0) return;
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedReviewIndex(prev => 
+          prev > 0 ? prev - 1 : totalReviews - 1
+        );
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedReviewIndex(prev => 
+          prev < totalReviews - 1 ? prev + 1 : 0
+        );
+      } else if (e.key === 'Enter' && focusedReviewIndex >= 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Handle Enter key - could be used to unfollow the focused review
+        const focusedReview = filteredOverdueNotes[focusedReviewIndex];
+        if (focusedReview) {
+          // Unfollow the focused review (same as clicking the unfollow button)
+          handleUnfollow(focusedReview);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isReviewsOverdueOnlyMode, filteredOverdueNotes.length, focusedReviewIndex, filteredOverdueNotes]);
+
+  // Reset focused index when reviews change
+  useEffect(() => {
+    setFocusedReviewIndex(-1);
+  }, [filteredOverdueNotes]);
+
+  // Scroll to focused review when it changes
+  useEffect(() => {
+    if (isReviewsOverdueOnlyMode && focusedReviewIndex >= 0) {
+      const focusedReview = filteredOverdueNotes[focusedReviewIndex];
+      if (focusedReview) {
+        // Find the DOM element and scroll to it
+        const reviewElement = document.querySelector(`[data-review-id="${focusedReview.id}"]`);
+        if (reviewElement) {
+          reviewElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    }
+  }, [focusedReviewIndex, isReviewsOverdueOnlyMode, filteredOverdueNotes]);
 
   if (overdueNotes.length === 0 && snoozedNotes.length === 0) return null;
 
@@ -897,12 +954,16 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes 
               const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
               const reviewTime = reviews[note.id];
               const timeUntilNext = getTimeUntilNextReview(note);
+              const isFocused = isReviewsOverdueOnlyMode && focusedReviewIndex === index;
 
               return (
                 <div 
                   key={note.id} 
+                  data-review-id={note.id}
                   className={`px-6 py-3 transition-colors duration-150 min-h-[120px] ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                    isFocused 
+                      ? 'bg-blue-50 border-l-4 border-blue-500' 
+                      : index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                   } hover:bg-gray-100`}
                 >
                   <div className="grid grid-cols-4 gap-4">

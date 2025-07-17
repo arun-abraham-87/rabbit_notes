@@ -137,6 +137,29 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [editingEvent, setEditingEvent] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [pastEventsCount, setPastEventsCount] = useState(0);
+  const [showTodaysEventsOnly, setShowTodaysEventsOnly] = useState(false);
+  
+  // Add keyboard navigation for 't' key to show today's events
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only handle keys when not in an input/textarea and no modifier keys
+      if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
+          e.target.tagName !== 'INPUT' && 
+          e.target.tagName !== 'TEXTAREA' &&
+          e.target.contentEditable !== 'true') {
+        
+        if (e.key === 't') {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowTodaysEventsOnly(!showTodaysEventsOnly);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showTodaysEventsOnly]);
+
   // Get all unique tags from events
   const uniqueTags = useMemo(() => {
     const tags = new Set();
@@ -214,7 +237,8 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     const events = allNotes
       .filter(note => note?.content && note.content.includes('meta::event::'))
       .filter(note => {
-        const { description, tags, dateTime } = getEventDetails(note.content);
+        const eventDetails = getEventDetails(note.content);
+        const { description, tags, dateTime, recurrence } = eventDetails;
         const matchesSearch = searchQuery === '' || description.toLowerCase().includes(searchQuery.toLowerCase());
         
         // Check if any filter is active
@@ -231,14 +255,56 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         let matchesDate = true;
         if (dateTime) {
           const eventDate = new Date(dateTime);
-          if (selectedYear && selectedYear !== '') {
-            matchesDate = matchesDate && (eventDate.getFullYear() === parseInt(selectedYear));
-          }
-          if (selectedMonth && selectedMonth !== '') {
-            matchesDate = matchesDate && (eventDate.getMonth() + 1 === parseInt(selectedMonth));
-          }
-          if (selectedDay && selectedDay !== '') {
-            matchesDate = matchesDate && (eventDate.getDate() === parseInt(selectedDay));
+          
+          // Filter for today's events when showTodaysEventsOnly is true
+          if (showTodaysEventsOnly) {
+            const today = new Date();
+            const todayDay = today.getDate();
+            const todayMonth = today.getMonth();
+            const todayYear = today.getFullYear();
+            
+            // Check if it's a one-time event happening today
+            const isOneTimeToday = eventDate.getDate() === todayDay &&
+                                  eventDate.getMonth() === todayMonth &&
+                                  eventDate.getFullYear() === todayYear;
+            
+            // Check if it's a recurring event with anniversary today
+            let isAnniversaryToday = false;
+            
+            if (recurrence && recurrence !== 'none') {
+              // For recurring events, check if today's date matches the original event date
+              const originalEventDay = eventDate.getDate();
+              const originalEventMonth = eventDate.getMonth();
+              
+              // Check if today matches the original event's day and month (anniversary)
+              isAnniversaryToday = originalEventDay === todayDay && originalEventMonth === todayMonth;
+            }
+            
+            // Show events that are either happening today OR have an anniversary today
+            matchesDate = matchesDate && (isOneTimeToday || isAnniversaryToday);
+            
+            // Debug logging
+            if (isOneTimeToday || isAnniversaryToday) {
+              console.log('Today\'s event found:', {
+                description,
+                dateTime,
+                recurrence,
+                isOneTimeToday,
+                isAnniversaryToday,
+                today: new Date().toDateString()
+              });
+            }
+          } else {
+            // Apply regular date filters
+            if (selectedYear && selectedYear !== '') {
+              matchesDate = matchesDate && (eventDate.getFullYear() === parseInt(selectedYear));
+            }
+            if (selectedMonth && selectedMonth !== '') {
+              matchesDate = matchesDate && (eventDate.getMonth() + 1 === parseInt(selectedMonth));
+            }
+            if (selectedDay && selectedDay !== '') {
+              matchesDate = matchesDate && (eventDate.getDate() === parseInt(selectedDay));
+            }
           }
         }
 
@@ -488,6 +554,18 @@ event_tags:${expense.tag.join(',')}`;
               {showOnlyDeadlines ? 'Show All Events' : 'Show Deadlines Only'}
             </button>
 
+            <button
+              onClick={() => setShowTodaysEventsOnly(!showTodaysEventsOnly)}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-fit ${
+                showTodaysEventsOnly
+                  ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <CalendarIcon className="h-5 w-5" />
+              {showTodaysEventsOnly ? 'Show All Events' : 'Show Today\'s Events'}
+            </button>
+
             {/* Exclude Purchases Checkbox */}
             <label className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
               <input
@@ -554,7 +632,7 @@ event_tags:${expense.tag.join(',')}`;
         )}
 
         {/* Active Filters Note */}
-        {(searchQuery || selectedTags.length > 0 || showOnlyDeadlines || selectedMonth || selectedDay || selectedYear || excludePurchases) && (
+        {(searchQuery || selectedTags.length > 0 || showOnlyDeadlines || showTodaysEventsOnly || selectedMonth || selectedDay || selectedYear || excludePurchases) && (
           <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-md border border-gray-200">
             <ListBulletIcon className="h-5 w-5 text-gray-500" />
             <span className="font-medium">Filters Applied:</span>
@@ -572,6 +650,11 @@ event_tags:${expense.tag.join(',')}`;
               {showOnlyDeadlines && (
                 <span className="px-2 py-1 bg-white rounded border text-gray-700">
                   Deadlines Only
+                </span>
+              )}
+              {showTodaysEventsOnly && (
+                <span className="px-2 py-1 bg-white rounded border text-gray-700">
+                  Today's Events Only
                 </span>
               )}
               {selectedYear && (
@@ -600,6 +683,7 @@ event_tags:${expense.tag.join(',')}`;
                 setSearchQuery('');
                 setSelectedTags([]);
                 setShowOnlyDeadlines(false);
+                setShowTodaysEventsOnly(false);
                 setSelectedMonth('');
                 setSelectedDay('');
                 setSelectedYear('');

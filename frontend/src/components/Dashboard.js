@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AlertsProvider } from './Alerts';
 import RemindersAlert from './RemindersAlert';
+import ReviewOverdueAlert from './ReviewOverdueAlert';
 import { loadAllNotes } from '../utils/ApiUtils';
 import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay';
@@ -27,6 +28,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [eventsHasOverflow, setEventsHasOverflow] = useState(false);
   const [notesHasOverflow, setNotesHasOverflow] = useState(false);
   const [showRemindersOnly, setShowRemindersOnly] = useState(false);
+  const [showReviewsOverdueOnly, setShowReviewsOverdueOnly] = useState(false);
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -208,14 +210,25 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
           e.preventDefault();
           e.stopPropagation();
           setShowRemindersOnly(true);
+          setShowReviewsOverdueOnly(false);
+        } else if (e.key === 'w') {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowReviewsOverdueOnly(true);
+          setShowRemindersOnly(false);
         } else if (e.key === 'n') {
           e.preventDefault();
           e.stopPropagation();
           setActivePage('notes');
-        } else if (e.key === 'Escape' && showRemindersOnly) {
+        } else if (e.key === 'e') {
+          e.preventDefault();
+          e.stopPropagation();
+          setActivePage('events');
+        } else if (e.key === 'Escape' && (showRemindersOnly || showReviewsOverdueOnly)) {
           e.preventDefault();
           e.stopPropagation();
           setShowRemindersOnly(false);
+          setShowReviewsOverdueOnly(false);
         }
       }
     };
@@ -231,7 +244,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         document.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [openEditor, showRemindersOnly, setActivePage, location.pathname]);
+  }, [openEditor, showRemindersOnly, showReviewsOverdueOnly, setActivePage, location.pathname]);
 
   const getCompactTimezones = () => {
     const timezonesToShow = selectedTimezones.length > 0 ? selectedTimezones : [
@@ -391,13 +404,26 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800">Reminders Only</h2>
-            <div className="text-sm text-gray-500">Press Escape to return to normal view • Use ↑↓ arrows to navigate, Enter to dismiss</div>
+            <div className="text-sm text-gray-500">Press Escape to return to normal view • Use ↑↓ arrows to navigate, Enter to dismiss, L to open link</div>
           </div>
           <RemindersAlert 
             allNotes={notes} 
             expanded={true} 
             setNotes={setNotes}
             isRemindersOnlyMode={true}
+          />
+        </div>
+      ) : showReviewsOverdueOnly ? (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">Reviews Overdue Only</h2>
+            <div className="text-sm text-gray-500">Press Escape to return to normal view • Use ↑↓ arrows to navigate, Enter to unfollow</div>
+          </div>
+          <ReviewOverdueAlert 
+            notes={notes} 
+            expanded={true} 
+            setNotes={setNotes}
+            isReviewsOverdueOnlyMode={true}
           />
         </div>
       ) : (

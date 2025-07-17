@@ -439,7 +439,7 @@ const NotesMainContainer = ({
                             value={localSearchQuery}
                             onChange={handleSearchChange}
                             onKeyDown={handleKeyDown}
-                            placeholder="Search notes... (Cmd+Enter to create note, ↓ to navigate)"
+                            placeholder="Search notes... (Cmd+Enter to create note, ↓ to navigate, Shift+G to last note)"
                             rows={1}
                             style={{
                                 resize: 'none',

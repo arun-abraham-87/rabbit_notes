@@ -107,10 +107,21 @@ const NotesList = ({
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'age'
   const [rawNote, setRawNote] = useState(null);
   
+  // Link popup state
+  const [showLinkPopup, setShowLinkPopup] = useState(false);
+  const [linkPopupLinks, setLinkPopupLinks] = useState([]);
+  const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
+  
   // Note navigation state
   const [focusedNoteIndex, setFocusedNoteIndex] = useState(-1);
   const focusedNoteIndexRef = useRef(focusedNoteIndex);
   const safeNotesRef = useRef(safeNotes);
+  
+  // Callback to set focused note index
+  const handleSetFocusedNoteIndex = (index) => {
+    console.log('handleSetFocusedNoteIndex called', index);
+    setFocusedNoteIndex(index);
+  };
   
   // Keep refs in sync with state
   useEffect(() => {
@@ -337,11 +348,14 @@ const NotesList = ({
   // Handle keyboard navigation between notes
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Only handle arrow keys when not in an input/textarea and no modifier keys
-      if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
+      console.log(`Key event: key=${e.key}, shiftKey=${e.shiftKey}, metaKey=${e.metaKey}, ctrlKey=${e.ctrlKey}, altKey=${e.altKey}, target=${e.target.tagName}`);
+      
+      // Only handle keys when not in an input/textarea and no modifier keys (except Shift+G)
+      if (!e.metaKey && !e.ctrlKey && !e.altKey && 
           e.target.tagName !== 'INPUT' && 
           e.target.tagName !== 'TEXTAREA' &&
-          e.target.contentEditable !== 'true') {
+          e.target.contentEditable !== 'true' &&
+          !(e.shiftKey && e.key !== 'G')) {
         
         // Check if any note is in super edit mode - look for the specific purple ring class
         const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
@@ -373,12 +387,12 @@ const NotesList = ({
                 return;
               } else {
                 console.log(`Not on first note (currentIndex: ${currentIndex}), moving to previous note`);
-                // Move to previous note
-                newIndex = currentIndex - 1;
+                // Move to previous note (don't cycle to last)
+                newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex;
               }
             } else {
-              // Move to next note
-              newIndex = currentIndex < safeNotesRef.current.length - 1 ? currentIndex + 1 : 0;
+              // Move to next note (don't cycle back to first)
+              newIndex = currentIndex < safeNotesRef.current.length - 1 ? currentIndex + 1 : currentIndex;
             }
             
             console.log(`Navigating from ${currentIndex} to ${newIndex}, key: ${e.key}`);
@@ -395,6 +409,8 @@ const NotesList = ({
           } else {
             console.log('Super edit mode is active, ignoring arrow key navigation');
           }
+        } else if (e.key === 'G') {
+          console.log(`G key pressed - key: ${e.key}, shiftKey: ${e.shiftKey}, safeNotes.length: ${safeNotesRef.current.length}`);
         } else if (e.key === 's' && focusedNoteIndexRef.current >= 0) {
           e.preventDefault();
           e.stopPropagation();
@@ -418,6 +434,80 @@ const NotesList = ({
                 }
               }
             }
+          }
+        } else if (e.key === 'G' && e.shiftKey && safeNotesRef.current.length > 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          console.log(`Shift+G detected - key: ${e.key}, shiftKey: ${e.shiftKey}, safeNotes.length: ${safeNotesRef.current.length}, focusedNoteIndex: ${focusedNoteIndexRef.current}`);
+          
+          // Move to the last note
+          const lastNoteIndex = safeNotesRef.current.length - 1;
+          console.log(`Shift+G pressed, moving to last note (index: ${lastNoteIndex})`);
+          setFocusedNoteIndex(lastNoteIndex);
+          
+          // Scroll to the last note
+          const lastNote = safeNotesRef.current[lastNoteIndex];
+          if (lastNote) {
+            const noteElement = document.querySelector(`[data-note-id="${lastNote.id}"]`);
+            if (noteElement) {
+              noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+        } else if (e.key === 'l' && focusedNoteIndexRef.current >= 0) {
+          // Open the single link in the focused note if exactly one URL is present
+          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+          if (focusedNote) {
+            // Regex to match URLs (http/https)
+            const urlRegex = /(https?:\/\/[^\s)]+)/g;
+            const matches = [...focusedNote.content.matchAll(urlRegex)].map(m => m[0]);
+            if (matches.length === 1) {
+              window.open(matches[0], '_blank');
+            } else if (matches.length > 1) {
+              // Show popup with multiple links
+              setLinkPopupLinks(matches);
+              setSelectedLinkIndex(0);
+              setShowLinkPopup(true);
+            } else {
+              console.log('No URLs found in note');
+            }
+          }
+        } else if (e.key === 'c') {
+          // Focus the search bar
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('C key pressed - focusing search bar');
+          onReturnToSearch();
+        } else if (e.key === 'x' && focusedNoteIndexRef.current >= 0) {
+          // Delete the focused note with confirmation
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('X key pressed - deleting focused note');
+          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+          if (focusedNote) {
+            handleModalDelete(focusedNote.id);
+          }
+        } else if (showLinkPopup) {
+          // Handle link popup keyboard navigation
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSelectedLinkIndex(prev => prev > 0 ? prev - 1 : linkPopupLinks.length - 1);
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setSelectedLinkIndex(prev => prev < linkPopupLinks.length - 1 ? prev + 1 : 0);
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (linkPopupLinks[selectedLinkIndex]) {
+              window.open(linkPopupLinks[selectedLinkIndex], '_blank');
+            }
+            setShowLinkPopup(false);
+            setLinkPopupLinks([]);
+            setSelectedLinkIndex(0);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setShowLinkPopup(false);
+            setLinkPopupLinks([]);
+            setSelectedLinkIndex(0);
           }
         }
       }
@@ -723,10 +813,11 @@ const NotesList = ({
                     duplicateUrlNoteIds={duplicateUrlNoteIds}
                     duplicateWithinNoteIds={duplicateWithinNoteIds}
                     urlShareSpaceNoteIds={urlShareSpaceNoteIds}
-                    focusMode={focusMode}
-                    setSearchQuery={setSearchQuery}
-                    focusedNoteIndex={focusedNoteIndex}
-                    noteIndex={safeNotes.filter(note => note.pinned).length + index}
+                                      focusMode={focusMode}
+                  setSearchQuery={setSearchQuery}
+                  focusedNoteIndex={focusedNoteIndex}
+                  noteIndex={safeNotes.filter(note => note.pinned).length + index}
+                  onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
                   />
                 ))}
               </div>
@@ -797,6 +888,7 @@ const NotesList = ({
                   setSearchQuery={setSearchQuery}
                   focusedNoteIndex={focusedNoteIndex}
                   noteIndex={index}
+                  onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
                 />
               ))}
             </div>
@@ -914,6 +1006,53 @@ const NotesList = ({
             <pre className="whitespace-pre-wrap font-mono text-sm bg-gray-50 p-4 rounded-lg">
               {rawNote.content}
             </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Link Selection Popup */}
+      {showLinkPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">Select Link to Open</h2>
+              <button
+                onClick={() => {
+                  setShowLinkPopup(false);
+                  setLinkPopupLinks([]);
+                  setSelectedLinkIndex(0);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {linkPopupLinks.map((link, index) => (
+                <div
+                  key={index}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    index === selectedLinkIndex
+                      ? 'bg-blue-100 border-blue-300 text-blue-800'
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  }`}
+                  onClick={() => {
+                    window.open(link, '_blank');
+                    setShowLinkPopup(false);
+                    setLinkPopupLinks([]);
+                    setSelectedLinkIndex(0);
+                  }}
+                >
+                  <div className="text-sm font-medium truncate">{link}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {index === selectedLinkIndex ? 'Press Enter to open' : 'Click or use arrow keys'}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 text-sm text-gray-600">
+              <p>Use ↑↓ arrows to navigate, Enter to open link, Esc to cancel</p>
+            </div>
           </div>
         </div>
       )}

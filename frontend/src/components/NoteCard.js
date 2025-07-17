@@ -56,7 +56,8 @@ const NoteCard = ({
   focusMode = false,
   setSearchQuery,
   focusedNoteIndex = -1,
-  noteIndex = -1
+  noteIndex = -1,
+  onSetFocusedNoteIndex
 }) => {
   const [isSuperEditMode, setIsSuperEditMode] = useState(false);
   const [highlightedLineIndex, setHighlightedLineIndex] = useState(-1);
@@ -261,7 +262,21 @@ const NoteCard = ({
       key={note.id}
       data-note-id={note.id}
       onContextMenu={(e) => onContextMenu(e, note)}
-      className={`group flex flex-col ${
+      onClick={() => {
+        console.log('NoteCard clicked', {noteIndex, isSuperEditMode, isFocused});
+        if (typeof onSetFocusedNoteIndex === 'function' && !isSuperEditMode && !isFocused) {
+          onSetFocusedNoteIndex(noteIndex);
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      onKeyDown={e => {
+        if ((e.key === 'Enter' || e.key === ' ') && typeof onSetFocusedNoteIndex === 'function' && !isSuperEditMode && !isFocused) {
+          e.preventDefault();
+          onSetFocusedNoteIndex(noteIndex);
+        }
+      }}
+      className={`group flex flex-col cursor-pointer ${
         focusMode 
           ? 'px-3 py-3 mb-3 rounded border border-gray-200 bg-white' 
           : 'px-6 py-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100'

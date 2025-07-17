@@ -62,6 +62,8 @@ const NoteCard = ({
   const [isSuperEditMode, setIsSuperEditMode] = useState(false);
   const [highlightedLineIndex, setHighlightedLineIndex] = useState(-1);
   const [highlightedLineText, setHighlightedLineText] = useState('');
+  const [wasOpenedFromSuperEdit, setWasOpenedFromSuperEdit] = useState(false);
+  const [keySequence, setKeySequence] = useState('');
 
   // Check if this note is focused
   const isFocused = focusedNoteIndex === noteIndex;
@@ -107,6 +109,25 @@ const NoteCard = ({
           // Wrap the line with ### if it's not already wrapped
           if (!updatedLines[highlightedLineIndex].trim().startsWith('###')) {
             updatedLines[highlightedLineIndex] = `###${updatedLines[highlightedLineIndex].trim()}###`;
+          }
+          
+          const updatedContent = updatedLines.join('\n');
+          updateNote(note.id, updatedContent);
+          
+          // Stay in super edit mode - don't exit automatically
+          // The user can continue navigating and converting other lines
+        }
+      } else if (e.key === '2') {
+        e.preventDefault();
+        
+        // Find the line in the note content and wrap it with ##
+        const lines = note.content.split('\n');
+        
+        if (highlightedLineIndex !== -1) {
+          const updatedLines = [...lines];
+          // Wrap the line with ## if it's not already wrapped
+          if (!updatedLines[highlightedLineIndex].trim().startsWith('##')) {
+            updatedLines[highlightedLineIndex] = `##${updatedLines[highlightedLineIndex].trim()}##`;
           }
           
           const updatedContent = updatedLines.join('\n');
@@ -277,11 +298,69 @@ const NoteCard = ({
           // Update the highlighted line text
           setHighlightedLineText(newText.trim());
         }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Open the highlighted line in inline editor
+        if (highlightedLineIndex !== -1) {
+          const lines = note.content.split('\n');
+          const lineToEdit = lines[highlightedLineIndex];
+          
+          // Set the editing line and content
+          setEditingLine({ noteId: note.id, lineIndex: highlightedLineIndex });
+          setEditedLineContent(lineToEdit);
+          
+          // Mark that this was opened from superedit mode
+          setWasOpenedFromSuperEdit(true);
+          
+          // Exit super edit mode since we're now in inline editing mode
+          setIsSuperEditMode(false);
+          setHighlightedLineIndex(-1);
+          setHighlightedLineText('');
+        }
+      } else if (e.key === 'h') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Start or continue the 'h' sequence
+        setKeySequence('h');
+        
+        // Clear the sequence after a delay
+        setTimeout(() => {
+          setKeySequence('');
+        }, 1000);
+      } else if (e.key === 'b' && keySequence === 'h') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Hide bullets for the highlighted line
+        if (highlightedLineIndex !== -1) {
+          const lines = note.content.split('\n');
+          const updatedLines = [...lines];
+          const currentLine = updatedLines[highlightedLineIndex];
+          
+          // Remove bullet points and indentation
+          let newLine = currentLine.replace(/^[•\-\s]+/, ''); // Remove bullets and leading spaces
+          newLine = newLine.replace(/^\s+/, ''); // Remove any remaining leading spaces
+          
+          updatedLines[highlightedLineIndex] = newLine;
+          
+          const updatedContent = updatedLines.join('\n');
+          updateNote(note.id, updatedContent);
+          
+          // Update the highlighted line text
+          setHighlightedLineText(newLine.trim());
+        }
+        
+        // Clear the key sequence
+        setKeySequence('');
       } else if (e.key === 'Escape') {
         // Exit super edit mode
         setIsSuperEditMode(false);
         setHighlightedLineIndex(-1);
         setHighlightedLineText('');
+        setKeySequence('');
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
         e.stopPropagation();
@@ -362,6 +441,37 @@ const NoteCard = ({
         document.removeEventListener('click', handleClickOutside);
       };
     }
+    
+    // Listen for return to superedit mode event
+    const handleReturnToSuperEdit = (event) => {
+      if (event.detail && wasOpenedFromSuperEdit) {
+        // Re-enter superedit mode
+        setIsSuperEditMode(true);
+        
+        // Use the line index from the event detail or fall back to the editing line
+        const lineIndex = event.detail.lineIndex || editingLine?.lineIndex || 0;
+        setHighlightedLineIndex(lineIndex);
+        setWasOpenedFromSuperEdit(false);
+        
+        // Update the highlighted line text
+        const lines = note.content.split('\n');
+        if (lineIndex >= 0 && lineIndex < lines.length) {
+          setHighlightedLineText(lines[lineIndex].trim());
+        } else {
+          // Find the first non-empty line if the line index is invalid
+          const firstNonEmptyLineIndex = lines.findIndex(line => line.trim() !== '');
+          if (firstNonEmptyLineIndex !== -1) {
+            setHighlightedLineIndex(firstNonEmptyLineIndex);
+            setHighlightedLineText(lines[firstNonEmptyLineIndex].trim());
+          }
+        }
+      }
+    };
+    
+    document.addEventListener('returnToSuperEdit', handleReturnToSuperEdit);
+    return () => {
+      document.removeEventListener('returnToSuperEdit', handleReturnToSuperEdit);
+    };
   }, [isSuperEditMode, highlightedLineIndex, note.content, note.id, updateNote]);
 
   // Pass the highlighted line info to NoteContent for visual highlighting
@@ -394,7 +504,8 @@ const NoteCard = ({
     // Add super edit mode props
     isSuperEditMode,
     highlightedLineIndex,
-    highlightedLineText
+    highlightedLineText,
+    wasOpenedFromSuperEdit
   };
 
   return (
@@ -431,13 +542,13 @@ const NoteCard = ({
     >
       {isSuperEditMode && (
         <div className="absolute top-2 right-2 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
-          Super Edit Mode - Press 1 for H1, 0 to clear format, x to delete line, a to add line, Shift+A for caps, Shift+~ to cycle case (lower→sentence→title→upper), ↑↓ to navigate, Shift+↑↓ to move lines, Esc to exit
+          Super Edit Mode - Press 1 for H1, 2 for H2, 0 to clear format, x to delete line, a to add line, Enter to edit line, h+b to hide bullets, Shift+A for caps, Shift+~ to cycle case (lower→sentence→title→upper), ↑↓ to navigate, Shift+↑↓ to move lines, Esc to exit
         </div>
       )}
       
       {isFocused && !isSuperEditMode && (
         <div className="absolute top-2 right-2 bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
-          Press 's' to enter Super Edit Mode
+          Press Enter to enter Super Edit Mode
         </div>
       )}
       

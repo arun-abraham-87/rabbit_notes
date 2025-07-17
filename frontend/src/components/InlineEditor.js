@@ -13,7 +13,8 @@ import React, { useRef, useEffect, useState } from 'react';
  * onDelete        – fn()         called on Delete button click
  * inputClass      – extra Tailwind classes for the textarea (optional)
  */
-const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '' }) => {
+const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false }) => {
+  console.log('InlineEditor props:', { isSuperEditMode, wasOpenedFromSuperEdit });
   const inputRef = useRef(null);
   const [headerType, setHeaderType] = useState(null); // 'h1', 'h2', or null
   const [displayText, setDisplayText] = useState('');
@@ -100,20 +101,31 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       return;
     }
 
-    // Handle regular Enter - create new line
+    // Handle regular Enter - create new line or save based on mode
     if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
-      // Add newline to current text
-      const newText = displayText + '\n';
-      setDisplayText(newText);
-      // Trigger resize after the newline is added
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.style.height = 'auto';
-          inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 200) + 'px';
-        }
-      }, 0);
-      return;
+      
+      console.log('Enter pressed in InlineEditor:', { isSuperEditMode, wasOpenedFromSuperEdit });
+      
+      if (isSuperEditMode || wasOpenedFromSuperEdit) {
+        // In superedit mode or opened from superedit mode, Enter saves the line
+        console.log('Saving from superedit mode');
+        handleSave();
+        return;
+      } else {
+        // In normal mode, Enter creates a new line
+        console.log('Creating new line in normal mode');
+        const newText = displayText + '\n';
+        setDisplayText(newText);
+        // Trigger resize after the newline is added
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.style.height = 'auto';
+            inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 200) + 'px';
+          }
+        }, 0);
+        return;
+      }
     }
   };
 
@@ -129,6 +141,15 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     }
     
     onSave(finalText);
+    
+    // If this was opened from superedit mode, trigger a return to superedit
+    if (wasOpenedFromSuperEdit) {
+      // Dispatch a custom event to signal return to superedit mode
+      const event = new CustomEvent('returnToSuperEdit', {
+        detail: { lineIndex: null } // The line index will be determined by the parent component
+      });
+      document.dispatchEvent(event);
+    }
   };
 
   const closeUrlPopup = (newText) => {

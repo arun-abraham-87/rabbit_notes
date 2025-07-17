@@ -43,7 +43,8 @@ export default function NoteContent({
     // Super edit mode props
     isSuperEditMode = false,
     highlightedLineIndex = -1,
-    highlightedLineText = ''
+    highlightedLineText = '',
+    wasOpenedFromSuperEdit = false
 }) {
     const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
     const [selectedRows, setSelectedRows] = useState(new Set());
@@ -284,6 +285,8 @@ export default function NoteContent({
             onSave={(newText) => handleSaveEdit(newText, idx, isH1, isH2)}
             onCancel={() => setEditingLine({ noteId: null, lineIndex: null })}
             onDelete={() => handleDeleteLine(idx)}
+            isSuperEditMode={isSuperEditMode}
+            wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
         />
     );
 

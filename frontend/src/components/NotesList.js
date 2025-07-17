@@ -453,7 +453,7 @@ const NotesList = ({
           }
         } else if (e.key === 'G') {
           console.log(`G key pressed - key: ${e.key}, shiftKey: ${e.shiftKey}, safeNotes.length: ${safeNotesRef.current.length}`);
-        } else if (e.key === 's' && focusedNoteIndexRef.current >= 0) {
+        } else if (e.key === 'Enter' && focusedNoteIndexRef.current >= 0) {
           e.preventDefault();
           e.stopPropagation();
           

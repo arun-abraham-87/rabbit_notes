@@ -46,9 +46,17 @@ const timeZones = [
   { label: 'NZDT (Auckland, +13:00)', value: 'Pacific/Auckland' },
 ];
 
-const AddBookmarkModal = ({ isOpen, onClose, onSave }) => {
-  const [customText, setCustomText] = useState('');
-  const [url, setUrl] = useState('');
+const AddBookmarkModal = ({ isOpen, onClose, onSave, initialCustomText = '', initialUrl = '', isEditMode = false }) => {
+  const [customText, setCustomText] = useState(initialCustomText);
+  const [url, setUrl] = useState(initialUrl);
+
+  // Reset form when modal opens/closes or when switching between add/edit modes
+  useEffect(() => {
+    if (isOpen) {
+      setCustomText(initialCustomText);
+      setUrl(initialUrl);
+    }
+  }, [isOpen, initialCustomText, initialUrl]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -71,7 +79,7 @@ const AddBookmarkModal = ({ isOpen, onClose, onSave }) => {
       <div className="bg-white rounded-lg shadow-xl w-96 max-w-md mx-4">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">
-            Add Bookmark
+            {isEditMode ? 'Edit Bookmark' : 'Add Bookmark'}
           </h3>
           <button
             onClick={handleClose}
@@ -125,7 +133,7 @@ const AddBookmarkModal = ({ isOpen, onClose, onSave }) => {
               type="submit"
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              Add Bookmark
+              {isEditMode ? 'Update Bookmark' : 'Add Bookmark'}
             </button>
           </div>
         </form>
@@ -338,6 +346,9 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [selectedBookmark, setSelectedBookmark] = useState(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [bookmarkToDelete, setBookmarkToDelete] = useState(null);
+  // Add state for editing bookmark
+  const [showEditBookmarkModal, setShowEditBookmarkModal] = useState(false);
+  const [editingBookmark, setEditingBookmark] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
@@ -693,6 +704,78 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     }
   };
 
+  const handleConvertQuickLinksToBookmarks = async () => {
+    if (!uniqueUrls.length) return;
+    try {
+      // 1. Add bookmarks for each quick link if not already a bookmark
+      for (const { url, label } of uniqueUrls) {
+        // Check if already a bookmark
+        const alreadyBookmarked = notes.some(note =>
+          note.content.includes(url) &&
+          note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark'))
+        );
+        if (!alreadyBookmarked) {
+          const bookmarkContent = label
+            ? `[${label}](${url})\nmeta::bookmark`
+            : `${url}\nmeta::bookmark`;
+          await addNewNoteCommon(bookmarkContent);
+        }
+      }
+      // 2. Remove meta::quick_links from quick link notes
+      const updatedNotes = await Promise.all(notes.map(async note => {
+        if (note.content.split('\n').some(line => line.trim().startsWith('meta::quick_links'))) {
+          const updatedContent = note.content
+            .split('\n')
+            .filter(line => !line.trim().startsWith('meta::quick_links'))
+            .join('\n');
+          await updateNoteById(note.id, updatedContent);
+          return { ...note, content: updatedContent };
+        }
+        return note;
+      }));
+      setNotes(updatedNotes);
+      if (window.toast) window.toast.success('All quick links converted to bookmarks!');
+      else alert('All quick links converted to bookmarks!');
+    } catch (err) {
+      if (window.toast) window.toast.error('Error converting quick links.');
+      else alert('Error converting quick links.');
+    }
+  };
+
+  // Handler to open edit modal
+  const handleEditBookmark = (bookmark) => {
+    setEditingBookmark(bookmark);
+    setShowEditBookmarkModal(true);
+    setShowBookmarkContextMenu(false);
+  };
+
+  // Handler to save edited bookmark
+  const handleSaveEditedBookmark = async (customText, url) => {
+    if (!editingBookmark) return;
+    const note = notes.find(n => n.id === editingBookmark.noteId);
+    if (!note) return;
+    // Replace the bookmark line
+    const lines = note.content.split('\n');
+    const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
+    const updatedLines = lines.map(line => {
+      linkRegex.lastIndex = 0;
+      let match;
+      while ((match = linkRegex.exec(line)) !== null) {
+        const urlMatch = match[2] || match[3];
+        const labelMatch = match[1] || null;
+        if (urlMatch === editingBookmark.url && labelMatch === editingBookmark.label) {
+          return customText ? `[${customText}](${url})` : url;
+        }
+      }
+      return line;
+    });
+    const updatedContent = updatedLines.join('\n');
+    await updateNoteById(note.id, updatedContent);
+    setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+    setShowEditBookmarkModal(false);
+    setEditingBookmark(null);
+  };
+
   return (
     <>
       {/* Hover Popup */}
@@ -779,6 +862,15 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
               <h2 className="font-semibold text-gray-800 mb-2 flex justify-between items-center cursor-pointer p-1.5 hover:bg-indigo-50 rounded-lg text-base">
                 <span className="truncate flex-1">Quick Links</span>
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleConvertQuickLinksToBookmarks}
+                    className="p-1 rounded hover:bg-green-100"
+                    title="Convert all Quick Links to Bookmarks"
+                  >
+                    <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1093,6 +1185,15 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                View Note
              </li>
              <li
+               className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+               onClick={() => handleEditBookmark(selectedBookmark)}
+             >
+               <div className="flex items-center gap-2">
+                 <PencilSquareIcon className="h-4 w-4" />
+                 Edit
+               </div>
+             </li>
+             <li
                className="px-4 py-2 hover:bg-red-50 cursor-pointer flex items-center gap-2 text-gray-700 hover:text-red-600 transition-colors"
                onClick={() => handleDeleteBookmark(selectedBookmark)}
                title="Delete this bookmark"
@@ -1111,6 +1212,18 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
            </ul>
          </div>
        )}
+
+      {/* Edit Bookmark Modal */}
+      {showEditBookmarkModal && editingBookmark && (
+        <AddBookmarkModal
+          isOpen={showEditBookmarkModal}
+          onClose={() => setShowEditBookmarkModal(false)}
+          onSave={handleSaveEditedBookmark}
+          initialCustomText={editingBookmark.label || ''}
+          initialUrl={editingBookmark.url || ''}
+          isEditMode={true}
+        />
+      )}
     </>
   );
 };

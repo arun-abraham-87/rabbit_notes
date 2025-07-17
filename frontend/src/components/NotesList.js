@@ -350,6 +350,39 @@ const NotesList = ({
     const handleKeyDown = (e) => {
       console.log(`Key event: key=${e.key}, shiftKey=${e.shiftKey}, metaKey=${e.metaKey}, ctrlKey=${e.ctrlKey}, altKey=${e.altKey}, target=${e.target.tagName}`);
       
+      // Handle link popup keyboard navigation first (regardless of input/textarea state)
+      if (showLinkPopup) {
+        console.log('Link popup keyboard event:', e.key, 'selectedLinkIndex:', selectedLinkIndex, 'linkPopupLinks.length:', linkPopupLinks.length);
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          setSelectedLinkIndex(prev => prev > 0 ? prev - 1 : linkPopupLinks.length - 1);
+          return;
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          setSelectedLinkIndex(prev => prev < linkPopupLinks.length - 1 ? prev + 1 : 0);
+          return;
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (linkPopupLinks[selectedLinkIndex]) {
+            window.open(linkPopupLinks[selectedLinkIndex].url, '_blank');
+          }
+          setShowLinkPopup(false);
+          setLinkPopupLinks([]);
+          setSelectedLinkIndex(0);
+          return;
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowLinkPopup(false);
+          setLinkPopupLinks([]);
+          setSelectedLinkIndex(0);
+          return;
+        }
+      }
+      
       // Only handle keys when not in an input/textarea and no modifier keys (except Shift+G)
       if (!e.metaKey && !e.ctrlKey && !e.altKey && 
           e.target.tagName !== 'INPUT' && 
@@ -360,34 +393,7 @@ const NotesList = ({
         // Check if any note is in super edit mode - look for the specific purple ring class
         const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
         
-        if (showLinkPopup) {
-          // Handle link popup keyboard navigation
-          console.log('Link popup keyboard event:', e.key, 'selectedLinkIndex:', selectedLinkIndex, 'linkPopupLinks.length:', linkPopupLinks.length);
-          if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            e.stopPropagation();
-            setSelectedLinkIndex(prev => prev > 0 ? prev - 1 : linkPopupLinks.length - 1);
-          } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            e.stopPropagation();
-            setSelectedLinkIndex(prev => prev < linkPopupLinks.length - 1 ? prev + 1 : 0);
-          } else if (e.key === 'Enter') {
-            e.preventDefault();
-            e.stopPropagation();
-            if (linkPopupLinks[selectedLinkIndex]) {
-              window.open(linkPopupLinks[selectedLinkIndex], '_blank');
-            }
-            setShowLinkPopup(false);
-            setLinkPopupLinks([]);
-            setSelectedLinkIndex(0);
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            e.stopPropagation();
-            setShowLinkPopup(false);
-            setLinkPopupLinks([]);
-            setSelectedLinkIndex(0);
-          }
-        } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
           // Only handle note navigation if no note is in super edit mode
           if (!isAnyNoteInSuperEditMode) {
             e.preventDefault();
@@ -485,14 +491,37 @@ const NotesList = ({
           // Open the single link in the focused note if exactly one URL is present
           const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
           if (focusedNote) {
-            // Regex to match URLs (http/https)
-            const urlRegex = /(https?:\/\/[^\s)]+)/g;
-            const matches = [...focusedNote.content.matchAll(urlRegex)].map(m => m[0]);
-            if (matches.length === 1) {
-              window.open(matches[0], '_blank');
-            } else if (matches.length > 1) {
+            // Regex to match both markdown-style links [text](url) and plain URLs
+            const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+            const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
+            
+            const links = [];
+            
+            // Extract markdown-style links first
+            let match;
+            while ((match = markdownLinkRegex.exec(focusedNote.content)) !== null) {
+              links.push({
+                url: match[2],
+                text: match[1]
+              });
+            }
+            
+            // Extract plain URLs (excluding those already found in markdown links)
+            const markdownUrls = links.map(link => link.url);
+            while ((match = plainUrlRegex.exec(focusedNote.content)) !== null) {
+              if (!markdownUrls.includes(match[1])) {
+                links.push({
+                  url: match[1],
+                  text: match[1] // Use URL as text for plain URLs
+                });
+              }
+            }
+            
+            if (links.length === 1) {
+              window.open(links[0].url, '_blank');
+            } else if (links.length > 1) {
               // Show popup with multiple links
-              setLinkPopupLinks(matches);
+              setLinkPopupLinks(links);
               setSelectedLinkIndex(0);
               setShowLinkPopup(true);
             } else {
@@ -518,12 +547,18 @@ const NotesList = ({
       }
     };
 
-    console.log('Setting up keyboard navigation listener');
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => {
-      console.log('Cleaning up keyboard navigation listener');
-      document.removeEventListener('keydown', handleKeyDown, true);
-    };
+    // Only add the event listener if we're on the notes page
+    const currentPath = window.location.pathname;
+    const isNotesPage = currentPath === '/notes';
+    
+    if (isNotesPage) {
+      console.log('NotesList: Setting up keyboard navigation listener');
+      document.addEventListener('keydown', handleKeyDown, true);
+      return () => {
+        console.log('NotesList: Cleaning up keyboard navigation listener');
+        document.removeEventListener('keydown', handleKeyDown, true);
+      };
+    }
   }, [safeNotes.length]); // Only depend on safeNotes.length, not the entire array or focusedNoteIndex
 
   // Reset focused note when notes change
@@ -542,6 +577,47 @@ const NotesList = ({
       }
     }
   }, [showLinkPopup]);
+
+  // Add separate keyboard event listener for link popup
+  useEffect(() => {
+    if (!showLinkPopup) return;
+
+    const handleLinkPopupKeyDown = (e) => {
+      console.log('Link popup keyboard event:', e.key, 'selectedLinkIndex:', selectedLinkIndex, 'linkPopupLinks.length:', linkPopupLinks.length);
+      
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedLinkIndex(prev => prev > 0 ? prev - 1 : linkPopupLinks.length - 1);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedLinkIndex(prev => prev < linkPopupLinks.length - 1 ? prev + 1 : 0);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (linkPopupLinks[selectedLinkIndex]) {
+          window.open(linkPopupLinks[selectedLinkIndex].url, '_blank');
+        }
+        setShowLinkPopup(false);
+        setLinkPopupLinks([]);
+        setSelectedLinkIndex(0);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowLinkPopup(false);
+        setLinkPopupLinks([]);
+        setSelectedLinkIndex(0);
+      }
+    };
+
+    // Add event listener with capture to ensure it gets handled first
+    document.addEventListener('keydown', handleLinkPopupKeyDown, true);
+    
+    return () => {
+      document.removeEventListener('keydown', handleLinkPopupKeyDown, true);
+    };
+  }, [showLinkPopup, selectedLinkIndex, linkPopupLinks]);
 
   // Listen for focus first note event from search bar
   useEffect(() => {
@@ -1058,13 +1134,13 @@ const NotesList = ({
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                   }`}
                   onClick={() => {
-                    window.open(link, '_blank');
+                    window.open(link.url, '_blank');
                     setShowLinkPopup(false);
                     setLinkPopupLinks([]);
                     setSelectedLinkIndex(0);
                   }}
                 >
-                  <div className="text-sm font-medium truncate">{link}</div>
+                  <div className="text-sm font-medium truncate">{link.text || link.url}</div>
                   <div className="text-xs text-gray-500 mt-1">
                     {index === selectedLinkIndex ? 'Press Enter to open' : 'Click or use arrow keys'}
                   </div>

@@ -198,23 +198,37 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         
         if (e.key === 'c') {
           e.preventDefault();
+          e.stopPropagation();
           openEditor('add', '', null, []); // No meta tags, so watch option is not selected
         } else if (e.key === 'r') {
           e.preventDefault();
+          e.stopPropagation();
           setShowRemindersOnly(true);
         } else if (e.key === 'n') {
           e.preventDefault();
+          e.stopPropagation();
           setActivePage('notes');
         } else if (e.key === 'Escape' && showRemindersOnly) {
           e.preventDefault();
+          e.stopPropagation();
           setShowRemindersOnly(false);
         }
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [openEditor, showRemindersOnly]);
+    // Only add the event listener if we're on the dashboard page
+    const currentPath = window.location.pathname;
+    const isDashboardPage = currentPath === '/' || currentPath === '/dashboard';
+    
+    if (isDashboardPage) {
+      console.log('Dashboard: Setting up keyboard event listener');
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        console.log('Dashboard: Cleaning up keyboard event listener');
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [openEditor, showRemindersOnly, setActivePage]);
 
   const getCompactTimezones = () => {
     const timezonesToShow = selectedTimezones.length > 0 ? selectedTimezones : [

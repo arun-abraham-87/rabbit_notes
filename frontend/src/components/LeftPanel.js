@@ -241,6 +241,10 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [currentDate, setCurrentDate] = useState(new Date());
   const [totals, setTotals] = useState(defaultSettings.totals);
   const [isHovered, setIsHovered] = useState(false);
+  const [isPermanentlyVisible, setIsPermanentlyVisible] = useState(() => {
+    const saved = localStorage.getItem('sidebarPermanentlyVisible');
+    return saved ? JSON.parse(saved) : false;
+  });
 
   useEffect(() => {
     localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
@@ -436,23 +440,50 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       )}
 
       {/* Small visible panel */}
-      <div 
-        className="fixed left-0 top-0 h-full w-2 bg-indigo-600 hover:bg-indigo-700 transition-colors z-40 cursor-pointer"
-        onMouseEnter={() => setIsHovered(true)}
-        style={{ pointerEvents: 'auto' }}
-      />
+      {!isPermanentlyVisible && (
+        <div 
+          className="fixed left-0 top-0 h-full w-2 bg-indigo-600 hover:bg-indigo-700 transition-colors z-40 cursor-pointer"
+          onMouseEnter={() => setIsHovered(true)}
+          style={{ pointerEvents: 'auto' }}
+        />
+      )}
 
       {/* Main sliding panel */}
       <div 
         className={`fixed left-0 top-0 h-full bg-slate-50 shadow-lg transition-all duration-300 ease-in-out z-30 ${
-          isHovered ? 'w-80 opacity-100' : 'w-0 opacity-0'
+          (isHovered || isPermanentlyVisible) ? 'w-80 opacity-100' : 'w-0 opacity-0'
         }`}
-        onMouseLeave={() => setIsHovered(false)}
-        style={{ pointerEvents: isHovered ? 'auto' : 'none' }}
+        onMouseLeave={() => !isPermanentlyVisible && setIsHovered(false)}
+        style={{ pointerEvents: (isHovered || isPermanentlyVisible) ? 'auto' : 'none' }}
       >
         <div className={`w-80 h-full p-3 flex flex-col overflow-hidden transition-opacity duration-300 ${
-          isHovered ? 'opacity-100' : 'opacity-0'
+          (isHovered || isPermanentlyVisible) ? 'opacity-100' : 'opacity-0'
         }`}>
+          {/* Pin/unpin sidebar button */}
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => {
+                setIsPermanentlyVisible(v => {
+                  const newVal = !v;
+                  localStorage.setItem('sidebarPermanentlyVisible', JSON.stringify(newVal));
+                  if (!newVal) setIsHovered(false); // Hide if unpinned and not hovered
+                  return newVal;
+                });
+              }}
+              className="p-1 rounded hover:bg-indigo-100"
+              title={isPermanentlyVisible ? 'Unpin sidebar' : 'Pin sidebar open'}
+            >
+              {isPermanentlyVisible ? (
+                <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 19V5h12v14" />
+                </svg>
+              ) : (
+                <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 5v14h12V5" />
+                </svg>
+              )}
+            </button>
+          </div>
           <div className="flex-1 space-y-2 overflow-y-auto overflow-x-hidden">
             {/* custom right‑click menu */}
             {showLinkMenu && (

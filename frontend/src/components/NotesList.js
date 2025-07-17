@@ -108,6 +108,17 @@ const NotesList = ({
   
   // Note navigation state
   const [focusedNoteIndex, setFocusedNoteIndex] = useState(-1);
+  const focusedNoteIndexRef = useRef(focusedNoteIndex);
+  const safeNotesRef = useRef(safeNotes);
+  
+  // Keep refs in sync with state
+  useEffect(() => {
+    focusedNoteIndexRef.current = focusedNoteIndex;
+  }, [focusedNoteIndex]);
+  
+  useEffect(() => {
+    safeNotesRef.current = safeNotes;
+  }, [safeNotes]);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -331,8 +342,8 @@ const NotesList = ({
           e.target.tagName !== 'TEXTAREA' &&
           e.target.contentEditable !== 'true') {
         
-        // Check if any note is in super edit mode
-        const isAnyNoteInSuperEditMode = document.querySelector('.ring-purple-500');
+        // Check if any note is in super edit mode - look for the specific purple ring class
+        const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
         
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
           // Only handle note navigation if no note is in super edit mode
@@ -340,35 +351,45 @@ const NotesList = ({
             e.preventDefault();
             e.stopPropagation();
             
-            if (safeNotes.length === 0) return;
+            console.log(`Arrow key pressed: ${e.key}, focusedNoteIndex: ${focusedNoteIndexRef.current}, safeNotes.length: ${safeNotesRef.current.length}`);
+            
+            if (safeNotesRef.current.length === 0) return;
+            
+            // If no note is currently focused, start with the first note
+            let currentIndex = focusedNoteIndexRef.current;
+            if (currentIndex === -1) {
+              currentIndex = 0;
+            }
             
             let newIndex;
             if (e.key === 'ArrowUp') {
               // Move to previous note
-              newIndex = focusedNoteIndex > 0 ? focusedNoteIndex - 1 : safeNotes.length - 1;
+              newIndex = currentIndex > 0 ? currentIndex - 1 : safeNotesRef.current.length - 1;
             } else {
               // Move to next note
-              newIndex = focusedNoteIndex < safeNotes.length - 1 ? focusedNoteIndex + 1 : 0;
+              newIndex = currentIndex < safeNotesRef.current.length - 1 ? currentIndex + 1 : 0;
             }
             
-            console.log(`Navigating from ${focusedNoteIndex} to ${newIndex}, key: ${e.key}`);
+            console.log(`Navigating from ${currentIndex} to ${newIndex}, key: ${e.key}`);
             setFocusedNoteIndex(newIndex);
             
             // Scroll to the focused note
-            const focusedNote = safeNotes[newIndex];
+            const focusedNote = safeNotesRef.current[newIndex];
             if (focusedNote) {
               const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
               if (noteElement) {
                 noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }
             }
+          } else {
+            console.log('Super edit mode is active, ignoring arrow key navigation');
           }
-        } else if (e.key === 's' && focusedNoteIndex >= 0) {
+        } else if (e.key === 's' && focusedNoteIndexRef.current >= 0) {
           e.preventDefault();
           e.stopPropagation();
           
           // Enter super edit mode for the focused note
-          const focusedNote = safeNotes[focusedNoteIndex];
+          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
           if (focusedNote) {
             const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
             if (noteElement) {
@@ -391,13 +412,39 @@ const NotesList = ({
       }
     };
 
+    console.log('Setting up keyboard navigation listener');
     document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [focusedNoteIndex, safeNotes]);
+    return () => {
+      console.log('Cleaning up keyboard navigation listener');
+      document.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [safeNotes.length]); // Only depend on safeNotes.length, not the entire array or focusedNoteIndex
 
   // Reset focused note when notes change
   useEffect(() => {
     setFocusedNoteIndex(-1);
+  }, [safeNotes]);
+
+  // Listen for focus first note event from search bar
+  useEffect(() => {
+    const handleFocusFirstNote = () => {
+      if (safeNotes.length > 0) {
+        setFocusedNoteIndex(0);
+        // Scroll to the first note
+        const firstNote = safeNotes[0];
+        if (firstNote) {
+          const noteElement = document.querySelector(`[data-note-id="${firstNote.id}"]`);
+          if (noteElement) {
+            noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+        // Add a visual indicator that note navigation is active
+        console.log('Note navigation activated - use arrow keys to navigate between notes');
+      }
+    };
+
+    document.addEventListener('focusFirstNote', handleFocusFirstNote);
+    return () => document.removeEventListener('focusFirstNote', handleFocusFirstNote);
   }, [safeNotes]);
 
   // Helper function to check if a note is a meeting note

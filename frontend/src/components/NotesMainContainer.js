@@ -307,7 +307,16 @@ const NotesMainContainer = ({
                 return;
             }
             
-
+            // Handle down arrow to move to first note when search bar is focused
+            if (e.key === "ArrowDown" && filteredNotes.length > 0) {
+                e.preventDefault();
+                // Remove focus from search bar
+                searchInputRef.current?.blur();
+                // Trigger focus to first note by dispatching a custom event
+                const focusFirstNoteEvent = new CustomEvent('focusFirstNote');
+                document.dispatchEvent(focusFirstNoteEvent);
+                return;
+            }
             
             // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && localSearchQuery.trim()) {
@@ -404,7 +413,7 @@ const NotesMainContainer = ({
                             value={localSearchQuery}
                             onChange={handleSearchChange}
                             onKeyDown={handleKeyDown}
-                            placeholder="Search notes... (Cmd+Enter to create note)"
+                            placeholder="Search notes... (Cmd+Enter to create note, ↓ to navigate)"
                             rows={1}
                             style={{
                                 resize: 'none',

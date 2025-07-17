@@ -46,6 +46,94 @@ const timeZones = [
   { label: 'NZDT (Auckland, +13:00)', value: 'Pacific/Auckland' },
 ];
 
+const AddBookmarkModal = ({ isOpen, onClose, onSave }) => {
+  const [customText, setCustomText] = useState('');
+  const [url, setUrl] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (url.trim()) {
+      onSave(customText.trim(), url.trim());
+      onClose();
+    }
+  };
+
+  const handleClose = () => {
+    setCustomText('');
+    setUrl('');
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-96 max-w-md mx-4">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">
+            Add Bookmark
+          </h3>
+          <button
+            onClick={handleClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="mb-4">
+            <label htmlFor="customText" className="block text-sm font-medium text-gray-700 mb-2">
+              Custom Text (optional)
+            </label>
+            <input
+              type="text"
+              id="customText"
+              value={customText}
+              onChange={(e) => setCustomText(e.target.value)}
+              placeholder="Enter custom text for the link"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-2">
+              URL
+            </label>
+            <input
+              type="url"
+              id="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Enter URL"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Add Bookmark
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const removeBookmarkFromNotes = (url, notes, setNotes) => {
   if (!window.confirm('Remove this bookmark from Quick links?')) return;
   const newNotes = notes.map(note => {
@@ -242,6 +330,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const quickNoteInputRef = useRef(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [totals, setTotals] = useState(defaultSettings.totals);
+  const [showAddBookmarkModal, setShowAddBookmarkModal] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
@@ -365,13 +454,49 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           const key = `${url}|${label}`;
           if (!seen.has(key)) {
             seen.add(key);
-            list.push({ url, label });
+            const isPinned = note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark_pinned'));
+            list.push({ url, label, noteId: note.id, isPinned });
           }
         }
       }
     });
     return list;
   }, [notes]);
+
+  const handlePinBookmark = async (bookmark) => {
+    try {
+      // Find the note containing this bookmark
+      const note = notes.find(n => n.id === bookmark.noteId);
+      if (!note) return;
+
+      // Split content into lines
+      const lines = note.content.split('\n');
+      
+      // Check if already pinned
+      const isCurrentlyPinned = lines.some(line => line.trim().startsWith('meta::bookmark_pinned'));
+      
+      let updatedLines;
+      if (isCurrentlyPinned) {
+        // Remove the pinned tag
+        updatedLines = lines.filter(line => !line.trim().startsWith('meta::bookmark_pinned'));
+      } else {
+        // Add the pinned tag
+        updatedLines = [...lines, 'meta::bookmark_pinned'];
+      }
+      
+      // Join lines back together
+      const updatedContent = updatedLines.join('\n');
+      
+      // Update the note
+      await updateNoteById(note.id, updatedContent);
+      
+      // Update the notes state
+      setNotes(notes.map(n => n.id === note.id ? { ...n, content: updatedContent } : n));
+      
+    } catch (error) {
+      console.error('Error updating bookmark pin status:', error);
+    }
+  };
 
   const handleViewHover = (e, note, section) => {
     // Only show popup if section is locked
@@ -414,6 +539,23 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       clearTimeout(hoverTimeout);
     }
     setHoveredNote(null);
+  };
+
+  const handleAddBookmark = async (customText, url) => {
+    try {
+      // Create a new note with the bookmark
+      const bookmarkContent = customText 
+        ? `[${customText}](${url})\nmeta::bookmark`
+        : `${url}\nmeta::bookmark`;
+      
+      const newNote = await addNewNoteCommon(bookmarkContent);
+      
+      // Add the new note to the notes state
+      setNotes([...notes, newNote]);
+      
+    } catch (error) {
+      console.error('Error adding bookmark:', error);
+    }
   };
 
   return (
@@ -576,6 +718,18 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      setShowAddBookmarkModal(true);
+                    }}
+                    className="p-1 rounded hover:bg-indigo-100"
+                    title="Add bookmark"
+                  >
+                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setLockedSections(prev => ({ ...prev, bookmarks: !prev.bookmarks }));
                     }}
                     className="p-1 rounded hover:bg-indigo-100"
@@ -601,7 +755,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                 bookmarkedUrls.length === 0 ? (
                   <p className="text-gray-500 text-sm">No Bookmarks</p>
                 ) : (
-                  bookmarkedUrls.map(({ url, label }, idx) => {
+                  bookmarkedUrls.map(({ url, label, isPinned }, idx) => {
                     let displayText = label || (() => {
                       try { return new URL(url).hostname.replace(/^www\./, ''); }
                       catch { return url; }
@@ -620,6 +774,20 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                         >
                           {displayText}
                         </a>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePinBookmark({ url, label, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId });
+                          }}
+                          className={`ml-2 p-1 rounded hover:bg-indigo-100 transition-colors ${
+                            isPinned ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'
+                          }`}
+                          title={isPinned ? 'Unpin bookmark' : 'Pin bookmark'}
+                        >
+                          <svg className="h-4 w-4" fill={isPinned ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                          </svg>
+                        </button>
                       </div>
                     );
                   })
@@ -666,6 +834,13 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       {showSettings && (
         <Settings onClose={() => setShowSettings(false)} />
       )}
+
+      {/* Add Bookmark Modal */}
+      <AddBookmarkModal
+        isOpen={showAddBookmarkModal}
+        onClose={() => setShowAddBookmarkModal(false)}
+        onSave={handleAddBookmark}
+      />
 
       {isContextMenuOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

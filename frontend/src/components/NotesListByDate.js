@@ -111,6 +111,7 @@ function NotesListByDate({ notes, searchQuery }) {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-indigo-600 hover:text-indigo-700 hover:underline transition-colors duration-200"
+                                title={url}
                               >
                                 {label}
                               </a>
@@ -128,6 +129,7 @@ function NotesListByDate({ notes, searchQuery }) {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-indigo-600 hover:text-indigo-700 hover:underline transition-colors duration-200"
+                                title={url}
                               >
                                 {label || url}
                               </a>

@@ -366,6 +366,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-600 underline"
+          title={match[5]}
         >
           {match[4]}
         </a>

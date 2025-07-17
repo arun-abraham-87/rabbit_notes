@@ -7,6 +7,7 @@ import NotesMainContainer from './components/NotesMainContainer.js';
 import TagListing from './components/TagListing.js';
 import TodoList from './components/TodoList.js';
 import LeftPanel from './components/LeftPanel';
+import RightPanel from './components/RightPanel';
 import Journals from './pages/Journals';
 import Manage from './pages/Manage';
 import EventsPage from './pages/EventsPage';
@@ -559,6 +560,13 @@ const AppContent = () => {
                   objList={objList}
                   updateNote={updateNote}
                   navigate={navigate}
+                />
+                
+                {/* Right panel: pinned notes */}
+                <RightPanel 
+                  notes={allNotes}
+                  setNotes={setAllNotes}
+                  setActivePage={(page) => navigate(`/${page}`)}
                 />
               </div>
               <ToastContainer

@@ -306,7 +306,7 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
   return nextDate;
 };
 
-const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery, settings, setSettings }) => {
+const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery, settings, setSettings, setActivePage }) => {
   const { isPinned, isHovered, isVisible, togglePinned, setHovered } = useLeftPanel();
   const [now, setNow] = useState(Date.now());
   const [activeSection, setActiveSection] = useState(null);
@@ -333,6 +333,11 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   const [showAddBookmarkModal, setShowAddBookmarkModal] = useState(false);
   const [pinUpdateTrigger, setPinUpdateTrigger] = useState(0);
   const [showBookmarkLimitPopup, setShowBookmarkLimitPopup] = useState(false);
+  const [showBookmarkContextMenu, setShowBookmarkContextMenu] = useState(false);
+  const [bookmarkContextMenuPos, setBookmarkContextMenuPos] = useState({ x: 0, y: 0 });
+  const [selectedBookmark, setSelectedBookmark] = useState(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [bookmarkToDelete, setBookmarkToDelete] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
@@ -594,6 +599,100 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     }
   };
 
+  const handleBookmarkContextMenu = (e, bookmark) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Calculate position to prevent overflow
+    const menuWidth = 200;
+    const menuHeight = 80;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    let x = e.clientX;
+    let y = e.clientY;
+    
+    // Adjust horizontal position if menu would overflow right edge
+    if (x + menuWidth > viewportWidth) {
+      x = viewportWidth - menuWidth - 10;
+    }
+    
+    // Adjust vertical position if menu would overflow bottom edge
+    if (y + menuHeight > viewportHeight) {
+      y = viewportHeight - menuHeight - 10;
+    }
+    
+    setBookmarkContextMenuPos({ x, y });
+    setSelectedBookmark(bookmark);
+    setShowBookmarkContextMenu(true);
+  };
+
+  useEffect(() => {
+    const hideBookmarkMenu = () => setShowBookmarkContextMenu(false);
+    window.addEventListener('click', hideBookmarkMenu);
+    return () => window.removeEventListener('click', hideBookmarkMenu);
+  }, []);
+
+  const handleViewNote = (bookmark) => {
+    if (bookmark && bookmark.noteId) {
+      // Navigate to notes page with the specific note using id: prefix
+      const searchQuery = `id:${bookmark.noteId}`;
+      // Use the same approach as SearchModalContext to navigate with state
+      setActivePage('notes');
+      // Set the search query in localStorage to be picked up by the notes page
+      localStorage.setItem('tempSearchQuery', searchQuery);
+      setShowBookmarkContextMenu(false);
+    }
+  };
+
+  const handleDeleteBookmark = async (bookmark) => {
+    // Show confirmation dialog first
+    setBookmarkToDelete(bookmark);
+    setShowDeleteConfirmation(true);
+    setShowBookmarkContextMenu(false);
+  };
+
+  const confirmDeleteBookmark = async () => {
+    if (!bookmarkToDelete) return;
+    
+    try {
+      // Find the note containing this bookmark
+      const note = notes.find(n => n.id === bookmarkToDelete.noteId);
+      if (!note) return;
+
+      // Split content into lines
+      const lines = note.content.split('\n');
+      
+      // Remove the meta::bookmark tag and meta::bookmark_pinned tag
+      const updatedLines = lines.filter(line => 
+        !line.trim().startsWith('meta::bookmark')
+      );
+      
+      // Join lines back together
+      const updatedContent = updatedLines.join('\n');
+      
+      // Update the note
+      await updateNoteById(note.id, updatedContent);
+      
+      // Update the notes state immediately using functional update
+      setNotes(prevNotes => {
+        const updatedNotes = prevNotes.map(n => 
+          n.id === note.id ? { ...n, content: updatedContent } : n
+        );
+        return updatedNotes;
+      });
+      
+      // Force a re-render by updating the trigger
+      setPinUpdateTrigger(prev => prev + 1);
+      
+      setShowDeleteConfirmation(false);
+      setBookmarkToDelete(null);
+      
+    } catch (error) {
+      console.error('Error deleting bookmark:', error);
+    }
+  };
+
   return (
     <>
       {/* Hover Popup */}
@@ -804,7 +903,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                     return (
                       <div
                         key={url}
-                        onContextMenu={e => handleLinkContextMenu(e, url)}
+                        onContextMenu={e => handleBookmarkContextMenu(e, { url, label, isPinned, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId })}
                         className={`flex items-center mb-1.5 pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors`}
                       >
                         <a
@@ -894,31 +993,67 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
         onSave={handleAddBookmark}
       />
 
-      {/* Bookmark Limit Popup */}
-      {showBookmarkLimitPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm mx-4">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Bookmark Limit Reached</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                You can only pin a maximum of 7 bookmarks at a time. 
-                Please unpin some bookmarks to add more.
-              </p>
-              <button
-                onClick={() => setShowBookmarkLimitPopup(false)}
-                className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+             {/* Bookmark Limit Popup */}
+       {showBookmarkLimitPopup && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm mx-4">
+             <div className="text-center">
+               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                 <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                 </svg>
+               </div>
+               <h3 className="text-lg font-medium text-gray-900 mb-2">Bookmark Limit Reached</h3>
+               <p className="text-sm text-gray-600 mb-4">
+                 You can only pin a maximum of 7 bookmarks at a time. 
+                 Please unpin some bookmarks to add more.
+               </p>
+               <button
+                 onClick={() => setShowBookmarkLimitPopup(false)}
+                 className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+               >
+                 Got it
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Delete Bookmark Confirmation */}
+       {showDeleteConfirmation && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm mx-4">
+             <div className="text-center">
+               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                 <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                 </svg>
+               </div>
+               <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Bookmark</h3>
+               <p className="text-sm text-gray-600 mb-4">
+                 Are you sure you want to delete this bookmark? This action cannot be undone.
+               </p>
+               <div className="flex gap-3">
+                 <button
+                   onClick={() => {
+                     setShowDeleteConfirmation(false);
+                     setBookmarkToDelete(null);
+                   }}
+                   className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+                 >
+                   Cancel
+                 </button>
+                 <button
+                   onClick={confirmDeleteBookmark}
+                   className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+                 >
+                   Delete
+                 </button>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
 
       {isContextMenuOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -935,6 +1070,47 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           </div>
         </div>
       )}
+
+             {/* Bookmark Context Menu */}
+       {showBookmarkContextMenu && (
+         <div
+           className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 py-2 w-[200px]"
+           style={{
+             left: bookmarkContextMenuPos.x,
+             top: bookmarkContextMenuPos.y,
+             transition: 'opacity 0.2s ease-in-out'
+           }}
+         >
+           <ul className="space-y-1">
+             <li
+               className="px-4 py-2 hover:bg-indigo-50 cursor-pointer flex items-center gap-2 text-gray-700 hover:text-indigo-600 transition-colors"
+               onClick={() => handleViewNote(selectedBookmark)}
+               title={`View note ${selectedBookmark?.noteId}`}
+             >
+               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+               </svg>
+               View Note
+             </li>
+             <li
+               className="px-4 py-2 hover:bg-red-50 cursor-pointer flex items-center gap-2 text-gray-700 hover:text-red-600 transition-colors"
+               onClick={() => handleDeleteBookmark(selectedBookmark)}
+               title="Delete this bookmark"
+             >
+               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+               </svg>
+               Delete Bookmark
+             </li>
+             <li
+               className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-700 hover:text-gray-900 transition-colors"
+               onClick={() => setShowBookmarkContextMenu(false)}
+             >
+               Cancel
+             </li>
+           </ul>
+         </div>
+       )}
     </>
   );
 };

@@ -83,6 +83,26 @@ const NotesMainContainer = ({
         }
     }, [location.state, setSearchQuery]);
 
+    // Handle temporary search query from localStorage (for bookmark navigation)
+    useEffect(() => {
+        const tempSearchQuery = localStorage.getItem('tempSearchQuery');
+        if (tempSearchQuery) {
+            setSearchQuery(tempSearchQuery);
+            setLocalSearchQuery(tempSearchQuery);
+            // Clear all filters when showing a specific note
+            setExcludeEvents(false);
+            setExcludeMeetings(false);
+            setExcludeEventNotes(false);
+            setExcludeBackupNotes(false);
+            setExcludeWatchEvents(false);
+            setShowDeadlinePassedFilter(false);
+            // Trigger UI filter reset
+            setResetFilters(true);
+            // Clear the temporary search query
+            localStorage.removeItem('tempSearchQuery');
+        }
+    }, [setSearchQuery]);
+
     // Reset the resetFilters flag after it's been processed
     useEffect(() => {
         if (resetFilters) {

@@ -391,7 +391,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800">Reminders Only</h2>
-            <div className="text-sm text-gray-500">Press Escape to return to normal view • Use ↑↓ arrows to navigate reminders</div>
+            <div className="text-sm text-gray-500">Press Escape to return to normal view • Use ↑↓ arrows to navigate, Enter to dismiss</div>
           </div>
           <RemindersAlert 
             allNotes={notes} 

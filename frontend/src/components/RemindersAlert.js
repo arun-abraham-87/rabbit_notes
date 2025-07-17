@@ -100,12 +100,12 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
       } else if (e.key === 'Enter' && focusedReminderIndex >= 0) {
         e.preventDefault();
         e.stopPropagation();
-        // Handle Enter key - could be used to dismiss or expand details
+        // Handle Enter key - dismiss the focused reminder
         const allReminders = [...reminderObjs, ...upcomingReminders];
         const focusedReminder = allReminders[focusedReminderIndex];
         if (focusedReminder) {
-          // Toggle details for the focused reminder
-          toggleDetails(focusedReminder.note.id);
+          // Dismiss the focused reminder (same as clicking the green tick)
+          handleDismiss(focusedReminder.note);
         }
       }
     };

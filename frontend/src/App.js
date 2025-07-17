@@ -44,7 +44,8 @@ const MainContentArea = ({
   addTag, 
   refreshTags, 
   objList, 
-  updateNote 
+  updateNote,
+  navigate
 }) => {
   const { isVisible } = useLeftPanel();
   
@@ -58,7 +59,7 @@ const MainContentArea = ({
         <Routes>
           <Route path="/" element={
             <NotesProvider>
-              <Dashboard notes={allNotes} setNotes={setAllNotes} />
+              <Dashboard notes={allNotes} setNotes={setAllNotes} setActivePage={(page) => window.location.href = `/${page}`} />
             </NotesProvider>
           } />
           <Route path="/notes" element={
@@ -159,7 +160,7 @@ const MainContentArea = ({
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                 <div className="min-h-screen bg-gray-50">
-                  <Dashboard notes={allNotes} setNotes={setAllNotes} />
+                  <Dashboard notes={allNotes} setNotes={setAllNotes} setActivePage={(page) => window.location.href = `/${page}`} />
                 </div>
               </div>
             </div>
@@ -557,6 +558,7 @@ const AppContent = () => {
                   refreshTags={fetchTags}
                   objList={objList}
                   updateNote={updateNote}
+                  navigate={navigate}
                 />
               </div>
               <ToastContainer

@@ -6,9 +6,9 @@ import TimeZoneDisplay from './TimeZoneDisplay';
 import BookmarkedLinks from './BookmarkedLinks';
 import EventManager from './EventManager';
 import Pomodoro from './Pomodoro';
-import Countdown from './Countdown';
 
-const Dashboard = ({notes,setNotes}) => {
+
+const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(new Date());
@@ -486,7 +486,7 @@ const Dashboard = ({notes,setNotes}) => {
                 }}
               >
                 <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
-                  <EventManager type="events" />
+                  <EventManager type="events" notes={notes} setActivePage={setActivePage} />
                 </div>
               </div>
               
@@ -527,7 +527,7 @@ const Dashboard = ({notes,setNotes}) => {
                 }}
               >
                 <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
-                  <EventManager type="notes" />
+                  <EventManager type="notes" notes={notes} setActivePage={setActivePage} />
                 </div>
               </div>
               
@@ -547,10 +547,9 @@ const Dashboard = ({notes,setNotes}) => {
         )}
       </div>
 
-      {/* Third Row: Pomodoro and Countdown */}
-      <div className="mb-8 flex justify-center gap-8">
+      {/* Third Row: Pomodoro */}
+      <div className="mb-8 flex justify-center">
         <Pomodoro />
-        <Countdown />
       </div>
 
       {/* Bookmarked Links */}

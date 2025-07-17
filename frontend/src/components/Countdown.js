@@ -385,80 +385,56 @@ const Countdown = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4">
+    <div className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 bg-white">
       {active ? (
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <ClockIcon className="h-5 w-5 text-indigo-600" />
-            <span className="text-lg font-semibold text-gray-800">
-              {meetings[currentMeetingIndex]?.name || 'Meeting'}
-            </span>
-          </div>
-          <div className="text-3xl font-bold text-indigo-600 mb-4">
+        <div className="w-full h-full flex flex-col">
+          <div className="text-2xl font-bold text-gray-600 mb-2">
             {formatTime(remaining)}
           </div>
-          <div className="text-sm text-gray-600 mb-4">
+          <div className="text-sm text-gray-500 mb-2">until</div>
+          <div className="font-medium text-gray-900 w-full break-words leading-relaxed" style={{ wordBreak: 'break-word', lineHeight: '1.6' }}>
+            {meetings[currentMeetingIndex]?.name || 'Meeting'}
+          </div>
+          <div className="text-sm text-gray-500 mt-auto">
             {meetings[currentMeetingIndex]?.time && formatMeetingTime(meetings[currentMeetingIndex].time)}
           </div>
-          <div className="flex justify-center gap-2">
+          <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={handleReset}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+              className="text-red-500 hover:text-red-700 p-1"
+              title="Reset"
             >
-              Reset
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
             </button>
           </div>
         </div>
       ) : (
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <ClockIcon className="h-5 w-5 text-gray-600" />
-            <span className="text-lg font-semibold text-gray-800">Meeting Countdown</span>
+        <div className="w-full h-full flex flex-col">
+          <div className="text-2xl font-bold text-gray-600 mb-2">
+            {meetings.length}
           </div>
+          <div className="text-sm text-gray-500 mb-4">Total Meetings</div>
+          
           {meetings.length > 0 ? (
-            <div className="space-y-2">
-              <div className="text-sm text-gray-600 mb-4">
-                {getUpcomingMeetings().length > 0 
-                  ? `${getUpcomingMeetings().length} upcoming meeting${getUpcomingMeetings().length > 1 ? 's' : ''}`
-                  : 'No upcoming meetings'
-                }
-              </div>
-              {getUpcomingMeetings().slice(0, 3).map((meeting, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <span className="text-sm text-gray-700">{meeting.name}</span>
-                  <span className="text-sm text-gray-500">{meeting.time}</span>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => startEdit(meeting.index)}
-                      className="text-xs text-blue-600 hover:text-blue-800"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => removeMeeting(meeting.index)}
-                      className="text-xs text-red-600 hover:text-red-800"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {getUpcomingMeetings().length > 3 && (
-                <div className="text-xs text-gray-500">
-                  +{getUpcomingMeetings().length - 3} more
-                </div>
-              )}
+            <div className="text-sm text-gray-600 mb-2">
+              {getUpcomingMeetings().length > 0 
+                ? `${getUpcomingMeetings().length} upcoming`
+                : 'No upcoming meetings'
+              }
             </div>
           ) : (
-            <div className="text-gray-500 mb-4">No meetings scheduled</div>
+            <div className="text-sm text-gray-500 mb-2">No meetings scheduled</div>
           )}
-          <div className="flex justify-center gap-2">
+          
+          <div className="flex gap-2 mt-auto self-end opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+              className="text-blue-500 hover:text-blue-700 p-1"
+              title="Add Meeting"
             >
-              <PlusIcon className="h-4 w-4 inline mr-1" />
-              Add Meeting
+              <PlusIcon className="h-4 w-4" />
             </button>
           </div>
         </div>

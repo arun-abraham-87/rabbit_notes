@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { getAgeInStringFmt } from '../utils/DateUtils';
+import Countdown from './Countdown';
 
-const EventManager = ({ selectedDate, onClose, type = 'all' }) => {
+const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage }) => {
   const [events, setEvents] = useState(() => {
     try {
       const stored = localStorage.getItem('tempEvents');
@@ -293,7 +294,18 @@ const EventManager = ({ selectedDate, onClose, type = 'all' }) => {
         {(type === 'all' || type === 'notes') && (() => {
           const noteItems = events.filter(ev => ev.type === 'note');
           
-          return noteItems.map(ev => {
+          // Meeting Countdown Card (only show when type is 'notes')
+          const meetingCountdownCard = type === 'notes' ? (
+            <div key="meeting-countdown" className="min-w-[220px] max-w-xs h-40">
+              <Countdown />
+            </div>
+          ) : null;
+          
+          const allCards = [];
+          if (meetingCountdownCard) {
+            allCards.push(meetingCountdownCard);
+          }
+          allCards.push(...noteItems.map(ev => {
             const [header, ...bodyLines] = (ev.name || '').split('\n');
             return (
               <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
@@ -338,7 +350,8 @@ const EventManager = ({ selectedDate, onClose, type = 'all' }) => {
                 </div>
               </div>
             );
-          });
+          }));
+          return allCards;
         })()}
 
 

@@ -145,30 +145,60 @@ const NoteCard = ({
         e.preventDefault();
         e.stopPropagation();
         
-        // Get all non-tag lines (lines that don't start with meta::)
-        const lines = note.content.split('\n');
-        const nonTagLineIndices = lines
-          .map((line, index) => ({ line: line.trim(), index }))
-          .filter(({ line }) => line !== '' && !line.startsWith('meta::'))
-          .map(({ index }) => index);
-        
-        if (nonTagLineIndices.length > 0) {
-          const currentIndex = nonTagLineIndices.indexOf(highlightedLineIndex);
-          let newIndex;
-          
-          if (e.key === 'ArrowUp') {
-            // Move to previous non-tag line
-            newIndex = currentIndex > 0 ? currentIndex - 1 : nonTagLineIndices.length - 1;
-          } else {
-            // Move to next non-tag line
-            newIndex = currentIndex < nonTagLineIndices.length - 1 ? currentIndex + 1 : 0;
+        // Check if Shift is pressed for line movement
+        if (e.shiftKey) {
+          // Move the highlighted line up or down
+          const lines = note.content.split('\n');
+          if (highlightedLineIndex >= 0 && highlightedLineIndex < lines.length) {
+            let newLines = [...lines];
+            let newHighlightedIndex = highlightedLineIndex;
+            
+            if (e.key === 'ArrowUp' && highlightedLineIndex > 0) {
+              // Move line up
+              [newLines[highlightedLineIndex], newLines[highlightedLineIndex - 1]] = 
+                [newLines[highlightedLineIndex - 1], newLines[highlightedLineIndex]];
+              newHighlightedIndex = highlightedLineIndex - 1;
+            } else if (e.key === 'ArrowDown' && highlightedLineIndex < lines.length - 1) {
+              // Move line down
+              [newLines[highlightedLineIndex], newLines[highlightedLineIndex + 1]] = 
+                [newLines[highlightedLineIndex + 1], newLines[highlightedLineIndex]];
+              newHighlightedIndex = highlightedLineIndex + 1;
+            }
+            
+            // Update the note content
+            const updatedContent = newLines.join('\n');
+            updateNote(note.id, updatedContent);
+            
+            // Update the highlighted line index
+            setHighlightedLineIndex(newHighlightedIndex);
+            setHighlightedLineText(newLines[newHighlightedIndex].trim());
           }
+        } else {
+          // Normal navigation between non-tag lines
+          const lines = note.content.split('\n');
+          const nonTagLineIndices = lines
+            .map((line, index) => ({ line: line.trim(), index }))
+            .filter(({ line }) => line !== '' && !line.startsWith('meta::'))
+            .map(({ index }) => index);
           
-          const newLineIndex = nonTagLineIndices[newIndex];
-          const newLineText = lines[newLineIndex].trim();
-          
-          setHighlightedLineIndex(newLineIndex);
-          setHighlightedLineText(newLineText);
+          if (nonTagLineIndices.length > 0) {
+            const currentIndex = nonTagLineIndices.indexOf(highlightedLineIndex);
+            let newIndex;
+            
+            if (e.key === 'ArrowUp') {
+              // Move to previous non-tag line
+              newIndex = currentIndex > 0 ? currentIndex - 1 : nonTagLineIndices.length - 1;
+            } else {
+              // Move to next non-tag line
+              newIndex = currentIndex < nonTagLineIndices.length - 1 ? currentIndex + 1 : 0;
+            }
+            
+            const newLineIndex = nonTagLineIndices[newIndex];
+            const newLineText = lines[newLineIndex].trim();
+            
+            setHighlightedLineIndex(newLineIndex);
+            setHighlightedLineText(newLineText);
+          }
         }
       }
     };
@@ -246,7 +276,7 @@ const NoteCard = ({
     >
       {isSuperEditMode && (
         <div className="absolute top-2 right-2 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
-          Super Edit Mode - Press 1 for H1, 0 to clear format, ↑↓ to navigate, Esc to exit
+          Super Edit Mode - Press 1 for H1, 0 to clear format, ↑↓ to navigate, Shift+↑↓ to move lines, Esc to exit
         </div>
       )}
       

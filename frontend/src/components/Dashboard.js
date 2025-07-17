@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AlertsProvider } from './Alerts';
+import RemindersAlert from './RemindersAlert';
 import { loadAllNotes } from '../utils/ApiUtils';
 import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay';
@@ -12,9 +14,11 @@ import { useNoteEditor } from '../contexts/NoteEditorContext';
 const Dashboard = ({notes, setNotes, setActivePage}) => {
   const { isPinned } = useLeftPanel();
   const { openEditor } = useNoteEditor();
+  const location = useLocation();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(new Date());
+  const [timezones, setTimezones] = useState([]);
   const [showTimezones, setShowTimezones] = useState(false);
   const [selectedTimezones, setSelectedTimezones] = useState([]);
   const [isEventManagerCollapsed, setIsEventManagerCollapsed] = useState(false);
@@ -217,8 +221,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
     };
 
     // Only add the event listener if we're on the dashboard page
-    const currentPath = window.location.pathname;
-    const isDashboardPage = currentPath === '/' || currentPath === '/dashboard';
+    const isDashboardPage = location.pathname === '/' || location.pathname === '/dashboard';
     
     if (isDashboardPage) {
       console.log('Dashboard: Setting up keyboard event listener');
@@ -228,7 +231,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         document.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [openEditor, showRemindersOnly, setActivePage]);
+  }, [openEditor, showRemindersOnly, setActivePage, location.pathname]);
 
   const getCompactTimezones = () => {
     const timezonesToShow = selectedTimezones.length > 0 ? selectedTimezones : [
@@ -388,15 +391,14 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800">Reminders Only</h2>
-            <div className="text-sm text-gray-500">Press Escape to return to normal view</div>
+            <div className="text-sm text-gray-500">Press Escape to return to normal view • Use ↑↓ arrows to navigate reminders</div>
           </div>
-          <AlertsProvider 
-            notes={notes} 
-            events={events}
+          <RemindersAlert 
+            allNotes={notes} 
+            expanded={true} 
             setNotes={setNotes}
-          >
-            {/* Only show reminders section */}
-          </AlertsProvider>
+            isRemindersOnlyMode={true}
+          />
         </div>
       ) : (
         <>

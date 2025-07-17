@@ -13,13 +13,14 @@ const QUICK_CADENCES = [
   { label: '7d', value: '7d' },
 ];
 
-const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }) => {
+const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, isRemindersOnlyMode = false }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [expandedDetails, setExpandedDetails] = useState({});
   const [hoveredNote, setHoveredNote] = useState(null);
   const [showCadenceSelector, setShowCadenceSelector] = useState(null);
   const [reminderObjs, setReminderObjs] = useState([]);
   const [upcomingReminders, setUpcomingReminders] = useState([]);
+  const [focusedReminderIndex, setFocusedReminderIndex] = useState(-1);
 
   useEffect(() => {
     const dueReminders = findDueReminders(allNotes);
@@ -73,6 +74,65 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
 
     setUpcomingReminders(upcoming);
   }, [allNotes]);
+
+  // Add keyboard navigation for reminders-only mode
+  useEffect(() => {
+    if (!isRemindersOnlyMode) return;
+
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const totalReminders = reminderObjs.length + upcomingReminders.length;
+      if (totalReminders === 0) return;
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedReminderIndex(prev => 
+          prev > 0 ? prev - 1 : totalReminders - 1
+        );
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedReminderIndex(prev => 
+          prev < totalReminders - 1 ? prev + 1 : 0
+        );
+      } else if (e.key === 'Enter' && focusedReminderIndex >= 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Handle Enter key - could be used to dismiss or expand details
+        const allReminders = [...reminderObjs, ...upcomingReminders];
+        const focusedReminder = allReminders[focusedReminderIndex];
+        if (focusedReminder) {
+          // Toggle details for the focused reminder
+          toggleDetails(focusedReminder.note.id);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isRemindersOnlyMode, reminderObjs.length, upcomingReminders.length, focusedReminderIndex]);
+
+  // Reset focused index when reminders change
+  useEffect(() => {
+    setFocusedReminderIndex(-1);
+  }, [reminderObjs, upcomingReminders]);
+
+  // Scroll to focused reminder when it changes
+  useEffect(() => {
+    if (isRemindersOnlyMode && focusedReminderIndex >= 0) {
+      const allReminders = [...reminderObjs, ...upcomingReminders];
+      const focusedReminder = allReminders[focusedReminderIndex];
+      if (focusedReminder) {
+        // Find the DOM element and scroll to it
+        const reminderElement = document.querySelector(`[data-reminder-id="${focusedReminder.note.id}"]`);
+        if (reminderElement) {
+          reminderElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    }
+  }, [focusedReminderIndex, isRemindersOnlyMode, reminderObjs, upcomingReminders]);
 
   // Add the vibrating animation style for the bell icon
   useEffect(() => {
@@ -266,6 +326,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
             const note = reminderObj.note;
             const isDetailsExpanded = expandedDetails[note.id];
             const isHovered = hoveredNote === note.id;
+            const isFocused = isRemindersOnlyMode && focusedReminderIndex === index;
             const contentLines = note.content
               .split('\n')
               .map(line => line.trim())
@@ -275,7 +336,12 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
             return (
               <div
                 key={note.id}
-                className="bg-amber-100 border border-amber-200 shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200"
+                data-reminder-id={note.id}
+                className={`bg-amber-100 border shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200 ${
+                  isFocused 
+                    ? 'border-blue-500 ring-2 ring-blue-300 bg-amber-50' 
+                    : 'border-amber-200'
+                }`}
                 onMouseEnter={() => setHoveredNote(note.id)}
                 onMouseLeave={() => setHoveredNote(null)}
               >
@@ -359,8 +425,9 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
             Upcoming Reminders
           </h3>
           <div className="space-y-3">
-            {upcomingReminders.map(({ note, nextReview }) => {
+            {upcomingReminders.map(({ note, nextReview }, index) => {
               const isDetailsExpanded = expandedDetails[note.id];
+              const isFocused = isRemindersOnlyMode && focusedReminderIndex === reminderObjs.length + index;
               const contentLines = note.content
                 .split('\n')
                 .map(line => line.trim())
@@ -370,7 +437,12 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes }
               return (
                 <div
                   key={note.id}
-                  className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-all duration-200"
+                  data-reminder-id={note.id}
+                  className={`bg-gray-50 border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 ${
+                    isFocused 
+                      ? 'border-blue-500 ring-2 ring-blue-300 bg-gray-100' 
+                      : 'border-gray-200'
+                  }`}
                 >
                   <div className="px-6 py-4">
                     <div className="flex items-center justify-between">

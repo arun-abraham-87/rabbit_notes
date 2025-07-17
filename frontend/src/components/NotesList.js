@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Alerts } from './Alerts';
 
 
@@ -59,6 +60,7 @@ const NotesList = ({
   refreshTags = () => {},
   onReturnToSearch = () => {},
 }) => {
+  const location = useLocation();
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
   const [selectedText, setSelectedText] = useState('');
@@ -383,6 +385,13 @@ const NotesList = ({
         }
       }
       
+      // Check if any popup is open - if so, don't handle general keyboard shortcuts
+      const isAnyPopupOpen = showLinkPopup || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote;
+      if (isAnyPopupOpen) {
+        console.log('Popup is open, skipping general keyboard handling');
+        return;
+      }
+      
       // Only handle keys when not in an input/textarea and no modifier keys (except Shift+G)
       if (!e.metaKey && !e.ctrlKey && !e.altKey && 
           e.target.tagName !== 'INPUT' && 
@@ -548,8 +557,7 @@ const NotesList = ({
     };
 
     // Only add the event listener if we're on the notes page
-    const currentPath = window.location.pathname;
-    const isNotesPage = currentPath === '/notes';
+    const isNotesPage = location.pathname === '/notes';
     
     if (isNotesPage) {
       console.log('NotesList: Setting up keyboard navigation listener');
@@ -559,7 +567,7 @@ const NotesList = ({
         document.removeEventListener('keydown', handleKeyDown, true);
       };
     }
-  }, [safeNotes.length]); // Only depend on safeNotes.length, not the entire array or focusedNoteIndex
+  }, [safeNotes.length, location.pathname]); // Only depend on safeNotes.length, not the entire array or focusedNoteIndex
 
   // Reset focused note when notes change
   useEffect(() => {

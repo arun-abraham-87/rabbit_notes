@@ -9,6 +9,55 @@ const Countdown = () => {
   const intervalRef = useRef();
   const [error, setError] = useState('');
 
+  // Load saved countdown state on component mount
+  useEffect(() => {
+    const savedState = localStorage.getItem('meetingCountdownState');
+    if (savedState) {
+      const { targetTime: savedTargetTime, active: savedActive, startTime } = JSON.parse(savedState);
+      setTargetTime(savedTargetTime);
+      setActive(savedActive);
+      
+      if (savedActive && startTime) {
+        // Recalculate remaining time
+        const now = new Date();
+        const start = new Date(startTime);
+        const [targetHour, targetMinute] = savedTargetTime.split(':').map(Number);
+        const target = new Date(start);
+        target.setHours(targetHour, targetMinute, 0, 0);
+        
+        const diffSecs = Math.floor((target - now) / 1000);
+        if (diffSecs > 0) {
+          setRemaining(diffSecs);
+        } else {
+          // Countdown has finished, clear saved state
+          localStorage.removeItem('meetingCountdownState');
+          setActive(false);
+          setRemaining(0);
+        }
+      }
+    }
+  }, []);
+
+  // Save countdown state to localStorage
+  const saveState = (targetTime, active, remaining = 0) => {
+    const state = {
+      targetTime,
+      active,
+      startTime: active ? new Date().toISOString() : null
+    };
+    localStorage.setItem('meetingCountdownState', JSON.stringify(state));
+  };
+
+  // Save just the target time (for when countdown isnt active)
+  const saveTargetTime = (targetTime) => {
+    const state = {
+      targetTime,
+      active: false,
+      startTime: null
+    };
+    localStorage.setItem('meetingCountdownState', JSON.stringify(state));
+  };
+
   useEffect(() => {
     if (active && remaining > 0) {
       intervalRef.current = setInterval(() => {
@@ -16,9 +65,10 @@ const Countdown = () => {
       }, 1000);
     } else if (remaining === 0 && active) {
       setActive(false);
+      localStorage.removeItem('meetingCountdownState');
       if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Countdown Complete!', {
-          body: 'Your countdown timer has finished!',
+        new Notification('Meeting Time!', {
+          body: 'Your meeting is starting now!',
           icon: '/favicon.ico'
         });
       }
@@ -28,7 +78,7 @@ const Countdown = () => {
 
   const handleStart = () => {
     if (!targetTime) {
-      setError('Please select a time.');
+      setError('Please select a meeting time.');
       return;
     }
     setError('');
@@ -37,13 +87,14 @@ const Countdown = () => {
     const target = new Date(now);
     target.setHours(targetHour, targetMinute, 0, 0);
     if (target <= now) {
-      setError('Please select a future time.');
+      setError('Please select a future meeting time.');
       return;
     }
     const diffSecs = Math.floor((target - now) / 1000);
     setRemaining(diffSecs);
     setActive(true);
     setShowSetup(false);
+    saveState(targetTime, true);
   };
 
   const handleReset = () => {
@@ -52,6 +103,14 @@ const Countdown = () => {
     setShowSetup(false);
     setTargetTime('');
     setError('');
+    localStorage.removeItem('meetingCountdownState');
+  };
+
+  const handleTimeChange = (newTime) => {
+    setTargetTime(newTime);
+    if (newTime) {
+      saveTargetTime(newTime);
+    }
   };
 
   const formatTime = (secs) => {
@@ -71,22 +130,22 @@ const Countdown = () => {
           <div className="text-white text-6xl font-extrabold mb-4 tracking-widest select-none">
             {formatTime(remaining)}
           </div>
-          <div className="text-white text-lg mb-2">Countdown to {targetTime}</div>
+          <div className="text-white text-lg mb-2">Meeting at {targetTime}</div>
           <button
             className="mt-2 px-4 py-2 bg-gray-200 rounded text-gray-700 hover:bg-gray-300 font-semibold"
             onClick={handleReset}
           >
-            Reset
+            Cancel Meeting
           </button>
         </div>
       ) : showSetup ? (
         <div className="flex flex-col items-center gap-4 bg-white p-4 rounded shadow-md">
-          <div className="text-lg font-semibold mb-2">Set Countdown Target Time</div>
+          <div className="text-lg font-semibold mb-2">Set Meeting Time</div>
           <input
             type="time"
             className="border rounded px-2 py-1 text-center text-lg"
             value={targetTime}
-            onChange={e => setTargetTime(e.target.value)}
+            onChange={e => handleTimeChange(e.target.value)}
           />
           {error && <div className="text-red-500 text-sm">{error}</div>}
           <button
@@ -94,7 +153,7 @@ const Countdown = () => {
             onClick={handleStart}
             disabled={!targetTime}
           >
-            Start Countdown
+            Start Meeting Countdown
           </button>
           <button
             className="mt-1 text-xs text-gray-400 hover:underline"
@@ -109,7 +168,7 @@ const Countdown = () => {
           onClick={() => setShowSetup(true)}
         >
           <ClockIcon className="h-5 w-5" />
-          Countdown
+          Meeting Countdown
         </button>
       )}
     </div>

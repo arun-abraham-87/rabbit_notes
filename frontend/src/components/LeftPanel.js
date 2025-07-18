@@ -349,6 +349,8 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   // Add state for editing bookmark
   const [showEditBookmarkModal, setShowEditBookmarkModal] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState(null);
+  // Add state for keyboard navigation
+  const [focusedBookmarkIndex, setFocusedBookmarkIndex] = useState(-1);
 
   useEffect(() => {
     localStorage.setItem('lockedSections', JSON.stringify(lockedSections));
@@ -483,6 +485,43 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     //console.log('LeftPanel: Final list has', list.length, 'bookmarks');
     return list;
   }, [notes, pinUpdateTrigger]);
+
+  // Keyboard navigation for bookmarks in left panel
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only handle keys when left panel is visible and not in an input/textarea
+      if (isVisible && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
+          e.target.tagName !== 'INPUT' && 
+          e.target.tagName !== 'TEXTAREA' &&
+          e.target.contentEditable !== 'true') {
+        
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          setFocusedBookmarkIndex(prev => 
+            prev > 0 ? prev - 1 : bookmarkedUrls.length - 1
+          );
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          setFocusedBookmarkIndex(prev => 
+            prev < bookmarkedUrls.length - 1 ? prev + 1 : 0
+          );
+        } else if (e.key === 'Enter' && focusedBookmarkIndex >= 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Open the focused bookmark
+          const focusedBookmark = bookmarkedUrls[focusedBookmarkIndex];
+          if (focusedBookmark) {
+            window.open(focusedBookmark.url, '_blank');
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [bookmarkedUrls, focusedBookmarkIndex, isVisible]);
 
   const handlePinBookmark = async (bookmark) => {
     try {
@@ -992,17 +1031,23 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                       try { return new URL(url).hostname.replace(/^www\./, ''); }
                       catch { return url; }
                     })();
+                    const isFocused = idx === focusedBookmarkIndex;
                     return (
                       <div
                         key={url}
                         onContextMenu={e => handleBookmarkContextMenu(e, { url, label, isPinned, noteId: bookmarkedUrls.find(b => b.url === url)?.noteId })}
-                        className={`flex items-center mb-1.5 pl-3 p-2 rounded-lg ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors`}
+                        className={`flex items-center mb-1.5 pl-3 p-2 rounded-lg ${
+                          isFocused ? 'bg-indigo-100 border border-indigo-300' : 
+                          idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'
+                        } hover:bg-indigo-50 transition-colors`}
                       >
                         <a
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex-1 text-gray-700 hover:text-indigo-600 truncate text-sm"
+                          className={`flex-1 truncate text-sm ${
+                            isFocused ? 'text-indigo-800 font-medium' : 'text-gray-700 hover:text-indigo-600'
+                          }`}
                         >
                           {displayText}
                         </a>

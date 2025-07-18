@@ -104,8 +104,8 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         const allReminders = [...reminderObjs, ...upcomingReminders];
         const focusedReminder = allReminders[focusedReminderIndex];
         if (focusedReminder) {
-          // Mark the focused reminder as done (same as clicking the green tick)
-          handleDismiss(focusedReminder.note);
+          // Mark the focused reminder as done and move focus to next item
+          handleDismissAndMoveFocus(focusedReminder.note);
         }
       } else if (e.key === 'Enter' && focusedReminderIndex >= 0) {
         e.preventDefault();
@@ -259,6 +259,35 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
       setReminderObjs(findDueReminders(allNotes));
     } catch (error) {
       console.error('Error dismissing reminder:', error);
+      Alerts.error('Failed to dismiss reminder');
+    }
+  };
+
+  const handleDismissAndMoveFocus = async (note) => {
+    try {
+      // Get current reminders before dismissing
+      const allReminders = [...reminderObjs, ...upcomingReminders];
+      const currentIndex = focusedReminderIndex;
+      
+      // Dismiss the reminder
+      await handleDismiss(note);
+      
+      // After dismissing, get the updated reminders
+      const updatedReminders = [...reminderObjs, ...upcomingReminders];
+      const totalReminders = updatedReminders.length;
+      
+      if (totalReminders === 0) {
+        // No reminders left, clear focus
+        setFocusedReminderIndex(-1);
+      } else if (currentIndex >= totalReminders) {
+        // If we were at the last item, move to the new last item
+        setFocusedReminderIndex(totalReminders - 1);
+      } else {
+        // Move to the next item (same index, but the list has shifted)
+        setFocusedReminderIndex(currentIndex);
+      }
+    } catch (error) {
+      console.error('Error dismissing reminder and moving focus:', error);
       Alerts.error('Failed to dismiss reminder');
     }
   };

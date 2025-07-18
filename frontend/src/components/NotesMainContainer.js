@@ -129,6 +129,8 @@ const NotesMainContainer = ({
                     setFocusMode(!focusMode);
                 }
             }
+            
+
         };
 
         document.addEventListener('keydown', handleGlobalKeyDown);
@@ -524,6 +526,7 @@ const NotesMainContainer = ({
                             setSearchQuery={setSearchQuery}
                             searchQuery={searchQuery}
                             settings={settings}
+                            allNotes={allNotes}
                             onExcludeEventsChange={setExcludeEvents}
                             onExcludeMeetingsChange={setExcludeMeetings}
                             onDeadlinePassedChange={setShowDeadlinePassedFilter}

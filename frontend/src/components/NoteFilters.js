@@ -7,6 +7,7 @@ const NoteFilters = ({
   setSearchQuery,
   searchQuery,
   settings = {},
+  allNotes = [],
   onExcludeEventsChange,
   onExcludeMeetingsChange,
   onDeadlinePassedChange,
@@ -354,6 +355,11 @@ const NoteFilters = ({
     setExcludeSensitive(checked);
   };
 
+  // Calculate sensitive notes count
+  const sensitiveNotesCount = allNotes.filter(note => 
+    note.content && note.content.includes('meta::sensitive::')
+  ).length;
+
   const handleClear = () => {
     setShowTodoButtons(false);
     setShowEventButtons(false);
@@ -612,6 +618,11 @@ const NoteFilters = ({
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Sensitive
+          {excludeSensitive && sensitiveNotesCount > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+              {sensitiveNotesCount} hidden
+            </span>
+          )}
         </label>
       </div>
     </div>

@@ -277,6 +277,30 @@ const NoteFooter = ({
     toast.success('All tags removed from note');
   };
 
+  const handleSensitiveAction = () => {
+    const lines = note.content.split('\n');
+    const hasSensitive = lines.some(l => l.trim().startsWith('meta::sensitive::'));
+
+    if (hasSensitive) {
+      // Remove the sensitive tag if it exists
+      const without = lines
+        .filter(l => !l.trim().startsWith('meta::sensitive::'))
+        .join('\n')
+        .trim();
+      updateNote(note.id, without);
+      toast.success('Removed sensitive tag');
+    } else {
+      // Add the sensitive tag if it doesn't exist
+      const without = lines
+        .filter(l => !l.trim().startsWith('meta::sensitive::'))
+        .join('\n')
+        .trim();
+      const ts = new Date().toISOString();
+      updateNote(note.id, `${without}\nmeta::sensitive::${ts}`);
+      toast.success('Added sensitive tag');
+    }
+  };
+
   return (
     <div className="flex items-center justify-between px-4 py-2 text-xs text-gray-500">
       <div className="flex items-center space-x-2">
@@ -407,6 +431,17 @@ const NoteFooter = ({
               className="p-1 hover:bg-gray-100 rounded-full transition-colors"
             >
               <XMarkIcon className="h-4 w-4 text-gray-500 hover:text-red-500 transition-colors" />
+            </button>
+          </Tooltip>
+
+          <Tooltip text={note.content.includes('meta::sensitive::') ? 'Remove Sensitive Tag' : 'Mark as Sensitive'}>
+            <button
+              onClick={handleSensitiveAction}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::sensitive::') ? 'bg-orange-100' : ''
+                }`}
+            >
+              <EyeIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::sensitive::') ? 'text-orange-500' : 'text-gray-500 hover:text-orange-500'
+                }`} />
             </button>
           </Tooltip>
         </div>

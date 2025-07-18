@@ -138,6 +138,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [pastEventsCount, setPastEventsCount] = useState(0);
   const [showTodaysEventsOnly, setShowTodaysEventsOnly] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
   
   // Add keyboard navigation for 't' key to show today's events
   useEffect(() => {
@@ -152,6 +153,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           e.preventDefault();
           e.stopPropagation();
           setShowTodaysEventsOnly(!showTodaysEventsOnly);
+        } else if (e.key === 'f') {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsFocusMode(!isFocusMode);
         } else if (e.key === 'h') {
           e.preventDefault();
           e.stopPropagation();
@@ -162,7 +167,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showTodaysEventsOnly]);
+  }, [showTodaysEventsOnly, isFocusMode]);
 
   // Get all unique tags from events
   const uniqueTags = useMemo(() => {
@@ -501,38 +506,43 @@ event_tags:${expense.tag.join(',')}`;
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Events</h1>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setIsBulkLoadOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <ArrowUpTrayIcon className="h-5 w-5" />
-            <span>Bulk Load</span>
-          </button>
-          <button
-            onClick={() => setIsCompareModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <ArrowsRightLeftIcon className="h-5 w-5" />
-            <span>Compare Events</span>
-          </button>
-          <button
-            onClick={() => {
-              setEditingEvent(null);
-              setSelectedDate(null);
-              setShowEditEventModal(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <PlusIcon className="h-5 w-5" />
-            <span>Add Event</span>
-          </button>
-        </div>
+        <h1 className="text-2xl font-semibold text-gray-900">
+          Events {isFocusMode && <span className="text-sm font-normal text-gray-500">(Focus Mode)</span>}
+        </h1>
+        {!isFocusMode && (
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsBulkLoadOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <ArrowUpTrayIcon className="h-5 w-5" />
+              <span>Bulk Load</span>
+            </button>
+            <button
+              onClick={() => setIsCompareModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <ArrowsRightLeftIcon className="h-5 w-5" />
+              <span>Compare Events</span>
+            </button>
+            <button
+              onClick={() => {
+                setEditingEvent(null);
+                setSelectedDate(null);
+                setShowEditEventModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <PlusIcon className="h-5 w-5" />
+              <span>Add Event</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Search and Tag Filter */}
-      <div className="flex flex-col space-y-4">
+      {!isFocusMode && (
+        <div className="flex flex-col space-y-4">
         <div className="flex flex-col space-y-4">
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
@@ -728,8 +738,10 @@ event_tags:${expense.tag.join(',')}`;
           ))}
         </div>
       </div>
+      )}
 
-      <div className="grid grid-cols-5 gap-4 bg-white rounded-xl border p-4 shadow-sm">
+      {!isFocusMode && (
+        <div className="grid grid-cols-5 gap-4 bg-white rounded-xl border p-4 shadow-sm">
         <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
           <div className="text-xs font-medium text-gray-500">Total</div>
           <div className="text-2xl font-bold text-gray-900">{total}</div>
@@ -751,6 +763,7 @@ event_tags:${expense.tag.join(',')}`;
           <div className="text-2xl font-bold text-gray-900">{none}</div>
         </div>
       </div>
+      )}
 
       <div className="bg-white rounded-lg border p-6 shadow-sm">
         <CalendarView

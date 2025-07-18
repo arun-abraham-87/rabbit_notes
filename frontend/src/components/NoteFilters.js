@@ -15,6 +15,7 @@ const NoteFilters = ({
   onExcludeWatchEventsChange,
   onExcludeBookmarksChange,
   onExcludeExpensesChange,
+  onExcludeSensitiveChange,
   resetFilters = false
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
@@ -28,6 +29,7 @@ const NoteFilters = ({
   const [excludeWatchEvents, setExcludeWatchEvents] = useState(true); // Default to true to exclude watch events
   const [excludeBookmarks, setExcludeBookmarks] = useState(true); // Default to true to exclude bookmarks
   const [excludeExpenses, setExcludeExpenses] = useState(true); // Default to true to exclude expenses
+  const [excludeSensitive, setExcludeSensitive] = useState(true); // Default to true to exclude sensitive notes
   const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
 
   // Only set the initial state of checkboxes
@@ -86,6 +88,12 @@ const NoteFilters = ({
     }
   }, [excludeExpenses, onExcludeExpensesChange]);
 
+  useEffect(() => {
+    if (onExcludeSensitiveChange) {
+      onExcludeSensitiveChange(excludeSensitive);
+    }
+  }, [excludeSensitive, onExcludeSensitiveChange]);
+
   // Reset all filters when resetFilters prop is true
   useEffect(() => {
     if (resetFilters) {
@@ -96,6 +104,7 @@ const NoteFilters = ({
       setExcludeWatchEvents(false);
       setExcludeBookmarks(false);
       setExcludeExpenses(false);
+      setExcludeSensitive(false);
       setShowDeadlinePassedFilter(false);
       setShowTodoButtons(false);
       setShowEventButtons(false);
@@ -341,6 +350,10 @@ const NoteFilters = ({
     setExcludeExpenses(checked);
   };
 
+  const handleExcludeSensitiveChange = (checked) => {
+    setExcludeSensitive(checked);
+  };
+
   const handleClear = () => {
     setShowTodoButtons(false);
     setShowEventButtons(false);
@@ -355,6 +368,7 @@ const NoteFilters = ({
     setExcludeWatchEvents(false); // Clear watch events checkbox
     setExcludeBookmarks(false); // Clear bookmarks checkbox
     setExcludeExpenses(false); // Clear expenses checkbox
+    setExcludeSensitive(false); // Clear sensitive checkbox
     setLines([{ id: 'line-0', text: '', isTitle: false }]);
     setSearchQuery('');
   };
@@ -589,6 +603,15 @@ const NoteFilters = ({
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Expenses
+        </label>
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input
+            type="checkbox"
+            checked={excludeSensitive}
+            onChange={(e) => handleExcludeSensitiveChange(e.target.checked)}
+            className="form-checkbox h-3 w-3 text-purple-600"
+          />
+          Exclude Sensitive
         </label>
       </div>
     </div>

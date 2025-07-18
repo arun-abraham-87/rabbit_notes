@@ -483,7 +483,12 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
       }
     });
     //console.log('LeftPanel: Final list has', list.length, 'bookmarks');
-    return list;
+    // Sort bookmarks: pinned first, then unpinned
+    return list.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return 0; // Keep original order within each group
+    });
   }, [notes, pinUpdateTrigger]);
 
   // Keyboard navigation for bookmarks in left panel
@@ -515,6 +520,17 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           if (focusedBookmark) {
             window.open(focusedBookmark.url, '_blank');
           }
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          // Close the sidebar (unpin if pinned, hide if hovered)
+          if (isPinned) {
+            togglePinned(); // Unpin the sidebar
+          } else {
+            setHovered(false); // Hide if just hovered
+          }
+          // Reset focus
+          setFocusedBookmarkIndex(-1);
         }
       }
     };
@@ -1041,6 +1057,11 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
                           idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'
                         } hover:bg-indigo-50 transition-colors`}
                       >
+                        <span className={`mr-2 text-xs font-medium ${
+                          isFocused ? 'text-indigo-700' : 'text-gray-500'
+                        }`}>
+                          {idx + 1}.
+                        </span>
                         <a
                           href={url}
                           target="_blank"

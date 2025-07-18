@@ -540,11 +540,7 @@ const NoteCard = ({
         boxShadow: isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : undefined
       }}
     >
-      {isSuperEditMode && (
-        <div className="absolute top-2 right-2 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
-          Super Edit Mode - Press 1 for H1, 2 for H2, 0 to clear format, x to delete line, a to add line, Enter to edit line, h+b to hide bullets, Shift+A for caps, Shift+~ to cycle case (lower→sentence→title→upper), ↑↓ to navigate, Shift+↑↓ to move lines, Esc to exit
-        </div>
-      )}
+
       
       {isFocused && !isSuperEditMode && (
         <div className="absolute top-2 right-2 bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">

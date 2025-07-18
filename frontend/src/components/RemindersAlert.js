@@ -97,15 +97,63 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         setFocusedReminderIndex(prev => 
           prev < totalReminders - 1 ? prev + 1 : 0
         );
-      } else if (e.key === 'Enter' && focusedReminderIndex >= 0) {
+      } else if (e.key === 'm' && focusedReminderIndex >= 0) {
         e.preventDefault();
         e.stopPropagation();
-        // Handle Enter key - dismiss the focused reminder
+        // Handle 'm' key - mark the focused reminder as done
         const allReminders = [...reminderObjs, ...upcomingReminders];
         const focusedReminder = allReminders[focusedReminderIndex];
         if (focusedReminder) {
-          // Dismiss the focused reminder (same as clicking the green tick)
+          // Mark the focused reminder as done (same as clicking the green tick)
           handleDismiss(focusedReminder.note);
+        }
+      } else if (e.key === 'Enter' && focusedReminderIndex >= 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Handle Enter key - open link in the focused reminder
+        const allReminders = [...reminderObjs, ...upcomingReminders];
+        const focusedReminder = allReminders[focusedReminderIndex];
+        if (focusedReminder) {
+          // Extract URLs from the reminder content
+          const content = focusedReminder.note.content;
+          
+          // Regex to match both markdown-style links [text](url) and plain URLs
+          const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+          const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
+          
+          const links = [];
+          
+          // Extract markdown-style links first
+          let match;
+          while ((match = markdownLinkRegex.exec(content)) !== null) {
+            links.push({
+              url: match[2],
+              text: match[1]
+            });
+          }
+          
+          // Extract plain URLs (excluding those already found in markdown links)
+          const markdownUrls = links.map(link => link.url);
+          while ((match = plainUrlRegex.exec(content)) !== null) {
+            if (!markdownUrls.includes(match[1])) {
+              links.push({
+                url: match[1],
+                text: match[1] // Use URL as text for plain URLs
+              });
+            }
+          }
+          
+          if (links.length === 1) {
+            // Open the single link
+            window.open(links[0].url, '_blank');
+          } else if (links.length > 1) {
+            // Show popup with multiple links (similar to NotesList functionality)
+            console.log('Multiple links found:', links);
+            // For now, just open the first link
+            window.open(links[0].url, '_blank');
+          } else {
+            console.log('No URLs found in reminder');
+          }
         }
       } else if (e.key === 'l' && focusedReminderIndex >= 0) {
         e.preventDefault();

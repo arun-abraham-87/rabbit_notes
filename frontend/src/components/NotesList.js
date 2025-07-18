@@ -379,12 +379,19 @@ const NotesList = ({
         return;
       }
       
+      // Skip all keyboard handling if the target is a textarea or input
+      if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.contentEditable === 'true') {
+        console.log('Target is textarea/input, skipping main keyboard handler');
+        return;
+      }
+      
       // Only handle keys when not in an input/textarea and no modifier keys (except Shift+G and Shift+~)
       if (!e.metaKey && !e.ctrlKey && !e.altKey && 
           e.target.tagName !== 'INPUT' && 
           e.target.tagName !== 'TEXTAREA' &&
           e.target.contentEditable !== 'true' &&
-          !(e.shiftKey && e.key !== 'G' && e.key !== '~')) {
+          !(e.shiftKey && e.key !== 'G' && e.key !== '~') &&
+          !e.target.closest('textarea')) {
         
         // Check if any note is in super edit mode - look for the specific purple ring class
         const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
@@ -441,21 +448,22 @@ const NotesList = ({
         } else if (e.key === 'G') {
           console.log(`G key pressed - key: ${e.key}, shiftKey: ${e.shiftKey}, safeNotes.length: ${safeNotesRef.current.length}`);
         } else if (e.key === 'Enter' && focusedNoteIndexRef.current >= 0) {
-          e.preventDefault();
-          e.stopPropagation();
+          // Check if any note is in super edit mode - if so, don't handle Enter
+          const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
           
-          // Enter super edit mode for the focused note
-          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
-          if (focusedNote) {
-            const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
-            if (noteElement) {
-              // Check if super edit mode is already active
-              const isInSuperEditMode = noteElement.querySelector('.ring-purple-500');
-              if (isInSuperEditMode) {
-                // Exit super edit mode by pressing Escape
-                const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
-                document.dispatchEvent(escapeEvent);
-              } else {
+          // Also check if there's an active inline editor or if the target is a textarea
+          const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') || 
+                                     e.target.tagName === 'TEXTAREA';
+          
+          if (!isAnyNoteInSuperEditMode && !isInlineEditorActive) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Enter super edit mode for the focused note
+            const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+            if (focusedNote) {
+              const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
+              if (noteElement) {
                 // Trigger the super edit button click
                 const superEditButton = noteElement.querySelector('button[title="Focus on first line in this note"]');
                 if (superEditButton) {
@@ -463,6 +471,8 @@ const NotesList = ({
                 }
               }
             }
+          } else {
+            console.log('Enter pressed but super edit mode is active or inline editor is active, ignoring note navigation');
           }
         } else if (e.key === 'G' && e.shiftKey && safeNotesRef.current.length > 0) {
           e.preventDefault();

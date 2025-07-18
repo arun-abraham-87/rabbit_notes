@@ -64,6 +64,7 @@ const NoteCard = ({
   const [highlightedLineText, setHighlightedLineText] = useState('');
   const [wasOpenedFromSuperEdit, setWasOpenedFromSuperEdit] = useState(false);
   const [keySequence, setKeySequence] = useState('');
+  const [lastEditedLineIndex, setLastEditedLineIndex] = useState(-1);
 
   // Check if this note is focused
   const isFocused = focusedNoteIndex === noteIndex;
@@ -82,6 +83,7 @@ const NoteCard = ({
       const trimmedLine = lines[firstNonEmptyLineIndex].trim();
       setHighlightedLineIndex(firstNonEmptyLineIndex);
       setHighlightedLineText(trimmedLine);
+      setLastEditedLineIndex(-1); // Reset the last edited line index
       // Enter super edit mode without changing search query
       setIsSuperEditMode(true);
       
@@ -97,6 +99,16 @@ const NoteCard = ({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!isSuperEditMode) return;
+      
+      // Check if there's an active inline editor - if so, don't handle keyboard events
+      const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') || 
+                                 e.target.tagName === 'TEXTAREA' ||
+                                 e.target.closest('textarea');
+      
+      if (isInlineEditorActive) {
+        console.log('Inline editor is active, skipping NoteCard keyboard handler');
+        return;
+      }
       
       if (e.key === '1') {
         e.preventDefault();
@@ -216,32 +228,18 @@ const NoteCard = ({
         e.preventDefault();
         e.stopPropagation();
         
-        // Check if Shift is pressed for uppercase conversion
-        if (e.shiftKey) {
-          // Convert the highlighted line to uppercase
-          const lines = note.content.split('\n');
+        // Convert the highlighted line to uppercase
+        const lines = note.content.split('\n');
+        
+        if (highlightedLineIndex !== -1) {
+          const updatedLines = [...lines];
+          updatedLines[highlightedLineIndex] = updatedLines[highlightedLineIndex].toUpperCase();
           
-          if (highlightedLineIndex !== -1) {
-            const updatedLines = [...lines];
-            updatedLines[highlightedLineIndex] = updatedLines[highlightedLineIndex].toUpperCase();
-            
-            const updatedContent = updatedLines.join('\n');
-            updateNote(note.id, updatedContent);
-            
-            // Update the highlighted line text
-            setHighlightedLineText(updatedLines[highlightedLineIndex].trim());
-          }
-        } else {
-          // Show inline editor at the end of the note to add a new line
-          setAddingLineNoteId(note.id);
-          setNewLineText('');
+          const updatedContent = updatedLines.join('\n');
+          updateNote(note.id, updatedContent);
           
-          // Focus the new line input after a short delay to ensure it's rendered
-          setTimeout(() => {
-            if (newLineInputRef.current) {
-              newLineInputRef.current.focus();
-            }
-          }, 100);
+          // Update the highlighted line text
+          setHighlightedLineText(updatedLines[highlightedLineIndex].trim());
         }
       } else if ((e.key === '`' || e.key === '~') && e.shiftKey) {
         e.preventDefault();
@@ -298,14 +296,41 @@ const NoteCard = ({
           // Update the highlighted line text
           setHighlightedLineText(newText.trim());
         }
+      } else if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('Shift+Enter pressed in superedit mode, adding new line');
+        
+        // Show inline editor at the end of the note to add a new line
+        const lines = note.content.split('\n');
+        const newLineIndex = lines.length; // Index for the new line
+        setLastEditedLineIndex(newLineIndex);
+        setWasOpenedFromSuperEdit(true); // Mark that this was opened from superedit mode
+        setAddingLineNoteId(note.id);
+        setNewLineText('');
+        
+        // Focus the new line input after a short delay to ensure it's rendered
+        setTimeout(() => {
+          if (newLineInputRef.current) {
+            newLineInputRef.current.focus();
+          }
+        }, 100);
       } else if (e.key === 'Enter') {
         e.preventDefault();
         e.stopPropagation();
+        
+        console.log('Enter pressed in superedit mode, highlightedLineIndex:', highlightedLineIndex);
         
         // Open the highlighted line in inline editor
         if (highlightedLineIndex !== -1) {
           const lines = note.content.split('\n');
           const lineToEdit = lines[highlightedLineIndex];
+          
+          console.log('Opening inline editor for line:', lineToEdit, 'at index:', highlightedLineIndex);
+          
+          // Store the line index before opening the editor
+          setLastEditedLineIndex(highlightedLineIndex);
           
           // Set the editing line and content
           setEditingLine({ noteId: note.id, lineIndex: highlightedLineIndex });
@@ -361,6 +386,7 @@ const NoteCard = ({
         setHighlightedLineIndex(-1);
         setHighlightedLineText('');
         setKeySequence('');
+        setLastEditedLineIndex(-1);
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
         e.stopPropagation();
@@ -448,22 +474,52 @@ const NoteCard = ({
         // Re-enter superedit mode
         setIsSuperEditMode(true);
         
-        // Use the line index from the event detail or fall back to the editing line
-        const lineIndex = event.detail.lineIndex || editingLine?.lineIndex || 0;
-        setHighlightedLineIndex(lineIndex);
+        // Use the line index from the event detail, or the stored last edited line index, or fall back to 0
+        const lineIndex = event.detail.lineIndex !== null ? event.detail.lineIndex : (lastEditedLineIndex !== -1 ? lastEditedLineIndex : 0);
+        console.log('Returning to superedit mode with lineIndex:', lineIndex, 'from event:', event.detail.lineIndex, 'from stored:', lastEditedLineIndex);
+        
+        // Find the correct non-meta line index to highlight
+        const lines = note.content.split('\n');
+        const nonTagLineIndices = lines
+          .map((line, index) => ({ line: line.trim(), index }))
+          .filter(({ line }) => line !== '' && !line.startsWith('meta::'))
+          .map(({ index }) => index);
+        
+        let targetLineIndex = lineIndex;
+        
+        // If the line index is valid and points to a non-meta line, use it directly
+        if (lineIndex >= 0 && lineIndex < lines.length && nonTagLineIndices.includes(lineIndex)) {
+          targetLineIndex = lineIndex;
+        } else if (lineIndex >= 0 && lineIndex < lines.length) {
+          // If the line index is a meta tag or empty, find the closest non-meta line
+          const targetLine = lines[lineIndex].trim();
+          if (targetLine === '' || targetLine.startsWith('meta::')) {
+            // Find the closest non-meta line to the target index
+            let closestIndex = nonTagLineIndices[0] || 0;
+            for (let i = 0; i < nonTagLineIndices.length; i++) {
+              if (nonTagLineIndices[i] >= lineIndex) {
+                closestIndex = nonTagLineIndices[i];
+                break;
+              }
+            }
+            targetLineIndex = closestIndex;
+          }
+        } else if (nonTagLineIndices.length > 0) {
+          // If the line index is invalid, use the first non-meta line
+          targetLineIndex = nonTagLineIndices[0];
+        } else {
+          // If no non-meta lines exist, use the first line
+          targetLineIndex = 0;
+        }
+        
+        console.log('Final target line index:', targetLineIndex, 'non-meta indices:', nonTagLineIndices);
+        setHighlightedLineIndex(targetLineIndex);
         setWasOpenedFromSuperEdit(false);
+        setLastEditedLineIndex(-1); // Reset the last edited line index
         
         // Update the highlighted line text
-        const lines = note.content.split('\n');
-        if (lineIndex >= 0 && lineIndex < lines.length) {
-          setHighlightedLineText(lines[lineIndex].trim());
-        } else {
-          // Find the first non-empty line if the line index is invalid
-          const firstNonEmptyLineIndex = lines.findIndex(line => line.trim() !== '');
-          if (firstNonEmptyLineIndex !== -1) {
-            setHighlightedLineIndex(firstNonEmptyLineIndex);
-            setHighlightedLineText(lines[firstNonEmptyLineIndex].trim());
-          }
+        if (targetLineIndex >= 0 && targetLineIndex < lines.length) {
+          setHighlightedLineText(lines[targetLineIndex].trim());
         }
       }
     };
@@ -472,7 +528,7 @@ const NoteCard = ({
     return () => {
       document.removeEventListener('returnToSuperEdit', handleReturnToSuperEdit);
     };
-  }, [isSuperEditMode, highlightedLineIndex, note.content, note.id, updateNote]);
+  }, [isSuperEditMode, highlightedLineIndex, note.content, note.id, updateNote, lastEditedLineIndex]);
 
   // Pass the highlighted line info to NoteContent for visual highlighting
   const noteContentProps = {
@@ -513,9 +569,15 @@ const NoteCard = ({
       key={note.id}
       data-note-id={note.id}
       onContextMenu={(e) => onContextMenu(e, note)}
-      onClick={() => {
+      onClick={(e) => {
         console.log('NoteCard clicked', {noteIndex, isSuperEditMode, isFocused});
-        if (typeof onSetFocusedNoteIndex === 'function' && !isSuperEditMode && !isFocused) {
+        // Don't handle clicks when in superedit mode
+        if (isSuperEditMode) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        if (typeof onSetFocusedNoteIndex === 'function' && !isFocused) {
           onSetFocusedNoteIndex(noteIndex);
         }
       }}
@@ -524,6 +586,7 @@ const NoteCard = ({
       onKeyDown={e => {
         if ((e.key === 'Enter' || e.key === ' ') && typeof onSetFocusedNoteIndex === 'function' && !isSuperEditMode && !isFocused) {
           e.preventDefault();
+          e.stopPropagation();
           onSetFocusedNoteIndex(noteIndex);
         }
       }}
@@ -568,16 +631,149 @@ const NoteCard = ({
               text={newLineText}
               setText={setNewLineText}
               onSave={(text) => {
-                const updated = note.content.trimEnd() + '\n' + text;
+                console.log('NoteCard onSave called with text:', text);
+                console.log('Current note content:', note.content);
+                
+                // Ensure the note content ends with a newline before adding the new text
+                const contentWithNewline = note.content.endsWith('\n') ? note.content : note.content + '\n';
+                const updated = contentWithNewline + text;
+                console.log('Updated content:', updated);
+                
                 const reorderedContent = reorderMetaTags(updated);
+                console.log('Reordered content:', reorderedContent);
+                
+                console.log('Calling updateNote with note.id:', note.id);
                 updateNote(note.id, reorderedContent);
                 setAddingLineNoteId(null);
                 setNewLineText('');
+                
+                // If this was opened from superedit mode, return to superedit
+                if (wasOpenedFromSuperEdit) {
+                  // Calculate the index of the newly added line
+                  const lines = updated.split('\n');
+                  const newLineIndex = lines.length - 1; // Index of the last line (the newly added one)
+                  console.log('Saving new line, returning to superedit with lineIndex:', newLineIndex);
+                  
+                  // Find the non-meta line indices to determine the correct highlight position
+                  const nonTagLineIndices = lines
+                    .map((line, index) => ({ line: line.trim(), index }))
+                    .filter(({ line }) => line !== '' && !line.startsWith('meta::'))
+                    .map(({ index }) => index);
+                  
+                  // Find the closest non-meta line to the newly added line
+                  let targetLineIndex = newLineIndex;
+                  if (nonTagLineIndices.length > 0) {
+                    // If the new line is a non-meta line, use it directly
+                    if (nonTagLineIndices.includes(newLineIndex)) {
+                      targetLineIndex = newLineIndex;
+                    } else {
+                      // Find the closest non-meta line to the new line index
+                      let closestIndex = nonTagLineIndices[nonTagLineIndices.length - 1]; // Default to last non-meta line
+                      for (let i = 0; i < nonTagLineIndices.length; i++) {
+                        if (nonTagLineIndices[i] >= newLineIndex) {
+                          closestIndex = nonTagLineIndices[i];
+                          break;
+                        }
+                      }
+                      targetLineIndex = closestIndex;
+                    }
+                  }
+                  
+                  console.log('New line saved, target line index:', targetLineIndex, 'non-meta indices:', nonTagLineIndices);
+                  const event = new CustomEvent('returnToSuperEdit', {
+                    detail: { lineIndex: targetLineIndex }
+                  });
+                  document.dispatchEvent(event);
+                }
               }}
               onCancel={() => {
                 setAddingLineNoteId(null);
                 setNewLineText('');
+                
+                // If this was opened from superedit mode, return to superedit
+                if (wasOpenedFromSuperEdit) {
+                  // Calculate the index of the newly added line
+                  const lines = note.content.split('\n');
+                  const newLineIndex = lines.length - 1; // Index of the last line
+                  console.log('Canceling new line, returning to superedit with lineIndex:', newLineIndex);
+                  
+                  // Find the non-meta line indices to determine the correct highlight position
+                  const nonTagLineIndices = lines
+                    .map((line, index) => ({ line: line.trim(), index }))
+                    .filter(({ line }) => line !== '' && !line.startsWith('meta::'))
+                    .map(({ index }) => index);
+                  
+                  // Find the closest non-meta line to the newly added line
+                  let targetLineIndex = newLineIndex;
+                  if (nonTagLineIndices.length > 0) {
+                    // If the new line is a non-meta line, use it directly
+                    if (nonTagLineIndices.includes(newLineIndex)) {
+                      targetLineIndex = newLineIndex;
+                    } else {
+                      // Find the closest non-meta line to the new line index
+                      let closestIndex = nonTagLineIndices[nonTagLineIndices.length - 1]; // Default to last non-meta line
+                      for (let i = 0; i < nonTagLineIndices.length; i++) {
+                        if (nonTagLineIndices[i] >= newLineIndex) {
+                          closestIndex = nonTagLineIndices[i];
+                          break;
+                        }
+                      }
+                      targetLineIndex = closestIndex;
+                    }
+                  }
+                  
+                  console.log('New line canceled, target line index:', targetLineIndex, 'non-meta indices:', nonTagLineIndices);
+                  const event = new CustomEvent('returnToSuperEdit', {
+                    detail: { lineIndex: targetLineIndex }
+                  });
+                  document.dispatchEvent(event);
+                }
               }}
+              onDelete={() => {
+                // For new lines, delete just means cancel
+                setAddingLineNoteId(null);
+                setNewLineText('');
+                
+                // If this was opened from superedit mode, return to superedit
+                if (wasOpenedFromSuperEdit) {
+                  const lines = note.content.split('\n');
+                  const newLineIndex = lines.length - 1;
+                  console.log('Deleting new line, returning to superedit with lineIndex:', newLineIndex);
+                  
+                  // Find the non-meta line indices to determine the correct highlight position
+                  const nonTagLineIndices = lines
+                    .map((line, index) => ({ line: line.trim(), index }))
+                    .filter(({ line }) => line !== '' && !line.startsWith('meta::'))
+                    .map(({ index }) => index);
+                  
+                  // Find the closest non-meta line to the newly added line
+                  let targetLineIndex = newLineIndex;
+                  if (nonTagLineIndices.length > 0) {
+                    // If the new line is a non-meta line, use it directly
+                    if (nonTagLineIndices.includes(newLineIndex)) {
+                      targetLineIndex = newLineIndex;
+                    } else {
+                      // Find the closest non-meta line to the new line index
+                      let closestIndex = nonTagLineIndices[nonTagLineIndices.length - 1]; // Default to last non-meta line
+                      for (let i = 0; i < nonTagLineIndices.length; i++) {
+                        if (nonTagLineIndices[i] >= newLineIndex) {
+                          closestIndex = nonTagLineIndices[i];
+                          break;
+                        }
+                      }
+                      targetLineIndex = closestIndex;
+                    }
+                  }
+                  
+                  console.log('New line deleted, target line index:', targetLineIndex, 'non-meta indices:', nonTagLineIndices);
+                  const event = new CustomEvent('returnToSuperEdit', {
+                    detail: { lineIndex: targetLineIndex }
+                  });
+                  document.dispatchEvent(event);
+                }
+              }}
+              wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
+              lineIndex={lastEditedLineIndex}
             />
           </div>
         )}

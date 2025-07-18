@@ -287,6 +287,7 @@ export default function NoteContent({
             onDelete={() => handleDeleteLine(idx)}
             isSuperEditMode={isSuperEditMode}
             wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
+            lineIndex={idx}
         />
     );
 

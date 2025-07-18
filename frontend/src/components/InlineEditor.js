@@ -13,7 +13,7 @@ import React, { useRef, useEffect, useState } from 'react';
  * onDelete        – fn()         called on Delete button click
  * inputClass      – extra Tailwind classes for the textarea (optional)
  */
-const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false }) => {
+const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false, lineIndex = null }) => {
   console.log('InlineEditor props:', { isSuperEditMode, wasOpenedFromSuperEdit });
   const inputRef = useRef(null);
   const [headerType, setHeaderType] = useState(null); // 'h1', 'h2', or null
@@ -85,6 +85,8 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   };
 
   const handleKeyDown = (e) => {
+    console.log('InlineEditor handleKeyDown called with key:', e.key, 'target:', e.target.tagName);
+    
     // Handle Escape to cancel
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -104,8 +106,9 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     // Handle regular Enter - create new line or save based on mode
     if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
+      e.stopPropagation();
       
-      console.log('Enter pressed in InlineEditor:', { isSuperEditMode, wasOpenedFromSuperEdit });
+      console.log('Enter pressed in InlineEditor:', { isSuperEditMode, wasOpenedFromSuperEdit, lineIndex });
       
       if (isSuperEditMode || wasOpenedFromSuperEdit) {
         // In superedit mode or opened from superedit mode, Enter saves the line
@@ -140,14 +143,17 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       finalText = '##' + displayText + '##';
     }
     
+    console.log('InlineEditor handleSave called with finalText:', finalText, 'wasOpenedFromSuperEdit:', wasOpenedFromSuperEdit, 'lineIndex:', lineIndex);
+    console.log('Calling onSave with:', finalText);
     onSave(finalText);
     
     // If this was opened from superedit mode, trigger a return to superedit
     if (wasOpenedFromSuperEdit) {
       // Dispatch a custom event to signal return to superedit mode
       const event = new CustomEvent('returnToSuperEdit', {
-        detail: { lineIndex: null } // The line index will be determined by the parent component
+        detail: { lineIndex: lineIndex } // Pass the actual line index
       });
+      console.log('InlineEditor dispatching returnToSuperEdit event with lineIndex:', lineIndex);
       document.dispatchEvent(event);
     }
   };

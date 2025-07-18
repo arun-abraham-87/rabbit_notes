@@ -13,7 +13,7 @@ import { useLeftPanel } from '../contexts/LeftPanelContext';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 
 const Dashboard = ({notes, setNotes, setActivePage}) => {
-  const { isPinned } = useLeftPanel();
+  const { isPinned, togglePinned } = useLeftPanel();
   const { openEditor } = useNoteEditor();
   const location = useLocation();
   const [events, setEvents] = useState([]);
@@ -224,6 +224,10 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
           e.preventDefault();
           e.stopPropagation();
           setActivePage('events');
+        } else if (e.key === 'b') {
+          e.preventDefault();
+          e.stopPropagation();
+          togglePinned();
         } else if (e.key === 'Escape' && (showRemindersOnly || showReviewsOverdueOnly)) {
           e.preventDefault();
           e.stopPropagation();
@@ -244,7 +248,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         document.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [openEditor, showRemindersOnly, showReviewsOverdueOnly, setActivePage, location.pathname]);
+  }, [openEditor, showRemindersOnly, showReviewsOverdueOnly, setActivePage, location.pathname, togglePinned]);
 
   const getCompactTimezones = () => {
     const timezonesToShow = selectedTimezones.length > 0 ? selectedTimezones : [

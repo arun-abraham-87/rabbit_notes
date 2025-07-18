@@ -113,6 +113,7 @@ const NotesList = ({
   const [showLinkPopup, setShowLinkPopup] = useState(false);
   const [linkPopupLinks, setLinkPopupLinks] = useState([]);
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
+  const showLinkPopupRef = useRef(false);
   
   // Note navigation state
   const [focusedNoteIndex, setFocusedNoteIndex] = useState(-1);
@@ -133,6 +134,10 @@ const NotesList = ({
   useEffect(() => {
     safeNotesRef.current = safeNotes;
   }, [safeNotes]);
+  
+  useEffect(() => {
+    showLinkPopupRef.current = showLinkPopup;
+  }, [showLinkPopup]);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -352,41 +357,23 @@ const NotesList = ({
     const handleKeyDown = (e) => {
       console.log(`Key event: key=${e.key}, shiftKey=${e.shiftKey}, metaKey=${e.metaKey}, ctrlKey=${e.ctrlKey}, altKey=${e.altKey}, target=${e.target.tagName}`);
       
-      // Handle link popup keyboard navigation first (regardless of input/textarea state)
-      if (showLinkPopup) {
-        console.log('Link popup keyboard event:', e.key, 'selectedLinkIndex:', selectedLinkIndex, 'linkPopupLinks.length:', linkPopupLinks.length);
-        if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          e.stopPropagation();
-          setSelectedLinkIndex(prev => prev > 0 ? prev - 1 : linkPopupLinks.length - 1);
-          return;
-        } else if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          e.stopPropagation();
-          setSelectedLinkIndex(prev => prev < linkPopupLinks.length - 1 ? prev + 1 : 0);
-          return;
-        } else if (e.key === 'Enter') {
-          e.preventDefault();
-          e.stopPropagation();
-          if (linkPopupLinks[selectedLinkIndex]) {
-            window.open(linkPopupLinks[selectedLinkIndex].url, '_blank');
-          }
-          setShowLinkPopup(false);
-          setLinkPopupLinks([]);
-          setSelectedLinkIndex(0);
-          return;
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          e.stopPropagation();
-          setShowLinkPopup(false);
-          setLinkPopupLinks([]);
-          setSelectedLinkIndex(0);
-          return;
-        }
+      // If link popup is open, completely skip all keyboard handling
+      if (showLinkPopupRef.current) {
+        console.log('Link popup is open, skipping main keyboard handler');
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      
+      // Additional check: if the event target is within the link popup, skip processing
+      const linkPopupElement = document.querySelector('[data-link-popup]');
+      if (linkPopupElement && linkPopupElement.contains(e.target)) {
+        console.log('Event target is within link popup, skipping main keyboard handler');
+        return;
       }
       
       // Check if any popup is open - if so, don't handle general keyboard shortcuts
-      const isAnyPopupOpen = showLinkPopup || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote;
+      const isAnyPopupOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote;
       if (isAnyPopupOpen) {
         console.log('Popup is open, skipping general keyboard handling');
         return;
@@ -595,22 +582,21 @@ const NotesList = ({
 
   // Add separate keyboard event listener for link popup
   useEffect(() => {
-    if (!showLinkPopup) return;
-
     const handleLinkPopupKeyDown = (e) => {
+      // Only handle events when popup is actually open
+      if (!showLinkPopupRef.current) return;
+      
       console.log('Link popup keyboard event:', e.key, 'selectedLinkIndex:', selectedLinkIndex, 'linkPopupLinks.length:', linkPopupLinks.length);
       
+      // Always prevent default and stop propagation for all events when popup is open
+      e.preventDefault();
+      e.stopPropagation();
+      
       if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        e.stopPropagation();
         setSelectedLinkIndex(prev => prev > 0 ? prev - 1 : linkPopupLinks.length - 1);
       } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        e.stopPropagation();
         setSelectedLinkIndex(prev => prev < linkPopupLinks.length - 1 ? prev + 1 : 0);
       } else if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
         if (linkPopupLinks[selectedLinkIndex]) {
           window.open(linkPopupLinks[selectedLinkIndex].url, '_blank');
         }
@@ -618,21 +604,20 @@ const NotesList = ({
         setLinkPopupLinks([]);
         setSelectedLinkIndex(0);
       } else if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
         setShowLinkPopup(false);
         setLinkPopupLinks([]);
         setSelectedLinkIndex(0);
       }
+      // For any other key, just prevent default to avoid background navigation
     };
 
-    // Add event listener with capture to ensure it gets handled first
+    // Always add the event listener, but only handle events when popup is open
     document.addEventListener('keydown', handleLinkPopupKeyDown, true);
     
     return () => {
       document.removeEventListener('keydown', handleLinkPopupKeyDown, true);
     };
-  }, [showLinkPopup, selectedLinkIndex, linkPopupLinks]);
+  }, [selectedLinkIndex, linkPopupLinks]);
 
   // Listen for focus first note event from search bar
   useEffect(() => {
@@ -682,6 +667,11 @@ const NotesList = ({
   // Handle Cmd+Enter to save note
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // If link popup is open, don't handle any keyboard events
+      if (showLinkPopupRef.current) {
+        return;
+      }
+      
       if (showPastePopup && (e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
         handlePasteSubmit();
@@ -699,7 +689,7 @@ const NotesList = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showPastePopup, newNoteText, pasteText]);
+  }, [showPastePopup, newNoteText, pasteText, showLinkPopup]);
 
   const handlePasteSubmit = async () => {
     try {

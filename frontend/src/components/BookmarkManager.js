@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon, PencilIcon, TrashIcon, BellIcon } from '@heroicons/react/24/outline';
 import { createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
 const WebsitePreview = ({ url, isVisible }) => {
@@ -944,6 +944,9 @@ const BookmarkManager = ({ allNotes }) => {
   const [deletingBookmark, setDeletingBookmark] = useState(null);
   const [keySequence, setKeySequence] = useState('');
   const [isWaitingForS, setIsWaitingForS] = useState(false);
+  const [showRemindersOnly, setShowRemindersOnly] = useState(false);
+  const [numberBuffer, setNumberBuffer] = useState('');
+  const [isWaitingForJump, setIsWaitingForJump] = useState(false);
 
   // Load web bookmarks from notes
   useEffect(() => {
@@ -1267,6 +1270,22 @@ const BookmarkManager = ({ allNotes }) => {
       });
     }
 
+    // Filter for reminders only when showRemindersOnly is true
+    if (showRemindersOnly) {
+      filtered = filtered.filter(bookmark => {
+        const title = (bookmark.title?.toLowerCase() || '');
+        const url = (bookmark.url?.toLowerCase() || '');
+        
+        // Check if bookmark contains reminder-related keywords
+        const reminderKeywords = ['reminder', 'todo', 'task', 'deadline', 'due', 'meeting', 'call', 'appointment'];
+        const hasReminderKeyword = reminderKeywords.some(keyword => 
+          title.includes(keyword) || url.includes(keyword)
+        );
+        
+        return hasReminderKeyword;
+      });
+    }
+
     // Sort by created date (newest first)
     filtered.sort((a, b) => {
       const dateA = a.dateAdded || new Date(a.created_datetime);
@@ -1280,13 +1299,15 @@ const BookmarkManager = ({ allNotes }) => {
     }
 
     return filtered;
-  }, [bookmarks, searchQuery, selectedHostname, selectedYear, selectedMonth]);
+  }, [bookmarks, searchQuery, selectedHostname, selectedYear, selectedMonth, showRemindersOnly]);
 
   // Keyboard navigation for bookmarks
   useEffect(() => {
     const handleKeyDown = (e) => {
+      console.log('Key pressed:', e.key, 'Target:', e.target.tagName);
       // Only handle arrow keys when not in an input/textarea
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        console.log('Ignoring key in input/textarea');
         return;
       }
 
@@ -1353,6 +1374,67 @@ const BookmarkManager = ({ allNotes }) => {
           // Clear the sequence
           setKeySequence('');
           setIsWaitingForS(false);
+              } else if (e.key === 'g') {
+        // Move to first bookmark (vim-like 'g' or 'gg') - when no bookmark focused
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Vim navigation (no focus): g pressed, filteredBookmarks.length:', filteredBookmarks.length);
+        if (filteredBookmarks.length > 0) {
+          console.log('Setting focusedBookmarkIndex to 0 (no focus)');
+          setFocusedBookmarkIndex(0);
+        }
+      } else if (e.key === 'G') {
+        // Move to last bookmark (vim-like 'G') - when no bookmark focused
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Vim navigation (no focus): G pressed, filteredBookmarks.length:', filteredBookmarks.length);
+        if (filteredBookmarks.length > 0) {
+          const lastIndex = filteredBookmarks.length - 1;
+          console.log('Setting focusedBookmarkIndex to', lastIndex, '(no focus)');
+          setFocusedBookmarkIndex(lastIndex);
+        }
+      } else if (e.key >= '0' && e.key <= '9') {
+        // Start number buffer for jump navigation - when no bookmark focused
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Vim navigation (no focus): Number', e.key, 'pressed, current buffer:', numberBuffer);
+        setNumberBuffer(prev => prev + e.key);
+        setIsWaitingForJump(true);
+        
+        // Clear number buffer after 2 seconds if no 'j' or 'k' is pressed
+        setTimeout(() => {
+          if (isWaitingForJump) {
+            console.log('Clearing number buffer due to timeout (no focus)');
+            setNumberBuffer('');
+            setIsWaitingForJump(false);
+          }
+        }, 2000);
+      } else if (e.key === 'j' && isWaitingForJump && numberBuffer) {
+        // Jump forward by number - when no bookmark focused
+        e.preventDefault();
+        e.stopPropagation();
+        const jumpAmount = parseInt(numberBuffer);
+        console.log('Vim navigation (no focus): j pressed with buffer', numberBuffer, 'jumpAmount:', jumpAmount);
+        if (jumpAmount > 0 && filteredBookmarks.length > 0) {
+          const targetIndex = Math.min(jumpAmount - 1, filteredBookmarks.length - 1);
+          console.log('Setting focusedBookmarkIndex to', targetIndex, '(no focus)');
+          setFocusedBookmarkIndex(targetIndex);
+        }
+        setNumberBuffer('');
+        setIsWaitingForJump(false);
+      } else if (e.key === 'k' && isWaitingForJump && numberBuffer) {
+        // Jump backward by number - when no bookmark focused
+        e.preventDefault();
+        e.stopPropagation();
+        const jumpAmount = parseInt(numberBuffer);
+        console.log('Vim navigation (no focus): k pressed with buffer', numberBuffer, 'jumpAmount:', jumpAmount);
+        if (jumpAmount > 0 && filteredBookmarks.length > 0) {
+          const targetIndex = Math.max(filteredBookmarks.length - jumpAmount, 0);
+          console.log('Setting focusedBookmarkIndex to', targetIndex, '(no focus)');
+          setFocusedBookmarkIndex(targetIndex);
+        }
+        setNumberBuffer('');
+        setIsWaitingForJump(false);
         }
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         // Bring focus to search textbox when up/down arrows are pressed and no bookmark is focused
@@ -1373,6 +1455,73 @@ const BookmarkManager = ({ allNotes }) => {
             window.open(bookmark.url, '_blank');
           });
         }
+      } else if (e.key === 'r') {
+        // Toggle reminders only view
+        e.preventDefault();
+        e.stopPropagation();
+        setShowRemindersOnly(prev => !prev);
+        setFocusedBookmarkIndex(-1);
+      } else if (e.key === 'g') {
+        // Move to first bookmark (vim-like 'g' or 'gg')
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Vim navigation: g pressed, filteredBookmarks.length:', filteredBookmarks.length);
+        if (filteredBookmarks.length > 0) {
+          console.log('Setting focusedBookmarkIndex to 0');
+          setFocusedBookmarkIndex(0);
+        }
+      } else if (e.key === 'G') {
+        // Move to last bookmark (vim-like 'G')
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Vim navigation: G pressed, filteredBookmarks.length:', filteredBookmarks.length);
+        if (filteredBookmarks.length > 0) {
+          const lastIndex = filteredBookmarks.length - 1;
+          console.log('Setting focusedBookmarkIndex to', lastIndex);
+          setFocusedBookmarkIndex(lastIndex);
+        }
+      } else if (e.key >= '0' && e.key <= '9') {
+        // Start number buffer for jump navigation
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Vim navigation: Number', e.key, 'pressed, current buffer:', numberBuffer);
+        setNumberBuffer(prev => prev + e.key);
+        setIsWaitingForJump(true);
+        
+        // Clear number buffer after 2 seconds if no 'j' or 'k' is pressed
+        setTimeout(() => {
+          if (isWaitingForJump) {
+            console.log('Clearing number buffer due to timeout');
+            setNumberBuffer('');
+            setIsWaitingForJump(false);
+          }
+        }, 2000);
+      } else if (e.key === 'j' && isWaitingForJump && numberBuffer) {
+        // Jump forward by number
+        e.preventDefault();
+        e.stopPropagation();
+        const jumpAmount = parseInt(numberBuffer);
+        console.log('Vim navigation: j pressed with buffer', numberBuffer, 'jumpAmount:', jumpAmount);
+        if (jumpAmount > 0 && filteredBookmarks.length > 0) {
+          const targetIndex = Math.min(jumpAmount - 1, filteredBookmarks.length - 1);
+          console.log('Setting focusedBookmarkIndex to', targetIndex);
+          setFocusedBookmarkIndex(targetIndex);
+        }
+        setNumberBuffer('');
+        setIsWaitingForJump(false);
+      } else if (e.key === 'k' && isWaitingForJump && numberBuffer) {
+        // Jump backward by number
+        e.preventDefault();
+        e.stopPropagation();
+        const jumpAmount = parseInt(numberBuffer);
+        console.log('Vim navigation: k pressed with buffer', numberBuffer, 'jumpAmount:', jumpAmount);
+        if (jumpAmount > 0 && filteredBookmarks.length > 0) {
+          const targetIndex = Math.max(filteredBookmarks.length - jumpAmount, 0);
+          console.log('Setting focusedBookmarkIndex to', targetIndex);
+          setFocusedBookmarkIndex(targetIndex);
+        }
+        setNumberBuffer('');
+        setIsWaitingForJump(false);
       } else if (e.key === 'c') {
         // Focus the search bar when 'c' is pressed and cursor is not in focus
         e.preventDefault();
@@ -1384,7 +1533,7 @@ const BookmarkManager = ({ allNotes }) => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [focusedBookmarkIndex, filteredBookmarks, isWaitingForS]);
+  }, [focusedBookmarkIndex, filteredBookmarks, isWaitingForS, showRemindersOnly, numberBuffer, isWaitingForJump]);
 
   // Scroll focused bookmark into view
   useEffect(() => {
@@ -1745,6 +1894,19 @@ const BookmarkManager = ({ allNotes }) => {
           </button>
         </div>
       </div>
+
+      {showRemindersOnly && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <BellIcon className="h-5 w-5 text-orange-600" />
+            <h3 className="text-md font-medium text-orange-800">Reminders Only Mode</h3>
+            <span className="text-sm text-orange-600">(Press 'r' to toggle)</span>
+          </div>
+          <p className="text-sm text-orange-700 mt-1">
+            Showing only bookmarks with reminder-related keywords. Use vim-like navigation: 'g' (first), 'G' (last), '5j' (jump to 5th), '3k' (jump to 3rd from end).
+          </p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center h-48">

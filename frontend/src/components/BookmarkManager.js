@@ -1220,6 +1220,11 @@ const BookmarkManager = ({ allNotes }) => {
   const filteredBookmarks = useMemo(() => {
     let filtered = bookmarks;
 
+    // Filter out hidden bookmarks unless showHidden is true
+    if (!showHidden) {
+      filtered = filtered.filter(bookmark => !bookmark.isHidden);
+    }
+
     // Filter by selected hostname
     if (selectedHostname) {
       filtered = filtered.filter(bookmark => {
@@ -1299,7 +1304,78 @@ const BookmarkManager = ({ allNotes }) => {
     }
 
     return filtered;
-  }, [bookmarks, searchQuery, selectedHostname, selectedYear, selectedMonth, showRemindersOnly]);
+  }, [bookmarks, searchQuery, selectedHostname, selectedYear, selectedMonth, showRemindersOnly, showHidden]);
+
+  // Calculate how many hidden bookmarks match the current search criteria
+  const hiddenBookmarksCount = useMemo(() => {
+    if (showHidden) return 0; // If hidden bookmarks are shown, no need to count them separately
+    
+    let hiddenFiltered = bookmarks.filter(bookmark => bookmark.isHidden);
+
+    // Apply the same filters as the main filteredBookmarks
+    if (selectedHostname) {
+      hiddenFiltered = hiddenFiltered.filter(bookmark => {
+        try {
+          const url = new URL(bookmark.url);
+          return url.hostname.replace('www.', '') === selectedHostname;
+        } catch (e) {
+          return false;
+        }
+      });
+    }
+
+    if (selectedYear || selectedMonth !== null) {
+      hiddenFiltered = hiddenFiltered.filter(bookmark => {
+        if (!bookmark.dateAdded) return false;
+        const bookmarkYear = bookmark.dateAdded.getFullYear();
+        const bookmarkMonth = bookmark.dateAdded.getMonth();
+        
+        if (selectedYear && selectedMonth !== null) {
+          return bookmarkYear === parseInt(selectedYear) && bookmarkMonth === selectedMonth;
+        } else if (selectedYear) {
+          return bookmarkYear === parseInt(selectedYear);
+        } else if (selectedMonth !== null) {
+          return bookmarkMonth === selectedMonth;
+        }
+        return false;
+      });
+    }
+
+    if (searchQuery.trim()) {
+      const searchWords = searchQuery.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+      
+      hiddenFiltered = hiddenFiltered.filter(bookmark => {
+        const title = (bookmark.title?.toLowerCase() || '');
+        const url = (bookmark.url?.toLowerCase() || '');
+        
+        return searchWords.every(word => {
+          const titleWords = title.split(/\s+/);
+          const urlWords = url.split(/[/\-_?=&.]+/);
+          
+          const hasTitleMatch = titleWords.some(titleWord => titleWord === word);
+          const hasUrlMatch = urlWords.some(urlWord => urlWord === word);
+          
+          return hasTitleMatch || hasUrlMatch || title.includes(word) || url.includes(word);
+        });
+      });
+    }
+
+    if (showRemindersOnly) {
+      hiddenFiltered = hiddenFiltered.filter(bookmark => {
+        const title = (bookmark.title?.toLowerCase() || '');
+        const url = (bookmark.url?.toLowerCase() || '');
+        
+        const reminderKeywords = ['reminder', 'todo', 'task', 'deadline', 'due', 'meeting', 'call', 'appointment'];
+        const hasReminderKeyword = reminderKeywords.some(keyword => 
+          title.includes(keyword) || url.includes(keyword)
+        );
+        
+        return hasReminderKeyword;
+      });
+    }
+
+    return hiddenFiltered.length;
+  }, [bookmarks, searchQuery, selectedHostname, selectedYear, selectedMonth, showRemindersOnly, showHidden]);
 
   // Keyboard navigation for bookmarks
   useEffect(() => {
@@ -1340,6 +1416,14 @@ const BookmarkManager = ({ allNotes }) => {
           e.stopPropagation();
           setFocusedBookmarkIndex(-1);
           searchInputRef.current?.focus();
+        } else if (e.key === 'e') {
+          // Edit the focused bookmark
+          e.preventDefault();
+          e.stopPropagation();
+          const bookmark = filteredBookmarks[focusedBookmarkIndex];
+          if (bookmark) {
+            handleEditBookmark(bookmark);
+          }
         } else if (e.key === 'm') {
           // Start the 'm' + 's' sequence for marking as hidden
           e.preventDefault();
@@ -1460,6 +1544,20 @@ const BookmarkManager = ({ allNotes }) => {
         e.preventDefault();
         e.stopPropagation();
         setShowRemindersOnly(prev => !prev);
+        setFocusedBookmarkIndex(-1);
+      } else if (e.key === 'o') {
+        // Toggle show hidden bookmarks
+        e.preventDefault();
+        e.stopPropagation();
+        handleShowHiddenClick();
+        setFocusedBookmarkIndex(-1);
+      } else if (e.key === 'h') {
+        // Hide hidden bookmarks (only when they are currently shown)
+        e.preventDefault();
+        e.stopPropagation();
+        if (showHidden) {
+          setShowHidden(false);
+        }
         setFocusedBookmarkIndex(-1);
       } else if (e.key === 'g') {
         // Move to first bookmark (vim-like 'g' or 'gg')
@@ -2170,6 +2268,11 @@ const BookmarkManager = ({ allNotes }) => {
                   ? `All Bookmarks (${bookmarks.length})`
                   : `Filtered Bookmarks (${filteredBookmarks.length} of ${bookmarks.length})`
                 }
+                {hiddenBookmarksCount > 0 && (
+                  <span className="text-sm text-gray-500 ml-2">
+                    - {hiddenBookmarksCount} hidden found
+                  </span>
+                )}
                 {!searchQuery.trim() && !selectedHostname && !selectedYear && selectedMonth === null && (
                   <span className="text-sm text-gray-500 ml-2">
                     (showing most recent 100)

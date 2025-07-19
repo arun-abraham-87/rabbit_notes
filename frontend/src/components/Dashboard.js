@@ -567,7 +567,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800">Reminders Only</h2>
-            <div className="text-sm text-gray-500">Press Escape to return to normal view • Use ↑↓ arrows to navigate, Enter to dismiss, L to open link • Vim: g/G for first/last, number+j/k to jump (e.g. 4j, 3k)</div>
+            <div className="text-sm text-gray-500">Press Escape to return to normal view • Use ↑↓ arrows to navigate, Enter/L to open link, M to dismiss • Vim: gg/G for first/last, number+j/k to jump (e.g. 4j, 3k)</div>
           </div>
           <RemindersAlert 
             allNotes={notes} 

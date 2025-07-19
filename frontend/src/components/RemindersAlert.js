@@ -22,6 +22,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const [upcomingReminders, setUpcomingReminders] = useState([]);
   const [focusedReminderIndex, setFocusedReminderIndex] = useState(-1);
   const [isWaitingForJump, setIsWaitingForJump] = useState(false);
+  const [isWaitingForDoubleG, setIsWaitingForDoubleG] = useState(false);
   const numberBufferRef = useRef('');
 
   useEffect(() => {
@@ -135,7 +136,18 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
       if (e.key === 'g') {
         e.preventDefault();
         e.stopPropagation();
-        setFocusedReminderIndex(0);
+        
+        if (isWaitingForDoubleG) {
+          // Double 'g' pressed - go to first item
+          setFocusedReminderIndex(0);
+          setIsWaitingForDoubleG(false);
+        } else {
+          // First 'g' pressed - wait for second 'g'
+          setIsWaitingForDoubleG(true);
+          setTimeout(() => {
+            setIsWaitingForDoubleG(false);
+          }, 300); // 300ms timeout for double 'g'
+        }
         return;
       }
 
@@ -270,7 +282,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isRemindersOnlyMode, reminderObjs.length, upcomingReminders.length, focusedReminderIndex, isWaitingForJump]);
+  }, [isRemindersOnlyMode, reminderObjs.length, upcomingReminders.length, focusedReminderIndex, isWaitingForJump, isWaitingForDoubleG]);
 
   // Reset focused index when reminders change
   useEffect(() => {
@@ -506,6 +518,17 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
 
   return (
     <div className="space-y-4 w-full">
+      {/* Number buffer indicator */}
+      {isRemindersOnlyMode && isWaitingForJump && (
+        <div className="fixed top-4 right-4 bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg z-50">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Jump to:</span>
+            <span className="text-lg font-bold">{numberBufferRef.current}</span>
+            <span className="text-xs opacity-75">Press j/k</span>
+          </div>
+        </div>
+      )}
+      
       {/* Active Reminders Section */}
       {reminderObjs.length > 0 && (
         <div className="space-y-4">
@@ -526,7 +549,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                 data-reminder-id={note.id}
                 className={`bg-amber-100 border shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200 ${
                   isFocused 
-                    ? 'border-blue-500 ring-2 ring-blue-300 bg-amber-50' 
+                    ? 'border-blue-500 ring-2 ring-blue-300 bg-amber-50 shadow-xl' 
                     : 'border-amber-200'
                 }`}
                 onMouseEnter={() => setHoveredNote(note.id)}
@@ -551,6 +574,11 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       <BellIcon className="h-5 w-5 text-purple-700 bell-vibrate" />
                       <div>
                         {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
+                        {isFocused && (
+                          <div className="mt-1 text-xs text-blue-600 font-medium">
+                            Position: {index + 1} of {reminderObjs.length + upcomingReminders.length}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -627,7 +655,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   data-reminder-id={note.id}
                   className={`bg-gray-50 border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 ${
                     isFocused 
-                      ? 'border-blue-500 ring-2 ring-blue-300 bg-gray-100' 
+                      ? 'border-blue-500 ring-2 ring-blue-300 bg-gray-100 shadow-xl' 
                       : 'border-gray-200'
                   }`}
                 >
@@ -651,6 +679,11 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                           <div className="mt-1 text-sm text-gray-500">
                             {formatDate(nextReview)}
                           </div>
+                          {isFocused && (
+                            <div className="mt-1 text-xs text-blue-600 font-medium">
+                              Position: {reminderObjs.length + index + 1} of {reminderObjs.length + upcomingReminders.length}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

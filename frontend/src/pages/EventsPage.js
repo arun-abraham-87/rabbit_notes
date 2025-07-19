@@ -141,10 +141,12 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchBuffer, setSearchBuffer] = useState('');
+  const [selectedEventIndex, setSelectedEventIndex] = useState(-1);
   
   // Add keyboard navigation for 't' key to show today's events
   useEffect(() => {
     const handleKeyDown = (e) => {
+      console.log('Key pressed:', e.key, 'isSearchMode:', isSearchMode);
       // Only handle keys when not in an input/textarea and no modifier keys
       if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
           e.target.tagName !== 'INPUT' && 
@@ -154,18 +156,52 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         if (e.key === 's' && !isSearchMode) {
           e.preventDefault();
           e.stopPropagation();
+          console.log('Entering search mode');
           setIsSearchMode(true);
           setSearchBuffer('');
         } else if (isSearchMode && e.key.length === 1) {
+          console.log('Search mode active, key pressed:', e.key, 'buffer:', searchBuffer);
           e.preventDefault();
           e.stopPropagation();
           const newBuffer = searchBuffer + e.key;
+          console.log('New buffer will be:', newBuffer);
           setSearchBuffer(newBuffer);
           
           // Handle specific search commands
-          if (newBuffer === 'sb') {
-            // Show only events with birthday tag
-            console.log('Setting birthday filter, selectedTags:', ['birthday']);
+          console.log('Checking commands for buffer:', newBuffer);
+          if (newBuffer === 'b') {
+            // Show only events with birthday tag (single 'b' command)
+            console.log('Setting birthday filter with single b command');
+            setSelectedTags(['birthday']);
+            setIsSearchMode(false);
+            setSearchBuffer('');
+          } else if (newBuffer === 'w') {
+            // Show only events with wedding tag (single 'w' command)
+            console.log('Setting wedding filter with single w command');
+            setSelectedTags(['wedding']);
+            setIsSearchMode(false);
+            setSearchBuffer('');
+          } else if (newBuffer === 'h') {
+            // Show only events with holiday tag (single 'h' command)
+            console.log('Setting holiday filter with single h command');
+            setSelectedTags(['holiday']);
+            setIsSearchMode(false);
+            setSearchBuffer('');
+          } else if (newBuffer === 'tr') {
+            // Show only events with travel tag (tr command)
+            console.log('Setting travel filter with tr command');
+            setSelectedTags(['travel']);
+            setIsSearchMode(false);
+            setSearchBuffer('');
+          } else if (newBuffer === 'p') {
+            // Show only events with purchase tag (single 'p' command)
+            console.log('Setting purchase filter with single p command');
+            setSelectedTags(['purchase']);
+            setIsSearchMode(false);
+            setSearchBuffer('');
+          } else if (newBuffer === 'sb') {
+            // Show only events with birthday tag (double command)
+            console.log('Setting birthday filter with sb command');
             setSelectedTags(['birthday']);
             setIsSearchMode(false);
             setSearchBuffer('');
@@ -193,6 +229,11 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
             setShowOnlyDeadlines(false);
             setIsSearchMode(false);
             setSearchBuffer('');
+          } else if (newBuffer === 'ws') {
+            // Show only wedding events
+            setSelectedTags(['wedding']);
+            setIsSearchMode(false);
+            setSearchBuffer('');
           }
         } else if (isSearchMode && e.key === 'Escape') {
           e.preventDefault();
@@ -211,13 +252,31 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           e.preventDefault();
           e.stopPropagation();
           window.location.href = '/dashboard';
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          setSelectedEventIndex(prev => {
+            if (prev <= 0) {
+              return calendarEvents.length - 1; // Wrap to bottom
+            }
+            return prev - 1;
+          });
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          setSelectedEventIndex(prev => {
+            if (prev >= calendarEvents.length - 1) {
+              return 0; // Wrap to top
+            }
+            return prev + 1;
+          });
         }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showTodaysEventsOnly, isFocusMode, isSearchMode, searchBuffer]);
+  }, [showTodaysEventsOnly, isFocusMode, isSearchMode, searchBuffer, calendarEvents]);
 
   // Auto-clear search mode after 3 seconds of inactivity
   useEffect(() => {
@@ -410,7 +469,8 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
             matchesTags,
             hasAllTags: selectedTags.every(selectedTag => 
               tags.some(eventTag => eventTag.toLowerCase() === selectedTag.toLowerCase())
-            )
+            ),
+            eventId: note.id
           });
         }
         
@@ -859,6 +919,8 @@ event_tags:${expense.tag.join(',')}`;
           notes={allNotes}
           onDelete={handleDelete}
           onAddEvent={handleAddEvent}
+          selectedEventIndex={selectedEventIndex}
+          onEventSelect={setSelectedEventIndex}
         />
       </div>
 

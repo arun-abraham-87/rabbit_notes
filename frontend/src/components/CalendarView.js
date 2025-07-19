@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { 
   ChevronRightIcon, 
@@ -21,7 +21,7 @@ import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
 import EventsByAgeView from './EventsByAgeView';
 
-const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAddEvent, onDelete }) => {
+const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAddEvent, onDelete, selectedEventIndex, onEventSelect }) => {
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -29,6 +29,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'age'
+  const selectedEventRef = useRef(null);
 
   // Function to calculate age in years, months, and days
   const calculateAge = (date) => {
@@ -230,6 +231,17 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
     await onEventUpdated(event.id, updatedContent);
   };
 
+  // Auto-scroll to selected event
+  useEffect(() => {
+    if (selectedEventIndex >= 0 && selectedEventRef.current) {
+      selectedEventRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
+      });
+    }
+  }, [selectedEventIndex]);
+
   return (
     <div className="space-y-8">
       {/* Alerts Section */}
@@ -333,20 +345,30 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
 
                       {/* Event cards */}
                       <div className="space-y-4">
-                        {dateOccurrences.map((occurrence, index) => (
-                          <div
-                            key={`${occurrence.event.id}-${occurrence.date.toISOString()}`}
-                            className={`transition-all duration-200 ${
-                              occurrence.isPast ? 'opacity-60 group-hover:opacity-100' : ''
-                            }`}
-                          >
-                            <div className={`p-4 rounded-lg border transition-all duration-200 ${
-                              occurrence.isPast 
-                                ? 'bg-gray-50 border-gray-200 group-hover:bg-gray-100 group-hover:border-gray-300' 
-                                : occurrence.isToday 
-                                  ? 'border-2 border-indigo-500 bg-indigo-50 shadow-md group-hover:bg-indigo-100'
-                                  : 'bg-white border-gray-200 group-hover:bg-gray-50 group-hover:border-gray-300'
-                            } shadow-sm flex`}>
+                        {dateOccurrences.map((occurrence, index) => {
+                          const eventIndex = sortedOccurrences.findIndex(o => 
+                            o.event.id === occurrence.event.id && o.date.toISOString() === occurrence.date.toISOString()
+                          );
+                          const isSelected = eventIndex === selectedEventIndex;
+                          
+                          return (
+                            <div
+                              key={`${occurrence.event.id}-${occurrence.date.toISOString()}`}
+                              ref={isSelected ? selectedEventRef : null}
+                              className={`transition-all duration-200 ${
+                                occurrence.isPast ? 'opacity-60 group-hover:opacity-100' : ''
+                              }`}
+                              onClick={() => onEventSelect && onEventSelect(eventIndex)}
+                            >
+                              <div className={`p-4 rounded-lg border transition-all duration-200 ${
+                                isSelected
+                                  ? 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50 border-blue-300'
+                                  : occurrence.isPast 
+                                    ? 'bg-gray-50 border-gray-200 group-hover:bg-gray-100 group-hover:border-gray-300' 
+                                    : occurrence.isToday 
+                                      ? 'border-2 border-indigo-500 bg-indigo-50 shadow-md group-hover:bg-indigo-100'
+                                      : 'bg-white border-gray-200 group-hover:bg-gray-50 group-hover:border-gray-300'
+                              } shadow-sm flex`}>
                               {/* Days indicator */}
                               <div className={`flex flex-col items-center justify-center min-w-[80px] mr-4 rounded-l-lg ${
                                 occurrence.isPast 
@@ -539,7 +561,8 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                               </div>
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     </div>
                   );

@@ -5,6 +5,7 @@ const TimezonePopup = ({ isOpen, onClose }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [sliderHour, setSliderHour] = useState(12);
   const searchInputRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -141,6 +142,29 @@ const TimezonePopup = ({ isOpen, onClose }) => {
     }
   };
 
+  // Format time for a timezone based on slider hour
+  const formatTimezoneTimeWithSlider = (timeZone, baseHour) => {
+    try {
+      const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
+      
+      // Create a date object with the slider hour in base timezone
+      const baseDate = new Date();
+      baseDate.setHours(baseHour, 0, 0, 0);
+      
+      // Convert to target timezone
+      const targetDate = new Date(baseDate.toLocaleString('en-US', { timeZone: baseTimezone }));
+      const targetTimeInZone = new Date(targetDate.toLocaleString('en-US', { timeZone: timeZone }));
+      
+      return new Intl.DateTimeFormat('en-US', {
+        hour12: true,
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(targetTimeInZone);
+    } catch (error) {
+      return '--:--';
+    }
+  };
+
   // Get time difference from base timezone
   const getTimeDiffHours = (targetZone) => {
     const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
@@ -243,7 +267,7 @@ const TimezonePopup = ({ isOpen, onClose }) => {
           </div>
           
           {/* Continent Filter Buttons */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mb-4">
             <button
               onClick={() => {
                 setActiveFilter('all');
@@ -274,6 +298,38 @@ const TimezonePopup = ({ isOpen, onClose }) => {
               </button>
             ))}
           </div>
+          
+          {/* Time Slider */}
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-gray-700">Time Slider</label>
+              <span className="text-sm text-gray-600">
+                {sliderHour === 0 ? '12 AM' : 
+                 sliderHour === 12 ? '12 PM' : 
+                 sliderHour > 12 ? `${sliderHour - 12} PM` : `${sliderHour} AM`}
+              </span>
+            </div>
+            <div className="relative">
+              <input
+                type="range"
+                min="0"
+                max="23"
+                value={sliderHour}
+                onChange={(e) => setSliderHour(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                style={{
+                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(sliderHour / 23) * 100}%, #e5e7eb ${(sliderHour / 23) * 100}%, #e5e7eb 100%)`
+                }}
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>12 AM</span>
+                <span>6 AM</span>
+                <span>12 PM</span>
+                <span>6 PM</span>
+                <span>11 PM</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Timezone List */}
@@ -295,25 +351,29 @@ const TimezonePopup = ({ isOpen, onClose }) => {
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {continentTimezones.map((timezone, index) => {
-                        const time = formatTimezoneTime(timezone.zone);
+                        const time = formatTimezoneTimeWithSlider(timezone.zone, sliderHour);
                         const timeDiffHours = getTimeDiffHours(timezone.zone);
                         
-                        // Get hour for time description
+                        // Get hour for time description based on slider
+                        const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
+                        const baseDate = new Date();
+                        baseDate.setHours(sliderHour, 0, 0, 0);
+                        const targetDate = new Date(baseDate.toLocaleString('en-US', { timeZone: baseTimezone }));
                         const timeInZone = new Intl.DateTimeFormat('en-US', {
                           timeZone: timezone.zone,
                           hour12: false,
                           hour: 'numeric',
-                        }).format(currentTime);
+                        }).format(targetDate);
                         const hourNum = parseInt(timeInZone, 10);
                         const timeDescription = getTimeDescription(hourNum);
 
-                        // Get date info
+                        // Get date info based on slider
                         const zoneDate = new Intl.DateTimeFormat('en-US', {
                           timeZone: timezone.zone,
                           weekday: 'short',
                           month: 'short',
                           day: 'numeric',
-                        }).format(currentTime);
+                        }).format(targetDate);
 
                         return (
                           <div
@@ -377,4 +437,35 @@ const TimezonePopup = ({ isOpen, onClose }) => {
   );
 };
 
-export default TimezonePopup; 
+export default TimezonePopup;
+
+// Add custom slider styles
+const sliderStyles = `
+  .slider::-webkit-slider-thumb {
+    appearance: none;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  
+  .slider::-moz-range-thumb {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+`;
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = sliderStyles;
+  document.head.appendChild(style);
+} 

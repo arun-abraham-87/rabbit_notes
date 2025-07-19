@@ -467,6 +467,16 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
     notes.forEach(note => {
       if (note?.content && note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark'))) {
+        // Check if note has hidden tags
+        const hasHiddenTag = note.content.split('\n').some(line => 
+          line.trim() === 'meta::bookmark_hidden' || line.trim() === 'meta::bookmarks_hidden'
+        );
+        
+        // Skip notes with hidden tags
+        if (hasHiddenTag) {
+          return;
+        }
+        
         linkRegex.lastIndex = 0;
         let match;
         while ((match = linkRegex.exec(note.content)) !== null) {

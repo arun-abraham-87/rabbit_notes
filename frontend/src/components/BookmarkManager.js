@@ -901,6 +901,8 @@ const BookmarkManager = ({ allNotes }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef(null);
+  const [focusedBookmarkIndex, setFocusedBookmarkIndex] = useState(-1);
+  const [showOpenAllModal, setShowOpenAllModal] = useState(false);
   const [selectedHostname, setSelectedHostname] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -972,12 +974,22 @@ const BookmarkManager = ({ allNotes }) => {
     loadWebBookmarks();
   }, [allNotes]);
 
-  // Focus search input on component mount
+  // Focus search input on component mount and when route changes
   useEffect(() => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+    // Add a small delay to ensure the component is fully rendered
+    const timer = setTimeout(() => {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        // Move cursor to end of text
+        const length = searchInputRef.current.value.length;
+        searchInputRef.current.setSelectionRange(length, length);
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
+
+
 
   // Save counts to localStorage whenever they change
   useEffect(() => {
@@ -1256,6 +1268,80 @@ const BookmarkManager = ({ allNotes }) => {
     return filtered;
   }, [bookmarks, searchQuery, selectedHostname, selectedYear, selectedMonth]);
 
+  // Keyboard navigation for bookmarks
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only handle arrow keys when not in an input/textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (focusedBookmarkIndex >= 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          setFocusedBookmarkIndex(prev => 
+            prev < filteredBookmarks.length - 1 ? prev + 1 : prev
+          );
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (focusedBookmarkIndex === 0) {
+            // Return focus to search input
+            setFocusedBookmarkIndex(-1);
+            searchInputRef.current?.focus();
+          } else {
+            setFocusedBookmarkIndex(prev => prev - 1);
+          }
+        } else if (e.key === 'Enter' && focusedBookmarkIndex >= 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          const bookmark = filteredBookmarks[focusedBookmarkIndex];
+          if (bookmark) {
+            window.open(bookmark.url, '_blank');
+          }
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          setFocusedBookmarkIndex(-1);
+          searchInputRef.current?.focus();
+        }
+      } else if (e.key === 'a') {
+        // Open all bookmarks when 'a' is pressed and search is not focused
+        e.preventDefault();
+        e.stopPropagation();
+        const bookmarksToOpen = filteredBookmarks.length > 0 ? filteredBookmarks : bookmarks;
+        if (bookmarksToOpen.length > 10) {
+          setShowOpenAllModal(true);
+        } else {
+          // Open all bookmarks directly
+          bookmarksToOpen.forEach(bookmark => {
+            window.open(bookmark.url, '_blank');
+          });
+        }
+      } else if (e.key === 'c') {
+        // Focus the search bar when 'c' is pressed and cursor is not in focus
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedBookmarkIndex(-1);
+        searchInputRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [focusedBookmarkIndex, filteredBookmarks]);
+
+  // Scroll focused bookmark into view
+  useEffect(() => {
+    if (focusedBookmarkIndex >= 0) {
+      const focusedElement = document.querySelector(`[data-bookmark-index="${focusedBookmarkIndex}"]`);
+      if (focusedElement) {
+        focusedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [focusedBookmarkIndex]);
+
   // Get grouped duplicates for display
   const groupedDuplicates = useMemo(() => {
     if (!showDuplicates) return null;
@@ -1382,11 +1468,16 @@ const BookmarkManager = ({ allNotes }) => {
     const count = bookmarkCounts[bookmark.url] || 0;
     const isHidden = bookmark.isHidden;
     const shouldMask = isHidden && !showHidden;
+    const isFocused = focusedBookmarkIndex === index;
     
     return (
       <div
         key={index}
-        className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
+        data-bookmark-index={index}
+        className={`flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow ${
+          isFocused ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+        }`}
+        tabIndex={isFocused ? 0 : -1}
       >
         {bookmark.icon && (
           <img
@@ -1789,6 +1880,22 @@ const BookmarkManager = ({ allNotes }) => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      if (filteredBookmarks.length > 0) {
+                        setFocusedBookmarkIndex(0);
+                        // Remove focus from search input
+                        searchInputRef.current?.blur();
+                      }
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      // Clear search and move focus out of search input
+                      setSearchQuery('');
+                      setFocusedBookmarkIndex(-1);
+                      searchInputRef.current?.blur();
+                    }
+                  }}
                   placeholder="Search bookmarks (space-separated words)..."
                   className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -1952,6 +2059,59 @@ const BookmarkManager = ({ allNotes }) => {
         onConfirm={() => handleDeleteBookmark(deletingBookmark)}
         bookmark={deletingBookmark}
       />
+
+      {/* Open All Bookmarks Confirmation Modal */}
+      {showOpenAllModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-96 max-w-md mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">
+                Open All Bookmarks
+              </h3>
+              <button
+                onClick={() => setShowOpenAllModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <p className="text-gray-700 mb-2">
+                  You're about to open {filteredBookmarks.length > 0 ? filteredBookmarks.length : bookmarks.length} bookmarks in new tabs.
+                </p>
+                <p className="text-sm text-gray-500">
+                  This may slow down your browser. Are you sure you want to continue?
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowOpenAllModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const bookmarksToOpen = filteredBookmarks.length > 0 ? filteredBookmarks : bookmarks;
+                    bookmarksToOpen.forEach(bookmark => {
+                      window.open(bookmark.url, '_blank');
+                    });
+                    setShowOpenAllModal(false);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Open All
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

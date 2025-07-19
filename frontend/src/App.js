@@ -293,33 +293,24 @@ const AppContent = () => {
       }
 
       // Handle navigation shortcuts
-      // 'gt' to go to /tags, 'gn' to go to /notes, 'gh' to go to /dashboard, 'ge' to go to /events, 'gl' to go to last note
+      // 'gt' to go to /tags, 'gn' to go to /notes, 'gh' to go to /dashboard, 'ge' to go to /events, 'gl' to go to last note, 'gb' to go to bookmarks
       if (e.key === 'g') {
-        // Start tracking for 'gt', 'gn', 'gh', 'ge', or 'gl' sequence
+        // Start tracking for navigation sequence - this takes precedence over any page-specific shortcuts
         const handleNextKey = (nextEvent) => {
+          // Always prevent default and stop propagation for global navigation
+          e.preventDefault();
+          nextEvent.preventDefault();
+          nextEvent.stopPropagation();
+          
           if (nextEvent.key === 't') {
-            e.preventDefault();
-            nextEvent.preventDefault();
             navigate('/tags');
-            window.removeEventListener('keydown', handleNextKey);
           } else if (nextEvent.key === 'n') {
-            e.preventDefault();
-            nextEvent.preventDefault();
             navigate('/notes');
-            window.removeEventListener('keydown', handleNextKey);
           } else if (nextEvent.key === 'h') {
-            e.preventDefault();
-            nextEvent.preventDefault();
             navigate('/dashboard');
-            window.removeEventListener('keydown', handleNextKey);
           } else if (nextEvent.key === 'e') {
-            e.preventDefault();
-            nextEvent.preventDefault();
             navigate('/events');
-            window.removeEventListener('keydown', handleNextKey);
           } else if (nextEvent.key === 'l') {
-            e.preventDefault();
-            nextEvent.preventDefault();
             // Navigate to last added note
             if (lastAddedNoteId) {
               navigate('/notes', { state: { searchQuery: `id:${lastAddedNoteId}` } });
@@ -329,15 +320,15 @@ const AppContent = () => {
               navigate('/notes');
               Alerts.error('No last added note found');
             }
-            window.removeEventListener('keydown', handleNextKey);
-          } else {
-            // If next key is not 't', 'n', 'h', 'e', or 'l', stop tracking
-            window.removeEventListener('keydown', handleNextKey);
+          } else if (nextEvent.key === 'b') {
+            navigate('/bookmarks');
           }
+          // Always remove the event listener, regardless of the key pressed
+          window.removeEventListener('keydown', handleNextKey);
         };
         
-        // Listen for the next key press
-        window.addEventListener('keydown', handleNextKey, { once: true });
+        // Listen for the next key press with capture phase to ensure it fires before other handlers
+        window.addEventListener('keydown', handleNextKey, { once: true, capture: true });
         return;
       }
     };

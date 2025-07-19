@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
@@ -900,6 +900,7 @@ const BookmarkManager = ({ allNotes }) => {
   const [bookmarks, setBookmarks] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef(null);
   const [selectedHostname, setSelectedHostname] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -970,6 +971,13 @@ const BookmarkManager = ({ allNotes }) => {
 
     loadWebBookmarks();
   }, [allNotes]);
+
+  // Focus search input on component mount
+  useEffect(() => {
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, []);
 
   // Save counts to localStorage whenever they change
   useEffect(() => {
@@ -1777,6 +1785,7 @@ const BookmarkManager = ({ allNotes }) => {
             <div className="mb-4">
               <div className="relative">
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

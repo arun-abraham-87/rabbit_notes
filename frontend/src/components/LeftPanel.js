@@ -531,6 +531,20 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           }
           // Reset focus
           setFocusedBookmarkIndex(-1);
+        } else if (/^[1-9]$/.test(e.key)) {
+          // Handle number keys 1-9
+          e.preventDefault();
+          e.stopPropagation();
+          const bookmarkNumber = parseInt(e.key);
+          const bookmarkIndex = bookmarkNumber - 1; // Convert to 0-based index
+          
+          if (bookmarkIndex < bookmarkedUrls.length) {
+            // Navigate to the bookmark with that number
+            const targetBookmark = bookmarkedUrls[bookmarkIndex];
+            if (targetBookmark) {
+              window.open(targetBookmark.url, '_blank');
+            }
+          }
         }
       }
     };

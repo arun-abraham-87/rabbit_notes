@@ -19,10 +19,11 @@ import {
   FolderIcon,
   StarIcon,
 } from '@heroicons/react/24/solid';
-import { MapPinIcon } from '@heroicons/react/24/outline';
+import { MapPinIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { getDateInDDMMYYYYFormat, getAgeInStringFmt } from '../utils/DateUtils';
 import { toast } from 'react-toastify';
 import { getDummyCadenceLine } from '../utils/CadenceHelpUtils';
+import ConvertToBookmarkModal from './ConvertToBookmarkModal';
 
 const Tooltip = ({ text, children }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -65,6 +66,7 @@ const NoteFooter = ({
   const [selectedPinLines, setSelectedPinLines] = useState([]);
   const [showRawNote, setShowRawNote] = useState(false);
   const [showRemoveTagsConfirm, setShowRemoveTagsConfirm] = useState(false);
+  const [showConvertToBookmarkModal, setShowConvertToBookmarkModal] = useState(false);
   const pinPopupRef = useRef(null);
   const rawNotePopupRef = useRef(null);
   const lines = note.content.split('\n');
@@ -301,6 +303,11 @@ const NoteFooter = ({
     }
   };
 
+  const handleConvertToBookmark = (bookmarkContent) => {
+    updateNote(note.id, bookmarkContent);
+    toast.success('Note converted to web bookmark!');
+  };
+
   return (
     <div className="flex items-center justify-between px-4 py-2 text-xs text-gray-500">
       <div className="flex items-center space-x-2">
@@ -442,6 +449,15 @@ const NoteFooter = ({
             >
               <EyeIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::sensitive::') ? 'text-orange-500' : 'text-gray-500 hover:text-orange-500'
                 }`} />
+            </button>
+          </Tooltip>
+
+          <Tooltip text="Convert to Web Bookmark">
+            <button
+              onClick={() => setShowConvertToBookmarkModal(true)}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <GlobeAltIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
             </button>
           </Tooltip>
         </div>
@@ -674,6 +690,14 @@ const NoteFooter = ({
           </div>
         </div>
       )}
+
+      {/* Convert to Bookmark Modal */}
+      <ConvertToBookmarkModal
+        isOpen={showConvertToBookmarkModal}
+        onClose={() => setShowConvertToBookmarkModal(false)}
+        note={note}
+        onConvert={handleConvertToBookmark}
+      />
     </div>
   );
 };

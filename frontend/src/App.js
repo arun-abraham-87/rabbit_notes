@@ -331,6 +331,39 @@ const AppContent = () => {
         window.addEventListener('keydown', handleNextKey, { once: true, capture: true });
         return;
       }
+
+      // Handle Option + single-key navigation shortcuts (global)
+      // On Mac, altKey is true when Option is pressed
+      if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        console.log('Option key detected:', e.key, 'altKey:', e.altKey);
+        
+        if (e.key === 'n') {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Navigating to notes');
+          navigate('/notes');
+          return;
+        }
+
+        if (e.key === 'e') {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Navigating to events');
+          navigate('/events');
+          return;
+        }
+
+        if (e.key === 'b') {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Toggling left panel');
+          // Toggle the left panel (sidebar)
+          // We need to access the left panel context
+          const leftPanelToggleEvent = new CustomEvent('toggleLeftPanel');
+          document.dispatchEvent(leftPanelToggleEvent);
+          return;
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);

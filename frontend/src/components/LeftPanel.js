@@ -553,6 +553,20 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [bookmarkedUrls, focusedBookmarkIndex, isVisible]);
 
+  // Listen for global toggle left panel event
+  React.useEffect(() => {
+    const handleToggleLeftPanel = () => {
+      if (isPinned) {
+        togglePinned(); // Unpin the sidebar
+      } else {
+        setHovered(!isHovered); // Toggle hover state
+      }
+    };
+
+    document.addEventListener('toggleLeftPanel', handleToggleLeftPanel);
+    return () => document.removeEventListener('toggleLeftPanel', handleToggleLeftPanel);
+  }, [isPinned, isHovered, togglePinned, setHovered]);
+
   const handlePinBookmark = async (bookmark) => {
     try {
       // Find the note containing this bookmark

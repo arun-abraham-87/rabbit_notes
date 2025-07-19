@@ -534,6 +534,46 @@ const NotesList = ({
               console.log('No URLs found in note');
             }
           }
+        } else if (e.key === 'a' && focusedNoteIndexRef.current >= 0) {
+          // Open ALL links in the focused note
+          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+          if (focusedNote) {
+            // Regex to match both markdown-style links [text](url) and plain URLs
+            const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+            const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
+            
+            const links = [];
+            
+            // Extract markdown-style links first
+            let match;
+            while ((match = markdownLinkRegex.exec(focusedNote.content)) !== null) {
+              links.push({
+                url: match[2],
+                text: match[1]
+              });
+            }
+            
+            // Extract plain URLs (excluding those already found in markdown links)
+            const markdownUrls = links.map(link => link.url);
+            while ((match = plainUrlRegex.exec(focusedNote.content)) !== null) {
+              if (!markdownUrls.includes(match[1])) {
+                links.push({
+                  url: match[1],
+                  text: match[1] // Use URL as text for plain URLs
+                });
+              }
+            }
+            
+            if (links.length > 0) {
+              // Open all links in new tabs
+              links.forEach(link => {
+                window.open(link.url, '_blank');
+              });
+              console.log(`Opened ${links.length} links from note`);
+            } else {
+              console.log('No URLs found in note');
+            }
+          }
         } else if (e.key === 'c') {
           // Focus the search bar
           e.preventDefault();

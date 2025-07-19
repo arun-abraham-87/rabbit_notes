@@ -216,18 +216,6 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
           e.stopPropagation();
           setShowReviewsOverdueOnly(true);
           setShowRemindersOnly(false);
-        } else if (e.key === 'n') {
-          e.preventDefault();
-          e.stopPropagation();
-          setActivePage('notes');
-        } else if (e.key === 'e') {
-          e.preventDefault();
-          e.stopPropagation();
-          setActivePage('events');
-        } else if (e.key === 'b') {
-          e.preventDefault();
-          e.stopPropagation();
-          togglePinned();
         } else if (e.key === 'Escape' && (showRemindersOnly || showReviewsOverdueOnly)) {
           e.preventDefault();
           e.stopPropagation();

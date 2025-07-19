@@ -352,13 +352,19 @@ const AppContent = () => {
           navigate('/events');
           return;
         }
+      }
 
+      // Handle single key shortcuts (global)
+      if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
+          e.target.tagName !== 'INPUT' && 
+          e.target.tagName !== 'TEXTAREA' &&
+          e.target.contentEditable !== 'true') {
+        
         if (e.key === 'b') {
           e.preventDefault();
           e.stopPropagation();
           console.log('Toggling left panel');
           // Toggle the left panel (sidebar)
-          // We need to access the left panel context
           const leftPanelToggleEvent = new CustomEvent('toggleLeftPanel');
           document.dispatchEvent(leftPanelToggleEvent);
           return;

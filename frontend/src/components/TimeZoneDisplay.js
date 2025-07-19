@@ -153,10 +153,10 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
 
     return (
       <div className={`${cardBgClasses} shadow-md rounded-lg p-4 w-auto`}>
-        <div className="flex justify-between text-xs text-gray-500 mb-1">
-          <span className="font-bold">
+        <div className="flex justify-between items-center mb-2">
+          <div className="text-lg font-bold">
             {label} {flagMap[timeZone] || ''}
-          </span>
+          </div>
           <span className={animation}>{icon}</span>
         </div>
 

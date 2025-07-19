@@ -20,7 +20,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [loading, setLoading] = useState(true);
   const [time, setTime] = useState(new Date());
   const [timezones, setTimezones] = useState([]);
-  const [showTimezones, setShowTimezones] = useState(false);
+  const [showTimezones, setShowTimezones] = useState(true);
   const [selectedTimezones, setSelectedTimezones] = useState([]);
   const [isEventManagerCollapsed, setIsEventManagerCollapsed] = useState(false);
   const [eventScrollPosition, setEventScrollPosition] = useState(0);
@@ -216,6 +216,10 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
           e.stopPropagation();
           setShowReviewsOverdueOnly(true);
           setShowRemindersOnly(false);
+        } else if (e.key === 't') {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowTimezones(!showTimezones);
         } else if (e.key === 'Escape' && (showRemindersOnly || showReviewsOverdueOnly)) {
           e.preventDefault();
           e.stopPropagation();
@@ -437,24 +441,12 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
               {/* First Row: Date and Current Time */}
               <div className="flex items-center gap-6 mb-4">
                 <h1 className="text-3xl font-bold">{formattedDate}</h1>
-                <div
-                  className="relative group"
-                  onMouseEnter={() => setShowTimezones(true)}
-                  onMouseLeave={() => setShowTimezones(false)}
-                >
-                  <div className="flex items-center gap-4 cursor-pointer">
-                    <div className="text-base font-medium">{formattedTime}</div>
-                    <div className="flex items-center gap-1 text-sm text-gray-500">
-                      <span>{baseTimezoneFlag}</span>
-                      <span>{baseTimezoneLabel}</span>
-                      <ChevronDownIcon className="h-4 w-4 text-gray-400" />
-                    </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-base font-medium">{formattedTime}</div>
+                  <div className="flex items-center gap-1 text-sm text-gray-500">
+                    <span>{baseTimezoneFlag}</span>
+                    <span>{baseTimezoneLabel}</span>
                   </div>
-                  {showTimezones && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
-                      <TimeZoneDisplay selectedTimezones={selectedTimezones} />
-                    </div>
-                  )}
                 </div>
               </div>
               
@@ -494,9 +486,11 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
               </div>
               
               {/* Timezone Cards Display */}
-              <div className="mb-6">
-                <TimeZoneDisplay selectedTimezones={selectedTimezones} />
-              </div>
+              {showTimezones && (
+                <div className="mb-6">
+                  <TimeZoneDisplay selectedTimezones={selectedTimezones} />
+                </div>
+              )}
             </div>
           </div>
 

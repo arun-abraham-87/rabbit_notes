@@ -221,6 +221,34 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
     return list;
   }, [notes]);
 
+  // Add keyboard event listener for number keys
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only handle number keys 1-9 when not in an input/textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      const key = e.key;
+      if (key >= '1' && key <= '9') {
+        const bookmarkIndex = parseInt(key) - 1;
+        if (bookmarkIndex < bookmarkedUrls.length) {
+          e.preventDefault();
+          e.stopPropagation();
+          const bookmark = bookmarkedUrls[bookmarkIndex];
+          if (bookmark) {
+            window.open(bookmark.url, '_blank');
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [bookmarkedUrls]);
+
   const handleEditBookmark = (bookmark) => {
     setEditingBookmark(bookmark);
     setShowEditModal(true);
@@ -318,6 +346,7 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
         <div className="flex items-center gap-2 text-gray-600">
           <BookmarkIcon className="h-5 w-5" />
           <span className="text-sm font-medium">Pinned Bookmarks:</span>
+          <span className="text-xs text-gray-400">(Press 1-9 to open)</span>
         </div>
         <div className="flex items-center gap-3 overflow-x-auto flex-1">
           {bookmarkedUrls.map(({ url, label }, index) => {
@@ -325,12 +354,16 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
               try { return new URL(url).hostname.replace(/^www\./, ''); }
               catch { return url; }
             })();
+            const bookmarkNumber = index + 1;
             return (
               <React.Fragment key={url}>
                 {index > 0 && (
                   <div className="h-4 w-px bg-gray-300" />
                 )}
                 <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                    {bookmarkNumber}
+                  </span>
                   <a
                     href={url}
                     target="_blank"

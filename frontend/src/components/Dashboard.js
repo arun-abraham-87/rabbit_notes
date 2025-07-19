@@ -13,6 +13,99 @@ import Pomodoro from './Pomodoro';
 import { useLeftPanel } from '../contexts/LeftPanelContext';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 
+const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoliday }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-96 max-w-md mx-4">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-800">Add New</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="p-6 space-y-3">
+          <button
+            onClick={() => {
+              onAddEvent();
+              onClose();
+            }}
+            className="w-full flex items-center justify-between p-4 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">Add Event</h4>
+                <p className="text-sm text-gray-600">Create a new event</p>
+              </div>
+            </div>
+            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          <button
+            onClick={() => {
+              onAddDeadline();
+              onClose();
+            }}
+            className="w-full flex items-center justify-between p-4 text-left bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">Add Deadline</h4>
+                <p className="text-sm text-gray-600">Set a new deadline</p>
+              </div>
+            </div>
+            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          <button
+            onClick={() => {
+              onAddHoliday();
+              onClose();
+            }}
+            className="w-full flex items-center justify-between p-4 text-left bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">Add Holiday</h4>
+                <p className="text-sm text-gray-600">Create a holiday entry</p>
+              </div>
+            </div>
+            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = ({notes, setNotes, setActivePage}) => {
   const { isPinned, togglePinned } = useLeftPanel();
   const { openEditor } = useNoteEditor();
@@ -31,6 +124,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [showRemindersOnly, setShowRemindersOnly] = useState(false);
   const [showReviewsOverdueOnly, setShowReviewsOverdueOnly] = useState(false);
   const [showTimezonePopup, setShowTimezonePopup] = useState(false);
+  const [showAddOptionsPopup, setShowAddOptionsPopup] = useState(false);
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -222,6 +316,10 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
           e.preventDefault();
           e.stopPropagation();
           setShowTimezonePopup(true);
+        } else if (e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowAddOptionsPopup(true);
         } else if (e.key === 'Escape' && (showRemindersOnly || showReviewsOverdueOnly)) {
           e.preventDefault();
           e.stopPropagation();
@@ -374,6 +472,21 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
       </div>
     );
   }
+
+  // Handler functions for add options
+  const handleAddEvent = () => {
+    // Dispatch the same event as the Add Event button
+    const event = new CustomEvent('addEvent');
+    document.dispatchEvent(event);
+  };
+
+  const handleAddDeadline = () => {
+    openEditor('add', '', null, ['meta::event']);
+  };
+
+  const handleAddHoliday = () => {
+    openEditor('add', '', null, ['meta::event']);
+  };
 
   // Get base timezone for display
   const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
@@ -644,6 +757,15 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
       <TimezonePopup 
         isOpen={showTimezonePopup}
         onClose={() => setShowTimezonePopup(false)}
+      />
+
+      {/* Add Options Popup */}
+      <AddOptionsPopup
+        isOpen={showAddOptionsPopup}
+        onClose={() => setShowAddOptionsPopup(false)}
+        onAddEvent={handleAddEvent}
+        onAddDeadline={handleAddDeadline}
+        onAddHoliday={handleAddHoliday}
       />
     </div>
   );

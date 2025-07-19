@@ -735,6 +735,13 @@ const BookmarkEdit = ({ isOpen, onClose, bookmark, onSave }) => {
   const [folderPath, setFolderPath] = useState(bookmark?.folderPath || '');
   const [isHidden, setIsHidden] = useState(bookmark?.isHidden || false);
   const [error, setError] = useState('');
+  const [focusedElement, setFocusedElement] = useState(0); // 0: title, 1: url, 2: folder, 3: hidden checkbox, 4: cancel, 5: save
+  const titleRef = useRef(null);
+  const urlRef = useRef(null);
+  const folderRef = useRef(null);
+  const hiddenRef = useRef(null);
+  const cancelRef = useRef(null);
+  const saveRef = useRef(null);
 
   useEffect(() => {
     if (bookmark) {
@@ -744,6 +751,47 @@ const BookmarkEdit = ({ isOpen, onClose, bookmark, onSave }) => {
       setIsHidden(bookmark.isHidden || false);
     }
   }, [bookmark]);
+
+  // Focus title input when modal opens
+  useEffect(() => {
+    if (isOpen && titleRef.current) {
+      setTimeout(() => {
+        titleRef.current?.focus();
+        setFocusedElement(0);
+      }, 100);
+    }
+  }, [isOpen]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isOpen) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedElement(prev => Math.min(prev + 1, 5));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedElement(prev => Math.max(prev - 1, 0));
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Focus the appropriate element based on focusedElement state
+  useEffect(() => {
+    const refs = [titleRef, urlRef, folderRef, hiddenRef, cancelRef, saveRef];
+    const currentRef = refs[focusedElement];
+    
+    if (currentRef?.current) {
+      currentRef.current.focus();
+    }
+  }, [focusedElement]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -795,10 +843,12 @@ const BookmarkEdit = ({ isOpen, onClose, bookmark, onSave }) => {
               Title
             </label>
             <input
+              ref={titleRef}
               type="text"
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onFocus={() => setFocusedElement(0)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter bookmark title"
             />
@@ -808,10 +858,12 @@ const BookmarkEdit = ({ isOpen, onClose, bookmark, onSave }) => {
               URL
             </label>
             <input
+              ref={urlRef}
               type="url"
               id="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
+              onFocus={() => setFocusedElement(1)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter URL"
               required
@@ -822,20 +874,24 @@ const BookmarkEdit = ({ isOpen, onClose, bookmark, onSave }) => {
               Folder Path
             </label>
             <input
+              ref={folderRef}
               type="text"
               id="folderPath"
               value={folderPath}
               onChange={(e) => setFolderPath(e.target.value)}
+              onFocus={() => setFocusedElement(2)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter folder path"
             />
           </div>
           <div className="flex items-center gap-2">
             <input
+              ref={hiddenRef}
               type="checkbox"
               id="isHidden"
               checked={isHidden}
               onChange={(e) => setIsHidden(e.target.checked)}
+              onFocus={() => setFocusedElement(3)}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <label htmlFor="isHidden" className="text-sm text-gray-700">
@@ -844,14 +900,18 @@ const BookmarkEdit = ({ isOpen, onClose, bookmark, onSave }) => {
           </div>
           <div className="flex justify-end gap-2">
             <button
+              ref={cancelRef}
               type="button"
               onClick={onClose}
+              onFocus={() => setFocusedElement(4)}
               className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
             >
               Cancel
             </button>
             <button
+              ref={saveRef}
               type="submit"
+              onFocus={() => setFocusedElement(5)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               Save Changes
@@ -1422,7 +1482,7 @@ const BookmarkManager = ({ allNotes }) => {
           e.stopPropagation();
           const bookmark = filteredBookmarks[focusedBookmarkIndex];
           if (bookmark) {
-            handleEditBookmark(bookmark);
+            setEditingBookmark(bookmark);
           }
         } else if (e.key === 'm') {
           // Start the 'm' + 's' sequence for marking as hidden

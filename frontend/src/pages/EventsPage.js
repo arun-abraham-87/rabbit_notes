@@ -139,6 +139,8 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [pastEventsCount, setPastEventsCount] = useState(0);
   const [showTodaysEventsOnly, setShowTodaysEventsOnly] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [searchBuffer, setSearchBuffer] = useState('');
   
   // Add keyboard navigation for 't' key to show today's events
   useEffect(() => {
@@ -149,7 +151,55 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           e.target.tagName !== 'TEXTAREA' &&
           e.target.contentEditable !== 'true') {
         
-        if (e.key === 't') {
+        if (e.key === 's' && !isSearchMode) {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsSearchMode(true);
+          setSearchBuffer('');
+        } else if (isSearchMode && e.key.length === 1) {
+          e.preventDefault();
+          e.stopPropagation();
+          const newBuffer = searchBuffer + e.key;
+          setSearchBuffer(newBuffer);
+          
+          // Handle specific search commands
+          if (newBuffer === 'sb') {
+            // Show only events with birthday tag
+            console.log('Setting birthday filter, selectedTags:', ['birthday']);
+            setSelectedTags(['birthday']);
+            setIsSearchMode(false);
+            setSearchBuffer('');
+          } else if (newBuffer === 'sc') {
+            // Clear all filters
+            setSelectedTags([]);
+            setSearchQuery('');
+            setIsSearchMode(false);
+            setSearchBuffer('');
+          } else if (newBuffer === 'st') {
+            // Show today's events
+            setShowTodaysEventsOnly(true);
+            setIsSearchMode(false);
+            setSearchBuffer('');
+          } else if (newBuffer === 'sd') {
+            // Show deadlines only
+            setShowOnlyDeadlines(true);
+            setIsSearchMode(false);
+            setSearchBuffer('');
+          } else if (newBuffer === 'sa') {
+            // Show all events (clear filters)
+            setSelectedTags([]);
+            setSearchQuery('');
+            setShowTodaysEventsOnly(false);
+            setShowOnlyDeadlines(false);
+            setIsSearchMode(false);
+            setSearchBuffer('');
+          }
+        } else if (isSearchMode && e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsSearchMode(false);
+          setSearchBuffer('');
+        } else if (e.key === 't') {
           e.preventDefault();
           e.stopPropagation();
           setShowTodaysEventsOnly(!showTodaysEventsOnly);
@@ -167,7 +217,18 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showTodaysEventsOnly, isFocusMode]);
+  }, [showTodaysEventsOnly, isFocusMode, isSearchMode, searchBuffer]);
+
+  // Auto-clear search mode after 3 seconds of inactivity
+  useEffect(() => {
+    if (isSearchMode) {
+      const timer = setTimeout(() => {
+        setIsSearchMode(false);
+        setSearchBuffer('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSearchMode, searchBuffer]);
 
   // Get all unique tags from events
   const uniqueTags = useMemo(() => {
@@ -178,7 +239,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         const { tags: eventTags } = getEventDetails(note.content);
         eventTags.forEach(tag => tags.add(tag));
       });
-    return Array.from(tags).sort();
+    const sortedTags = Array.from(tags).sort();
+    console.log('Available unique tags:', sortedTags);
+    console.log('Available unique tags (lowercase):', sortedTags.map(tag => tag.toLowerCase()));
+    return sortedTags;
   }, [allNotes]);
 
   // Get unique years from events
@@ -333,7 +397,23 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           return matchesSearch && matchesDeadline && matchesDate && matchesPurchaseFilter;
         }
         // If tags are selected, show only events that have ALL selected tags
-        const matchesTags = selectedTags.every(tag => tags.includes(tag));
+        const matchesTags = selectedTags.every(selectedTag => 
+          tags.some(eventTag => eventTag.toLowerCase() === selectedTag.toLowerCase())
+        );
+        
+        // Debug logging for tag filtering
+        if (selectedTags.length > 0) {
+          console.log('Tag filtering:', {
+            description,
+            selectedTags,
+            eventTags: tags,
+            matchesTags,
+            hasAllTags: selectedTags.every(selectedTag => 
+              tags.some(eventTag => eventTag.toLowerCase() === selectedTag.toLowerCase())
+            )
+          });
+        }
+        
         return matchesSearch && matchesTags && matchesDeadline && matchesDate && matchesPurchaseFilter;
       });
 
@@ -508,6 +588,11 @@ event_tags:${expense.tag.join(',')}`;
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">
           Events {isFocusMode && <span className="text-sm font-normal text-gray-500">(Focus Mode)</span>}
+          {isSearchMode && (
+            <span className="text-sm font-normal text-blue-500 ml-2">
+              (Search Mode: {searchBuffer})
+            </span>
+          )}
         </h1>
         {!isFocusMode && (
           <div className="flex items-center gap-4">

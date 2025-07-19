@@ -10,10 +10,39 @@ import TimezonePopup from './TimezonePopup';
 import BookmarkedLinks from './BookmarkedLinks';
 import EventManager from './EventManager';
 import Pomodoro from './Pomodoro';
+import EditEventModal from './EditEventModal';
 import { useLeftPanel } from '../contexts/LeftPanelContext';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 
 const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoliday }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
+        onAddEvent();
+        onClose();
+      } else if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        onAddDeadline();
+        onClose();
+      } else if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        onAddHoliday();
+        onClose();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onAddEvent, onAddDeadline, onAddHoliday, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -50,9 +79,12 @@ const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoli
                 <p className="text-sm text-gray-600">Create a new event</p>
               </div>
             </div>
-            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <div className="flex items-center gap-2">
+              <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">E</span>
+            </div>
           </button>
 
           <button
@@ -73,9 +105,12 @@ const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoli
                 <p className="text-sm text-gray-600">Set a new deadline</p>
               </div>
             </div>
-            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <div className="flex items-center gap-2">
+              <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">D</span>
+            </div>
           </button>
 
           <button
@@ -96,9 +131,12 @@ const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoli
                 <p className="text-sm text-gray-600">Create a holiday entry</p>
               </div>
             </div>
-            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <div className="flex items-center gap-2">
+              <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">H</span>
+            </div>
           </button>
         </div>
       </div>
@@ -125,6 +163,10 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [showReviewsOverdueOnly, setShowReviewsOverdueOnly] = useState(false);
   const [showTimezonePopup, setShowTimezonePopup] = useState(false);
   const [showAddOptionsPopup, setShowAddOptionsPopup] = useState(false);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [isAddingDeadline, setIsAddingDeadline] = useState(false);
+  const [isAddingHoliday, setIsAddingHoliday] = useState(false);
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -475,17 +517,27 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
 
   // Handler functions for add options
   const handleAddEvent = () => {
-    // Dispatch the same event as the Add Event button
-    const event = new CustomEvent('addEvent');
-    document.dispatchEvent(event);
+    // Open EditEventModal for adding new event
+    setEditingEvent(null);
+    setIsAddingDeadline(false);
+    setIsAddingHoliday(false);
+    setShowEditEventModal(true);
   };
 
   const handleAddDeadline = () => {
-    openEditor('add', '', null, ['meta::event']);
+    // Open EditEventModal for adding new deadline
+    setEditingEvent(null);
+    setIsAddingDeadline(true);
+    setIsAddingHoliday(false);
+    setShowEditEventModal(true);
   };
 
   const handleAddHoliday = () => {
-    openEditor('add', '', null, ['meta::event']);
+    // Open EditEventModal for adding new holiday
+    setEditingEvent(null);
+    setIsAddingDeadline(false);
+    setIsAddingHoliday(true);
+    setShowEditEventModal(true);
   };
 
   // Get base timezone for display
@@ -767,6 +819,71 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         onAddDeadline={handleAddDeadline}
         onAddHoliday={handleAddHoliday}
       />
+
+      {/* Edit Event Modal */}
+      {showEditEventModal && (
+        <EditEventModal
+          isOpen={showEditEventModal}
+          note={editingEvent}
+          onSave={async (content) => {
+            if (editingEvent) {
+              // Update existing event
+              const note = notes.find(n => n.id === editingEvent.id);
+              if (note) {
+                // Preserve the original meta tags
+                const originalLines = note.content.split('\n');
+                const metaTags = originalLines.filter(line => 
+                  line.startsWith('meta::') && 
+                  !line.startsWith('meta::event::')
+                );
+                
+                // Combine new content with preserved meta tags
+                const updatedContent = content + '\n' + metaTags.join('\n');
+                
+                // Update the note in the local state
+                const updatedNote = { ...note, content: updatedContent };
+                setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
+              }
+            } else {
+              // Add new event
+              const newNote = {
+                id: Date.now().toString(),
+                content: content,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+              setNotes([...notes, newNote]);
+            }
+            setShowEditEventModal(false);
+            setEditingEvent(null);
+            setIsAddingDeadline(false);
+            setIsAddingHoliday(false);
+          }}
+          onCancel={() => {
+            setShowEditEventModal(false);
+            setEditingEvent(null);
+            setIsAddingDeadline(false);
+            setIsAddingHoliday(false);
+          }}
+          onSwitchToNormalEdit={() => {
+            setShowEditEventModal(false);
+            setEditingEvent(null);
+            setIsAddingDeadline(false);
+            setIsAddingHoliday(false);
+          }}
+          onDelete={async (noteId) => {
+            // Remove the note from local state
+            setNotes(notes.filter(n => n.id !== noteId));
+            setShowEditEventModal(false);
+            setEditingEvent(null);
+            setIsAddingDeadline(false);
+            setIsAddingHoliday(false);
+          }}
+          notes={notes}
+          isAddDeadline={isAddingDeadline}
+          prePopulatedTags={isAddingHoliday ? "holiday" : ""}
+        />
+      )}
     </div>
   );
 };

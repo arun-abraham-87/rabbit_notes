@@ -6,6 +6,7 @@ import ReviewOverdueAlert from './ReviewOverdueAlert';
 import { loadAllNotes } from '../utils/ApiUtils';
 import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay';
+import TimezonePopup from './TimezonePopup';
 import BookmarkedLinks from './BookmarkedLinks';
 import EventManager from './EventManager';
 import Pomodoro from './Pomodoro';
@@ -29,6 +30,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [notesHasOverflow, setNotesHasOverflow] = useState(false);
   const [showRemindersOnly, setShowRemindersOnly] = useState(false);
   const [showReviewsOverdueOnly, setShowReviewsOverdueOnly] = useState(false);
+  const [showTimezonePopup, setShowTimezonePopup] = useState(false);
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -219,7 +221,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
         } else if (e.key === 't') {
           e.preventDefault();
           e.stopPropagation();
-          setShowTimezones(!showTimezones);
+          setShowTimezonePopup(true);
         } else if (e.key === 'Escape' && (showRemindersOnly || showReviewsOverdueOnly)) {
           e.preventDefault();
           e.stopPropagation();
@@ -637,6 +639,12 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
           </div>
         </>
       )}
+
+      {/* Timezone Popup */}
+      <TimezonePopup 
+        isOpen={showTimezonePopup}
+        onClose={() => setShowTimezonePopup(false)}
+      />
     </div>
   );
 };

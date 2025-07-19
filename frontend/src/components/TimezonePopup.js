@@ -139,9 +139,17 @@ const TimezonePopup = ({ isOpen, onClose }) => {
   // Get time difference from base timezone
   const getTimeDiffHours = (targetZone) => {
     const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
-    const baseDate = new Date(new Date().toLocaleString('en-US', { timeZone: baseTimezone }));
-    const targetDate = new Date(new Date().toLocaleString('en-US', { timeZone: targetZone }));
-    return Math.round((baseDate - targetDate) / 3600000);
+    
+    // Get current time in base timezone
+    const baseTime = new Date();
+    const baseTimeInZone = new Date(baseTime.toLocaleString('en-US', { timeZone: baseTimezone }));
+    
+    // Get current time in target timezone
+    const targetTimeInZone = new Date(baseTime.toLocaleString('en-US', { timeZone: targetZone }));
+    
+    // Calculate difference in hours
+    const diffMs = baseTimeInZone.getTime() - targetTimeInZone.getTime();
+    return Math.round(diffMs / (1000 * 60 * 60));
   };
 
   // Get time description
@@ -201,7 +209,12 @@ const TimezonePopup = ({ isOpen, onClose }) => {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">World Timezones</h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">World Timezones</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Times relative to: {localStorage.getItem('baseTimezone') || 'Australia/Sydney'}
+            </p>
+          </div>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -299,6 +312,9 @@ const TimezonePopup = ({ isOpen, onClose }) => {
                                 }`}>
                                   {timeDiffHours > 0 ? '+' : ''}{timeDiffHours}h
                                 </span>
+                              )}
+                              {timeDiffHours === 0 && (
+                                <span className="text-gray-400 font-medium">current</span>
                               )}
                             </div>
                           </div>

@@ -242,7 +242,7 @@ const TimezonePopup = ({ isOpen, onClose }) => {
                     <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
                       {continent}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {continentTimezones.map((timezone, index) => {
                         const time = formatTimezoneTime(timezone.zone);
                         const timeDiffHours = getTimeDiffHours(timezone.zone);
@@ -278,14 +278,14 @@ const TimezonePopup = ({ isOpen, onClose }) => {
                             }}
                           >
                             <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-2xl">{timezone.flag}</span>
-                                                        <div>
-                          <div className="font-semibold text-gray-900">{timezone.name}</div>
-                          <div className="text-sm text-gray-500">{timezone.country}</div>
-                        </div>
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="text-2xl flex-shrink-0">{timezone.flag}</span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-semibold text-gray-900 truncate">{timezone.name}</div>
+                                  <div className="text-sm text-gray-500 truncate">{timezone.country}</div>
+                                </div>
                               </div>
-                              <div className="text-right">
+                              <div className="text-right flex-shrink-0 ml-2">
                                 <div className="text-lg font-mono font-semibold text-gray-900">{time}</div>
                                 <div className="text-xs text-gray-500">{zoneDate}</div>
                               </div>

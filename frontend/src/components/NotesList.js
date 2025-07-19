@@ -459,6 +459,13 @@ const NotesList = ({
             e.preventDefault();
             e.stopPropagation();
             
+            // Exit focus mode if currently in focus mode
+            if (focusMode) {
+              // Dispatch a custom event to toggle focus mode
+              const toggleFocusModeEvent = new CustomEvent('toggleFocusMode');
+              document.dispatchEvent(toggleFocusModeEvent);
+            }
+            
             // Enter super edit mode for the focused note
             const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
             if (focusedNote) {

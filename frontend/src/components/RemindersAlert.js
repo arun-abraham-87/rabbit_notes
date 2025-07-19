@@ -21,6 +21,8 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const [reminderObjs, setReminderObjs] = useState([]);
   const [upcomingReminders, setUpcomingReminders] = useState([]);
   const [focusedReminderIndex, setFocusedReminderIndex] = useState(-1);
+  const [isWaitingForJump, setIsWaitingForJump] = useState(false);
+  const numberBufferRef = useRef('');
 
   useEffect(() => {
     const dueReminders = findDueReminders(allNotes);
@@ -84,6 +86,66 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
 
       const totalReminders = reminderObjs.length + upcomingReminders.length;
       if (totalReminders === 0) return;
+
+      // Handle number input for jump navigation (like 4j)
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        numberBufferRef.current += e.key;
+        setIsWaitingForJump(true);
+        
+        // Set a timeout to clear the buffer if no 'j' is pressed
+        setTimeout(() => {
+          if (isWaitingForJump) {
+            numberBufferRef.current = '';
+            setIsWaitingForJump(false);
+          }
+        }, 2000);
+        return;
+      }
+
+      // Handle 'j' key for jump navigation
+      if (isWaitingForJump && e.key === 'j' && numberBufferRef.current.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        const targetIndex = parseInt(numberBufferRef.current) - 1; // Convert to 0-based index
+        if (targetIndex >= 0 && targetIndex < totalReminders) {
+          setFocusedReminderIndex(targetIndex);
+        }
+        numberBufferRef.current = '';
+        setIsWaitingForJump(false);
+        return;
+      }
+
+      // Handle 'k' key for backward jump navigation
+      if (isWaitingForJump && e.key === 'k' && numberBufferRef.current.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        const steps = parseInt(numberBufferRef.current);
+        setFocusedReminderIndex(prev => {
+          const newIndex = prev - steps;
+          return newIndex >= 0 ? newIndex : 0;
+        });
+        numberBufferRef.current = '';
+        setIsWaitingForJump(false);
+        return;
+      }
+
+      // Handle 'g' key (gg for first item)
+      if (e.key === 'g') {
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedReminderIndex(0);
+        return;
+      }
+
+      // Handle 'G' key (last item)
+      if (e.key === 'G') {
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedReminderIndex(totalReminders - 1);
+        return;
+      }
 
       if (e.key === 'ArrowUp') {
         e.preventDefault();
@@ -208,7 +270,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isRemindersOnlyMode, reminderObjs.length, upcomingReminders.length, focusedReminderIndex]);
+  }, [isRemindersOnlyMode, reminderObjs.length, upcomingReminders.length, focusedReminderIndex, isWaitingForJump]);
 
   // Reset focused index when reminders change
   useEffect(() => {

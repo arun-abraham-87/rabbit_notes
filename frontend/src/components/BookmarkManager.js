@@ -645,6 +645,17 @@ const SummaryModal = ({ isOpen, onClose, newBookmarks, existingCount, onConfirm 
 const PinVerificationModal = ({ isOpen, onClose, onVerify }) => {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const pinInputRef = useRef(null);
+
+  // Focus the input when modal opens
+  useEffect(() => {
+    if (isOpen && pinInputRef.current) {
+      // Add a small delay to ensure the modal is fully rendered
+      setTimeout(() => {
+        pinInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -680,6 +691,7 @@ const PinVerificationModal = ({ isOpen, onClose, onVerify }) => {
             </label>
             <div className="relative">
               <input
+                ref={pinInputRef}
                 type="password"
                 id="pin"
                 value={pin}
@@ -930,6 +942,8 @@ const BookmarkManager = ({ allNotes }) => {
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState(null);
   const [deletingBookmark, setDeletingBookmark] = useState(null);
+  const [keySequence, setKeySequence] = useState('');
+  const [isWaitingForS, setIsWaitingForS] = useState(false);
 
   // Load web bookmarks from notes
   useEffect(() => {
@@ -1305,7 +1319,47 @@ const BookmarkManager = ({ allNotes }) => {
           e.stopPropagation();
           setFocusedBookmarkIndex(-1);
           searchInputRef.current?.focus();
+        } else if (e.key === 'm') {
+          // Start the 'm' + 's' sequence for marking as hidden
+          e.preventDefault();
+          e.stopPropagation();
+          setIsWaitingForS(true);
+          setKeySequence('m');
+          
+          // Set a timeout to clear the sequence if 's' is not pressed
+          setTimeout(() => {
+            if (isWaitingForS) {
+              setKeySequence('');
+              setIsWaitingForS(false);
+            }
+          }, 2000);
+        } else if (e.key === 's' && isWaitingForS) {
+          // Complete the 'm' + 's' sequence to mark bookmark as hidden
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const focusedBookmark = filteredBookmarks[focusedBookmarkIndex];
+          if (focusedBookmark) {
+            // Toggle the hidden status
+            const updatedBookmark = {
+              ...focusedBookmark,
+              isHidden: !focusedBookmark.isHidden
+            };
+            
+            // Save the updated bookmark
+            handleSaveBookmark(updatedBookmark);
+          }
+          
+          // Clear the sequence
+          setKeySequence('');
+          setIsWaitingForS(false);
         }
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        // Bring focus to search textbox when up/down arrows are pressed and no bookmark is focused
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedBookmarkIndex(-1);
+        searchInputRef.current?.focus();
       } else if (e.key === 'a') {
         // Open all bookmarks when 'a' is pressed and search is not focused
         e.preventDefault();
@@ -1330,7 +1384,7 @@ const BookmarkManager = ({ allNotes }) => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [focusedBookmarkIndex, filteredBookmarks]);
+  }, [focusedBookmarkIndex, filteredBookmarks, isWaitingForS]);
 
   // Scroll focused bookmark into view
   useEffect(() => {

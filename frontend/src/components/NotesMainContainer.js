@@ -166,6 +166,22 @@ const NotesMainContainer = ({
         };
     }, []);
 
+    // Listen for toggle focus mode event from notes navigation
+    useEffect(() => {
+        console.log('Setting up toggleFocusMode event listener in NotesMainContainer');
+        
+        const handleToggleFocusMode = () => {
+            console.log('Toggle focus mode event received');
+            setFocusMode(false); // Exit focus mode
+        };
+
+        document.addEventListener('toggleFocusMode', handleToggleFocusMode);
+        return () => {
+            console.log('Cleaning up toggleFocusMode event listener in NotesMainContainer');
+            document.removeEventListener('toggleFocusMode', handleToggleFocusMode);
+        };
+    }, []);
+
     // Debug: Log objList
     useEffect(() => {
         console.log('NotesMainContainer - objList received:', objList);

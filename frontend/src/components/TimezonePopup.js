@@ -4,6 +4,7 @@ import { XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 const TimezonePopup = ({ isOpen, onClose }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [activeFilter, setActiveFilter] = useState('all');
   const searchInputRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -98,14 +99,18 @@ const TimezonePopup = ({ isOpen, onClose }) => {
     { name: 'Port Moresby', zone: 'Pacific/Port_Moresby', flag: '🇵🇬', continent: 'Oceania', country: 'Papua New Guinea' }
   ];
 
-  // Filter timezones based on search query
+  // Filter timezones based on search query and continent filter
   const filteredTimezones = allTimezones.filter(tz => {
     const query = searchQuery.toLowerCase();
-    return (
+    const matchesSearch = (
       tz.name.toLowerCase().includes(query) ||
       tz.continent.toLowerCase().includes(query) ||
       tz.country.toLowerCase().includes(query)
     );
+    
+    const matchesFilter = activeFilter === 'all' || tz.continent === activeFilter;
+    
+    return matchesSearch && matchesFilter;
   });
 
   // Group timezones by continent
@@ -197,10 +202,10 @@ const TimezonePopup = ({ isOpen, onClose }) => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, filteredTimezones, selectedIndex, onClose]);
 
-  // Reset selected index when search changes
+  // Reset selected index when search or filter changes
   useEffect(() => {
     setSelectedIndex(0);
-  }, [searchQuery]);
+  }, [searchQuery, activeFilter]);
 
   if (!isOpen) return null;
 
@@ -225,7 +230,7 @@ const TimezonePopup = ({ isOpen, onClose }) => {
 
         {/* Search */}
         <div className="p-6 border-b border-gray-200">
-          <div className="relative">
+          <div className="relative mb-4">
             <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
               ref={searchInputRef}
@@ -235,6 +240,39 @@ const TimezonePopup = ({ isOpen, onClose }) => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+          </div>
+          
+          {/* Continent Filter Buttons */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                setActiveFilter('all');
+                setSearchQuery('');
+              }}
+              className={`px-3 py-1 text-sm rounded-full border transition-colors ${
+                activeFilter === 'all'
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              All
+            </button>
+            {continentOrder.map(continent => (
+              <button
+                key={continent}
+                onClick={() => {
+                  setActiveFilter(continent);
+                  setSearchQuery('');
+                }}
+                className={`px-3 py-1 text-sm rounded-full border transition-colors ${
+                  activeFilter === continent
+                    ? 'bg-blue-500 text-white border-blue-500'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {continent}
+              </button>
+            ))}
           </div>
         </div>
 

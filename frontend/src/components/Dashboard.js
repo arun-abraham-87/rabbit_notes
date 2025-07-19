@@ -493,25 +493,9 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                 })()}
               </div>
               
-              {/* Compact Timezone Display Line */}
-              <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-                {getCompactTimezones().map(({ label, flag, time, relativeDayText }, index) => (
-                  <React.Fragment key={label}>
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="flex items-center gap-1">
-                        <span>{flag}</span>
-                        <span className="font-medium">{label}:</span>
-                        <span className="text-gray-800">{time}</span>
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {relativeDayText}
-                      </div>
-                    </div>
-                    {index < getCompactTimezones().length - 1 && (
-                      <span className="mx-2 text-gray-400">•</span>
-                    )}
-                  </React.Fragment>
-                ))}
+              {/* Timezone Cards Display */}
+              <div className="mb-6">
+                <TimeZoneDisplay selectedTimezones={selectedTimezones} />
               </div>
             </div>
           </div>

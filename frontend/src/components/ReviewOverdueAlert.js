@@ -855,11 +855,21 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
   };
 
   const getCadenceDisplay = (note) => {
+    // Check if note has watch meta tag but no cadence meta tag
+    const hasWatchMeta = note.content.includes('meta::watch::');
     const meta = parseReviewCadenceMeta(note.content);
+    
     if (!meta) {
-      console.warn('No cadence meta found for note:', note);
-      return 'Every 12 hours';
+      if (hasWatchMeta) {
+        // Note has watch meta but no cadence meta - this is a valid case
+        return 'Every 12 hours';
+      } else {
+        // Note doesn't have watch meta at all - shouldn't be in this component
+        console.warn('Note without watch meta found in ReviewOverdueAlert:', note);
+        return 'Every 12 hours';
+      }
     }
+    
     const summary = renderCadenceSummary(note);
     if (!summary || summary.trim() === '' || summary === 'Review every') {
       console.warn('Cadence summary is empty or invalid for note:', note, 'meta:', meta);
@@ -880,6 +890,12 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
   };
 
   const getTimeUntilNextReview = (note) => {
+    // Check if note has watch meta tag
+    const hasWatchMeta = note.content.includes('meta::watch::');
+    if (!hasWatchMeta) {
+      return null; // Not a watch note
+    }
+    
     const nextReview = getNextReviewDate(note);
     if (!nextReview) return null;
     

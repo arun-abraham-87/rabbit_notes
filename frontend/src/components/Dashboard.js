@@ -170,6 +170,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [isAddingDeadline, setIsAddingDeadline] = useState(false);
   const [isAddingHoliday, setIsAddingHoliday] = useState(false);
   const [eventFilter, setEventFilter] = useState('deadline'); // 'all', 'deadline', 'holiday'
+  const [eventTextFilter, setEventTextFilter] = useState(''); // Text filter for events
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -709,7 +710,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                 </button>
                 
                 {!isEventManagerCollapsed && (
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 items-center">
                     <button
                       onClick={() => setEventFilter('all')}
                       className={`px-2 py-1 text-xs rounded transition-colors ${
@@ -740,6 +741,16 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                     >
                       Holiday
                     </button>
+                    
+                    {/* Text Filter Input */}
+                    <input
+                      type="text"
+                      placeholder="Filter events..."
+                      value={eventTextFilter}
+                      onChange={(e) => setEventTextFilter(e.target.value)}
+                      className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      style={{ width: '120px' }}
+                    />
                   </div>
                 )}
               </div>
@@ -806,6 +817,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                         notes={notes} 
                         setActivePage={setActivePage}
                         eventFilter={eventFilter}
+                        eventTextFilter={eventTextFilter}
                         onEditEvent={(note) => {
                           setEditingEvent(note);
                           setShowEditEventModal(true);

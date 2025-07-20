@@ -5,7 +5,7 @@ import { getAgeInStringFmt } from '../utils/DateUtils';
 // Add pin icon import
 import { MapPinIcon } from '@heroicons/react/24/outline';
 
-const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent, eventFilter = 'all' }) => {
+const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent, eventFilter = 'all', eventTextFilter = '' }) => {
   const [events, setEvents] = useState(() => {
     try {
       const stored = localStorage.getItem('tempEvents');
@@ -166,6 +166,20 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
           return false;
         }
         
+        return true;
+      })
+      .filter(note => {
+        // Apply text filter if provided
+        if (eventTextFilter && eventTextFilter.trim() !== '') {
+          const searchTerm = eventTextFilter.toLowerCase();
+          const description = note.content.toLowerCase();
+          const lines = note.content.split('\n');
+          const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+          const eventDescription = descriptionLine ? descriptionLine.replace('event_description:', '').trim().toLowerCase() : '';
+          
+          // Search in the full content and event description
+          return description.includes(searchTerm) || eventDescription.includes(searchTerm);
+        }
         return true;
       })
       .map(note => {
@@ -698,6 +712,18 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   </div>
                 )}
                 <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Pin Button - always show in hover controls */}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePinEvent(note.id);
+                    }} 
+                    className={`p-1 transition-colors ${pinnedEvents.includes(note.id) ? 'text-yellow-600' : 'text-gray-400 hover:text-yellow-600'}`}
+                    title={pinnedEvents.includes(note.id) ? 'Unpin Event' : 'Pin Event'}
+                  >
+                    <MapPinIcon className="h-4 w-4" />
+                  </button>
+                  
                   {/* Color Options */}
                   <div className="flex gap-1 mr-2">
                     {colorOptions.map(color => (

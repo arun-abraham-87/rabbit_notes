@@ -184,8 +184,8 @@ const TimezonePopup = ({ isOpen, onClose }) => {
     // Get current time in target timezone
     const targetTimeInZone = new Date(baseTime.toLocaleString('en-US', { timeZone: targetZone }));
     
-    // Calculate difference in hours
-    const diffMs = baseTimeInZone.getTime() - targetTimeInZone.getTime();
+    // Calculate difference in hours (how many hours ahead/behind the target zone is from base)
+    const diffMs = targetTimeInZone.getTime() - baseTimeInZone.getTime();
     return Math.round(diffMs / (1000 * 60 * 60));
   };
 
@@ -270,12 +270,21 @@ const TimezonePopup = ({ isOpen, onClose }) => {
               placeholder="Search timezones..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Clear search"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            )}
           </div>
           
           {/* Continent Filter Buttons */}
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4 items-center">
             <button
               onClick={() => {
                 setActiveFilter('all');
@@ -305,21 +314,45 @@ const TimezonePopup = ({ isOpen, onClose }) => {
                 {continent}
               </button>
             ))}
+            <button
+              onClick={() => {
+                setActiveFilter('all');
+                setSearchQuery('');
+              }}
+              className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors ml-2"
+              title="Reset filters"
+            >
+              Reset
+            </button>
           </div>
           
           {/* Time Slider */}
           <div className="border-t border-gray-200 pt-4">
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium text-gray-700">Time Slider</label>
-              <span className="text-sm text-gray-600">
-                {(() => {
-                  const hours = Math.floor(sliderMinutes / 60);
-                  const minutes = sliderMinutes % 60;
-                  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-                  const ampm = hours >= 12 ? 'PM' : 'AM';
-                  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-                })()}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">
+                  {(() => {
+                    const hours = Math.floor(sliderMinutes / 60);
+                    const minutes = sliderMinutes % 60;
+                    const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                    const ampm = hours >= 12 ? 'PM' : 'AM';
+                    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+                  })()}
+                </span>
+                <button
+                  onClick={() => {
+                    const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
+                    const now = new Date();
+                    const baseTime = new Date(now.toLocaleString('en-US', { timeZone: baseTimezone }));
+                    setSliderMinutes(baseTime.getHours() * 60 + baseTime.getMinutes());
+                  }}
+                  className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                  title="Reset to current time"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
             <div className="relative">
               <input

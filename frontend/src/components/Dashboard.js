@@ -168,7 +168,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [editingEvent, setEditingEvent] = useState(null);
   const [isAddingDeadline, setIsAddingDeadline] = useState(false);
   const [isAddingHoliday, setIsAddingHoliday] = useState(false);
-  const [eventFilter, setEventFilter] = useState('all'); // 'all', 'deadline', 'holiday'
+  const [eventFilter, setEventFilter] = useState('deadline'); // 'all', 'deadline', 'holiday'
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);

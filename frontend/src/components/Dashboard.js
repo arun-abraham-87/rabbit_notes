@@ -4,7 +4,7 @@ import { AlertsProvider } from './Alerts.js';
 import RemindersAlert from './RemindersAlert.js';
 import ReviewOverdueAlert from './ReviewOverdueAlert.js';
 import { loadAllNotes, createNote, updateNoteById } from '../utils/ApiUtils.js';
-import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay.js';
 import TimezonePopup from './TimezonePopup.js';
 import BookmarkedLinks from './BookmarkedLinks.js';
@@ -742,15 +742,45 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                       Holiday
                     </button>
                     
-                    {/* Text Filter Input */}
-                    <input
-                      type="text"
-                      placeholder="Filter events..."
-                      value={eventTextFilter}
-                      onChange={(e) => setEventTextFilter(e.target.value)}
-                      className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      style={{ width: '120px' }}
-                    />
+                    {/* Text Filter Input with Clear Button */}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Filter events..."
+                        value={eventTextFilter}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          setEventTextFilter(newValue);
+                          // Automatically switch to 'all' filter when text is entered
+                          if (newValue.trim() !== '' && eventFilter !== 'all') {
+                            setEventFilter('all');
+                          }
+                        }}
+                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pr-6"
+                        style={{ width: '120px' }}
+                      />
+                      {eventTextFilter && (
+                        <button
+                          onClick={() => setEventTextFilter('')}
+                          className="absolute right-1 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                          title="Clear filter"
+                        >
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Reset Button */}
+                    <button
+                      onClick={() => {
+                        setEventFilter('deadline');
+                        setEventTextFilter('');
+                      }}
+                      className="px-2 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                      title="Reset to deadline filter"
+                    >
+                      <ArrowPathIcon className="h-3 w-3" />
+                    </button>
                   </div>
                 )}
               </div>

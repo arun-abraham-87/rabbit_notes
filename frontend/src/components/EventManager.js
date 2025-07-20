@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { getAgeInStringFmt } from '../utils/DateUtils';
-import Countdown from './Countdown';
+
+// Add pin icon import
+import { MapPinIcon } from '@heroicons/react/24/outline';
 
 const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent, eventFilter = 'all' }) => {
   const [events, setEvents] = useState(() => {
@@ -30,6 +32,17 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  
+  // State for pinned events
+  const [pinnedEvents, setPinnedEvents] = useState(() => {
+    try {
+      const stored = localStorage.getItem('pinnedEvents');
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error loading pinned events:', error);
+      return [];
+    }
+  });
   
   // Format date to YYYY-MM-DD without timezone conversion
   const formatDate = (date) => {
@@ -77,8 +90,13 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   };
 
   // Helper function to calculate next occurrence for recurring events
-  const calculateNextOccurrence = (originalDate) => {
+  const calculateNextOccurrence = (originalDate, isDeadline = false) => {
     if (!originalDate) return null;
+    
+    // For deadline events, don't calculate next occurrence - just return the original date
+    if (isDeadline) {
+      return new Date(originalDate);
+    }
     
     const eventDate = new Date(originalDate);
     const now = new Date();
@@ -169,7 +187,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         if (!event.dateTime) return false; // Only include events with valid dates
         
         // Calculate next occurrence for recurring events
-        const nextOccurrence = calculateNextOccurrence(event.dateTime);
+        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline);
         if (!nextOccurrence) return false;
         
         // Calculate days until event using the next occurrence
@@ -181,7 +199,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       })
       .map(event => {
         // Calculate next occurrence and add it to the event object
-        const nextOccurrence = calculateNextOccurrence(event.dateTime);
+        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline);
         return {
           ...event,
           nextOccurrence: nextOccurrence
@@ -190,7 +208,16 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       .sort((a, b) => {
         const daysA = Math.ceil((a.nextOccurrence - now) / (1000 * 60 * 60 * 24));
         const daysB = Math.ceil((b.nextOccurrence - now) / (1000 * 60 * 60 * 24));
-        return daysA - daysB; // Sort by days until event (ascending)
+        
+        // First sort by pinned status (pinned events first)
+        const aIsPinned = pinnedEvents.includes(a.id);
+        const bIsPinned = pinnedEvents.includes(b.id);
+        
+        if (aIsPinned && !bIsPinned) return -1;
+        if (!aIsPinned && bIsPinned) return 1;
+        
+        // Then sort by days until event (ascending)
+        return daysA - daysB;
       })
       .slice(0, 10); // Get top 10
   };
@@ -329,6 +356,24 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     }
   };
 
+  // Function to handle pinning/unpinning events
+  const handlePinEvent = (eventId) => {
+    setPinnedEvents(prev => {
+      const isPinned = prev.includes(eventId);
+      const newPinnedEvents = isPinned 
+        ? prev.filter(id => id !== eventId)
+        : [...prev, eventId];
+      
+      try {
+        localStorage.setItem('pinnedEvents', JSON.stringify(newPinnedEvents));
+      } catch (error) {
+        console.error('Error saving pinned events:', error);
+      }
+      
+      return newPinnedEvents;
+    });
+  };
+
   const colorOptions = [
     '#ffffff', // white
     '#fef9c3', // yellow
@@ -339,6 +384,76 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     '#ff6b6b', // reddish
     '#f1f5f9'  // gray
   ];
+
+  // Helper function to calculate accurate months and remaining days
+  const calculateAccurateMonths = (startDate, endDate) => {
+    let months = 0;
+    let tempDate = new Date(startDate);
+    
+    // Count full months
+    while (tempDate < endDate) {
+      tempDate.setMonth(tempDate.getMonth() + 1);
+      if (tempDate <= endDate) {
+        months++;
+      }
+    }
+    
+    // Calculate remaining days
+    const lastMonthDate = new Date(startDate);
+    lastMonthDate.setMonth(lastMonthDate.getMonth() + months);
+    const remainingDays = Math.ceil((endDate - lastMonthDate) / (1000 * 60 * 60 * 24));
+    
+    return { months, remainingDays };
+  };
+
+  // Helper function to get month display text
+  const getMonthDisplayText = (startDate, endDate) => {
+    const { months, remainingDays } = calculateAccurateMonths(startDate, endDate);
+    return {
+      months,
+      remainingDays,
+      displayText: months > 0 ? `${months} month${months !== 1 ? 's' : ''}${remainingDays > 0 ? ` ${remainingDays} day${remainingDays !== 1 ? 's' : ''}` : ''}` : `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`
+    };
+  };
+
+  // Helper function to calculate display text based on mode
+  const calculateDisplayText = (totalDays, displayMode, startDate, endDate) => {
+    let timeLeft, timeUnit, displayText;
+    
+    switch (displayMode) {
+      case 'weeks':
+        const weeks = Math.floor(totalDays / 7);
+        const remainingDays = totalDays % 7;
+        timeLeft = weeks;
+        timeUnit = 'weeks';
+        displayText = weeks > 0 ? `${weeks} week${weeks !== 1 ? 's' : ''}${remainingDays > 0 ? ` ${remainingDays} day${remainingDays !== 1 ? 's' : ''}` : ''}` : `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+        break;
+      case 'months':
+        const monthResult = getMonthDisplayText(startDate, endDate);
+        timeLeft = monthResult.months;
+        timeUnit = 'months';
+        displayText = monthResult.displayText;
+        break;
+      case 'years':
+        const years = Math.floor(totalDays / 365.25);
+        const remainingDaysInYear = Math.floor(totalDays % 365.25);
+        const monthsInYear = Math.floor(remainingDaysInYear / 30.44);
+        timeLeft = years;
+        timeUnit = 'years';
+        if (years > 0) {
+          displayText = `${years} year${years !== 1 ? 's' : ''}${monthsInYear > 0 ? ` ${monthsInYear} month${monthsInYear !== 1 ? 's' : ''}` : ''}`;
+        } else {
+          displayText = monthsInYear > 0 ? `${monthsInYear} month${monthsInYear !== 1 ? 's' : ''}` : `${remainingDaysInYear} day${remainingDaysInYear !== 1 ? 's' : ''}`;
+        }
+        break;
+      default:
+        timeLeft = totalDays;
+        timeUnit = 'days';
+        displayText = `${totalDays} day${totalDays !== 1 ? 's' : ''}`;
+    }
+    
+    return { timeLeft, timeUnit, displayText };
+  };
 
     return (
     <div className="flex flex-row gap-3 items-stretch">
@@ -458,18 +573,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         {(type === 'all' || type === 'notes') && (() => {
           const noteItems = events.filter(ev => ev.type === 'note');
           
-          // Meeting Countdown Card (only show when type is 'notes')
-          const meetingCountdownCard = type === 'notes' ? (
-            <div key="meeting-countdown" className="min-w-[220px] max-w-xs h-40">
-              <Countdown />
-            </div>
-          ) : null;
-          
-          const allCards = [];
-          if (meetingCountdownCard) {
-            allCards.push(meetingCountdownCard);
-          }
-          allCards.push(...noteItems.map(ev => {
+          return noteItems.map(ev => {
             const [header, ...bodyLines] = (ev.name || '').split('\n');
             return (
               <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
@@ -514,11 +618,10 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                 </div>
               </div>
             );
-          }));
-          return allCards;
+          });
         })()}
 
-        {/* Event Notes - Third Line */}
+        {/* Event Notes */}
         {(type === 'all' || type === 'eventNotes') && (() => {
           const eventNotes = getEventNotes();
           
@@ -531,39 +634,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
             eventDate.setHours(0, 0, 0, 0);
             const totalDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
             
-            let timeLeft, timeUnit, displayText;
-            switch (displayMode) {
-              case 'weeks':
-                const weeks = Math.floor(totalDays / 7);
-                const remainingDays = totalDays % 7;
-                timeLeft = weeks;
-                timeUnit = 'weeks';
-                displayText = weeks > 0 ? `${weeks} week${weeks !== 1 ? 's' : ''}${remainingDays > 0 ? ` ${remainingDays} day${remainingDays !== 1 ? 's' : ''}` : ''}` : `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
-                break;
-              case 'months':
-                const months = Math.floor(totalDays / 30.44);
-                const remainingDaysInMonth = Math.floor(totalDays % 30.44);
-                timeLeft = months;
-                timeUnit = 'months';
-                displayText = months > 0 ? `${months} month${months !== 1 ? 's' : ''}${remainingDaysInMonth > 0 ? ` ${remainingDaysInMonth} day${remainingDaysInMonth !== 1 ? 's' : ''}` : ''}` : `${remainingDaysInMonth} day${remainingDaysInMonth !== 1 ? 's' : ''}`;
-                break;
-              case 'years':
-                const years = Math.floor(totalDays / 365.25);
-                const remainingDaysInYear = Math.floor(totalDays % 365.25);
-                const monthsInYear = Math.floor(remainingDaysInYear / 30.44);
-                timeLeft = years;
-                timeUnit = 'years';
-                if (years > 0) {
-                  displayText = `${years} year${years !== 1 ? 's' : ''}${monthsInYear > 0 ? ` ${monthsInYear} month${monthsInYear !== 1 ? 's' : ''}` : ''}`;
-                } else {
-                  displayText = monthsInYear > 0 ? `${monthsInYear} month${monthsInYear !== 1 ? 's' : ''}` : `${remainingDaysInYear} day${remainingDaysInYear !== 1 ? 's' : ''}`;
-                }
-                break;
-              default:
-                timeLeft = totalDays;
-                timeUnit = 'days';
-                displayText = `${totalDays} day${totalDays !== 1 ? 's' : ''}`;
-            }
+            const { timeLeft, timeUnit, displayText } = calculateDisplayText(totalDays, displayMode, now, eventDate);
             
             // Check if this is a recurring event (original date year is different from current year)
             const originalDate = new Date(note.dateTime);
@@ -572,10 +643,13 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
             // Check if event is today
             const isToday = totalDays === 0;
             
+            // Don't show anniversary for deadline events
+            const shouldShowAnniversary = isRecurring && !note.isDeadline;
+            
             return (
               <div 
                 key={note.id} 
-                className={`group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow ${isToday ? 'animate-pulse' : ''}`}
+                className={`group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow ${isToday ? 'animate-pulse' : ''} relative`}
                 style={{ backgroundColor: isToday ? '#dcfce7' : (note.bgColor || '#ffffff') }}
                 onClick={toggleDisplayMode}
                 title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
@@ -584,7 +658,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   <div className="flex items-center gap-2 mb-1">
                     <div className="animate-bounce text-green-600">🎉</div>
                     <div className="text-green-800 font-bold text-lg">
-                      {isRecurring ? 'Anniversary Today!' : 'TODAY!'}
+                      {shouldShowAnniversary ? 'Anniversary Today!' : 'TODAY!'}
                     </div>
                   </div>
                 )}
@@ -592,11 +666,11 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   {isToday ? '' : displayText}
                 </div>
                 <div className={`text-sm ${isToday ? 'text-green-700' : (note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500')}`}>
-                  {isToday ? '' : (isRecurring ? 'anniversary' : 'until')}
+                  {isToday ? '' : (shouldShowAnniversary ? 'anniversary' : 'until')}
                 </div>
                 <div className={`font-medium w-full truncate ${note.bgColor === '#f3e8ff' ? 'text-purple-900' : 'text-gray-900'}`} title={note.description}>{note.description}</div>
                 <div className={`text-sm ${note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500'}`}>
-                  {isRecurring ? (
+                  {shouldShowAnniversary ? (
                     (() => {
                       const originalDate = new Date(note.dateTime);
                       const currentYear = new Date().getFullYear();
@@ -607,6 +681,22 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                     `on ${eventDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}`
                   )}
                 </div>
+                
+                {/* Pin indicator - always visible when pinned */}
+                {pinnedEvents.includes(note.id) && (
+                  <div className="absolute top-2 right-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePinEvent(note.id);
+                      }} 
+                      className="text-yellow-600 hover:text-yellow-700 transition-colors"
+                      title="Unpin Event"
+                    >
+                      <MapPinIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
                   {/* Color Options */}
                   <div className="flex gap-1 mr-2">
@@ -646,7 +736,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
-            <h2 className="text-lg font-semibold mb-4">{isEditMode ? 'Edit Event' : 'Add Event'}</h2>
+            <h2 className="text-lg font-semibold mb-4">{isEditMode ? 'Edit Event' : 'Add Note'}</h2>
             <form onSubmit={handleEventSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>

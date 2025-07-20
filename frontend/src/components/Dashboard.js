@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { AlertsProvider } from './Alerts';
-import RemindersAlert from './RemindersAlert';
-import ReviewOverdueAlert from './ReviewOverdueAlert';
-import { loadAllNotes, createNote, updateNoteById } from '../utils/ApiUtils';
+import { AlertsProvider } from './Alerts.js';
+import RemindersAlert from './RemindersAlert.js';
+import ReviewOverdueAlert from './ReviewOverdueAlert.js';
+import { loadAllNotes, createNote, updateNoteById } from '../utils/ApiUtils.js';
 import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/solid';
-import TimeZoneDisplay from './TimeZoneDisplay';
-import TimezonePopup from './TimezonePopup';
-import BookmarkedLinks from './BookmarkedLinks';
-import EventManager from './EventManager';
+import TimeZoneDisplay from './TimeZoneDisplay.js';
+import TimezonePopup from './TimezonePopup.js';
+import BookmarkedLinks from './BookmarkedLinks.js';
+import EventManager from './EventManager.js';
 
-import EditEventModal from './EditEventModal';
-import { useLeftPanel } from '../contexts/LeftPanelContext';
-import { useNoteEditor } from '../contexts/NoteEditorContext';
+import EditEventModal from './EditEventModal.js';
+import Countdown from './Countdown.js';
+import { useLeftPanel } from '../contexts/LeftPanelContext.js';
+import { useNoteEditor } from '../contexts/NoteEditorContext.js';
 
 const AddOptionsPopup = ({ isOpen, onClose, onAddEvent, onAddDeadline, onAddHoliday }) => {
   useEffect(() => {
@@ -744,18 +745,30 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
               </div>
               
               {!isEventManagerCollapsed && (
-                <button
-                  onClick={() => {
-                    // This will trigger the add event functionality
-                    // We need to pass this through to EventManager
-                    const event = new CustomEvent('addEvent');
-                    document.dispatchEvent(event);
-                  }}
-                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  Add Event
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      // This will trigger the add event functionality
+                      // We need to pass this through to EventManager
+                      const event = new CustomEvent('addEvent');
+                      document.dispatchEvent(event);
+                    }}
+                    className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    Add Note
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingEvent(null); // Set to null for new event
+                      setShowEditEventModal(true);
+                    }}
+                    className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    Add Event
+                  </button>
+                </div>
               )}
             </div>
             {!isEventManagerCollapsed && (

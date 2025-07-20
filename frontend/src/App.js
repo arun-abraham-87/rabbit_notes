@@ -32,6 +32,7 @@ import Assets from './components/Assets';
 import CountdownsPage from './pages/CountdownsPage';
 import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceHelpUtils';
 import StockVesting from './components/StockVesting';
+import Pomodoro from './components/Pomodoro';
 
 // MainContentArea component that adjusts based on left panel state
 const MainContentArea = ({ 
@@ -226,6 +227,15 @@ const MainContentArea = ({
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                 <StockVesting notes={allNotes} />
+              </div>
+            </div>
+          } />
+          <Route path="/pomodoro" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="min-h-screen bg-gray-50 flex justify-center items-center">
+                  <Pomodoro />
+                </div>
               </div>
             </div>
           } />

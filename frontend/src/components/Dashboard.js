@@ -9,7 +9,7 @@ import TimeZoneDisplay from './TimeZoneDisplay';
 import TimezonePopup from './TimezonePopup';
 import BookmarkedLinks from './BookmarkedLinks';
 import EventManager from './EventManager';
-import Pomodoro from './Pomodoro';
+
 import EditEventModal from './EditEventModal';
 import { useLeftPanel } from '../contexts/LeftPanelContext';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
@@ -860,10 +860,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
             )}
           </div>
 
-          {/* Third Row: Pomodoro */}
-          <div className="mb-8 flex justify-center">
-            <Pomodoro />
-          </div>
+
 
           {/* Alerts Section */}
           <div className="mb-8">

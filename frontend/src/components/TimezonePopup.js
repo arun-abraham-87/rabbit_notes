@@ -5,7 +5,13 @@ const TimezonePopup = ({ isOpen, onClose }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeFilter, setActiveFilter] = useState('all');
-  const [sliderHour, setSliderHour] = useState(12);
+  const [sliderMinutes, setSliderMinutes] = useState(() => {
+    // Get current time in base timezone
+    const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
+    const now = new Date();
+    const baseTime = new Date(now.toLocaleString('en-US', { timeZone: baseTimezone }));
+    return baseTime.getHours() * 60 + baseTime.getMinutes();
+  });
   const searchInputRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -142,14 +148,16 @@ const TimezonePopup = ({ isOpen, onClose }) => {
     }
   };
 
-  // Format time for a timezone based on slider hour
-  const formatTimezoneTimeWithSlider = (timeZone, baseHour) => {
+  // Format time for a timezone based on slider minutes
+  const formatTimezoneTimeWithSlider = (timeZone, baseMinutes) => {
     try {
       const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
       
-      // Create a date object with the slider hour in base timezone
+      // Create a date object with the slider minutes in base timezone
       const baseDate = new Date();
-      baseDate.setHours(baseHour, 0, 0, 0);
+      const hours = Math.floor(baseMinutes / 60);
+      const minutes = baseMinutes % 60;
+      baseDate.setHours(hours, minutes, 0, 0);
       
       // Convert to target timezone
       const targetDate = new Date(baseDate.toLocaleString('en-US', { timeZone: baseTimezone }));
@@ -304,29 +312,33 @@ const TimezonePopup = ({ isOpen, onClose }) => {
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium text-gray-700">Time Slider</label>
               <span className="text-sm text-gray-600">
-                {sliderHour === 0 ? '12 AM' : 
-                 sliderHour === 12 ? '12 PM' : 
-                 sliderHour > 12 ? `${sliderHour - 12} PM` : `${sliderHour} AM`}
+                {(() => {
+                  const hours = Math.floor(sliderMinutes / 60);
+                  const minutes = sliderMinutes % 60;
+                  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                  const ampm = hours >= 12 ? 'PM' : 'AM';
+                  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+                })()}
               </span>
             </div>
             <div className="relative">
               <input
                 type="range"
                 min="0"
-                max="23"
-                value={sliderHour}
-                onChange={(e) => setSliderHour(parseInt(e.target.value))}
+                max="1439"
+                value={sliderMinutes}
+                onChange={(e) => setSliderMinutes(parseInt(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                 style={{
-                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(sliderHour / 23) * 100}%, #e5e7eb ${(sliderHour / 23) * 100}%, #e5e7eb 100%)`
+                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(sliderMinutes / 1439) * 100}%, #e5e7eb ${(sliderMinutes / 1439) * 100}%, #e5e7eb 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>12 AM</span>
-                <span>6 AM</span>
-                <span>12 PM</span>
-                <span>6 PM</span>
-                <span>11 PM</span>
+                <span>12:00 AM</span>
+                <span>6:00 AM</span>
+                <span>12:00 PM</span>
+                <span>6:00 PM</span>
+                <span>11:59 PM</span>
               </div>
             </div>
           </div>
@@ -351,13 +363,15 @@ const TimezonePopup = ({ isOpen, onClose }) => {
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {continentTimezones.map((timezone, index) => {
-                        const time = formatTimezoneTimeWithSlider(timezone.zone, sliderHour);
+                        const time = formatTimezoneTimeWithSlider(timezone.zone, sliderMinutes);
                         const timeDiffHours = getTimeDiffHours(timezone.zone);
                         
                         // Get hour for time description based on slider
                         const baseTimezone = localStorage.getItem('baseTimezone') || 'Australia/Sydney';
                         const baseDate = new Date();
-                        baseDate.setHours(sliderHour, 0, 0, 0);
+                        const hours = Math.floor(sliderMinutes / 60);
+                        const minutes = sliderMinutes % 60;
+                        baseDate.setHours(hours, minutes, 0, 0);
                         const targetDate = new Date(baseDate.toLocaleString('en-US', { timeZone: baseTimezone }));
                         const timeInZone = new Intl.DateTimeFormat('en-US', {
                           timeZone: timezone.zone,

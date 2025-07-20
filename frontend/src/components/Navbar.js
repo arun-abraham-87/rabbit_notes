@@ -16,7 +16,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     } else {
       // Default: all true
       setNavbarPagesVisibility({
-        dashboard: true, notes: true, todos: true, watch: true, tags: true, journals: true, events: true, countdowns: true, people: true, news: true, expense: true, trackers: true, calendar: true, bookmarks: true, assets: true, 'stock-vesting': true
+        dashboard: true, notes: true, todos: true, watch: true, tags: true, journals: true, events: true, countdowns: true, people: true, news: true, expense: true, trackers: true, calendar: true, bookmarks: true, assets: true, 'stock-vesting': true, pomodoro: true
       });
     }
   }, []);
@@ -38,6 +38,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     { id: 'bookmarks', label: 'Bookmarks' },
     { id: 'assets', label: 'Assets' },
     { id: 'stock-vesting', label: 'Stock Vesting' },
+    { id: 'pomodoro', label: 'Pomodoro' },
   ].filter(button => navbarPagesVisibility[button.id]);
 
   // Split navigation buttons: first 10 in main menu, rest in dropdown

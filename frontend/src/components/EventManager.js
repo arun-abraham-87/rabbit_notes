@@ -3,7 +3,7 @@ import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import Countdown from './Countdown';
 
-const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent }) => {
+const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent, eventFilter = 'all' }) => {
   const [events, setEvents] = useState(() => {
     try {
       const stored = localStorage.getItem('tempEvents');
@@ -124,6 +124,29 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         // Exclude notes with "purchase" tag
         const content = note.content.toLowerCase();
         if (content.includes('purchase')) return false;
+        
+        // Apply filter based on eventFilter
+        if (eventFilter === 'all') {
+          return true;
+        } else if (eventFilter === 'deadline') {
+          // Show only events with "deadline" tag
+          const lines = note.content.split('\n');
+          const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+          if (tagsLine) {
+            const tags = tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim());
+            return tags.some(tag => tag.toLowerCase() === 'deadline');
+          }
+          return false;
+        } else if (eventFilter === 'holiday') {
+          // Show only events with "Holiday" tag
+          const lines = note.content.split('\n');
+          const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+          if (tagsLine) {
+            const tags = tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim());
+            return tags.some(tag => tag.toLowerCase() === 'holiday');
+          }
+          return false;
+        }
         
         return true;
       })
@@ -542,18 +565,48 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                 displayText = `${totalDays} day${totalDays !== 1 ? 's' : ''}`;
             }
             
+            // Check if this is a recurring event (original date year is different from current year)
+            const originalDate = new Date(note.dateTime);
+            const isRecurring = originalDate.getFullYear() !== new Date().getFullYear();
+            
+            // Check if event is today
+            const isToday = totalDays === 0;
+            
             return (
               <div 
                 key={note.id} 
-                className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow" 
-                style={{ backgroundColor: note.bgColor || '#ffffff' }}
+                className={`group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow ${isToday ? 'animate-pulse' : ''}`}
+                style={{ backgroundColor: isToday ? '#dcfce7' : (note.bgColor || '#ffffff') }}
                 onClick={toggleDisplayMode}
                 title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
               >
-                <div className={`text-2xl font-bold ${note.bgColor === '#f3e8ff' ? 'text-purple-800' : 'text-gray-600'}`}>{displayText}</div>
-                <div className={`text-sm ${note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500'}`}>until</div>
-                <div className={`font-medium w-full break-words leading-relaxed ${note.bgColor === '#f3e8ff' ? 'text-purple-900' : 'text-gray-900'}`} style={{ wordBreak: 'break-word', lineHeight: '1.6' }}>{note.description}</div>
-                <div className={`text-sm ${note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500'}`}>on {eventDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
+                {isToday && (
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="animate-bounce text-green-600">🎉</div>
+                    <div className="text-green-800 font-bold text-lg">
+                      {isRecurring ? 'Anniversary Today!' : 'TODAY!'}
+                    </div>
+                  </div>
+                )}
+                <div className={`text-2xl font-bold ${isToday ? 'text-green-800' : (note.bgColor === '#f3e8ff' ? 'text-purple-800' : 'text-gray-600')}`}>
+                  {isToday ? '' : displayText}
+                </div>
+                <div className={`text-sm ${isToday ? 'text-green-700' : (note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500')}`}>
+                  {isToday ? '' : (isRecurring ? 'anniversary' : 'until')}
+                </div>
+                <div className={`font-medium w-full truncate ${note.bgColor === '#f3e8ff' ? 'text-purple-900' : 'text-gray-900'}`} title={note.description}>{note.description}</div>
+                <div className={`text-sm ${note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500'}`}>
+                  {isRecurring ? (
+                    (() => {
+                      const originalDate = new Date(note.dateTime);
+                      const currentYear = new Date().getFullYear();
+                      const ageInYears = currentYear - originalDate.getFullYear();
+                      return `Original date: ${originalDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} (${ageInYears} year${ageInYears !== 1 ? 's' : ''})`;
+                    })()
+                  ) : (
+                    `on ${eventDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}`
+                  )}
+                </div>
                 <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
                   {/* Color Options */}
                   <div className="flex gap-1 mr-2">

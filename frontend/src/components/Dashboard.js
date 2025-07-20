@@ -168,6 +168,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [editingEvent, setEditingEvent] = useState(null);
   const [isAddingDeadline, setIsAddingDeadline] = useState(false);
   const [isAddingHoliday, setIsAddingHoliday] = useState(false);
+  const [eventFilter, setEventFilter] = useState('all'); // 'all', 'deadline', 'holiday'
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -688,22 +689,59 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
           {/* Second Row: Event Manager Cards */}
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
-              <button
-                onClick={() => setIsEventManagerCollapsed(!isEventManagerCollapsed)}
-                className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                {isEventManagerCollapsed ? (
-                  <>
-                    <ChevronDownIcon className="h-4 w-4" />
-                    Show Events
-                  </>
-                ) : (
-                  <>
-                    <ChevronUpIcon className="h-4 w-4" />
-                    Hide Events
-                  </>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setIsEventManagerCollapsed(!isEventManagerCollapsed)}
+                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  {isEventManagerCollapsed ? (
+                    <>
+                      <ChevronDownIcon className="h-4 w-4" />
+                      Show Events
+                    </>
+                  ) : (
+                    <>
+                      <ChevronUpIcon className="h-4 w-4" />
+                      Hide Events
+                    </>
+                  )}
+                </button>
+                
+                {!isEventManagerCollapsed && (
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setEventFilter('all')}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        eventFilter === 'all' 
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setEventFilter('deadline')}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        eventFilter === 'deadline' 
+                          ? 'bg-red-500 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Deadline
+                    </button>
+                    <button
+                      onClick={() => setEventFilter('holiday')}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        eventFilter === 'holiday' 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Holiday
+                    </button>
+                  </div>
                 )}
-              </button>
+              </div>
               
               {!isEventManagerCollapsed && (
                 <button
@@ -754,6 +792,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                         type="eventNotes" 
                         notes={notes} 
                         setActivePage={setActivePage}
+                        eventFilter={eventFilter}
                         onEditEvent={(note) => {
                           setEditingEvent(note);
                           setShowEditEventModal(true);

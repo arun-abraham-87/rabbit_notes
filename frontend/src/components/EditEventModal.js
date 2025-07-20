@@ -186,6 +186,9 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
 
   const handleDelete = async () => {
     try {
+      // Call the backend API to delete the note
+      await deleteNoteById(note.id);
+      
       // Only call onDelete if the deletion was successful
       onDelete(note.id);
       setShowDeleteConfirm(false);

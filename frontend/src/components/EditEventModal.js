@@ -146,13 +146,17 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       }
     }
 
-    // Add tags if any
-    if (tags) {
-      content += `\nevent_tags:${tags}`;
+    // Add tags if any (including deadline tag if needed)
+    let finalTags = tags || '';
+    if (isDeadline && !finalTags.includes('deadline')) {
+      finalTags = finalTags ? `${finalTags},deadline` : 'deadline';
+    }
+    if (finalTags) {
+      content += `\nevent_tags:${finalTags}`;
     }
 
     // Add price if it exists and purchase tag is present
-    if (price && tags.toLowerCase().includes('purchase')) {
+    if (price && finalTags.toLowerCase().includes('purchase')) {
       content += `\nevent_$:${price}`;
     }
 
@@ -160,10 +164,6 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     content += `\nmeta::event::${new Date().toISOString()}`;
     if (isDeadline) {
       content += `\nmeta::event_deadline:true`;
-      // Add deadline tag if not already present
-      if (!tags.includes('deadline')) {
-        content += `\nevent_tags:${tags ? tags + ',deadline' : 'deadline'}`;
-      }
     }
 
     onSave(content);

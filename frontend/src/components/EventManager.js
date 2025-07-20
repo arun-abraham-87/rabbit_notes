@@ -47,6 +47,97 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     bgColor: '#ffffff' // Default background color
   });
 
+  // Helper function to extract event details from note content
+  const getEventDetails = (content) => {
+    const lines = content.split('\n');
+    
+    // Find the description
+    const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+    const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+    
+    // Find the event date
+    const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+    const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
+    
+    // Find tags
+    const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+    const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
+    
+    // Check if it's a deadline
+    const isDeadline = tags.some(tag => tag.toLowerCase() === 'deadline') || 
+                      content.includes('meta::event_deadline') ||
+                      content.includes('meta::deadline');
+
+    return {
+      description,
+      dateTime,
+      tags,
+      isDeadline
+    };
+  };
+
+  // Get top 10 event notes
+  const getEventNotes = () => {
+    if (!notes) return [];
+    
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Zero out time for accurate comparison
+    
+    // Load stored background colors for event notes
+    let storedColors = {};
+    try {
+      const stored = localStorage.getItem('eventNoteColors');
+      if (stored) {
+        storedColors = JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('Error loading event note colors:', error);
+    }
+    
+    return notes
+      .filter(note => {
+        if (!note?.content) return false;
+        
+        // Exclude notes with "purchase" in content or tags
+        const content = note.content.toLowerCase();
+        if (content.includes('purchase')) return false;
+        
+        // Only include notes with meta::event
+        return note.content.includes('meta::event');
+      })
+      .map(note => {
+        const details = getEventDetails(note.content);
+        
+        // Set default background color based on whether it's a deadline
+        let defaultColor = '#ffffff'; // white
+        if (details.isDeadline) {
+          defaultColor = '#ff6b6b'; // reddish for deadlines
+        }
+        
+        return {
+          ...note,
+          ...details,
+          bgColor: storedColors[note.id] || defaultColor // Load stored color or use default
+        };
+      })
+      .filter(event => {
+        if (!event.dateTime) return false; // Only include events with valid dates
+        
+        // Filter out past events
+        const eventDate = new Date(event.dateTime);
+        eventDate.setHours(0, 0, 0, 0);
+        return eventDate >= now; // Only include future events (including today)
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.dateTime);
+        const dateB = new Date(b.dateTime);
+        const daysA = Math.ceil((dateA - now) / (1000 * 60 * 60 * 24));
+        const daysB = Math.ceil((dateB - now) / (1000 * 60 * 60 * 24));
+        return daysA - daysB; // Sort by days until event (ascending)
+      })
+      .slice(0, 10); // Get top 10
+  };
+
   // Update eventForm when selectedDate changes
   useEffect(() => {
     if (selectedDate) {
@@ -164,9 +255,21 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   };
 
   const handleColorChange = (eventId, newColor) => {
+    // Handle color changes for local events
     setEvents(prev => prev.map(ev => 
       ev.id === eventId ? { ...ev, bgColor: newColor } : ev
     ));
+    
+    // Handle color changes for event notes (from notes array)
+    // Store the color preference in localStorage
+    try {
+      const storedColors = localStorage.getItem('eventNoteColors') || '{}';
+      const colorMap = JSON.parse(storedColors);
+      colorMap[eventId] = newColor;
+      localStorage.setItem('eventNoteColors', JSON.stringify(colorMap));
+    } catch (error) {
+      console.error('Error saving event note color:', error);
+    }
   };
 
   const colorOptions = [
@@ -175,6 +278,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     '#d1fae5', // green
     '#e0e7ff', // blue
     '#fee2e2', // red
+    '#ff6b6b', // reddish (for deadlines)
     '#f3e8ff', // purple
     '#f1f5f9'  // gray
   ];
@@ -196,6 +300,9 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         return sortedEvents.map(ev => {
             const eventDate = new Date(ev.date + 'T' + (ev.start || '00:00'));
             const now = new Date();
+            // Zero out time for accurate day diff
+            now.setHours(0, 0, 0, 0);
+            eventDate.setHours(0, 0, 0, 0);
             const totalDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
             const age = getAgeInStringFmt(eventDate);
             
@@ -354,6 +461,100 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
           return allCards;
         })()}
 
+        {/* Event Notes - Third Line */}
+        {(type === 'all' || type === 'eventNotes') && (() => {
+          const eventNotes = getEventNotes();
+          
+          return eventNotes.map(note => {
+            const eventDate = new Date(note.dateTime);
+            const now = new Date();
+            // Zero out time for accurate day diff
+            now.setHours(0, 0, 0, 0);
+            eventDate.setHours(0, 0, 0, 0);
+            const totalDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+            
+            let timeLeft, timeUnit, displayText;
+            switch (displayMode) {
+              case 'weeks':
+                const weeks = Math.floor(totalDays / 7);
+                const remainingDays = totalDays % 7;
+                timeLeft = weeks;
+                timeUnit = 'weeks';
+                displayText = weeks > 0 ? `${weeks} week${weeks !== 1 ? 's' : ''}${remainingDays > 0 ? ` ${remainingDays} day${remainingDays !== 1 ? 's' : ''}` : ''}` : `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                break;
+              case 'months':
+                const months = Math.floor(totalDays / 30.44);
+                const remainingDaysInMonth = Math.floor(totalDays % 30.44);
+                timeLeft = months;
+                timeUnit = 'months';
+                displayText = months > 0 ? `${months} month${months !== 1 ? 's' : ''}${remainingDaysInMonth > 0 ? ` ${remainingDaysInMonth} day${remainingDaysInMonth !== 1 ? 's' : ''}` : ''}` : `${remainingDaysInMonth} day${remainingDaysInMonth !== 1 ? 's' : ''}`;
+                break;
+              case 'years':
+                const years = Math.floor(totalDays / 365.25);
+                const remainingDaysInYear = Math.floor(totalDays % 365.25);
+                const monthsInYear = Math.floor(remainingDaysInYear / 30.44);
+                timeLeft = years;
+                timeUnit = 'years';
+                if (years > 0) {
+                  displayText = `${years} year${years !== 1 ? 's' : ''}${monthsInYear > 0 ? ` ${monthsInYear} month${monthsInYear !== 1 ? 's' : ''}` : ''}`;
+                } else {
+                  displayText = monthsInYear > 0 ? `${monthsInYear} month${monthsInYear !== 1 ? 's' : ''}` : `${remainingDaysInYear} day${remainingDaysInYear !== 1 ? 's' : ''}`;
+                }
+                break;
+              default:
+                timeLeft = totalDays;
+                timeUnit = 'days';
+                displayText = `${totalDays} day${totalDays !== 1 ? 's' : ''}`;
+            }
+            
+            return (
+              <div 
+                key={note.id} 
+                className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40 cursor-pointer hover:shadow-md transition-shadow" 
+                style={{ backgroundColor: note.bgColor || '#ffffff' }}
+                onClick={toggleDisplayMode}
+                title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
+              >
+                <div className={`text-2xl font-bold ${note.bgColor === '#ff6b6b' ? 'text-white' : 'text-gray-600'}`}>{displayText}</div>
+                <div className={`text-sm ${note.bgColor === '#ff6b6b' ? 'text-white/80' : 'text-gray-500'}`}>until</div>
+                <div className={`font-medium w-full break-words leading-relaxed ${note.bgColor === '#ff6b6b' ? 'text-white' : 'text-gray-900'}`} style={{ wordBreak: 'break-word', lineHeight: '1.6' }}>{note.description}</div>
+                <div className={`text-sm ${note.bgColor === '#ff6b6b' ? 'text-white/80' : 'text-gray-500'}`}>on {eventDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
+                {note.tags && note.tags.length > 0 && (
+                  <div className={`text-xs ${note.bgColor === '#ff6b6b' ? 'text-white/70' : 'text-gray-500'} mt-1`}>Tags: {note.tags.join(', ')}</div>
+                )}
+                <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Color Options */}
+                  <div className="flex gap-1 mr-2">
+                    {colorOptions.map(color => (
+                      <button
+                        key={color}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleColorChange(note.id, color);
+                        }}
+                        className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-110 ${(note.bgColor || '#ffffff') === color ? 'border-gray-700' : 'border-gray-300'}`}
+                        style={{ backgroundColor: color }}
+                        title={`Set color to ${color}`}
+                      />
+                    ))}
+                  </div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (setActivePage) {
+                        setActivePage('events');
+                      }
+                    }} 
+                    className="text-blue-500 hover:text-blue-700 p-1"
+                    title="View in Events"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          });
+        })()}
 
 
       {/* Event Modal */}

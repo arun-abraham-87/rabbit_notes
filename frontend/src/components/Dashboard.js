@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { AlertsProvider } from './Alerts';
 import RemindersAlert from './RemindersAlert';
 import ReviewOverdueAlert from './ReviewOverdueAlert';
-import { loadAllNotes } from '../utils/ApiUtils';
+import { loadAllNotes, createNote } from '../utils/ApiUtils';
 import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay';
 import TimezonePopup from './TimezonePopup';
@@ -159,6 +159,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [notesScrollPosition, setNotesScrollPosition] = useState(0);
   const [eventsHasOverflow, setEventsHasOverflow] = useState(false);
   const [notesHasOverflow, setNotesHasOverflow] = useState(false);
+  const [eventNotesHasOverflow, setEventNotesHasOverflow] = useState(false);
   const [showRemindersOnly, setShowRemindersOnly] = useState(false);
   const [showReviewsOverdueOnly, setShowReviewsOverdueOnly] = useState(false);
   const [showTimezonePopup, setShowTimezonePopup] = useState(false);
@@ -171,6 +172,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
   const notesScrollRef = useRef(null);
+  const eventNotesScrollRef = useRef(null);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -311,6 +313,24 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
     }
   };
 
+  // Horizontal scroll functions for event notes
+  const scrollEventNotesLeft = () => {
+    if (eventNotesScrollRef.current) {
+      const currentScroll = eventNotesScrollRef.current.scrollLeft;
+      const targetScroll = Math.max(0, currentScroll - 300);
+      smoothScroll(eventNotesScrollRef.current, targetScroll);
+    }
+  };
+
+  const scrollEventNotesRight = () => {
+    if (eventNotesScrollRef.current) {
+      const currentScroll = eventNotesScrollRef.current.scrollLeft;
+      const maxScroll = eventNotesScrollRef.current.scrollWidth - eventNotesScrollRef.current.clientWidth;
+      const targetScroll = Math.min(maxScroll, currentScroll + 300);
+      smoothScroll(eventNotesScrollRef.current, targetScroll);
+    }
+  };
+
   // Check for overflow in containers
   const checkOverflow = () => {
     if (eventsScrollRef.current) {
@@ -320,6 +340,10 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
     if (notesScrollRef.current) {
       const hasOverflow = notesScrollRef.current.scrollWidth > notesScrollRef.current.clientWidth;
       setNotesHasOverflow(hasOverflow);
+    }
+    if (eventNotesScrollRef.current) {
+      const hasOverflow = eventNotesScrollRef.current.scrollWidth > eventNotesScrollRef.current.clientWidth;
+      setEventNotesHasOverflow(hasOverflow);
     }
   };
 
@@ -744,7 +768,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                 </div>
 
                 {/* Notes Row */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mb-6">
                   {/* Left Arrow */}
                   <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
                     {notesHasOverflow && (
@@ -776,6 +800,51 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                     {notesHasOverflow && (
                       <button
                         onClick={scrollNotesRight}
+                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                      >
+                        <ChevronRightIcon className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Event Notes Row */}
+                <div className="flex items-center gap-2">
+                  {/* Left Arrow */}
+                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                    {eventNotesHasOverflow && (
+                      <button
+                        onClick={scrollEventNotesLeft}
+                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
+                      >
+                        <ChevronLeftIcon className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Event Notes Container */}
+                  <div 
+                    ref={eventNotesScrollRef}
+                    className="flex-1 overflow-x-auto"
+                    style={{ 
+                      scrollbarWidth: 'none',
+                      msOverflowStyle: 'none'
+                    }}
+                    onScroll={(e) => {
+                      // Prevent manual scrolling, only allow programmatic scrolling
+                      e.preventDefault();
+                    }}
+                  >
+                    <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
+                      <EventManager type="eventNotes" notes={notes} setActivePage={setActivePage} />
+                    </div>
+                  </div>
+                  
+                  {/* Right Arrow */}
+                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                    {eventNotesHasOverflow && (
+                      <button
+                        onClick={scrollEventNotesRight}
                         className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
                       >
                         <ChevronRightIcon className="h-5 w-5" />
@@ -846,13 +915,20 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
               }
             } else {
               // Add new event
-              const newNote = {
-                id: Date.now().toString(),
-                content: content,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              };
-              setNotes([...notes, newNote]);
+              try {
+                const newNote = await createNote(content);
+                setNotes([...notes, newNote]);
+              } catch (error) {
+                console.error('Error creating note:', error);
+                // Still add to local state even if backend fails
+                const fallbackNote = {
+                  id: Date.now().toString(),
+                  content: content,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                };
+                setNotes([...notes, fallbackNote]);
+              }
             }
             setShowEditEventModal(false);
             setEditingEvent(null);

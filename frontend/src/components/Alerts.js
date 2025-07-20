@@ -151,6 +151,24 @@ const UpcomingDeadlinesAlert = ({ notes, expanded: initialExpanded = true, addNo
   const [deadlineIndicators, setDeadlineIndicators] = useState('');
   const [editingDeadline, setEditingDeadline] = useState(null);
 
+  // Add escape key handling
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowPopup(false);
+      }
+    };
+
+    if (showPopup) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [showPopup]);
+
   const handleEditDeadline = (deadline) => {
     const originalNote = notes.find(n => n.id === deadline.id);
     if (!originalNote) {

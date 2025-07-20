@@ -136,6 +136,24 @@ const UpcomingEventsAlert = ({ notes, expanded: initialExpanded = true, setNotes
     const [revealedEvents, setRevealedEvents] = useState({});
     const [eventIndicators, setEventIndicators] = useState('');
     const [editingEvent, setEditingEvent] = useState(null);
+
+    // Add escape key handling
+    useEffect(() => {
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowPopup(false);
+        }
+      };
+
+      if (showPopup) {
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+          document.removeEventListener('keydown', handleKeyDown);
+        };
+      }
+    }, [showPopup]);
   
       const handleEditEvent = async (event) => {
     const originalNote = notes.find(n => n.id === event.id);

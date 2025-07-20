@@ -21,6 +21,24 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
   const [editingHoliday, setEditingHoliday] = useState(null);
   const [holidayIndicators, setHolidayIndicators] = useState('');
 
+  // Add escape key handling
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowPopup(false);
+      }
+    };
+
+    if (showPopup) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [showPopup]);
+
   // Add the typewriter animation style
   useEffect(() => {
     const styleSheet = document.createElement('style');

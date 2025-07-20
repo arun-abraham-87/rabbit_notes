@@ -76,6 +76,26 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     };
   };
 
+  // Helper function to calculate next occurrence for recurring events
+  const calculateNextOccurrence = (originalDate) => {
+    if (!originalDate) return null;
+    
+    const eventDate = new Date(originalDate);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    
+    // Create a new date with current year
+    const nextOccurrence = new Date(eventDate);
+    nextOccurrence.setFullYear(currentYear);
+    
+    // If the date has already passed this year, use next year
+    if (nextOccurrence < now) {
+      nextOccurrence.setFullYear(currentYear + 1);
+    }
+    
+    return nextOccurrence;
+  };
+
   // Get top 10 event notes
   const getEventNotes = () => {
     if (!notes) return [];
@@ -98,12 +118,14 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       .filter(note => {
         if (!note?.content) return false;
         
-        // Exclude notes with "purchase" in content or tags
+        // Only include notes with meta::event
+        if (!note.content.includes('meta::event')) return false;
+        
+        // Exclude notes with "purchase" tag
         const content = note.content.toLowerCase();
         if (content.includes('purchase')) return false;
         
-        // Only include notes with meta::event
-        return note.content.includes('meta::event');
+        return true;
       })
       .map(note => {
         const details = getEventDetails(note.content);
@@ -123,16 +145,28 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       .filter(event => {
         if (!event.dateTime) return false; // Only include events with valid dates
         
-        // Filter out past events
-        const eventDate = new Date(event.dateTime);
-        eventDate.setHours(0, 0, 0, 0);
-        return eventDate >= now; // Only include future events (including today)
+        // Calculate next occurrence for recurring events
+        const nextOccurrence = calculateNextOccurrence(event.dateTime);
+        if (!nextOccurrence) return false;
+        
+        // Calculate days until event using the next occurrence
+        nextOccurrence.setHours(0, 0, 0, 0);
+        const daysUntilEvent = Math.ceil((nextOccurrence - now) / (1000 * 60 * 60 * 24));
+        
+        // Only show events with 0 or positive days until event
+        return daysUntilEvent >= 0;
+      })
+      .map(event => {
+        // Calculate next occurrence and add it to the event object
+        const nextOccurrence = calculateNextOccurrence(event.dateTime);
+        return {
+          ...event,
+          nextOccurrence: nextOccurrence
+        };
       })
       .sort((a, b) => {
-        const dateA = new Date(a.dateTime);
-        const dateB = new Date(b.dateTime);
-        const daysA = Math.ceil((dateA - now) / (1000 * 60 * 60 * 24));
-        const daysB = Math.ceil((dateB - now) / (1000 * 60 * 60 * 24));
+        const daysA = Math.ceil((a.nextOccurrence - now) / (1000 * 60 * 60 * 24));
+        const daysB = Math.ceil((b.nextOccurrence - now) / (1000 * 60 * 60 * 24));
         return daysA - daysB; // Sort by days until event (ascending)
       })
       .slice(0, 10); // Get top 10
@@ -466,7 +500,8 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
           const eventNotes = getEventNotes();
           
           return eventNotes.map(note => {
-            const eventDate = new Date(note.dateTime);
+            // Use the calculated next occurrence instead of the original date
+            const eventDate = note.nextOccurrence ? new Date(note.nextOccurrence) : new Date(note.dateTime);
             const now = new Date();
             // Zero out time for accurate day diff
             now.setHours(0, 0, 0, 0);

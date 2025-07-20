@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { AlertsProvider } from './Alerts';
 import RemindersAlert from './RemindersAlert';
 import ReviewOverdueAlert from './ReviewOverdueAlert';
-import { loadAllNotes, createNote } from '../utils/ApiUtils';
+import { loadAllNotes, createNote, updateNoteById } from '../utils/ApiUtils';
 import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/solid';
 import TimeZoneDisplay from './TimeZoneDisplay';
 import TimezonePopup from './TimezonePopup';
@@ -619,7 +619,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
           {!isPinned && (
             <div className="mb-8">
               <BookmarkedLinks 
-                key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
+                key={`bookmarks-${notes.length}-${notes.reduce((acc, note) => acc + (note && note.content && note.content.includes('meta::bookmark_pinned') ? 1 : 0), 0)}`}
                 notes={notes} 
                 setNotes={setNotes} 
               />
@@ -722,13 +722,13 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
             </div>
             {!isEventManagerCollapsed && (
               <>
-                {/* Events Row */}
+                {/* Event Notes Row */}
                 <div className="flex items-center gap-2 mb-6">
                   {/* Left Arrow */}
                   <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                    {eventsHasOverflow && (
+                    {eventNotesHasOverflow && (
                       <button
-                        onClick={scrollEventsLeft}
+                        onClick={scrollEventNotesLeft}
                         className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
                       >
                         <ChevronLeftIcon className="h-5 w-5" />
@@ -736,9 +736,9 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                     )}
                   </div>
                   
-                  {/* Events Container */}
+                  {/* Event Notes Container */}
                   <div 
-                    ref={eventsScrollRef}
+                    ref={eventNotesScrollRef}
                     className="flex-1 overflow-x-auto"
                     style={{ 
                       scrollbarWidth: 'none',
@@ -750,15 +750,23 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                     }}
                   >
                     <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
-                      <EventManager type="events" notes={notes} setActivePage={setActivePage} />
+                      <EventManager 
+                        type="eventNotes" 
+                        notes={notes} 
+                        setActivePage={setActivePage}
+                        onEditEvent={(note) => {
+                          setEditingEvent(note);
+                          setShowEditEventModal(true);
+                        }}
+                      />
                     </div>
                   </div>
                   
                   {/* Right Arrow */}
                   <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                    {eventsHasOverflow && (
+                    {eventNotesHasOverflow && (
                       <button
-                        onClick={scrollEventsRight}
+                        onClick={scrollEventNotesRight}
                         className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
                       >
                         <ChevronRightIcon className="h-5 w-5" />
@@ -808,50 +816,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                   </div>
                 </div>
 
-                {/* Event Notes Row */}
-                <div className="flex items-center gap-2">
-                  {/* Left Arrow */}
-                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                    {eventNotesHasOverflow && (
-                      <button
-                        onClick={scrollEventNotesLeft}
-                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                      >
-                        <ChevronLeftIcon className="h-5 w-5" />
-                      </button>
-                    )}
-                  </div>
-                  
-                  {/* Event Notes Container */}
-                  <div 
-                    ref={eventNotesScrollRef}
-                    className="flex-1 overflow-x-auto"
-                    style={{ 
-                      scrollbarWidth: 'none',
-                      msOverflowStyle: 'none'
-                    }}
-                    onScroll={(e) => {
-                      // Prevent manual scrolling, only allow programmatic scrolling
-                      e.preventDefault();
-                    }}
-                  >
-                    <div className="inline-flex gap-4 pb-4 px-4" style={{ minWidth: 'max-content' }}>
-                      <EventManager type="eventNotes" notes={notes} setActivePage={setActivePage} />
-                    </div>
-                  </div>
-                  
-                  {/* Right Arrow */}
-                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                    {eventNotesHasOverflow && (
-                      <button
-                        onClick={scrollEventNotesRight}
-                        className="bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 p-2 rounded-full shadow-md transition-all"
-                      >
-                        <ChevronRightIcon className="h-5 w-5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+
               </>
             )}
           </div>
@@ -899,19 +864,22 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
               // Update existing event
               const note = notes.find(n => n.id === editingEvent.id);
               if (note) {
-                // Preserve the original meta tags
-                const originalLines = note.content.split('\n');
-                const metaTags = originalLines.filter(line => 
-                  line.startsWith('meta::') && 
-                  !line.startsWith('meta::event::')
-                );
-                
-                // Combine new content with preserved meta tags
-                const updatedContent = content + '\n' + metaTags.join('\n');
-                
-                // Update the note in the local state
-                const updatedNote = { ...note, content: updatedContent };
-                setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
+                try {
+                  // Update the note in the backend
+                  const response = await updateNoteById(editingEvent.id, content);
+                  
+                  // Update the note in the local state
+                  const updatedNote = { 
+                    ...note, 
+                    content: response && response.content ? response.content : content 
+                  };
+                  setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
+                } catch (error) {
+                  console.error('Error updating note:', error);
+                  // Still update local state even if backend fails
+                  const updatedNote = { ...note, content: content };
+                  setNotes(notes.map(n => n.id === note.id ? updatedNote : n));
+                }
               }
             } else {
               // Add new event

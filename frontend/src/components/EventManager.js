@@ -3,7 +3,7 @@ import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import Countdown from './Countdown';
 
-const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage }) => {
+const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent }) => {
   const [events, setEvents] = useState(() => {
     try {
       const stored = localStorage.getItem('tempEvents');
@@ -111,7 +111,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         // Set default background color based on whether it's a deadline
         let defaultColor = '#ffffff'; // white
         if (details.isDeadline) {
-          defaultColor = '#ff6b6b'; // reddish for deadlines
+          defaultColor = '#f3e8ff'; // purple for deadlines
         }
         
         return {
@@ -278,8 +278,8 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     '#d1fae5', // green
     '#e0e7ff', // blue
     '#fee2e2', // red
-    '#ff6b6b', // reddish (for deadlines)
-    '#f3e8ff', // purple
+    '#f3e8ff', // purple (for deadlines)
+    '#ff6b6b', // reddish
     '#f1f5f9'  // gray
   ];
 
@@ -515,13 +515,10 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                 onClick={toggleDisplayMode}
                 title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
               >
-                <div className={`text-2xl font-bold ${note.bgColor === '#ff6b6b' ? 'text-white' : 'text-gray-600'}`}>{displayText}</div>
-                <div className={`text-sm ${note.bgColor === '#ff6b6b' ? 'text-white/80' : 'text-gray-500'}`}>until</div>
-                <div className={`font-medium w-full break-words leading-relaxed ${note.bgColor === '#ff6b6b' ? 'text-white' : 'text-gray-900'}`} style={{ wordBreak: 'break-word', lineHeight: '1.6' }}>{note.description}</div>
-                <div className={`text-sm ${note.bgColor === '#ff6b6b' ? 'text-white/80' : 'text-gray-500'}`}>on {eventDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
-                {note.tags && note.tags.length > 0 && (
-                  <div className={`text-xs ${note.bgColor === '#ff6b6b' ? 'text-white/70' : 'text-gray-500'} mt-1`}>Tags: {note.tags.join(', ')}</div>
-                )}
+                <div className={`text-2xl font-bold ${note.bgColor === '#f3e8ff' ? 'text-purple-800' : 'text-gray-600'}`}>{displayText}</div>
+                <div className={`text-sm ${note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500'}`}>until</div>
+                <div className={`font-medium w-full break-words leading-relaxed ${note.bgColor === '#f3e8ff' ? 'text-purple-900' : 'text-gray-900'}`} style={{ wordBreak: 'break-word', lineHeight: '1.6' }}>{note.description}</div>
+                <div className={`text-sm ${note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500'}`}>on {eventDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
                 <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
                   {/* Color Options */}
                   <div className="flex gap-1 mr-2">
@@ -541,12 +538,12 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (setActivePage) {
-                        setActivePage('events');
+                      if (onEditEvent) {
+                        onEditEvent(note);
                       }
                     }} 
                     className="text-blue-500 hover:text-blue-700 p-1"
-                    title="View in Events"
+                    title="Edit Event"
                   >
                     <PencilIcon className="h-4 w-4" />
                   </button>

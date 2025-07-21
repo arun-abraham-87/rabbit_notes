@@ -634,9 +634,12 @@ const NoteCard = ({
                 console.log('NoteCard onSave called with text:', text);
                 console.log('Current note content:', note.content);
                 
-                // Ensure the note content ends with a newline before adding the new text
-                const contentWithNewline = note.content.endsWith('\n') ? note.content : note.content + '\n';
-                const updated = contentWithNewline + text;
+                // Remove all trailing blank lines before appending the new line
+                let contentWithNewline = note.content.replace(/\n+$/g, '');
+                if (contentWithNewline && contentWithNewline.trim() !== '') {
+                  contentWithNewline += '\n';
+                }
+                const updated = contentWithNewline ? contentWithNewline + text : text;
                 console.log('Updated content:', updated);
                 
                 const reorderedContent = reorderMetaTags(updated);

@@ -264,5 +264,11 @@ export const reorderMetaTags = (content) => {
   }
 
   // Combine content with meta tags at the bottom
-  return [...nonMetaLines, '', ...metaLines].join('\n').trim();
+  if (nonMetaLines.length > 0 && metaLines.length > 0) {
+    return [...nonMetaLines, ...metaLines].join('\n').trim();
+  } else if (metaLines.length > 0) {
+    return metaLines.join('\n').trim();
+  } else {
+    return nonMetaLines.join('\n').trim();
+  }
 }; 

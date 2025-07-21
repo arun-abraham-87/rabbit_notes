@@ -912,7 +912,18 @@ const NotesList = ({
     updateNoteCallback(noteId, newContent);
     setShowLinkEditPopup(false);
     setEditingLink(null);
+    // Reopen the link popup and restore selection
+    setShowLinkPopup(true);
+    setSelectedLinkIndex(linkIndex + 1);
   };
+
+  const linkEditInputRef = useRef(null);
+
+  useEffect(() => {
+    if (showLinkEditPopup && linkEditInputRef.current) {
+      linkEditInputRef.current.focus();
+    }
+  }, [showLinkEditPopup]);
 
   // Cmd+Enter handler for link edit popup
   useEffect(() => {
@@ -920,7 +931,7 @@ const NotesList = ({
     const handleCmdEnter = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        saveEditedLink();
+        if (showLinkEditPopup) saveEditedLink();
       }
     };
     document.addEventListener('keydown', handleCmdEnter);

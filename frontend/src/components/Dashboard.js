@@ -171,11 +171,13 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [isAddingHoliday, setIsAddingHoliday] = useState(false);
   const [eventFilter, setEventFilter] = useState('deadline'); // 'all', 'deadline', 'holiday'
   const [eventTextFilter, setEventTextFilter] = useState(''); // Text filter for events
+  const eventSearchInputRef = useRef(null); // <-- Add ref for search input
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
   const notesScrollRef = useRef(null);
   const eventNotesScrollRef = useRef(null);
+  const reviewOverdueSearchInputRef = useRef(null);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -411,6 +413,23 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
     }
   }, [openEditor, showRemindersOnly, showReviewsOverdueOnly, setActivePage, location.pathname, togglePinned]);
 
+  useEffect(() => {
+    if (showReviewsOverdueOnly && eventSearchInputRef.current) {
+      eventSearchInputRef.current.focus();
+    }
+  }, [showReviewsOverdueOnly]);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (showReviewsOverdueOnly && e.key === 'w' && reviewOverdueSearchInputRef.current) {
+        reviewOverdueSearchInputRef.current.focus();
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showReviewsOverdueOnly]);
+
   const getCompactTimezones = () => {
     const timezonesToShow = selectedTimezones.length > 0 ? selectedTimezones : [
       'Australia/Sydney',
@@ -614,6 +633,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
             expanded={true} 
             setNotes={setNotes}
             isReviewsOverdueOnlyMode={true}
+            searchInputRef={reviewOverdueSearchInputRef}
           />
         </div>
       ) : (
@@ -745,6 +765,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                     {/* Text Filter Input with Clear Button */}
                     <div className="relative">
                       <input
+                        ref={eventSearchInputRef} // <-- Attach ref
                         type="text"
                         placeholder="Filter events..."
                         value={eventTextFilter}

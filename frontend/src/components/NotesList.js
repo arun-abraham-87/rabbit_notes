@@ -450,32 +450,39 @@ const NotesList = ({
         } else if (e.key === 'Enter' && focusedNoteIndexRef.current >= 0) {
           // Check if any note is in super edit mode - if so, don't handle Enter
           const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
-          
           // Also check if there's an active inline editor or if the target is a textarea
           const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') || 
-                                     e.target.tagName === 'TEXTAREA';
-          
+                             e.target.tagName === 'TEXTAREA';
           if (!isAnyNoteInSuperEditMode && !isInlineEditorActive) {
             e.preventDefault();
             e.stopPropagation();
-            
-            // Exit focus mode if currently in focus mode
-            if (focusMode) {
-              // Dispatch a custom event to toggle focus mode
-              const toggleFocusModeEvent = new CustomEvent('toggleFocusMode');
-              document.dispatchEvent(toggleFocusModeEvent);
-            }
-            
-            // Enter super edit mode for the focused note
+            // Open link(s) instead of super edit mode
             const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
             if (focusedNote) {
-              const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
-              if (noteElement) {
-                // Trigger the super edit button click
-                const superEditButton = noteElement.querySelector('button[title="Focus on first line in this note"]');
-                if (superEditButton) {
-                  superEditButton.click();
+              // Regex to match both markdown-style links [text](url) and plain URLs
+              const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+              const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
+              const links = [];
+              let match;
+              // Extract markdown-style links first
+              while ((match = markdownLinkRegex.exec(focusedNote.content)) !== null) {
+                links.push({ url: match[2], text: match[1] });
+              }
+              // Extract plain URLs (excluding those already found in markdown links)
+              const markdownUrls = links.map(link => link.url);
+              while ((match = plainUrlRegex.exec(focusedNote.content)) !== null) {
+                if (!markdownUrls.includes(match[1])) {
+                  links.push({ url: match[1], text: match[1] });
                 }
+              }
+              if (links.length === 1) {
+                window.open(links[0].url, '_blank');
+              } else if (links.length > 1) {
+                setLinkPopupLinks(links);
+                setSelectedLinkIndex(0);
+                setShowLinkPopup(true);
+              } else {
+                // No links, optionally do nothing or show a toast
               }
             }
           } else {
@@ -603,6 +610,17 @@ const NotesList = ({
           } else {
             console.log('X key pressed but super edit mode is active, ignoring note deletion');
           }
+        } else if (e.key === 'e' && focusedNoteIndexRef.current >= 0) {
+          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+          if (focusedNote) {
+            const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
+            if (noteElement) {
+              const superEditButton = noteElement.querySelector('button[title="Focus on first line in this note"]');
+              if (superEditButton) {
+                superEditButton.click();
+              }
+            }
+          }
         }
       }
     };
@@ -649,14 +667,28 @@ const NotesList = ({
       e.preventDefault();
       e.stopPropagation();
       
+      const totalOptions = linkPopupLinks.length + 1; // +1 for 'Open all links'
       if (e.key === 'ArrowUp') {
-        setSelectedLinkIndex(prev => prev > 0 ? prev - 1 : linkPopupLinks.length - 1);
+        setSelectedLinkIndex(prev => prev === 0 ? totalOptions - 1 : prev - 1);
       } else if (e.key === 'ArrowDown') {
-        setSelectedLinkIndex(prev => prev < linkPopupLinks.length - 1 ? prev + 1 : 0);
+        setSelectedLinkIndex(prev => prev === totalOptions - 1 ? 0 : prev + 1);
       } else if (e.key === 'Enter') {
-        if (linkPopupLinks[selectedLinkIndex]) {
-          window.open(linkPopupLinks[selectedLinkIndex].url, '_blank');
+        if (selectedLinkIndex === 0) {
+          linkPopupLinks.forEach(link => window.open(link.url, '_blank'));
+          setShowLinkPopup(false);
+          setLinkPopupLinks([]);
+          setSelectedLinkIndex(0);
+        } else if (linkPopupLinks[selectedLinkIndex - 1]) {
+          window.open(linkPopupLinks[selectedLinkIndex - 1].url, '_blank');
+          setShowLinkPopup(false);
+          setLinkPopupLinks([]);
+          setSelectedLinkIndex(0);
         }
+      } else if (e.key === 'a') {
+        // Open all links in the popup
+        linkPopupLinks.forEach(link => {
+          window.open(link.url, '_blank');
+        });
         setShowLinkPopup(false);
         setLinkPopupLinks([]);
         setSelectedLinkIndex(0);
@@ -1187,11 +1219,31 @@ const NotesList = ({
               </button>
             </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
+              {/* Open all links option */}
+              <div
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  selectedLinkIndex === 0
+                    ? 'bg-blue-100 border-blue-300 text-blue-800'
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                }`}
+                onClick={() => {
+                  linkPopupLinks.forEach(link => window.open(link.url, '_blank'));
+                  setShowLinkPopup(false);
+                  setLinkPopupLinks([]);
+                  setSelectedLinkIndex(0);
+                }}
+              >
+                <div className="text-sm font-medium truncate">Open all links</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {selectedLinkIndex === 0 ? 'Press Enter to open all' : 'Click or use arrow keys'}
+                </div>
+              </div>
+              {/* Individual links */}
               {linkPopupLinks.map((link, index) => (
                 <div
                   key={index}
                   className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                    index === selectedLinkIndex
+                    selectedLinkIndex === index + 1
                       ? 'bg-blue-100 border-blue-300 text-blue-800'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                   }`}
@@ -1204,13 +1256,13 @@ const NotesList = ({
                 >
                   <div className="text-sm font-medium truncate">{link.text || link.url}</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {index === selectedLinkIndex ? 'Press Enter to open' : 'Click or use arrow keys'}
+                    {selectedLinkIndex === index + 1 ? 'Press Enter to open' : 'Click or use arrow keys'}
                   </div>
                 </div>
               ))}
             </div>
             <div className="mt-4 text-sm text-gray-600">
-              <p>Use ↑↓ arrows to navigate, Enter to open link, Esc to cancel</p>
+              <p>Use ↑↓ arrows to navigate, Enter to open, 'a' to open all, Esc to cancel</p>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
 import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon, PauseIcon, ChevronDownIcon, PlayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
@@ -253,7 +253,7 @@ const getLinkTypeIndicator = (url) => {
   }
 };
 
-const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes, isReviewsOverdueOnlyMode = false }) => {
+const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes, isReviewsOverdueOnlyMode = false, searchInputRef }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [searchText, setSearchText] = useState('');
   const [expandedNotes, setExpandedNotes] = useState({});
@@ -275,6 +275,10 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
   const [selectedNote, setSelectedNote] = useState(null);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [isSnoozedExpanded, setIsSnoozedExpanded] = useState(true);
+  const [showLinkPopup, setShowLinkPopup] = useState(false);
+  const [linkPopupLinks, setLinkPopupLinks] = useState([]);
+  const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
+  const [snoozeToast, setSnoozeToast] = useState(null);
 
   useEffect(() => {
     const overdue = findwatchitemsOverdue(notes).filter(note => !note.content.includes('meta::reminder'));
@@ -332,11 +336,91 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
       } else if (e.key === 'Enter' && focusedReviewIndex >= 0) {
         e.preventDefault();
         e.stopPropagation();
-        // Handle Enter key - could be used to unfollow the focused review
+        // Open all links in the focused review note
         const focusedReview = filteredOverdueNotes[focusedReviewIndex];
         if (focusedReview) {
-          // Unfollow the focused review (same as clicking the unfollow button)
-          handleUnfollow(focusedReview);
+          // Extract all URLs (plain and markdown) from the note content
+          const links = [];
+          const urlRegex = /(https?:\/\/[^\s]+)/g;
+          const markdownRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+          let match;
+          // Extract markdown links
+          while ((match = markdownRegex.exec(focusedReview.content)) !== null) {
+            links.push({ url: match[2], text: match[1] });
+          }
+          // Extract plain URLs
+          const markdownUrls = links.map(link => link.url);
+          while ((match = urlRegex.exec(focusedReview.content)) !== null) {
+            if (!markdownUrls.includes(match[1])) {
+              links.push({ url: match[1], text: match[1] });
+            }
+          }
+          if (links.length === 1) {
+            window.open(links[0].url, '_blank', 'noopener,noreferrer');
+          } else if (links.length > 1) {
+            setLinkPopupLinks(links);
+            setSelectedLinkIndex(0);
+            setShowLinkPopup(true);
+          }
+        }
+      } else if (e.key === 's' && focusedReviewIndex >= 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Snooze the focused review note
+        const focusedReview = filteredOverdueNotes[focusedReviewIndex];
+        if (focusedReview) {
+          // Add a snooze entry for this note in localStorage
+          const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+          // Set next review to 24 hours from now (or adjust as needed)
+          const nextReview = new Date();
+          nextReview.setHours(nextReview.getHours() + 24);
+          reviews[focusedReview.id] = nextReview.toISOString();
+          localStorage.setItem('noteReviews', JSON.stringify(reviews));
+          // Force a re-render by updating the notes state
+          setNotes([...notes]);
+          Alerts.success('Note snoozed for 24 hours');
+        }
+      }
+      else if (/^[1-9]$/.test(e.key) && focusedReviewIndex >= 0) {
+        const focusedReview = filteredOverdueNotes[focusedReviewIndex];
+        if (focusedReview) {
+          // Get cadence options as in the grid
+          const cadence = parseReviewCadenceMeta(focusedReview.content) || {};
+          const defaultOptions = [
+            { h: 2, label: '2h' },
+            { h: 4, label: '4h' },
+            { h: 12, label: '12h' },
+            { h: 48, label: '2d' },
+          ];
+          let options = [...defaultOptions];
+          if (cadence.type === 'every-x-hours' && cadence.hours && !defaultOptions.some(opt => opt.h === cadence.hours && (cadence.minutes || 0) === 0)) {
+            options.push({ h: cadence.hours, label: cadence.hours >= 24 ? `${cadence.hours / 24}d` : `${cadence.hours}h` });
+          }
+          const idx = parseInt(e.key, 10) - 1;
+          if (options[idx]) {
+            const hours = options[idx].h;
+            // Set cadence meta and snooze for that many hours
+            handleCadence(focusedReview, hours, 0);
+            // Also snooze for that many hours
+            const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
+            const nextReview = new Date();
+            nextReview.setHours(nextReview.getHours() + hours);
+            reviews[focusedReview.id] = nextReview.toISOString();
+            localStorage.setItem('noteReviews', JSON.stringify(reviews));
+            setNotes([...notes]);
+            Alerts.success(`Note snoozed for ${hours} hours and cadence set.`);
+            setSnoozeToast(`Note snoozed for ${hours} hours.`);
+            setTimeout(() => setSnoozeToast(null), 2000);
+          }
+        }
+      }
+      else if (e.key === 'e' && focusedReviewIndex >= 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        const focusedReview = filteredOverdueNotes[focusedReviewIndex];
+        if (focusedReview) {
+          setSelectedNote(focusedReview);
+          setShowNoteEditor(true);
         }
       }
     };
@@ -363,6 +447,34 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
       }
     }
   }, [focusedReviewIndex, isReviewsOverdueOnlyMode, filteredOverdueNotes]);
+
+  // Add effect for link popup keyboard navigation
+  useEffect(() => {
+    if (!showLinkPopup) return;
+    const handleLinkPopupKeyDown = (e) => {
+      if (!showLinkPopup) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === 'ArrowUp') {
+        setSelectedLinkIndex(prev => prev > 0 ? prev - 1 : linkPopupLinks.length - 1);
+      } else if (e.key === 'ArrowDown') {
+        setSelectedLinkIndex(prev => prev < linkPopupLinks.length - 1 ? prev + 1 : 0);
+      } else if (e.key === 'Enter') {
+        if (linkPopupLinks[selectedLinkIndex]) {
+          window.open(linkPopupLinks[selectedLinkIndex].url, '_blank', 'noopener,noreferrer');
+          setShowLinkPopup(false);
+          setLinkPopupLinks([]);
+          setSelectedLinkIndex(0);
+        }
+      } else if (e.key === 'Escape') {
+        setShowLinkPopup(false);
+        setLinkPopupLinks([]);
+        setSelectedLinkIndex(0);
+      }
+    };
+    document.addEventListener('keydown', handleLinkPopupKeyDown, true);
+    return () => document.removeEventListener('keydown', handleLinkPopupKeyDown, true);
+  }, [showLinkPopup, linkPopupLinks, selectedLinkIndex]);
 
   if (overdueNotes.length === 0 && snoozedNotes.length === 0) return null;
 
@@ -940,6 +1052,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
             placeholder="Search watchlist..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
+            ref={searchInputRef}
           />
           {searchText && (
             <button
@@ -1006,49 +1119,41 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                     <div className="flex flex-wrap gap-1 items-center justify-end">
                       <div className="flex flex-wrap gap-1 items-center">
                         <span className="text-sm text-gray-600 mr-2">Review in:</span>
-                        <div className="flex flex-wrap gap-1">
-                          <button
-                            onClick={() => handleCadence(note, 2, 0)}
-                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                            title="Set 2 hour cadence"
-                          >
-                            2h
-                          </button>
-                          <button
-                            onClick={() => handleCadence(note, 4, 0)}
-                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                            title="Set 4 hour cadence"
-                          >
-                            4h
-                          </button>
-                          <button
-                            onClick={() => handleCadence(note, 12, 0)}
-                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                            title="Set 12 hour cadence"
-                          >
-                            12h
-                          </button>
-                          <button
-                            onClick={() => handleCadence(note, 48, 0)}
-                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                            title="Set 2 day cadence"
-                          >
-                            2d
-                          </button>
-                          <button
-                            onClick={() => handleCadence(note, 72, 0)}
-                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                            title="Set 3 day cadence"
-                          >
-                            3d
-                          </button>
-                          <button
-                            onClick={() => handleCadence(note, 168, 0)}
-                            className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                            title="Set 7 day cadence"
-                          >
-                            7d
-                          </button>
+                        <div className="grid grid-cols-4 gap-2">
+                          {(() => {
+                            const cadence = parseReviewCadenceMeta(note.content) || {};
+                            const isSelected = (h, m = 0) => {
+                              if (!cadence.type && h === 12 && m === 0) return true; // default
+                              return cadence.type === 'every-x-hours' && cadence.hours === h && (cadence.minutes || 0) === m;
+                            };
+                            const defaultOptions = [
+                              { h: 2, label: '2h' },
+                              { h: 4, label: '4h' },
+                              { h: 12, label: '12h' },
+                              { h: 48, label: '2d' },
+                            ];
+                            let options = [...defaultOptions];
+                            // If current cadence is not in options, add it
+                            if (cadence.type === 'every-x-hours' && cadence.hours && !defaultOptions.some(opt => opt.h === cadence.hours && (cadence.minutes || 0) === 0)) {
+                              options.push({ h: cadence.hours, label: cadence.hours >= 24 ? `${cadence.hours / 24}d` : `${cadence.hours}h` });
+                            }
+                            return options.map(({ h, label }, idx) => (
+                              <button
+                                key={label}
+                                onClick={() => handleCadence(note, h, 0)}
+                                className={`flex flex-col items-center justify-center px-2 py-1 text-xs font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
+                                  isSelected(h, 0)
+                                    ? 'bg-purple-600 text-white border border-purple-700'
+                                    : 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500 focus:border-purple-500'
+                                }`}
+                                title={`Set ${label} cadence`}
+                                style={{ minWidth: 48 }}
+                              >
+                                <span className="text-xs text-gray-400 mb-0.5">{idx + 1}</span>
+                                <span>{label}</span>
+                              </button>
+                            ));
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -1450,6 +1555,57 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
         isEditing={isEditing}
         initialText={currentCustomText}
       />
+
+      {/* Link Selection Popup */}
+      {showLinkPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" data-link-popup tabIndex={0}>
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">Select Link to Open</h2>
+              <button
+                onClick={() => {
+                  setShowLinkPopup(false);
+                  setLinkPopupLinks([]);
+                  setSelectedLinkIndex(0);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {linkPopupLinks.map((link, index) => (
+                <div
+                  key={index}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    index === selectedLinkIndex
+                      ? 'bg-blue-100 border-blue-300 text-blue-800'
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  }`}
+                  onClick={() => {
+                    window.open(link.url, '_blank', 'noopener,noreferrer');
+                    setShowLinkPopup(false);
+                    setLinkPopupLinks([]);
+                    setSelectedLinkIndex(0);
+                  }}
+                >
+                  <div className="text-sm font-medium truncate">{link.text || link.url}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {index === selectedLinkIndex ? 'Press Enter to open' : 'Click or use arrow keys'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Snooze Toast */}
+      {snoozeToast && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-purple-700 text-white px-6 py-3 rounded-lg shadow-lg z-50 text-base animate-fade-in">
+          {snoozeToast}
+        </div>
+      )}
     </div>
   );
 };

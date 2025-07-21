@@ -7,6 +7,120 @@ import CalendarView from '../components/CalendarView';
 import CompareEventsModal from '../components/CompareEventsModal';
 import BulkLoadExpenses from '../components/BulkLoadExpenses';
 
+// Helper functions from CalendarView
+const getEventOccurrencesForEdit = (event) => {
+  const { dateTime, recurrence } = event;
+  const eventDate = new Date(dateTime);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const occurrences = [];
+
+  if (recurrence === 'none') {
+    // For non-recurring events, only include if it's in the current year
+    if (eventDate.getFullYear() === currentYear) {
+      occurrences.push(eventDate);
+    }
+    return occurrences;
+  }
+
+  // Start from the original event date
+  let occurrence = new Date(eventDate);
+  
+  // For recurring events, calculate all occurrences in the current year
+  while (occurrence.getFullYear() <= currentYear) {
+    if (occurrence.getFullYear() === currentYear) {
+      occurrences.push(new Date(occurrence));
+    }
+
+    // Calculate next occurrence based on recurrence type
+    if (recurrence === 'daily') {
+      occurrence.setDate(occurrence.getDate() + 1);
+    } else if (recurrence === 'weekly') {
+      occurrence.setDate(occurrence.getDate() + 7);
+    } else if (recurrence === 'monthly') {
+      occurrence.setMonth(occurrence.getMonth() + 1);
+    } else if (recurrence === 'yearly') {
+      occurrence.setFullYear(occurrence.getFullYear() + 1);
+    }
+  }
+
+  return occurrences;
+};
+
+const getEventDetailsForEdit = (content) => {
+  const lines = content.split('\n');
+  
+  // Find the description
+  const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+  const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+  
+  // Find the event date
+  const eventDateLine = lines.find(line => line.startsWith('event_date:'));
+  const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
+  
+  // Find recurring info
+  const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
+  const recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
+  
+  // Find meta information
+  const metaLine = lines.find(line => line.startsWith('meta::event::'));
+  const metaDate = metaLine ? metaLine.replace('meta::event::', '').trim() : '';
+
+  // Find tags
+  const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+  const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
+
+  // Find any line that starts with event_$: where $ is any character
+  const customFields = {};
+  lines.forEach(line => {
+    if (line.startsWith('event_') && line.includes(':')) {
+      const [key, value] = line.split(':');
+      if (key !== 'event_description' && key !== 'event_date' && key !== 'event_notes' && key !== 'event_recurring_type' && key !== 'event_tags') {
+        const fieldName = key.replace('event_', '');
+        customFields[fieldName] = value.trim();
+      }
+    }
+  });
+
+  return {
+    description,
+    dateTime,
+    recurrence,
+    metaDate,
+    tags,
+    customFields
+  };
+};
+
+const calculateAgeForEdit = (date) => {
+  const today = new Date();
+  const birthDate = new Date(date);
+  
+  let years = today.getFullYear() - birthDate.getFullYear();
+  let months = today.getMonth() - birthDate.getMonth();
+  let days = today.getDate() - birthDate.getDate();
+
+  // Adjust for negative days
+  if (days < 0) {
+    months--;
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, birthDate.getDate());
+    days = Math.floor((today - lastMonth) / (1000 * 60 * 60 * 24));
+  }
+
+  // Adjust for negative months
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  const parts = [];
+  if (years > 0) parts.push(`${years} year${years !== 1 ? 's' : ''}`);
+  if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+  if (days > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+
+  return parts.join(', ');
+};
+
 // Function to extract event details from note content
 const getEventDetails = (content) => {
   const lines = content.split('\n');
@@ -142,16 +256,34 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchBuffer, setSearchBuffer] = useState('');
   const [selectedEventIndex, setSelectedEventIndex] = useState(-1);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   
   // Add keyboard navigation for 't' key to show today's events
   useEffect(() => {
+    console.log('Setting up keyboard handler for EventsPage');
     const handleKeyDown = (e) => {
-      console.log('Key pressed:', e.key, 'isSearchMode:', isSearchMode);
+      console.log('EventsPage: Key pressed:', e.key, 'isSearchMode:', isSearchMode, 'target:', e.target.tagName);
+      
+      // Test if any key is being captured
+      if (e.key === 'Enter') {
+        console.log('EventsPage: ENTER KEY DETECTED!');
+      }
+      
       // Only handle keys when not in an input/textarea and no modifier keys
       if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
           e.target.tagName !== 'INPUT' && 
           e.target.tagName !== 'TEXTAREA' &&
           e.target.contentEditable !== 'true') {
+        
+        // Handle direct 'b' key press to filter birthdays (supersedes global handler)
+        if (e.key === 'b' && !isSearchMode) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Direct b key pressed - filtering birthdays and entering focus mode');
+          setSelectedTags(['birthday']);
+          setIsFocusMode(true);
+          return;
+        }
         
         if (e.key === 's' && !isSearchMode) {
           e.preventDefault();
@@ -256,27 +388,43 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           e.preventDefault();
           e.stopPropagation();
           setSelectedEventIndex(prev => {
-            if (prev <= 0) {
-              return calendarEvents.length - 1; // Wrap to bottom
+            const newIndex = prev <= 0 ? calendarEvents.length - 1 : prev - 1;
+            // Set the selected event when index changes
+            if (newIndex >= 0 && newIndex < calendarEvents.length) {
+              setSelectedEvent(calendarEvents[newIndex]);
             }
-            return prev - 1;
+            return newIndex;
           });
         } else if (e.key === 'ArrowDown') {
           e.preventDefault();
           e.stopPropagation();
           setSelectedEventIndex(prev => {
-            if (prev >= calendarEvents.length - 1) {
-              return 0; // Wrap to top
+            const newIndex = prev >= calendarEvents.length - 1 ? 0 : prev + 1;
+            // Set the selected event when index changes
+            if (newIndex >= 0 && newIndex < calendarEvents.length) {
+              setSelectedEvent(calendarEvents[newIndex]);
             }
-            return prev + 1;
+            return newIndex;
           });
+        } else if (e.key === 'Enter' && selectedEvent) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Enter key pressed - opening selected event:', selectedEvent);
+          handleEditEvent(selectedEvent);
+        } else if (e.key === 'Enter') {
+          console.log('Enter pressed but no selected event');
+          console.log('selectedEvent:', selectedEvent);
+          console.log('selectedEventIndex:', selectedEventIndex);
         }
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showTodaysEventsOnly, isFocusMode, isSearchMode, searchBuffer, calendarEvents]);
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => {
+      console.log('Cleaning up keyboard handler for EventsPage');
+      window.removeEventListener('keydown', handleKeyDown, { capture: true });
+    };
+      }, [showTodaysEventsOnly, isFocusMode, isSearchMode, searchBuffer, calendarEvents, selectedEventIndex, selectedEvent]);
 
   // Auto-clear search mode after 3 seconds of inactivity
   useEffect(() => {
@@ -322,6 +470,11 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     const events = getCalendarEvents();
     setCalendarEvents(events);
     setTotal(events.length);
+    
+    // Reset selectedEventIndex when events change to prevent invalid index
+    if (selectedEventIndex >= events.length) {
+      setSelectedEventIndex(-1);
+    }
 
     // Calculate past events count
     if (!showOnlyDeadlines) {
@@ -561,22 +714,37 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   };
 
   const handleEditEvent = (event) => {
-    const originalNote = allNotes.find(n => n.id === event.id);
-    if (originalNote) {
-      const lines = originalNote.content.split('\n');
-      const description = lines.find(line => line.startsWith('event_description:'))?.replace('event_description:', '').trim() || '';
-      const eventDate = lines.find(line => line.startsWith('event_date:'))?.replace('event_date:', '').trim() || '';
-      const location = lines.find(line => line.startsWith('event_location:'))?.replace('event_location:', '').trim() || '';
-      const recurrenceType = lines.find(line => line.startsWith('event_recurring_type:'))?.replace('event_recurring_type:', '').trim() || '';
-
-      setEditingEvent({
-        id: event.id,
-        description,
-        date: eventDate,
-        location,
-        recurrenceType
+    console.log('handleEditEvent called with event:', event);
+    console.log('Event ID:', event.id);
+    console.log('Event content:', event.content);
+    console.log('All notes IDs:', allNotes.map(n => n.id));
+    
+    // Try to find the original note by ID
+    let originalNote = allNotes.find(n => n.id === event.id);
+    
+    // If not found by ID, try to find by content matching
+    if (!originalNote && event.content) {
+      originalNote = allNotes.find(n => n.content === event.content);
+    }
+    
+    // If still not found, try to find by description matching
+    if (!originalNote && event.description) {
+      originalNote = allNotes.find(n => {
+        const lines = n.content.split('\n');
+        const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+        const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+        return description === event.description;
       });
+    }
+    
+    console.log('Found original note:', originalNote);
+    if (originalNote) {
+      // Pass the original note directly to the modal
+      setEditingEvent(originalNote);
       setShowEditEventModal(true);
+    } else {
+      console.log('No original note found for event id:', event.id);
+      console.log('Available notes:', allNotes);
     }
   };
 
@@ -920,7 +1088,13 @@ event_tags:${expense.tag.join(',')}`;
           onDelete={handleDelete}
           onAddEvent={handleAddEvent}
           selectedEventIndex={selectedEventIndex}
-          onEventSelect={setSelectedEventIndex}
+          onEventSelect={(index, event) => {
+            console.log('Event selected at index:', index, 'event:', event);
+            setSelectedEventIndex(index);
+            if (event) {
+              setSelectedEvent(event);
+            }
+          }}
         />
       </div>
 

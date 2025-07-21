@@ -54,23 +54,107 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
    * Compute the hour‑difference between base timezone and any other zone.
    */
   const getTimeDiffFromBase = (targetZone) => {
-    const baseDate   = new Date(new Date().toLocaleString('en-US', { timeZone: baseTimezone }));
-    const targetDate = new Date(new Date().toLocaleString('en-US', { timeZone: targetZone }));
-    const diffMs     = baseDate - targetDate;
-    const diffHrs    = Math.round(diffMs / 3600000);
-    if (diffHrs === 0) return '';
-    return diffHrs > 0
-      ? `${Math.abs(diffHrs)}h behind`
-      : `${Math.abs(diffHrs)}h ahead`;
+    try {
+      const now = new Date();
+      
+      // Use Intl.DateTimeFormat to get timezone offsets
+      const baseFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: baseTimezone,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: false
+      });
+      
+      const targetFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: targetZone,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: false
+      });
+      
+      const baseParts = baseFormatter.formatToParts(now);
+      const targetParts = targetFormatter.formatToParts(now);
+      
+      const baseHour = parseInt(baseParts.find(p => p.type === 'hour').value);
+      const targetHour = parseInt(targetParts.find(p => p.type === 'hour').value);
+      
+      let diffHrs = targetHour - baseHour;
+      
+      // Adjust for date differences
+      const baseDay = parseInt(baseParts.find(p => p.type === 'day').value);
+      const targetDay = parseInt(targetParts.find(p => p.type === 'day').value);
+      
+      if (targetDay > baseDay) diffHrs += 24;
+      else if (targetDay < baseDay) diffHrs -= 24;
+      
+      if (diffHrs === 0) return '';
+      return diffHrs > 0
+        ? `${Math.abs(diffHrs)}h ahead`
+        : `${Math.abs(diffHrs)}h behind`;
+    } catch (error) {
+      console.warn('Error calculating timezone difference:', error);
+      return '';
+    }
   };
 
   /**
    * Returns the numeric hour-difference between base timezone and the given zone.
    */
   const getTimeDiffHours = (targetZone) => {
-    const baseDate   = new Date(new Date().toLocaleString('en-US', { timeZone: baseTimezone }));
-    const targetDate = new Date(new Date().toLocaleString('en-US', { timeZone: targetZone }));
-    return Math.round((baseDate - targetDate) / 3600000);
+    try {
+      const now = new Date();
+      
+      // Use Intl.DateTimeFormat to get timezone offsets
+      const baseFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: baseTimezone,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: false
+      });
+      
+      const targetFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: targetZone,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: false
+      });
+      
+      const baseParts = baseFormatter.formatToParts(now);
+      const targetParts = targetFormatter.formatToParts(now);
+      
+      const baseHour = parseInt(baseParts.find(p => p.type === 'hour').value);
+      const targetHour = parseInt(targetParts.find(p => p.type === 'hour').value);
+      
+      let diffHrs = targetHour - baseHour;
+      
+      // Adjust for date differences
+      const baseDay = parseInt(baseParts.find(p => p.type === 'day').value);
+      const targetDay = parseInt(targetParts.find(p => p.type === 'day').value);
+      
+      if (targetDay > baseDay) diffHrs += 24;
+      else if (targetDay < baseDay) diffHrs -= 24;
+      
+      return diffHrs;
+    } catch (error) {
+      console.warn('Error calculating timezone difference:', error);
+      return 0;
+    }
   };
 
   /**

@@ -158,6 +158,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
         tags: eventDetails.tags,
         customFields: eventDetails.customFields
       },
+      originalEvent: event, // Store the original event
       isToday: date.toDateString() === new Date().toDateString(),
       isPast: date < new Date() && !(date.toDateString() === new Date().toDateString()),
       age: calculateAge(event.dateTime)
@@ -358,7 +359,14 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                               className={`transition-all duration-200 ${
                                 occurrence.isPast ? 'opacity-60 group-hover:opacity-100' : ''
                               }`}
-                              onClick={() => onEventSelect && onEventSelect(eventIndex)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('Event card clicked at index:', eventIndex, 'originalEvent:', occurrence.originalEvent);
+                                if (onEventSelect) {
+                                  onEventSelect(eventIndex, occurrence.originalEvent);
+                                }
+                              }}
                             >
                               <div className={`p-4 rounded-lg border transition-all duration-200 ${
                                 isSelected

@@ -115,6 +115,12 @@ const NotesList = ({
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
   const showLinkPopupRef = useRef(false);
   
+  // Add state for link edit popup
+  const [showLinkEditPopup, setShowLinkEditPopup] = useState(false);
+  const [editingLink, setEditingLink] = useState(null); // {noteId, linkIndex, text, url}
+  const [editLinkText, setEditLinkText] = useState('');
+  const [editLinkUrl, setEditLinkUrl] = useState('');
+  
   // Note navigation state
   const [focusedNoteIndex, setFocusedNoteIndex] = useState(-1);
   const focusedNoteIndexRef = useRef(focusedNoteIndex);
@@ -692,6 +698,17 @@ const NotesList = ({
         setShowLinkPopup(false);
         setLinkPopupLinks([]);
         setSelectedLinkIndex(0);
+      } else if (e.key === 'e' && selectedLinkIndex > 0 && linkPopupLinks[selectedLinkIndex - 1]) {
+        setEditingLink({
+          noteId: safeNotesRef.current[focusedNoteIndexRef.current]?.id,
+          linkIndex: selectedLinkIndex - 1,
+          text: linkPopupLinks[selectedLinkIndex - 1].text,
+          url: linkPopupLinks[selectedLinkIndex - 1].url
+        });
+        setEditLinkText(linkPopupLinks[selectedLinkIndex - 1].text);
+        setEditLinkUrl(linkPopupLinks[selectedLinkIndex - 1].url);
+        setShowLinkEditPopup(true);
+        setShowLinkPopup(false);
       } else if (e.key === 'Escape') {
         setShowLinkPopup(false);
         setLinkPopupLinks([]);
@@ -853,6 +870,62 @@ const NotesList = ({
     setRightClickNoteId(note.id);
     setRightClickPos({ x: e.clientX, y: e.clientY });
   };
+
+  // Save edited link function
+  const saveEditedLink = () => {
+    if (!editingLink) return;
+    const { noteId, linkIndex } = editingLink;
+    const note = allNotes.find(n => n.id === noteId);
+    if (!note) return;
+    // Replace the link in the note content
+    let lines = note.content.split('\n');
+    let linkCount = 0;
+    const markdownRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+    const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
+    lines = lines.map(line => {
+      let replaced = false;
+      // Replace markdown link
+      line = line.replace(markdownRegex, (match, text, url) => {
+        if (!replaced && linkCount === linkIndex) {
+          replaced = true;
+          linkCount++;
+          return `[${editLinkText}](${editLinkUrl})`;
+        }
+        linkCount++;
+        return match;
+      });
+      // Replace plain URL if not already replaced
+      if (!replaced) {
+        line = line.replace(plainUrlRegex, (url) => {
+          if (!replaced && linkCount === linkIndex) {
+            replaced = true;
+            linkCount++;
+            return `[${editLinkText}](${editLinkUrl})`;
+          }
+          linkCount++;
+          return url;
+        });
+      }
+      return line;
+    });
+    const newContent = lines.join('\n');
+    updateNoteCallback(noteId, newContent);
+    setShowLinkEditPopup(false);
+    setEditingLink(null);
+  };
+
+  // Cmd+Enter handler for link edit popup
+  useEffect(() => {
+    if (!showLinkEditPopup) return;
+    const handleCmdEnter = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        saveEditedLink();
+      }
+    };
+    document.addEventListener('keydown', handleCmdEnter);
+    return () => document.removeEventListener('keydown', handleCmdEnter);
+  }, [showLinkEditPopup, editLinkText, editLinkUrl, editingLink]);
 
   return (
     <div ref={notesListRef} className="relative">
@@ -1263,6 +1336,42 @@ const NotesList = ({
             </div>
             <div className="mt-4 text-sm text-gray-600">
               <p>Use ↑↓ arrows to navigate, Enter to open, 'a' to open all, Esc to cancel</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Link edit popup UI */}
+      {showLinkEditPopup && editingLink && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-lg font-semibold mb-4">Edit Link</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Link Text</label>
+              <input
+                type="text"
+                className="w-full border px-3 py-2 rounded mb-2"
+                value={editLinkText}
+                onChange={e => setEditLinkText(e.target.value)}
+                autoFocus
+              />
+              <label className="block text-sm font-medium mb-1">URL</label>
+              <input
+                type="text"
+                className="w-full border px-3 py-2 rounded"
+                value={editLinkUrl}
+                onChange={e => setEditLinkUrl(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowLinkEditPopup(false)}
+                className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >Cancel</button>
+              <button
+                onClick={() => saveEditedLink()}
+                className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+              >Save</button>
             </div>
           </div>
         </div>

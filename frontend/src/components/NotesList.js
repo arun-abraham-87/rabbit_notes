@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Alerts } from './Alerts';
 
@@ -38,6 +38,8 @@ import {
 } from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
 import EventsByAgeView from './EventsByAgeView';
+import { extractMetaTags } from '../utils/MetaTagUtils';
+import TagPopup from './TagPopup';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -554,69 +556,18 @@ const NotesList = ({
               console.log('No URLs found in note');
             }
           }
-        } else if (e.key === 'a' && focusedNoteIndexRef.current >= 0) {
-          // Open ALL links in the focused note
+        } else if (e.key === 'a' && focusedNoteIndexRef.current >= 0 && addingLineNoteId === null) {
+          // Add a new line to the end of the focused note in inline edit mode
           const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
           if (focusedNote) {
-            // Regex to match both markdown-style links [text](url) and plain URLs
-            const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-            const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
-            
-            const links = [];
-            
-            // Extract markdown-style links first
-            let match;
-            while ((match = markdownLinkRegex.exec(focusedNote.content)) !== null) {
-              links.push({
-                url: match[2],
-                text: match[1]
-              });
-            }
-            
-            // Extract plain URLs (excluding those already found in markdown links)
-            const markdownUrls = links.map(link => link.url);
-            while ((match = plainUrlRegex.exec(focusedNote.content)) !== null) {
-              if (!markdownUrls.includes(match[1])) {
-                links.push({
-                  url: match[1],
-                  text: match[1] // Use URL as text for plain URLs
-                });
-              }
-            }
-            
-            if (links.length > 0) {
-              // Open all links in new tabs
-              links.forEach(link => {
-                window.open(link.url, '_blank');
-              });
-              console.log(`Opened ${links.length} links from note`);
-            } else {
-              console.log('No URLs found in note');
-            }
-          }
-        } else if (e.key === 'c') {
-          // Focus the search bar
-          e.preventDefault();
-          e.stopPropagation();
-          console.log('C key pressed - focusing search bar');
-          onReturnToSearch();
-        } else if (e.key === 'x' && focusedNoteIndexRef.current >= 0) {
-          // Check if any note is in super edit mode - if so, don't handle note deletion
-          const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
-          
-          if (!isAnyNoteInSuperEditMode) {
-            // Delete the focused note with confirmation
+            setAddingLineNoteId(focusedNote.id);
+            setNewLineText('');
             e.preventDefault();
             e.stopPropagation();
-            console.log('X key pressed - deleting focused note');
-            const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
-            if (focusedNote) {
-              handleModalDelete(focusedNote.id);
-            }
-          } else {
-            console.log('X key pressed but super edit mode is active, ignoring note deletion');
           }
+          return;
         } else if (e.key === 'e' && focusedNoteIndexRef.current >= 0) {
+          // Enter super edit mode for the focused note
           const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
           if (focusedNote) {
             const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
@@ -624,9 +575,22 @@ const NotesList = ({
               const superEditButton = noteElement.querySelector('button[title="Focus on first line in this note"]');
               if (superEditButton) {
                 superEditButton.click();
+                e.preventDefault();
+                e.stopPropagation();
               }
             }
           }
+          return;
+        } else if (e.key === '-' && focusedNoteIndexRef.current >= 0) {
+          // Add 'meta::archived' tag to the focused note if not already present
+          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+          if (focusedNote && !focusedNote.content.includes('meta::archived')) {
+            const updatedContent = focusedNote.content.trim() + '\nmeta::archived';
+            updateNoteCallback(focusedNote.id, updatedContent);
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          return;
         }
       }
     };
@@ -642,7 +606,7 @@ const NotesList = ({
         document.removeEventListener('keydown', handleKeyDown, true);
       };
     }
-  }, [safeNotes.length, location.pathname]); // Only depend on safeNotes.length, not the entire array or focusedNoteIndex
+  }, [safeNotes.length, location.pathname, addingLineNoteId]); // Only depend on safeNotes.length, not the entire array or focusedNoteIndex
 
   // Reset focused note when notes change
   useEffect(() => {
@@ -937,6 +901,172 @@ const NotesList = ({
     document.addEventListener('keydown', handleCmdEnter);
     return () => document.removeEventListener('keydown', handleCmdEnter);
   }, [showLinkEditPopup, editLinkText, editLinkUrl, editingLink]);
+
+  // Add Vim navigation state
+  const [vimNumberBuffer, setVimNumberBuffer] = useState('');
+  const [vimGPressed, setVimGPressed] = useState(false);
+
+  const handleVimKeyDown = useCallback((e) => {
+    // Ignore if in input/textarea/contentEditable
+    if (
+      e.target.tagName === 'INPUT' ||
+      e.target.tagName === 'TEXTAREA' ||
+      e.target.isContentEditable
+    ) {
+      return;
+    }
+    // Ignore if popup/modal is open
+    if (showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote) {
+      return;
+    }
+    // Vim navigation logic
+    if (/^[0-9]$/.test(e.key)) {
+      setVimNumberBuffer((prev) => prev + e.key);
+      return;
+    }
+    if (e.key === 'g' && !vimGPressed) {
+      setVimGPressed(true);
+      setTimeout(() => setVimGPressed(false), 400); // short window for double-g
+      return;
+    }
+    if (e.key === 'g' && vimGPressed) {
+      // gg: go to top
+      setFocusedNoteIndex(0);
+      focusedNoteIndexRef.current = 0;
+      setVimGPressed(false);
+      setVimNumberBuffer('');
+      e.preventDefault();
+      e.stopPropagation();
+      // Scroll to the top note
+      const focusedNote = safeNotesRef.current[0];
+      if (focusedNote) {
+        const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
+        if (noteElement) {
+          noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+      return;
+    }
+    if (e.key === 'G') {
+      // G: go to bottom
+      const lastIdx = safeNotesRef.current.length - 1;
+      setFocusedNoteIndex(lastIdx);
+      focusedNoteIndexRef.current = lastIdx;
+      setVimGPressed(false);
+      setVimNumberBuffer('');
+      e.preventDefault();
+      e.stopPropagation();
+      // Scroll to the bottom note
+      const focusedNote = safeNotesRef.current[lastIdx];
+      if (focusedNote) {
+        const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
+        if (noteElement) {
+          noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+      return;
+    }
+    if (e.key === 'j' && vimNumberBuffer) {
+      // number + j: jump to xth note (1-based)
+      const idx = Math.max(0, Math.min(safeNotesRef.current.length - 1, parseInt(vimNumberBuffer, 10) - 1));
+      setFocusedNoteIndex(idx);
+      focusedNoteIndexRef.current = idx;
+      setVimNumberBuffer('');
+      setVimGPressed(false);
+      e.preventDefault();
+      e.stopPropagation();
+      // Scroll to the selected note
+      const focusedNote = safeNotesRef.current[idx];
+      if (focusedNote) {
+        const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
+        if (noteElement) {
+          noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+      return;
+    }
+    if (e.key === 'k' && vimNumberBuffer) {
+      // number + k: jump back to xth note from bottom (1-based)
+      const idx = Math.max(0, Math.min(safeNotesRef.current.length - 1, safeNotesRef.current.length - parseInt(vimNumberBuffer, 10)));
+      setFocusedNoteIndex(idx);
+      focusedNoteIndexRef.current = idx;
+      setVimNumberBuffer('');
+      setVimGPressed(false);
+      e.preventDefault();
+      e.stopPropagation();
+      // Scroll to the selected note
+      const focusedNote = safeNotesRef.current[idx];
+      if (focusedNote) {
+        const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
+        if (noteElement) {
+          noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+      return;
+    }
+    // Reset buffer if any other key
+    setVimNumberBuffer('');
+    setVimGPressed(false);
+  }, [showLinkPopupRef, showPastePopup, isModalOpen, isPopupVisible, linkPopupVisible, popupNoteText, rawNote, vimGPressed, vimNumberBuffer, safeNotes]);
+
+useEffect(() => {
+  if (location.pathname !== '/notes') return;
+  document.addEventListener('keydown', handleVimKeyDown, true);
+  return () => document.removeEventListener('keydown', handleVimKeyDown, true);
+}, [location.pathname, handleVimKeyDown]);
+
+  // Add Vim navigation state
+  const [tagPopup, setTagPopup] = useState({ visible: false, noteId: null, tags: [], selected: 0 });
+
+  // Tag popup key handling
+  useEffect(() => {
+    if (!tagPopup.visible) return;
+    const handleTagPopupKey = (e) => {
+      if (e.key === 'Escape') {
+        setTagPopup({ visible: false, noteId: null, tags: [], selected: 0 });
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        setTagPopup(tp => ({ ...tp, selected: (tp.selected + 1) % tp.tags.length }));
+        e.preventDefault();
+      }
+      if (e.key === 'ArrowUp') {
+        setTagPopup(tp => ({ ...tp, selected: (tp.selected - 1 + tp.tags.length) % tp.tags.length }));
+        e.preventDefault();
+      }
+      if (e.key === 'x' && tagPopup.tags.length > 0) {
+        // Delete the selected tag
+        const tag = tagPopup.tags[tagPopup.selected];
+        if (tag) {
+          // Remove tag from note
+          const noteIdx = safeNotes.findIndex(n => n.id === tagPopup.noteId);
+          if (noteIdx !== -1) {
+            const note = safeNotes[noteIdx];
+            let updatedContent = note.content;
+            if (tag.type === 'other') {
+              updatedContent = updatedContent.split('\n').filter(line => line.trim() !== tag.value).join('\n');
+            } else {
+              // Remove meta::tagType::value
+              updatedContent = updatedContent.split('\n').filter(line => !line.trim().startsWith(`meta::${tag.type}::${tag.value}`)).join('\n');
+            }
+            updateNoteCallback(note.id, updatedContent);
+            // Remove from popup list
+            setTagPopup(tp => {
+              const newTags = tp.tags.filter((_, i) => i !== tp.selected);
+              return {
+                ...tp,
+                tags: newTags,
+                selected: Math.max(0, tp.selected - (tp.selected === newTags.length ? 1 : 0))
+              };
+            });
+          }
+        }
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('keydown', handleTagPopupKey, true);
+    return () => document.removeEventListener('keydown', handleTagPopupKey, true);
+  }, [tagPopup, safeNotes, updateNoteCallback]);
 
   return (
     <div ref={notesListRef} className="relative">
@@ -1387,6 +1517,38 @@ const NotesList = ({
           </div>
         </div>
       )}
+
+      <TagPopup
+        visible={tagPopup.visible}
+        tags={tagPopup.tags}
+        selected={tagPopup.selected}
+        onSelect={idx => setTagPopup(tp => ({ ...tp, selected: idx }))}
+        onDelete={idx => {
+          const tag = tagPopup.tags[idx];
+          if (tag) {
+            const noteIdx = safeNotes.findIndex(n => n.id === tagPopup.noteId);
+            if (noteIdx !== -1) {
+              const note = safeNotes[noteIdx];
+              let updatedContent = note.content;
+              if (tag.type === 'other') {
+                updatedContent = updatedContent.split('\n').filter(line => line.trim() !== tag.value).join('\n');
+              } else {
+                updatedContent = updatedContent.split('\n').filter(line => !line.trim().startsWith(`meta::${tag.type}::${tag.value}`)).join('\n');
+              }
+              updateNoteCallback(note.id, updatedContent);
+              setTagPopup(tp => {
+                const newTags = tp.tags.filter((_, i) => i !== idx);
+                return {
+                  ...tp,
+                  tags: newTags,
+                  selected: Math.max(0, tp.selected - (tp.selected === newTags.length ? 1 : 0))
+                };
+              });
+            }
+          }
+        }}
+        onClose={() => setTagPopup({ visible: false, noteId: null, tags: [], selected: 0 })}
+      />
     </div>
   );
 };

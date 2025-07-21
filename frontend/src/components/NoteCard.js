@@ -66,6 +66,10 @@ const NoteCard = ({
   const [keySequence, setKeySequence] = useState('');
   const [lastEditedLineIndex, setLastEditedLineIndex] = useState(-1);
 
+  // --- Vim navigation state for super edit mode ---
+  const [vimNumberBuffer, setVimNumberBuffer] = useState('');
+  const [vimGPressed, setVimGPressed] = useState(false);
+
   // Check if this note is focused
   const isFocused = focusedNoteIndex === noteIndex;
   
@@ -529,6 +533,92 @@ const NoteCard = ({
       document.removeEventListener('returnToSuperEdit', handleReturnToSuperEdit);
     };
   }, [isSuperEditMode, highlightedLineIndex, note.content, note.id, updateNote, lastEditedLineIndex]);
+
+  // --- Vim navigation state for super edit mode ---
+  useEffect(() => {
+    if (!isSuperEditMode) return;
+    const handleVimNav = (e) => {
+      // Only handle navigation if not editing a line
+      const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') || 
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.closest('textarea');
+      if (isInlineEditorActive) return;
+
+      // Only allow navigation keys in super edit mode
+      const vimKeys = ['g', 'G', 'j', 'k', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+      if (!vimKeys.includes(e.key)) return;
+
+      // Get all non-meta, non-blank lines
+      const lines = note.content.split('\n');
+      const navigable = lines
+        .map((line, idx) => ({ line: line.trim(), idx }))
+        .filter(({ line }) => line !== '' && !line.startsWith('meta::'));
+      if (navigable.length === 0) return;
+
+      if (/^[0-9]$/.test(e.key)) {
+        setVimNumberBuffer(prev => prev + e.key);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (e.key === 'g' && !vimGPressed) {
+        setVimGPressed(true);
+        setTimeout(() => setVimGPressed(false), 400);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (e.key === 'g' && vimGPressed) {
+        // gg: go to top
+        setHighlightedLineIndex(navigable[0].idx);
+        setHighlightedLineText(lines[navigable[0].idx].trim());
+        setVimGPressed(false);
+        setVimNumberBuffer('');
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (e.key === 'G') {
+        // G: go to bottom
+        setHighlightedLineIndex(navigable[navigable.length - 1].idx);
+        setHighlightedLineText(lines[navigable[navigable.length - 1].idx].trim());
+        setVimGPressed(false);
+        setVimNumberBuffer('');
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (e.key === 'j' && vimNumberBuffer) {
+        // number + j: jump to xth line (1-based)
+        const n = Math.max(1, Math.min(navigable.length, parseInt(vimNumberBuffer, 10)));
+        setHighlightedLineIndex(navigable[n - 1].idx);
+        setHighlightedLineText(lines[navigable[n - 1].idx].trim());
+        setVimNumberBuffer('');
+        setVimGPressed(false);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (e.key === 'k' && vimNumberBuffer) {
+        // number + k: jump to xth line from bottom (1-based)
+        const n = Math.max(1, Math.min(navigable.length, parseInt(vimNumberBuffer, 10)));
+        setHighlightedLineIndex(navigable[navigable.length - n].idx);
+        setHighlightedLineText(lines[navigable[navigable.length - n].idx].trim());
+        setVimNumberBuffer('');
+        setVimGPressed(false);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      // Reset buffer if any other key
+      setVimNumberBuffer('');
+      setVimGPressed(false);
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    document.addEventListener('keydown', handleVimNav, true);
+    return () => document.removeEventListener('keydown', handleVimNav, true);
+  }, [isSuperEditMode, note.content, highlightedLineIndex, vimGPressed, vimNumberBuffer]);
 
   // Pass the highlighted line info to NoteContent for visual highlighting
   const noteContentProps = {

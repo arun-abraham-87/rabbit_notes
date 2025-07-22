@@ -35,6 +35,53 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const popupRef = useRef(null);
   const [showTextSelection, setShowTextSelection] = useState(false);
+  
+  // Vim-like mode system
+  const [mode, setMode] = useState('view'); // 'view' or 'edit'
+  const [cursorLine, setCursorLine] = useState(0); // Current line in view mode
+  
+  // Initialize cursor line to first non-empty line or 0
+  useEffect(() => {
+    const firstNonEmptyIndex = lines.findIndex(line => line.text.trim() !== '');
+    setCursorLine(firstNonEmptyIndex >= 0 ? firstNonEmptyIndex : 0);
+  }, [lines]);
+  
+  // Focus the note editor container when it opens
+  useEffect(() => {
+    const container = document.querySelector('.note-editor-container');
+    if (container) {
+      // Focus the container immediately when component mounts
+      setTimeout(() => {
+        container.focus();
+      }, 0);
+    }
+  }, []);
+
+  // Focus when in modal context
+  useEffect(() => {
+    const modalContainer = document.querySelector('[data-modal="true"]');
+    if (modalContainer && mode === 'view') {
+      const noteEditorContainer = document.querySelector('.note-editor-container');
+      if (noteEditorContainer) {
+        setTimeout(() => {
+          console.log('NoteEditor: Focusing container in modal context');
+          noteEditorContainer.focus();
+        }, 100); // Slightly longer delay for modal context
+      }
+    }
+  }, [mode]);
+  
+  // Focus when mode changes
+  useEffect(() => {
+    if (mode === 'view') {
+      const container = document.querySelector('.note-editor-container');
+      if (container) {
+        setTimeout(() => {
+          container.focus();
+        }, 0);
+      }
+    }
+  }, [mode]);
 
   const replaceLastWord = (tag) => {
     //console.log(lines)
@@ -320,6 +367,9 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         if (focusedLineIndex !== null && textareasRef.current[focusedLineIndex]) {
           textareasRef.current[focusedLineIndex].focus();
         }
+      } else if (mode === 'edit') {
+        // Switch to view mode
+        setMode('view');
       } else {
         // Cancel the note editor popup
         onCancel();
@@ -607,8 +657,76 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
 
   useEffect(() => {
     const handleGlobalKey = (e) => {
+      // Check if we're in the note editor context or modal
+      const noteEditorContainer = document.querySelector('.note-editor-container');
+      const modalContainer = document.querySelector('[data-modal="true"]');
+      const isInNoteEditor = noteEditorContainer?.contains(document.activeElement) || 
+                            document.activeElement?.closest('.note-editor-container') ||
+                            document.activeElement?.closest('[data-modal]') ||
+                            (modalContainer && modalContainer.contains(document.activeElement));
+      
+      console.log('NoteEditor Global: isInNoteEditor:', isInNoteEditor, 'mode:', mode, 'activeElement:', document.activeElement?.tagName);
+      
+      // Always handle navigation keys if we're in the note editor context and in view mode
+      if (isInNoteEditor && mode === 'view') {
+        console.log('NoteEditor Global: Handling navigation key:', e.key, 'mode:', mode);
+        if (e.key === 'j' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          setCursorLine(prev => Math.min(prev + 1, lines.length - 1));
+          return;
+        }
+        if (e.key === 'k' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          setCursorLine(prev => Math.max(prev - 1, 0));
+          return;
+        }
+        if (e.key === 'gg') {
+          e.preventDefault();
+          e.stopPropagation();
+          setCursorLine(0);
+          return;
+        }
+        if (e.key === 'G' && e.shiftKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          setCursorLine(lines.length - 1);
+          return;
+        }
+      }
+      
+      // Only handle other keys when the note editor is focused
+      if (!isInNoteEditor) {
+        return;
+      }
+      
+      // Mode switching
+      if (e.key === 'i' && mode === 'view') {
+        e.preventDefault();
+        e.stopPropagation();
+        setMode('edit');
+        // Focus on the current cursor line and place cursor at the end
+        setTimeout(() => {
+          if (textareasRef.current[cursorLine]) {
+            const textarea = textareasRef.current[cursorLine];
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+          }
+        }, 50);
+        return;
+      }
+      
+      if (e.key === 'Escape' && mode === 'edit') {
+        e.preventDefault();
+        e.stopPropagation();
+        setMode('view');
+        return;
+      }
+      
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
+        e.stopPropagation();
         
         // Check if all lines are empty
         const hasContent = lines.some(line => line.text.trim() !== '');
@@ -623,7 +741,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     return () => {
       document.removeEventListener('keydown', handleGlobalKey);
     };
-  }, [lines, isAddMode, note, addNote, onSave, onCancel]);
+  }, [lines, isAddMode, note, addNote, onSave, onCancel, mode, cursorLine]);
 
   useEffect(() => {
     const hideContext = () => setContextMenu({ visible: false, x: 0, y: 0, index: null });
@@ -741,7 +859,85 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   };
 
   return (
-    <div className="p-6 bg-white border border-gray-300 rounded-lg shadow-xl w-full note-editor-container note-editor">
+    <div 
+      className="p-6 bg-white border border-gray-300 rounded-lg shadow-xl w-full note-editor-container note-editor" 
+      data-modal="true"
+      tabIndex={-1}
+      onFocus={() => {}} // This makes the div focusable
+      onClick={(e) => {
+        // Focus the container when clicked
+        if (e.target === e.currentTarget) {
+          e.currentTarget.focus();
+        }
+      }}
+      onKeyDown={(e) => {
+        // Direct keyboard handling for view mode navigation
+        if (mode === 'view') {
+          console.log('NoteEditor: Key pressed in view mode:', e.key);
+          if (e.key === 'j' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            setCursorLine(prev => Math.min(prev + 1, lines.length - 1));
+            return;
+          }
+          if (e.key === 'k' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            setCursorLine(prev => Math.max(prev - 1, 0));
+            return;
+          }
+          if (e.key === 'gg') {
+            e.preventDefault();
+            e.stopPropagation();
+            setCursorLine(0);
+            return;
+          }
+          if (e.key === 'G' && e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            setCursorLine(lines.length - 1);
+            return;
+          }
+          if (e.key === 'i') {
+            e.preventDefault();
+            e.stopPropagation();
+            setMode('edit');
+            // Focus on the current cursor line and place cursor at the end
+            setTimeout(() => {
+              if (textareasRef.current[cursorLine]) {
+                const textarea = textareasRef.current[cursorLine];
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+              }
+            }, 50);
+            return;
+          }
+        }
+      }}
+    >
+      {/* Mode indicator */}
+      <div className="mb-4 flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <div className={`px-3 py-1 rounded text-sm font-mono ${
+            mode === 'view' 
+              ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+              : 'bg-green-100 text-green-800 border border-green-300'
+          }`}>
+            {mode === 'view' ? 'VIEW' : 'EDIT'}
+          </div>
+          <div className="text-xs text-gray-500">
+            {mode === 'view' ? 'Press i to enter edit mode' : 'Press Esc to return to view mode'}
+          </div>
+        </div>
+        {!isAddMode && (
+          <button
+            onClick={() => setIsTextMode(!isTextMode)}
+            className="text-xs text-gray-500 hover:text-gray-700 underline"
+          >
+            {isTextMode ? 'Advanced Mode' : 'Text Mode'}
+          </button>
+        )}
+      </div>
       {mergedContent && (
         <div className="fixed top-10 left-1/2 transform -translate-x-1/2 bg-white shadow-lg border border-gray-300 rounded p-4 z-50 max-w-xl w-full">
           <h2 className="font-bold mb-2">Merged Note</h2>
@@ -947,6 +1143,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           {/* Regular content lines */}
           {lines.filter(line => !line.text.trim().startsWith('meta::')).map((line, index) => {
             const originalIndex = lines.findIndex(l => l.id === line.id);
+            const isCursorLine = mode === 'view' && cursorLine === originalIndex;
             return (
             <div
               key={line.id}
@@ -957,7 +1154,13 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                 handleDragOver(originalIndex);
               }}
               onDrop={(e) => handleDrop(e, originalIndex)}
-                              className={`relative group bg-gray-50 hover:bg-white transition border-l-4 border-transparent hover:border-blue-400 ${dropTargetIndex === originalIndex ? 'border-blue-500' : ''}`}
+                              className={`relative group transition border-l-4 border-transparent ${
+                mode === 'view' 
+                  ? isCursorLine 
+                    ? 'bg-blue-50 border-blue-400' 
+                    : 'bg-gray-50 hover:bg-gray-100'
+                  : 'bg-gray-50 hover:bg-white hover:border-blue-400'
+              } ${dropTargetIndex === originalIndex ? 'border-blue-500' : ''}`}
             >
               {dropTargetIndex === originalIndex && draggedId !== lines[originalIndex].id && (
                 <div className="h-1 bg-blue-500 rounded my-1"></div>
@@ -1031,6 +1234,16 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                       x
                     </button>
                   </div>
+                ) : mode === 'view' ? (
+                  <div 
+                    className={`w-full pl-6 pr-28 text-sm cursor-pointer ${
+                      line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
+                    } ${isCursorLine ? 'bg-blue-100' : ''}`}
+                    onClick={() => setCursorLine(originalIndex)}
+                  >
+                    {isCursorLine && <span className="text-blue-600 mr-1">▶</span>}
+                    {line.text || ' '}
+                  </div>
                 ) : (
                   <textarea
                     ref={(el) => (textareasRef.current[originalIndex] = el)}
@@ -1056,7 +1269,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                     rows={1}
                   />
                 )}
-                {!isTextMode && (
+                {!isTextMode && mode === 'edit' && (
                   <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-row justify-center gap-0.5 h-full items-center opacity-0 group-hover:opacity-100 transition-opacity">
                     {line.text && (
                       <>
@@ -1100,7 +1313,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                       AA
                     </button>
                     <button
-                      onClick={() => handleSentenceCase(index)}
+                      onClick={() => handleSentenceCase(originalIndex)}
                       className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
                       title="Sentence case"
                     >
@@ -1108,7 +1321,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                     </button>
                     <div className="h-4 w-px bg-gray-200 mx-1"></div>
                     <button
-                      onClick={() => handleDeleteLine(index)}
+                      onClick={() => handleDeleteLine(originalIndex)}
                       className="text-gray-500 text-xs hover:text-red-500 px-1 transition-transform transform hover:scale-125"
                       title="Delete line"
                     >

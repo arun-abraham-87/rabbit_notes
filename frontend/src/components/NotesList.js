@@ -370,10 +370,55 @@ const NotesList = ({
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
+  // Global event listener to block arrow keys when modals are open
+  useEffect(() => {
+    const handleGlobalArrowKeys = (e) => {
+      // Only block arrow keys if we're in a modal but NOT in a note editor
+      const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible;
+      const isInModal = document.activeElement?.closest('[data-modal="true"]') || document.querySelector('[data-modal="true"]')?.contains(document.activeElement);
+      
+      // Check if we're in a note editor
+      const noteEditorContainer = document.querySelector('.note-editor-container');
+      const isInNoteEditor = noteEditorContainer?.contains(document.activeElement);
+      
+      // Only block if we're in a modal but NOT in a note editor
+      if ((isAnyModalOpen || isInModal) && !isInNoteEditor && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'k')) {
+        console.log('Global: Modal is open but not in note editor, blocking arrow keys');
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    };
+    
+    document.addEventListener('keydown', handleGlobalArrowKeys, true); // Use capture phase
+    return () => {
+      document.removeEventListener('keydown', handleGlobalArrowKeys, true);
+    };
+  }, [showLinkPopupRef, showPastePopup, isModalOpen, isPopupVisible, linkPopupVisible, popupNoteText, rawNote, showNoteActionPopup.visible]);
+
   // Handle keyboard navigation between notes
   useEffect(() => {
     const handleKeyDown = (e) => {
       console.log(`Key event: key=${e.key}, shiftKey=${e.shiftKey}, metaKey=${e.metaKey}, ctrlKey=${e.ctrlKey}, altKey=${e.altKey}, target=${e.target.tagName}`);
+      
+      // Check if any modal or popup is open and block arrow keys completely
+      const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible;
+      const isInModal = document.activeElement?.closest('[data-modal="true"]') || document.querySelector('[data-modal="true"]')?.contains(document.activeElement);
+      
+      // Check if we're in a note editor specifically
+      const noteEditorContainer = document.querySelector('.note-editor-container');
+      const isInNoteEditor = noteEditorContainer?.contains(document.activeElement) || 
+                            document.activeElement?.closest('.note-editor-container');
+      
+      if ((isAnyModalOpen || isInModal) && !isInNoteEditor) {
+        // Block arrow keys when any modal is open BUT NOT when in note editor
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'k') {
+          console.log('Modal is open but not in note editor, blocking arrow keys');
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }
       
       // If link popup is open, completely skip all keyboard handling
       if (showLinkPopupRef.current) {
@@ -392,8 +437,12 @@ const NotesList = ({
       
       // Check if any popup is open - if so, don't handle general keyboard shortcuts
       const isAnyPopupOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible;
-      if (isAnyPopupOpen) {
-        console.log('Popup is open, skipping general keyboard handling');
+      
+      // Also check if note editor modal is open
+      const noteEditorModal = document.querySelector('.note-editor-container[data-modal="true"]');
+      const isNoteEditorOpen = noteEditorModal !== null;
+      if (isAnyPopupOpen || isNoteEditorOpen) {
+        console.log('Popup or note editor is open, skipping general keyboard handling');
         return;
       }
       

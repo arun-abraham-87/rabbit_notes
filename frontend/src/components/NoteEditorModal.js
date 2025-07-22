@@ -44,6 +44,35 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
     };
   }, [isOpen, closeEditor]);
 
+  // Focus the modal when it opens
+  useEffect(() => {
+    if (isOpen) {
+      const modalContainer = document.querySelector('[data-modal="true"]');
+      if (modalContainer) {
+        setTimeout(() => {
+          modalContainer.focus();
+        }, 0);
+      }
+    }
+  }, [isOpen]);
+
+  // Prevent focus from leaving the modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleFocusTrap = (e) => {
+      const modalContainer = document.querySelector('[data-modal="true"]');
+      if (modalContainer && !modalContainer.contains(e.target)) {
+        modalContainer.focus();
+      }
+    };
+
+    document.addEventListener('focusin', handleFocusTrap);
+    return () => {
+      document.removeEventListener('focusin', handleFocusTrap);
+    };
+  }, [isOpen]);
+
   // Load settings and tags on mount
   useEffect(() => {
     const loadSettings = async () => {
@@ -198,7 +227,18 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      data-modal="true"
+      tabIndex={-1}
+      onFocus={() => {}}
+      onClick={(e) => {
+        // Focus the modal container when clicked
+        if (e.target === e.currentTarget) {
+          e.currentTarget.focus();
+        }
+      }}
+    >
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800">{mode === 'edit' ? 'Edit Note' : 'New Note'}</h2>

@@ -40,6 +40,7 @@ import EventAlerts from './EventAlerts';
 import EventsByAgeView from './EventsByAgeView';
 import { extractMetaTags } from '../utils/MetaTagUtils';
 import TagPopup from './TagPopup';
+import NoteActionPopup from './NoteActionPopup';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -456,42 +457,28 @@ const NotesList = ({
         } else if (e.key === 'G') {
           console.log(`G key pressed - key: ${e.key}, shiftKey: ${e.shiftKey}, safeNotes.length: ${safeNotesRef.current.length}`);
         } else if (e.key === 'Enter' && focusedNoteIndexRef.current >= 0) {
-          // Check if any note is in super edit mode - if so, don't handle Enter
           const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
-          // Also check if there's an active inline editor or if the target is a textarea
           const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') || 
                              e.target.tagName === 'TEXTAREA';
           if (!isAnyNoteInSuperEditMode && !isInlineEditorActive) {
             e.preventDefault();
             e.stopPropagation();
-            // Open link(s) instead of super edit mode
             const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
             if (focusedNote) {
-              // Regex to match both markdown-style links [text](url) and plain URLs
               const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
               const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
               const links = [];
               let match;
-              // Extract markdown-style links first
               while ((match = markdownLinkRegex.exec(focusedNote.content)) !== null) {
                 links.push({ url: match[2], text: match[1] });
               }
-              // Extract plain URLs (excluding those already found in markdown links)
               const markdownUrls = links.map(link => link.url);
               while ((match = plainUrlRegex.exec(focusedNote.content)) !== null) {
                 if (!markdownUrls.includes(match[1])) {
                   links.push({ url: match[1], text: match[1] });
                 }
               }
-              if (links.length === 1) {
-                window.open(links[0].url, '_blank');
-              } else if (links.length > 1) {
-                setLinkPopupLinks(links);
-                setSelectedLinkIndex(0);
-                setShowLinkPopup(true);
-              } else {
-                // No links, optionally do nothing or show a toast
-              }
+              setShowNoteActionPopup({ visible: true, noteId: focusedNote.id, links, selected: 0 });
             }
           } else {
             console.log('Enter pressed but super edit mode is active or inline editor is active, ignoring note navigation');
@@ -1103,6 +1090,19 @@ useEffect(() => {
     return () => document.removeEventListener('keydown', handleGlobalC, true);
   }, [location.pathname]);
 
+  // Add state for note action popup
+  const [showNoteActionPopup, setShowNoteActionPopup] = useState({ visible: false, noteId: null, links: [], selected: 0 });
+
+  // Add a ref for the Note Actions popup
+  const noteActionPopupRef = useRef(null);
+
+  // Add a useEffect to focus the popup when it opens
+  useEffect(() => {
+    if (showNoteActionPopup.visible && noteActionPopupRef.current) {
+      noteActionPopupRef.current.focus();
+    }
+  }, [showNoteActionPopup.visible]);
+
   return (
     <div ref={notesListRef} className="relative">
       <div className="mb-4 flex justify-between items-center">
@@ -1583,6 +1583,34 @@ useEffect(() => {
           }
         }}
         onClose={() => setTagPopup({ visible: false, noteId: null, tags: [], selected: 0 })}
+      />
+      <NoteActionPopup
+        visible={showNoteActionPopup.visible}
+        selected={showNoteActionPopup.selected}
+        onSelect={idx => setShowNoteActionPopup(p => ({ ...p, selected: idx }))}
+        onEnter={selected => {
+          if (selected === 0) {
+            // Open Links
+            if (showNoteActionPopup.links.length === 1) {
+              window.open(showNoteActionPopup.links[0].url, '_blank');
+            } else if (showNoteActionPopup.links.length > 1) {
+              setLinkPopupLinks(showNoteActionPopup.links);
+              setSelectedLinkIndex(0);
+              setShowLinkPopup(true);
+            }
+            setShowNoteActionPopup({ visible: false, noteId: null, links: [], selected: 0 });
+          } else if (selected === 1) {
+            setShowNoteActionPopup({ visible: false, noteId: null, links: [], selected: 0 });
+            setTimeout(() => {
+              const noteElement = document.querySelector(`[data-note-id="${showNoteActionPopup.noteId}"]`);
+              if (noteElement) {
+                const superEditButton = noteElement.querySelector('button[title="Focus on first line in this note"]');
+                if (superEditButton) superEditButton.click();
+              }
+            }, 0);
+          }
+        }}
+        onClose={() => setShowNoteActionPopup({ visible: false, noteId: null, links: [], selected: 0 })}
       />
     </div>
   );

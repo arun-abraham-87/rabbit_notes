@@ -335,6 +335,10 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       }));
       newLines.splice(index + 1, 0, ...pastedLines);
       setLines(newLines);
+      
+      // Update cursor line to point to the first pasted line for view mode navigation
+      setCursorLine(index + 1);
+      
       return;
     }
 
@@ -496,6 +500,9 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
 
       newLines.splice(index + 1, 0, newLine);
       setLines(newLines);
+      
+      // Update cursor line to point to the new line for view mode navigation
+      setCursorLine(index + 1);
 
       setTimeout(() => {
         const nextTextarea = textareasRef.current[index + 1];
@@ -610,9 +617,17 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       const newLines = [...lines];
       newLines[0].text = '';
       setLines(newLines);
+      setCursorLine(0);
     } else {
       const newLines = lines.filter((_, i) => i !== index);
       setLines(newLines);
+      
+      // Update cursor line after deletion
+      if (cursorLine >= index) {
+        // If cursor was at or after the deleted line, move it up
+        setCursorLine(Math.max(0, cursorLine - 1));
+      }
+      // If cursor was before the deleted line, it stays the same
     }
   };
 
@@ -657,6 +672,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
 
   useEffect(() => {
     const handleGlobalKey = (e) => {
+      console.log('NoteEditor Global: Key pressed:', e.key, 'mode:', mode);
       // Check if we're in the note editor context or modal
       const noteEditorContainer = document.querySelector('.note-editor-container');
       const modalContainer = document.querySelector('[data-modal="true"]');
@@ -696,6 +712,115 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         }
       }
       
+      // Handle navigation keys in edit mode
+      if (isInNoteEditor && mode === 'edit') {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          // Only handle if we're not in a textarea (to avoid interfering with text editing)
+          if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (e.key === 'ArrowDown') {
+              setCursorLine(prev => Math.min(prev + 1, lines.length - 1));
+            } else if (e.key === 'ArrowUp') {
+              setCursorLine(prev => Math.max(prev - 1, 0));
+            }
+            
+            // Focus on the new cursor line
+            setTimeout(() => {
+              if (textareasRef.current[cursorLine]) {
+                const textarea = textareasRef.current[cursorLine];
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+              }
+            }, 50);
+            return;
+          }
+        }
+      }
+      
+      // Handle header formatting in view mode
+      console.log('NoteEditor Global: Checking header formatting condition:', 'isInNoteEditor:', isInNoteEditor, 'mode:', mode, 'key:', e.key);
+      if (isInNoteEditor && mode === 'view' && (e.key === '1' || e.key === '2' || e.key === '0')) {
+        console.log('NoteEditor Global: Header formatting key pressed:', e.key, 'cursorLine:', cursorLine);
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const newLines = [...lines];
+        const currentLine = newLines[cursorLine];
+        
+        if (e.key === '1') {
+          // Make h1 by wrapping in ###
+          if (!currentLine.text.startsWith('###') && !currentLine.text.endsWith('###')) {
+            currentLine.text = `###${currentLine.text}###`;
+            console.log('NoteEditor Global: Applied h1 formatting');
+          }
+        } else if (e.key === '2') {
+          // Make h2 by wrapping in ##
+          if (!currentLine.text.startsWith('##') && !currentLine.text.endsWith('##')) {
+            currentLine.text = `##${currentLine.text}##`;
+            console.log('NoteEditor Global: Applied h2 formatting');
+          }
+        } else if (e.key === '0') {
+          // Clear all #'s wrapping from start and end
+          currentLine.text = currentLine.text.replace(/^#+/, '').replace(/#+$/, '');
+          console.log('NoteEditor Global: Cleared header formatting');
+        }
+        
+        setLines(newLines);
+        
+        // Keep focus on the same line after header formatting
+        setTimeout(() => {
+          if (textareasRef.current[cursorLine]) {
+            const textarea = textareasRef.current[cursorLine];
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+          }
+        }, 50);
+        return;
+      }
+      
+      // Handle line deletion in view mode
+      if (isInNoteEditor && mode === 'view' && e.key === 'x') {
+        console.log('NoteEditor Global: Delete line key pressed:', 'cursorLine:', cursorLine);
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Don't delete if it's the last line and it's empty
+        if (lines.length === 1 && lines[0].text.trim() === '') {
+          console.log('NoteEditor Global: Skipping deletion of last empty line');
+          return;
+        }
+        
+        // Delete the current line
+        const newLines = lines.filter((_, index) => index !== cursorLine);
+        setLines(newLines);
+        
+        // Move focus to next line if present, otherwise to previous line
+        let newCursorLine = cursorLine;
+        if (cursorLine < newLines.length) {
+          // Move to next line (same position)
+          newCursorLine = cursorLine;
+        } else {
+          // Move to previous line (last line)
+          newCursorLine = Math.max(0, newLines.length - 1);
+        }
+        
+        setCursorLine(newCursorLine);
+        
+        // Focus on the new line
+        setTimeout(() => {
+          if (textareasRef.current[newCursorLine]) {
+            const textarea = textareasRef.current[newCursorLine];
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+          }
+        }, 50);
+        
+        console.log('NoteEditor Global: Line deleted, moved to line:', newCursorLine);
+        return;
+      }
+      
       // Only handle other keys when the note editor is focused
       if (!isInNoteEditor) {
         return;
@@ -731,6 +856,18 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       if (e.key === 'Enter' && mode === 'view') {
         e.preventDefault();
         e.stopPropagation();
+        
+        // Check if the current line contains just a URL
+        const currentLine = lines[cursorLine];
+        const urlPattern = /^https?:\/\/[^\s]+$/;
+        if (currentLine && urlPattern.test(currentLine.text.trim())) {
+          // Open URL edit popup
+          setPendingUrlIndex(cursorLine);
+          setCustomLabel(new URL(currentLine.text.trim()).hostname);
+          return;
+        }
+        
+        // Otherwise, enter edit mode
         setMode('edit');
         // Focus on the current cursor line and place cursor at the end
         setTimeout(() => {
@@ -886,10 +1023,12 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       onClick={(e) => {
         // Focus the container when clicked
         if (e.target === e.currentTarget) {
+          console.log('NoteEditor: Container clicked, focusing');
           e.currentTarget.focus();
         }
       }}
       onKeyDown={(e) => {
+        console.log('NoteEditor Container: Key pressed:', e.key, 'mode:', mode, 'target:', e.target.tagName);
         // Direct keyboard handling for view mode navigation
         if (mode === 'view') {
           console.log('NoteEditor: Key pressed in view mode:', e.key);
@@ -940,6 +1079,18 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           if (e.key === 'Enter') {
             e.preventDefault();
             e.stopPropagation();
+            
+            // Check if the current line contains just a URL
+            const currentLine = lines[cursorLine];
+            const urlPattern = /^https?:\/\/[^\s]+$/;
+            if (currentLine && urlPattern.test(currentLine.text.trim())) {
+              // Open URL edit popup
+              setPendingUrlIndex(cursorLine);
+              setCustomLabel(new URL(currentLine.text.trim()).hostname);
+              return;
+            }
+            
+            // Otherwise, enter edit mode
             setMode('edit');
             // Focus on the current cursor line and place cursor at the end
             setTimeout(() => {
@@ -949,6 +1100,88 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                 textarea.setSelectionRange(textarea.value.length, textarea.value.length);
               }
             }, 50);
+            return;
+          }
+          
+          // Handle header formatting in view mode
+          console.log('NoteEditor Container: Checking header formatting condition:', 'key:', e.key);
+          if (e.key === '1' || e.key === '2' || e.key === '0') {
+            console.log('NoteEditor: Header formatting key pressed:', e.key, 'cursorLine:', cursorLine);
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const newLines = [...lines];
+            const currentLine = newLines[cursorLine];
+            
+            if (e.key === '1') {
+              // Make h1 by wrapping in ###
+              if (!currentLine.text.startsWith('###') && !currentLine.text.endsWith('###')) {
+                currentLine.text = `###${currentLine.text}###`;
+                console.log('NoteEditor: Applied h1 formatting');
+              }
+            } else if (e.key === '2') {
+              // Make h2 by wrapping in ##
+              if (!currentLine.text.startsWith('##') && !currentLine.text.endsWith('##')) {
+                currentLine.text = `##${currentLine.text}##`;
+                console.log('NoteEditor: Applied h2 formatting');
+              }
+            } else if (e.key === '0') {
+              // Clear all #'s wrapping from start and end
+              currentLine.text = currentLine.text.replace(/^#+/, '').replace(/#+$/, '');
+              console.log('NoteEditor: Cleared header formatting');
+            }
+            
+            setLines(newLines);
+            
+            // Keep focus on the same line after header formatting
+            setTimeout(() => {
+              if (textareasRef.current[cursorLine]) {
+                const textarea = textareasRef.current[cursorLine];
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+              }
+            }, 50);
+            return;
+          }
+          
+          // Handle line deletion in view mode
+          if (e.key === 'x') {
+            console.log('NoteEditor: Delete line key pressed:', 'cursorLine:', cursorLine);
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Don't delete if it's the last line and it's empty
+            if (lines.length === 1 && lines[0].text.trim() === '') {
+              console.log('NoteEditor: Skipping deletion of last empty line');
+              return;
+            }
+            
+            // Delete the current line
+            const newLines = lines.filter((_, index) => index !== cursorLine);
+            setLines(newLines);
+            
+            // Move focus to next line if present, otherwise to previous line
+            let newCursorLine = cursorLine;
+            if (cursorLine < newLines.length) {
+              // Move to next line (same position)
+              newCursorLine = cursorLine;
+            } else {
+              // Move to previous line (last line)
+              newCursorLine = Math.max(0, newLines.length - 1);
+            }
+            
+            setCursorLine(newCursorLine);
+            
+            // Focus on the new line
+            setTimeout(() => {
+              if (textareasRef.current[newCursorLine]) {
+                const textarea = textareasRef.current[newCursorLine];
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+              }
+            }, 50);
+            
+            console.log('NoteEditor: Line deleted, moved to line:', newCursorLine);
             return;
           }
         }

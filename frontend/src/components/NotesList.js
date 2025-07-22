@@ -442,7 +442,13 @@ const NotesList = ({
       const noteEditorModal = document.querySelector('.note-editor-container[data-modal="true"]');
       const isNoteEditorOpen = noteEditorModal !== null;
       if (isAnyPopupOpen || isNoteEditorOpen) {
-        console.log('Popup or note editor is open, skipping general keyboard handling');
+        console.log('NotesList: Modal/popup is open, checking number keys');
+        // Allow number keys (1, 2, 0) to pass through to note editor for header formatting
+        if (e.key === '1' || e.key === '2' || e.key === '0') {
+          console.log('NotesList: Allowing number keys to pass through to note editor', e.key);
+          return; // Don't block, let it pass through
+        }
+        console.log('NotesList: Popup or note editor is open, skipping general keyboard handling');
         return;
       }
       

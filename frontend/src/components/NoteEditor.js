@@ -451,7 +451,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       return;
     }
 
-    if (e.key === 'ArrowUp') {
+    if (e.key === 'ArrowUp' && !e.shiftKey) {
       const cursorPosition = e.target.selectionStart;
       if (cursorPosition === 0 && index > 0) {
         e.preventDefault();
@@ -460,7 +460,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       }
     }
 
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown' && !e.shiftKey) {
       const cursorPosition = e.target.selectionStart;
       const textLength = e.target.value.length;
       if (cursorPosition === textLength && index < lines.length - 1) {
@@ -499,24 +499,52 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         setLines(newLines);
         setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
       }
+    }
 
-      // Duplicate line
-      if (e.key.toLowerCase() === 'd') {
+    // Shift+Up and Shift+Down to move lines
+    if (e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      const newLines = [...lines];
+
+      // Move up with Shift+Up
+      if (e.key === 'ArrowUp' && index > 0) {
         e.preventDefault();
-        newLines.splice(index + 1, 0, {
-          id: `line-${Date.now()}`,
-          text: newLines[index].text,
-          isTitle: false,
-        });
+        const temp = newLines[index];
+        newLines[index] = newLines[index - 1];
+        newLines[index - 1] = temp;
+        setLines(newLines);
+        setTimeout(() => textareasRef.current[index - 1]?.focus(), 0);
+        return;
+      }
+
+      // Move down with Shift+Down
+      if (e.key === 'ArrowDown' && index < newLines.length - 1) {
+        e.preventDefault();
+        const temp = newLines[index];
+        newLines[index] = newLines[index + 1];
+        newLines[index + 1] = temp;
         setLines(newLines);
         setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
+        return;
       }
+    }
 
-      // Mark as title with Cmd+Option+T
-      if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
-        e.preventDefault();
-        handleMarkAsTitle(index);
-      }
+    // Duplicate line
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
+      e.preventDefault();
+      const newLines = [...lines];
+      newLines.splice(index + 1, 0, {
+        id: `line-${Date.now()}`,
+        text: newLines[index].text,
+        isTitle: false,
+      });
+      setLines(newLines);
+      setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
+    }
+
+    // Mark as title with Cmd+Option+T
+    if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
+      e.preventDefault();
+      handleMarkAsTitle(index);
     }
   };
 

@@ -582,18 +582,12 @@ const NotesList = ({
           }
           return;
         } else if (e.key === 'e' && focusedNoteIndexRef.current >= 0) {
-          // Enter super edit mode for the focused note
+          // Open note edit popup for the focused note
           const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
           if (focusedNote) {
-            const noteElement = document.querySelector(`[data-note-id="${focusedNote.id}"]`);
-            if (noteElement) {
-              const superEditButton = noteElement.querySelector('button[title="Focus on first line in this note"]');
-              if (superEditButton) {
-                superEditButton.click();
-                e.preventDefault();
-                e.stopPropagation();
-              }
-            }
+            setPopupNoteText(focusedNote.id);
+            e.preventDefault();
+            e.stopPropagation();
           }
           return;
         } else if (e.key === '-' && focusedNoteIndexRef.current >= 0) {

@@ -13,17 +13,21 @@ export default function NoteActionPopup({ visible, selected, onSelect, onEnter, 
     if (e.key === 'ArrowDown' || e.key === 'j') {
       onSelect((selected + 1) % 2);
       e.preventDefault();
+      e.stopPropagation();
       return;
     } else if (e.key === 'ArrowUp' || e.key === 'k') {
       onSelect((selected + 1 + 2) % 2);
       e.preventDefault();
+      e.stopPropagation();
       return;
     } else if (e.key === 'Enter') {
       onEnter(selected);
       e.preventDefault();
+      e.stopPropagation();
     } else if (e.key === 'Escape') {
       onClose();
       e.preventDefault();
+      e.stopPropagation();
     }
   }
 

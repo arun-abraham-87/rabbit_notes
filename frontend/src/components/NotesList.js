@@ -132,6 +132,9 @@ const NotesList = ({
   const focusedNoteIndexRef = useRef(focusedNoteIndex);
   const safeNotesRef = useRef(safeNotes);
   
+  // Add state for note action popup
+  const [showNoteActionPopup, setShowNoteActionPopup] = useState({ visible: false, noteId: null, links: [], selected: 0 });
+  
   // Callback to set focused note index
   const handleSetFocusedNoteIndex = (index) => {
     console.log('handleSetFocusedNoteIndex called', index);
@@ -1010,9 +1013,11 @@ const NotesList = ({
 
 useEffect(() => {
   if (location.pathname !== '/notes') return;
+  // Disable Vim keydown when NoteActionPopup is open
+  if (showNoteActionPopup.visible) return;
   document.addEventListener('keydown', handleVimKeyDown, true);
   return () => document.removeEventListener('keydown', handleVimKeyDown, true);
-}, [location.pathname, handleVimKeyDown]);
+}, [location.pathname, handleVimKeyDown, showNoteActionPopup.visible]);
 
   // Add Vim navigation state
   const [tagPopup, setTagPopup] = useState({ visible: false, noteId: null, tags: [], selected: 0 });
@@ -1092,9 +1097,6 @@ useEffect(() => {
     document.addEventListener('keydown', handleGlobalC, true);
     return () => document.removeEventListener('keydown', handleGlobalC, true);
   }, [location.pathname]);
-
-  // Add state for note action popup
-  const [showNoteActionPopup, setShowNoteActionPopup] = useState({ visible: false, noteId: null, links: [], selected: 0 });
 
   // Add a ref for the Note Actions popup
   const noteActionPopupRef = useRef(null);

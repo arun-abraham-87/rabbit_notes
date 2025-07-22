@@ -1,7 +1,7 @@
 import React from 'react';
 import { XMarkIcon } from '@heroicons/react/24/solid';
 
-export default function LinkSelectionPopup({ showLinkPopup, setShowLinkPopup, linkPopupLinks, setLinkPopupLinks, selectedLinkIndex, setSelectedLinkIndex }) {
+export default function LinkSelectionPopup({ showLinkPopup, setShowLinkPopup, linkPopupLinks, setLinkPopupLinks, selectedLinkIndex, setSelectedLinkIndex, sourceNoteId, setPopupNoteText }) {
   if (!showLinkPopup) return null;
   return (
     <div 
@@ -24,7 +24,7 @@ export default function LinkSelectionPopup({ showLinkPopup, setShowLinkPopup, li
           </button>
         </div>
         <div className="space-y-2 max-h-96 overflow-y-auto">
-          {/* Open all links option */}
+          {/* Edit option - always first */}
           <div
             className={`p-3 rounded-lg border cursor-pointer transition-colors ${
               selectedLinkIndex === 0
@@ -32,23 +32,48 @@ export default function LinkSelectionPopup({ showLinkPopup, setShowLinkPopup, li
                 : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
             }`}
             onClick={() => {
-              linkPopupLinks.forEach(link => window.open(link.url, '_blank'));
+              if (sourceNoteId && setPopupNoteText) {
+                setPopupNoteText(sourceNoteId);
+              }
               setShowLinkPopup(false);
               setLinkPopupLinks([]);
               setSelectedLinkIndex(0);
             }}
           >
-            <div className="text-sm font-medium truncate">Open all links</div>
+            <div className="text-sm font-medium truncate">Edit</div>
             <div className="text-xs text-gray-500 mt-1">
-              {selectedLinkIndex === 0 ? 'Press Enter to open all' : 'Click or use arrow keys'}
+              {selectedLinkIndex === 0 ? 'Press Enter to open note editor' : 'Click or use arrow keys'}
             </div>
           </div>
+          
+          {/* Open all links option - only show if there are links */}
+          {linkPopupLinks.length > 0 && (
+            <div
+              className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                selectedLinkIndex === 1
+                  ? 'bg-blue-100 border-blue-300 text-blue-800'
+                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+              }`}
+              onClick={() => {
+                linkPopupLinks.forEach(link => window.open(link.url, '_blank'));
+                setShowLinkPopup(false);
+                setLinkPopupLinks([]);
+                setSelectedLinkIndex(0);
+              }}
+            >
+              <div className="text-sm font-medium truncate">Open all links</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {selectedLinkIndex === 1 ? 'Press Enter to open all' : 'Click or use arrow keys'}
+              </div>
+            </div>
+          )}
+          
           {/* Individual links */}
           {linkPopupLinks.map((link, index) => (
             <div
               key={index}
               className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                selectedLinkIndex === index + 1
+                selectedLinkIndex === index + 2
                   ? 'bg-blue-100 border-blue-300 text-blue-800'
                   : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
               }`}
@@ -61,13 +86,13 @@ export default function LinkSelectionPopup({ showLinkPopup, setShowLinkPopup, li
             >
               <div className="text-sm font-medium truncate">{link.text || link.url}</div>
               <div className="text-xs text-gray-500 mt-1">
-                {selectedLinkIndex === index + 1 ? 'Press Enter to open' : 'Click or use arrow keys'}
+                {selectedLinkIndex === index + 2 ? 'Press Enter to open' : 'Click or use arrow keys'}
               </div>
             </div>
           ))}
         </div>
         <div className="mt-4 text-sm text-gray-600">
-          <p>Use ↑↓ arrows to navigate, Enter to open, 'a' to open all, Esc to cancel</p>
+          <p>Use ↑↓ arrows to navigate, Enter to open, 'a' to open all, 'e' to edit link, Esc to cancel</p>
         </div>
       </div>
     </div>

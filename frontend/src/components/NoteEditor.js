@@ -944,19 +944,22 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         />
       ) : (
         <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 shadow-sm">
-          {lines.map((line, index) => (
+          {/* Regular content lines */}
+          {lines.filter(line => !line.text.trim().startsWith('meta::')).map((line, index) => {
+            const originalIndex = lines.findIndex(l => l.id === line.id);
+            return (
             <div
               key={line.id}
               draggable
-              onDragStart={(e) => handleDragStart(e, index)}
+              onDragStart={(e) => handleDragStart(e, originalIndex)}
               onDragOver={(e) => {
                 e.preventDefault();
-                handleDragOver(index);
+                handleDragOver(originalIndex);
               }}
-              onDrop={(e) => handleDrop(e, index)}
-              className={`relative group bg-gray-50 hover:bg-white transition border-l-4 border-transparent hover:border-blue-400 ${dropTargetIndex === index ? 'border-blue-500' : ''}`}
+              onDrop={(e) => handleDrop(e, originalIndex)}
+                              className={`relative group bg-gray-50 hover:bg-white transition border-l-4 border-transparent hover:border-blue-400 ${dropTargetIndex === originalIndex ? 'border-blue-500' : ''}`}
             >
-              {dropTargetIndex === index && draggedId !== lines[index].id && (
+              {dropTargetIndex === originalIndex && draggedId !== lines[originalIndex].id && (
                 <div className="h-1 bg-blue-500 rounded my-1"></div>
               )}
               <div className="flex items-start px-3 py-2 relative">
@@ -967,7 +970,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                     title="Select this URL"
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setUrlLabelSelection({ urlIndex: index, labelIndex: null });
+                        setUrlLabelSelection({ urlIndex: originalIndex, labelIndex: null });
                       }
                     }}
                     className="mr-2 mt-1"
@@ -977,11 +980,11 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                   <input
                     type="checkbox"
                     title="Use this line as label"
-                    checked={urlLabelSelection.labelIndex === index}
+                    checked={urlLabelSelection.labelIndex === originalIndex}
                     onChange={(e) => {
                       setUrlLabelSelection((prev) => ({
                         ...prev,
-                        labelIndex: e.target.checked ? index : null,
+                        labelIndex: e.target.checked ? originalIndex : null,
                       }));
                     }}
                     className="mr-2 mt-1"
@@ -994,7 +997,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                         const match = line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
                         const currentLabel = match[1];
                         const url = match[2];
-                        setPendingUrlIndex(index);
+                        setPendingUrlIndex(originalIndex);
                         setCustomLabel(currentLabel);
                       }}
                       className="text-blue-600 hover:text-blue-800 underline text-sm mr-2 text-left"
@@ -1013,7 +1016,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                   <div className="flex items-center pl-6 pr-28 w-full">
                     <button
                       onClick={() => {
-                        setPendingUrlIndex(index);
+                        setPendingUrlIndex(originalIndex);
                         setCustomLabel(new URL(line.text).hostname);
                       }}
                       className="text-blue-600 hover:text-blue-800 underline text-sm mr-2 text-left"
@@ -1030,21 +1033,21 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                   </div>
                 ) : (
                   <textarea
-                    ref={(el) => (textareasRef.current[index] = el)}
+                    ref={(el) => (textareasRef.current[originalIndex] = el)}
                     value={line.text}
-                    onFocus={() => setFocusedLineIndex(index)}
+                    onFocus={() => setFocusedLineIndex(originalIndex)}
                     onChange={(e) => {
-                      handleTextChange(index, e.target.value);
+                      handleTextChange(originalIndex, e.target.value);
                     }}
-                    onKeyDown={(e) => handleKeyDown(e, index)}
-                    onPaste={(e) => handlePaste(e, index)}
+                    onKeyDown={(e) => handleKeyDown(e, originalIndex)}
+                    onPaste={(e) => handlePaste(e, originalIndex)}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       setContextMenu({
                         visible: true,
                         x: e.clientX,
                         y: e.clientY,
-                        index: index
+                        index: originalIndex
                       });
                     }}
                     className={`w-full pl-6 pr-28 bg-transparent resize-none focus:outline-none text-sm ${
@@ -1060,7 +1063,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                         <button
                           onClick={() => {
                             const newLines = [...lines];
-                            newLines[index].text = '';
+                            newLines[originalIndex].text = '';
                             setLines(newLines);
                           }}
                           className="text-gray-500 text-sm hover:text-blue-500 px-2 py-0.5 border border-gray-300 rounded hover:border-blue-500 transition-colors"
@@ -1072,14 +1075,14 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                       </>
                     )}
                     <button
-                      onClick={() => handleMarkAsTitle(index)}
+                      onClick={() => handleMarkAsTitle(originalIndex)}
                       className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
                       title="Mark as H1"
                     >
                       H1
                     </button>
                     <button
-                      onClick={() => handleMarkAsSubtitle(index)}
+                      onClick={() => handleMarkAsSubtitle(originalIndex)}
                       className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
                       title="Mark as H2"
                     >
@@ -1088,7 +1091,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                     <button
                       onClick={() => {
                         const newLines = [...lines];
-                        newLines[index].text = newLines[index].text.toUpperCase();
+                        newLines[originalIndex].text = newLines[originalIndex].text.toUpperCase();
                         setLines(newLines);
                       }}
                       className="text-gray-500 text-xs hover:text-black px-1 transition-transform transform hover:scale-125"
@@ -1175,7 +1178,25 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                 )}
               </div>
             </div>
-          ))}
+          );
+          })}
+          
+          {/* Meta:: lines section */}
+          {lines.filter(line => line.text.trim().startsWith('meta::')).length > 0 && (
+            <>
+              <div className="border-t-2 border-gray-300 bg-gray-50 px-3 py-2">
+                <div className="text-xs font-medium text-gray-600 mb-2">Meta Tags (Read-only)</div>
+                {lines.filter(line => line.text.trim().startsWith('meta::')).map((line, index) => (
+                  <div key={line.id} className="flex items-center py-1">
+                    <span className="text-gray-400 text-xs mr-2">☰</span>
+                    <div className="flex-1 text-sm text-gray-700 font-mono bg-gray-100 px-2 py-1 rounded">
+                      {line.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
       {showDatePicker && (

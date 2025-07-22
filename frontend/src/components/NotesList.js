@@ -119,6 +119,7 @@ const NotesList = ({
   const [showLinkPopup, setShowLinkPopup] = useState(false);
   const [linkPopupLinks, setLinkPopupLinks] = useState([]);
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
+  const [linkPopupSourceNoteId, setLinkPopupSourceNoteId] = useState(null);
   const showLinkPopupRef = useRef(false);
   
   // Add state for link edit popup
@@ -499,14 +500,11 @@ const NotesList = ({
                 }
               }
               
-              if (links.length >= 1) {
-                // Always show popup with links, even if there's only one
-                setLinkPopupLinks(links);
-                setSelectedLinkIndex(0);
-                setShowLinkPopup(true);
-              } else {
-                console.log('No URLs found in note');
-              }
+              // Always show popup, even if there are no links
+              setLinkPopupLinks(links);
+              setSelectedLinkIndex(0);
+              setLinkPopupSourceNoteId(focusedNote.id);
+              setShowLinkPopup(true);
             }
           } else {
             console.log('Enter pressed but super edit mode is active or inline editor is active, ignoring note navigation');
@@ -562,13 +560,12 @@ const NotesList = ({
             
             if (links.length === 1) {
               window.open(links[0].url, '_blank');
-            } else if (links.length > 1) {
-              // Show popup with multiple links
+            } else {
+              // Show popup with links (or just "Open Popup" if no links)
               setLinkPopupLinks(links);
               setSelectedLinkIndex(0);
+              setLinkPopupSourceNoteId(focusedNote.id);
               setShowLinkPopup(true);
-            } else {
-              console.log('No URLs found in note');
             }
           }
         } else if (e.key === 'a' && focusedNoteIndexRef.current >= 0 && addingLineNoteId === null) {
@@ -655,19 +652,29 @@ const NotesList = ({
       e.preventDefault();
       e.stopPropagation();
       
-      const totalOptions = linkPopupLinks.length + 1; // +1 for 'Open all links'
+      const totalOptions = linkPopupLinks.length + (linkPopupLinks.length > 0 ? 2 : 1); // +2 if links exist, +1 if no links (just 'Open Popup')
       if (e.key === 'ArrowUp') {
         setSelectedLinkIndex(prev => prev === 0 ? totalOptions - 1 : prev - 1);
       } else if (e.key === 'ArrowDown') {
         setSelectedLinkIndex(prev => prev === totalOptions - 1 ? 0 : prev + 1);
       } else if (e.key === 'Enter') {
         if (selectedLinkIndex === 0) {
+          // Edit (note editor) - always first option
+          if (linkPopupSourceNoteId && setPopupNoteText) {
+            setPopupNoteText(linkPopupSourceNoteId);
+          }
+          setShowLinkPopup(false);
+          setLinkPopupLinks([]);
+          setSelectedLinkIndex(0);
+        } else if (linkPopupLinks.length > 0 && selectedLinkIndex === 1) {
+          // Open all links (only if links exist)
           linkPopupLinks.forEach(link => window.open(link.url, '_blank'));
           setShowLinkPopup(false);
           setLinkPopupLinks([]);
           setSelectedLinkIndex(0);
-        } else if (linkPopupLinks[selectedLinkIndex - 1]) {
-          window.open(linkPopupLinks[selectedLinkIndex - 1].url, '_blank');
+        } else if (linkPopupLinks[selectedLinkIndex - 2]) {
+          // Individual links (adjusted index due to new options)
+          window.open(linkPopupLinks[selectedLinkIndex - 2].url, '_blank');
           setShowLinkPopup(false);
           setLinkPopupLinks([]);
           setSelectedLinkIndex(0);
@@ -680,15 +687,15 @@ const NotesList = ({
         setShowLinkPopup(false);
         setLinkPopupLinks([]);
         setSelectedLinkIndex(0);
-      } else if (e.key === 'e' && selectedLinkIndex > 0 && linkPopupLinks[selectedLinkIndex - 1]) {
+      } else if (e.key === 'e' && selectedLinkIndex > 1 && linkPopupLinks[selectedLinkIndex - 2]) {
         setEditingLink({
           noteId: safeNotesRef.current[focusedNoteIndexRef.current]?.id,
-          linkIndex: selectedLinkIndex - 1,
-          text: linkPopupLinks[selectedLinkIndex - 1].text,
-          url: linkPopupLinks[selectedLinkIndex - 1].url
+          linkIndex: selectedLinkIndex - 2,
+          text: linkPopupLinks[selectedLinkIndex - 2].text,
+          url: linkPopupLinks[selectedLinkIndex - 2].url
         });
-        setEditLinkText(linkPopupLinks[selectedLinkIndex - 1].text);
-        setEditLinkUrl(linkPopupLinks[selectedLinkIndex - 1].url);
+        setEditLinkText(linkPopupLinks[selectedLinkIndex - 2].text);
+        setEditLinkUrl(linkPopupLinks[selectedLinkIndex - 2].url);
         setShowLinkEditPopup(true);
         setShowLinkPopup(false);
       } else if (e.key === 'Escape') {
@@ -1353,11 +1360,45 @@ useEffect(() => {
 
       <TagSelectionPopup visible={isPopupVisible} position={popupPosition} selectedText={selectedText} onConvert={handleConvertToTag} onSearch={handleSearch} onCancel={handleCancelPopup} />
 
-      <NoteEditorModal isOpen={!!popupNoteText} noteId={popupNoteText} allNotes={allNotes} updateNoteCallback={updateNoteCallback} setPopupNoteText={setPopupNoteText} objList={objList} />
+      {popupNoteText && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
+              <button
+                onClick={() => setPopupNoteText(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <NoteEditor
+              isModal={true}
+              isAddMode={false}
+              note={allNotes.find(n => n.id === popupNoteText)}
+              onSave={(updatedNote) => {
+                updateNoteCallback(popupNoteText, updatedNote);
+                setPopupNoteText(null);
+              }}
+              onCancel={() => setPopupNoteText(null)}
+              objList={objList}
+            />
+          </div>
+        </div>
+      )}
 
       <RawNoteModal isOpen={!!rawNote} rawNote={rawNote} setRawNote={setRawNote} />
 
-      <LinkSelectionPopup showLinkPopup={showLinkPopup} setShowLinkPopup={setShowLinkPopup} linkPopupLinks={linkPopupLinks} setLinkPopupLinks={setLinkPopupLinks} selectedLinkIndex={selectedLinkIndex} setSelectedLinkIndex={setSelectedLinkIndex} />
+      <LinkSelectionPopup 
+        showLinkPopup={showLinkPopup} 
+        setShowLinkPopup={setShowLinkPopup} 
+        linkPopupLinks={linkPopupLinks} 
+        setLinkPopupLinks={setLinkPopupLinks} 
+        selectedLinkIndex={selectedLinkIndex} 
+        setSelectedLinkIndex={setSelectedLinkIndex}
+        sourceNoteId={linkPopupSourceNoteId}
+        setPopupNoteText={setPopupNoteText}
+      />
 
       <LinkNotesModal
         visible={linkPopupVisible}
@@ -1409,31 +1450,7 @@ useEffect(() => {
         />
       )}
 
-      {popupNoteText && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">Edit Note</h2>
-              <button
-                onClick={() => setPopupNoteText(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <NoteEditor
-              isAddMode={false}
-              note={allNotes.find(n => n.id === popupNoteText)}
-              onSave={(updatedNote) => {
-                updateNoteCallback(popupNoteText, updatedNote);
-                setPopupNoteText(null);
-              }}
-              onCancel={() => setPopupNoteText(null)}
-              objList={objList}
-            />
-          </div>
-        </div>
-      )}
+
 
       {rawNote && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1454,76 +1471,7 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Link Selection Popup */}
-      {showLinkPopup && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          data-link-popup
-          tabIndex={0}
-        >
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-800">Select Link to Open</h2>
-              <button
-                onClick={() => {
-                  setShowLinkPopup(false);
-                  setLinkPopupLinks([]);
-                  setSelectedLinkIndex(0);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {/* Open all links option */}
-              <div
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  selectedLinkIndex === 0
-                    ? 'bg-blue-100 border-blue-300 text-blue-800'
-                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                }`}
-                onClick={() => {
-                  linkPopupLinks.forEach(link => window.open(link.url, '_blank'));
-                  setShowLinkPopup(false);
-                  setLinkPopupLinks([]);
-                  setSelectedLinkIndex(0);
-                }}
-              >
-                <div className="text-sm font-medium truncate">Open all links</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {selectedLinkIndex === 0 ? 'Press Enter to open all' : 'Click or use arrow keys'}
-                </div>
-              </div>
-              {/* Individual links */}
-              {linkPopupLinks.map((link, index) => (
-                <div
-                  key={index}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                    selectedLinkIndex === index + 1
-                      ? 'bg-blue-100 border-blue-300 text-blue-800'
-                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                  }`}
-                  onClick={() => {
-                    window.open(link.url, '_blank');
-                    setShowLinkPopup(false);
-                    setLinkPopupLinks([]);
-                    setSelectedLinkIndex(0);
-                  }}
-                >
-                  <div className="text-sm font-medium truncate">{link.text || link.url}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {selectedLinkIndex === index + 1 ? 'Press Enter to open' : 'Click or use arrow keys'}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 text-sm text-gray-600">
-              <p>Use ↑↓ arrows to navigate, Enter to open, 'a' to open all, Esc to cancel</p>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Link edit popup UI */}
       {showLinkEditPopup && editingLink && (

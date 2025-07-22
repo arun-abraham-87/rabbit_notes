@@ -356,6 +356,8 @@ const NotesList = ({
 
   useEffect(() => {
     const handleEsc = (e) => {
+      // Ignore if NoteActionPopup is open
+      if (showNoteActionPopup.visible) return;
       if (e.key === 'Escape') {
         setRightClickText(null);
         setRightClickIndex(null);
@@ -388,7 +390,7 @@ const NotesList = ({
       }
       
       // Check if any popup is open - if so, don't handle general keyboard shortcuts
-      const isAnyPopupOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote;
+      const isAnyPopupOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible;
       if (isAnyPopupOpen) {
         console.log('Popup is open, skipping general keyboard handling');
         return;
@@ -462,29 +464,49 @@ const NotesList = ({
           }
         } else if (e.key === 'G') {
           console.log(`G key pressed - key: ${e.key}, shiftKey: ${e.shiftKey}, safeNotes.length: ${safeNotesRef.current.length}`);
-        } else if (e.key === 'Enter' && focusedNoteIndexRef.current >= 0) {
+                } else if (e.key === 'Enter' && focusedNoteIndexRef.current >= 0) {
           const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
-          const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') || 
+          const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') ||
                              e.target.tagName === 'TEXTAREA';
           if (!isAnyNoteInSuperEditMode && !isInlineEditorActive) {
             e.preventDefault();
             e.stopPropagation();
             const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
             if (focusedNote) {
+              // Regex to match both markdown-style links [text](url) and plain URLs
               const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
               const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
+              
               const links = [];
+              
+              // Extract markdown-style links first
               let match;
               while ((match = markdownLinkRegex.exec(focusedNote.content)) !== null) {
-                links.push({ url: match[2], text: match[1] });
+                links.push({
+                  url: match[2],
+                  text: match[1]
+                });
               }
+              
+              // Extract plain URLs (excluding those already found in markdown links)
               const markdownUrls = links.map(link => link.url);
               while ((match = plainUrlRegex.exec(focusedNote.content)) !== null) {
                 if (!markdownUrls.includes(match[1])) {
-                  links.push({ url: match[1], text: match[1] });
+                  links.push({
+                    url: match[1],
+                    text: match[1] // Use URL as text for plain URLs
+                  });
                 }
               }
-              setShowNoteActionPopup({ visible: true, noteId: focusedNote.id, links, selected: 0 });
+              
+              if (links.length >= 1) {
+                // Always show popup with links, even if there's only one
+                setLinkPopupLinks(links);
+                setSelectedLinkIndex(0);
+                setShowLinkPopup(true);
+              } else {
+                console.log('No URLs found in note');
+              }
             }
           } else {
             console.log('Enter pressed but super edit mode is active or inline editor is active, ignoring note navigation');
@@ -895,6 +917,8 @@ const NotesList = ({
   useEffect(() => {
     if (!showLinkEditPopup) return;
     const handleCmdEnter = (e) => {
+      // Ignore if NoteActionPopup is open
+      if (showNoteActionPopup.visible) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
         if (showLinkEditPopup) saveEditedLink();
@@ -902,7 +926,7 @@ const NotesList = ({
     };
     document.addEventListener('keydown', handleCmdEnter);
     return () => document.removeEventListener('keydown', handleCmdEnter);
-  }, [showLinkEditPopup, editLinkText, editLinkUrl, editingLink]);
+  }, [showLinkEditPopup, editLinkText, editLinkUrl, editingLink, showNoteActionPopup.visible]);
 
   // Add Vim navigation state
   const [vimNumberBuffer, setVimNumberBuffer] = useState('');
@@ -918,7 +942,7 @@ const NotesList = ({
       return;
     }
     // Ignore if popup/modal is open
-    if (showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote) {
+    if (showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible) {
       return;
     }
     // Vim navigation logic
@@ -1075,6 +1099,8 @@ useEffect(() => {
   // Add this useEffect for global 'c' key search focus in /notes
   useEffect(() => {
     if (location.pathname !== '/notes') return;
+    // Disable global 'c' key when NoteActionPopup is open
+    if (showNoteActionPopup.visible) return;
     const handleGlobalC = (e) => {
       // Only trigger if not in input/textarea/contentEditable
       if (
@@ -1096,17 +1122,9 @@ useEffect(() => {
     };
     document.addEventListener('keydown', handleGlobalC, true);
     return () => document.removeEventListener('keydown', handleGlobalC, true);
-  }, [location.pathname]);
+  }, [location.pathname, showNoteActionPopup.visible]);
 
-  // Add a ref for the Note Actions popup
-  const noteActionPopupRef = useRef(null);
 
-  // Add a useEffect to focus the popup when it opens
-  useEffect(() => {
-    if (showNoteActionPopup.visible && noteActionPopupRef.current) {
-      noteActionPopupRef.current.focus();
-    }
-  }, [showNoteActionPopup.visible]);
 
   return (
     <div ref={notesListRef} className="relative">

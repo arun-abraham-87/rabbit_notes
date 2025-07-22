@@ -41,6 +41,9 @@ import EventsByAgeView from './EventsByAgeView';
 import { extractMetaTags } from '../utils/MetaTagUtils';
 import TagPopup from './TagPopup';
 import NoteActionPopup from './NoteActionPopup';
+import NoteEditorModal from './NoteEditorModal';
+import RawNoteModal from './RawNoteModal';
+import LinkSelectionPopup from './LinkSelectionPopup';
 
 // Regex to match dates in DD/MM/YYYY or DD Month YYYY format
 export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d{4}\b)/g;
@@ -1332,31 +1335,23 @@ useEffect(() => {
         </>
       )}
 
-      <ConfirmationModal
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        onConfirm={confirmDelete}
-      />
+      <ConfirmationModal isOpen={isModalOpen} onClose={closeModal} onConfirm={confirmDelete} />
 
-      {isPopupVisible && (
-        <TagSelectionPopup
-          visible={isPopupVisible}
-          position={popupPosition}
-          selectedText={selectedText}
-          onConvert={handleConvertToTag}
-          onSearch={handleSearch}
-          onCancel={handleCancelPopup}
-        />
-      )}
+      <TagSelectionPopup visible={isPopupVisible} position={popupPosition} selectedText={selectedText} onConvert={handleConvertToTag} onSearch={handleSearch} onCancel={handleCancelPopup} />
 
-      {linkPopupVisible && (
-        <LinkNotesModal
-          visible={linkPopupVisible}
-          notes={allNotes}
-          linkingNoteId={linkingNoteId}
-          searchTerm={linkSearchTerm}
-          onSearchTermChange={setLinkSearchTerm}
-          onLink={(fromId, toId) => {
+      <NoteEditorModal isOpen={!!popupNoteText} noteId={popupNoteText} allNotes={allNotes} updateNoteCallback={updateNoteCallback} setPopupNoteText={setPopupNoteText} objList={objList} />
+
+      <RawNoteModal isOpen={!!rawNote} rawNote={rawNote} setRawNote={setRawNote} />
+
+      <LinkSelectionPopup showLinkPopup={showLinkPopup} setShowLinkPopup={setShowLinkPopup} linkPopupLinks={linkPopupLinks} setLinkPopupLinks={setLinkPopupLinks} selectedLinkIndex={selectedLinkIndex} setSelectedLinkIndex={setSelectedLinkIndex} />
+
+      <LinkNotesModal
+        visible={linkPopupVisible}
+        notes={allNotes}
+        linkingNoteId={linkingNoteId}
+        searchTerm={linkSearchTerm}
+        onSearchTermChange={setLinkSearchTerm}
+        onLink={(fromId, toId) => {
             const source = allNotes.find(n => n.id === fromId) || allNotes.find(n => n.id === fromId);
             const target = allNotes.find(n => n.id === toId) || allNotes.find(n => n.id === toId);
             const addTag = (content, id) => {
@@ -1371,13 +1366,12 @@ useEffect(() => {
             setLinkingNoteId(null);
             setLinkSearchTerm('');
           }}
-          onCancel={() => {
+        onCancel={() => {
             setLinkPopupVisible(false);
             setLinkingNoteId(null);
             setLinkSearchTerm('');
           }}
-        />
-      )}
+      />
 
       {showEndDatePickerForNoteId && (
         <EndDatePickerModal

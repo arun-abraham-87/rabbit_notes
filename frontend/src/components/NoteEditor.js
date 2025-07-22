@@ -717,10 +717,29 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         return;
       }
       
-      if (e.key === 'Escape' && mode === 'edit') {
+      if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        setMode('view');
+        if (mode === 'edit') {
+          setMode('view');
+        } else if (mode === 'view') {
+          onCancel();
+        }
+        return;
+      }
+      
+      if (e.key === 'Enter' && mode === 'view') {
+        e.preventDefault();
+        e.stopPropagation();
+        setMode('edit');
+        // Focus on the current cursor line and place cursor at the end
+        setTimeout(() => {
+          if (textareasRef.current[cursorLine]) {
+            const textarea = textareasRef.current[cursorLine];
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+          }
+        }, 50);
         return;
       }
       
@@ -899,6 +918,26 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
             return;
           }
           if (e.key === 'i') {
+            e.preventDefault();
+            e.stopPropagation();
+            setMode('edit');
+            // Focus on the current cursor line and place cursor at the end
+            setTimeout(() => {
+              if (textareasRef.current[cursorLine]) {
+                const textarea = textareasRef.current[cursorLine];
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+              }
+            }, 50);
+            return;
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            onCancel();
+            return;
+          }
+          if (e.key === 'Enter') {
             e.preventDefault();
             e.stopPropagation();
             setMode('edit');

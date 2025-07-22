@@ -1428,8 +1428,24 @@ useEffect(() => {
               onSave={(updatedNote) => {
                 updateNoteCallback(popupNoteText, updatedNote);
                 setPopupNoteText(null);
+                // Return focus to the original note after saving
+                setTimeout(() => {
+                  const noteElement = document.querySelector(`[data-note-id="${popupNoteText}"]`);
+                  if (noteElement) {
+                    noteElement.focus();
+                  }
+                }, 100);
               }}
-              onCancel={() => setPopupNoteText(null)}
+              onCancel={() => {
+                setPopupNoteText(null);
+                // Return focus to the original note after canceling
+                setTimeout(() => {
+                  const noteElement = document.querySelector(`[data-note-id="${popupNoteText}"]`);
+                  if (noteElement) {
+                    noteElement.focus();
+                  }
+                }, 100);
+              }}
               objList={objList}
             />
           </div>

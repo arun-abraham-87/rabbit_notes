@@ -591,6 +591,15 @@ const NotesList = ({
             e.stopPropagation();
           }
           return;
+        } else if (e.key === 'c') {
+          // Focus the search bar
+          const searchInput = document.querySelector('input[type="search"]');
+          if (searchInput) {
+            searchInput.focus();
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          return;
         }
       }
     };
@@ -1067,6 +1076,32 @@ useEffect(() => {
     document.addEventListener('keydown', handleTagPopupKey, true);
     return () => document.removeEventListener('keydown', handleTagPopupKey, true);
   }, [tagPopup, safeNotes, updateNoteCallback]);
+
+  // Add this useEffect for global 'c' key search focus in /notes
+  useEffect(() => {
+    if (location.pathname !== '/notes') return;
+    const handleGlobalC = (e) => {
+      // Only trigger if not in input/textarea/contentEditable
+      if (
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.isContentEditable
+      ) {
+        return;
+      }
+      if (e.key === 'c') {
+        // Focus the main search textarea
+        const searchTextarea = document.querySelector('textarea');
+        if (searchTextarea) {
+          searchTextarea.focus();
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleGlobalC, true);
+    return () => document.removeEventListener('keydown', handleGlobalC, true);
+  }, [location.pathname]);
 
   return (
     <div ref={notesListRef} className="relative">

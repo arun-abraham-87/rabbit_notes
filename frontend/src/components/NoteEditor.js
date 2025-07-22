@@ -309,13 +309,20 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
 
 
   const handleKeyDown = (e, index) => {
-    if ((showPopup || contextMenu.visible) && e.key === 'Escape') {
+    // General Escape handler to cancel the note editor
+    if (e.key === 'Escape') {
       e.preventDefault();
-      setShowPopup(false);
-      setSelectedTagIndex(-1);
-      setContextMenu({ visible: false, x: 0, y: 0, index: null });
-      if (focusedLineIndex !== null && textareasRef.current[focusedLineIndex]) {
-        textareasRef.current[focusedLineIndex].focus();
+      e.stopPropagation();
+      if (showPopup || contextMenu.visible) {
+        setShowPopup(false);
+        setSelectedTagIndex(-1);
+        setContextMenu({ visible: false, x: 0, y: 0, index: null });
+        if (focusedLineIndex !== null && textareasRef.current[focusedLineIndex]) {
+          textareasRef.current[focusedLineIndex].focus();
+        }
+      } else {
+        // Cancel the note editor popup
+        onCancel();
       }
       return;
     }

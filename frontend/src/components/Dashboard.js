@@ -169,7 +169,11 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [editingEvent, setEditingEvent] = useState(null);
   const [isAddingDeadline, setIsAddingDeadline] = useState(false);
   const [isAddingHoliday, setIsAddingHoliday] = useState(false);
-  const [eventFilter, setEventFilter] = useState('deadline'); // 'all', 'deadline', 'holiday'
+  const [eventFilter, setEventFilter] = useState(() => {
+    // Load default filter from localStorage
+    const savedDefaultFilter = localStorage.getItem('defaultEventFilter');
+    return savedDefaultFilter || 'deadline'; // 'all', 'deadline', 'holiday'
+  });
   const [eventTextFilter, setEventTextFilter] = useState(''); // Text filter for events
   const eventSearchInputRef = useRef(null); // <-- Add ref for search input
   
@@ -738,8 +742,19 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                           ? 'bg-blue-500 text-white' 
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                       }`}
+                      title="Click to filter by all events"
                     >
                       All
+                    </button>
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('defaultEventFilter', 'all');
+                        alert('Default filter set to "All"');
+                      }}
+                      className="px-1 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                      title="Set 'All' as default filter"
+                    >
+                      ⭐
                     </button>
                     <button
                       onClick={() => setEventFilter('deadline')}
@@ -748,8 +763,19 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                           ? 'bg-red-500 text-white' 
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                       }`}
+                      title="Click to filter by deadlines"
                     >
                       Deadline
+                    </button>
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('defaultEventFilter', 'deadline');
+                        alert('Default filter set to "Deadline"');
+                      }}
+                      className="px-1 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                      title="Set 'Deadline' as default filter"
+                    >
+                      ⭐
                     </button>
                     <button
                       onClick={() => setEventFilter('holiday')}
@@ -758,8 +784,19 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                           ? 'bg-green-500 text-white' 
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                       }`}
+                      title="Click to filter by holidays"
                     >
                       Holiday
+                    </button>
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('defaultEventFilter', 'holiday');
+                        alert('Default filter set to "Holiday"');
+                      }}
+                      className="px-1 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                      title="Set 'Holiday' as default filter"
+                    >
+                      ⭐
                     </button>
                     
                     {/* Text Filter Input with Clear Button */}

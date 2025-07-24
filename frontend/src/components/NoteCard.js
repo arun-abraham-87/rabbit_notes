@@ -12,7 +12,7 @@ import NoteCardContent from './NoteCardContent';
 import NoteCardInlineEditor from './NoteCardInlineEditor';
 import NoteCardFooter from './NoteCardFooter';
 import NoteCardSuperEditBanner from './NoteCardSuperEditBanner';
-import NoteCardSuperEditButton from './NoteCardSuperEditButton';
+
 import NoteCardLinkedNotes from './NoteCardLinkedNotes';
 
 const NoteCard = ({
@@ -85,26 +85,7 @@ const NoteCard = ({
     console.log(`Note ${note.id} is focused, index: ${noteIndex}, focusedNoteIndex: ${focusedNoteIndex}`);
   }
 
-  const handleSuperEdit = () => {
-    // Find the first non-empty line in the note
-    const lines = note.content.split('\n');
-    const firstNonEmptyLineIndex = lines.findIndex(line => line.trim() !== '');
-    
-    if (firstNonEmptyLineIndex !== -1) {
-      const trimmedLine = lines[firstNonEmptyLineIndex].trim();
-      setHighlightedLineIndex(firstNonEmptyLineIndex);
-      setHighlightedLineText(trimmedLine);
-      setLastEditedLineIndex(-1); // Reset the last edited line index
-      // Enter super edit mode without changing search query
-      setIsSuperEditMode(true);
-      
-      // Scroll to the note
-      const noteElement = document.querySelector(`[data-note-id="${note.id}"]`);
-      if (noteElement) {
-        noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-  };
+
 
   // Handle keyboard events in super edit mode
   useEffect(() => {
@@ -911,10 +892,7 @@ const NoteCard = ({
           updateNote={updateNote}
           focusMode={focusMode}
         />
-        <NoteCardSuperEditButton
-          isSuperEditMode={isSuperEditMode}
-          onSuperEdit={handleSuperEdit}
-        />
+
         <NoteCardLinkedNotes
           note={note}
           allNotes={allNotes}

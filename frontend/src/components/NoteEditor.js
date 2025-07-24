@@ -35,7 +35,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const popupRef = useRef(null);
   const [showTextSelection, setShowTextSelection] = useState(false);
-  
+
   // Vim-like mode system
   const [mode, setMode] = useState('view'); // 'view' or 'edit'
   const [cursorLine, setCursorLine] = useState(0); // Current line in view mode
@@ -365,11 +365,11 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       e.preventDefault();
       e.stopPropagation();
       if (showPopup || contextMenu.visible) {
-        setShowPopup(false);
-        setSelectedTagIndex(-1);
-        setContextMenu({ visible: false, x: 0, y: 0, index: null });
-        if (focusedLineIndex !== null && textareasRef.current[focusedLineIndex]) {
-          textareasRef.current[focusedLineIndex].focus();
+      setShowPopup(false);
+      setSelectedTagIndex(-1);
+      setContextMenu({ visible: false, x: 0, y: 0, index: null });
+      if (focusedLineIndex !== null && textareasRef.current[focusedLineIndex]) {
+        textareasRef.current[focusedLineIndex].focus();
         }
       } else if (mode === 'edit') {
         // Switch to view mode
@@ -590,25 +590,25 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
         return;
       }
-    }
+      }
 
-    // Duplicate line
+      // Duplicate line
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
-      e.preventDefault();
+        e.preventDefault();
       const newLines = [...lines];
-      newLines.splice(index + 1, 0, {
-        id: `line-${Date.now()}`,
-        text: newLines[index].text,
-        isTitle: false,
-      });
-      setLines(newLines);
-      setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
-    }
+        newLines.splice(index + 1, 0, {
+          id: `line-${Date.now()}`,
+          text: newLines[index].text,
+          isTitle: false,
+        });
+        setLines(newLines);
+        setTimeout(() => textareasRef.current[index + 1]?.focus(), 0);
+      }
 
-    // Mark as title with Cmd+Option+T
-    if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
-      e.preventDefault();
-      handleMarkAsTitle(index);
+      // Mark as title with Cmd+Option+T
+      if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
+        e.preventDefault();
+        handleMarkAsTitle(index);
     }
   };
 
@@ -1676,9 +1676,9 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                     <span className="text-gray-400 text-xs mr-2">☰</span>
                     <div className="flex-1 text-sm text-gray-700 font-mono bg-gray-100 px-2 py-1 rounded">
                       {line.text}
-                    </div>
-                  </div>
-                ))}
+              </div>
+            </div>
+          ))}
               </div>
             </>
           )}

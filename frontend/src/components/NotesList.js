@@ -1091,7 +1091,7 @@ const NotesList = ({
     setVimGPressed(false);
   }, [showLinkPopupRef, showPastePopup, isModalOpen, isPopupVisible, linkPopupVisible, popupNoteText, rawNote, vimGPressed, vimNumberBuffer, safeNotes]);
 
-useEffect(() => {
+  useEffect(() => {
   if (location.pathname !== '/notes') return;
   // Disable Vim keydown when NoteActionPopup is open
   if (showNoteActionPopup.visible) return;
@@ -1471,13 +1471,13 @@ useEffect(() => {
         setPopupNoteText={setPopupNoteText}
       />
 
-      <LinkNotesModal
-        visible={linkPopupVisible}
-        notes={allNotes}
-        linkingNoteId={linkingNoteId}
-        searchTerm={linkSearchTerm}
-        onSearchTermChange={setLinkSearchTerm}
-        onLink={(fromId, toId) => {
+        <LinkNotesModal
+          visible={linkPopupVisible}
+          notes={allNotes}
+          linkingNoteId={linkingNoteId}
+          searchTerm={linkSearchTerm}
+          onSearchTermChange={setLinkSearchTerm}
+          onLink={(fromId, toId) => {
             const source = allNotes.find(n => n.id === fromId) || allNotes.find(n => n.id === fromId);
             const target = allNotes.find(n => n.id === toId) || allNotes.find(n => n.id === toId);
             const addTag = (content, id) => {
@@ -1492,12 +1492,12 @@ useEffect(() => {
             setLinkingNoteId(null);
             setLinkSearchTerm('');
           }}
-        onCancel={() => {
+          onCancel={() => {
             setLinkPopupVisible(false);
             setLinkingNoteId(null);
             setLinkSearchTerm('');
           }}
-      />
+        />
 
       {showEndDatePickerForNoteId && (
         <EndDatePickerModal

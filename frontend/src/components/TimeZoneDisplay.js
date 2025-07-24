@@ -203,7 +203,7 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     // Conditional background: gradient at night
     const cardBgClasses = isDay
       ? 'bg-gradient-to-br from-yellow-100 via-white to-blue-100 text-gray-700'
-      : 'bg-gradient-to-br from-blue-900 via-black to-blue-800 text-white';
+      : 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700 text-white';
 
     // Compute offset relative to base timezone
     const baseLabel = baseTimezone.split('/').pop().replace('_', ' ');
@@ -212,8 +212,8 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     // Determine if this zone's date is before/after base timezone date
     const zoneYMD = formatYMD(now, timeZone);
     const baseYMD = formatYMD(now, baseTimezone);
-    let dayLabel = 'Same Day';
-    let relativeDayText = 'today';
+    let dayLabel ='Today';
+    let relativeDayText = 'Today';
     if (zoneYMD < baseYMD) {
       dayLabel = 'Previous Day';
       relativeDayText = 'yesterday';
@@ -244,24 +244,26 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
           <span className={animation}>{icon}</span>
         </div>
 
+        <div className="text-xs text-gray-500">
+        <span className="block italic mb-1">{enhancedRelativeDayText}</span>
+        </div>
+
         <div className={`text-lg font-semibold ${color} whitespace-nowrap`}>
           {timeStr} {ampm}
         </div>
 
         <div className="text-xs text-gray-500">
-          <span className="block italic mb-1">{dayLabel}</span>
           {formattedDate}
+          
+        </div>
+        <div className="text-xs text-gray-500">
           {diff && (
             <span className="inline-block mt-0 text-sm text-gray-400 whitespace-nowrap">
               {diff}
             </span>
           )}
-        </div>
-        
-        {/* Add relative day text in small font */}
-        <div className="text-xs text-gray-400 mt-1 text-center">
-          {enhancedRelativeDayText}
-        </div>
+        </div> 
+  
       </div>
     );
   };

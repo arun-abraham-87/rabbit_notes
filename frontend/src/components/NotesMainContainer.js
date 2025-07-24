@@ -36,6 +36,7 @@ const NotesMainContainer = ({
     const [excludeBookmarks, setExcludeBookmarks] = useState(true); // Default to true to exclude bookmarks
     const [excludeExpenses, setExcludeExpenses] = useState(true); // Default to true to exclude expenses
     const [excludeSensitive, setExcludeSensitive] = useState(true); // Default to true to exclude sensitive notes
+    const [excludeTrackers, setExcludeTrackers] = useState(true); // Default to true to exclude tracker notes
     const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
     const [resetFilters, setResetFilters] = useState(false);
@@ -407,11 +408,15 @@ const NotesMainContainer = ({
             if (excludeSensitive && note.content && note.content.includes('meta::sensitive::')) {
                 return false;
             }
+            // Exclude tracker notes if the filter is enabled
+            if (excludeTrackers && note.content && note.content.includes('meta::tracker')) {
+                return false;
+            }
             return (!searchQuery && isSameAsTodaysDate(note.created_datetime)) || searchInNote(note, searchQuery);
         });
         setTotals({ totals: filtered.length });
         return filtered;
-    }, [allNotes, searchQuery, excludeEventNotes, excludeBackupNotes, excludeWatchEvents, excludeBookmarks, excludeExpenses, excludeSensitive]);
+    }, [allNotes, searchQuery, excludeEventNotes, excludeBackupNotes, excludeWatchEvents, excludeBookmarks, excludeExpenses, excludeSensitive, excludeTrackers]);
 
     const handleTagClick = (tag) => {
         setLocalSearchQuery(tag);
@@ -552,6 +557,7 @@ const NotesMainContainer = ({
                             onExcludeBookmarksChange={setExcludeBookmarks}
                             onExcludeExpensesChange={setExcludeExpenses}
                             onExcludeSensitiveChange={setExcludeSensitive}
+                            onExcludeTrackersChange={setExcludeTrackers}
                             resetFilters={resetFilters}
                         />
                         <button

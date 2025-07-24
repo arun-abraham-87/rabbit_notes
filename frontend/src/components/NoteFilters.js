@@ -17,6 +17,7 @@ const NoteFilters = ({
   onExcludeBookmarksChange,
   onExcludeExpensesChange,
   onExcludeSensitiveChange,
+  onExcludeTrackersChange,
   resetFilters = false
 }) => {
   const [showTodoButtons, setShowTodoButtons] = useState(false);
@@ -31,6 +32,7 @@ const NoteFilters = ({
   const [excludeBookmarks, setExcludeBookmarks] = useState(true); // Default to true to exclude bookmarks
   const [excludeExpenses, setExcludeExpenses] = useState(true); // Default to true to exclude expenses
   const [excludeSensitive, setExcludeSensitive] = useState(true); // Default to true to exclude sensitive notes
+  const [excludeTrackers, setExcludeTrackers] = useState(true); // Default to true to exclude tracker notes
   const [showDeadlinePassedFilter, setShowDeadlinePassedFilter] = useState(false);
 
   // Only set the initial state of checkboxes
@@ -94,6 +96,12 @@ const NoteFilters = ({
       onExcludeSensitiveChange(excludeSensitive);
     }
   }, [excludeSensitive, onExcludeSensitiveChange]);
+
+  useEffect(() => {
+    if (onExcludeTrackersChange) {
+      onExcludeTrackersChange(excludeTrackers);
+    }
+  }, [excludeTrackers, onExcludeTrackersChange]);
 
   // Reset all filters when resetFilters prop is true
   useEffect(() => {
@@ -355,6 +363,10 @@ const NoteFilters = ({
     setExcludeSensitive(checked);
   };
 
+  const handleExcludeTrackersChange = (checked) => {
+    setExcludeTrackers(checked);
+  };
+
   // Calculate sensitive notes count
   const sensitiveNotesCount = allNotes.filter(note => 
     note.content && note.content.includes('meta::sensitive::')
@@ -371,10 +383,11 @@ const NoteFilters = ({
     setExcludeMeetings(false);
     setExcludeEventNotes(false); // Clear all checkboxes
     setExcludeBackupNotes(false); // Clear all checkboxes
-    setExcludeWatchEvents(false); // Clear watch events checkbox
-    setExcludeBookmarks(false); // Clear bookmarks checkbox
-    setExcludeExpenses(false); // Clear expenses checkbox
-    setExcludeSensitive(false); // Clear sensitive checkbox
+          setExcludeWatchEvents(false); // Clear watch events checkbox
+      setExcludeBookmarks(false); // Clear bookmarks checkbox
+      setExcludeExpenses(false); // Clear expenses checkbox
+      setExcludeSensitive(false); // Clear sensitive checkbox
+      setExcludeTrackers(false); // Clear tracker checkbox
     setLines([{ id: 'line-0', text: '', isTitle: false }]);
     setSearchQuery('');
   };
@@ -623,6 +636,15 @@ const NoteFilters = ({
               {sensitiveNotesCount} hidden
             </span>
           )}
+        </label>
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input
+            type="checkbox"
+            checked={excludeTrackers}
+            onChange={(e) => handleExcludeTrackersChange(e.target.checked)}
+            className="form-checkbox h-3 w-3 text-purple-600"
+          />
+          Exclude Trackers
         </label>
       </div>
     </div>

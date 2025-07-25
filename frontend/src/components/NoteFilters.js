@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { searchInNote } from '../utils/NotesUtils';
+import { isSameAsTodaysDate } from '../utils/DateUtils';
 
 const NoteFilters = ({
   setLines,
@@ -367,9 +369,52 @@ const NoteFilters = ({
     setExcludeTrackers(checked);
   };
 
-  // Calculate sensitive notes count
-  const sensitiveNotesCount = allNotes.filter(note => 
+  // Helper function to filter notes based on search query
+  const getNotesMatchingSearch = () => {
+    if (!searchQuery) return allNotes;
+    
+    return allNotes.filter(note => {
+      // Check if note matches search criteria
+      return (!searchQuery && isSameAsTodaysDate(note.created_datetime)) || searchInNote(note, searchQuery);
+    });
+  };
+
+  // Get notes that match the current search query
+  const notesMatchingSearch = getNotesMatchingSearch();
+
+  // Calculate sensitive notes count (only from notes matching search)
+  const sensitiveNotesCount = notesMatchingSearch.filter(note => 
     note.content && note.content.includes('meta::sensitive::')
+  ).length;
+
+  // Calculate tracker notes count (only from notes matching search)
+  const trackerNotesCount = notesMatchingSearch.filter(note => 
+    note.content && note.content.includes('meta::tracker')
+  ).length;
+
+  // Calculate event notes count (only from notes matching search)
+  const eventNotesCount = notesMatchingSearch.filter(note => 
+    note.content && note.content.includes('meta::event::')
+  ).length;
+
+  // Calculate backup notes count (only from notes matching search)
+  const backupNotesCount = notesMatchingSearch.filter(note => 
+    note.content && note.content.includes('meta::notes_backup_date')
+  ).length;
+
+  // Calculate watch events count (only from notes matching search)
+  const watchEventsCount = notesMatchingSearch.filter(note => 
+    note.content && note.content.includes('meta::watch')
+  ).length;
+
+  // Calculate bookmarks count (only from notes matching search)
+  const bookmarksCount = notesMatchingSearch.filter(note => 
+    note.content && (note.content.includes('meta::bookmark') || note.content.includes('meta::web_bookmark'))
+  ).length;
+
+  // Calculate expenses count (only from notes matching search)
+  const expensesCount = notesMatchingSearch.filter(note => 
+    note.content && note.content.includes('meta::expense')
   ).length;
 
   const handleClear = () => {
@@ -586,6 +631,11 @@ const NoteFilters = ({
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Event Notes
+          {excludeEventNotes && eventNotesCount > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+              {eventNotesCount} hidden
+            </span>
+          )}
         </label>
         <label className="flex items-center gap-2 text-xs text-gray-600">
           <input
@@ -595,6 +645,11 @@ const NoteFilters = ({
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Backup
+          {excludeBackupNotes && backupNotesCount > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+              {backupNotesCount} hidden
+            </span>
+          )}
         </label>
         <label className="flex items-center gap-2 text-xs text-gray-600">
           <input
@@ -604,6 +659,11 @@ const NoteFilters = ({
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Watch Events
+          {excludeWatchEvents && watchEventsCount > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+              {watchEventsCount} hidden
+            </span>
+          )}
         </label>
         <label className="flex items-center gap-2 text-xs text-gray-600">
           <input
@@ -613,6 +673,11 @@ const NoteFilters = ({
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Bookmarks
+          {excludeBookmarks && bookmarksCount > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+              {bookmarksCount} hidden
+            </span>
+          )}
         </label>
         <label className="flex items-center gap-2 text-xs text-gray-600">
           <input
@@ -622,6 +687,11 @@ const NoteFilters = ({
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Expenses
+          {excludeExpenses && expensesCount > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+              {expensesCount} hidden
+            </span>
+          )}
         </label>
         <label className="flex items-center gap-2 text-xs text-gray-600">
           <input
@@ -645,6 +715,11 @@ const NoteFilters = ({
             className="form-checkbox h-3 w-3 text-purple-600"
           />
           Exclude Trackers
+          {excludeTrackers && trackerNotesCount > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+              {trackerNotesCount} hidden
+            </span>
+          )}
         </label>
       </div>
     </div>

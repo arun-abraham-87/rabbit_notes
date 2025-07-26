@@ -664,18 +664,23 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               .filter(line => line.length > 0 && !line.startsWith('meta::'));
             const hasMoreContent = contentLines.length > 2;
 
-            return (
-              <div
-                key={note.id}
-                data-reminder-id={note.id}
-                className={`bg-amber-100 border shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200 ${
-                  isFocused 
-                    ? 'border-blue-500 ring-2 ring-blue-300 bg-amber-50 shadow-xl' 
-                    : 'border-amber-200'
-                }`}
-                onMouseEnter={() => setHoveredNote(note.id)}
-                onMouseLeave={() => setHoveredNote(null)}
-              >
+                          return (
+                <div
+                  key={note.id}
+                  data-reminder-id={note.id}
+                  className={`bg-amber-100 border shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200 ${
+                    isFocused 
+                      ? 'border-blue-500 ring-2 ring-blue-300 bg-amber-50 shadow-xl' 
+                      : 'border-amber-200'
+                  }`}
+                  onMouseEnter={() => setHoveredNote(note.id)}
+                  onMouseLeave={() => setHoveredNote(null)}
+                  onClick={() => {
+                    if (isRemindersOnlyMode) {
+                      setFocusedReminderIndex(index);
+                    }
+                  }}
+                >
                 <div className="px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -782,6 +787,11 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       ? 'border-blue-500 ring-2 ring-blue-300 bg-gray-100 shadow-xl' 
                       : 'border-gray-200'
                   }`}
+                  onClick={() => {
+                    if (isRemindersOnlyMode) {
+                      setFocusedReminderIndex(reminderObjs.length + index);
+                    }
+                  }}
                 >
                   <div className="px-6 py-4">
                     <div className="flex items-center justify-between">

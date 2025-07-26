@@ -152,27 +152,9 @@ export default function CountdownCard({ title, date, useThisYear }) {
       </div>
       <div className="text-gray-700 text-center">
         {isPast
-          ? `${displayText} since ${displayDate.toLocaleDateString('en-GB')}`
-          : `${displayText} until ${displayDate.toLocaleDateString('en-GB')}`}
+          ? `since ${displayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+          : `until ${displayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`}
       </div>
-      <div className="text-xs text-gray-500 text-center mt-1">
-        {Math.abs(totalDays)} days
-      </div>
-      <div className="text-xs text-gray-500 mt-1">{getAgeInStringFmt(displayDate)}</div>
-      {useThisYear && (
-        <div className="mt-2 text-xs text-gray-500 text-center">
-          <div>
-            <span className="font-semibold">Original:</span> {originalIsPast ? `${getTimeUnitValue(originalDiff, displayMode)} since ${date.toLocaleDateString('en-GB')}` : `${getTimeUnitValue(originalDiff, displayMode)} until ${date.toLocaleDateString('en-GB')}`}
-          </div>
-        </div>
-      )}
-      {!useThisYear && (
-        <div className="mt-2 text-xs text-gray-500 text-center">
-          <div>
-            <span className="font-semibold">This Year:</span> {thisYearIsPast ? `${getTimeUnitValue(thisYearDiff, displayMode)} since ${thisYearDate.toLocaleDateString('en-GB')}` : `${getTimeUnitValue(thisYearDiff, displayMode)} until ${thisYearDate.toLocaleDateString('en-GB')}`}
-          </div>
-        </div>
-      )}
     </div>
   );
 } 

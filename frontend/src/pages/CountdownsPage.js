@@ -40,55 +40,151 @@ function groupEventsByMonth(events) {
   }));
 }
 
-function filterFutureGroups(grouped, showPast) {
+function groupEventsByDaysRemaining(events) {
+  const groups = {};
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Zero out time for accurate day calculation
+  
+  events.forEach(event => {
+    const eventDate = new Date(event.date);
+    eventDate.setHours(0, 0, 0, 0);
+    
+    const daysRemaining = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+    
+    let dayKey;
+    if (daysRemaining === 0) {
+      dayKey = "Today";
+    } else if (daysRemaining === 1) {
+      dayKey = "1 day to event";
+    } else if (daysRemaining < 0) {
+      dayKey = `${Math.abs(daysRemaining)} days ago`;
+    } else {
+      dayKey = `${daysRemaining} days to event`;
+    }
+    
+    if (!groups[dayKey]) groups[dayKey] = [];
+    groups[dayKey].push(event);
+  });
+  
+  // Sort by days remaining (negative numbers first, then 0, then positive)
+  const sortedKeys = Object.keys(groups).sort((a, b) => {
+    const getDaysFromKey = (key) => {
+      if (key === "Today") return 0;
+      if (key === "1 day to event") return 1;
+      if (key.includes("days ago")) {
+        const days = parseInt(key.match(/(\d+) days ago/)[1]);
+        return -days;
+      }
+      const days = parseInt(key.match(/(\d+) days to event/)[1]);
+      return days;
+    };
+    
+    return getDaysFromKey(a) - getDaysFromKey(b);
+  });
+  
+  return sortedKeys.map(dayKey => ({
+    key: dayKey,
+    events: groups[dayKey].sort((a, b) => a.title.localeCompare(b.title))
+  }));
+}
+
+function filterFutureGroups(grouped, showPast, groupByDay = false) {
   if (showPast) return grouped;
   const now = new Date();
-  const currentMonth = now.toLocaleString('default', { month: 'long' });
-  const currentDay = now.getDate();
-  let foundCurrentOrFutureMonth = false;
-  return grouped
-    .filter(({ key }) => {
-      if (key === currentMonth) {
-        foundCurrentOrFutureMonth = true;
-        return true;
-      }
-      if (foundCurrentOrFutureMonth) return true;
-      // Only show months after current month
-      const monthOrder = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
-      ];
-      return monthOrder.indexOf(key) > monthOrder.indexOf(currentMonth);
-    })
-    .map(group => {
-      if (group.key === currentMonth) {
-        return {
-          ...group,
-          events: group.events.filter(ev => ev.date.getDate() >= currentDay)
-        };
-      }
-      return group;
-    })
-    .filter(group => group.events.length > 0);
+  
+  if (groupByDay) {
+    // For days remaining grouping, filter out past events unless showPast is true
+    return grouped
+      .filter(({ key }) => {
+        if (showPast) return true;
+        // Keep "Today", "1 day to event", and positive days
+        return !key.includes("days ago");
+      })
+      .filter(group => group.events.length > 0);
+  } else {
+    // Original month-based filtering
+    const currentMonth = now.toLocaleString('default', { month: 'long' });
+    const currentDay = now.getDate();
+    let foundCurrentOrFutureMonth = false;
+    return grouped
+      .filter(({ key }) => {
+        if (key === currentMonth) {
+          foundCurrentOrFutureMonth = true;
+          return true;
+        }
+        if (foundCurrentOrFutureMonth) return true;
+        // Only show months after current month
+        const monthOrder = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        return monthOrder.indexOf(key) > monthOrder.indexOf(currentMonth);
+      })
+      .map(group => {
+        if (group.key === currentMonth) {
+          return {
+            ...group,
+            events: group.events.filter(ev => ev.date.getDate() >= currentDay)
+          };
+        }
+        return group;
+      })
+      .filter(group => group.events.length > 0);
+  }
 }
 
 export default function CountdownsPage({ notes }) {
-  const [useThisYear, setUseThisYear] = useState(false);
+  const [useThisYear, setUseThisYear] = useState(true);
   const [showPast, setShowPast] = useState(false);
   const [excludePurchases, setExcludePurchases] = useState(true);
+  const [groupByDay, setGroupByDay] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const events = parseEventNotes(notes, excludePurchases);
-  const grouped = groupEventsByMonth(events);
-  const filteredGrouped = filterFutureGroups(grouped, showPast);
+  
+  // Filter events based on search query
+  const filteredEvents = searchQuery.trim() 
+    ? events.filter(event => {
+        const searchWords = searchQuery.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+        const eventTitle = event.title.toLowerCase();
+        return searchWords.every(word => eventTitle.includes(word));
+      })
+    : events;
+  
+  const grouped = groupByDay ? groupEventsByDaysRemaining(filteredEvents) : groupEventsByMonth(filteredEvents);
+  const filteredGrouped = filterFutureGroups(grouped, showPast, groupByDay);
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
       <h1 className="text-2xl font-bold mb-6">Countdown</h1>
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <input
+            type="text"
+            placeholder="Search events..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          {searchQuery.trim() && (
+            <span className="text-sm text-gray-600">
+              {filteredEvents.length} of {events.length} events
+            </span>
+          )}
+        </div>
+      </div>
       <div className="flex gap-4 mb-8">
         <button
           className={`px-4 py-2 rounded text-sm font-medium transition-colors ${useThisYear ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
           onClick={() => setUseThisYear(v => !v)}
         >
           {useThisYear ? 'Show Original Dates' : 'Use This Year Date for All'}
+        </button>
+        <button
+          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${groupByDay ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+          onClick={() => setGroupByDay(v => !v)}
+        >
+          {groupByDay ? 'Group by Month' : 'Group by Days Remaining'}
         </button>
         <button
           className={`px-4 py-2 rounded text-sm font-medium transition-colors ${showPast ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}

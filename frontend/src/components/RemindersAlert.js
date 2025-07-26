@@ -176,14 +176,14 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         setFocusedReminderIndex(prev => 
           prev < totalReminders - 1 ? prev + 1 : 0
         );
-      } else if (e.key === 'm' && focusedReminderIndex >= 0) {
+      } else if (e.key === 's' && focusedReminderIndex >= 0) {
         e.preventDefault();
         e.stopPropagation();
-        // Handle 'm' key - mark the focused reminder as done
+        // Handle 's' key - snooze the focused reminder
         const allReminders = [...reminderObjs, ...upcomingReminders];
         const focusedReminder = allReminders[focusedReminderIndex];
         if (focusedReminder) {
-          // Mark the focused reminder as done and move focus to next item
+          // Snooze the focused reminder and move focus to next item
           handleDismissAndMoveFocus(focusedReminder.note);
         }
       } else if (e.key === 'Enter' && focusedReminderIndex >= 0) {

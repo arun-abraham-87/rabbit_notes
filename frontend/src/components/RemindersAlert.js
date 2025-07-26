@@ -514,6 +514,14 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     }
   };
 
+  // Calculate relative position for vim navigation
+  const getRelativePosition = (currentIndex, focusedIndex, totalItems) => {
+    if (focusedIndex === -1) return null;
+    const relativePos = Math.abs(currentIndex - focusedIndex);
+    if (relativePos === 0) return '0';
+    return `${relativePos}`;
+  };
+
   if (reminderObjs.length === 0 && upcomingReminders.length === 0) return null;
 
   return (
@@ -558,6 +566,14 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                 <div className="px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
+                      {/* Relative position indicator for vim navigation */}
+                      {isRemindersOnlyMode && (
+                        <div className="flex-shrink-0">
+                          <div className="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded min-w-[2rem] text-center">
+                            {getRelativePosition(index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}
+                          </div>
+                        </div>
+                      )}
                       {hasMoreContent && (
                         <button
                           onClick={() => toggleDetails(note.id)}
@@ -662,6 +678,14 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   <div className="px-6 py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
+                        {/* Relative position indicator for vim navigation */}
+                        {isRemindersOnlyMode && (
+                          <div className="flex-shrink-0">
+                            <div className="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded min-w-[2rem] text-center">
+                              {getRelativePosition(reminderObjs.length + index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}
+                            </div>
+                          </div>
+                        )}
                         {hasMoreContent && (
                           <button
                             onClick={() => toggleDetails(note.id)}

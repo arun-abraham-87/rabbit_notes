@@ -23,6 +23,10 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const [focusedReminderIndex, setFocusedReminderIndex] = useState(-1);
   const [isWaitingForJump, setIsWaitingForJump] = useState(false);
   const [isWaitingForDoubleG, setIsWaitingForDoubleG] = useState(false);
+  const [showRelativeNumbers, setShowRelativeNumbers] = useState(() => {
+    const saved = localStorage.getItem('remindersRelativeNumbers');
+    return saved ? JSON.parse(saved) : true;
+  });
   const numberBufferRef = useRef('');
 
   useEffect(() => {
@@ -524,6 +528,12 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   };
 
   // Calculate time since reminder became active (overdue time)
+  const toggleRelativeNumbers = () => {
+    const newValue = !showRelativeNumbers;
+    setShowRelativeNumbers(newValue);
+    localStorage.setItem('remindersRelativeNumbers', JSON.stringify(newValue));
+  };
+
   const getTimeSinceActive = (note) => {
     const lastReview = getLastReviewObject(note);
     if (!lastReview) {
@@ -599,6 +609,27 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
           </div>
         </div>
       )}
+
+      {/* Relative numbers toggle */}
+      {isRemindersOnlyMode && (
+        <div className="fixed top-24 left-4 bg-white border border-gray-300 rounded-lg shadow-lg z-50 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">Numbers:</span>
+            <button
+              onClick={toggleRelativeNumbers}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                showRelativeNumbers ? 'bg-blue-600' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                  showRelativeNumbers ? 'translate-x-5' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Active Reminders Section */}
       {reminderObjs.length > 0 && (
@@ -630,7 +661,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {/* Relative position indicator for vim navigation */}
-                      {isRemindersOnlyMode && (
+                      {isRemindersOnlyMode && showRelativeNumbers && (
                         <div className="flex-shrink-0">
                           <div className="text-xs font-mono font-bold text-gray-600 px-2 py-1 min-w-[2rem] text-center">
                             {getRelativePosition(index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}
@@ -737,7 +768,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {/* Relative position indicator for vim navigation */}
-                        {isRemindersOnlyMode && (
+                        {isRemindersOnlyMode && showRelativeNumbers && (
                           <div className="flex-shrink-0">
                             <div className="text-xs font-mono font-bold text-gray-600 px-2 py-1 min-w-[2rem] text-center">
                               {getRelativePosition(reminderObjs.length + index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}

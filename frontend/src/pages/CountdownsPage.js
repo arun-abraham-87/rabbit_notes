@@ -9,7 +9,26 @@ function parseEventNotes(notes, excludePurchases = true) {
       const lines = note.content.split('\n');
       const title = lines.find(l => l.startsWith('event_description:'))?.replace('event_description:', '').trim() || 'Event';
       const dateStr = lines.find(l => l.startsWith('event_date:'))?.replace('event_date:', '').trim();
-      const date = dateStr ? new Date(dateStr) : null;
+      let date = null;
+      if (dateStr) {
+        // Handle different date formats
+        if (dateStr.includes('-')) {
+          // Format: YYYY-MM-DD
+          date = new Date(dateStr);
+        } else if (dateStr.includes('/')) {
+          // Format: MM/DD/YYYY or DD/MM/YYYY
+          date = new Date(dateStr);
+        } else {
+          // Try parsing as is
+          date = new Date(dateStr);
+        }
+        
+        // Validate the date
+        if (isNaN(date.getTime())) {
+          console.warn('Invalid date format:', dateStr);
+          date = null;
+        }
+      }
       
       // Extract tags to check for purchase
       const eventTagsLine = lines.find(line => line.startsWith('event_tags:'));
@@ -49,7 +68,7 @@ function groupEventsByDaysRemaining(events) {
     const eventDate = new Date(event.date);
     eventDate.setHours(0, 0, 0, 0);
     
-    const daysRemaining = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+    const daysRemaining = Math.round((eventDate - now) / (1000 * 60 * 60 * 24));
     
     let dayKey;
     if (daysRemaining === 0) {
@@ -159,13 +178,24 @@ export default function CountdownsPage({ notes }) {
       <h1 className="text-2xl font-bold mb-6">Countdown</h1>
       <div className="mb-6">
         <div className="flex items-center gap-4">
-          <input
-            type="text"
-            placeholder="Search events..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full max-w-md px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {searchQuery.trim() && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           {searchQuery.trim() && (
             <span className="text-sm text-gray-600">
               {filteredEvents.length} of {events.length} events

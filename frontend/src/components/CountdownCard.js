@@ -7,7 +7,18 @@ function daysDiff(targetDate) {
   now.setHours(0, 0, 0, 0);
   const date = new Date(targetDate);
   date.setHours(0, 0, 0, 0);
-  return Math.ceil((date - now) / (1000 * 60 * 60 * 24));
+  const diff = Math.round((date - now) / (1000 * 60 * 60 * 24));
+  
+  // Debug logging for date calculations
+  console.log('daysDiff Debug:', {
+    targetDate,
+    date,
+    now,
+    diff,
+    rawDiff: (date - now) / (1000 * 60 * 60 * 24)
+  });
+  
+  return diff;
 }
 
 function weeksDiff(targetDate) {
@@ -16,7 +27,7 @@ function weeksDiff(targetDate) {
   now.setHours(0, 0, 0, 0);
   const date = new Date(targetDate);
   date.setHours(0, 0, 0, 0);
-  return Math.ceil((date - now) / (1000 * 60 * 60 * 24 * 7));
+  return Math.round((date - now) / (1000 * 60 * 60 * 24 * 7));
 }
 
 function monthsDiff(targetDate) {
@@ -25,7 +36,7 @@ function monthsDiff(targetDate) {
   now.setHours(0, 0, 0, 0);
   const date = new Date(targetDate);
   date.setHours(0, 0, 0, 0);
-  return Math.ceil((date - now) / (1000 * 60 * 60 * 24 * 30.44)); // Average days per month
+  return Math.round((date - now) / (1000 * 60 * 60 * 24 * 30.44)); // Average days per month
 }
 
 function yearsDiff(targetDate) {
@@ -34,7 +45,7 @@ function yearsDiff(targetDate) {
   now.setHours(0, 0, 0, 0);
   const date = new Date(targetDate);
   date.setHours(0, 0, 0, 0);
-  return Math.ceil((date - now) / (1000 * 60 * 60 * 24 * 365.25)); // Average days per year
+  return Math.round((date - now) / (1000 * 60 * 60 * 24 * 365.25)); // Average days per year
 }
 
 function getTimeUnitValue(daysDiff, displayMode) {
@@ -62,9 +73,16 @@ function getTimeUnitValue(daysDiff, displayMode) {
 }
 
 function getThisYearDate(date) {
-  const d = new Date(date);
+  const originalDate = new Date(date);
   const now = new Date();
-  return new Date(now.getFullYear(), d.getMonth(), d.getDate());
+  
+  // If the original date is in the future, keep it as is
+  if (originalDate > now) {
+    return originalDate;
+  }
+  
+  // If the original date is in the past, use this year's date
+  return new Date(now.getFullYear(), originalDate.getMonth(), originalDate.getDate());
 }
 
 export default function CountdownCard({ title, date, useThisYear }) {
@@ -93,6 +111,16 @@ export default function CountdownCard({ title, date, useThisYear }) {
 
   const displayDate = useThisYear ? getThisYearDate(date) : date;
   const totalDays = daysDiff(displayDate);
+  
+  // Debug logging
+  console.log('CountdownCard Debug:', {
+    title,
+    originalDate: date,
+    displayDate,
+    useThisYear,
+    totalDays,
+    now: new Date()
+  });
   
   let diff, timeUnit, displayText;
   switch (displayMode) {

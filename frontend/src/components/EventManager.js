@@ -5,6 +5,33 @@ import { getAgeInStringFmt } from '../utils/DateUtils';
 // Add pin icon import
 import { MapPinIcon } from '@heroicons/react/24/outline';
 
+// Helper function to parse and make links clickable
+const parseLinks = (text) => {
+  if (!text) return text;
+  
+  // Regex patterns for different link formats
+  const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  const plainUrlRegex = /(https?:\/\/[^\s]+)/g;
+  
+  // First, replace markdown links
+  let processedText = text.replace(markdownLinkRegex, (match, label, url) => {
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${label}</a>`;
+  });
+  
+  // Then, replace plain URLs
+  processedText = processedText.replace(plainUrlRegex, (match) => {
+    // Skip if this URL is already part of a markdown link
+    if (processedText.includes(`href="${match}"`)) {
+      return match;
+    }
+    
+    const hostname = match.replace(/^https?:\/\//, '').split('/')[0];
+    return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${hostname}</a>`;
+  });
+  
+  return processedText;
+};
+
 const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent, eventFilter = 'all', eventTextFilter = '' }) => {
   const [events, setEvents] = useState(() => {
     try {
@@ -536,7 +563,11 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
               >
                 <div className="text-2xl font-bold text-gray-600">{displayText}</div>
                 <div className="text-sm text-gray-500">until</div>
-                <div className="font-medium text-gray-900 w-full break-words leading-relaxed" style={{ wordBreak: 'break-word', lineHeight: '1.6' }}>{ev.name}</div>
+                <div 
+                  className="font-medium text-gray-900 w-full break-words leading-relaxed" 
+                  style={{ wordBreak: 'break-word', lineHeight: '1.6' }}
+                  dangerouslySetInnerHTML={{ __html: parseLinks(ev.name) }}
+                />
                 <div className="text-sm text-gray-500">on {new Date(ev.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</div>
                 {ev.endDate && (
                   <div className="text-xs text-gray-500 mt-1">to {new Date(ev.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</div>
@@ -591,13 +622,17 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
             const [header, ...bodyLines] = (ev.name || '').split('\n');
             return (
               <div key={ev.id} className="group flex flex-col items-start border border-gray-200 rounded-lg shadow-sm px-4 py-3 min-w-[220px] max-w-xs h-40" style={{ backgroundColor: ev.bgColor || '#ffffff' }}>
-                <div className="font-bold text-gray-900 w-full break-words" style={{ wordBreak: 'break-word' }}>
-                  {header}
-                </div>
+                <div 
+                  className="font-bold text-gray-900 w-full break-words" 
+                  style={{ wordBreak: 'break-word' }}
+                  dangerouslySetInnerHTML={{ __html: parseLinks(header) }}
+                />
                 {bodyLines.length > 0 && (
-                  <div className="text-sm text-gray-700 w-full break-words whitespace-pre-line mt-1" style={{ wordBreak: 'break-word' }}>
-                    {bodyLines.join('\n')}
-                  </div>
+                  <div 
+                    className="text-sm text-gray-700 w-full break-words whitespace-pre-line mt-1" 
+                    style={{ wordBreak: 'break-word' }}
+                    dangerouslySetInnerHTML={{ __html: parseLinks(bodyLines.join('\n')) }}
+                  />
                 )}
                 <div className="flex gap-2 mt-2 self-end opacity-0 group-hover:opacity-100 transition-opacity">
                   {/* Color Options */}
@@ -682,7 +717,11 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                 <div className={`text-sm ${isToday ? 'text-green-700' : (note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500')}`}>
                   {isToday ? '' : (shouldShowAnniversary ? 'anniversary' : 'until')}
                 </div>
-                <div className={`font-medium w-full truncate ${note.bgColor === '#f3e8ff' ? 'text-purple-900' : 'text-gray-900'}`} title={note.description}>{note.description}</div>
+                <div 
+                  className={`font-medium w-full truncate ${note.bgColor === '#f3e8ff' ? 'text-purple-900' : 'text-gray-900'}`} 
+                  title={note.description}
+                  dangerouslySetInnerHTML={{ __html: parseLinks(note.description) }}
+                />
                 <div className={`text-sm ${note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500'}`}>
                   {shouldShowAnniversary ? (
                     (() => {

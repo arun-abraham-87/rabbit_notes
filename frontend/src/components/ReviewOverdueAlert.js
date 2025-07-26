@@ -1095,6 +1095,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                       : index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                   } hover:bg-gray-100`}
                 >
+                  {/* Note Sub-Card */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 shadow-sm">
                   <div className="grid grid-cols-4 gap-4">
                     {/* First Section - Description (50%) */}
                     <div className="col-span-2 flex flex-col">
@@ -1242,6 +1244,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                       </div>
                     </div>
                   )}
+                  </div>
                 </div>
               );
             })}
@@ -1284,6 +1287,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                       index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                     } hover:bg-gray-100`}
                   >
+                    {/* Note Sub-Card */}
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 shadow-sm">
                     <div className="grid grid-cols-4 gap-4">
                       {/* First Section - Description (50%) */}
                       <div className="col-span-2 flex flex-col">
@@ -1449,6 +1454,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                         </div>
                       </div>
                     )}
+                  </div>
                   </div>
                 );
               })}

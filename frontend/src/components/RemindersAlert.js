@@ -186,6 +186,25 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
           // Snooze the focused reminder and move focus to next item
           handleDismissAndMoveFocus(focusedReminder.note);
         }
+      } else if (e.key === 'ArrowRight' && focusedReminderIndex >= 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        // Handle right arrow - open cadence selector on focused reminder
+        const allReminders = [...reminderObjs, ...upcomingReminders];
+        const focusedReminder = allReminders[focusedReminderIndex];
+        if (focusedReminder && showCadenceSelector !== focusedReminder.note.id) {
+          // Open cadence selector for the focused reminder
+          setShowCadenceSelector(focusedReminder.note.id);
+        }
+        return;
+      } else if (e.key === 'ArrowLeft' && focusedReminderIndex >= 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        // Handle left arrow - close cadence selector
+        setShowCadenceSelector(null);
+        return;
       } else if (e.key === 'Enter' && focusedReminderIndex >= 0) {
         e.preventDefault();
         e.stopPropagation();

@@ -105,20 +105,21 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         return;
       }
 
-      // Handle 'j' key for jump navigation
+      // Handle 'j' key for relative movement down
       if (isWaitingForJump && e.key === 'j' && numberBufferRef.current.length > 0) {
         e.preventDefault();
         e.stopPropagation();
-        const targetIndex = parseInt(numberBufferRef.current) - 1; // Convert to 0-based index
-        if (targetIndex >= 0 && targetIndex < totalReminders) {
-          setFocusedReminderIndex(targetIndex);
-        }
+        const steps = parseInt(numberBufferRef.current);
+        setFocusedReminderIndex(prev => {
+          const newIndex = prev + steps;
+          return newIndex < totalReminders ? newIndex : totalReminders - 1;
+        });
         numberBufferRef.current = '';
         setIsWaitingForJump(false);
         return;
       }
 
-      // Handle 'k' key for backward jump navigation
+      // Handle 'k' key for relative movement up
       if (isWaitingForJump && e.key === 'k' && numberBufferRef.current.length > 0) {
         e.preventDefault();
         e.stopPropagation();
@@ -522,6 +523,68 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     return `${relativePos}`;
   };
 
+  // Calculate time since reminder became active (overdue time)
+  const getTimeSinceActive = (note) => {
+    const lastReview = getLastReviewObject(note);
+    if (!lastReview) {
+      console.log('No last review found for note:', note.id);
+      return 'no review history';
+    }
+    
+    // Get the cadence from the note
+    const cadenceMatch = note.content.match(/meta::cadence::([^\n]+)/);
+    if (!cadenceMatch) {
+      console.log('No cadence found for note:', note.id);
+      return 'no cadence set';
+    }
+    
+    const cadence = cadenceMatch[1];
+    const lastReviewDate = new Date(lastReview.date);
+    
+    // Validate the date
+    if (isNaN(lastReviewDate.getTime())) {
+      console.log('Invalid last review date for note:', note.id, lastReview.date);
+      return 'invalid date';
+    }
+    
+    // Calculate when the next review should have been (last review + cadence)
+    const nextReviewDate = new Date(lastReviewDate);
+    const match = cadence.match(/(\d+)([hd])/);
+    if (!match) {
+      console.log('Invalid cadence format for note:', note.id, cadence);
+      return 'invalid cadence';
+    }
+    
+    const [, amount, unit] = match;
+    if (unit === 'h') {
+      nextReviewDate.setHours(nextReviewDate.getHours() + parseInt(amount));
+    } else if (unit === 'd') {
+      nextReviewDate.setDate(nextReviewDate.getDate() + parseInt(amount));
+    }
+    
+    // Calculate how long it's been overdue (current time - when it should have been reviewed)
+    const now = new Date();
+    const overdueMs = now - nextReviewDate;
+    
+    if (overdueMs <= 0) {
+      return 'not due yet';
+    }
+    
+    const days = Math.floor(overdueMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((overdueMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((overdueMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (days > 0) {
+      return `${days}d ${hours}h overdue`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m overdue`;
+    } else if (minutes > 0) {
+      return `${minutes}m overdue`;
+    } else {
+      return 'just overdue';
+    }
+  };
+
   if (reminderObjs.length === 0 && upcomingReminders.length === 0) return null;
 
   return (
@@ -569,7 +632,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       {/* Relative position indicator for vim navigation */}
                       {isRemindersOnlyMode && (
                         <div className="flex-shrink-0">
-                          <div className="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded min-w-[2rem] text-center">
+                          <div className="text-xs font-mono font-bold text-gray-600 px-2 py-1 min-w-[2rem] text-center">
                             {getRelativePosition(index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}
                           </div>
                         </div>
@@ -590,11 +653,6 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       <BellIcon className="h-5 w-5 text-purple-700 bell-vibrate" />
                       <div>
                         {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
-                        {isFocused && (
-                          <div className="mt-1 text-xs text-blue-600 font-medium">
-                            Position: {index + 1} of {reminderObjs.length + upcomingReminders.length}
-                          </div>
-                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -681,7 +739,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                         {/* Relative position indicator for vim navigation */}
                         {isRemindersOnlyMode && (
                           <div className="flex-shrink-0">
-                            <div className="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded min-w-[2rem] text-center">
+                            <div className="text-xs font-mono font-bold text-gray-600 px-2 py-1 min-w-[2rem] text-center">
                               {getRelativePosition(reminderObjs.length + index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}
                             </div>
                           </div>
@@ -703,11 +761,6 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                           <div className="mt-1 text-sm text-gray-500">
                             {formatDate(nextReview)}
                           </div>
-                          {isFocused && (
-                            <div className="mt-1 text-xs text-blue-600 font-medium">
-                              Position: {reminderObjs.length + index + 1} of {reminderObjs.length + upcomingReminders.length}
-                            </div>
-                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

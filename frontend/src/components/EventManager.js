@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 
@@ -59,6 +59,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const modalRef = useRef(null);
   
   // State for pinned events
   const [pinnedEvents, setPinnedEvents] = useState(() => {
@@ -291,7 +292,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         name: '',
         date: selectedDate ? formatDate(selectedDate) : formatDate(new Date()),
         endDate: '',
-        type: 'event',
+        type: 'note',
         bgColor: '#ffffff'
       });
       setIsEditMode(false);
@@ -304,6 +305,11 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     };
   }, [selectedDate]);
 
+  // Debug modal state changes
+  useEffect(() => {
+    console.log('Modal state changed:', { isModalOpen, isEditMode });
+  }, [isModalOpen, isEditMode]);
+
   const handleEventInput = (e) => {
     const { name, value } = e.target;
     setEventForm(prev => ({ ...prev, [name]: value }));
@@ -311,7 +317,19 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
 
   const handleEventSubmit = (e) => {
     e.preventDefault();
-    if (!eventForm.name || (eventForm.type === 'event' && !eventForm.date)) return;
+    
+    console.log('Form submission triggered', { eventForm, isEditMode });
+    
+    // Validation logic - allow empty content for notes
+    if (eventForm.type === 'event') {
+      if (!eventForm.name || !eventForm.date) {
+        console.log('Event validation failed', { name: eventForm.name, date: eventForm.date });
+        return;
+      }
+    }
+    // For notes, allow empty content - just proceed with submission
+    
+    console.log('Validation passed, processing submission');
     
     if (isEditMode && eventForm.id) {
       // Update existing event/note
@@ -324,10 +342,34 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       };
       setEvents(prev => [...prev, newEvent]);
     }
-    // Reset form and close modal
-    setEventForm({ name: '', date: '', endDate: '', type: 'event', bgColor: '#ffffff' });
-    setIsModalOpen(false);
+    
+    // Save to localStorage
+    try {
+      const updatedEvents = isEditMode 
+        ? events.map(ev => ev.id === eventForm.id ? { ...eventForm } : ev)
+        : [...events, { id: Date.now(), ...eventForm }];
+      localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
+    } catch (error) {
+      console.error('Error saving events to localStorage:', error);
+    }
+    
+    console.log('Closing modal');
+    
+    // Reset form and close modal - use a more direct approach
+    setEventForm({ name: '', date: '', endDate: '', type: 'note', bgColor: '#ffffff' });
     setIsEditMode(false);
+    
+    // Force immediate close
+    setIsModalOpen(false);
+    
+    // Double-check after a brief delay
+    setTimeout(() => {
+      console.log('Double-checking modal state');
+      if (isModalOpen) {
+        console.log('Modal still open, forcing close');
+        setIsModalOpen(false);
+      }
+    }, 50);
   };
 
   const handleEditEvent = (event) => {
@@ -371,7 +413,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   };
 
   const handleCloseModal = () => {
-    setEventForm({ name: '', date: '', endDate: '', type: 'event', bgColor: '#ffffff' });
+    setEventForm({ name: '', date: '', endDate: '', type: 'note', bgColor: '#ffffff' });
     setIsModalOpen(false);
     setIsEditMode(false);
     if (onClose) {
@@ -799,7 +841,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
 
       {/* Event Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+        <div ref={modalRef} className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
             <h2 className="text-lg font-semibold mb-4">{isEditMode ? 'Edit Event' : 'Add Note'}</h2>
             <form onSubmit={handleEventSubmit} className="space-y-4">
@@ -830,7 +872,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                     value={eventForm.name}
                     onChange={handleEventInput}
                     className="mt-1 block w-full border border-gray-300 rounded-md p-2 min-h-[80px]"
-                    required
+                    placeholder="Enter note content..."
                   />
                 </div>
               ) : (

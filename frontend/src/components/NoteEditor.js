@@ -8,15 +8,42 @@ import { DevModeInfo } from '../utils/DevUtils';
 
 const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true, initialMode = 'view' }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
+  
+  // Function to separate content from meta tags
+  const separateContentFromMeta = (content) => {
+    const lines = content.split('\n');
+    const contentLines = [];
+    const metaLines = [];
+    
+    for (const line of lines) {
+      if (line.trim().startsWith('meta::')) {
+        metaLines.push(line);
+      } else {
+        contentLines.push(line);
+      }
+    }
+    
+    return { contentLines, metaLines };
+  };
+  
+  const { contentLines, metaLines } = separateContentFromMeta(contentSource);
+  
   const initialLines = contentSource
     ? [
-      ...contentSource.split('\n').map((text, index) => ({
+      // Content lines
+      ...contentLines.map((text, index) => ({
         id: `line-${index}`,
         text,
         isTitle: text.startsWith('##') && text.endsWith('##'),
       })),
-      // Only add extra line if not in add mode
-      ...(!isAddMode ? [{ id: `line-${Date.now()}-extra`, text: '', isTitle: false }] : [])
+      // Add empty line for editing (if not in add mode)
+      ...(!isAddMode ? [{ id: `line-${Date.now()}-editing`, text: '', isTitle: false }] : []),
+      // Meta lines
+      ...metaLines.map((text, index) => ({
+        id: `meta-${index}`,
+        text,
+        isTitle: false,
+      }))
     ]
     : [{ id: 'line-0', text: '', isTitle: false }];
 
@@ -72,6 +99,27 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     }
   }, [mode]);
   
+  // Function to find the best cursor position for edit mode
+  const findBestCursorPosition = () => {
+    // Find the first meta line to determine where content ends
+    const firstMetaIndex = lines.findIndex(line => line.text.trim().startsWith('meta::'));
+    
+    if (firstMetaIndex === -1) {
+      // No meta lines, find the last non-empty line
+      let lastContentIndex = -1;
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (lines[i].text.trim() !== '') {
+          lastContentIndex = i;
+          break;
+        }
+      }
+      return lastContentIndex >= 0 ? lastContentIndex + 1 : 0;
+    }
+    
+    // Return the position before the first meta line
+    return firstMetaIndex;
+  };
+
   // Focus when mode changes
   useEffect(() => {
     if (mode === 'view') {
@@ -82,13 +130,36 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         }, 0);
       }
     } else if (mode === 'edit') {
-      // Focus on the first textarea when in edit mode
+      // Focus on the best position when in edit mode
       setTimeout(() => {
-        if (textareasRef.current[0]) {
-          const textarea = textareasRef.current[0];
-          textarea.focus();
-          textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-        }
+        const bestIndex = findBestCursorPosition();
+        console.log('NoteEditor: Edit mode - best cursor position:', bestIndex, 'lines:', lines.map(l => l.text));
+        
+        // Try multiple times to find the textarea
+        const tryFocus = (attempts = 0) => {
+          console.log('NoteEditor: Attempt', attempts + 1, 'to focus textarea');
+          console.log('NoteEditor: Available textareas:', textareasRef.current.length);
+          
+          if (textareasRef.current[bestIndex]) {
+            const textarea = textareasRef.current[bestIndex];
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            console.log('NoteEditor: Successfully focused textarea at index:', bestIndex);
+          } else if (textareasRef.current[0]) {
+            // Fallback to first textarea if best position not found
+            const textarea = textareasRef.current[0];
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            console.log('NoteEditor: Fallback to first textarea');
+          } else if (attempts < 5) {
+            // Try again after a short delay
+            setTimeout(() => tryFocus(attempts + 1), 50);
+          } else {
+            console.log('NoteEditor: Failed to find any textareas after', attempts + 1, 'attempts');
+          }
+        };
+        
+        tryFocus();
       }, 50);
     }
   }, [mode]);
@@ -196,13 +267,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, index: null });
   const textareasRef = useRef([]);
 
-  useEffect(() => {
-    const last = textareasRef.current[textareasRef.current.length - 1];
-    if (last) {
-      last.focus();
-      last.selectionStart = last.selectionEnd = last.value.length;
-    }
-  }, []);
+  // Removed conflicting useEffect that was focusing the last textarea
 
   // Update lines when search query changes
   useEffect(() => {
@@ -288,12 +353,15 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   );
 
   const handleTextChange = (index, value) => {
+    console.log('NoteEditor: handleTextChange called for index:', index, 'value:', value);
     const updatedLines = [...lines];
     updatedLines[index].text = value;
     setLines(updatedLines);
 
-    // Debounce the search query update
-    debouncedSetSearchQuery(value);
+    // Only update search query for the first line (title/content line)
+    if (index === 0) {
+      debouncedSetSearchQuery(value);
+    }
 
     // Handle tag suggestions
     if (value.trim().length === 0) {
@@ -1532,7 +1600,10 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                   <textarea
                     ref={(el) => (textareasRef.current[originalIndex] = el)}
                     value={line.text}
-                    onFocus={() => setFocusedLineIndex(originalIndex)}
+                    onFocus={() => {
+                      console.log('NoteEditor: Textarea focused at index:', originalIndex);
+                      setFocusedLineIndex(originalIndex);
+                    }}
                     onChange={(e) => {
                       handleTextChange(originalIndex, e.target.value);
                     }}

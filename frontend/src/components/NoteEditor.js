@@ -1251,14 +1251,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         </div>
       )}
       <div className="mb-4 flex justify-end items-center">
-        {!isAddMode && (
-          <button
-            onClick={() => setIsTextMode(!isTextMode)}
-            className="text-xs text-gray-500 hover:text-gray-700 underline"
-          >
-            {isTextMode ? 'Advanced Mode' : 'Text Mode'}
-          </button>
-        )}
+  
         {pendingUrlIndex !== null && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-md w-96 max-h-[90vh] overflow-y-auto">

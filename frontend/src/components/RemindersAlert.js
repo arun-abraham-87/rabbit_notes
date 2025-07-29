@@ -5,15 +5,6 @@ import CadenceSelector from './CadenceSelector';
 import { Alerts } from './Alerts';
 import { findDueReminders, addCurrentDateToLocalStorage, getLastReviewObject, parseReviewCadenceMeta } from '../utils/CadenceHelpUtils';
 
-const QUICK_CADENCES = [
-  { label: '2h', value: '2h' },
-  { label: '4h', value: '4h' },
-  { label: '12h', value: '12h' },
-  { label: '2d', value: '2d' },
-  { label: '3d', value: '3d' },
-  { label: '7d', value: '7d' },
-];
-
 const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, isRemindersOnlyMode = false }) => {
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
@@ -29,6 +20,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     const saved = localStorage.getItem('remindersRelativeNumbers');
     return saved ? JSON.parse(saved) : true;
   });
+  const [expandedOptions, setExpandedOptions] = useState({});
   const numberBufferRef = useRef('');
 
   useEffect(() => {
@@ -398,6 +390,13 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     navigate('/notes', { state: { searchQuery } });
   };
 
+  const toggleOptions = (noteId) => {
+    setExpandedOptions(prev => ({
+      ...prev,
+      [noteId]: !prev[noteId]
+    }));
+  };
+
   const toggleDetails = (noteId) => {
     setExpandedDetails(prev => ({
       ...prev,
@@ -505,31 +504,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     );
   };
 
-  const handleQuickCadence = async (noteId, cadence) => {
-    try {
-      const note = allNotes.find(n => n.id === noteId);
-      if (!note) return;
 
-      // Update the note's cadence
-      const updatedNote = {
-        ...note,
-        content: note.content.replace(/meta::cadence::[^\n]*/, `meta::cadence::${cadence}`)
-      };
-
-      // Update the notes array
-      const updatedNotes = allNotes.map(n => n.id === noteId ? updatedNote : n);
-      if (typeof setNotes === 'function') {
-        setNotes(updatedNotes);
-      }
-      
-      // Dismiss the current reminder
-      addCurrentDateToLocalStorage(noteId);
-      setReminderObjs(findDueReminders(updatedNotes));
-    } catch (error) {
-      console.error('Error setting quick cadence:', error);
-      Alerts.error('Failed to set cadence');
-    }
-  };
 
   const formatDate = (date) => {
     const now = new Date();
@@ -636,27 +611,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     return cadenceMatch[1];
   };
 
-  // Function to check if a cadence button should be highlighted
-  const isCurrentCadence = (note, cadenceValue) => {
-    const currentCadence = getCurrentCadence(note);
-    if (typeof currentCadence === 'string') {
-      // Old format
-      return currentCadence === cadenceValue;
-    } else if (currentCadence && currentCadence.type === 'every-x-hours') {
-      // New format - convert to simple format for comparison
-      const hours = currentCadence.hours || 0;
-      const minutes = currentCadence.minutes || 0;
-      const totalHours = hours + (minutes / 60);
-      
-      if (cadenceValue === '2h' && totalHours === 2) return true;
-      if (cadenceValue === '4h' && totalHours === 4) return true;
-      if (cadenceValue === '12h' && totalHours === 12) return true;
-      if (cadenceValue === '2d' && totalHours === 48) return true;
-      if (cadenceValue === '3d' && totalHours === 72) return true;
-      if (cadenceValue === '7d' && totalHours === 168) return true;
-    }
-    return false;
-  };
+
 
   // Function to convert cadence to human-readable format
   const getHumanReadableCadence = (note) => {
@@ -835,51 +790,52 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       ) : (
                         <>
                           <div className="flex flex-col items-end mr-2">
-                            <div className="flex gap-1">
-                              {QUICK_CADENCES.map(({ label, value }) => (
-                                <button
-                                  key={value}
-                                  onClick={() => handleQuickCadence(note.id, value)}
-                                  className={`px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors duration-150 ${
-                                    isCurrentCadence(note, value) ? 'bg-blue-100 font-bold' : ''
-                                  }`}
-                                  style={{ padding: '2px 6px', background: 'none', border: 'none' }}
-                                >
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
                             {getHumanReadableCadence(note) && (
-                              <div className="text-xs text-gray-400 mt-1">
+                              <div className="text-xs text-gray-400 mb-1">
                                 {getHumanReadableCadence(note)}
                               </div>
                             )}
                           </div>
                           <button
-                            onClick={() => setShowCadenceSelector(note.id)}
-                            className="text-xs text-blue-600 hover:text-blue-800 underline mr-2"
-                            style={{ padding: 0, background: 'none', border: 'none' }}
+                            onClick={() => handleDismiss(note)}
+                            className="px-3 py-1 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                            title="Dismiss"
                           >
-                            Set Cadence
+                            <CheckIcon className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => toggleOptions(note.id)}
+                            className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none transition-colors duration-150"
+                            title="More Options"
+                          >
+                            <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${expandedOptions[note.id] ? 'rotate-180' : ''}`} />
                           </button>
                         </>
                       )}
-                      <button
-                        onClick={() => handleDismiss(note)}
-                        className="px-3 py-1 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
-                        title="Dismiss"
-                      >
-                        <CheckIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleEditNote(note.id)}
-                        className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                        title="Edit Note"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
                     </div>
                   </div>
+                  {/* More Options Section */}
+                  {expandedOptions[note.id] && !showCadenceSelector && (
+                    <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setShowCadenceSelector(note.id)}
+                          className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                          title="Set Cadence"
+                        >
+                          Set Cadence
+                        </button>
+                        <button
+                          onClick={() => handleEditNote(note.id)}
+                          className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                          title="Edit Note"
+                        >
+                          <PencilIcon className="h-4 w-4 mr-1" />
+                          Edit Note
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -951,42 +907,43 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="flex flex-col items-end mr-2">
-                          <div className="flex gap-1">
-                            {QUICK_CADENCES.map(({ label, value }) => (
-                              <button
-                                key={value}
-                                onClick={() => handleQuickCadence(note.id, value)}
-                                className={`px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors duration-150 ${
-                                  isCurrentCadence(note, value) ? 'bg-blue-100 font-bold' : ''
-                                }`}
-                                style={{ padding: '2px 6px', background: 'none', border: 'none' }}
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
                           {getHumanReadableCadence(note) && (
-                            <div className="text-xs text-gray-400 mt-1">
+                            <div className="text-xs text-gray-400 mb-1">
                               {getHumanReadableCadence(note)}
                             </div>
                           )}
                         </div>
                         <button
-                          onClick={() => setShowCadenceSelector(note.id)}
-                          className="text-xs text-blue-600 hover:text-blue-800 underline mr-2"
-                          style={{ padding: 0, background: 'none', border: 'none' }}
+                          onClick={() => toggleOptions(note.id)}
+                          className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none transition-colors duration-150"
+                          title="More Options"
                         >
-                          Set Cadence
-                        </button>
-                        <button
-                          onClick={() => handleEditNote(note.id)}
-                          className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                          title="Edit Note"
-                        >
-                          <PencilIcon className="h-5 w-5" />
+                          <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${expandedOptions[note.id] ? 'rotate-180' : ''}`} />
                         </button>
                       </div>
                     </div>
+                    {/* More Options Section */}
+                    {expandedOptions[note.id] && (
+                      <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setShowCadenceSelector(note.id)}
+                            className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                            title="Set Cadence"
+                          >
+                            Set Cadence
+                          </button>
+                          <button
+                            onClick={() => handleEditNote(note.id)}
+                            className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                            title="Edit Note"
+                          >
+                            <PencilIcon className="h-4 w-4 mr-1" />
+                            Edit Note
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

@@ -12,8 +12,8 @@ import NoteCardContent from './NoteCardContent';
 import NoteCardInlineEditor from './NoteCardInlineEditor';
 import NoteCardFooter from './NoteCardFooter';
 import NoteCardSuperEditBanner from './NoteCardSuperEditBanner';
-
 import NoteCardLinkedNotes from './NoteCardLinkedNotes';
+import { DevModeInfo } from '../utils/DevUtils';
 
 const NoteCard = ({
   note,
@@ -64,7 +64,8 @@ const NoteCard = ({
   setSearchQuery,
   focusedNoteIndex = -1,
   noteIndex = -1,
-  onSetFocusedNoteIndex
+  onSetFocusedNoteIndex,
+  settings = {}
 }) => {
   const [isSuperEditMode, setIsSuperEditMode] = useState(false);
   const [highlightedLineIndex, setHighlightedLineIndex] = useState(-1);
@@ -642,44 +643,62 @@ const NoteCard = ({
     wasOpenedFromSuperEdit
   };
 
+  // Debug logging for developer mode
+  console.log('NoteCard - settings:', settings, 'developerMode:', settings?.developerMode);
+  
+  // Add a simple test div to verify developer mode is working
+  const testDevMode = settings?.developerMode || false;
+  
   return (
-    <div
-      key={note.id}
-      data-note-id={note.id}
-      onContextMenu={(e) => onContextMenu(e, note)}
-      onClick={(e) => {
-        if (isSuperEditMode) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-        if (typeof onSetFocusedNoteIndex === 'function' && !isFocused) {
-          onSetFocusedNoteIndex(noteIndex);
-        }
-      }}
-      tabIndex={0}
-      role="button"
-      onKeyDown={e => {
-        if ((e.key === 'Enter' || e.key === ' ') && typeof onSetFocusedNoteIndex === 'function' && !isSuperEditMode && !isFocused) {
-          e.preventDefault();
-          e.stopPropagation();
-          onSetFocusedNoteIndex(noteIndex);
-        }
-      }}
-      className={`group flex flex-col cursor-pointer ${
-        focusMode 
-          ? 'px-3 py-3 mb-3 rounded border border-gray-200 bg-white' 
-          : 'px-6 py-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100'
-      } relative ${isSuperEditMode ? 'ring-2 ring-purple-500' : ''} ${
-        isFocused ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-300' : ''
-      }`}
-      style={{
-        backgroundColor: isFocused ? '#eff6ff' : undefined,
-        borderColor: isFocused ? '#3b82f6' : undefined,
-        boxShadow: isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : undefined
-      }}
+    <DevModeInfo 
+      componentName="NoteCard" 
+      isDevMode={testDevMode}
     >
+      <div
+        key={note.id}
+        data-note-id={note.id}
+        onContextMenu={(e) => onContextMenu(e, note)}
+        onClick={(e) => {
+          if (isSuperEditMode) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          if (typeof onSetFocusedNoteIndex === 'function' && !isFocused) {
+            onSetFocusedNoteIndex(noteIndex);
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        onKeyDown={e => {
+          if ((e.key === 'Enter' || e.key === ' ') && typeof onSetFocusedNoteIndex === 'function' && !isSuperEditMode && !isFocused) {
+            e.preventDefault();
+            e.stopPropagation();
+            onSetFocusedNoteIndex(noteIndex);
+          }
+        }}
+        className={`group flex flex-col cursor-pointer ${
+          focusMode 
+            ? 'px-3 py-3 mb-3 rounded border border-gray-200 bg-white' 
+            : 'px-6 py-6 mb-5 rounded-lg bg-neutral-50 border border-slate-200 ring-1 ring-slate-100'
+        } relative ${isSuperEditMode ? 'ring-2 ring-purple-500' : ''} ${
+          isFocused ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-300' : ''
+        }`}
+        style={{
+          backgroundColor: isFocused ? '#eff6ff' : undefined,
+          borderColor: isFocused ? '#3b82f6' : undefined,
+          boxShadow: isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : undefined
+        }}
+      >
       <NoteCardSuperEditBanner isVisible={isFocused && !isSuperEditMode} />
+      
+      {/* Developer Mode Test Indicator */}
+      {testDevMode && (
+        <div className="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded-bl z-10">
+          DEV MODE ON
+        </div>
+      )}
+      
       <div className="flex flex-col flex-auto">
         <NoteCardHeader
           note={note}
@@ -906,6 +925,7 @@ const NoteCard = ({
         />
       </div>
     </div>
+    </DevModeInfo>
   );
 };
 

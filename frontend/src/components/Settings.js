@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getSettings, updateSettings, defaultSettings } from '../utils/ApiUtils';
 
 // Common timezones with their offsets and locations
 export const timeZones = [
@@ -44,35 +45,54 @@ const NAVBAR_PAGES = [
   { id: 'stock-vesting', label: 'Stock Vesting' },
 ];
 
-const Settings = ({ onClose }) => {
+const Settings = ({ onClose, settings, setSettings }) => {
   const [selectedTimezones, setSelectedTimezones] = useState([]);
   const [baseTimezone, setBaseTimezone] = useState('');
   const [navbarPagesVisibility, setNavbarPagesVisibility] = useState({});
   const [quickPasteEnabled, setQuickPasteEnabled] = useState(true);
+  const [developerMode, setDeveloperMode] = useState(false);
 
-  // Load saved timezones, base timezone, navbar pages visibility, and quick paste on component mount
+  // Load settings on component mount
   useEffect(() => {
-    const savedTimezones = localStorage.getItem('selectedTimezones');
-    const savedBaseTimezone = localStorage.getItem('baseTimezone');
-    const savedNavbarPages = localStorage.getItem('navbarPagesVisibility');
-    const savedQuickPaste = localStorage.getItem('quickPasteEnabled');
-    if (savedTimezones) {
-      setSelectedTimezones(JSON.parse(savedTimezones));
-    }
-    if (savedBaseTimezone) {
-      setBaseTimezone(savedBaseTimezone);
-    }
-    if (savedNavbarPages) {
-      setNavbarPagesVisibility(JSON.parse(savedNavbarPages));
-    } else {
-      // Default: all true
-      const defaultVis = {};
-      NAVBAR_PAGES.forEach(page => { defaultVis[page.id] = true; });
-      setNavbarPagesVisibility(defaultVis);
-    }
-    if (savedQuickPaste !== null) {
-      setQuickPasteEnabled(savedQuickPaste === 'true');
-    }
+    const loadSettings = async () => {
+      try {
+        const savedSettings = await getSettings();
+        const mergedSettings = { ...defaultSettings, ...savedSettings };
+        
+        // Load local settings from localStorage (for backward compatibility)
+        const savedTimezones = localStorage.getItem('selectedTimezones');
+        const savedBaseTimezone = localStorage.getItem('baseTimezone');
+        const savedNavbarPages = localStorage.getItem('navbarPagesVisibility');
+        const savedQuickPaste = localStorage.getItem('quickPasteEnabled');
+        
+        if (savedTimezones) {
+          setSelectedTimezones(JSON.parse(savedTimezones));
+        }
+        if (savedBaseTimezone) {
+          setBaseTimezone(savedBaseTimezone);
+        }
+        if (savedNavbarPages) {
+          setNavbarPagesVisibility(JSON.parse(savedNavbarPages));
+        } else {
+          // Default: all true
+          const defaultVis = {};
+          NAVBAR_PAGES.forEach(page => { defaultVis[page.id] = true; });
+          setNavbarPagesVisibility(defaultVis);
+        }
+        if (savedQuickPaste !== null) {
+          setQuickPasteEnabled(savedQuickPaste === 'true');
+        }
+        
+        // Set developer mode from settings
+        console.log('Settings - loaded mergedSettings:', mergedSettings);
+        setDeveloperMode(mergedSettings.developerMode || false);
+        console.log('Settings - set developerMode to:', mergedSettings.developerMode || false);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    };
+    
+    loadSettings();
   }, []);
 
   const handleTimezoneChange = (index, value) => {
@@ -104,13 +124,30 @@ const Settings = ({ onClose }) => {
     setNavbarPagesVisibility(prev => ({ ...prev, [id]: checked }));
   };
 
-  const handleSave = () => {
-    // Save selected timezones, base timezone, navbar pages visibility, and quick paste to localStorage
-    localStorage.setItem('selectedTimezones', JSON.stringify(selectedTimezones));
-    localStorage.setItem('baseTimezone', baseTimezone);
-    localStorage.setItem('navbarPagesVisibility', JSON.stringify(navbarPagesVisibility));
-    localStorage.setItem('quickPasteEnabled', quickPasteEnabled);
-    onClose();
+  const handleSave = async () => {
+    try {
+      console.log('Settings - saving developerMode:', developerMode);
+      
+      // Save selected timezones, base timezone, navbar pages visibility, and quick paste to localStorage
+      localStorage.setItem('selectedTimezones', JSON.stringify(selectedTimezones));
+      localStorage.setItem('baseTimezone', baseTimezone);
+      localStorage.setItem('navbarPagesVisibility', JSON.stringify(navbarPagesVisibility));
+      localStorage.setItem('quickPasteEnabled', quickPasteEnabled);
+      
+      // Update settings with developer mode
+      const updatedSettings = {
+        ...settings,
+        developerMode: developerMode
+      };
+      
+      console.log('Settings - updatedSettings:', updatedSettings);
+      
+      await updateSettings(updatedSettings);
+      setSettings(updatedSettings);
+      onClose();
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    }
   };
 
   return (
@@ -141,6 +178,23 @@ const Settings = ({ onClose }) => {
               />
               <span className="text-gray-700">Enable Quick Paste in UI</span>
             </label>
+          </div>
+
+          {/* Developer Mode Toggle */}
+          <div className="border-b pb-4">
+            <h3 className="text-lg font-semibold mb-3 text-gray-700">Developer Options</h3>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={developerMode}
+                onChange={e => setDeveloperMode(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-gray-700">Enable Developer Mode</span>
+            </label>
+            <p className="text-sm text-gray-500 mt-1">
+              Shows component names for debugging purposes
+            </p>
           </div>
 
           {/* Theme Settings */}

@@ -291,6 +291,7 @@ export const defaultSettings = {
   showCreatedDate: false,
   excludeEventsByDefault: false,
   excludeMeetingsByDefault: false,
+  developerMode: false,
   searchQuery: '',
   totals: {
     total: 0,

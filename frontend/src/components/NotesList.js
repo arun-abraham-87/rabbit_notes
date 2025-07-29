@@ -66,6 +66,8 @@ const NotesList = ({
   refreshTags = () => {},
   onReturnToSearch = () => {},
 }) => {
+  // Debug logging for developer mode
+  console.log('NotesList - settings:', settings, 'developerMode:', settings?.developerMode);
   const location = useLocation();
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
@@ -1267,6 +1269,7 @@ const NotesList = ({
                     setSearchQuery={setSearchQuery}
                     focusedNoteIndex={focusedNoteIndex}
                     noteIndex={index}
+                    settings={settings}
                   />
                 ))}
               </div>
@@ -1337,6 +1340,7 @@ const NotesList = ({
                   focusedNoteIndex={focusedNoteIndex}
                   noteIndex={safeNotes.filter(note => note.pinned).length + index}
                   onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
+                  settings={settings}
                   />
                 ))}
               </div>
@@ -1408,6 +1412,7 @@ const NotesList = ({
                   focusedNoteIndex={focusedNoteIndex}
                   noteIndex={index}
                   onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
+                  settings={settings}
                 />
               ))}
             </div>

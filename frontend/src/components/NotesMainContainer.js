@@ -23,6 +23,8 @@ const NotesMainContainer = ({
     settings = defaultSettings,
     refreshTags = () => {},
 }) => {
+    // Debug logging for developer mode
+    console.log('NotesMainContainer - settings:', settings, 'developerMode:', settings?.developerMode);
     const location = useLocation();
     const [checked, setChecked] = useState(false);
     const [compressedView, setCompressedView] = useState(false);

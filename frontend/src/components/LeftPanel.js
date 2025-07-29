@@ -1179,7 +1179,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
 
       {/* Settings Modal */}
       {showSettings && (
-        <Settings onClose={() => setShowSettings(false)} />
+        <Settings onClose={() => setShowSettings(false)} settings={settings} setSettings={setSettings} />
       )}
 
       {/* Add Bookmark Modal */}

@@ -32,3 +32,41 @@ font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe U
   .editable-div:focus {
     outline: none; /* Removes the focus outline */
 }
+
+/* Developer Mode Styles */
+.dev-mode-wrapper {
+    position: relative;
+}
+
+.dev-mode-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    background-color: rgba(59, 130, 246, 0.9);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    pointer-events: none;
+    user-select: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transform: translateY(-100%);
+    margin-top: -2px;
+}
+
+.dev-mode-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+    display: block;
+}
+
+/* Hover effect to show full name */
+.dev-mode-badge:hover .dev-mode-text {
+    max-width: none;
+    overflow: visible;
+}

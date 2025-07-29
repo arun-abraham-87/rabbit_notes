@@ -1261,9 +1261,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                     </div>
 
                     {/* Combined Review In Buttons and Actions */}
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="col-span-2 flex items-center justify-end">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">Review in:</span>
                         <div className="grid grid-cols-4 gap-2">
                           {(() => {
                             const cadence = parseReviewCadenceMeta(note.content) || {};
@@ -1456,10 +1455,9 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                         </div>
                       </div>
 
-                      {/* Second Section - Review In Buttons (25%) */}
-                      <div className="flex flex-wrap gap-1 items-center justify-end">
-                        <div className="flex flex-wrap gap-1 items-center justify-end">
-                          <span className="text-sm text-gray-600 mr-2">Review in:</span>
+                      {/* Combined Review In Buttons and Actions */}
+                      <div className="col-span-2 flex items-center justify-end">
+                        <div className="flex items-center gap-2">
                           <div className="flex flex-wrap gap-1">
                             <button
                               onClick={() => handleCadence(note, 2, 0)}
@@ -1504,11 +1502,17 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                               7d
                             </button>
                           </div>
+                          <div 
+                            onClick={() => toggleNoteExpand(`actions-${note.id}`)}
+                            className="text-xs font-medium text-gray-700 cursor-pointer flex items-center p-1 rounded hover:bg-gray-100"
+                          >
+                            <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-180' : ''}`} />
+                          </div>
                         </div>
                       </div>
 
-                      {/* Third Section - Unfollow and Actions */}
-                      <div className="flex items-center justify-end gap-2">
+                      {/* Unsnooze Button */}
+                      <div className="flex items-center justify-end">
                         <button
                           onClick={() => handleUnsnooze(note)}
                           className="p-2 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
@@ -1516,13 +1520,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                         >
                           <PlayIcon className="w-5 h-5" />
                         </button>
-
-                        <div 
-                          onClick={() => toggleNoteExpand(`actions-${note.id}`)}
-                          className="text-xs font-medium text-gray-700 cursor-pointer flex items-center p-1 rounded hover:bg-gray-100"
-                        >
-                          <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-180' : ''}`} />
-                        </div>
                       </div>
                     </div>
 

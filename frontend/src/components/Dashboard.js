@@ -735,69 +735,95 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                 
                 {!isEventManagerCollapsed && (
                   <div className="flex gap-1 items-center">
-                    <button
-                      onClick={() => setEventFilter('all')}
-                      className={`px-2 py-1 text-xs rounded transition-colors ${
-                        eventFilter === 'all' 
-                          ? 'bg-blue-500 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                      title="Click to filter by all events"
-                    >
-                      All
-                    </button>
-                    <button
-                      onClick={() => {
-                        localStorage.setItem('defaultEventFilter', 'all');
-                        alert('Default filter set to "All"');
-                      }}
-                      className="px-1 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
-                      title="Set 'All' as default filter"
-                    >
-                      ⭐
-                    </button>
-                    <button
-                      onClick={() => setEventFilter('deadline')}
-                      className={`px-2 py-1 text-xs rounded transition-colors ${
-                        eventFilter === 'deadline' 
-                          ? 'bg-red-500 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                      title="Click to filter by deadlines"
-                    >
-                      Deadline
-                    </button>
-                    <button
-                      onClick={() => {
-                        localStorage.setItem('defaultEventFilter', 'deadline');
-                        alert('Default filter set to "Deadline"');
-                      }}
-                      className="px-1 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
-                      title="Set 'Deadline' as default filter"
-                    >
-                      ⭐
-                    </button>
-                    <button
-                      onClick={() => setEventFilter('holiday')}
-                      className={`px-2 py-1 text-xs rounded transition-colors ${
-                        eventFilter === 'holiday' 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                      title="Click to filter by holidays"
-                    >
-                      Holiday
-                    </button>
-                    <button
-                      onClick={() => {
-                        localStorage.setItem('defaultEventFilter', 'holiday');
-                        alert('Default filter set to "Holiday"');
-                      }}
-                      className="px-1 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
-                      title="Set 'Holiday' as default filter"
-                    >
-                      ⭐
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setEventFilter('all')}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${
+                          eventFilter === 'all' 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                        title="Click to filter by all events"
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={() => {
+                          localStorage.setItem('defaultEventFilter', 'all');
+                          alert('Default filter set to "All"');
+                        }}
+                        className={`px-1 py-1 text-xs rounded transition-colors ${
+                          localStorage.getItem('defaultEventFilter') === 'all'
+                            ? 'bg-blue-100 text-blue-600 border border-blue-200'
+                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                        }`}
+                        title="Set 'All' as default filter"
+                      >
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setEventFilter('deadline')}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${
+                          eventFilter === 'deadline' 
+                            ? 'bg-red-500 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                        title="Click to filter by deadlines"
+                      >
+                        Deadline
+                      </button>
+                      <button
+                        onClick={() => {
+                          localStorage.setItem('defaultEventFilter', 'deadline');
+                          alert('Default filter set to "Deadline"');
+                        }}
+                        className={`px-1 py-1 text-xs rounded transition-colors ${
+                          localStorage.getItem('defaultEventFilter') === 'deadline'
+                            ? 'bg-red-100 text-red-600 border border-red-200'
+                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                        }`}
+                        title="Set 'Deadline' as default filter"
+                      >
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setEventFilter('holiday')}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${
+                          eventFilter === 'holiday' 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                        title="Click to filter by holidays"
+                      >
+                        Holiday
+                      </button>
+                      <button
+                        onClick={() => {
+                          localStorage.setItem('defaultEventFilter', 'holiday');
+                          alert('Default filter set to "Holiday"');
+                        }}
+                        className={`px-1 py-1 text-xs rounded transition-colors ${
+                          localStorage.getItem('defaultEventFilter') === 'holiday'
+                            ? 'bg-green-100 text-green-600 border border-green-200'
+                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                        }`}
+                        title="Set 'Holiday' as default filter"
+                      >
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
                     
                     {/* Text Filter Input with Clear Button */}
                     <div className="relative">

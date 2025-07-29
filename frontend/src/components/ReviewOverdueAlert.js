@@ -274,7 +274,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
   const [snoozedNotes, setSnoozedNotes] = useState([]);
   const [selectedNote, setSelectedNote] = useState(null);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
-  const [isSnoozedExpanded, setIsSnoozedExpanded] = useState(true);
+  const [isSnoozedExpanded, setIsSnoozedExpanded] = useState(false);
   const [showLinkPopup, setShowLinkPopup] = useState(false);
   const [linkPopupLinks, setLinkPopupLinks] = useState([]);
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);

@@ -9,6 +9,7 @@ import TimeZoneDisplay from './TimeZoneDisplay.js';
 import TimezonePopup from './TimezonePopup.js';
 import BookmarkedLinks from './BookmarkedLinks.js';
 import EventManager from './EventManager.js';
+import FlaggedReviewDues from './FlaggedReviewDues.js';
 
 import EditEventModal from './EditEventModal.js';
 import Countdown from './Countdown.js';
@@ -710,6 +711,11 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Flagged Review Dues Section */}
+          <div className="mb-8">
+            <FlaggedReviewDues notes={notes} setActivePage={setActivePage} />
           </div>
 
           {/* Second Row: Event Manager Cards */}

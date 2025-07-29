@@ -1323,15 +1323,18 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                     <div className="col-span-2 flex items-center justify-end">
                       <div className="flex items-center gap-2">
                         <div className="grid grid-cols-5 gap-2">
-                          <button
-                            onClick={() => handleAddPriority(note)}
-                            className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                            title="Flag note"
-                          >
-                            <svg className="w-4 h-4" fill={note.content.includes('meta::review_overdue_priority') ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
-                            </svg>
-                          </button>
+                          {!note.content.includes('meta::review_overdue_priority') && (
+                            <button
+                              onClick={() => handleAddPriority(note)}
+                              className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                              title="Flag note"
+                              style={{ minWidth: 48, minHeight: 48 }}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
+                              </svg>
+                            </button>
+                          )}
                           {!note.content.includes('meta::review_overdue_priority') && (() => {
                             const cadence = parseReviewCadenceMeta(note.content) || {};
                             const isSelected = (h, m = 0) => {
@@ -1366,6 +1369,21 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                               </button>
                             ));
                           })()}
+                          {note.content.includes('meta::review_overdue_priority') && (
+                            <div className="col-span-4"></div>
+                          )}
+                          {note.content.includes('meta::review_overdue_priority') && (
+                            <button
+                              onClick={() => handleAddPriority(note)}
+                              className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                              title="Flag note"
+                              style={{ minWidth: 48, minHeight: 48 }}
+                            >
+                              <svg className="w-4 h-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div 
@@ -1527,17 +1545,18 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                       <div className="col-span-2 flex items-center justify-end">
                         <div className="flex items-center gap-2">
                           <div className="flex flex-wrap gap-1">
-                            <button
-                              onClick={() => handleAddPriority(note)}
-                              className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                              title="Flag note"
-                            >
-                              <svg className="w-4 h-4" fill={note.content.includes('meta::review_overdue_priority') ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
-                              </svg>
-                            </button>
                             {!note.content.includes('meta::review_overdue_priority') && (
                               <>
+                                <button
+                                  onClick={() => handleAddPriority(note)}
+                                  className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                                  title="Flag note"
+                                  style={{ minWidth: 48, minHeight: 48 }}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
+                                  </svg>
+                                </button>
                                 <button
                                   onClick={() => handleCadence(note, 2, 0)}
                                   className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
@@ -1581,6 +1600,18 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                                   7d
                                 </button>
                               </>
+                            )}
+                            {note.content.includes('meta::review_overdue_priority') && (
+                              <button
+                                onClick={() => handleAddPriority(note)}
+                                className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                                title="Flag note"
+                                style={{ minWidth: 48 }}
+                              >
+                                <svg className="w-4 h-4" fill={note.content.includes('meta::review_overdue_priority') ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
+                                </svg>
+                              </button>
                             )}
                           </div>
                           <div 

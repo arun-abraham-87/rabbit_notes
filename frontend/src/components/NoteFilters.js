@@ -437,6 +437,32 @@ const NoteFilters = ({
     setSearchQuery('');
   };
 
+  const handleReset = () => {
+    // Reset to initial state (on load state)
+    setShowTodoButtons(false);
+    setShowEventButtons(false);
+    setShowMeetingButtons(false);
+    setActivePriorityFilter('');
+    setShowTodoSubButtons(false);
+    setActivePriority('');
+    setShowDeadlinePassedFilter(false);
+    
+    // Reset exclude checkboxes to their initial values
+    setExcludeEvents(settings.excludeEventsByDefault || false);
+    setExcludeMeetings(settings.excludeMeetingsByDefault || false);
+    setExcludeEventNotes(true); // Default to true to exclude event notes
+    setExcludeBackupNotes(true); // Default to true to exclude backup notes
+    setExcludeWatchEvents(true); // Default to true to exclude watch events
+    setExcludeBookmarks(true); // Default to true to exclude bookmarks
+    setExcludeExpenses(true); // Default to true to exclude expenses
+    setExcludeSensitive(true); // Default to true to exclude sensitive notes
+    setExcludeTrackers(true); // Default to true to exclude tracker notes
+    
+    // Clear search query and lines
+    setLines([{ id: 'line-0', text: '', isTitle: false }]);
+    setSearchQuery('');
+  };
+
   return (
     <div className="flex flex-col gap-2">
       {/* Main filter buttons */}
@@ -609,6 +635,12 @@ const NoteFilters = ({
           className="px-3 py-1 text-xs rounded bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
         >
           Clear
+        </button>
+        <button
+          onClick={handleReset}
+          className="px-3 py-1 text-xs rounded bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200"
+        >
+          Reset
         </button>
       </div>
 

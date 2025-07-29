@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
-import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon, PauseIcon, ChevronDownIcon, PlayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, PencilIcon, XMarkIcon, CheckIcon, ClipboardDocumentListIcon, BellIcon, EyeSlashIcon, PauseIcon, ChevronDownIcon, PlayIcon, MagnifyingGlassIcon, MoonIcon } from '@heroicons/react/24/outline';
 import CadenceSelector from './CadenceSelector';
 import NoteEditor from './NoteEditor';
 import AddLinkModal from './AddLinkModal';
@@ -1257,12 +1257,12 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
       {/* Overdue Notes Section */}
       {filteredOverdueNotes.length > 0 && (
         <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full mb-4">
-          <div className="bg-red-50 px-6 py-4 border-b border-red-100">
+          <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <ClockIcon className="h-6 w-6 text-red-500" />
-                <h3 className="ml-3 text-base font-semibold text-red-800">
-                  Review Overdue ({filteredOverdueNotes.length})
+                <ClockIcon className="h-6 w-6 text-gray-500" />
+                <h3 className="ml-3 text-base font-semibold text-gray-800">
+                  Reviews Due ({filteredOverdueNotes.length})
                 </h3>
               </div>
             </div>
@@ -1477,7 +1477,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <PauseIcon className="h-6 w-6 text-gray-500" />
+                <MoonIcon className="h-6 w-6 text-gray-500" />
                 <h3 className="ml-3 text-base font-semibold text-gray-800">
                   Snoozing Reviews ({filteredSnoozedNotes.length})
                 </h3>

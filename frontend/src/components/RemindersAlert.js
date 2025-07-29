@@ -816,21 +816,20 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                   </div>
                   {/* More Options Section */}
                   {expandedOptions[note.id] && !showCadenceSelector && (
-                    <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                      <div className="flex items-center gap-3">
+                    <div className="px-6 py-3 border-t border-gray-200" style={{ backgroundColor: 'inherit' }}>
+                      <div className="flex justify-end gap-3">
                         <button
                           onClick={() => setShowCadenceSelector(note.id)}
-                          className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                          className="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-800 underline focus:outline-none transition-colors duration-150"
                           title="Set Cadence"
                         >
                           Set Cadence
                         </button>
                         <button
                           onClick={() => handleEditNote(note.id)}
-                          className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                          className="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-800 underline focus:outline-none transition-colors duration-150"
                           title="Edit Note"
                         >
-                          <PencilIcon className="h-4 w-4 mr-1" />
                           Edit Note
                         </button>
                       </div>
@@ -924,21 +923,20 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                     </div>
                     {/* More Options Section */}
                     {expandedOptions[note.id] && (
-                      <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                        <div className="flex items-center gap-3">
+                      <div className="px-6 py-3 border-t border-gray-200" style={{ backgroundColor: 'inherit' }}>
+                        <div className="flex justify-end gap-3">
                           <button
                             onClick={() => setShowCadenceSelector(note.id)}
-                            className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                            className="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-800 underline focus:outline-none transition-colors duration-150"
                             title="Set Cadence"
                           >
                             Set Cadence
                           </button>
                           <button
                             onClick={() => handleEditNote(note.id)}
-                            className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                            className="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-800 underline focus:outline-none transition-colors duration-150"
                             title="Edit Note"
                           >
-                            <PencilIcon className="h-4 w-4 mr-1" />
                             Edit Note
                           </button>
                         </div>

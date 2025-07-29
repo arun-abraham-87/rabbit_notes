@@ -5,7 +5,7 @@ import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { debounce } from 'lodash';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
 
-const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true }) => {
+const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true, initialMode = 'view' }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
   const initialLines = contentSource
     ? [
@@ -37,7 +37,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   const [showTextSelection, setShowTextSelection] = useState(false);
 
   // Vim-like mode system
-  const [mode, setMode] = useState('view'); // 'view' or 'edit'
+  const [mode, setMode] = useState(initialMode); // 'view' or 'edit'
   const [cursorLine, setCursorLine] = useState(0); // Current line in view mode
   
   // Initialize cursor line to first non-empty line or 0
@@ -80,6 +80,15 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           container.focus();
         }, 0);
       }
+    } else if (mode === 'edit') {
+      // Focus on the first textarea when in edit mode
+      setTimeout(() => {
+        if (textareasRef.current[0]) {
+          const textarea = textareasRef.current[0];
+          textarea.focus();
+          textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        }
+      }, 50);
     }
   }, [mode]);
 
@@ -904,6 +913,8 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     window.addEventListener('click', hideContext);
     return () => window.removeEventListener('click', hideContext);
   }, []);
+
+
 
 
   function getCursorCoordinates(textarea) {

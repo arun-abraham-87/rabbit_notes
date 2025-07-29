@@ -11,16 +11,15 @@ export function NoteEditorProvider({ children }) {
   const [noteId, setNoteId] = useState(null);
   const [metaTags, setMetaTags] = useState([]);
 
-  // Add keyboard shortcut for opening note editor in add mode with watch option
+  // Add keyboard shortcut for opening note editor in edit mode
   useHotkeys('meta+k', (e) => {
     e.preventDefault();
     console.log('Command+K pressed'); // Debug log
-    const formattedDate = moment().format('YYYY-MM-DD HH:mm:ss');
     setIsOpen(true);
     setInitialContent('');
-    setMode('add');
+    setMode('edit'); // Changed from 'add' to 'edit'
     setNoteId(null);
-    setMetaTags([`meta::watch::${formattedDate}`]);
+    setMetaTags([]); // Remove default watch tag
   }, {
     enableOnFormTags: true,
     keydown: true,

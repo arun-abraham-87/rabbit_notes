@@ -1182,6 +1182,10 @@ const NotesList = ({
 
 
 
+
+
+
+
   return (
     <div ref={notesListRef} className="relative">
       <div className="mb-4 flex justify-between items-center">
@@ -1431,10 +1435,22 @@ const NotesList = ({
               isModal={true}
               isAddMode={false}
               note={allNotes.find(n => n.id === popupNoteText)}
+              initialMode="edit"
               onSave={(updatedNote) => {
                 updateNoteCallback(popupNoteText, updatedNote);
                 setPopupNoteText(null);
                 // Return focus to the original note after saving
+                setTimeout(() => {
+                  const noteElement = document.querySelector(`[data-note-id="${popupNoteText}"]`);
+                  if (noteElement) {
+                    noteElement.focus();
+                  }
+                }, 100);
+              }}
+              addNote={(content) => {
+                addNotes(content);
+                setPopupNoteText(null);
+                // Return focus to the original note after adding
                 setTimeout(() => {
                   const noteElement = document.querySelector(`[data-note-id="${popupNoteText}"]`);
                   if (noteElement) {

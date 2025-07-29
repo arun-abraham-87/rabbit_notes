@@ -201,11 +201,17 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
     
     // Reorder meta tags to ensure they appear at the bottom
     const reorderedContent = reorderMetaTags(finalContent);
-    updateNote(noteId, reorderedContent);
     
-    if (selectedMetaTags.some(tag => tag.startsWith('meta::watch'))) {
-      addCadenceLineToNote(noteId, {}, true);
+    // If we have a noteId, update the existing note, otherwise add a new note
+    if (noteId) {
+      updateNote(noteId, reorderedContent);
+      if (selectedMetaTags.some(tag => tag.startsWith('meta::watch'))) {
+        addCadenceLineToNote(noteId, {}, true);
+      }
+    } else {
+      addNote(reorderedContent);
     }
+    
     closeEditor();
   };
 
@@ -250,9 +256,10 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
           </button>
         </div>
         <NoteEditor
-          isAddMode={mode === 'add'}
+          isAddMode={mode === 'add' || (mode === 'edit' && !noteId)}
           isModal={true}
-          note={mode === 'edit' ? { id: noteId, content: initialContent } : null}
+          note={mode === 'edit' && noteId ? { id: noteId, content: initialContent } : null}
+          initialMode={mode === 'edit' ? 'edit' : 'view'}
           onSave={handleSave}
           addNote={handleAddNote}
           onCancel={() => {

@@ -302,6 +302,8 @@ const AppContent = () => {
         return;
       }
 
+
+
       // Handle navigation shortcuts
       // 'gt' to go to /tags, 'gn' to go to /notes, 'gh' to go to /dashboard, 'ge' to go to /events, 'gl' to go to last note, 'gb' to go to bookmarks
       if (e.key === 'g') {

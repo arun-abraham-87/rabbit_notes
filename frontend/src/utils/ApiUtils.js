@@ -16,16 +16,19 @@ export const addNewNoteCommon = async (content, tags, noteDate) => {
 };
 
 export const updateNoteById = async (id, updatedContent) => {
-    //////console.log
+    console.log('updateNoteById called with id:', id, 'updatedContent:', updatedContent);
     const reorderedContent = reorderMetaTags(updatedContent);
-    //////console.log
+    console.log('reorderedContent:', reorderedContent);
     const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: reorderedContent }),
     });
+    console.log('Server response status:', response.status);
     if (!response.ok) throw new Error('Failed to update note');
-    return response;
+    const result = await response.json();
+    console.log('Server response data:', result);
+    return result;
 };
 
 export const deleteNoteById = async (id) => {

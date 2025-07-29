@@ -730,8 +730,8 @@ const NoteCard = ({
           visible={addingLineNoteId === note.id}
           text={newLineText}
           setText={setNewLineText}
-          onSave={() => {
-            console.log('NoteCard onSave called with text:', newLineText);
+          onSave={async (finalText) => {
+            console.log('NoteCard onSave called with text:', finalText);
             console.log('Current note content:', note.content);
             
             // Remove all trailing blank lines before appending the new line
@@ -739,14 +739,19 @@ const NoteCard = ({
             if (contentWithNewline && contentWithNewline.trim() !== '') {
               contentWithNewline += '\n';
             }
-            const updated = contentWithNewline ? contentWithNewline + newLineText : newLineText;
+            const updated = contentWithNewline ? contentWithNewline + finalText : finalText;
             console.log('Updated content:', updated);
             
             const reorderedContent = reorderMetaTags(updated);
             console.log('Reordered content:', reorderedContent);
             
             console.log('Calling updateNote with note.id:', note.id);
-            updateNote(note.id, reorderedContent);
+            try {
+              await updateNote(note.id, reorderedContent);
+              console.log('updateNote completed successfully');
+            } catch (error) {
+              console.error('Error in updateNote:', error);
+            }
             setAddingLineNoteId(null);
             setNewLineText('');
             

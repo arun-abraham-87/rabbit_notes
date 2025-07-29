@@ -1433,8 +1433,8 @@ const NotesList = ({
             </div>
             <NoteEditor
               isModal={true}
-              isAddMode={false}
-              note={allNotes.find(n => n.id === popupNoteText)}
+              isAddMode={popupNoteText === 'new'}
+              note={popupNoteText === 'new' ? null : allNotes.find(n => n.id === popupNoteText)}
               initialMode="edit"
               onSave={(updatedNote) => {
                 updateNoteCallback(popupNoteText, updatedNote);

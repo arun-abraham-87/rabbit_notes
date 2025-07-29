@@ -424,10 +424,13 @@ const NotesMainContainer = ({
     };
 
     const handleNoteUpdate = async (noteId, updatedContent) => {
+        console.log('handleNoteUpdate called with noteId:', noteId, 'updatedContent:', updatedContent);
         try {
             const response = await updateNoteById(noteId, updatedContent);
-            setAllNotes(allNotes.map(note => note.id === noteId ? { ...note, content: updatedContent } : note));
+            console.log('updateNoteById response:', response);
+            setAllNotes(allNotes.map(note => note.id === noteId ? response : note));
             setTotals(allNotes.length);
+            console.log('State updated successfully');
         } catch (error) {
             console.error('Error updating note:', error);
         }

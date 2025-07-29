@@ -103,6 +103,14 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       return;
     }
 
+    // Handle Cmd+K (or Ctrl+K) to save
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      e.stopPropagation();
+      handleSave();
+      return;
+    }
+
     // Handle regular Enter - create new line or save based on mode
     if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();

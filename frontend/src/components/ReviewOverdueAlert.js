@@ -1290,7 +1290,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                   }}
                 >
                   {/* Note Sub-Card */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+                  <div className={`bg-gradient-to-r from-blue-50 to-indigo-50 border rounded-lg p-4 shadow-sm ${
+                    note.content.includes('meta::review_overdue_priority') 
+                      ? 'border-red-400 border-2' 
+                      : 'border-blue-200 border'
+                  }`}>
                   <div className="grid grid-cols-4 gap-4">
                     {/* Relative position indicator for vim navigation */}
                     {isReviewsOverdueOnlyMode && showRelativeNumbers && (
@@ -1509,7 +1513,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                     }}
                   >
                     {/* Note Sub-Card */}
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 shadow-sm">
+                    <div className={`bg-gradient-to-r from-green-50 to-emerald-50 border rounded-lg p-4 shadow-sm ${
+                      note.content.includes('meta::review_overdue_priority') 
+                        ? 'border-red-400 border-2' 
+                        : 'border-green-200 border'
+                    }`}>
                     <div className="grid grid-cols-4 gap-4">
                       {/* Relative position indicator for vim navigation */}
                       {isReviewsOverdueOnlyMode && showRelativeNumbers && (

@@ -1260,10 +1260,10 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                       </div>
                     </div>
 
-                    {/* Second Section - Review In Buttons (25%) */}
-                    <div className="flex flex-wrap gap-1 items-center justify-end">
-                      <div className="flex flex-wrap gap-1 items-center">
-                        <span className="text-sm text-gray-600 mr-2">Review in:</span>
+                    {/* Combined Review In Buttons and Actions */}
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">Review in:</span>
                         <div className="grid grid-cols-4 gap-2">
                           {(() => {
                             const cadence = parseReviewCadenceMeta(note.content) || {};
@@ -1301,25 +1301,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                           })()}
                         </div>
                       </div>
-                    </div>
-
-                    {/* Third Section - Actions */}
-                    <div className="flex items-center gap-2 justify-end">
                       <div 
                         onClick={() => toggleNoteExpand(`actions-${note.id}`)}
-                        className="py-2 text-xs font-medium text-gray-700 cursor-pointer flex items-center"
+                        className="text-xs font-medium text-gray-700 cursor-pointer flex items-center p-1 rounded hover:bg-gray-100"
                       >
-                        <div className="flex items-center">
-                          <span>Actions</span>
-                          <svg
-                            className={`w-4 h-4 ml-1 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-90' : ''}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
+                        <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-180' : ''}`} />
                       </div>
                     </div>
                   </div>
@@ -1472,7 +1458,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 
                       {/* Second Section - Review In Buttons (25%) */}
                       <div className="flex flex-wrap gap-1 items-center justify-end">
-                        <div className="flex flex-wrap gap-1 items-center">
+                        <div className="flex flex-wrap gap-1 items-center justify-end">
                           <span className="text-sm text-gray-600 mr-2">Review in:</span>
                           <div className="flex flex-wrap gap-1">
                             <button
@@ -1522,7 +1508,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                       </div>
 
                       {/* Third Section - Unfollow and Actions */}
-                      <div className="flex items-center gap-2 justify-end">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleUnsnooze(note)}
                           className="p-2 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
@@ -1533,19 +1519,9 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 
                         <div 
                           onClick={() => toggleNoteExpand(`actions-${note.id}`)}
-                          className="py-2 text-xs font-medium text-gray-700 cursor-pointer flex items-center"
+                          className="text-xs font-medium text-gray-700 cursor-pointer flex items-center p-1 rounded hover:bg-gray-100"
                         >
-                          <div className="flex items-center">
-                            <span>Actions</span>
-                            <svg
-                              className={`w-4 h-4 ml-1 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-90' : ''}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </div>
+                          <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-180' : ''}`} />
                         </div>
                       </div>
                     </div>

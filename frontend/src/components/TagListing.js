@@ -271,6 +271,23 @@ const TagListing = () => {
     });
   };
 
+  const getSortedMetaTags = () => {
+    const filteredTags = metaTags.filter(metaTag => 
+      metaTag.tagType.toLowerCase().includes(metaTagsSearch.toLowerCase())
+    );
+
+    switch (metaTagsSortBy) {
+      case 'alphabetical':
+        return filteredTags.sort((a, b) => a.tagType.localeCompare(b.tagType));
+      case 'count-asc':
+        return filteredTags.sort((a, b) => a.count - b.count);
+      case 'count-desc':
+        return filteredTags.sort((a, b) => b.count - a.count);
+      default:
+        return filteredTags.sort((a, b) => a.tagType.localeCompare(b.tagType));
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="w-full rounded-lg border bg-card text-card-foreground shadow-sm p-6">
@@ -477,26 +494,43 @@ const TagListing = () => {
           <span>{metaTagsError}</span>
         </div>
       )}
-      {/* Meta Tags Search Input */}
-      <div className="relative mb-6">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+      
+      {/* Meta Tags Search and Sort Controls */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        {/* Search Input */}
+        <div className="relative flex-1">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search meta tags..."
+            value={metaTagsSearch}
+            onChange={(e) => setMetaTagsSearch(e.target.value)}
+            className="w-full pl-10 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200"
+          />
+          {metaTagsSearch && (
+            <button
+              onClick={() => setMetaTagsSearch('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            >
+              <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
         </div>
-        <input
-          type="text"
-          placeholder="Search meta tags..."
-          value={metaTagsSearch}
-          onChange={(e) => setMetaTagsSearch(e.target.value)}
-          className="w-full pl-10 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200"
-        />
-        {metaTagsSearch && (
-          <button
-            onClick={() => setMetaTagsSearch('')}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+        
+        {/* Sort Dropdown */}
+        <div className="flex-shrink-0">
+          <select
+            value={metaTagsSortBy}
+            onChange={(e) => setMetaTagsSortBy(e.target.value)}
+            className="w-full sm:w-auto px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 bg-white"
           >
-            <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-          </button>
-        )}
+            <option value="alphabetical">Alphabetical</option>
+            <option value="count-asc">Count (Low to High)</option>
+            <option value="count-desc">Count (High to Low)</option>
+          </select>
+        </div>
       </div>
       {isLoadingMetaTags ? (
         <div className="flex items-center justify-center py-12">
@@ -504,7 +538,7 @@ const TagListing = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {metaTags.filter(metaTag => metaTag.tagType.toLowerCase().includes(metaTagsSearch.toLowerCase())).length === 0 ? (
+          {getSortedMetaTags().length === 0 ? (
             <div className="col-span-full text-center py-8 text-gray-500">
               {metaTagsSearch ? (
                 <p>No meta tags match your search</p>
@@ -513,20 +547,18 @@ const TagListing = () => {
               )}
             </div>
           ) : (
-            metaTags
-              .filter(metaTag => metaTag.tagType.toLowerCase().includes(metaTagsSearch.toLowerCase()))
-              .map((metaTag) => (
-                <div
-                  key={metaTag.tagType}
-                  className="group flex items-center justify-between p-2 rounded-full border bg-green-50 hover:bg-green-200 hover:shadow-md transition-all duration-200 cursor-pointer"
-                  onClick={() => handleMetaTagClick(metaTag.tagType)}
-                  title={`Click to search for notes with meta::${metaTag.tagType}`}
-                >
-                  <span className="text-green-700 px-3 truncate font-mono text-sm">
-                    {metaTag.tagType} ({metaTag.count})
-                  </span>
-                </div>
-              ))
+            getSortedMetaTags().map((metaTag) => (
+              <div
+                key={metaTag.tagType}
+                className="group flex items-center justify-between p-2 rounded-full border bg-green-50 hover:bg-green-200 hover:shadow-md transition-all duration-200 cursor-pointer"
+                onClick={() => handleMetaTagClick(metaTag.tagType)}
+                title={`Click to search for notes with meta::${metaTag.tagType}`}
+              >
+                <span className="text-green-700 px-3 truncate font-mono text-sm">
+                  {metaTag.tagType} ({metaTag.count})
+                </span>
+              </div>
+            ))
           )}
         </div>
       )}

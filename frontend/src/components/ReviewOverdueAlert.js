@@ -1604,11 +1604,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                             {note.content.includes('meta::review_overdue_priority') && (
                               <button
                                 onClick={() => handleAddPriority(note)}
-                                className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                                className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
                                 title="Flag note"
-                                style={{ minWidth: 48 }}
+                                style={{ minWidth: 48, minHeight: 48 }}
                               >
-                                <svg className="w-4 h-4" fill={note.content.includes('meta::review_overdue_priority') ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
                                 </svg>
                               </button>

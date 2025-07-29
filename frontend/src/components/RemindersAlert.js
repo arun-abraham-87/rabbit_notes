@@ -3,7 +3,7 @@ import { ChevronDownIcon, ChevronUpIcon, BellIcon, CheckIcon, ClockIcon, PencilI
 import { useNavigate } from 'react-router-dom';
 import CadenceSelector from './CadenceSelector';
 import { Alerts } from './Alerts';
-import { findDueReminders, addCurrentDateToLocalStorage, getLastReviewObject } from '../utils/CadenceHelpUtils';
+import { findDueReminders, addCurrentDateToLocalStorage, getLastReviewObject, parseReviewCadenceMeta } from '../utils/CadenceHelpUtils';
 
 const QUICK_CADENCES = [
   { label: '2h', value: '2h' },
@@ -622,6 +622,108 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     }
   };
 
+  // Function to get current cadence from a note
+  const getCurrentCadence = (note) => {
+    // First try the new format
+    const meta = parseReviewCadenceMeta(note.content);
+    if (meta) {
+      return meta;
+    }
+    
+    // Fallback to old format
+    const cadenceMatch = note.content.match(/meta::cadence::([^\n]+)/);
+    if (!cadenceMatch) return null;
+    return cadenceMatch[1];
+  };
+
+  // Function to check if a cadence button should be highlighted
+  const isCurrentCadence = (note, cadenceValue) => {
+    const currentCadence = getCurrentCadence(note);
+    if (typeof currentCadence === 'string') {
+      // Old format
+      return currentCadence === cadenceValue;
+    } else if (currentCadence && currentCadence.type === 'every-x-hours') {
+      // New format - convert to simple format for comparison
+      const hours = currentCadence.hours || 0;
+      const minutes = currentCadence.minutes || 0;
+      const totalHours = hours + (minutes / 60);
+      
+      if (cadenceValue === '2h' && totalHours === 2) return true;
+      if (cadenceValue === '4h' && totalHours === 4) return true;
+      if (cadenceValue === '12h' && totalHours === 12) return true;
+      if (cadenceValue === '2d' && totalHours === 48) return true;
+      if (cadenceValue === '3d' && totalHours === 72) return true;
+      if (cadenceValue === '7d' && totalHours === 168) return true;
+    }
+    return false;
+  };
+
+  // Function to convert cadence to human-readable format
+  const getHumanReadableCadence = (note) => {
+    const currentCadence = getCurrentCadence(note);
+    if (!currentCadence) return null;
+    
+    // Handle new format
+    if (typeof currentCadence === 'object') {
+      const meta = currentCadence;
+      
+      if (meta.type === 'every-x-hours') {
+        const hours = meta.hours || 0;
+        const minutes = meta.minutes || 0;
+        const totalHours = hours + (minutes / 60);
+        
+        if (totalHours === 1) return 'Every hour';
+        if (totalHours < 24) return `Every ${Math.round(totalHours)} hours`;
+        if (totalHours === 24) return 'Daily';
+        const days = Math.round(totalHours / 24);
+        if (days === 1) return 'Daily';
+        return `Every ${days} days`;
+      } else if (meta.type === 'daily') {
+        const time = meta.time || '09:00';
+        const [hours, minutes] = time.split(':').map(Number);
+        const hour = hours % 12 || 12;
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        return `Daily at ${hour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+      } else if (meta.type === 'weekly') {
+        const time = meta.time || '09:00';
+        const [hours, minutes] = time.split(':').map(Number);
+        const hour = hours % 12 || 12;
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const days = Array.isArray(meta.days) ? meta.days : [];
+        const selectedDays = days.map(idx => dayNames[idx]).join(', ');
+        return `Weekly on ${selectedDays || 'all days'} at ${hour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+      } else if (meta.type === 'monthly') {
+        const time = meta.time || '09:00';
+        const [hours, minutes] = time.split(':').map(Number);
+        const hour = hours % 12 || 12;
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        return `Monthly on day ${meta.day || 1} at ${hour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+      }
+    }
+    
+    // Handle old format
+    if (typeof currentCadence === 'string') {
+      const match = currentCadence.match(/(\d+)([hd])/);
+      if (!match) return currentCadence;
+      
+      const [, amount, unit] = match;
+      const num = parseInt(amount);
+      
+      if (unit === 'h') {
+        if (num === 1) return 'Every hour';
+        return `Every ${num} hours`;
+      } else if (unit === 'd') {
+        if (num === 1) return 'Daily';
+        return `Every ${num} days`;
+      }
+      
+      return currentCadence;
+    }
+    
+    return null;
+  };
+
   if (reminderObjs.length === 0 && upcomingReminders.length === 0) return null;
 
   return (
@@ -732,17 +834,26 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                         />
                       ) : (
                         <>
-                          <div className="flex gap-1 mr-2">
-                            {QUICK_CADENCES.map(({ label, value }) => (
-                              <button
-                                key={value}
-                                onClick={() => handleQuickCadence(note.id, value)}
-                                className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors duration-150"
-                                style={{ padding: '2px 6px', background: 'none', border: 'none' }}
-                              >
-                                {label}
-                              </button>
-                            ))}
+                          <div className="flex flex-col items-end mr-2">
+                            <div className="flex gap-1">
+                              {QUICK_CADENCES.map(({ label, value }) => (
+                                <button
+                                  key={value}
+                                  onClick={() => handleQuickCadence(note.id, value)}
+                                  className={`px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors duration-150 ${
+                                    isCurrentCadence(note, value) ? 'bg-blue-100 font-bold' : ''
+                                  }`}
+                                  style={{ padding: '2px 6px', background: 'none', border: 'none' }}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                            {getHumanReadableCadence(note) && (
+                              <div className="text-xs text-gray-400 mt-1">
+                                {getHumanReadableCadence(note)}
+                              </div>
+                            )}
                           </div>
                           <button
                             onClick={() => setShowCadenceSelector(note.id)}
@@ -839,17 +950,26 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="flex gap-1 mr-2">
-                          {QUICK_CADENCES.map(({ label, value }) => (
-                            <button
-                              key={value}
-                              onClick={() => handleQuickCadence(note.id, value)}
-                              className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors duration-150"
-                              style={{ padding: '2px 6px', background: 'none', border: 'none' }}
-                            >
-                              {label}
-                            </button>
-                          ))}
+                        <div className="flex flex-col items-end mr-2">
+                          <div className="flex gap-1">
+                            {QUICK_CADENCES.map(({ label, value }) => (
+                              <button
+                                key={value}
+                                onClick={() => handleQuickCadence(note.id, value)}
+                                className={`px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors duration-150 ${
+                                  isCurrentCadence(note, value) ? 'bg-blue-100 font-bold' : ''
+                                }`}
+                                style={{ padding: '2px 6px', background: 'none', border: 'none' }}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                          {getHumanReadableCadence(note) && (
+                            <div className="text-xs text-gray-400 mt-1">
+                              {getHumanReadableCadence(note)}
+                            </div>
+                          )}
                         </div>
                         <button
                           onClick={() => setShowCadenceSelector(note.id)}

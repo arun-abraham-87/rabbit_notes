@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
   XMarkIcon,
@@ -14,6 +15,7 @@ import { extractMetaTags } from '../utils/MetaTagUtils';
 import moment from 'moment';
 
 const TagListing = () => {
+  const navigate = useNavigate();
   const [tagSearch, setTagSearch] = useState('');
   const [editingTag, setEditingTag] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -33,6 +35,7 @@ const TagListing = () => {
   const [isLoadingMetaTags, setIsLoadingMetaTags] = useState(true);
   const [metaTagsError, setMetaTagsError] = useState(null);
   const [metaTagsSearch, setMetaTagsSearch] = useState('');
+  const [metaTagsSortBy, setMetaTagsSortBy] = useState('alphabetical'); // 'alphabetical', 'count-asc', 'count-desc'
 
   // Load tags on component mount
   useEffect(() => {
@@ -256,6 +259,16 @@ const TagListing = () => {
       e.preventDefault();
       handleCreateWorkstream();
     }
+  };
+
+  const handleMetaTagClick = (tagType) => {
+    // Navigate to notes page with meta::<tag_name> in search
+    navigate('/notes', { 
+      state: { 
+        searchQuery: `meta::${tagType}`,
+        clearFilters: true 
+      } 
+    });
   };
 
   if (isLoading) {
@@ -505,7 +518,9 @@ const TagListing = () => {
               .map((metaTag) => (
                 <div
                   key={metaTag.tagType}
-                  className="group flex items-center justify-between p-2 rounded-full border bg-green-50 hover:bg-green-100 transition-all duration-200"
+                  className="group flex items-center justify-between p-2 rounded-full border bg-green-50 hover:bg-green-200 hover:shadow-md transition-all duration-200 cursor-pointer"
+                  onClick={() => handleMetaTagClick(metaTag.tagType)}
+                  title={`Click to search for notes with meta::${metaTag.tagType}`}
                 >
                   <span className="text-green-700 px-3 truncate font-mono text-sm">
                     {metaTag.tagType} ({metaTag.count})

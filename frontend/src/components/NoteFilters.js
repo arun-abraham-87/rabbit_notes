@@ -613,114 +613,130 @@ const NoteFilters = ({
       </div>
 
       {/* Exclude filters on a new line */}
-      <div className="flex items-center gap-3">
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            checked={excludeMeetings}
-            onChange={(e) => handleExcludeMeetingsChange(e.target.checked)}
-            className="form-checkbox h-3 w-3 text-purple-600"
-          />
-          Exclude Meetings
-        </label>
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            checked={excludeEventNotes}
-            onChange={(e) => handleExcludeEventNotesChange(e.target.checked)}
-            className="form-checkbox h-3 w-3 text-purple-600"
-          />
-          Exclude Event Notes
+      <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={excludeMeetings}
+              onChange={(e) => handleExcludeMeetingsChange(e.target.checked)}
+              className="form-checkbox h-3 w-3 text-purple-600"
+            />
+            Exclude Meetings
+          </label>
+        </div>
+        <div className="flex flex-col">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={excludeEventNotes}
+              onChange={(e) => handleExcludeEventNotesChange(e.target.checked)}
+              className="form-checkbox h-3 w-3 text-purple-600"
+            />
+            Exclude Event Notes
+          </label>
           {excludeEventNotes && eventNotesCount > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+            <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {eventNotesCount} hidden
             </span>
           )}
-        </label>
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            checked={excludeBackupNotes}
-            onChange={(e) => handleExcludeBackupNotesChange(e.target.checked)}
-            className="form-checkbox h-3 w-3 text-purple-600"
-          />
-          Exclude Backup
+        </div>
+        <div className="flex flex-col">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={excludeBackupNotes}
+              onChange={(e) => handleExcludeBackupNotesChange(e.target.checked)}
+              className="form-checkbox h-3 w-3 text-purple-600"
+            />
+            Exclude Backup
+          </label>
           {excludeBackupNotes && backupNotesCount > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+            <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {backupNotesCount} hidden
             </span>
           )}
-        </label>
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            checked={excludeWatchEvents}
-            onChange={(e) => handleExcludeWatchEventsChange(e.target.checked)}
-            className="form-checkbox h-3 w-3 text-purple-600"
-          />
-          Exclude Watch Events
+        </div>
+        <div className="flex flex-col">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={excludeWatchEvents}
+              onChange={(e) => handleExcludeWatchEventsChange(e.target.checked)}
+              className="form-checkbox h-3 w-3 text-purple-600"
+            />
+            Exclude Watch Events
+          </label>
           {excludeWatchEvents && watchEventsCount > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+            <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {watchEventsCount} hidden
             </span>
           )}
-        </label>
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            checked={excludeBookmarks}
-            onChange={(e) => handleExcludeBookmarksChange(e.target.checked)}
-            className="form-checkbox h-3 w-3 text-purple-600"
-          />
-          Exclude Bookmarks
+        </div>
+        <div className="flex flex-col">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={excludeBookmarks}
+              onChange={(e) => handleExcludeBookmarksChange(e.target.checked)}
+              className="form-checkbox h-3 w-3 text-purple-600"
+            />
+            Exclude Bookmarks
+          </label>
           {excludeBookmarks && bookmarksCount > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+            <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {bookmarksCount} hidden
             </span>
           )}
-        </label>
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            checked={excludeExpenses}
-            onChange={(e) => handleExcludeExpensesChange(e.target.checked)}
-            className="form-checkbox h-3 w-3 text-purple-600"
-          />
-          Exclude Expenses
+        </div>
+        <div className="flex flex-col">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={excludeExpenses}
+              onChange={(e) => handleExcludeExpensesChange(e.target.checked)}
+              className="form-checkbox h-3 w-3 text-purple-600"
+            />
+            Exclude Expenses
+          </label>
           {excludeExpenses && expensesCount > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+            <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {expensesCount} hidden
             </span>
           )}
-        </label>
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            checked={excludeSensitive}
-            onChange={(e) => handleExcludeSensitiveChange(e.target.checked)}
-            className="form-checkbox h-3 w-3 text-purple-600"
-          />
-          Exclude Sensitive
+        </div>
+        <div className="flex flex-col">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={excludeSensitive}
+              onChange={(e) => handleExcludeSensitiveChange(e.target.checked)}
+              className="form-checkbox h-3 w-3 text-purple-600"
+            />
+            Exclude Sensitive
+          </label>
           {excludeSensitive && sensitiveNotesCount > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+            <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {sensitiveNotesCount} hidden
             </span>
           )}
-        </label>
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            checked={excludeTrackers}
-            onChange={(e) => handleExcludeTrackersChange(e.target.checked)}
-            className="form-checkbox h-3 w-3 text-purple-600"
-          />
-          Exclude Trackers
+        </div>
+        <div className="flex flex-col">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={excludeTrackers}
+              onChange={(e) => handleExcludeTrackersChange(e.target.checked)}
+              className="form-checkbox h-3 w-3 text-purple-600"
+            />
+            Exclude Trackers
+          </label>
           {excludeTrackers && trackerNotesCount > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+            <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {trackerNotesCount} hidden
             </span>
           )}
-        </label>
+        </div>
       </div>
     </div>
   );

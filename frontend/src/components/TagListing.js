@@ -7,9 +7,10 @@ import {
   CheckIcon,
   ExclamationCircleIcon
 } from '@heroicons/react/24/solid';
-import { loadTags, addNewTag, deleteTag, editTag, loadWorkstreams, deleteWorkstream } from '../utils/ApiUtils';
+import { loadTags, addNewTag, deleteTag, editTag, loadWorkstreams, deleteWorkstream, loadAllNotes } from '../utils/ApiUtils';
 import { loadNotes } from '../utils/ApiUtils';
 import { addNewNoteCommon } from '../utils/ApiUtils';
+import { extractMetaTags } from '../utils/MetaTagUtils';
 import moment from 'moment';
 
 const TagListing = () => {
@@ -26,11 +27,18 @@ const TagListing = () => {
   const [workstreamSearch, setWorkstreamSearch] = useState('');
   const [isCreatingWorkstream, setIsCreatingWorkstream] = useState(false);
   const [workstreamCreateError, setWorkstreamCreateError] = useState(null);
+  
+  // Meta tags state
+  const [metaTags, setMetaTags] = useState([]);
+  const [isLoadingMetaTags, setIsLoadingMetaTags] = useState(true);
+  const [metaTagsError, setMetaTagsError] = useState(null);
+  const [metaTagsSearch, setMetaTagsSearch] = useState('');
 
   // Load tags on component mount
   useEffect(() => {
     loadTagsList();
     loadWorkstreamsList();
+    loadMetaTagsList();
   }, []);
 
   const loadTagsList = async () => {
@@ -73,6 +81,70 @@ const TagListing = () => {
       console.error('Error loading workstreams:', err);
     } finally {
       setIsLoadingWorkstreams(false);
+    }
+  };
+
+  const loadMetaTagsList = async () => {
+    try {
+      setIsLoadingMetaTags(true);
+      setMetaTagsError(null);
+      const response = await loadAllNotes('', null);
+      const allNotes = response.notes || [];
+      
+      // Count how many notes have each meta tag type
+      const metaTagCounts = new Map();
+      
+      allNotes.forEach(note => {
+        if (note.content) {
+          const lines = note.content.split('\n');
+          const noteMetaTags = new Set(); // Track unique tags per note to avoid double counting
+          
+          lines.forEach(line => {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('meta::')) {
+              // Remove 'meta::' prefix
+              const afterMeta = trimmedLine.substring(6);
+              // Find the first occurrence of '::' or ':' to get the tag type
+              const colonIndex = afterMeta.indexOf('::');
+              const singleColonIndex = afterMeta.indexOf(':');
+              
+              let tagType;
+              if (colonIndex !== -1) {
+                // If there's a '::', extract everything before it
+                tagType = afterMeta.substring(0, colonIndex);
+              } else if (singleColonIndex !== -1) {
+                // If there's only a ':', extract everything before it
+                tagType = afterMeta.substring(0, singleColonIndex);
+              } else {
+                // If no colon at all, take the whole string
+                tagType = afterMeta;
+              }
+              
+              if (tagType) {
+                noteMetaTags.add(tagType);
+              }
+            }
+          });
+          
+          // Count each unique tag type for this note
+          noteMetaTags.forEach(tagType => {
+            metaTagCounts.set(tagType, (metaTagCounts.get(tagType) || 0) + 1);
+          });
+        }
+      });
+      
+      // Convert to array of objects with tag type and count, then sort
+      const metaTagsArray = Array.from(metaTagCounts.entries())
+        .map(([tagType, count]) => ({ tagType, count }))
+        .sort((a, b) => a.tagType.localeCompare(b.tagType));
+      
+      setMetaTags(metaTagsArray);
+    } catch (err) {
+      setMetaTagsError('Failed to load meta tags. Please try again.');
+      console.error('Error loading meta tags:', err);
+      setMetaTags([]);
+    } finally {
+      setIsLoadingMetaTags(false);
     }
   };
 
@@ -378,6 +450,66 @@ const TagListing = () => {
                       <TrashIcon className="h-4 w-4" />
                     </button>
                   </div>
+                </div>
+              ))
+          )}
+        </div>
+      )}
+
+      <h2 className="text-xl font-bold mb-4 mt-8">Meta Tags</h2>
+      {/* Meta Tags Error Message */}
+      {metaTagsError && (
+        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">
+          <ExclamationCircleIcon className="h-5 w-5 text-red-400" />
+          <span>{metaTagsError}</span>
+        </div>
+      )}
+      {/* Meta Tags Search Input */}
+      <div className="relative mb-6">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="Search meta tags..."
+          value={metaTagsSearch}
+          onChange={(e) => setMetaTagsSearch(e.target.value)}
+          className="w-full pl-10 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200"
+        />
+        {metaTagsSearch && (
+          <button
+            onClick={() => setMetaTagsSearch('')}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+          >
+            <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+          </button>
+        )}
+      </div>
+      {isLoadingMetaTags ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {metaTags.filter(metaTag => metaTag.tagType.toLowerCase().includes(metaTagsSearch.toLowerCase())).length === 0 ? (
+            <div className="col-span-full text-center py-8 text-gray-500">
+              {metaTagsSearch ? (
+                <p>No meta tags match your search</p>
+              ) : (
+                <p>No meta tags found in notes</p>
+              )}
+            </div>
+          ) : (
+            metaTags
+              .filter(metaTag => metaTag.tagType.toLowerCase().includes(metaTagsSearch.toLowerCase()))
+              .map((metaTag) => (
+                <div
+                  key={metaTag.tagType}
+                  className="group flex items-center justify-between p-2 rounded-full border bg-green-50 hover:bg-green-100 transition-all duration-200"
+                >
+                  <span className="text-green-700 px-3 truncate font-mono text-sm">
+                    {metaTag.tagType} ({metaTag.count})
+                  </span>
                 </div>
               ))
           )}

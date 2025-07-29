@@ -289,7 +289,18 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 
   useEffect(() => {
     const overdue = findwatchitemsOverdue(notes).filter(note => !note.content.includes('meta::reminder'));
-    setOverdueNotes(overdue);
+    
+    // Sort overdue notes to prioritize those with meta::review_overdue_priority tag
+    const sortedOverdue = overdue.sort((a, b) => {
+      const aHasPriority = a.content.includes('meta::review_overdue_priority');
+      const bHasPriority = b.content.includes('meta::review_overdue_priority');
+      
+      if (aHasPriority && !bHasPriority) return -1; // a comes first
+      if (!aHasPriority && bHasPriority) return 1;  // b comes first
+      return 0; // keep original order for notes with same priority status
+    });
+    
+    setOverdueNotes(sortedOverdue);
 
     const allWatchNotes = notes.filter(note =>
       note.content.includes('meta::watch') &&
@@ -619,6 +630,33 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
     } catch (error) {
       console.error('Error unfollowing note:', error);
       Alerts.error('Failed to remove from watchlist');
+    }
+  };
+
+  const handleAddPriority = async (note) => {
+    try {
+      // Check if the priority tag already exists
+      if (note.content.includes('meta::review_overdue_priority')) {
+        Alerts.info('Note is already flagged as priority');
+        return;
+      }
+
+      // Add the priority tag to the note content
+      const updatedContent = note.content + '\nmeta::review_overdue_priority';
+      
+      // Update the note
+      await updateNoteById(note.id, updatedContent);
+      
+      // Update the notes list immediately
+      const updatedNotes = notes.map(n => 
+        n.id === note.id ? { ...n, content: updatedContent } : n
+      );
+      setNotes(updatedNotes);
+
+      Alerts.success('Note flagged as priority');
+    } catch (error) {
+      console.error('Error adding priority flag:', error);
+      Alerts.error('Failed to flag note as priority');
     }
   };
 
@@ -1265,10 +1303,11 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                       <div className="flex items-center gap-2">
                         <div className="grid grid-cols-5 gap-2">
                           <button
+                            onClick={() => handleAddPriority(note)}
                             className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                             title="Flag note"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4" fill={note.content.includes('meta::review_overdue_priority') ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
                             </svg>
                           </button>
@@ -1468,12 +1507,13 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                         <div className="flex items-center gap-2">
                           <div className="flex flex-wrap gap-1">
                             <button
-                              className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 rounded-lg hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-150"
+                              onClick={() => handleAddPriority(note)}
+                              className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                               title="Flag note"
                             >
-                                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
-                            </svg>
+                              <svg className="w-4 h-4" fill={note.content.includes('meta::review_overdue_priority') ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
+                              </svg>
                             </button>
                             <button
                               onClick={() => handleCadence(note, 2, 0)}

@@ -1303,22 +1303,8 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                       </div>
                     </div>
 
-                    {/* Third Section - Unfollow and Actions */}
+                    {/* Third Section - Actions */}
                     <div className="flex items-center gap-2 justify-end">
-                      <button
-                        onClick={() => handleUnfollow(note)}
-                        className="p-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                        title="Remove from watchlist"
-                      >
-                        <EyeSlashIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleEditNote(note)}
-                        className="p-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                        title="Edit note"
-                      >
-                        <PencilIcon className="w-5 h-5" />
-                      </button>
                       <div 
                         onClick={() => toggleNoteExpand(`actions-${note.id}`)}
                         className="py-2 text-xs font-medium text-gray-700 cursor-pointer flex items-center"
@@ -1342,6 +1328,22 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                   {expandedNotes[`actions-${note.id}`] && (
                     <div className="mt-4">
                       <div className="flex flex-wrap gap-2 justify-end">
+                        <button
+                          onClick={() => handleUnfollow(note)}
+                          className="px-4 py-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                          title="Remove from watchlist"
+                        >
+                          <EyeSlashIcon className="w-5 h-5 inline-block mr-1" />
+                          <span>Unwatch</span>
+                        </button>
+                        <button
+                          onClick={() => handleEditNote(note)}
+                          className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                          title="Edit note"
+                        >
+                          <PencilIcon className="w-5 h-5 inline-block mr-1" />
+                          <span>Edit</span>
+                        </button>
                         {showCadenceSelector === note.id ? (
                           <CadenceSelector
                             noteId={note.id}
@@ -1528,20 +1530,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                         >
                           <PlayIcon className="w-5 h-5" />
                         </button>
-                        <button
-                          onClick={() => handleUnfollow(note)}
-                          className="p-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                          title="Remove from watchlist"
-                        >
-                          <EyeSlashIcon className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleEditNote(note)}
-                          className="p-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                          title="Edit note"
-                        >
-                          <PencilIcon className="w-5 h-5" />
-                        </button>
+
                         <div 
                           onClick={() => toggleNoteExpand(`actions-${note.id}`)}
                           className="py-2 text-xs font-medium text-gray-700 cursor-pointer flex items-center"
@@ -1565,6 +1554,22 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                     {expandedNotes[`actions-${note.id}`] && (
                       <div className="mt-4">
                         <div className="flex flex-wrap gap-2 justify-end">
+                          <button
+                            onClick={() => handleUnfollow(note)}
+                            className="px-4 py-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                            title="Remove from watchlist"
+                          >
+                            <EyeSlashIcon className="w-5 h-5 inline-block mr-1" />
+                            <span>Unwatch</span>
+                          </button>
+                          <button
+                            onClick={() => handleEditNote(note)}
+                            className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                            title="Edit note"
+                          >
+                            <PencilIcon className="w-5 h-5 inline-block mr-1" />
+                            <span>Edit</span>
+                          </button>
                           {showCadenceSelector === note.id ? (
                             <CadenceSelector
                               noteId={note.id}

@@ -12,6 +12,7 @@ import NoteEditor from './NoteEditor';
 import { getSettings, defaultSettings, loadTags } from '../utils/ApiUtils';
 import moment from 'moment';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
+import { DevModeInfo } from '../utils/DevUtils';
 
 const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
   const { isOpen, initialContent, mode, noteId, metaTags, closeEditor } = useNoteEditor();
@@ -230,21 +231,28 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
     closeEditor();
   };
 
+  // Debug logging for developer mode
+  console.log('NoteEditorModal - settings:', settings, 'developerMode:', settings?.developerMode);
+  
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      data-modal="true"
-      tabIndex={-1}
-      onFocus={() => {}}
-      onClick={(e) => {
-        // Focus the modal container when clicked
-        if (e.target === e.currentTarget) {
-          e.currentTarget.focus();
-        }
-      }}
+    <DevModeInfo 
+      componentName="NoteEditorModal" 
+      isDevMode={settings?.developerMode || false}
     >
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        data-modal="true"
+        tabIndex={-1}
+        onFocus={() => {}}
+        onClick={(e) => {
+          // Focus the modal container when clicked
+          if (e.target === e.currentTarget) {
+            e.currentTarget.focus();
+          }
+        }}
+      >
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800">{mode === 'edit' ? 'Edit Note' : 'New Note'}</h2>
@@ -357,6 +365,7 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
         </div>
       </div>
     </div>
+    </DevModeInfo>
   );
 };
 

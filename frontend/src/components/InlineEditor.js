@@ -1,5 +1,6 @@
 // src/components/InlineEditor.js
 import React, { useRef, useEffect, useState } from 'react';
+import { DevModeInfo } from '../utils/DevUtils';
 
 /**
  * Reusable inline‑edit UI: a textarea with Save / Cancel.
@@ -13,7 +14,7 @@ import React, { useRef, useEffect, useState } from 'react';
  * onDelete        – fn()         called on Delete button click
  * inputClass      – extra Tailwind classes for the textarea (optional)
  */
-const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false, lineIndex = null }) => {
+const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false, lineIndex = null, settings = {} }) => {
   console.log('InlineEditor props:', { isSuperEditMode, wasOpenedFromSuperEdit });
   const inputRef = useRef(null);
   const [headerType, setHeaderType] = useState(null); // 'h1', 'h2', or null
@@ -187,8 +188,15 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     }, 0);
   };
 
+  // Debug logging for developer mode
+  console.log('InlineEditor - settings:', settings, 'developerMode:', settings?.developerMode);
+  
   return (
-    <div className="w-full relative">
+    <DevModeInfo 
+      componentName="InlineEditor" 
+      isDevMode={settings?.developerMode || false}
+    >
+      <div className="w-full relative">
       {/* Red X button for deleting the line */}
       <button
         onClick={onDelete}
@@ -290,6 +298,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
         </div>
       </div>
     </div>
+    </DevModeInfo>
   );
 };
 

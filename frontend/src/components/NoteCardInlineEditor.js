@@ -9,7 +9,8 @@ export default function NoteCardInlineEditor({
   onCancel,
   onDelete,
   wasOpenedFromSuperEdit,
-  lineIndex
+  lineIndex,
+  settings = {}
 }) {
   if (!visible) return null;
   return (
@@ -22,6 +23,7 @@ export default function NoteCardInlineEditor({
         onDelete={onDelete}
         wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
         lineIndex={lineIndex}
+        settings={settings}
       />
     </div>
   );

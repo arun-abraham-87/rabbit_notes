@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from 'uuid';
 import Calendar from "react-calendar"; // Install via `npm install react-calendar`
 import "react-calendar/dist/Calendar.css";
+import { DevModeInfo } from '../utils/DevUtils';
 
-const TextEditor = ({ addNotes, objList, searchQuery }) => {
+const TextEditor = ({ addNotes, objList, searchQuery, settings = {} }) => {
     const [notes, setNotes] = useState([""]);
     const [selectedIndices, setSelectedIndices] = useState([]);
     const editorRef = useRef(null);
@@ -415,11 +416,18 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
         });
     };
 
+    // Debug logging for developer mode
+    console.log('TextEditor - settings:', settings, 'developerMode:', settings?.developerMode);
+    
     return (
-        <div
-        ref={editorRef}
-            className="w-full mx-auto p-6 border border-gray-200 rounded-xl bg-white shadow-md"
+        <DevModeInfo 
+          componentName="TextEditor" 
+          isDevMode={settings?.developerMode || false}
         >
+          <div
+          ref={editorRef}
+              className="w-full mx-auto p-6 border border-gray-200 rounded-xl bg-white shadow-md"
+          >
             {notes.map((note, index) => (
                 <div key={index} className="relative group">
                   <div
@@ -589,6 +597,7 @@ const TextEditor = ({ addNotes, objList, searchQuery }) => {
               </div>
             </div>
         </div>
+        </DevModeInfo>
     );
 };
 

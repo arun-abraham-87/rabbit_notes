@@ -745,11 +745,12 @@ const NoteCard = ({
           highlightedLineText={highlightedLineText}
           wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
         />
-        <NoteCardInlineEditor
-          visible={addingLineNoteId === note.id}
-          text={newLineText}
-          setText={setNewLineText}
-          onSave={async (finalText) => {
+                        <NoteCardInlineEditor
+                  visible={addingLineNoteId === note.id}
+                  text={newLineText}
+                  setText={setNewLineText}
+                  settings={settings}
+                  onSave={async (finalText) => {
             console.log('NoteCard onSave called with text:', finalText);
             console.log('Current note content:', note.content);
             

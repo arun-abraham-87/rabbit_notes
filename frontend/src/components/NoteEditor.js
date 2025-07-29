@@ -4,6 +4,7 @@ import NoteFilters from './NoteFilters';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { debounce } from 'lodash';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
+import { DevModeInfo } from '../utils/DevUtils';
 
 const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true, initialMode = 'view' }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
@@ -1025,19 +1026,26 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     setLines(newLines);
   };
 
+  // Debug logging for developer mode
+  console.log('NoteEditor - settings:', settings, 'developerMode:', settings?.developerMode);
+  
   return (
-    <div 
-      className="p-6 bg-white border border-gray-300 rounded-lg shadow-xl w-full note-editor-container note-editor" 
-      data-modal="true"
-      tabIndex={-1}
-      onFocus={() => {}} // This makes the div focusable
-      onClick={(e) => {
-        // Focus the container when clicked
-        if (e.target === e.currentTarget) {
-          console.log('NoteEditor: Container clicked, focusing');
-          e.currentTarget.focus();
-        }
-      }}
+    <DevModeInfo 
+      componentName="NoteEditor" 
+      isDevMode={settings?.developerMode || false}
+    >
+      <div 
+        className="p-6 bg-white border border-gray-300 rounded-lg shadow-xl w-full note-editor-container note-editor" 
+        data-modal="true"
+        tabIndex={-1}
+        onFocus={() => {}} // This makes the div focusable
+        onClick={(e) => {
+          // Focus the container when clicked
+          if (e.target === e.currentTarget) {
+            console.log('NoteEditor: Container clicked, focusing');
+            e.currentTarget.focus();
+          }
+        }}
       onKeyDown={(e) => {
         console.log('NoteEditor Container: Key pressed:', e.key, 'mode:', mode, 'target:', e.target.tagName);
         // Direct keyboard handling for view mode navigation
@@ -1935,6 +1943,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       )}
 
     </div>
+    </DevModeInfo>
 
   );
 };

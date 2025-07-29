@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDownIcon, ChevronUpIcon, BellIcon, CheckIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronUpIcon, BellIcon, CheckIcon, ClockIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
 import CadenceSelector from './CadenceSelector';
 import { Alerts } from './Alerts';
 import { findDueReminders, addCurrentDateToLocalStorage, getLastReviewObject } from '../utils/CadenceHelpUtils';
@@ -14,6 +15,7 @@ const QUICK_CADENCES = [
 ];
 
 const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, isRemindersOnlyMode = false }) => {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [expandedDetails, setExpandedDetails] = useState({});
   const [hoveredNote, setHoveredNote] = useState(null);
@@ -390,6 +392,12 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     }
   };
 
+  const handleEditNote = (noteId) => {
+    // Navigate to notes page with search query to show only this specific note
+    const searchQuery = `id:${noteId}`;
+    navigate('/notes', { state: { searchQuery } });
+  };
+
   const toggleDetails = (noteId) => {
     setExpandedDetails(prev => ({
       ...prev,
@@ -752,6 +760,13 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       >
                         <CheckIcon className="h-5 w-5" />
                       </button>
+                      <button
+                        onClick={() => handleEditNote(note.id)}
+                        className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                        title="Edit Note"
+                      >
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -842,6 +857,13 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                           style={{ padding: 0, background: 'none', border: 'none' }}
                         >
                           Set Cadence
+                        </button>
+                        <button
+                          onClick={() => handleEditNote(note.id)}
+                          className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                          title="Edit Note"
+                        >
+                          <PencilIcon className="h-5 w-5" />
                         </button>
                       </div>
                     </div>

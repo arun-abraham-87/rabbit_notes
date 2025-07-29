@@ -1408,16 +1408,14 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                           className="px-4 py-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
                           title="Remove from watchlist"
                         >
-                          <EyeSlashIcon className="w-5 h-5 inline-block mr-1" />
-                          <span>Unwatch</span>
+                          Unwatch
                         </button>
                         <button
                           onClick={() => handleEditNote(note)}
                           className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
                           title="Edit note"
                         >
-                          <PencilIcon className="w-5 h-5 inline-block mr-1" />
-                          <span>Edit</span>
+                          Edit
                         </button>
                         {showCadenceSelector === note.id ? (
                           <CadenceSelector
@@ -1447,8 +1445,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                             className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                             title="Set custom cadence"
                           >
-                            <ClockIcon className="w-5 h-5 inline-block mr-1" />
-                            <span>Set cadence</span>
+                            Set cadence
                           </button>
                         )}
                         {!note.content.includes('meta::reminder') && (
@@ -1457,8 +1454,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                             className="px-4 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
                             title="Set as reminder"
                           >
-                            <BellIcon className="w-5 h-5 inline-block mr-1" />
-                            <span>Set as reminder</span>
+                            Set as reminder
                           </button>
                         )}
                       </div>
@@ -1483,7 +1479,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
               <div className="flex items-center">
                 <PauseIcon className="h-6 w-6 text-gray-500" />
                 <h3 className="ml-3 text-base font-semibold text-gray-800">
-                  Snoozing Watch List ({filteredSnoozedNotes.length})
+                  Snoozing Reviews ({filteredSnoozedNotes.length})
                 </h3>
               </div>
               <ChevronDownIcon 
@@ -1549,97 +1545,21 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                         </div>
                       </div>
 
-                      {/* Combined Review In Buttons and Actions */}
-                      <div className="col-span-2 flex items-center justify-end">
-                        <div className="flex items-center gap-2">
-                          <div className="flex flex-wrap gap-1">
-                            {!note.content.includes('meta::review_overdue_priority') && (
-                              <>
-                                <button
-                                  onClick={() => handleAddPriority(note)}
-                                  className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                                  title="Flag note"
-                                  style={{ minWidth: 48, minHeight: 48 }}
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleCadence(note, 2, 0)}
-                                  className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                                  title="Set 2 hour cadence"
-                                >
-                                  2h
-                                </button>
-                                <button
-                                  onClick={() => handleCadence(note, 4, 0)}
-                                  className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                                  title="Set 4 hour cadence"
-                                >
-                                  4h
-                                </button>
-                                <button
-                                  onClick={() => handleCadence(note, 12, 0)}
-                                  className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                                  title="Set 12 hour cadence"
-                                >
-                                  12h
-                                </button>
-                                <button
-                                  onClick={() => handleCadence(note, 48, 0)}
-                                  className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                                  title="Set 2 day cadence"
-                                >
-                                  2d
-                                </button>
-                                <button
-                                  onClick={() => handleCadence(note, 72, 0)}
-                                  className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                                  title="Set 3 day cadence"
-                                >
-                                  3d
-                                </button>
-                                <button
-                                  onClick={() => handleCadence(note, 168, 0)}
-                                  className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
-                                  title="Set 7 day cadence"
-                                >
-                                  7d
-                                </button>
-                              </>
-                            )}
-                            {note.content.includes('meta::review_overdue_priority') && (
-                              <button
-                                onClick={() => handleAddPriority(note)}
-                                className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                                title="Flag note"
-                                style={{ minWidth: 48, minHeight: 48 }}
-                              >
-                                <svg className="w-4 h-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                          <div 
-                            onClick={() => toggleNoteExpand(`actions-${note.id}`)}
-                            className="text-xs font-medium text-gray-700 cursor-pointer flex items-center p-1 rounded hover:bg-gray-100"
-                          >
-                            <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-180' : ''}`} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Unsnooze Button */}
-                      <div className="flex items-center justify-end">
+                      {/* Actions Button and Unsnooze Button */}
+                      <div className="col-span-2 flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleUnsnooze(note)}
-                          className="p-2 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                          className="px-3 py-2 text-xs font-medium text-green-700 bg-green-200 rounded-lg hover:bg-green-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
                           title="Unsnooze note"
                         >
-                          <PlayIcon className="w-5 h-5" />
+                          Un Pause
                         </button>
+                        <div 
+                          onClick={() => toggleNoteExpand(`actions-${note.id}`)}
+                          className="text-xs font-medium text-gray-700 cursor-pointer flex items-center p-1 rounded hover:bg-gray-100"
+                        >
+                          <ChevronDownIcon className={`w-4 h-4 transform transition-transform duration-200 ${expandedNotes[`actions-${note.id}`] ? 'rotate-180' : ''}`} />
+                        </div>
                       </div>
                     </div>
 
@@ -1647,21 +1567,83 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                     {expandedNotes[`actions-${note.id}`] && (
                       <div className="mt-4">
                         <div className="flex flex-wrap gap-2 justify-end">
+                          {/* Flag Button */}
+                          <button
+                            onClick={() => handleAddPriority(note)}
+                            className={`px-4 py-2 text-xs font-medium rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
+                              note.content.includes('meta::review_overdue_priority')
+                                ? 'text-red-700 bg-red-50 focus:ring-red-500'
+                                : 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500'
+                            }`}
+                            title={note.content.includes('meta::review_overdue_priority') ? 'Unflag note' : 'Flag note'}
+                          >
+                            <svg className="w-4 h-4 inline-block mr-1" fill={note.content.includes('meta::review_overdue_priority') ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
+                            </svg>
+                            <span>{note.content.includes('meta::review_overdue_priority') ? 'Unflag' : 'Flag'}</span>
+                          </button>
+                          
+                          {/* Quick Cadence Buttons */}
+                          {!note.content.includes('meta::review_overdue_priority') && (
+                            <>
+                              <button
+                                onClick={() => handleCadence(note, 2, 0)}
+                                className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                                title="Set 2 hour cadence"
+                              >
+                                2h
+                              </button>
+                              <button
+                                onClick={() => handleCadence(note, 4, 0)}
+                                className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                                title="Set 4 hour cadence"
+                              >
+                                4h
+                              </button>
+                              <button
+                                onClick={() => handleCadence(note, 12, 0)}
+                                className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                                title="Set 12 hour cadence"
+                              >
+                                12h
+                              </button>
+                              <button
+                                onClick={() => handleCadence(note, 48, 0)}
+                                className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                                title="Set 2 day cadence"
+                              >
+                                2d
+                              </button>
+                              <button
+                                onClick={() => handleCadence(note, 72, 0)}
+                                className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                                title="Set 3 day cadence"
+                              >
+                                3d
+                              </button>
+                              <button
+                                onClick={() => handleCadence(note, 168, 0)}
+                                className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
+                                title="Set 7 day cadence"
+                              >
+                                7d
+                              </button>
+                            </>
+                          )}
+                          
                           <button
                             onClick={() => handleUnfollow(note)}
                             className="px-4 py-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
                             title="Remove from watchlist"
                           >
-                            <EyeSlashIcon className="w-5 h-5 inline-block mr-1" />
-                            <span>Unwatch</span>
+                            Unwatch
                           </button>
                           <button
                             onClick={() => handleEditNote(note)}
                             className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
                             title="Edit note"
                           >
-                            <PencilIcon className="w-5 h-5 inline-block mr-1" />
-                            <span>Edit</span>
+                            Edit
                           </button>
                           {showCadenceSelector === note.id ? (
                             <CadenceSelector
@@ -1691,8 +1673,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                               className="px-4 py-2 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
                               title="Set custom cadence"
                             >
-                              <ClockIcon className="w-5 h-5 inline-block mr-1" />
-                              <span>Set cadence</span>
+                              Set cadence
                             </button>
                           )}
                           {!note.content.includes('meta::reminder') && (
@@ -1701,8 +1682,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                               className="px-4 py-2 text-xs font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-150"
                               title="Set as reminder"
                             >
-                              <BellIcon className="w-5 h-5 inline-block mr-1" />
-                              <span>Set as reminder</span>
+                              Set as reminder
                             </button>
                           )}
                         </div>

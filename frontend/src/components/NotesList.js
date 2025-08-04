@@ -247,6 +247,34 @@ const NotesList = ({
       document.removeEventListener('exitBulkDeleteMode', handleExitBulkDeleteMode);
     };
   }, [bulkDeleteMode]);
+
+  // Handle 't' key to open note editor in text mode
+  useEffect(() => {
+    console.log('Setting up openNoteEditorTextMode event listener');
+    const handleOpenNoteEditorTextMode = () => {
+      console.log('openNoteEditorTextMode event received');
+      console.log('focusedNoteIndex:', focusedNoteIndex);
+      console.log('safeNotes length:', safeNotes.length);
+      
+      if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
+        const focusedNote = safeNotes[focusedNoteIndex];
+        console.log('Opening note editor in text mode for note:', focusedNote.id);
+        
+        // Open the note editor with the focused note and set text mode flag
+        setPopupNoteText(focusedNote.id);
+        // Set a flag to indicate this should open in text mode
+        localStorage.setItem('openInTextMode', 'true');
+      } else {
+        console.log('No focused note found for opening note editor. focusedNoteIndex:', focusedNoteIndex);
+      }
+    };
+
+    document.addEventListener('openNoteEditorTextMode', handleOpenNoteEditorTextMode);
+    return () => {
+      console.log('Cleaning up openNoteEditorTextMode event listener');
+      document.removeEventListener('openNoteEditorTextMode', handleOpenNoteEditorTextMode);
+    };
+  }, [focusedNoteIndex, allNotes]);
   
   useEffect(() => {
     showLinkPopupRef.current = showLinkPopup;
@@ -1550,9 +1578,12 @@ const NotesList = ({
               isAddMode={popupNoteText === 'new'}
               note={popupNoteText === 'new' ? null : allNotes.find(n => n.id === popupNoteText)}
               initialMode="edit"
+              initialTextMode={localStorage.getItem('openInTextMode') === 'true'}
               onSave={(updatedNote) => {
                 updateNoteCallback(popupNoteText, updatedNote);
                 setPopupNoteText(null);
+                // Clear the text mode flag
+                localStorage.removeItem('openInTextMode');
                 // Return focus to the original note after saving
                 setTimeout(() => {
                   const noteElement = document.querySelector(`[data-note-id="${popupNoteText}"]`);
@@ -1564,6 +1595,8 @@ const NotesList = ({
               addNote={(content) => {
                 addNotes(content);
                 setPopupNoteText(null);
+                // Clear the text mode flag
+                localStorage.removeItem('openInTextMode');
                 // Return focus to the original note after adding
                 setTimeout(() => {
                   const noteElement = document.querySelector(`[data-note-id="${popupNoteText}"]`);
@@ -1574,6 +1607,8 @@ const NotesList = ({
               }}
               onCancel={() => {
                 setPopupNoteText(null);
+                // Clear the text mode flag
+                localStorage.removeItem('openInTextMode');
                 // Return focus to the original note after canceling
                 setTimeout(() => {
                   const noteElement = document.querySelector(`[data-note-id="${popupNoteText}"]`);

@@ -6,7 +6,7 @@ import { debounce } from 'lodash';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
 import { DevModeInfo } from '../utils/DevUtils';
 
-const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true, initialMode = 'view' }) => {
+const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true, initialMode = 'view', initialTextMode = false }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
   
   // Function to separate content from meta tags
@@ -260,7 +260,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   const [mergedContent, setMergedContent] = useState(null);
   const [draggedId, setDraggedId] = useState(null);
   const [selectAllPressCount, setSelectAllPressCount] = useState(0);
-  const [isTextMode, setIsTextMode] = useState(false);
+  const [isTextMode, setIsTextMode] = useState(initialTextMode);
   const [urlLabelSelection, setUrlLabelSelection] = useState({ urlIndex: null, labelIndex: null });
   const [pendingUrlIndex, setPendingUrlIndex] = useState(null);
   const [customLabel, setCustomLabel] = useState('');

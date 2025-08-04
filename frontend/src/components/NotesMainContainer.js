@@ -136,6 +136,8 @@ const NotesMainContainer = ({
                 e.target.tagName !== 'TEXTAREA' &&
                 e.target.contentEditable !== 'true') {
                 
+                console.log('Global key pressed:', e.key);
+                
                 if (e.key === "f") {
                     e.preventDefault();
                     setFocusMode(!focusMode);
@@ -151,6 +153,13 @@ const NotesMainContainer = ({
                     // Dispatch a custom event to trigger multi-move mode
                     const multiMoveEvent = new CustomEvent('toggleMultiMoveMode');
                     document.dispatchEvent(multiMoveEvent);
+                }
+                if (e.key === "t") {
+                    e.preventDefault();
+                    console.log('t key pressed - dispatching openNoteEditorTextMode event');
+                    // Dispatch a custom event to open note editor in text mode
+                    const openNoteEditorEvent = new CustomEvent('openNoteEditorTextMode');
+                    document.dispatchEvent(openNoteEditorEvent);
                 }
                 if (e.key === "Escape") {
                     e.preventDefault();

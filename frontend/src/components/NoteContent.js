@@ -110,31 +110,60 @@ export default function NoteContent({
         setShowAddTextModal(true);
     };
 
-    const handleSaveText = async (noteId, url, customText) => {
+    const handleSaveText = async (noteId, url, customText, updatedContent = null) => {
         try {
-            // Split content into lines
-            const lines = note.content.split('\n');
+            let finalContent;
             
-            // Find the line containing the URL and replace it with markdown format
-            const updatedLines = lines.map(line => {
-                if (isEditing) {
-                    // For editing, replace existing markdown link
-                    const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`);
-                    if (markdownRegex.test(line)) {
-                        return line.replace(markdownRegex, `[${customText}](${url})`);
+            if (updatedContent !== null) {
+                // Use the provided updated content (when text was selected from note)
+                // But still need to replace the URL with markdown format
+                const lines = updatedContent.split('\n');
+                
+                // Find the line containing the URL and replace it with markdown format
+                const updatedLines = lines.map(line => {
+                    if (isEditing) {
+                        // For editing, replace existing markdown link
+                        const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`);
+                        if (markdownRegex.test(line)) {
+                            return line.replace(markdownRegex, `[${customText}](${url})`);
+                        }
+                    } else {
+                        // For adding, replace plain URL with markdown format
+                        if (line.trim() === url) {
+                            return `[${customText}](${url})`;
+                        }
                     }
-                } else {
-                    // For adding, replace plain URL with markdown format
-                    if (line.trim() === url) {
-                        return `[${customText}](${url})`;
+                    return line;
+                });
+                
+                // Join lines back together
+                finalContent = updatedLines.join('\n');
+            } else {
+                // Use the original logic for URL replacement
+                const lines = note.content.split('\n');
+                
+                // Find the line containing the URL and replace it with markdown format
+                const updatedLines = lines.map(line => {
+                    if (isEditing) {
+                        // For editing, replace existing markdown link
+                        const markdownRegex = new RegExp(`\\[([^\\]]+)\\]\\(${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`);
+                        if (markdownRegex.test(line)) {
+                            return line.replace(markdownRegex, `[${customText}](${url})`);
+                        }
+                    } else {
+                        // For adding, replace plain URL with markdown format
+                        if (line.trim() === url) {
+                            return `[${customText}](${url})`;
+                        }
                     }
-                }
-                return line;
-            });
+                    return line;
+                });
+                
+                // Join lines back together
+                finalContent = updatedLines.join('\n');
+            }
             
-            // Join lines back together
-            const updatedContent = updatedLines.join('\n');
-            const reorderedContent = reorderMetaTags(updatedContent);
+            const reorderedContent = reorderMetaTags(finalContent);
             
             // Update the note
             await updateNote(noteId, reorderedContent);
@@ -1235,6 +1264,7 @@ export default function NoteContent({
                 url={urlForText}
                 isEditing={isEditing}
                 initialText={currentCustomText}
+                noteContent={note.content}
             />
         </div>
     );

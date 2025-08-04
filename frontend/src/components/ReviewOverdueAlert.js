@@ -1042,42 +1042,73 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
     setShowAddTextModal(true);
   };
 
-  const handleSaveText = async (noteId, newUrl, customText) => {
+  const handleSaveText = async (noteId, newUrl, customText, updatedContent = null) => {
     try {
       const note = notes.find(n => n.id === noteId);
       if (!note) return;
 
-      // Split content into lines
-      const lines = note.content.split('\n');
+      let finalContent;
       
-      // Find the line containing the URL and replace it with markdown format
-      const updatedLines = lines.map(line => {
-        if (isEditing) {
-          // For editing, replace existing markdown link with new URL and text
-          // Use a more specific regex that matches the exact text and URL being edited
-          const escapedUrl = urlForText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const escapedText = editingLinkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const markdownRegex = new RegExp(`\\[${escapedText}\\]\\(${escapedUrl}\\)`);
-          if (markdownRegex.test(line)) {
-            return line.replace(markdownRegex, `[${customText}](${newUrl})`);
+      if (updatedContent !== null) {
+        // Use the provided updated content (when text was selected from note)
+        // But still need to replace the URL with markdown format
+        const lines = updatedContent.split('\n');
+        
+        // Find the line containing the URL and replace it with markdown format
+        const updatedLines = lines.map(line => {
+          if (isEditing) {
+            // For editing, replace existing markdown link with new URL and text
+            // Use a more specific regex that matches the exact text and URL being edited
+            const escapedUrl = urlForText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const escapedText = editingLinkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const markdownRegex = new RegExp(`\\[${escapedText}\\]\\(${escapedUrl}\\)`);
+            if (markdownRegex.test(line)) {
+              return line.replace(markdownRegex, `[${customText}](${newUrl})`);
+            }
+          } else {
+            // For adding, replace plain URL with markdown format
+            if (line.trim() === urlForText) {
+              return `[${customText}](${newUrl})`;
+            }
           }
-        } else {
-          // For adding, replace plain URL with markdown format
-          if (line.trim() === urlForText) {
-            return `[${customText}](${newUrl})`;
+          return line;
+        });
+        
+        // Join lines back together
+        finalContent = updatedLines.join('\n');
+      } else {
+        // Use the original logic for URL replacement
+        const lines = note.content.split('\n');
+        
+        // Find the line containing the URL and replace it with markdown format
+        const updatedLines = lines.map(line => {
+          if (isEditing) {
+            // For editing, replace existing markdown link with new URL and text
+            // Use a more specific regex that matches the exact text and URL being edited
+            const escapedUrl = urlForText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const escapedText = editingLinkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const markdownRegex = new RegExp(`\\[${escapedText}\\]\\(${escapedUrl}\\)`);
+            if (markdownRegex.test(line)) {
+              return line.replace(markdownRegex, `[${customText}](${newUrl})`);
+            }
+          } else {
+            // For adding, replace plain URL with markdown format
+            if (line.trim() === urlForText) {
+              return `[${customText}](${newUrl})`;
+            }
           }
-        }
-        return line;
-      });
-      
-      // Join lines back together
-      const updatedContent = updatedLines.join('\n');
+          return line;
+        });
+        
+        // Join lines back together
+        finalContent = updatedLines.join('\n');
+      }
       
       // Update the note
-      await updateNoteById(noteId, updatedContent);
+      await updateNoteById(noteId, finalContent);
       
       // Update the notes state
-      setNotes(notes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
+      setNotes(notes.map(n => n.id === noteId ? { ...n, content: finalContent } : n));
       
       setShowAddTextModal(false);
       setIsEditing(false);
@@ -1800,6 +1831,7 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
         url={urlForText}
         isEditing={isEditing}
         initialText={currentCustomText}
+        noteContent={notes.find(n => n.id === noteIdForText)?.content || ''}
       />
 
       {/* Link Selection Popup */}

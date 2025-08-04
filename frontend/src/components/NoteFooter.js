@@ -67,6 +67,7 @@ const NoteFooter = ({
   const [showRawNote, setShowRawNote] = useState(false);
   const [showRemoveTagsConfirm, setShowRemoveTagsConfirm] = useState(false);
   const [showConvertToBookmarkModal, setShowConvertToBookmarkModal] = useState(false);
+  const [showMoreActions, setShowMoreActions] = useState(false);
   const pinPopupRef = useRef(null);
   const rawNotePopupRef = useRef(null);
   const lines = note.content.split('\n');
@@ -82,12 +83,17 @@ const NoteFooter = ({
       if (rawNotePopupRef.current && !rawNotePopupRef.current.contains(event.target)) {
         setShowRawNote(false);
       }
+      // Handle More Actions dropdown
+      if (!event.target.closest('[data-more-actions]')) {
+        setShowMoreActions(false);
+      }
     };
 
     const handleEscapeKey = (event) => {
       if (event.key === 'Escape') {
         setShowPinPopup(false);
         setShowRawNote(false);
+        setShowMoreActions(false);
       }
     };
 
@@ -321,84 +327,10 @@ const NoteFooter = ({
 
       {!focusMode && (
       <div className="flex items-center bg-gray-50 rounded-lg">
-        {/* Todo Group */}
-        <div className="flex items-center space-x-1 px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <Tooltip text={isTodo ? 'Remove Todo Status' : 'Mark as Todo'}>
-            <button
-              onClick={() => handleTodoAction()}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${isTodo ? 'bg-blue-100' : ''
-                }`}
-            >
-              <ClockIcon className={`h-4 w-4 text-gray-500 transition-colors ${isTodo ? 'text-blue-500' : 'hover:text-blue-500'
-                }`} />
-            </button>
-          </Tooltip>
 
-          {isTodo && (
-            <>
-              <Tooltip text="High Priority">
-                <button
-                  onClick={() => handleTodoAction('high')}
-                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${currentPriority === 'high' ? 'bg-red-100' : ''
-                    }`}
-                >
-                  <FlagIcon className={`h-4 w-4 transition-colors ${currentPriority === 'high' ? 'text-red-500' : 'text-red-400'
-                    }`} />
-                </button>
-              </Tooltip>
 
-              <Tooltip text="Medium Priority">
-                <button
-                  onClick={() => handleTodoAction('medium')}
-                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${currentPriority === 'medium' ? 'bg-yellow-100' : ''
-                    }`}
-                >
-                  <FlagIcon className={`h-4 w-4 transition-colors ${currentPriority === 'medium' ? 'text-yellow-500' : 'text-yellow-400'
-                    }`} />
-                </button>
-              </Tooltip>
-
-              <Tooltip text="Low Priority">
-                <button
-                  onClick={() => handleTodoAction('low')}
-                  className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${currentPriority === 'low' ? 'bg-blue-100' : ''
-                    }`}
-                >
-                  <FlagIcon className={`h-4 w-4 transition-colors ${currentPriority === 'low' ? 'text-blue-500' : 'text-blue-400'
-                    }`} />
-                </button>
-              </Tooltip>
-            </>
-          )}
-        </div>
-
-        {/* Separator */}
-        <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-
-        {/* Organization Group */}
+        {/* Watch and Pin Group - Keep these in right panel */}
         <div className="flex items-center space-x-1 px-2 py-1 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <Tooltip text="Bookmark">
-            <button
-              onClick={() => handleAction('bookmark')}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::bookmark::') ? 'bg-yellow-100' : ''
-                }`}
-            >
-              <BookmarkIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::bookmark::') ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'
-                }`} />
-            </button>
-          </Tooltip>
-
-          <Tooltip text="Mark as Abbreviation">
-            <button
-              onClick={() => handleAction('abbreviation')}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::abbreviation::') ? 'bg-purple-100' : ''
-                }`}
-            >
-              <TagIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::abbreviation::') ? 'text-purple-500' : 'text-gray-500 hover:text-purple-500'
-                }`} />
-            </button>
-          </Tooltip>
-
           <Tooltip text="Watch">
             <button
               onClick={() => handleAction('watch')}
@@ -406,17 +338,6 @@ const NoteFooter = ({
                 }`}
             >
               <EyeIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500 hover:text-green-500'
-                }`} />
-            </button>
-          </Tooltip>
-
-          <Tooltip text="Workstream">
-            <button
-              onClick={() => handleAction('workstream')}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::workstream::') ? 'bg-indigo-100' : ''
-                }`}
-            >
-              <FolderIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::workstream::') ? 'text-indigo-500' : 'text-gray-500 hover:text-indigo-500'
                 }`} />
             </button>
           </Tooltip>
@@ -431,35 +352,158 @@ const NoteFooter = ({
                 }`} />
             </button>
           </Tooltip>
+        </div>
 
-          <Tooltip text="Remove All Tags">
-            <button
-              onClick={() => setShowRemoveTagsConfirm(true)}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <XMarkIcon className="h-4 w-4 text-gray-500 hover:text-red-500 transition-colors" />
-            </button>
-          </Tooltip>
+        {/* Separator */}
+        <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
 
-          <Tooltip text={note.content.includes('meta::sensitive::') ? 'Remove Sensitive Tag' : 'Mark as Sensitive'}>
-            <button
-              onClick={handleSensitiveAction}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::sensitive::') ? 'bg-orange-100' : ''
-                }`}
-            >
-              <EyeIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::sensitive::') ? 'text-orange-500' : 'text-gray-500 hover:text-orange-500'
-                }`} />
-            </button>
-          </Tooltip>
-
-          <Tooltip text="Convert to Web Bookmark">
-            <button
-              onClick={() => setShowConvertToBookmarkModal(true)}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <GlobeAltIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
-            </button>
-          </Tooltip>
+        {/* More Actions Dropdown */}
+        <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200" data-more-actions>
+          <div className="relative">
+            <Tooltip text="More Actions">
+              <button
+                onClick={() => setShowMoreActions(!showMoreActions)}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <ChevronDownIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
+              </button>
+            </Tooltip>
+            
+            {showMoreActions && (
+              <div className="absolute bottom-full right-0 mb-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      handleAction('bookmark');
+                      setShowMoreActions(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                  >
+                    <BookmarkIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::bookmark::') ? 'text-yellow-500' : 'text-gray-500'}`} />
+                    Bookmark
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      handleAction('abbreviation');
+                      setShowMoreActions(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                  >
+                    <TagIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::abbreviation::') ? 'text-purple-500' : 'text-gray-500'}`} />
+                    Mark as Abbreviation
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      handleAction('workstream');
+                      setShowMoreActions(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                  >
+                    <FolderIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::workstream::') ? 'text-indigo-500' : 'text-gray-500'}`} />
+                    Workstream
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setShowRemoveTagsConfirm(true);
+                      setShowMoreActions(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                  >
+                    <XMarkIcon className="h-4 w-4 mr-2 text-gray-500" />
+                    Remove All Tags
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      handleSensitiveAction();
+                      setShowMoreActions(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                  >
+                    <EyeIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::sensitive::') ? 'text-orange-500' : 'text-gray-500'}`} />
+                    Mark as Sensitive
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setShowConvertToBookmarkModal(true);
+                      setShowMoreActions(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                  >
+                    <GlobeAltIcon className="h-4 w-4 mr-2 text-gray-500" />
+                    Convert to Web Bookmark
+                  </button>
+                  
+                  <div className="border-t border-gray-200 my-1"></div>
+                  
+                  <button
+                    onClick={() => {
+                      handleTodoAction();
+                      setShowMoreActions(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                  >
+                    <ClockIcon className={`h-4 w-4 mr-2 ${isTodo ? 'text-blue-500' : 'text-gray-500'}`} />
+                    {isTodo ? 'Remove Todo Status' : 'Mark as Todo'}
+                  </button>
+                  
+                  {isTodo && (
+                    <>
+                      <button
+                        onClick={() => {
+                          handleTodoAction('high');
+                          setShowMoreActions(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center pl-6"
+                      >
+                        <FlagIcon className={`h-4 w-4 mr-2 ${currentPriority === 'high' ? 'text-red-500' : 'text-red-400'}`} />
+                        High Priority
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          handleTodoAction('medium');
+                          setShowMoreActions(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center pl-6"
+                      >
+                        <FlagIcon className={`h-4 w-4 mr-2 ${currentPriority === 'medium' ? 'text-yellow-500' : 'text-yellow-400'}`} />
+                        Medium Priority
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          handleTodoAction('low');
+                          setShowMoreActions(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center pl-6"
+                      >
+                        <FlagIcon className={`h-4 w-4 mr-2 ${currentPriority === 'low' ? 'text-blue-500' : 'text-blue-400'}`} />
+                        Low Priority
+                      </button>
+                    </>
+                  )}
+                  
+                  <div className="border-t border-gray-200 my-1"></div>
+                  
+                  <button
+                    onClick={() => {
+                      setShowPinPopup(!showPinPopup);
+                      setShowMoreActions(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                  >
+                    <MapPinIcon className={`h-4 w-4 mr-2 ${showPinPopup ? 'text-blue-500' : 'text-gray-500'}`} />
+                    Pin Lines
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Separator */}
@@ -520,16 +564,7 @@ const NoteFooter = ({
             </button>
           </Tooltip>
 
-          <Tooltip text="Pin Lines">
-            <button
-              onClick={() => setShowPinPopup(!showPinPopup)}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${showPinPopup ? 'bg-gray-100' : ''
-                }`}
-            >
-              <MapPinIcon className={`h-4 w-4 transition-colors ${showPinPopup ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-                }`} />
-            </button>
-          </Tooltip>
+
         </div>
 
         {/* Separator */}

@@ -712,10 +712,14 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   const saveNote = () => {
     console.log('Saving note with lines:', lines);
     
-    // Remove empty lines from the end and trim all lines
-    const trimmedLines = lines
-      .map(line => line.text.trim()) // Trim each line
-      .filter(text => text !== ''); // Remove empty lines
+    // Preserve blank lines between content, only remove trailing empty lines
+    const processedLines = lines.map(line => line.text);
+    
+    // Remove trailing empty lines only
+    let trimmedLines = processedLines;
+    while (trimmedLines.length > 0 && trimmedLines[trimmedLines.length - 1].trim() === '') {
+      trimmedLines = trimmedLines.slice(0, -1);
+    }
     
     console.log('Trimmed lines:', trimmedLines);
     

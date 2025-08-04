@@ -142,6 +142,30 @@ export default function NoteContent({
         }
     };
 
+    const handleConvertToH2 = async (note, lineIndex) => {
+        try {
+            // Split content into lines
+            const lines = note.content.split('\n');
+            
+            // Get the original line content
+            const originalLine = lines[lineIndex];
+            if (!originalLine) return;
+            
+            // Remove any existing H2 markers and add new ones
+            const cleanText = originalLine.replace(/^##\s*/, '').replace(/\s*##$/, '');
+            lines[lineIndex] = `##${cleanText}##`;
+            
+            // Join lines back together
+            const updatedContent = lines.join('\n');
+            const reorderedContent = reorderMetaTags(updatedContent);
+            
+            // Update the note
+            await updateNote(note.id, reorderedContent);
+        } catch (error) {
+            console.error('Error converting to H2:', error);
+        }
+    };
+
     const rawLines = getRawLines(note.content);
     const contentLines = parseNoteContent({ 
         content: note.content, // Pass full content including meta tags for URL reversal detection
@@ -641,6 +665,22 @@ export default function NoteContent({
                                     title="Move H1 to top"
                                 >
                                     ↑
+                                </button>
+                            )}
+                            {!focusMode && !isUrlOnly && !isFirstLine && (() => {
+                                // Check if this line is NOT an H1 or H2 by looking at the raw content
+                                const rawLines = getRawLines(note.content);
+                                const originalLine = rawLines[idx];
+                                const isH1 = originalLine && originalLine.trim().startsWith('###') && originalLine.trim().endsWith('###');
+                                const isH2 = originalLine && originalLine.trim().startsWith('##') && originalLine.trim().endsWith('##');
+                                return !isH1 && !isH2;
+                            })() && (
+                                <button
+                                    onClick={() => handleConvertToH2(note, idx)}
+                                    className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                    title="Convert to H2"
+                                >
+                                    H2
                                 </button>
                             )}
                         </div>

@@ -1326,8 +1326,36 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                     {/* Combined Review In Buttons and Actions */}
                     <div className="col-span-2 flex items-center justify-end">
                       <div className="flex items-center gap-2">
-                        <div className="grid grid-cols-5 gap-2">
-                          {!note.content.includes('meta::review_overdue_priority') && (
+                        {/* Unwatch button - always first */}
+                        <button
+                          onClick={() => handleUnfollow(note)}
+                          className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                          title="Remove from watchlist"
+                          style={{ minWidth: 48, minHeight: 48 }}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          <span className="text-xs">Unwatch</span>
+                        </button>
+                        
+                        {/* Flag button - when note has priority */}
+                        {note.content.includes('meta::review_overdue_priority') && (
+                          <button
+                            onClick={() => handleAddPriority(note)}
+                            className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+                            title="Flag note"
+                            style={{ minWidth: 48, minHeight: 48 }}
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
+                            </svg>
+                          </button>
+                        )}
+                        
+                        {/* Cadence buttons - when note doesn't have priority */}
+                        {!note.content.includes('meta::review_overdue_priority') && (
+                          <>
                             <button
                               onClick={() => handleAddPriority(note)}
                               className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-150"
@@ -1338,57 +1366,42 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
                               </svg>
                             </button>
-                          )}
-                          {!note.content.includes('meta::review_overdue_priority') && (() => {
-                            const cadence = parseReviewCadenceMeta(note.content) || {};
-                            const isSelected = (h, m = 0) => {
-                              if (!cadence.type && h === 12 && m === 0) return true; // default
-                              return cadence.type === 'every-x-hours' && cadence.hours === h && (cadence.minutes || 0) === m;
-                            };
-                            const defaultOptions = [
-                              { h: 2, label: '2h' },
-                              { h: 4, label: '4h' },
-                              { h: 12, label: '12h' },
-                              { h: 48, label: '2d' },
-                            ];
-                            let options = [...defaultOptions];
-                            // If current cadence is not in options, add it
-                            if (cadence.type === 'every-x-hours' && cadence.hours && !defaultOptions.some(opt => opt.h === cadence.hours && (cadence.minutes || 0) === 0)) {
-                              options.push({ h: cadence.hours, label: cadence.hours >= 24 ? `${cadence.hours / 24}d` : `${cadence.hours}h` });
-                            }
-                            return options.map(({ h, label }, idx) => (
-                              <button
-                                key={label}
-                                onClick={() => handleCadence(note, h, 0)}
-                                className={`flex flex-col items-center justify-center px-2 py-1 text-xs font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
-                                  isSelected(h, 0)
-                                    ? 'bg-purple-600 text-white border border-purple-700'
-                                    : 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500 focus:border-purple-500'
-                                }`}
-                                title={`Set ${label} cadence`}
-                                style={{ minWidth: 48 }}
-                              >
-                                <span className="text-xs text-gray-400 mb-0.5">{idx + 1}</span>
-                                <span>{label}</span>
-                              </button>
-                            ));
-                          })()}
-                          {note.content.includes('meta::review_overdue_priority') && (
-                            <div className="col-span-4"></div>
-                          )}
-                          {note.content.includes('meta::review_overdue_priority') && (
-                            <button
-                              onClick={() => handleAddPriority(note)}
-                              className="flex flex-col items-center justify-center px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                              title="Flag note"
-                              style={{ minWidth: 48, minHeight: 48 }}
-                            >
-                              <svg className="w-4 h-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
+                            {(() => {
+                              const cadence = parseReviewCadenceMeta(note.content) || {};
+                              const isSelected = (h, m = 0) => {
+                                if (!cadence.type && h === 12 && m === 0) return true; // default
+                                return cadence.type === 'every-x-hours' && cadence.hours === h && (cadence.minutes || 0) === m;
+                              };
+                              const defaultOptions = [
+                                { h: 2, label: '2h' },
+                                { h: 4, label: '4h' },
+                                { h: 12, label: '12h' },
+                                { h: 48, label: '2d' },
+                              ];
+                              let options = [...defaultOptions];
+                              // If current cadence is not in options, add it
+                              if (cadence.type === 'every-x-hours' && cadence.hours && !defaultOptions.some(opt => opt.h === cadence.hours && (cadence.minutes || 0) === 0)) {
+                                options.push({ h: cadence.hours, label: cadence.hours >= 24 ? `${cadence.hours / 24}d` : `${cadence.hours}h` });
+                              }
+                              return options.map(({ h, label }, idx) => (
+                                <button
+                                  key={label}
+                                  onClick={() => handleCadence(note, h, 0)}
+                                  className={`flex flex-col items-center justify-center px-2 py-1 text-xs font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ${
+                                    isSelected(h, 0)
+                                      ? 'bg-purple-600 text-white border border-purple-700'
+                                      : 'text-purple-700 bg-purple-50 hover:bg-purple-100 focus:ring-purple-500 focus:border-purple-500'
+                                  }`}
+                                  title={`Set ${label} cadence`}
+                                  style={{ minWidth: 48 }}
+                                >
+                                  <span className="text-xs text-gray-400 mb-0.5">{idx + 1}</span>
+                                  <span>{label}</span>
+                                </button>
+                              ));
+                            })()}
+                          </>
+                        )}
                       </div>
                       <div 
                         onClick={() => toggleNoteExpand(`actions-${note.id}`)}
@@ -1403,13 +1416,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                   {expandedNotes[`actions-${note.id}`] && (
                     <div className="mt-4">
                       <div className="flex flex-wrap gap-2 justify-end">
-                        <button
-                          onClick={() => handleUnfollow(note)}
-                          className="px-4 py-2 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                          title="Remove from watchlist"
-                        >
-                          Unwatch
-                        </button>
                         <button
                           onClick={() => handleEditNote(note)}
                           className="px-4 py-2 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"

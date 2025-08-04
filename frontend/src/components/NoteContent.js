@@ -64,6 +64,13 @@ export default function NoteContent({
     const [grammarResults, setGrammarResults] = useState(null);
     const [isCheckingGrammar, setIsCheckingGrammar] = useState(false);
     const [showGrammarResults, setShowGrammarResults] = useState(false);
+    
+    // Multi-move state
+    const [multiMoveMode, setMultiMoveMode] = useState(false);
+    const [multiMoveSelectedRows, setMultiMoveSelectedRows] = useState(new Set());
+    const [multiMoveError, setMultiMoveError] = useState('');
+    const [isDraggingMultiMove, setIsDraggingMultiMove] = useState(false);
+    const [draggedMultiMoveSection, setDraggedMultiMoveSection] = useState(null);
 
     if (!note) {
         return null;
@@ -307,6 +314,107 @@ export default function NoteContent({
         setSelectedRows(new Set());
     };
 
+    // Multi-move functions
+    const toggleMultiMoveMode = () => {
+        setMultiMoveMode(!multiMoveMode);
+        setMultiMoveSelectedRows(new Set());
+        setMultiMoveError('');
+    };
+
+    const toggleMultiMoveRowSelection = (idx) => {
+        const newSelectedRows = new Set(multiMoveSelectedRows);
+        if (newSelectedRows.has(idx)) {
+            newSelectedRows.delete(idx);
+        } else {
+            newSelectedRows.add(idx);
+        }
+        setMultiMoveSelectedRows(newSelectedRows);
+        validateMultiMoveSelection(newSelectedRows);
+    };
+
+    const validateMultiMoveSelection = (selectedRows) => {
+        if (selectedRows.size === 0) {
+            setMultiMoveError('');
+            return;
+        }
+
+        const sortedIndices = Array.from(selectedRows).sort((a, b) => a - b);
+        const isConsecutive = sortedIndices.every((index, i) => {
+            if (i === 0) return true;
+            return index === sortedIndices[i - 1] + 1;
+        });
+
+        if (!isConsecutive) {
+            setMultiMoveError('Please select consecutive lines only');
+        } else {
+            setMultiMoveError('');
+        }
+    };
+
+    const handleMultiMoveDragStart = (e) => {
+        console.log('Multi-move drag start triggered');
+        if (multiMoveSelectedRows.size === 0 || multiMoveError) {
+            console.log('Drag prevented - no selection or error');
+            return;
+        }
+        
+        const sortedIndices = Array.from(multiMoveSelectedRows).sort((a, b) => a - b);
+        
+        // Get the raw text content from the original note content
+        const rawLines = getRawLines(note.content);
+        const sectionLines = sortedIndices.map(idx => rawLines[idx]);
+        
+        console.log('Dragging lines:', sortedIndices, 'with content:', sectionLines);
+        
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+            type: 'multi-move',
+            indices: sortedIndices,
+            lines: sectionLines
+        }));
+        
+        setIsDraggingMultiMove(true);
+        setDraggedMultiMoveSection({ indices: sortedIndices, lines: sectionLines });
+    };
+
+    const handleMultiMoveDragEnd = () => {
+        setIsDraggingMultiMove(false);
+        setDraggedMultiMoveSection(null);
+    };
+
+    const handleMultiMoveDrop = (e, targetLineIndex) => {
+        if (!isDraggingMultiMove) return;
+        
+        try {
+            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+            if (data.type !== 'multi-move') return;
+
+            const lines = note.content.split('\n');
+            const { indices } = data;
+            
+            // Remove the selected lines (in reverse order to maintain indices)
+            const linesToMove = [];
+            indices.reverse().forEach(idx => {
+                linesToMove.unshift(lines[idx]);
+                lines.splice(idx, 1);
+            });
+
+            // Insert the lines at the target position
+            lines.splice(targetLineIndex, 0, ...linesToMove);
+            
+            const updatedContent = lines.join('\n');
+            const reorderedContent = reorderMetaTags(updatedContent);
+            updateNote(note.id, reorderedContent);
+            
+            // Reset multi-move mode
+            setMultiMoveMode(false);
+            setMultiMoveSelectedRows(new Set());
+            setMultiMoveError('');
+        } catch (error) {
+            console.error('Error in multi-move drop:', error);
+        }
+    };
+
     // Grammar check functionality
     const handleGrammarCheck = async () => {
         if (!note.content.trim()) {
@@ -386,36 +494,53 @@ export default function NoteContent({
         if (focusMode) return;
         
         e.preventDefault();
-        const sourceLineIndex = parseInt(e.dataTransfer.getData('text/plain'));
         
-        if (sourceLineIndex === targetLineIndex) {
+        try {
+            const data = e.dataTransfer.getData('text/plain');
+            
+            // Check if this is a multi-move operation
+            if (data.startsWith('{')) {
+                const parsedData = JSON.parse(data);
+                if (parsedData.type === 'multi-move') {
+                    handleMultiMoveDrop(e, targetLineIndex);
+                    return;
+                }
+            }
+            
+            // Regular single line drag and drop
+            const sourceLineIndex = parseInt(data);
+            
+            if (sourceLineIndex === targetLineIndex) {
+                setDraggedLineIndex(null);
+                setDragOverLineIndex(null);
+                setIsDragging(false);
+                return;
+            }
+
+            // Get the raw lines (including meta tags)
+            const lines = note.content.split('\n');
+            
+            // Move the line
+            const movedLine = lines[sourceLineIndex];
+            const newLines = [...lines];
+            newLines.splice(sourceLineIndex, 1);
+            
+            // Adjust target index when dragging down to account for the removed line
+            const adjustedTargetIndex = sourceLineIndex < targetLineIndex ? targetLineIndex - 1 : targetLineIndex;
+            newLines.splice(adjustedTargetIndex, 0, movedLine);
+            
+            // Update the note
+            const updatedContent = newLines.join('\n');
+            const reorderedContent = reorderMetaTags(updatedContent);
+            updateNote(note.id, reorderedContent);
+            
+            // Reset drag state
             setDraggedLineIndex(null);
             setDragOverLineIndex(null);
             setIsDragging(false);
-            return;
+        } catch (error) {
+            console.error('Error in handleDrop:', error);
         }
-
-        // Get the raw lines (including meta tags)
-        const lines = note.content.split('\n');
-        
-        // Move the line
-        const movedLine = lines[sourceLineIndex];
-        const newLines = [...lines];
-        newLines.splice(sourceLineIndex, 1);
-        
-        // Adjust target index when dragging down to account for the removed line
-        const adjustedTargetIndex = sourceLineIndex < targetLineIndex ? targetLineIndex - 1 : targetLineIndex;
-        newLines.splice(adjustedTargetIndex, 0, movedLine);
-        
-        // Update the note
-        const updatedContent = newLines.join('\n');
-        const reorderedContent = reorderMetaTags(updatedContent);
-        updateNote(note.id, reorderedContent);
-        
-        // Reset drag state
-        setDraggedLineIndex(null);
-        setDragOverLineIndex(null);
-        setIsDragging(false);
     };
 
     const handleDragEnd = () => {
@@ -504,7 +629,7 @@ export default function NoteContent({
             return (
                 <div
                     key={idx}
-                    draggable={!focusMode}
+                    draggable={!focusMode && !multiMoveMode}
                     onDragStart={(e) => handleDragStart(e, idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDragEnter={(e) => handleDragEnter(e, idx)}
@@ -530,6 +655,14 @@ export default function NoteContent({
                             type="checkbox"
                             checked={selectedRows.has(idx)}
                             onChange={() => toggleRowSelection(idx)}
+                            className="mr-2"
+                        />
+                    )}
+                    {multiMoveMode && (
+                        <input
+                            type="checkbox"
+                            checked={multiMoveSelectedRows.has(idx)}
+                            onChange={() => toggleMultiMoveRowSelection(idx)}
                             className="mr-2"
                         />
                     )}
@@ -586,7 +719,7 @@ export default function NoteContent({
             return (
                 <div
                     key={idx}
-                    draggable={!focusMode}
+                    draggable={!focusMode && !multiMoveMode}
                     onDragStart={(e) => handleDragStart(e, idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDragEnter={(e) => handleDragEnter(e, idx)}
@@ -615,7 +748,7 @@ export default function NoteContent({
         return (
             <div
                 key={idx}
-                draggable={!focusMode}
+                draggable={!focusMode && !multiMoveMode}
                 onDragStart={(e) => handleDragStart(e, idx)}
                 onDragOver={(e) => handleDragOver(e, idx)}
                 onDragEnter={(e) => handleDragEnter(e, idx)}
@@ -644,6 +777,14 @@ export default function NoteContent({
                         type="checkbox"
                         checked={selectedRows.has(idx)}
                         onChange={() => toggleRowSelection(idx)}
+                        className="mr-2"
+                    />
+                )}
+                {multiMoveMode && (
+                    <input
+                        type="checkbox"
+                        checked={multiMoveSelectedRows.has(idx)}
+                        onChange={() => toggleMultiMoveRowSelection(idx)}
                         className="mr-2"
                     />
                 )}
@@ -844,6 +985,49 @@ export default function NoteContent({
                                 title="Check grammar and spelling"
                             >
                                 {isCheckingGrammar ? 'Checking...' : 'Grammar Check'}
+                            </button>
+                            <button
+                                onClick={toggleMultiMoveMode}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
+                                    multiMoveMode 
+                                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title={multiMoveMode ? 'Cancel multi-move' : 'Multi-move lines'}
+                            >
+                                {multiMoveMode ? 'Cancel' : 'Multi Move'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Multi-move error message */}
+                {multiMoveMode && multiMoveError && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                        {multiMoveError}
+                    </div>
+                )}
+                
+                {/* Multi-move drag handle */}
+                {multiMoveMode && multiMoveSelectedRows.size > 0 && !multiMoveError && (
+                    <div className="mt-2 p-3 bg-blue-50 border-2 border-blue-200 rounded-lg shadow-sm">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-blue-700">
+                                    {multiMoveSelectedRows.size} line(s) selected
+                                </span>
+                                <span className="text-xs text-blue-500">
+                                    (consecutive lines)
+                                </span>
+                            </div>
+                            <button
+                                draggable={true}
+                                onDragStart={handleMultiMoveDragStart}
+                                onDragEnd={handleMultiMoveDragEnd}
+                                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg cursor-move hover:bg-blue-700 active:bg-blue-800 transition-all duration-150 border-2 border-dashed border-blue-300 shadow-md hover:shadow-lg"
+                                title="Click and drag this button to move the selected lines"
+                            >
+                                🖱️ Drag to Move
                             </button>
                         </div>
                     </div>

@@ -365,7 +365,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
       console.log('📎 Processing markdown link in buildLineElements');
       // [text](url) - handle both regular and reversed URLs
       const url = match[5];
-      const isReversedUrl = url.match(/[^\s]+ptth\/\/[^\s]+/);
+      const isReversedUrl = url.match(/[^\s]+\/\/[^\s]+ptth/);
       const originalUrl = isReversedUrl ? url.split('').reverse().join('') : url;
       
       console.log('🔗 Markdown URL:', url);

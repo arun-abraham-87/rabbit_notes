@@ -62,8 +62,12 @@ const NoteCard = ({
   duplicateWithinNoteIds,
   urlShareSpaceNoteIds,
   focusMode = false,
+  bulkDeleteMode = false,
+  setBulkDeleteMode = () => {},
+  bulkDeleteNoteId = null,
   setSearchQuery,
   focusedNoteIndex = -1,
+  setFocusedNoteIndex = () => {},
   noteIndex = -1,
   onSetFocusedNoteIndex,
   settings = {}
@@ -78,6 +82,10 @@ const NoteCard = ({
   // --- Vim navigation state for super edit mode ---
   const [vimNumberBuffer, setVimNumberBuffer] = useState('');
   const [vimGPressed, setVimGPressed] = useState(false);
+
+  // Click counter popup state
+  const [showClickCounterPopup, setShowClickCounterPopup] = useState(false);
+  const [clickCounterValue, setClickCounterValue] = useState('');
 
   // Check if this note is focused
   const isFocused = focusedNoteIndex === noteIndex;
@@ -107,6 +115,74 @@ const NoteCard = ({
       console.error('Error updating click count:', error);
     }
   };
+
+  // Handle click counter popup
+  const handleClickCounterClick = (e) => {
+    e.stopPropagation();
+    setClickCounterValue(clickCount.toString());
+    setShowClickCounterPopup(true);
+  };
+
+  const handleClickCounterSave = () => {
+    try {
+      const newValue = parseInt(clickCounterValue);
+      if (isNaN(newValue) || newValue < 0) {
+        alert('Please enter a valid non-negative integer');
+        return;
+      }
+      
+      const clickCounts = JSON.parse(localStorage.getItem('noteClickCounts') || '{}');
+      if (newValue === 0) {
+        delete clickCounts[note.id];
+      } else {
+        clickCounts[note.id] = newValue;
+      }
+      localStorage.setItem('noteClickCounts', JSON.stringify(clickCounts));
+      
+      setShowClickCounterPopup(false);
+      setClickCounterValue('');
+    } catch (error) {
+      console.error('Error saving click count:', error);
+      alert('Error saving click count');
+    }
+  };
+
+  const handleClickCounterClear = () => {
+    try {
+      const clickCounts = JSON.parse(localStorage.getItem('noteClickCounts') || '{}');
+      delete clickCounts[note.id];
+      localStorage.setItem('noteClickCounts', JSON.stringify(clickCounts));
+      
+      setShowClickCounterPopup(false);
+      setClickCounterValue('');
+    } catch (error) {
+      console.error('Error clearing click count:', error);
+      alert('Error clearing click count');
+    }
+  };
+
+  const handleClickCounterCancel = () => {
+    setShowClickCounterPopup(false);
+    setClickCounterValue('');
+  };
+
+  // Handle click outside to close popup
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showClickCounterPopup && !e.target.closest('.click-counter-popup')) {
+        setShowClickCounterPopup(false);
+        setClickCounterValue('');
+      }
+    };
+
+    if (showClickCounterPopup) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showClickCounterPopup]);
 
   const [clickCount, setClickCount] = useState(getClickCount(note.id));
 
@@ -710,6 +786,13 @@ const NoteCard = ({
             e.stopPropagation();
             onSetFocusedNoteIndex(noteIndex);
           }
+          // Increment click counter when Enter or 'l' is pressed on a focused note
+          if ((e.key === 'Enter' || e.key === 'l') && isFocused && !isSuperEditMode) {
+            e.preventDefault();
+            e.stopPropagation();
+            incrementClickCount(note.id);
+            setClickCount(prevCount => prevCount + 1);
+          }
         }}
         className={`group flex flex-col cursor-pointer ${
           focusMode 
@@ -735,8 +818,52 @@ const NoteCard = ({
       
       {/* Click Counter */}
       {clickCount > 0 && (
-        <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full z-10 shadow-sm">
+        <div 
+          className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full z-10 shadow-sm cursor-pointer hover:bg-blue-600 transition-colors duration-150"
+          onClick={handleClickCounterClick}
+          title="Click to edit counter"
+        >
           {clickCount}
+        </div>
+      )}
+
+      {/* Click Counter Popup */}
+      {showClickCounterPopup && (
+        <div className="absolute top-2 right-2 bg-white border border-gray-300 rounded-lg shadow-lg z-20 p-4 min-w-48 click-counter-popup">
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Click Count for Note
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={clickCounterValue}
+              onChange={(e) => setClickCounterValue(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter new count"
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleClickCounterSave}
+              className="flex-1 px-3 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Save
+            </button>
+            <button
+              onClick={handleClickCounterClear}
+              className="flex-1 px-3 py-2 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            >
+              Clear
+            </button>
+            <button
+              onClick={handleClickCounterCancel}
+              className="flex-1 px-3 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
       
@@ -781,6 +908,10 @@ const NoteCard = ({
           newLineInputRef={newLineInputRef}
           updateNote={updateNote}
           focusMode={focusMode}
+          bulkDeleteMode={bulkDeleteMode}
+          setBulkDeleteMode={setBulkDeleteMode}
+          bulkDeleteNoteId={bulkDeleteNoteId}
+          setFocusedNoteIndex={setFocusedNoteIndex}
           isSuperEditMode={isSuperEditMode}
           highlightedLineIndex={highlightedLineIndex}
           highlightedLineText={highlightedLineText}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import NoteEditor from './NoteEditor';
 import InlineEditor from './InlineEditor';
 import { PlusIcon } from '@heroicons/react/24/solid';
@@ -42,13 +42,17 @@ export default function NoteContent({
     compressedView = false,
     updateNote,
     focusMode = false,
+    bulkDeleteMode = false,
+    setBulkDeleteMode = () => {},
+    bulkDeleteNoteId = null,
+    setFocusedNoteIndex = () => {},
     // Super edit mode props
     isSuperEditMode = false,
     highlightedLineIndex = -1,
     highlightedLineText = '',
     wasOpenedFromSuperEdit = false
 }) {
-    const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
+    // Use the bulkDeleteMode prop instead of local state
     const [selectedRows, setSelectedRows] = useState(new Set());
     const [showAddTextModal, setShowAddTextModal] = React.useState(false);
     const [urlForText, setUrlForText] = React.useState('');
@@ -71,6 +75,13 @@ export default function NoteContent({
     const [multiMoveError, setMultiMoveError] = useState('');
     const [isDraggingMultiMove, setIsDraggingMultiMove] = useState(false);
     const [draggedMultiMoveSection, setDraggedMultiMoveSection] = useState(null);
+
+    // Clear selected rows when bulk delete mode is disabled or when this note is not the target
+    useEffect(() => {
+        if (!bulkDeleteMode || bulkDeleteNoteId !== note.id) {
+            setSelectedRows(new Set());
+        }
+    }, [bulkDeleteMode, bulkDeleteNoteId, note.id]);
 
     if (!note) {
         return null;
@@ -751,7 +762,7 @@ export default function NoteContent({
                             !focusMode ? 'hover:bg-gray-50' : ''
                         }`}
                 >
-                    {bulkDeleteMode && (
+                    {bulkDeleteMode && bulkDeleteNoteId === note.id && (
                         <input
                             type="checkbox"
                             checked={selectedRows.has(idx)}
@@ -873,7 +884,7 @@ export default function NoteContent({
                         !focusMode ? 'hover:bg-gray-50' : ''
                     }`}
             >
-                {bulkDeleteMode && (
+                {bulkDeleteMode && bulkDeleteNoteId === note.id && (
                     <input
                         type="checkbox"
                         checked={selectedRows.has(idx)}
@@ -1026,7 +1037,7 @@ export default function NoteContent({
                             </button>
                         </div>
                         <div className="flex items-center gap-2">
-                            {bulkDeleteMode && (
+                            {bulkDeleteMode && bulkDeleteNoteId === note.id && (
                                 <>
                                     <button
                                         onClick={selectAllRows}
@@ -1056,13 +1067,13 @@ export default function NoteContent({
                             <button
                                 onClick={toggleBulkDeleteMode}
                                 className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
-                                    bulkDeleteMode 
+                                    bulkDeleteMode && bulkDeleteNoteId === note.id
                                         ? 'bg-red-100 text-red-700 hover:bg-red-200' 
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
-                                title={bulkDeleteMode ? 'Cancel bulk delete' : 'Bulk delete rows'}
+                                title={bulkDeleteMode && bulkDeleteNoteId === note.id ? 'Cancel bulk delete' : 'Bulk delete rows'}
                             >
-                                {bulkDeleteMode ? 'Cancel' : 'Bulk Delete'}
+                                {bulkDeleteMode && bulkDeleteNoteId === note.id ? 'Cancel' : 'Bulk Delete'}
                             </button>
                             <button
                                 onClick={toggleNoBullets}

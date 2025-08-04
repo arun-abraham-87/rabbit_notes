@@ -63,6 +63,8 @@ const NotesList = ({
   settings,
   activePage = 'notes',
   focusMode = false,
+  bulkDeleteMode = false,
+  setBulkDeleteMode = () => {},
   refreshTags = () => {},
   onReturnToSearch = () => {},
 }) => {
@@ -135,6 +137,9 @@ const NotesList = ({
   const focusedNoteIndexRef = useRef(focusedNoteIndex);
   const safeNotesRef = useRef(safeNotes);
   
+  // Bulk delete state
+  const [bulkDeleteNoteId, setBulkDeleteNoteId] = useState(null);
+  
   // Add state for note action popup
   const [showNoteActionPopup, setShowNoteActionPopup] = useState({ visible: false, noteId: null, links: [], selected: 0 });
   
@@ -144,6 +149,14 @@ const NotesList = ({
     setFocusedNoteIndex(index);
   };
   
+  // Debug focused note changes
+  useEffect(() => {
+    console.log('focusedNoteIndex changed to:', focusedNoteIndex);
+    if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
+      console.log('Focused note:', safeNotes[focusedNoteIndex]);
+    }
+  }, [focusedNoteIndex, safeNotes]);
+  
   // Keep refs in sync with state
   useEffect(() => {
     focusedNoteIndexRef.current = focusedNoteIndex;
@@ -152,6 +165,54 @@ const NotesList = ({
   useEffect(() => {
     safeNotesRef.current = safeNotes;
   }, [safeNotes]);
+
+  // Handle bulk delete mode toggle from keyboard
+  useEffect(() => {
+    const handleToggleBulkDeleteMode = () => {
+      console.log('toggleBulkDeleteMode event received');
+      console.log('focusedNoteIndex:', focusedNoteIndex);
+      console.log('safeNotes length:', safeNotes.length);
+      
+      if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
+        const focusedNote = safeNotes[focusedNoteIndex];
+        console.log('Focused note found:', focusedNote.id);
+        
+        if (bulkDeleteMode && bulkDeleteNoteId === focusedNote.id) {
+          // Exit bulk delete mode for this note
+          console.log('Exiting bulk delete mode for note:', focusedNote.id);
+          setBulkDeleteMode(false);
+          setBulkDeleteNoteId(null);
+        } else {
+          // Enter bulk delete mode for this note
+          console.log('Entering bulk delete mode for note:', focusedNote.id);
+          setBulkDeleteMode(true);
+          setBulkDeleteNoteId(focusedNote.id);
+        }
+      } else {
+        console.log('No focused note found. focusedNoteIndex:', focusedNoteIndex);
+      }
+    };
+
+    document.addEventListener('toggleBulkDeleteMode', handleToggleBulkDeleteMode);
+    return () => {
+      document.removeEventListener('toggleBulkDeleteMode', handleToggleBulkDeleteMode);
+    };
+  }, [focusedNoteIndex, safeNotes, bulkDeleteMode, bulkDeleteNoteId]);
+
+  // Handle escape key to exit bulk delete mode
+  useEffect(() => {
+    const handleExitBulkDeleteMode = () => {
+      if (bulkDeleteMode) {
+        setBulkDeleteMode(false);
+        setBulkDeleteNoteId(null);
+      }
+    };
+
+    document.addEventListener('exitBulkDeleteMode', handleExitBulkDeleteMode);
+    return () => {
+      document.removeEventListener('exitBulkDeleteMode', handleExitBulkDeleteMode);
+    };
+  }, [bulkDeleteMode]);
   
   useEffect(() => {
     showLinkPopupRef.current = showLinkPopup;
@@ -1265,8 +1326,12 @@ const NotesList = ({
                     duplicateWithinNoteIds={duplicateWithinNoteIds}
                     urlShareSpaceNoteIds={urlShareSpaceNoteIds}
                     focusMode={focusMode}
+                    bulkDeleteMode={bulkDeleteMode}
+                    setBulkDeleteMode={setBulkDeleteMode}
+                    bulkDeleteNoteId={bulkDeleteNoteId}
                     setSearchQuery={setSearchQuery}
                     focusedNoteIndex={focusedNoteIndex}
+                    setFocusedNoteIndex={setFocusedNoteIndex}
                     noteIndex={index}
                     settings={settings}
                   />
@@ -1334,12 +1399,16 @@ const NotesList = ({
                     duplicateUrlNoteIds={duplicateUrlNoteIds}
                     duplicateWithinNoteIds={duplicateWithinNoteIds}
                     urlShareSpaceNoteIds={urlShareSpaceNoteIds}
-                                      focusMode={focusMode}
-                  setSearchQuery={setSearchQuery}
-                  focusedNoteIndex={focusedNoteIndex}
-                  noteIndex={safeNotes.filter(note => note.pinned).length + index}
-                  onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
-                  settings={settings}
+                    focusMode={focusMode}
+                    bulkDeleteMode={bulkDeleteMode}
+                    setBulkDeleteMode={setBulkDeleteMode}
+                    bulkDeleteNoteId={bulkDeleteNoteId}
+                    setSearchQuery={setSearchQuery}
+                    focusedNoteIndex={focusedNoteIndex}
+                    setFocusedNoteIndex={setFocusedNoteIndex}
+                    noteIndex={safeNotes.filter(note => note.pinned).length + index}
+                    onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
+                    settings={settings}
                   />
                 ))}
               </div>
@@ -1407,8 +1476,12 @@ const NotesList = ({
                   duplicateWithinNoteIds={duplicateWithinNoteIds}
                   urlShareSpaceNoteIds={urlShareSpaceNoteIds}
                   focusMode={focusMode}
+                  bulkDeleteMode={bulkDeleteMode}
+                  setBulkDeleteMode={setBulkDeleteMode}
+                  bulkDeleteNoteId={bulkDeleteNoteId}
                   setSearchQuery={setSearchQuery}
                   focusedNoteIndex={focusedNoteIndex}
+                  setFocusedNoteIndex={setFocusedNoteIndex}
                   noteIndex={index}
                   onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
                   settings={settings}

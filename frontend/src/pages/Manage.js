@@ -259,7 +259,9 @@ const Manage = () => {
         for (const note of sensitiveNotes) {
           const reversedContent = reverseUrlsInText(note.content);
           if (reversedContent !== note.content) {
-            await updateNoteById(note.id, reversedContent);
+            // Add meta::url_reversed tag to the reversed content
+            const contentWithTag = reversedContent + '\nmeta::url_reversed';
+            await updateNoteById(note.id, contentWithTag);
             processedCount++;
           }
         }
@@ -860,7 +862,8 @@ const Manage = () => {
                       </h3>
                       <p className="text-blue-700 mb-4">
                         This feature will find all notes with the <code className="bg-blue-100 px-1 rounded">meta::sensitive::</code> tag 
-                        and reverse all URLs found in their content. This includes:
+                        and reverse all URLs found in their content. Notes with reversed URLs will also have the 
+                        <code className="bg-blue-100 px-1 rounded">meta::url_reversed</code> tag added. This includes:
                       </p>
                       <ul className="list-disc list-inside text-blue-700 space-y-1">
                         <li>Plain URLs: <code className="bg-blue-100 px-1 rounded">https://example.com</code> → <code className="bg-blue-100 px-1 rounded">moc.elpmaxe//:sptth</code></li>
@@ -901,6 +904,7 @@ const Manage = () => {
                               {sensitiveNotes.map((note) => {
                                 const reversedContent = reverseUrlsInText(note.content);
                                 const hasUrls = reversedContent !== note.content;
+                                const contentWithTag = hasUrls ? reversedContent + '\nmeta::url_reversed' : note.content;
                                 
                                 return (
                                   <div
@@ -928,7 +932,7 @@ const Manage = () => {
                                       <div>
                                         <div className="text-sm font-medium text-gray-700 mb-2">After URL Reversal:</div>
                                         <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded text-sm max-h-40 overflow-y-auto">
-                                          {reversedContent}
+                                          {contentWithTag}
                                         </div>
                                       </div>
                                     </div>

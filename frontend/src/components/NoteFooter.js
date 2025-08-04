@@ -285,6 +285,35 @@ const NoteFooter = ({
     toast.success('All tags removed from note');
   };
 
+  // Helper function to reverse a string
+  const reverseString = (str) => {
+    return str.split('').reverse().join('');
+  };
+
+  // Helper function to find and reverse URLs in text
+  const reverseUrlsInText = (text) => {
+    // Regular expression to match URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    // Regular expression to match markdown links [text](url)
+    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    
+    let result = text;
+    
+    // First, handle markdown links
+    result = result.replace(markdownLinkRegex, (match, text, url) => {
+      const reversedUrl = reverseString(url);
+      return `[${text}](${reversedUrl})`;
+    });
+    
+    // Then, handle plain URLs
+    result = result.replace(urlRegex, (url) => {
+      return reverseString(url);
+    });
+    
+    return result;
+  };
+
   const handleSensitiveAction = () => {
     const lines = note.content.split('\n');
     const hasSensitive = lines.some(l => l.trim().startsWith('meta::sensitive::'));
@@ -298,14 +327,31 @@ const NoteFooter = ({
       updateNote(note.id, without);
       toast.success('Removed sensitive tag');
     } else {
-      // Add the sensitive tag if it doesn't exist
+      // Add the sensitive tag and reverse URLs if it doesn't exist
       const without = lines
         .filter(l => !l.trim().startsWith('meta::sensitive::'))
         .join('\n')
         .trim();
+      
+      // Reverse URLs in the content
+      const reversedContent = reverseUrlsInText(without);
+      const hasUrls = reversedContent !== without;
+      
       const ts = new Date().toISOString();
-      updateNote(note.id, `${without}\nmeta::sensitive::${ts}`);
-      toast.success('Added sensitive tag');
+      let finalContent = `${reversedContent}\nmeta::sensitive::${ts}`;
+      
+      // Add meta::url_reversed tag if URLs were reversed
+      if (hasUrls) {
+        finalContent += '\nmeta::url_reversed';
+      }
+      
+      updateNote(note.id, finalContent);
+      
+      if (hasUrls) {
+        toast.success('Added sensitive tag and reversed URLs');
+      } else {
+        toast.success('Added sensitive tag');
+      }
     }
   };
 

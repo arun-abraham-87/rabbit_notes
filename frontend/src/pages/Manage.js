@@ -237,15 +237,38 @@ const Manage = () => {
     return result;
   };
 
+  // Helper function to check if text has unreversed URLs (starting with http)
+  const hasUnreversedUrls = (text) => {
+    // Regular expression to match URLs starting with http
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    // Regular expression to match markdown links [text](url) where url starts with http
+    const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+    
+    // Check for plain URLs starting with http
+    const plainUrls = text.match(urlRegex);
+    if (plainUrls && plainUrls.some(url => url.startsWith('http'))) {
+      return true;
+    }
+    
+    // Check for markdown links with URLs starting with http
+    const markdownMatches = text.match(markdownLinkRegex);
+    if (markdownMatches && markdownMatches.some(match => match.includes('http'))) {
+      return true;
+    }
+    
+    return false;
+  };
+
   // Function to find sensitive notes and reverse their URLs
   const handleReverseUrls = async () => {
-    // Find all notes with meta::sensitive:: tag
+    // Find all notes with meta::sensitive:: tag that have unreversed URLs
     const sensitiveNotes = notes.filter(note => 
-      note.content.includes('meta::sensitive::')
+      note.content.includes('meta::sensitive::') && hasUnreversedUrls(note.content)
     );
 
     if (sensitiveNotes.length === 0) {
-      toast.info('No notes with meta::sensitive:: tag found');
+      toast.info('No sensitive notes with unreversed URLs found');
       return;
     }
 
@@ -862,8 +885,8 @@ const Manage = () => {
                       </h3>
                       <p className="text-blue-700 mb-4">
                         This feature will find all notes with the <code className="bg-blue-100 px-1 rounded">meta::sensitive::</code> tag 
-                        and reverse all URLs found in their content. Notes with reversed URLs will also have the 
-                        <code className="bg-blue-100 px-1 rounded">meta::url_reversed</code> tag added. This includes:
+                        that contain URLs starting with "http" (unreversed URLs). Notes with already reversed URLs (ending in "ptth") 
+                        will be excluded. Reversed notes will have the <code className="bg-blue-100 px-1 rounded">meta::url_reversed</code> tag added. This includes:
                       </p>
                       <ul className="list-disc list-inside text-blue-700 space-y-1">
                         <li>Plain URLs: <code className="bg-blue-100 px-1 rounded">https://example.com</code> → <code className="bg-blue-100 px-1 rounded">moc.elpmaxe//:sptth</code></li>
@@ -874,14 +897,14 @@ const Manage = () => {
                     {/* Find sensitive notes */}
                     {(() => {
                       const sensitiveNotes = notes.filter(note => 
-                        note.content.includes('meta::sensitive::')
+                        note.content.includes('meta::sensitive::') && hasUnreversedUrls(note.content)
                       );
                       
                       return (
                         <div>
                           <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold text-gray-800">
-                              Sensitive Notes Found: {sensitiveNotes.length}
+                              Sensitive Notes with Unreversed URLs: {sensitiveNotes.length}
                             </h3>
                             <button
                               onClick={handleReverseUrls}
@@ -944,8 +967,8 @@ const Manage = () => {
 
                           {sensitiveNotes.length === 0 && (
                             <div className="text-center py-8 text-gray-500">
-                              <p>No notes with <code className="bg-gray-100 px-1 rounded">meta::sensitive::</code> tag found.</p>
-                              <p className="mt-2 text-sm">Add this tag to notes you want to protect with URL reversal.</p>
+                              <p>No sensitive notes with unreversed URLs found.</p>
+                              <p className="mt-2 text-sm">Notes with <code className="bg-gray-100 px-1 rounded">meta::sensitive::</code> tag and URLs starting with "http" will appear here.</p>
                             </div>
                           )}
                         </div>

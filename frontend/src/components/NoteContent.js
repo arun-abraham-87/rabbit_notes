@@ -323,11 +323,59 @@ export default function NoteContent({
 
     const toggleMultiMoveRowSelection = (idx) => {
         const newSelectedRows = new Set(multiMoveSelectedRows);
+        
+        // Check if this line is an H2 heading
+        const rawLines = getRawLines(note.content);
+        const currentLine = rawLines[idx];
+        const isH2 = currentLine && currentLine.trim().startsWith('##') && currentLine.trim().endsWith('##');
+        
         if (newSelectedRows.has(idx)) {
-            newSelectedRows.delete(idx);
+            // If deselecting an H2, remove all lines under it
+            if (isH2) {
+                // Find all lines under this H2 until next H1 or H2
+                const linesToRemove = new Set();
+                linesToRemove.add(idx);
+                
+                for (let i = idx + 1; i < rawLines.length; i++) {
+                    const line = rawLines[i];
+                    const isNextH1 = line && line.trim().startsWith('###') && line.trim().endsWith('###');
+                    const isNextH2 = line && line.trim().startsWith('##') && line.trim().endsWith('##');
+                    
+                    if (isNextH1 || isNextH2) {
+                        break; // Stop at next heading
+                    }
+                    linesToRemove.add(i);
+                }
+                
+                // Remove all selected lines under this H2
+                linesToRemove.forEach(lineIdx => newSelectedRows.delete(lineIdx));
+            } else {
+                // Regular line deselection
+                newSelectedRows.delete(idx);
+            }
         } else {
-            newSelectedRows.add(idx);
+            // If selecting an H2, add all lines under it
+            if (isH2) {
+                // Add the H2 line itself
+                newSelectedRows.add(idx);
+                
+                // Add all lines under this H2 until next H1 or H2
+                for (let i = idx + 1; i < rawLines.length; i++) {
+                    const line = rawLines[i];
+                    const isNextH1 = line && line.trim().startsWith('###') && line.trim().endsWith('###');
+                    const isNextH2 = line && line.trim().startsWith('##') && line.trim().endsWith('##');
+                    
+                    if (isNextH1 || isNextH2) {
+                        break; // Stop at next heading
+                    }
+                    newSelectedRows.add(i);
+                }
+            } else {
+                // Regular line selection
+                newSelectedRows.add(idx);
+            }
         }
+        
         setMultiMoveSelectedRows(newSelectedRows);
         validateMultiMoveSelection(newSelectedRows);
     };
@@ -339,12 +387,65 @@ export default function NoteContent({
         }
 
         const sortedIndices = Array.from(selectedRows).sort((a, b) => a - b);
+        
+        // Check if this is a valid H2 section selection
+        const rawLines = getRawLines(note.content);
+        let isValidH2Section = true;
+        let currentSectionStart = -1;
+        
+        for (let i = 0; i < sortedIndices.length; i++) {
+            const idx = sortedIndices[i];
+            const line = rawLines[idx];
+            const isH2 = line && line.trim().startsWith('##') && line.trim().endsWith('##');
+            
+            if (isH2) {
+                // If we find an H2, check if all lines from this H2 to the next are selected
+                if (currentSectionStart !== -1) {
+                    // Check if the previous section was complete
+                    for (let j = currentSectionStart; j < idx; j++) {
+                        if (!selectedRows.has(j)) {
+                            isValidH2Section = false;
+                            break;
+                        }
+                    }
+                }
+                currentSectionStart = idx;
+            }
+        }
+        
+        // Check the last section
+        if (currentSectionStart !== -1) {
+            for (let j = currentSectionStart; j < rawLines.length; j++) {
+                const line = rawLines[j];
+                const isNextH1 = line && line.trim().startsWith('###') && line.trim().endsWith('###');
+                const isNextH2 = line && line.trim().startsWith('##') && line.trim().endsWith('##');
+                
+                if (isNextH1 || isNextH2) {
+                    break;
+                }
+                
+                if (!selectedRows.has(j)) {
+                    isValidH2Section = false;
+                    break;
+                }
+            }
+        }
+        
+        // Check for regular consecutive lines (no H2 sections)
         const isConsecutive = sortedIndices.every((index, i) => {
             if (i === 0) return true;
             return index === sortedIndices[i - 1] + 1;
         });
-
-        if (!isConsecutive) {
+        
+        // Check if there are any H2 lines in the selection
+        const hasH2Lines = sortedIndices.some(idx => {
+            const line = rawLines[idx];
+            return line && line.trim().startsWith('##') && line.trim().endsWith('##');
+        });
+        
+        if (hasH2Lines && !isValidH2Section) {
+            setMultiMoveError('Please select complete H2 sections');
+        } else if (!hasH2Lines && !isConsecutive) {
             setMultiMoveError('Please select consecutive lines only');
         } else {
             setMultiMoveError('');
@@ -1017,7 +1118,14 @@ export default function NoteContent({
                                     {multiMoveSelectedRows.size} line(s) selected
                                 </span>
                                 <span className="text-xs text-blue-500">
-                                    (consecutive lines)
+                                    {(() => {
+                                        const rawLines = getRawLines(note.content);
+                                        const hasH2Lines = Array.from(multiMoveSelectedRows).some(idx => {
+                                            const line = rawLines[idx];
+                                            return line && line.trim().startsWith('##') && line.trim().endsWith('##');
+                                        });
+                                        return hasH2Lines ? '(H2 sections)' : '(consecutive lines)';
+                                    })()}
                                 </span>
                             </div>
                             <button

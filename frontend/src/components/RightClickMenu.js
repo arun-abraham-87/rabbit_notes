@@ -11,6 +11,33 @@ export default function RightClickMenu({
   setEditingLine,
   setShowCopyToast
 }) {
+  // Usage tracking functions
+  const getButtonUsage = () => {
+    try {
+      const usage = localStorage.getItem('rightClickMenuUsage');
+      return usage ? JSON.parse(usage) : {};
+    } catch (error) {
+      console.error('Error loading button usage:', error);
+      return {};
+    }
+  };
+
+  const updateButtonUsage = (buttonId) => {
+    try {
+      const usage = getButtonUsage();
+      usage[buttonId] = (usage[buttonId] || 0) + 1;
+      localStorage.setItem('rightClickMenuUsage', JSON.stringify(usage));
+    } catch (error) {
+      console.error('Error updating button usage:', error);
+    }
+  };
+
+  const trackButtonClick = (buttonId, callback) => {
+    return () => {
+      updateButtonUsage(buttonId);
+      callback();
+    };
+  };
   const [showColorSubmenu, setShowColorSubmenu] = useState(false);
   
   // Calculate adjusted position to keep menu in viewport
@@ -93,6 +120,270 @@ export default function RightClickMenu({
   const note = notes.find((n) => n.id === noteId);
   if (!note) return null;
 
+  // Button definitions with usage tracking
+  const buttonDefinitions = [
+    {
+      id: 'edit',
+      label: 'Edit',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        setEditedLineContent(arr[lineIndex]);
+        setEditingLine({ noteId, lineIndex });
+      }
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        arr.splice(lineIndex, 1);
+        updateNote(noteId, arr.join('\n'));
+      }
+    },
+    {
+      id: 'copy',
+      label: 'Copy',
+      onClick: () => handleCopyLine(note.content.split('\n')[lineIndex])
+    },
+    {
+      id: 'remove-formatting',
+      label: 'Remove Fmting',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        let text = arr[lineIndex];
+        let hasChanges;
+
+        do {
+          hasChanges = false;
+          let newText = text;
+
+          // Remove new format color markers
+          if (newText.match(/@\$%\^[^@]+@\$%\^/)) {
+            newText = newText.replace(/@\$%\^[^@]+@\$%\^/, '');
+            hasChanges = true;
+          }
+
+          // Remove old format color markers
+          if (newText.match(/^\[color:#[0-9A-Fa-f]{6}:([^\]]+)\]$/)) {
+            newText = newText.replace(/^\[color:#[0-9A-Fa-f]{6}:([^\]]+)\]$/, '$1');
+            hasChanges = true;
+          }
+
+          // Remove heading markers
+          if (newText.startsWith('###') && newText.endsWith('###')) {
+            newText = newText.slice(3, -3);
+            hasChanges = true;
+          } else if (newText.startsWith('##') && newText.endsWith('##')) {
+            newText = newText.slice(2, -2);
+            hasChanges = true;
+          }
+
+          // Remove bold markers
+          if (newText.startsWith('**') && newText.endsWith('**')) {
+            newText = newText.slice(2, -2);
+            hasChanges = true;
+          }
+
+          // Remove meta links
+          if (newText.startsWith('meta::link::')) {
+            newText = '';
+            hasChanges = true;
+          }
+
+          newText = newText.trim();
+          if (newText !== text) {
+            hasChanges = true;
+            text = newText;
+          }
+        } while (hasChanges);
+
+        arr[lineIndex] = text;
+        updateNote(noteId, arr.join('\n'));
+      }
+    },
+    {
+      id: 'h1',
+      label: 'H1',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        const h1Text = arr[lineIndex].trim()
+          .replace(/^###|###$/g, '')  // Remove H1 markers first
+          .replace(/^##|##$/g, '')    // Remove H2 markers
+          .trim();
+        arr[lineIndex] = `###${h1Text}###`;
+        updateNote(noteId, arr.join('\n'));
+      }
+    },
+    {
+      id: 'h2',
+      label: 'H2',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        const h2Text = arr[lineIndex].trim()
+          .replace(/^###|###$/g, '')  // Remove H1 markers first
+          .replace(/^##|##$/g, '')    // Remove H2 markers
+          .trim();
+        arr[lineIndex] = `##${h2Text}##`;
+        updateNote(noteId, arr.join('\n'));
+      }
+    },
+    {
+      id: 'uppercase',
+      label: 'AA',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        const upperLine = arr[lineIndex].replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => `[${text.toUpperCase()}](${url})`);
+        arr[lineIndex] = upperLine.toUpperCase();
+        updateNote(noteId, arr.join('\n'));
+      }
+    },
+    {
+      id: 'title-case',
+      label: 'Aa',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        let lineText = arr[lineIndex];
+        
+        // Handle H1 and H2 markers first
+        let isH1 = false;
+        let isH2 = false;
+        let cleanText = lineText;
+        
+        if (lineText.startsWith('###') && lineText.endsWith('###')) {
+          isH1 = true;
+          cleanText = lineText.slice(3, -3);
+        } else if (lineText.startsWith('##') && lineText.endsWith('##')) {
+          isH2 = true;
+          cleanText = lineText.slice(2, -2);
+        }
+        
+        // Handle markdown links
+        cleanText = cleanText.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => {
+          const sent = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+          return `[${sent}](${url})`;
+        });
+        
+        // Split into words and capitalize each word
+        const words = cleanText.split(' ');
+        const capitalizedWords = words.map((word, index) => {
+          if (word.length === 0) return word;
+          const capitalized = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+          return capitalized;
+        });
+        
+        let result = capitalizedWords.join(' ');
+        
+        // Add back the markers if they were present
+        if (isH1) {
+          result = `###${result}###`;
+        } else if (isH2) {
+          result = `##${result}##`;
+        }
+        
+        arr[lineIndex] = result;
+        updateNote(noteId, arr.join('\n'));
+      }
+    },
+    {
+      id: 'bold',
+      label: 'Bold',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        let boldLine = arr[lineIndex];
+        arr[lineIndex] = boldLine.startsWith('**') && boldLine.endsWith('**') ? boldLine.slice(2, -2) : `**${boldLine}**`;
+        updateNote(noteId, arr.join('\n'));
+      }
+    },
+    {
+      id: 'italics',
+      label: 'Italics',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        let italLine = arr[lineIndex];
+        arr[lineIndex] = italLine.startsWith('*') && italLine.endsWith('*') && !italLine.startsWith('**') ? italLine.slice(1, -1) : `*${italLine}*`;
+        updateNote(noteId, arr.join('\n'));
+      }
+    },
+    {
+      id: 'insert-above',
+      label: 'Insert ↑',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        arr.splice(lineIndex, 0, ' ');
+        const updatedContent = arr.join('\n');
+        updateNote(noteId, updatedContent);
+        
+        // Open inline editor for the newly inserted row
+        setEditedLineContent('');
+        setEditingLine({ noteId, lineIndex });
+      }
+    },
+    {
+      id: 'insert-below',
+      label: 'Insert ↓',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        arr.splice(lineIndex + 1, 0, ' ');
+        const updatedContent = arr.join('\n');
+        updateNote(noteId, updatedContent);
+        
+        // Open inline editor for the newly inserted row
+        setEditedLineContent('');
+        setEditingLine({ noteId, lineIndex: lineIndex + 1 });
+      }
+    },
+    {
+      id: 'merge-above',
+      label: 'Merge ↑',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        if (lineIndex > 0) {
+          arr[lineIndex - 1] += ' ' + arr[lineIndex];
+          arr.splice(lineIndex, 1);
+          updateNote(noteId, arr.join('\n'));
+        }
+      }
+    },
+    {
+      id: 'merge-below',
+      label: 'Merge ↓',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        if (lineIndex < arr.length - 1) {
+          arr[lineIndex] += ' ' + arr[lineIndex + 1];
+          arr.splice(lineIndex + 1, 1);
+          updateNote(noteId, arr.join('\n'));
+        }
+      }
+    },
+    {
+      id: 'move-up',
+      label: 'Move ↑',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        if (lineIndex > 0) [arr[lineIndex - 1], arr[lineIndex]] = [arr[lineIndex], arr[lineIndex - 1]];
+        updateNote(noteId, arr.join('\n'));
+      }
+    },
+    {
+      id: 'move-down',
+      label: 'Move ↓',
+      onClick: () => {
+        const arr = note.content.split('\n');
+        if (lineIndex < arr.length - 1) [arr[lineIndex + 1], arr[lineIndex]] = [arr[lineIndex], arr[lineIndex + 1]];
+        updateNote(noteId, arr.join('\n'));
+      }
+    }
+  ];
+
+  // Sort buttons by usage (most used first)
+  const usage = getButtonUsage();
+  const sortedButtons = buttonDefinitions.sort((a, b) => {
+    const aUsage = usage[a.id] || 0;
+    const bUsage = usage[b.id] || 0;
+    return bUsage - aUsage; // Most used first
+  });
+
   const colorOptions = [
     { color: '#DC2626', label: 'Red' },
     { color: '#2563EB', label: 'Blue' },
@@ -109,203 +400,20 @@ export default function RightClickMenu({
       onMouseLeave={() => setShowColorSubmenu(false)}
     >
       <div className="grid grid-cols-2 gap-1">
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            setEditedLineContent(arr[lineIndex]);
-            setEditingLine({ noteId, lineIndex });
-          }}
-        >
-          Edit
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            arr.splice(lineIndex, 1);
-            updateNote(noteId, arr.join('\n'));
-          }}
-        >
-          Delete
-        </button>
-        <div className="col-span-2 border-t-2 my-1"></div>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => handleCopyLine(note.content.split('\n')[lineIndex])}
-        >
-          Copy
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            let text = arr[lineIndex];
-            let hasChanges;
-
-            do {
-              hasChanges = false;
-              let newText = text;
-
-              // Remove new format color markers
-              if (newText.match(/@\$%\^[^@]+@\$%\^/)) {
-                newText = newText.replace(/@\$%\^[^@]+@\$%\^/, '');
-                hasChanges = true;
-              }
-
-              // Remove old format color markers
-              if (newText.match(/^\[color:#[0-9A-Fa-f]{6}:([^\]]+)\]$/)) {
-                newText = newText.replace(/^\[color:#[0-9A-Fa-f]{6}:([^\]]+)\]$/, '$1');
-                hasChanges = true;
-              }
-
-              // Remove heading markers
-              if (newText.startsWith('###') && newText.endsWith('###')) {
-                newText = newText.slice(3, -3);
-                hasChanges = true;
-              } else if (newText.startsWith('##') && newText.endsWith('##')) {
-                newText = newText.slice(2, -2);
-                hasChanges = true;
-              }
-
-              // Remove bold markers
-              if (newText.startsWith('**') && newText.endsWith('**')) {
-                newText = newText.slice(2, -2);
-                hasChanges = true;
-              }
-
-              // Remove meta links
-              if (newText.startsWith('meta::link::')) {
-                newText = '';
-                hasChanges = true;
-              }
-
-              newText = newText.trim();
-              if (newText !== text) {
-                hasChanges = true;
-                text = newText;
-              }
-            } while (hasChanges);
-
-            arr[lineIndex] = text;
-            updateNote(noteId, arr.join('\n'));
-          }}
-        >
-          Remove Fmting
-        </button>
-        <div className="col-span-2 border-t-2 my-1"></div>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            const h1Text = arr[lineIndex].trim()
-              .replace(/^###|###$/g, '')  // Remove H1 markers first
-              .replace(/^##|##$/g, '')    // Remove H2 markers
-              .trim();
-            arr[lineIndex] = `###${h1Text}###`;
-            updateNote(noteId, arr.join('\n'));
-          }}
-        >
-          H1
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            const h2Text = arr[lineIndex].trim()
-              .replace(/^###|###$/g, '')  // Remove H1 markers first
-              .replace(/^##|##$/g, '')    // Remove H2 markers
-              .trim();
-            arr[lineIndex] = `##${h2Text}##`;
-            updateNote(noteId, arr.join('\n'));
-          }}
-        >
-          H2
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            const upperLine = arr[lineIndex].replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => `[${text.toUpperCase()}](${url})`);
-            arr[lineIndex] = upperLine.toUpperCase();
-            updateNote(noteId, arr.join('\n'));
-          }}
-        >
-          AA
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            let lineText = arr[lineIndex];
-            
-            // Handle H1 and H2 markers first
-            let isH1 = false;
-            let isH2 = false;
-            let cleanText = lineText;
-            
-            if (lineText.startsWith('###') && lineText.endsWith('###')) {
-              isH1 = true;
-              cleanText = lineText.slice(3, -3);
-            } else if (lineText.startsWith('##') && lineText.endsWith('##')) {
-              isH2 = true;
-              cleanText = lineText.slice(2, -2);
-            }
-            
-            // Handle markdown links
-            cleanText = cleanText.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => {
-              const sent = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
-              return `[${sent}](${url})`;
-            });
-            
-            // Split into words and capitalize each word
-            const words = cleanText.split(' ');
-            const capitalizedWords = words.map((word, index) => {
-              if (word.length === 0) return word;
-              const capitalized = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-              return capitalized;
-            });
-            
-            let result = capitalizedWords.join(' ');
-            
-            // Add back the markers if they were present
-            if (isH1) {
-              result = `###${result}###`;
-            } else if (isH2) {
-              result = `##${result}##`;
-            }
-            
-            arr[lineIndex] = result;
-            updateNote(noteId, arr.join('\n'));
-          }}
-        >
-          Aa
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            let boldLine = arr[lineIndex];
-            arr[lineIndex] = boldLine.startsWith('**') && boldLine.endsWith('**') ? boldLine.slice(2, -2) : `**${boldLine}**`;
-            updateNote(noteId, arr.join('\n'));
-          }}
-        >
-          Bold
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            let italLine = arr[lineIndex];
-            arr[lineIndex] = italLine.startsWith('*') && italLine.endsWith('*') && !italLine.startsWith('**') ? italLine.slice(1, -1) : `*${italLine}*`;
-            updateNote(noteId, arr.join('\n'));
-          }}
-        >
-          Italics
-        </button>
+        {/* Dynamic buttons sorted by usage */}
+        {sortedButtons.map((button, index) => (
+          <button
+            key={button.id}
+            className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
+            onClick={trackButtonClick(button.id, button.onClick)}
+          >
+            {button.label}
+          </button>
+        ))}
+        
         <div className="col-span-2 border-t-2 my-1"></div>
         
-        {/* Color options as squares */}
+        {/* Color options as squares - always at bottom */}
         <div className="col-span-2 flex justify-center gap-1 py-1">
           {colorOptions.map((option) => (
             <button
@@ -324,84 +432,6 @@ export default function RightClickMenu({
             <span className="absolute inset-0 flex items-center justify-center text-red-500 font-bold text-xs">×</span>
           </button>
         </div>
-        <div className="col-span-2 border-t-2 my-1"></div>
-
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            arr.splice(lineIndex, 0, ' ');
-            const updatedContent = arr.join('\n');
-            updateNote(noteId, updatedContent);
-            
-            // Open inline editor for the newly inserted row
-            setEditedLineContent('');
-            setEditingLine({ noteId, lineIndex });
-          }}
-        >
-          Insert ↑
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            arr.splice(lineIndex + 1, 0, ' ');
-            const updatedContent = arr.join('\n');
-            updateNote(noteId, updatedContent);
-            
-            // Open inline editor for the newly inserted row
-            setEditedLineContent('');
-            setEditingLine({ noteId, lineIndex: lineIndex + 1 });
-          }}
-        >
-          Insert ↓
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            if (lineIndex > 0) {
-              arr[lineIndex - 1] += ' ' + arr[lineIndex];
-              arr.splice(lineIndex, 1);
-              updateNote(noteId, arr.join('\n'));
-            }
-          }}
-        >
-          Merge ↑
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            if (lineIndex < arr.length - 1) {
-              arr[lineIndex] += ' ' + arr[lineIndex + 1];
-              arr.splice(lineIndex + 1, 1);
-              updateNote(noteId, arr.join('\n'));
-            }
-          }}
-        >
-          Merge ↓
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            if (lineIndex > 0) [arr[lineIndex - 1], arr[lineIndex]] = [arr[lineIndex], arr[lineIndex - 1]];
-            updateNote(noteId, arr.join('\n'));
-          }}
-        >
-          Move ↑
-        </button>
-        <button
-          className="p-1 text-xs bg-gray-100 hover:bg-gray-200 hover:shadow-lg rounded cursor-pointer"
-          onClick={() => {
-            const arr = note.content.split('\n');
-            if (lineIndex < arr.length - 1) [arr[lineIndex + 1], arr[lineIndex]] = [arr[lineIndex], arr[lineIndex + 1]];
-            updateNote(noteId, arr.join('\n'));
-          }}
-        >
-          Move ↓
-        </button>
       </div>
     </div>
   );

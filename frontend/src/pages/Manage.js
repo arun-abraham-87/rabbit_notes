@@ -91,8 +91,8 @@ const Manage = () => {
   }, [searchText, notes, useRegex]);
 
   const handleReplace = async () => {
-    if (!searchText.trim() || !replaceText.trim()) {
-      toast.error('Please enter both search and replace text');
+    if (!searchText.trim()) {
+      toast.error('Please enter search text');
       return;
     }
 
@@ -450,9 +450,9 @@ const Manage = () => {
 
                     <button
                       onClick={handleReplace}
-                      disabled={!searchText || !replaceText || matchingNotes.length === 0 || regexError}
+                      disabled={!searchText || matchingNotes.length === 0 || regexError}
                       className={`px-4 py-2 rounded-md text-white ${
-                        !searchText || !replaceText || matchingNotes.length === 0 || regexError
+                        !searchText || matchingNotes.length === 0 || regexError
                           ? 'bg-gray-400 cursor-not-allowed'
                           : 'bg-blue-600 hover:bg-blue-700'
                       }`}

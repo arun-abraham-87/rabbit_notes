@@ -889,8 +889,7 @@ const NotesList = ({
         noteContent += `\n${getDummyCadenceLine()}`;
       }
 
-      // Add review pending tag
-      noteContent += '\nmeta::review_pending';
+
 
       const newNote = await addNewNoteCommon(noteContent, [], noteDate);
 

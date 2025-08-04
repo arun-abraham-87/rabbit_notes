@@ -434,8 +434,7 @@ const AppContent = () => {
         noteContent += getDummyCadenceLine();
       }
       
-      // Add review pending tag
-      noteContent += '\nmeta::review_pending';
+
       
       const newNote = await createNote(noteContent);
       

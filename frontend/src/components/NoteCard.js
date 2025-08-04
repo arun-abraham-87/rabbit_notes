@@ -15,6 +15,7 @@ import NoteCardSuperEditBanner from './NoteCardSuperEditBanner';
 import NoteCardLinkedNotes from './NoteCardLinkedNotes';
 import { DevModeInfo } from '../utils/DevUtils';
 
+
 const NoteCard = ({
   note,
   searchQuery,
@@ -85,6 +86,8 @@ const NoteCard = ({
   if (isFocused) {
     console.log(`Note ${note.id} is focused, index: ${noteIndex}, focusedNoteIndex: ${focusedNoteIndex}`);
   }
+
+
 
 
 

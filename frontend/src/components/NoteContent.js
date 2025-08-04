@@ -8,6 +8,8 @@ import {
 import { renderLineWithClickableDates, getIndentFlags, getRawLines } from '../utils/genUtils';
 import AddTextModal from './AddTextModal';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
+import { checkText } from '../utils/languageTool';
+import { ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 /**
  * NoteContent - renders the body of a note, including headings, lines, inline editors,
@@ -57,6 +59,11 @@ export default function NoteContent({
     const [draggedLineIndex, setDraggedLineIndex] = useState(null);
     const [dragOverLineIndex, setDragOverLineIndex] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
+    
+    // Grammar check state
+    const [grammarResults, setGrammarResults] = useState(null);
+    const [isCheckingGrammar, setIsCheckingGrammar] = useState(false);
+    const [showGrammarResults, setShowGrammarResults] = useState(false);
 
     if (!note) {
         return null;
@@ -298,6 +305,32 @@ export default function NoteContent({
 
     const deselectAllRows = () => {
         setSelectedRows(new Set());
+    };
+
+    // Grammar check functionality
+    const handleGrammarCheck = async () => {
+        if (!note.content.trim()) {
+            setGrammarResults(null);
+            return;
+        }
+
+        try {
+            setIsCheckingGrammar(true);
+            const result = await checkText(note.content);
+            setGrammarResults(result);
+            setShowGrammarResults(true);
+        } catch (error) {
+            console.error('Error checking grammar:', error);
+        } finally {
+            setIsCheckingGrammar(false);
+        }
+    };
+
+    const handleSuggestionClick = (issue, replacement) => {
+        const start = issue.offset;
+        const end = start + issue.length;
+        const newContent = note.content.substring(0, start) + replacement + note.content.substring(end);
+        updateNote(note.id, newContent);
     };
 
     const handleBulkDelete = () => {
@@ -800,7 +833,85 @@ export default function NoteContent({
                             >
                                 {hasNoBulletsTag() ? 'Show Bullets' : 'Hide Bullets'}
                             </button>
+                            <button
+                                onClick={handleGrammarCheck}
+                                disabled={isCheckingGrammar || !note.content.trim()}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
+                                    isCheckingGrammar || !note.content.trim()
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title="Check grammar and spelling"
+                            >
+                                {isCheckingGrammar ? 'Checking...' : 'Grammar Check'}
+                            </button>
                         </div>
+                    </div>
+                )}
+                
+                {/* Grammar Check Results */}
+                {showGrammarResults && grammarResults && (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-gray-700">Grammar Check Results</h4>
+                            <button
+                                onClick={() => setShowGrammarResults(false)}
+                                className="text-xs text-gray-500 hover:text-gray-700"
+                            >
+                                Hide
+                            </button>
+                        </div>
+                        
+                        {grammarResults.matches && grammarResults.matches.length > 0 ? (
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <ExclamationCircleIcon className="h-4 w-4 text-yellow-500" />
+                                    <span>
+                                        {grammarResults.matches.length} issue{grammarResults.matches.length !== 1 ? 's' : ''} found
+                                    </span>
+                                </div>
+                                
+                                <div className="max-h-40 overflow-y-auto space-y-2">
+                                    {grammarResults.matches.map((match, index) => {
+                                        const textBeforeOffset = note.content.substring(0, match.offset);
+                                        const lineNumber = (textBeforeOffset.match(/\n/g) || []).length + 1;
+                                        const charPosition = match.offset - textBeforeOffset.lastIndexOf('\n') - 1;
+                                        
+                                        return (
+                                            <div key={index} className="p-2 bg-white rounded border border-gray-200">
+                                                <div className="text-xs text-gray-500 mb-1">
+                                                    Line {lineNumber}, Char {charPosition}
+                                                </div>
+                                                <div className="text-sm text-gray-700 mb-2">
+                                                    {match.message}
+                                                </div>
+                                                {match.replacements && match.replacements.length > 0 && (
+                                                    <div className="space-y-1">
+                                                        <div className="text-xs text-gray-500">Suggestions:</div>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {match.replacements.slice(0, 3).map((replacement, idx) => (
+                                                                <button
+                                                                    key={idx}
+                                                                    onClick={() => handleSuggestionClick(match, replacement.value)}
+                                                                    className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors duration-150"
+                                                                >
+                                                                    {replacement.value}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 text-sm text-green-600">
+                                <CheckCircleIcon className="h-4 w-4" />
+                                <span>No grammar issues found</span>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

@@ -12,6 +12,43 @@ export default function RightClickMenu({
   setShowCopyToast
 }) {
   const [showColorSubmenu, setShowColorSubmenu] = useState(false);
+  
+  // Calculate adjusted position to keep menu in viewport
+  const menuRef = React.useRef(null);
+  const [adjustedPos, setAdjustedPos] = React.useState(pos);
+
+  React.useEffect(() => {
+    if (menuRef.current) {
+      const menu = menuRef.current;
+      const rect = menu.getBoundingClientRect();
+      
+      // Get viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Calculate adjusted position
+      let adjustedX = pos.x;
+      let adjustedY = pos.y;
+      
+      // Adjust horizontal position if menu would go off-screen
+      if (adjustedX + rect.width > viewportWidth) {
+        adjustedX = viewportWidth - rect.width - 10;
+      }
+      if (adjustedX < 10) {
+        adjustedX = 10;
+      }
+      
+      // Adjust vertical position if menu would go off-screen
+      if (adjustedY + rect.height > viewportHeight) {
+        adjustedY = viewportHeight - rect.height - 10;
+      }
+      if (adjustedY < 10) {
+        adjustedY = 10;
+      }
+      
+      setAdjustedPos({ x: adjustedX, y: adjustedY });
+    }
+  }, [pos]);
 
   const handleCopyLine = (text) => {
     let copyText = text;
@@ -66,7 +103,8 @@ export default function RightClickMenu({
 
   return (
     <div
-      style={{ position: 'fixed', top: `${pos.y}px`, left: `${pos.x}px` }}
+      ref={menuRef}
+      style={{ position: 'fixed', top: `${adjustedPos.y}px`, left: `${adjustedPos.x}px` }}
       className="z-50 bg-white border border-gray-300 rounded shadow-md px-2 py-1"
       onMouseLeave={() => setShowColorSubmenu(false)}
     >

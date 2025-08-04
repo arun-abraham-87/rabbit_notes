@@ -139,7 +139,7 @@ export default function NoteContent({
 
     const rawLines = getRawLines(note.content);
     const contentLines = parseNoteContent({ 
-        content: rawLines.join('\n'), 
+        content: note.content, // Pass full content including meta tags for URL reversal detection
         searchTerm: searchQuery,
         onAddText: handleAddText,
         onEditText: handleEditText

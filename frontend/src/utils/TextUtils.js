@@ -10,18 +10,21 @@ import LinkWithPreview from '../components/LinkWithPreview';
  * @returns {Array<React.ReactElement>} Array of formatted React elements
  */
 export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText }) => {
+  console.log('🔍 parseNoteContent called with content:', content);
   if (!content) return [];
 
   // Split into lines and process each line
   const lines = content.split('\n')
     .filter(line => !line.trim().startsWith('meta::'))
     .map(line => {
+      console.log('📝 Processing line:', line);
       // First extract any color value wrapped in @$%^ markers
       const colorMatch = line.match(/@\$%\^([^@]+)@\$%\^/);
       const color = colorMatch ? colorMatch[1] : null;
 
       // Remove the color markers and get clean text
       const cleanLine = line.replace(/@\$%\^[^@]+@\$%\^/, '');
+      console.log('🧹 Clean line:', cleanLine);
 
       return { line: cleanLine, color };
     });
@@ -35,13 +38,16 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText })
     const isH2 = trimmed.startsWith('##') && !trimmed.startsWith('###') && trimmed.endsWith('##');
     
     // Step 1: Parse inline formatting first
+    console.log('🎨 Calling parseInlineFormatting with line:', line);
     const formattedContent = parseInlineFormatting({
       content: line,
       searchTerm,
       lineIndex,
       onAddText,
-      onEditText
+      onEditText,
+      noteContent: content
     });
+    console.log('✨ Formatted content result:', formattedContent);
 
     // Step 2: Check if this is a heading by looking at the original line
     let type = 'normal';
@@ -345,7 +351,20 @@ const getLinkTypeIndicator = (url) => {
 /**
  * Parse inline formatting (bold, links, colors)
  */
-const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEditText }) => {
+const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEditText, noteContent }) => {
+  console.log('🔧 parseInlineFormatting called with:');
+  console.log('  - content:', content);
+  console.log('  - noteContent:', noteContent);
+  
+  // Check if this note has reversed URLs
+  const hasReversedUrls = noteContent && noteContent.includes('meta::url_reversed');
+  console.log('🏷️ hasReversedUrls:', hasReversedUrls);
+  
+  // Helper function to reverse a string
+  const reverseString = (str) => {
+    return str.split('').reverse().join('');
+  };
+
   // First handle any heading markers by temporarily replacing them
   let processedContent = content;
   const trimmed = content.trim();
@@ -363,7 +382,23 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
   let isBold = false;
   let isItalic = false;
 
+  // Check if this is a reversed URL (ends with ptth)
+  const testString = processedContent.trim();
+  console.log('🧪 Testing regex on:', testString);
+  console.log('🧪 Regex pattern: /^[^\\s]+\\/\\/[^\\s]+ptth$/');
+  
+  const isReversedUrl = testString.match(/^[^\s]+\/\/[^\s]+ptth$/);
+  console.log('🔄 isReversedUrl check:', isReversedUrl);
+  console.log('🔗 processedContent.trim():', processedContent.trim());
+  
+  // Debug: Check each character
+  console.log('🔍 Character analysis:');
+  for (let i = 0; i < testString.length; i++) {
+    console.log(`  ${i}: '${testString[i]}' (code: ${testString.charCodeAt(i)})`);
+  }
+  
   if (processedContent.trim().startsWith("http:") || processedContent.trim().startsWith("https:")) {
+    console.log('✅ Processing regular URL');
     const url = processedContent.trim();
     const hostname = new URL(url).hostname;
     
@@ -382,18 +417,47 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
       </span>
     );
     elements.push(urlElement);
+  } else if (isReversedUrl && hasReversedUrls) {
+    console.log('✅ Processing reversed URL!');
+    // Handle reversed URL
+    const reversedUrl = processedContent.trim();
+    const originalUrl = reverseString(reversedUrl);
+    console.log('🔄 Reversed URL:', reversedUrl);
+    console.log('🔗 Original URL:', originalUrl);
+    const hostname = new URL(originalUrl).hostname;
+    console.log('🌐 Hostname:', hostname);
+    
+    let urlElement = (
+      <span key={`url-${lineIndex}`} className="inline-flex items-center gap-1">
+        <LinkWithPreview url={originalUrl}>
+          {hostname}
+        </LinkWithPreview>
+        <button
+          onClick={() => onAddText && onAddText(originalUrl)}
+          className="px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150"
+          title="Add custom text for this link"
+        >
+          Add text
+        </button>
+      </span>
+    );
+    console.log('🎯 Created URL element:', urlElement);
+    elements.push(urlElement);
   } else {
     // Process mixed content with markdown links
     let processedText = processedContent;
     
-    // Find all markdown links in the content
-    const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+    // Find all markdown links in the content (including reversed URLs)
+    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
     let match;
     let lastIndex = 0;
     const linkMatches = [];
     
+    console.log('🔍 Searching for markdown links in:', processedText);
+    
     // Collect all markdown link matches
     while ((match = markdownLinkRegex.exec(processedText)) !== null) {
+      console.log('📎 Found markdown link:', match[0]);
       linkMatches.push({
         fullMatch: match[0],
         customText: match[1],
@@ -402,6 +466,8 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
         endIndex: match.index + match[0].length
       });
     }
+    
+    console.log('📋 Total markdown links found:', linkMatches.length);
     
     // If we found markdown links, process them
     if (linkMatches.length > 0) {
@@ -416,11 +482,20 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
           }
         }
         
+        // Check if this is a reversed URL in markdown
+        const isReversedUrlInMarkdown = hasReversedUrls && linkMatch.url.match(/[^\s]+\/\/[^\s]+ptth/);
+        const originalUrl = isReversedUrlInMarkdown ? reverseString(linkMatch.url) : linkMatch.url;
+        
+        console.log('🔗 Markdown link processing:');
+        console.log('  - Original URL from markdown:', linkMatch.url);
+        console.log('  - Is reversed URL in markdown:', isReversedUrlInMarkdown);
+        console.log('  - Final URL:', originalUrl);
+        
         // Add the markdown link
-        const linkIndicator = getLinkTypeIndicator(linkMatch.url);
+        const linkIndicator = getLinkTypeIndicator(originalUrl);
         const linkElement = (
           <span key={`url-${lineIndex}-${i}`} className="inline-flex items-center gap-1">
-            <LinkWithPreview url={linkMatch.url}>
+            <LinkWithPreview url={originalUrl}>
               {linkIndicator ? (
                 <>
                   {linkMatch.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
@@ -428,7 +503,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
               ) : linkMatch.customText}
             </LinkWithPreview>
             <button
-              onClick={() => onEditText && onEditText(linkMatch.url, linkMatch.customText)}
+              onClick={() => onEditText && onEditText(originalUrl, linkMatch.customText)}
               className="px-1 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
               title="Edit link text"
             >

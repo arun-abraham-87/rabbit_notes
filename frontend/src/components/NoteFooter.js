@@ -329,7 +329,7 @@ const NoteFooter = ({
       <div className="flex items-center bg-gray-50 rounded-lg">
 
 
-        {/* Watch and Pin Group - Keep these in right panel */}
+        {/* Watch, Pin, and Sensitive Group - Keep these in right panel */}
         <div className="flex items-center space-x-1 px-2 py-1 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <Tooltip text="Watch">
             <button
@@ -350,6 +350,19 @@ const NoteFooter = ({
             >
               <StarIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::notes_pinned') ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
                 }`} />
+            </button>
+          </Tooltip>
+
+          <Tooltip text={note.content.includes('meta::sensitive') ? 'Remove Sensitive Mark' : 'Mark as Sensitive'}>
+            <button
+              onClick={handleSensitiveAction}
+              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::sensitive') ? 'bg-orange-100' : ''
+                }`}
+            >
+              <span className={`h-4 w-4 text-xs font-semibold flex items-center justify-center transition-colors ${note.content.includes('meta::sensitive') ? 'text-orange-500' : 'text-gray-500 hover:text-orange-500'
+                }`}>
+                S
+              </span>
             </button>
           </Tooltip>
         </div>
@@ -416,16 +429,7 @@ const NoteFooter = ({
                     Remove All Tags
                   </button>
                   
-                  <button
-                    onClick={() => {
-                      handleSensitiveAction();
-                      setShowMoreActions(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                  >
-                    <EyeIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::sensitive::') ? 'text-orange-500' : 'text-gray-500'}`} />
-                    Mark as Sensitive
-                  </button>
+
                   
                   <button
                     onClick={() => {

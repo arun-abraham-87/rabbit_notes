@@ -208,6 +208,72 @@ const Manage = () => {
     }
   };
 
+  // Helper function to reverse a string
+  const reverseString = (str) => {
+    return str.split('').reverse().join('');
+  };
+
+  // Helper function to find and reverse URLs in text
+  const reverseUrlsInText = (text) => {
+    // Regular expression to match URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    // Regular expression to match markdown links [text](url)
+    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    
+    let result = text;
+    
+    // First, handle markdown links
+    result = result.replace(markdownLinkRegex, (match, text, url) => {
+      const reversedUrl = reverseString(url);
+      return `[${text}](${reversedUrl})`;
+    });
+    
+    // Then, handle plain URLs
+    result = result.replace(urlRegex, (url) => {
+      return reverseString(url);
+    });
+    
+    return result;
+  };
+
+  // Function to find sensitive notes and reverse their URLs
+  const handleReverseUrls = async () => {
+    // Find all notes with meta::sensitive:: tag
+    const sensitiveNotes = notes.filter(note => 
+      note.content.includes('meta::sensitive::')
+    );
+
+    if (sensitiveNotes.length === 0) {
+      toast.info('No notes with meta::sensitive:: tag found');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to reverse URLs in ${sensitiveNotes.length} sensitive notes?`
+    );
+
+    if (confirmed) {
+      try {
+        let processedCount = 0;
+        for (const note of sensitiveNotes) {
+          const reversedContent = reverseUrlsInText(note.content);
+          if (reversedContent !== note.content) {
+            await updateNoteById(note.id, reversedContent);
+            processedCount++;
+          }
+        }
+        toast.success(`Successfully reversed URLs in ${processedCount} sensitive notes`);
+        
+        // Refresh notes after processing
+        const data = await loadAllNotes('', null);
+        setNotes(data.notes);
+      } catch (error) {
+        toast.error('Error reversing URLs: ' + error.message);
+      }
+    }
+  };
+
   const handleExport = async () => {
     try {
       await exportAllNotes();
@@ -288,6 +354,16 @@ const Manage = () => {
                     }`}
                   >
                     Add at End
+                  </button>
+                  <button
+                    onClick={() => setActiveSubTab('reverse-urls')}
+                    className={`py-2 px-4 text-sm font-medium ${
+                      activeSubTab === 'reverse-urls'
+                        ? 'border-b-2 border-blue-500 text-blue-600'
+                        : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Reverse URLs (Sensitive)
                   </button>
                 </nav>
               </div>
@@ -772,6 +848,106 @@ const Manage = () => {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {activeSubTab === 'reverse-urls' && (
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h3 className="text-lg font-semibold text-blue-800 mb-2">
+                        Reverse URLs in Sensitive Notes
+                      </h3>
+                      <p className="text-blue-700 mb-4">
+                        This feature will find all notes with the <code className="bg-blue-100 px-1 rounded">meta::sensitive::</code> tag 
+                        and reverse all URLs found in their content. This includes:
+                      </p>
+                      <ul className="list-disc list-inside text-blue-700 space-y-1">
+                        <li>Plain URLs: <code className="bg-blue-100 px-1 rounded">https://example.com</code> → <code className="bg-blue-100 px-1 rounded">moc.elpmaxe//:sptth</code></li>
+                        <li>Markdown links: <code className="bg-blue-100 px-1 rounded">[Link Text](https://example.com)</code> → <code className="bg-blue-100 px-1 rounded">[Link Text](moc.elpmaxe//:sptth)</code></li>
+                      </ul>
+                    </div>
+
+                    {/* Find sensitive notes */}
+                    {(() => {
+                      const sensitiveNotes = notes.filter(note => 
+                        note.content.includes('meta::sensitive::')
+                      );
+                      
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-800">
+                              Sensitive Notes Found: {sensitiveNotes.length}
+                            </h3>
+                            <button
+                              onClick={handleReverseUrls}
+                              disabled={sensitiveNotes.length === 0}
+                              className={`px-4 py-2 rounded-md text-white ${
+                                sensitiveNotes.length === 0
+                                  ? 'bg-gray-400 cursor-not-allowed'
+                                  : 'bg-red-600 hover:bg-red-700'
+                              }`}
+                            >
+                              Reverse URLs in All Sensitive Notes
+                            </button>
+                          </div>
+
+                          {sensitiveNotes.length > 0 && (
+                            <div className="space-y-4">
+                              <h4 className="text-md font-medium text-gray-700 mb-2">
+                                Preview of Sensitive Notes:
+                              </h4>
+                              {sensitiveNotes.map((note) => {
+                                const reversedContent = reverseUrlsInText(note.content);
+                                const hasUrls = reversedContent !== note.content;
+                                
+                                return (
+                                  <div
+                                    key={note.id}
+                                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                                  >
+                                    <div className="text-sm text-gray-600 mb-2">
+                                      Note ID: {note.id}
+                                      {hasUrls && (
+                                        <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+                                          Contains URLs
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      {/* Original Content */}
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-700 mb-2">Original:</div>
+                                        <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded text-sm max-h-40 overflow-y-auto">
+                                          {note.content}
+                                        </div>
+                                      </div>
+
+                                      {/* Reversed Content */}
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-700 mb-2">After URL Reversal:</div>
+                                        <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded text-sm max-h-40 overflow-y-auto">
+                                          {reversedContent}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {sensitiveNotes.length === 0 && (
+                            <div className="text-center py-8 text-gray-500">
+                              <p>No notes with <code className="bg-gray-100 px-1 rounded">meta::sensitive::</code> tag found.</p>
+                              <p className="mt-2 text-sm">Add this tag to notes you want to protect with URL reversal.</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
             </div>

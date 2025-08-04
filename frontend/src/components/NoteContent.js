@@ -288,6 +288,18 @@ export default function NoteContent({
         setSelectedRows(newSelectedRows);
     };
 
+    const selectAllRows = () => {
+        const allIndices = new Set();
+        for (let i = 0; i < contentLines.length; i++) {
+            allIndices.add(i);
+        }
+        setSelectedRows(allIndices);
+    };
+
+    const deselectAllRows = () => {
+        setSelectedRows(new Set());
+    };
+
     const handleBulkDelete = () => {
         const lines = note.content.split('\n');
         const selectedIndices = Array.from(selectedRows).sort((a, b) => b - a); // Sort in descending order
@@ -739,14 +751,32 @@ export default function NoteContent({
                             </button>
                         </div>
                         <div className="flex items-center gap-2">
-                            {bulkDeleteMode && selectedRows.size > 0 && (
-                                <button
-                                    onClick={handleBulkDelete}
-                                    className="px-3 py-1 text-xs font-medium bg-red-600 text-white rounded hover:bg-red-700 transition-colors duration-150"
-                                    title={`Delete ${selectedRows.size} selected row(s)`}
-                                >
-                                    Delete ({selectedRows.size})
-                                </button>
+                            {bulkDeleteMode && (
+                                <>
+                                    <button
+                                        onClick={selectAllRows}
+                                        className="px-3 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors duration-150"
+                                        title="Select all rows"
+                                    >
+                                        Select All
+                                    </button>
+                                    <button
+                                        onClick={deselectAllRows}
+                                        className="px-3 py-1 text-xs font-medium bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors duration-150"
+                                        title="Deselect all rows"
+                                    >
+                                        Deselect All
+                                    </button>
+                                    {selectedRows.size > 0 && (
+                                        <button
+                                            onClick={handleBulkDelete}
+                                            className="px-3 py-1 text-xs font-medium bg-red-600 text-white rounded hover:bg-red-700 transition-colors duration-150"
+                                            title={`Delete ${selectedRows.size} selected row(s)`}
+                                        >
+                                            Delete ({selectedRows.size})
+                                        </button>
+                                    )}
+                                </>
                             )}
                             <button
                                 onClick={toggleBulkDeleteMode}

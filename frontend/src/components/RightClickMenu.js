@@ -331,7 +331,12 @@ export default function RightClickMenu({
           onClick={() => {
             const arr = note.content.split('\n');
             arr.splice(lineIndex, 0, ' ');
-            updateNote(noteId, arr.join('\n'));
+            const updatedContent = arr.join('\n');
+            updateNote(noteId, updatedContent);
+            
+            // Open inline editor for the newly inserted row
+            setEditedLineContent('');
+            setEditingLine({ noteId, lineIndex });
           }}
         >
           Insert ↑
@@ -341,7 +346,12 @@ export default function RightClickMenu({
           onClick={() => {
             const arr = note.content.split('\n');
             arr.splice(lineIndex + 1, 0, ' ');
-            updateNote(noteId, arr.join('\n'));
+            const updatedContent = arr.join('\n');
+            updateNote(noteId, updatedContent);
+            
+            // Open inline editor for the newly inserted row
+            setEditedLineContent('');
+            setEditingLine({ noteId, lineIndex: lineIndex + 1 });
           }}
         >
           Insert ↓

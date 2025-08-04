@@ -45,6 +45,7 @@ export default function NoteContent({
     bulkDeleteMode = false,
     setBulkDeleteMode = () => {},
     bulkDeleteNoteId = null,
+    multiMoveNoteId = null,
     setFocusedNoteIndex = () => {},
     // Super edit mode props
     isSuperEditMode = false,
@@ -69,8 +70,8 @@ export default function NoteContent({
     const [isCheckingGrammar, setIsCheckingGrammar] = useState(false);
     const [showGrammarResults, setShowGrammarResults] = useState(false);
     
-    // Multi-move state
-    const [multiMoveMode, setMultiMoveMode] = useState(false);
+    // Multi-move state (use prop instead of local state)
+    const multiMoveMode = multiMoveNoteId === note.id;
     const [multiMoveSelectedRows, setMultiMoveSelectedRows] = useState(new Set());
     const [multiMoveError, setMultiMoveError] = useState('');
     const [isDraggingMultiMove, setIsDraggingMultiMove] = useState(false);
@@ -82,6 +83,14 @@ export default function NoteContent({
             setSelectedRows(new Set());
         }
     }, [bulkDeleteMode, bulkDeleteNoteId, note.id]);
+
+    // Clear multi-move selection when multi-move mode is disabled or when this note is not the target
+    useEffect(() => {
+        if (!multiMoveMode) {
+            setMultiMoveSelectedRows(new Set());
+            setMultiMoveError('');
+        }
+    }, [multiMoveMode]);
 
     if (!note) {
         return null;
@@ -327,7 +336,8 @@ export default function NoteContent({
 
     // Multi-move functions
     const toggleMultiMoveMode = () => {
-        setMultiMoveMode(!multiMoveMode);
+        // This function is now handled by the parent component via keyboard events
+        // The multi-move mode is controlled by the multiMoveNoteId prop
         setMultiMoveSelectedRows(new Set());
         setMultiMoveError('');
     };
@@ -518,8 +528,7 @@ export default function NoteContent({
             const reorderedContent = reorderMetaTags(updatedContent);
             updateNote(note.id, reorderedContent);
             
-            // Reset multi-move mode
-            setMultiMoveMode(false);
+            // Reset multi-move selection
             setMultiMoveSelectedRows(new Set());
             setMultiMoveError('');
         } catch (error) {

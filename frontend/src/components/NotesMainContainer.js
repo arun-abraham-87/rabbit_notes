@@ -146,6 +146,12 @@ const NotesMainContainer = ({
                     const bulkDeleteEvent = new CustomEvent('toggleBulkDeleteMode');
                     document.dispatchEvent(bulkDeleteEvent);
                 }
+                if (e.key === "m") {
+                    e.preventDefault();
+                    // Dispatch a custom event to trigger multi-move mode
+                    const multiMoveEvent = new CustomEvent('toggleMultiMoveMode');
+                    document.dispatchEvent(multiMoveEvent);
+                }
                 if (e.key === "Escape") {
                     e.preventDefault();
                     // Dispatch a custom event to exit bulk delete mode

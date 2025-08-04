@@ -140,6 +140,9 @@ const NotesList = ({
   // Bulk delete state
   const [bulkDeleteNoteId, setBulkDeleteNoteId] = useState(null);
   
+  // Multi-move state
+  const [multiMoveNoteId, setMultiMoveNoteId] = useState(null);
+  
   // Add state for note action popup
   const [showNoteActionPopup, setShowNoteActionPopup] = useState({ visible: false, noteId: null, links: [], selected: 0 });
   
@@ -198,6 +201,37 @@ const NotesList = ({
       document.removeEventListener('toggleBulkDeleteMode', handleToggleBulkDeleteMode);
     };
   }, [focusedNoteIndex, safeNotes, bulkDeleteMode, bulkDeleteNoteId]);
+
+  // Handle multi-move mode toggle from keyboard
+  useEffect(() => {
+    const handleToggleMultiMoveMode = () => {
+      console.log('toggleMultiMoveMode event received');
+      console.log('focusedNoteIndex:', focusedNoteIndex);
+      console.log('safeNotes length:', safeNotes.length);
+      
+      if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
+        const focusedNote = safeNotes[focusedNoteIndex];
+        console.log('Focused note found for multi-move:', focusedNote.id);
+        
+        if (multiMoveNoteId === focusedNote.id) {
+          // Exit multi-move mode for this note
+          console.log('Exiting multi-move mode for note:', focusedNote.id);
+          setMultiMoveNoteId(null);
+        } else {
+          // Enter multi-move mode for this note
+          console.log('Entering multi-move mode for note:', focusedNote.id);
+          setMultiMoveNoteId(focusedNote.id);
+        }
+      } else {
+        console.log('No focused note found for multi-move. focusedNoteIndex:', focusedNoteIndex);
+      }
+    };
+
+    document.addEventListener('toggleMultiMoveMode', handleToggleMultiMoveMode);
+    return () => {
+      document.removeEventListener('toggleMultiMoveMode', handleToggleMultiMoveMode);
+    };
+  }, [focusedNoteIndex, safeNotes, multiMoveNoteId]);
 
   // Handle escape key to exit bulk delete mode
   useEffect(() => {
@@ -1329,6 +1363,7 @@ const NotesList = ({
                     bulkDeleteMode={bulkDeleteMode}
                     setBulkDeleteMode={setBulkDeleteMode}
                     bulkDeleteNoteId={bulkDeleteNoteId}
+                    multiMoveNoteId={multiMoveNoteId}
                     setSearchQuery={setSearchQuery}
                     focusedNoteIndex={focusedNoteIndex}
                     setFocusedNoteIndex={setFocusedNoteIndex}
@@ -1403,6 +1438,7 @@ const NotesList = ({
                     bulkDeleteMode={bulkDeleteMode}
                     setBulkDeleteMode={setBulkDeleteMode}
                     bulkDeleteNoteId={bulkDeleteNoteId}
+                    multiMoveNoteId={multiMoveNoteId}
                     setSearchQuery={setSearchQuery}
                     focusedNoteIndex={focusedNoteIndex}
                     setFocusedNoteIndex={setFocusedNoteIndex}
@@ -1479,6 +1515,7 @@ const NotesList = ({
                   bulkDeleteMode={bulkDeleteMode}
                   setBulkDeleteMode={setBulkDeleteMode}
                   bulkDeleteNoteId={bulkDeleteNoteId}
+                  multiMoveNoteId={multiMoveNoteId}
                   setSearchQuery={setSearchQuery}
                   focusedNoteIndex={focusedNoteIndex}
                   setFocusedNoteIndex={setFocusedNoteIndex}

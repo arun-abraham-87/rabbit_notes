@@ -828,9 +828,9 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                         <button
                           onClick={() => handleEditNote(note.id)}
                           className="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-800 underline focus:outline-none transition-colors duration-150"
-                          title="Edit Note"
+                          title="Goto Note"
                         >
-                          Edit Note
+                          Goto Note
                         </button>
                       </div>
                     </div>
@@ -935,9 +935,9 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                           <button
                             onClick={() => handleEditNote(note.id)}
                             className="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-800 underline focus:outline-none transition-colors duration-150"
-                            title="Edit Note"
+                            title="Goto Note"
                           >
-                            Edit Note
+                            Goto Note
                           </button>
                         </div>
                       </div>

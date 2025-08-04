@@ -87,6 +87,34 @@ const NoteCard = ({
     console.log(`Note ${note.id} is focused, index: ${noteIndex}, focusedNoteIndex: ${focusedNoteIndex}`);
   }
 
+  // Click tracking functionality
+  const getClickCount = (noteId) => {
+    try {
+      const clickCounts = JSON.parse(localStorage.getItem('noteClickCounts') || '{}');
+      return clickCounts[noteId] || 0;
+    } catch (error) {
+      console.error('Error loading click count:', error);
+      return 0;
+    }
+  };
+
+  const incrementClickCount = (noteId) => {
+    try {
+      const clickCounts = JSON.parse(localStorage.getItem('noteClickCounts') || '{}');
+      clickCounts[noteId] = (clickCounts[noteId] || 0) + 1;
+      localStorage.setItem('noteClickCounts', JSON.stringify(clickCounts));
+    } catch (error) {
+      console.error('Error updating click count:', error);
+    }
+  };
+
+  const [clickCount, setClickCount] = useState(getClickCount(note.id));
+
+  // Update click count when note changes
+  useEffect(() => {
+    setClickCount(getClickCount(note.id));
+  }, [note.id]);
+
 
 
 
@@ -668,6 +696,9 @@ const NoteCard = ({
             return;
           }
           if (typeof onSetFocusedNoteIndex === 'function' && !isFocused) {
+            // Track click only when note comes into focus
+            incrementClickCount(note.id);
+            setClickCount(prevCount => prevCount + 1);
             onSetFocusedNoteIndex(noteIndex);
           }
         }}
@@ -699,6 +730,13 @@ const NoteCard = ({
       {testDevMode && (
         <div className="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded-bl z-10">
           DEV MODE ON
+        </div>
+      )}
+      
+      {/* Click Counter */}
+      {clickCount > 0 && (
+        <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full z-10 shadow-sm">
+          {clickCount}
         </div>
       )}
       

@@ -52,6 +52,11 @@ export default function NoteContent({
     const [urlForText, setUrlForText] = React.useState('');
     const [isEditing, setIsEditing] = React.useState(false);
     const [currentCustomText, setCurrentCustomText] = React.useState('');
+    
+    // Drag and drop state
+    const [draggedLineIndex, setDraggedLineIndex] = useState(null);
+    const [dragOverLineIndex, setDragOverLineIndex] = useState(null);
+    const [isDragging, setIsDragging] = useState(false);
 
     if (!note) {
         return null;
@@ -277,6 +282,76 @@ export default function NoteContent({
         setSelectedRows(new Set());
     };
 
+    // Drag and drop handlers
+    const handleDragStart = (e, lineIndex) => {
+        if (focusMode) return; // Disable drag in focus mode
+        
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', lineIndex.toString());
+        setDraggedLineIndex(lineIndex);
+        setIsDragging(true);
+    };
+
+    const handleDragOver = (e, lineIndex) => {
+        if (focusMode) return;
+        
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDragOverLineIndex(lineIndex);
+    };
+
+    const handleDragEnter = (e, lineIndex) => {
+        if (focusMode) return;
+        
+        e.preventDefault();
+        setDragOverLineIndex(lineIndex);
+    };
+
+    const handleDragLeave = (e) => {
+        if (focusMode) return;
+        
+        setDragOverLineIndex(null);
+    };
+
+    const handleDrop = (e, targetLineIndex) => {
+        if (focusMode) return;
+        
+        e.preventDefault();
+        const sourceLineIndex = parseInt(e.dataTransfer.getData('text/plain'));
+        
+        if (sourceLineIndex === targetLineIndex) {
+            setDraggedLineIndex(null);
+            setDragOverLineIndex(null);
+            setIsDragging(false);
+            return;
+        }
+
+        // Get the raw lines (including meta tags)
+        const lines = note.content.split('\n');
+        
+        // Move the line
+        const movedLine = lines[sourceLineIndex];
+        const newLines = [...lines];
+        newLines.splice(sourceLineIndex, 1);
+        newLines.splice(targetLineIndex, 0, movedLine);
+        
+        // Update the note
+        const updatedContent = newLines.join('\n');
+        const reorderedContent = reorderMetaTags(updatedContent);
+        updateNote(note.id, reorderedContent);
+        
+        // Reset drag state
+        setDraggedLineIndex(null);
+        setDragOverLineIndex(null);
+        setIsDragging(false);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedLineIndex(null);
+        setDragOverLineIndex(null);
+        setIsDragging(false);
+    };
+
     const renderInlineEditor = (idx, isH1, isH2) => (
         <InlineEditor
             key={idx}
@@ -357,12 +432,25 @@ export default function NoteContent({
             return (
                 <div
                     key={idx}
+                    draggable={!focusMode}
+                    onDragStart={(e) => handleDragStart(e, idx)}
+                    onDragOver={(e) => handleDragOver(e, idx)}
+                    onDragEnter={(e) => handleDragEnter(e, idx)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, idx)}
+                    onDragEnd={handleDragEnd}
                     onContextMenu={(e) => handleRightClick(e, idx)}
                     className={`${shouldIndent ? 'pl-8 ' : ''}
                         group cursor-text flex items-center ${
                             rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
                         } ${
                             isHighlightedInSuperEdit ? 'bg-purple-100 border-l-4 border-purple-500' : ''
+                        } ${
+                            draggedLineIndex === idx ? 'opacity-50' : ''
+                        } ${
+                            dragOverLineIndex === idx ? 'border-t-2 border-blue-500 bg-blue-50' : ''
+                        } ${
+                            !focusMode ? 'hover:bg-gray-50' : ''
                         }`}
                 >
                     {bulkDeleteMode && (
@@ -426,9 +514,22 @@ export default function NoteContent({
             return (
                 <div
                     key={idx}
+                    draggable={!focusMode}
+                    onDragStart={(e) => handleDragStart(e, idx)}
+                    onDragOver={(e) => handleDragOver(e, idx)}
+                    onDragEnter={(e) => handleDragEnter(e, idx)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, idx)}
+                    onDragEnd={handleDragEnd}
                     onContextMenu={(e) => handleRightClick(e, idx)}
                     className={`cursor-text ${
                         rightClickNoteId === note.id && rightClickIndex === idx ? 'bg-yellow-100' : ''
+                    } ${
+                        draggedLineIndex === idx ? 'opacity-50' : ''
+                    } ${
+                        dragOverLineIndex === idx ? 'border-t-2 border-blue-500 bg-blue-50' : ''
+                    } ${
+                        !focusMode ? 'hover:bg-gray-50' : ''
                     }`}
                 >
                     &nbsp;
@@ -442,6 +543,13 @@ export default function NoteContent({
         return (
             <div
                 key={idx}
+                draggable={!focusMode}
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDragEnter={(e) => handleDragEnter(e, idx)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
                 onContextMenu={(e) => handleRightClick(e, idx)}
                 className={`${(indentFlags[idx] || isListItem) ? 'pl-8 ' : ''}
                     group cursor-text flex items-center ${
@@ -451,6 +559,12 @@ export default function NoteContent({
                         isH2 ? 'text-lg font-semibold text-gray-900' : ''
                     } ${
                         isHighlightedInSuperEdit ? 'bg-purple-100 border-l-4 border-purple-500' : ''
+                    } ${
+                        draggedLineIndex === idx ? 'opacity-50' : ''
+                    } ${
+                        dragOverLineIndex === idx ? 'border-t-2 border-blue-500 bg-blue-50' : ''
+                    } ${
+                        !focusMode ? 'hover:bg-gray-50' : ''
                     }`}
             >
                 {bulkDeleteMode && (

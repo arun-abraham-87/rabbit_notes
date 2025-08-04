@@ -333,7 +333,10 @@ export default function NoteContent({
         const movedLine = lines[sourceLineIndex];
         const newLines = [...lines];
         newLines.splice(sourceLineIndex, 1);
-        newLines.splice(targetLineIndex, 0, movedLine);
+        
+        // Adjust target index when dragging down to account for the removed line
+        const adjustedTargetIndex = sourceLineIndex < targetLineIndex ? targetLineIndex - 1 : targetLineIndex;
+        newLines.splice(adjustedTargetIndex, 0, movedLine);
         
         // Update the note
         const updatedContent = newLines.join('\n');
@@ -656,6 +659,28 @@ export default function NoteContent({
         }`}>
             <div className="whitespace-pre-wrap break-words break-all space-y-1">
                 {contentLines.map((line, idx) => renderLine(line, idx))}
+                {/* Drop zone at the bottom for dragging to last position */}
+                {!focusMode && (
+                    <div
+                        draggable={false}
+                        onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                            setDragOverLineIndex(contentLines.length);
+                        }}
+                        onDragEnter={(e) => {
+                            e.preventDefault();
+                            setDragOverLineIndex(contentLines.length);
+                        }}
+                        onDragLeave={(e) => {
+                            setDragOverLineIndex(null);
+                        }}
+                        onDrop={(e) => handleDrop(e, contentLines.length)}
+                        className={`h-4 transition-colors duration-150 ${
+                            dragOverLineIndex === contentLines.length ? 'bg-blue-100 border-t-2 border-blue-500' : ''
+                        }`}
+                    />
+                )}
                 {/* Plus button at the end of the last line */}
                 {!compressedView && !focusMode && (
                     <div className="flex items-center justify-between mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">

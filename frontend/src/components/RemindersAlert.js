@@ -761,270 +761,63 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   if (reminderObjs.length === 0 && upcomingReminders.length === 0) return null;
 
   return (
-    <div className="space-y-4 w-full">
-      {/* Number buffer indicator */}
-      {isRemindersOnlyMode && isWaitingForJump && (
-        <div className="fixed top-4 right-4 bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg z-50">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Jump to:</span>
-            <span className="text-lg font-bold">{numberBufferRef.current}</span>
-            <span className="text-xs opacity-75">Press j/k</span>
+    <>
+      <div className="space-y-4 w-full">
+        {/* Number buffer indicator */}
+        {isRemindersOnlyMode && isWaitingForJump && (
+          <div className="fixed top-4 right-4 bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg z-50">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Jump to:</span>
+              <span className="text-lg font-bold">{numberBufferRef.current}</span>
+              <span className="text-xs opacity-75">Press j/k</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Relative numbers toggle */}
-      {isRemindersOnlyMode && (
-        <div className="fixed top-24 left-4 bg-white border border-gray-300 rounded-lg shadow-lg z-50 px-3 py-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">Numbers:</span>
-            <button
-              onClick={toggleRelativeNumbers}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                showRelativeNumbers ? 'bg-blue-600' : 'bg-gray-200'
-              }`}
-            >
-              <span
-                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                  showRelativeNumbers ? 'translate-x-5' : 'translate-x-1'
+        {/* Relative numbers toggle */}
+        {isRemindersOnlyMode && (
+          <div className="fixed top-24 left-4 bg-white border border-gray-300 rounded-lg shadow-lg z-50 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Numbers:</span>
+              <button
+                onClick={toggleRelativeNumbers}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  showRelativeNumbers ? 'bg-blue-600' : 'bg-gray-200'
                 }`}
-              />
-            </button>
-          </div>
-        </div>
-      )}
-      
-      {/* Active Reminders Section */}
-      {reminderObjs.length > 0 && (
-        <div className="space-y-4">
-          {/* Color Summary */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {Object.entries(groupRemindersByColor(reminderObjs)).map(([colorName, colorReminders]) => {
-              const colorConfig = REMINDER_COLORS.find(c => c.name === colorName) || REMINDER_COLORS[0];
-              return (
-                <div key={colorName} className={`flex items-center gap-2 px-3 py-2 rounded-lg ${colorConfig.bg} ${colorConfig.border}`}>
-                  <div className={`w-3 h-3 rounded-full ${colorConfig.bg.replace('bg-', 'bg-').replace('-100', '-500')} border ${colorConfig.border}`}></div>
-                  <span className={`text-sm font-medium ${colorConfig.text} capitalize`}>
-                    {colorName} ({colorReminders.length})
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          
-          {reminderObjs.map((reminderObj, index) => {
-            const note = reminderObj.note;
-            const isDetailsExpanded = expandedDetails[note.id];
-            const isHovered = hoveredNote === note.id;
-            const isFocused = isRemindersOnlyMode && focusedReminderIndex === index;
-            const contentLines = note.content
-              .split('\n')
-              .map(line => line.trim())
-              .filter(line => line.length > 0 && !line.startsWith('meta::'));
-            const hasMoreContent = contentLines.length > 2;
-            
-            // Get color for this reminder
-            const reminderColor = getReminderColor(note.id);
-            const colorConfig = REMINDER_COLORS.find(c => c.name === reminderColor) || REMINDER_COLORS[0];
-
-            return (
-              <div
-                key={note.id}
-                data-reminder-id={note.id}
-                className={`${colorConfig.bg} border shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200 ${
-                  isFocused 
-                    ? `border-blue-500 ring-2 ring-blue-300 ${colorConfig.bg.replace('-100', '-50')} shadow-xl` 
-                    : colorConfig.border
-                }`}
-                onMouseEnter={() => setHoveredNote(note.id)}
-                onMouseLeave={() => setHoveredNote(null)}
-                onClick={() => {
-                  if (isRemindersOnlyMode) {
-                    setFocusedReminderIndex(index);
-                  }
-                }}
               >
-                <div className="px-6 py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {/* Relative position indicator for vim navigation */}
-                      {isRemindersOnlyMode && showRelativeNumbers && (
-                        <div className="flex-shrink-0">
-                          <div className="text-xs font-mono font-bold text-gray-600 px-2 py-1 min-w-[2rem] text-center">
-                            {getRelativePosition(index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}
-                          </div>
-                        </div>
-                      )}
-                      {hasMoreContent && (
-                        <button
-                          onClick={() => toggleDetails(note.id)}
-                          className={`${colorConfig.text} hover:${colorConfig.text.replace('text-', 'text-').replace('-800', '-900')} focus:outline-none`}
-                        >
-                          {isDetailsExpanded ? (
-                            <ChevronUpIcon className="h-5 w-5" />
-                          ) : (
-                            <ChevronDownIcon className="h-5 w-5" />
-                          )}
-                        </button>
-                      )}
-                      {/* Bell icon with vibration animation */}
-                      <BellIcon className={`h-5 w-5 ${colorConfig.text} bell-vibrate`} />
-                      <div>
-                        {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {showCadenceSelector === note.id ? (
-                        <CadenceSelector
-                          noteId={note.id}
-                          notes={allNotes}
-                          onCadenceChange={() => {
-                            setShowCadenceSelector(null);
-                            if (typeof setNotes === 'function') {
-                              setNotes([...allNotes]);
-                            }
-                          }}
-                        />
-                      ) : (
-                        <>
-                          <div className="flex flex-col items-end mr-2">
-                            {getHumanReadableCadence(note) && (
-                              <div className="text-xs text-gray-400 mb-1">
-                                {getHumanReadableCadence(note)}
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => handleDismiss(note)}
-                            className="px-3 py-1 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
-                            title="Dismiss"
-                          >
-                            <CheckIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleEditNote(note.id)}
-                            className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                            title="Goto Note"
-                          >
-                            <PencilIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => toggleOptions(note.id)}
-                            className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none transition-colors duration-150"
-                            title="More Options"
-                          >
-                            <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${expandedOptions[note.id] ? 'rotate-180' : ''}`} />
-                          </button>
-                        </>
-                      )}
-                    </div>
+                <span
+                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                    showRelativeNumbers ? 'translate-x-5' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Active Reminders Section */}
+        {reminderObjs.length > 0 && (
+          <div className="space-y-4">
+            {/* Color Summary */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {Object.entries(groupRemindersByColor(reminderObjs)).map(([colorName, colorReminders]) => {
+                const colorConfig = REMINDER_COLORS.find(c => c.name === colorName) || REMINDER_COLORS[0];
+                return (
+                  <div key={colorName} className={`flex items-center gap-2 px-3 py-2 rounded-lg ${colorConfig.bg} ${colorConfig.border}`}>
+                    <div className={`w-3 h-3 rounded-full ${colorConfig.bg.replace('bg-', 'bg-').replace('-100', '-500')} border ${colorConfig.border}`}></div>
+                    <span className={`text-sm font-medium ${colorConfig.text} capitalize`}>
+                      {colorName} ({colorReminders.length})
+                    </span>
                   </div>
-                  
-                  {/* Group Name Section - Center of the card */}
-                  <div className="flex justify-center items-center py-2 border-t border-gray-200">
-                    {showGroupInput === note.id ? (
-                      <div className="flex items-center gap-2 w-full max-w-xs">
-                        <input
-                          type="text"
-                          value={editingGroupName}
-                          onChange={(e) => setEditingGroupName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleGroupNameChange(note.id, editingGroupName);
-                            } else if (e.key === 'Escape') {
-                              cancelEditGroupName();
-                            }
-                          }}
-                          onBlur={() => handleGroupNameChange(note.id, editingGroupName)}
-                          className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Enter group name..."
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => handleGroupNameChange(note.id, editingGroupName)}
-                          className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEditGroupName}
-                          className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded hover:bg-gray-100"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        {getReminderGroup(note.id) ? (
-                          <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
-                            {getReminderGroup(note.id)}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-500 italic">No group</span>
-                        )}
-                        <button
-                          onClick={() => startEditGroupName(note.id)}
-                          className="text-xs text-blue-600 hover:text-blue-800 underline"
-                        >
-                          {getReminderGroup(note.id) ? 'Edit' : 'Add'} Group
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* More Options Section */}
-                  {expandedOptions[note.id] && !showCadenceSelector && (
-                    <div className="px-6 py-3 border-t border-gray-200" style={{ backgroundColor: 'inherit' }}>
-                      <div className="flex justify-between items-center">
-                        {/* Color selector */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-600">Color:</span>
-                          <div className="flex gap-2">
-                            {REMINDER_COLORS.map((color) => (
-                              <button
-                                key={color.name}
-                                onClick={() => handleColorSelect(note.id, color.name)}
-                                className={`w-6 h-6 rounded-full border-2 transition-all duration-150 ${
-                                  getReminderColor(note.id) === color.name 
-                                    ? 'border-gray-600 scale-110' 
-                                    : 'border-gray-300 hover:border-gray-400'
-                                } ${color.bg.replace('bg-', 'bg-').replace('-100', '-500')}`}
-                                title={color.name}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        
-                        {/* Other options */}
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => setShowCadenceSelector(note.id)}
-                            className="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-800 underline focus:outline-none transition-colors duration-150"
-                            title="Set Cadence"
-                          >
-                            Set Cadence
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {upcomingReminders.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
-            <ClockIcon className="h-4 w-4" />
-            Upcoming Reminders
-          </h3>
-          <div className="space-y-3">
-            {upcomingReminders.map(({ note, nextReview }, index) => {
+                );
+              })}
+            </div>
+            
+            {reminderObjs.map((reminderObj, index) => {
+              const note = reminderObj.note;
               const isDetailsExpanded = expandedDetails[note.id];
-              const isFocused = isRemindersOnlyMode && focusedReminderIndex === reminderObjs.length + index;
+              const isHovered = hoveredNote === note.id;
+              const isFocused = isRemindersOnlyMode && focusedReminderIndex === index;
               const contentLines = note.content
                 .split('\n')
                 .map(line => line.trim())
@@ -1039,14 +832,16 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                 <div
                   key={note.id}
                   data-reminder-id={note.id}
-                  className={`${colorConfig.bg} border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 ${
+                  className={`${colorConfig.bg} border shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-all duration-200 ${
                     isFocused 
                       ? `border-blue-500 ring-2 ring-blue-300 ${colorConfig.bg.replace('-100', '-50')} shadow-xl` 
                       : colorConfig.border
                   }`}
+                  onMouseEnter={() => setHoveredNote(note.id)}
+                  onMouseLeave={() => setHoveredNote(null)}
                   onClick={() => {
                     if (isRemindersOnlyMode) {
-                      setFocusedReminderIndex(reminderObjs.length + index);
+                      setFocusedReminderIndex(index);
                     }
                   }}
                 >
@@ -1057,7 +852,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                         {isRemindersOnlyMode && showRelativeNumbers && (
                           <div className="flex-shrink-0">
                             <div className="text-xs font-mono font-bold text-gray-600 px-2 py-1 min-w-[2rem] text-center">
-                              {getRelativePosition(reminderObjs.length + index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}
+                              {getRelativePosition(index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}
                             </div>
                           </div>
                         )}
@@ -1073,92 +868,112 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                             )}
                           </button>
                         )}
+                        {/* Bell icon with vibration animation */}
+                        <BellIcon className={`h-5 w-5 ${colorConfig.text} bell-vibrate`} />
                         <div>
                           {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
-                          <div className="mt-1 text-sm text-gray-500">
-                            {formatDate(nextReview)}
-                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex flex-col items-end mr-2">
-                          {getHumanReadableCadence(note) && (
-                            <div className="text-xs text-gray-400 mb-1">
-                              {getHumanReadableCadence(note)}
+                        {/* Group Name - Inline with note content */}
+                        <div className="flex items-center gap-2 ml-4">
+                          {showGroupInput === note.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingGroupName}
+                                onChange={(e) => setEditingGroupName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleGroupNameChange(note.id, editingGroupName);
+                                  } else if (e.key === 'Escape') {
+                                    cancelEditGroupName();
+                                  }
+                                }}
+                                onBlur={() => handleGroupNameChange(note.id, editingGroupName)}
+                                className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                placeholder="Group name..."
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => handleGroupNameChange(note.id, editingGroupName)}
+                                className="px-1 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={cancelEditGroupName}
+                                className="px-1 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded hover:bg-gray-100"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              {getReminderGroup(note.id) ? (
+                                <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-full">
+                                  {getReminderGroup(note.id)}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500 italic">No group</span>
+                              )}
+                              <button
+                                onClick={() => startEditGroupName(note.id)}
+                                className="text-xs text-blue-600 hover:text-blue-800 underline ml-1"
+                              >
+                                {getReminderGroup(note.id) ? 'Edit' : 'Add'}
+                              </button>
                             </div>
                           )}
                         </div>
-                        <button
-                          onClick={() => toggleOptions(note.id)}
-                          className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none transition-colors duration-150"
-                          title="More Options"
-                        >
-                          <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${expandedOptions[note.id] ? 'rotate-180' : ''}`} />
-                        </button>
-                        <button
-                          onClick={() => handleEditNote(note.id)}
-                          className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                          title="Goto Note"
-                        >
-                          <PencilIcon className="h-5 w-5" />
-                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {showCadenceSelector === note.id ? (
+                          <CadenceSelector
+                            noteId={note.id}
+                            notes={allNotes}
+                            onCadenceChange={() => {
+                              setShowCadenceSelector(null);
+                              if (typeof setNotes === 'function') {
+                                setNotes([...allNotes]);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <>
+                            <div className="flex flex-col items-end mr-2">
+                              {getHumanReadableCadence(note) && (
+                                <div className="text-xs text-gray-400 mb-1">
+                                  {getHumanReadableCadence(note)}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleDismiss(note)}
+                              className="px-3 py-1 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+                              title="Dismiss"
+                            >
+                              <CheckIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => handleEditNote(note.id)}
+                              className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                              title="Goto Note"
+                            >
+                              <PencilIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => toggleOptions(note.id)}
+                              className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none transition-colors duration-150"
+                              title="More Options"
+                            >
+                              <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${expandedOptions[note.id] ? 'rotate-180' : ''}`} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                     
-                    {/* Group Name Section - Center of the card */}
-                    <div className="flex justify-center items-center py-2 border-t border-gray-200">
-                      {showGroupInput === note.id ? (
-                        <div className="flex items-center gap-2 w-full max-w-xs">
-                          <input
-                            type="text"
-                            value={editingGroupName}
-                            onChange={(e) => setEditingGroupName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleGroupNameChange(note.id, editingGroupName);
-                              } else if (e.key === 'Escape') {
-                                cancelEditGroupName();
-                              }
-                            }}
-                            onBlur={() => handleGroupNameChange(note.id, editingGroupName)}
-                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter group name..."
-                            autoFocus
-                          />
-                          <button
-                            onClick={() => handleGroupNameChange(note.id, editingGroupName)}
-                            className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={cancelEditGroupName}
-                            className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded hover:bg-gray-100"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          {getReminderGroup(note.id) ? (
-                            <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
-                              {getReminderGroup(note.id)}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-500 italic">No group</span>
-                          )}
-                          <button
-                            onClick={() => startEditGroupName(note.id)}
-                            className="text-xs text-blue-600 hover:text-blue-800 underline"
-                          >
-                            {getReminderGroup(note.id) ? 'Edit' : 'Add'} Group
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
                     {/* More Options Section */}
-                    {expandedOptions[note.id] && (
+                    {expandedOptions[note.id] && !showCadenceSelector && (
                       <div className="px-6 py-3 border-t border-gray-200" style={{ backgroundColor: 'inherit' }}>
                         <div className="flex justify-between items-center">
                           {/* Color selector */}
@@ -1198,9 +1013,195 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               );
             })}
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Upcoming Reminders Section */}
+        {upcomingReminders.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
+              <ClockIcon className="h-4 w-4" />
+              Upcoming Reminders
+            </h3>
+            <div className="space-y-3">
+              {upcomingReminders.map(({ note, nextReview }, index) => {
+                const isDetailsExpanded = expandedDetails[note.id];
+                const isFocused = isRemindersOnlyMode && focusedReminderIndex === reminderObjs.length + index;
+                const contentLines = note.content
+                  .split('\n')
+                  .map(line => line.trim())
+                  .filter(line => line.length > 0 && !line.startsWith('meta::'));
+                const hasMoreContent = contentLines.length > 2;
+                
+                // Get color for this reminder
+                const reminderColor = getReminderColor(note.id);
+                const colorConfig = REMINDER_COLORS.find(c => c.name === reminderColor) || REMINDER_COLORS[0];
+
+                return (
+                  <div
+                    key={note.id}
+                    data-reminder-id={note.id}
+                    className={`${colorConfig.bg} border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 ${
+                      isFocused 
+                        ? `border-blue-500 ring-2 ring-blue-300 ${colorConfig.bg.replace('-100', '-50')} shadow-xl` 
+                        : colorConfig.border
+                    }`}
+                    onClick={() => {
+                      if (isRemindersOnlyMode) {
+                        setFocusedReminderIndex(reminderObjs.length + index);
+                      }
+                    }}
+                  >
+                    <div className="px-6 py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {/* Relative position indicator for vim navigation */}
+                          {isRemindersOnlyMode && showRelativeNumbers && (
+                            <div className="flex-shrink-0">
+                              <div className="text-xs font-mono font-bold text-gray-600 px-2 py-1 min-w-[2rem] text-center">
+                                {getRelativePosition(reminderObjs.length + index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}
+                              </div>
+                            </div>
+                          )}
+                          {hasMoreContent && (
+                            <button
+                              onClick={() => toggleDetails(note.id)}
+                              className={`${colorConfig.text} hover:${colorConfig.text.replace('text-', 'text-').replace('-800', '-900')} focus:outline-none`}
+                            >
+                              {isDetailsExpanded ? (
+                                <ChevronUpIcon className="h-5 w-5" />
+                              ) : (
+                                <ChevronDownIcon className="h-5 w-5" />
+                              )}
+                            </button>
+                          )}
+                          <div>
+                            {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
+                            <div className="mt-1 text-sm text-gray-500">
+                              {formatDate(nextReview)}
+                            </div>
+                          </div>
+                          {/* Group Name - Inline with note content */}
+                          <div className="flex items-center gap-2 ml-4">
+                            {showGroupInput === note.id ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={editingGroupName}
+                                  onChange={(e) => setEditingGroupName(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleGroupNameChange(note.id, editingGroupName);
+                                    } else if (e.key === 'Escape') {
+                                      cancelEditGroupName();
+                                    }
+                                  }}
+                                  onBlur={() => handleGroupNameChange(note.id, editingGroupName)}
+                                  className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  placeholder="Group name..."
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => handleGroupNameChange(note.id, editingGroupName)}
+                                  className="px-1 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100"
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  onClick={cancelEditGroupName}
+                                  className="px-1 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded hover:bg-gray-100"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                {getReminderGroup(note.id) ? (
+                                  <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-full">
+                                    {getReminderGroup(note.id)}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-500 italic">No group</span>
+                                )}
+                                <button
+                                  onClick={() => startEditGroupName(note.id)}
+                                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                >
+                                  {getReminderGroup(note.id) ? 'Edit' : 'Add'} Group
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex flex-col items-end mr-2">
+                            {getHumanReadableCadence(note) && (
+                              <div className="text-xs text-gray-400 mb-1">
+                                {getHumanReadableCadence(note)}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => toggleOptions(note.id)}
+                            className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none transition-colors duration-150"
+                            title="More Options"
+                          >
+                            <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${expandedOptions[note.id] ? 'rotate-180' : ''}`} />
+                          </button>
+                          <button
+                            onClick={() => handleEditNote(note.id)}
+                            className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                            title="Goto Note"
+                          >
+                            <PencilIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* More Options Section */}
+                      {expandedOptions[note.id] && (
+                        <div className="px-6 py-3 border-t border-gray-200" style={{ backgroundColor: 'inherit' }}>
+                          <div className="flex justify-between items-center">
+                            {/* Color selector */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-600">Color:</span>
+                              <div className="flex gap-2">
+                                {REMINDER_COLORS.map((color) => (
+                                  <button
+                                    key={color.name}
+                                    onClick={() => handleColorSelect(note.id, color.name)}
+                                    className={`w-6 h-6 rounded-full border-2 transition-all duration-150 ${
+                                      getReminderColor(note.id) === color.name 
+                                        ? 'border-gray-600 scale-110' 
+                                        : 'border-gray-300 hover:border-gray-400'
+                                    } ${color.bg.replace('bg-', 'bg-').replace('-100', '-500')}`}
+                                    title={color.name}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            
+                            {/* Other options */}
+                            <div className="flex gap-3">
+                              <button
+                                onClick={() => setShowCadenceSelector(note.id)}
+                                className="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-800 underline focus:outline-none transition-colors duration-150"
+                                title="Set Cadence"
+                              >
+                                Set Cadence
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 

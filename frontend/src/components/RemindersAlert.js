@@ -919,9 +919,8 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                 )}
               </div>
 
-              {/* Color Summary */}
+              {/* Color and Group Filter Buttons */}
               <div className="flex flex-wrap gap-1 flex-1">
-                <span className="text-xs font-medium text-gray-700 mr-1">Colors:</span>
                 {Object.entries(groupRemindersByColor(reminderObjs)).map(([colorName, colorReminders]) => {
                   const colorConfig = REMINDER_COLORS.find(c => c.name === colorName) || REMINDER_COLORS[0];
                   return (
@@ -941,27 +940,20 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                     </button>
                   );
                 })}
+                {getUniqueGroups(reminderObjs).map((groupName) => (
+                  <button
+                    key={groupName}
+                    onClick={() => handleGroupFilterSelect(groupName)}
+                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
+                      selectedGroupFilter === groupName
+                        ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
+                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                    }`}
+                  >
+                    {groupName} ({filterRemindersByGroup(reminderObjs, groupName).length})
+                  </button>
+                ))}
               </div>
-
-              {/* Group Filter Buttons */}
-              {getUniqueGroups(reminderObjs).length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  <span className="text-xs font-medium text-gray-700 mr-1">Groups:</span>
-                  {getUniqueGroups(reminderObjs).map((groupName) => (
-                    <button
-                      key={groupName}
-                      onClick={() => handleGroupFilterSelect(groupName)}
-                      className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
-                        selectedGroupFilter === groupName
-                          ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
-                          : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                      }`}
-                    >
-                      {groupName} ({filterRemindersByGroup(reminderObjs, groupName).length})
-                    </button>
-                  ))}
-                </div>
-              )}
 
               {(selectedColorFilter || selectedGroupFilter || searchQuery) && (
                 <button
@@ -1214,25 +1206,22 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                 )}
               </div>
 
-              {/* Group Filter Buttons for Upcoming Reminders */}
-              {getUniqueGroups(upcomingReminders.map(r => r.note)).length > 0 && (
-                <div className="flex flex-wrap gap-1 flex-1">
-                  <span className="text-xs font-medium text-gray-700 mr-1">Groups:</span>
-                  {getUniqueGroups(upcomingReminders.map(r => r.note)).map((groupName) => (
-                    <button
-                      key={groupName}
-                      onClick={() => handleGroupFilterSelect(groupName)}
-                      className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
-                        selectedGroupFilter === groupName
-                          ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
-                          : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                      }`}
-                    >
-                      {groupName} ({filterRemindersByGroup(upcomingReminders.map(r => r.note), groupName).length})
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* Color and Group Filter Buttons for Upcoming Reminders */}
+              <div className="flex flex-wrap gap-1 flex-1">
+                {getUniqueGroups(upcomingReminders.map(r => r.note)).map((groupName) => (
+                  <button
+                    key={groupName}
+                    onClick={() => handleGroupFilterSelect(groupName)}
+                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
+                      selectedGroupFilter === groupName
+                        ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
+                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                    }`}
+                  >
+                    {groupName} ({filterRemindersByGroup(upcomingReminders.map(r => r.note), groupName).length})
+                  </button>
+                ))}
+              </div>
 
               {(selectedColorFilter || selectedGroupFilter || searchQuery) && (
                 <button

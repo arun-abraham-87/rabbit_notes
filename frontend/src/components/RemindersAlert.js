@@ -41,6 +41,9 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const [showColorSelector, setShowColorSelector] = useState(null);
   const [showGroupInput, setShowGroupInput] = useState(null);
   const [editingGroupName, setEditingGroupName] = useState('');
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState('');
+  const [selectedColorFilter, setSelectedColorFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const numberBufferRef = useRef('');
 
   // Function to get color for a specific reminder
@@ -74,6 +77,97 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
       grouped[color].push(reminder);
     });
     return grouped;
+  };
+
+  // Function to get unique group names from reminders
+  const getUniqueGroups = (reminders) => {
+    const groups = new Set();
+    reminders.forEach(reminder => {
+      const group = getReminderGroup(reminder.note.id);
+      if (group) {
+        groups.add(group);
+      }
+    });
+    return Array.from(groups).sort();
+  };
+
+  // Function to filter reminders by group
+  const filterRemindersByGroup = (reminders, groupName) => {
+    if (!groupName) return reminders;
+    return reminders.filter(reminder => getReminderGroup(reminder.note.id) === groupName);
+  };
+
+  // Function to filter reminders by color
+  const filterRemindersByColor = (reminders, colorName) => {
+    if (!colorName) return reminders;
+    return reminders.filter(reminder => getReminderColor(reminder.note.id) === colorName);
+  };
+
+  // Function to apply both color and group filters
+  const applyFilters = (reminders) => {
+    let filtered = reminders;
+    if (selectedColorFilter) {
+      filtered = filterRemindersByColor(filtered, selectedColorFilter);
+    }
+    if (selectedGroupFilter) {
+      filtered = filterRemindersByGroup(filtered, selectedGroupFilter);
+    }
+    return filtered;
+  };
+
+  // Function to perform fuzzy search
+  const fuzzySearch = (reminders, query) => {
+    if (!query.trim()) return reminders;
+    
+    const searchTerm = query.toLowerCase();
+    return reminders.filter(reminder => {
+      const note = reminder.note;
+      const content = note.content.toLowerCase();
+      const group = getReminderGroup(note.id).toLowerCase();
+      
+      // Search in content
+      if (content.includes(searchTerm)) return true;
+      
+      // Search in group name
+      if (group.includes(searchTerm)) return true;
+      
+      // Search in individual lines
+      const lines = note.content.split('\n');
+      return lines.some(line => 
+        line.toLowerCase().includes(searchTerm) && 
+        !line.startsWith('meta::')
+      );
+    });
+  };
+
+  // Function to apply all filters (search + color + group)
+  const applyAllFilters = (reminders) => {
+    let filtered = reminders;
+    
+    // Apply search filter first
+    if (searchQuery.trim()) {
+      filtered = fuzzySearch(filtered, searchQuery);
+    }
+    
+    // Apply color and group filters
+    if (selectedColorFilter) {
+      filtered = filterRemindersByColor(filtered, selectedColorFilter);
+    }
+    if (selectedGroupFilter) {
+      filtered = filterRemindersByGroup(filtered, selectedGroupFilter);
+    }
+    
+    return filtered;
+  };
+
+  // Function to handle group filter selection
+  const handleGroupFilterSelect = (groupName) => {
+    setSelectedGroupFilter(selectedGroupFilter === groupName ? '' : groupName);
+  };
+
+  // Function to handle color filter selection
+  const handleColorFilterSelect = (colorName) => {
+    setSelectedColorFilter(selectedColorFilter === colorName ? '' : colorName);
   };
 
   // Function to get group name for a specific reminder
@@ -798,26 +892,96 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         {/* Active Reminders Section */}
         {reminderObjs.length > 0 && (
           <div className="space-y-4">
-            {/* Color Summary */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {Object.entries(groupRemindersByColor(reminderObjs)).map(([colorName, colorReminders]) => {
-                const colorConfig = REMINDER_COLORS.find(c => c.name === colorName) || REMINDER_COLORS[0];
-                return (
-                  <div key={colorName} className={`flex items-center gap-2 px-3 py-2 rounded-lg ${colorConfig.bg} ${colorConfig.border}`}>
-                    <div className={`w-3 h-3 rounded-full ${colorConfig.bg.replace('bg-', 'bg-').replace('-100', '-500')} border ${colorConfig.border}`}></div>
-                    <span className={`text-sm font-medium ${colorConfig.text} capitalize`}>
-                      {colorName} ({colorReminders.length})
-                    </span>
-                  </div>
-                );
-              })}
+            {/* Search Bar */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative w-1/10">
+                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                  <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className="block w-full pl-8 pr-6 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Color Summary */}
+              <div className="flex flex-wrap gap-1 flex-1">
+                <span className="text-xs font-medium text-gray-700 mr-1">Colors:</span>
+                {Object.entries(groupRemindersByColor(reminderObjs)).map(([colorName, colorReminders]) => {
+                  const colorConfig = REMINDER_COLORS.find(c => c.name === colorName) || REMINDER_COLORS[0];
+                  return (
+                    <button
+                      key={colorName}
+                      onClick={() => handleColorFilterSelect(colorName)}
+                      className={`flex items-center gap-1 px-2 py-1 rounded border transition-colors duration-150 text-xs ${
+                        selectedColorFilter === colorName
+                          ? `${colorConfig.bg} ${colorConfig.border} ${colorConfig.text} ring-1 ring-blue-300`
+                          : `${colorConfig.bg} ${colorConfig.border} ${colorConfig.text} hover:${colorConfig.hover}`
+                      }`}
+                    >
+                      <div className={`w-2 h-2 rounded-full ${colorConfig.bg.replace('bg-', 'bg-').replace('-100', '-500')} border ${colorConfig.border}`}></div>
+                      <span className="font-medium capitalize">
+                        {colorName} ({colorReminders.length})
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Group Filter Buttons */}
+              {getUniqueGroups(reminderObjs).length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-xs font-medium text-gray-700 mr-1">Groups:</span>
+                  {getUniqueGroups(reminderObjs).map((groupName) => (
+                    <button
+                      key={groupName}
+                      onClick={() => handleGroupFilterSelect(groupName)}
+                      className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
+                        selectedGroupFilter === groupName
+                          ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
+                          : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                      }`}
+                    >
+                      {groupName} ({filterRemindersByGroup(reminderObjs, groupName).length})
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {(selectedColorFilter || selectedGroupFilter || searchQuery) && (
+                <button
+                  onClick={() => {
+                    setSelectedColorFilter('');
+                    setSelectedGroupFilter('');
+                    setSearchQuery('');
+                  }}
+                  className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-300 rounded hover:bg-gray-100 transition-colors duration-150"
+                >
+                  Clear All
+                </button>
+              )}
             </div>
             
-            {reminderObjs.map((reminderObj, index) => {
+            {applyAllFilters(reminderObjs).map((reminderObj, index) => {
               const note = reminderObj.note;
               const isDetailsExpanded = expandedDetails[note.id];
               const isHovered = hoveredNote === note.id;
-              const isFocused = isRemindersOnlyMode && focusedReminderIndex === index;
+              const isFocused = isRemindersOnlyMode && focusedReminderIndex === reminderObjs.indexOf(reminderObj);
               const contentLines = note.content
                 .split('\n')
                 .map(line => line.trim())
@@ -1022,8 +1186,70 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               <ClockIcon className="h-4 w-4" />
               Upcoming Reminders
             </h3>
+            
+            {/* Search Bar for Upcoming Reminders */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative w-1/10">
+                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                  <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className="block w-full pl-8 pr-6 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Group Filter Buttons for Upcoming Reminders */}
+              {getUniqueGroups(upcomingReminders.map(r => r.note)).length > 0 && (
+                <div className="flex flex-wrap gap-1 flex-1">
+                  <span className="text-xs font-medium text-gray-700 mr-1">Groups:</span>
+                  {getUniqueGroups(upcomingReminders.map(r => r.note)).map((groupName) => (
+                    <button
+                      key={groupName}
+                      onClick={() => handleGroupFilterSelect(groupName)}
+                      className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
+                        selectedGroupFilter === groupName
+                          ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
+                          : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                      }`}
+                    >
+                      {groupName} ({filterRemindersByGroup(upcomingReminders.map(r => r.note), groupName).length})
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {(selectedColorFilter || selectedGroupFilter || searchQuery) && (
+                <button
+                  onClick={() => {
+                    setSelectedColorFilter('');
+                    setSelectedGroupFilter('');
+                    setSearchQuery('');
+                  }}
+                  className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-300 rounded hover:bg-gray-100 transition-colors duration-150"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+
             <div className="space-y-3">
-              {upcomingReminders.map(({ note, nextReview }, index) => {
+              {applyAllFilters(upcomingReminders.map(r => r.note)).map(({ note, nextReview }, index) => {
                 const isDetailsExpanded = expandedDetails[note.id];
                 const isFocused = isRemindersOnlyMode && focusedReminderIndex === reminderObjs.length + index;
                 const contentLines = note.content

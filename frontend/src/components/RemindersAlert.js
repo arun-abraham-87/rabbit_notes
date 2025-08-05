@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { ChevronDownIcon, ChevronUpIcon, BellIcon, CheckIcon, ClockIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import CadenceSelector from './CadenceSelector';
@@ -45,6 +46,8 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const [selectedColorFilter, setSelectedColorFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const numberBufferRef = useRef('');
+  const [showGroupDropdown, setShowGroupDropdown] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
 
   // Function to get color for a specific reminder
   const getReminderColor = (noteId) => {
@@ -194,6 +197,24 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const cancelEditGroupName = () => {
     setShowGroupInput(null);
     setEditingGroupName('');
+  };
+
+  const toggleGroupDropdown = (noteId, event) => {
+    if (showGroupDropdown === noteId) {
+      setShowGroupDropdown(null);
+    } else {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX
+      });
+      setShowGroupDropdown(noteId);
+    }
+  };
+
+  const selectGroupFromDropdown = (noteId, groupName) => {
+    handleGroupNameChange(noteId, groupName);
+    setShowGroupDropdown(null);
   };
 
   useEffect(() => {
@@ -517,6 +538,19 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
       document.head.removeChild(styleSheet);
     };
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showGroupDropdown && !event.target.closest('[data-group-dropdown]')) {
+        setShowGroupDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showGroupDropdown]);
 
   const handleDismiss = async (note) => {
     try {
@@ -852,6 +886,51 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     return null;
   };
 
+  // Portal-based dropdown to avoid overflow clipping
+  const renderDropdownPortal = () => {
+    if (!showGroupDropdown) return null;
+
+    const dropdownContent = (
+      <div 
+        className="fixed z-50 w-32 bg-white border border-gray-300 rounded-md shadow-lg max-h-32 overflow-y-auto" 
+        data-group-dropdown 
+        style={{ 
+          top: dropdownPosition.top,
+          left: dropdownPosition.left
+        }}
+      >
+        <div className="py-1">
+          {getUniqueGroups(reminderObjs).length > 0 && (
+            <>
+              {getUniqueGroups(reminderObjs).map((groupName) => (
+                <button
+                  key={groupName}
+                  onClick={() => selectGroupFromDropdown(showGroupDropdown, groupName)}
+                  className="block w-full text-left px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 truncate"
+                  title={groupName}
+                >
+                  {groupName}
+                </button>
+              ))}
+              <div className="border-t border-gray-200 my-1"></div>
+            </>
+          )}
+          <button
+            onClick={() => {
+              setShowGroupDropdown(null);
+              startEditGroupName(showGroupDropdown);
+            }}
+            className="block w-full text-left px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 font-medium"
+          >
+            + New Group
+          </button>
+        </div>
+      </div>
+    );
+
+    return ReactDOM.createPortal(dropdownContent, document.body);
+  };
+
   if (reminderObjs.length === 0 && upcomingReminders.length === 0) return null;
 
   return (
@@ -1030,7 +1109,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                           {formatReminderContent(note.content, isDetailsExpanded, () => toggleDetails(note.id))}
                         </div>
                         {/* Group Name - Inline with note content */}
-                        <div className="flex items-center gap-2 ml-4">
+                        <div className="flex items-center gap-2 ml-4 relative">
                           {showGroupInput === note.id ? (
                             <div className="flex items-center gap-2">
                               <input
@@ -1072,7 +1151,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                                 <span className="text-xs text-gray-500 italic">No group</span>
                               )}
                               <button
-                                onClick={() => startEditGroupName(note.id)}
+                                onClick={(event) => toggleGroupDropdown(note.id, event)}
                                 className="text-xs text-blue-600 hover:text-blue-800 underline ml-1"
                               >
                                 {getReminderGroup(note.id) ? 'Edit' : 'Add'}
@@ -1416,6 +1495,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
           </div>
         )}
       </div>
+      {renderDropdownPortal()}
     </>
   );
 };

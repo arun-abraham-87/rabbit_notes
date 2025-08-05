@@ -10,6 +10,7 @@ import AddTextModal from './AddTextModal';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
 import { checkText } from '../utils/languageTool';
 import { ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-toastify';
 
 /**
  * NoteContent - renders the body of a note, including headings, lines, inline editors,
@@ -77,6 +78,11 @@ export default function NoteContent({
     const [isDraggingMultiMove, setIsDraggingMultiMove] = useState(false);
     const [draggedMultiMoveSection, setDraggedMultiMoveSection] = useState(null);
 
+    // Code block state
+    const [codeBlockMode, setCodeBlockMode] = useState(false);
+    const [codeBlockSelectedRows, setCodeBlockSelectedRows] = useState(new Set());
+    const [codeBlockError, setCodeBlockError] = useState('');
+
     // Clear selected rows when bulk delete mode is disabled or when this note is not the target
     useEffect(() => {
         if (!bulkDeleteMode || bulkDeleteNoteId !== note.id) {
@@ -91,6 +97,14 @@ export default function NoteContent({
             setMultiMoveError('');
         }
     }, [multiMoveMode]);
+
+    // Clear code block selection when code block mode is disabled
+    useEffect(() => {
+        if (!codeBlockMode) {
+            setCodeBlockSelectedRows(new Set());
+            setCodeBlockError('');
+        }
+    }, [codeBlockMode]);
 
     if (!note) {
         return null;
@@ -317,6 +331,160 @@ export default function NoteContent({
         return note.content.includes('meta::no_bullets');
     };
 
+    const isCodeBlockLine = (lineIndex) => {
+        const lines = note.content.split('\n');
+        const codeBlockMetaLines = lines.filter(line => line.trim().startsWith('meta::code_block::'));
+        
+        for (const metaLine of codeBlockMetaLines) {
+            const match = metaLine.match(/meta::code_block::(\d+)_(\d+)/);
+            if (match) {
+                const startLine = parseInt(match[1]);
+                const endLine = parseInt(match[2]);
+                const currentLine = lineIndex + 1; // Convert to 1-based
+                
+                if (currentLine >= startLine && currentLine <= endLine) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    const getCodeBlockStyle = (lineIndex) => {
+        if (!isCodeBlockLine(lineIndex)) return {};
+        
+        return {
+            border: '1px solid #e5e7eb',
+            borderRadius: '6px',
+            backgroundColor: '#f9fafb',
+            padding: '8px',
+            margin: '4px 0',
+            fontFamily: 'monospace',
+            fontSize: '0.875rem',
+            lineHeight: '1.25rem'
+        };
+    };
+
+    const isCodeBlockStart = (lineIndex) => {
+        if (!isCodeBlockLine(lineIndex)) return false;
+        
+        // Check if this is the first line of a code block
+        const lines = note.content.split('\n');
+        const codeBlockMetaLines = lines.filter(line => line.trim().startsWith('meta::code_block::'));
+        
+        for (const metaLine of codeBlockMetaLines) {
+            const match = metaLine.match(/meta::code_block::(\d+)_(\d+)/);
+            if (match) {
+                const startLine = parseInt(match[1]);
+                const currentLine = lineIndex + 1; // Convert to 1-based
+                
+                if (currentLine === startLine) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    const isCodeBlockEnd = (lineIndex) => {
+        if (!isCodeBlockLine(lineIndex)) return false;
+        
+        // Check if this is the last line of a code block
+        const lines = note.content.split('\n');
+        const codeBlockMetaLines = lines.filter(line => line.trim().startsWith('meta::code_block::'));
+        
+        for (const metaLine of codeBlockMetaLines) {
+            const match = metaLine.match(/meta::code_block::(\d+)_(\d+)/);
+            if (match) {
+                const endLine = parseInt(match[2]);
+                const currentLine = lineIndex + 1; // Convert to 1-based
+                
+                if (currentLine === endLine) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    const getCodeBlockContainerStyle = (lineIndex) => {
+        if (!isCodeBlockLine(lineIndex)) return {};
+        
+        const isStart = isCodeBlockStart(lineIndex);
+        const isEnd = isCodeBlockEnd(lineIndex);
+        
+        let style = {
+            backgroundColor: '#e5e7eb', // Darker grey background
+            fontFamily: 'monospace',
+            fontSize: '0.875rem',
+            lineHeight: '1.25rem',
+            marginLeft: '2rem', // Shift to the right (tab indentation)
+            marginTop: '0', // Remove top margin
+            marginBottom: '0', // Remove bottom margin
+            paddingTop: '0', // Remove top padding
+            paddingBottom: '0' // Remove bottom padding
+        };
+        
+        if (isStart) {
+            style.borderTop = '1px solid #d1d5db';
+            style.borderLeft = '1px solid #d1d5db';
+            style.borderRight = '1px solid #d1d5db';
+            style.borderTopLeftRadius = '6px';
+            style.borderTopRightRadius = '6px';
+            style.paddingTop = '8px';
+            style.paddingLeft = '8px';
+            style.paddingRight = '8px';
+            style.marginTop = '4px';
+        }
+        
+        if (isEnd) {
+            style.borderBottom = '1px solid #d1d5db';
+            style.borderLeft = '1px solid #d1d5db';
+            style.borderRight = '1px solid #d1d5db';
+            style.borderBottomLeftRadius = '6px';
+            style.borderBottomRightRadius = '6px';
+            style.paddingBottom = '8px';
+            style.paddingLeft = '8px';
+            style.paddingRight = '8px';
+            style.marginBottom = '4px';
+        }
+        
+        if (!isStart && !isEnd) {
+            style.borderLeft = '1px solid #d1d5db';
+            style.borderRight = '1px solid #d1d5db';
+            style.paddingLeft = '8px';
+            style.paddingRight = '8px';
+        }
+        
+        return style;
+    };
+
+    const getCodeBlockGroupInfo = (lineIndex) => {
+        if (!isCodeBlockLine(lineIndex)) return null;
+        
+        const lines = note.content.split('\n');
+        const codeBlockMetaLines = lines.filter(line => line.trim().startsWith('meta::code_block::'));
+        
+        for (const metaLine of codeBlockMetaLines) {
+            const match = metaLine.match(/meta::code_block::(\d+)_(\d+)/);
+            if (match) {
+                const startLine = parseInt(match[1]);
+                const endLine = parseInt(match[2]);
+                const currentLine = lineIndex + 1; // Convert to 1-based
+                
+                if (currentLine >= startLine && currentLine <= endLine) {
+                    return {
+                        startLine: startLine - 1, // Convert back to 0-based
+                        endLine: endLine - 1, // Convert back to 0-based
+                        isStart: currentLine === startLine,
+                        isEnd: currentLine === endLine
+                    };
+                }
+            }
+        }
+        return null;
+    };
+
     const toggleNoBullets = () => {
         const lines = note.content.split('\n');
         const hasTag = hasNoBulletsTag();
@@ -369,6 +537,105 @@ export default function NoteContent({
         // The multi-move mode is controlled by the multiMoveNoteId prop
         setMultiMoveSelectedRows(new Set());
         setMultiMoveError('');
+    };
+
+    // Code block functions
+    const toggleCodeBlockMode = () => {
+        setCodeBlockMode(!codeBlockMode);
+        setCodeBlockSelectedRows(new Set());
+        setCodeBlockError('');
+    };
+
+    const toggleCodeBlockRowSelection = (idx) => {
+        const newSelectedRows = new Set(codeBlockSelectedRows);
+        
+        if (newSelectedRows.has(idx)) {
+            newSelectedRows.delete(idx);
+        } else {
+            newSelectedRows.add(idx);
+        }
+        
+        setCodeBlockSelectedRows(newSelectedRows);
+        validateCodeBlockSelection(newSelectedRows);
+    };
+
+    const validateCodeBlockSelection = (selectedRows) => {
+        if (selectedRows.size === 0) {
+            setCodeBlockError('');
+            return;
+        }
+
+        const sortedIndices = Array.from(selectedRows).sort((a, b) => a - b);
+        
+        // Check if this is a valid consecutive selection
+        const isConsecutive = sortedIndices.every((index, i) => {
+            if (i === 0) return true;
+            return index === sortedIndices[i - 1] + 1;
+        });
+        
+        if (!isConsecutive) {
+            setCodeBlockError('Please select consecutive lines only');
+        } else {
+            setCodeBlockError('');
+        }
+    };
+
+    const handleCodeBlockSave = () => {
+        if (codeBlockSelectedRows.size === 0) {
+            toast.error('Please select at least one line for code block');
+            return;
+        }
+
+        if (codeBlockError) {
+            toast.error('Please fix the selection error before saving');
+            return;
+        }
+
+        const sortedIndices = Array.from(codeBlockSelectedRows).sort((a, b) => a - b);
+        const lines = note.content.split('\n');
+        
+        // Find continuous sections
+        const sections = [];
+        let currentSection = [sortedIndices[0]];
+        
+        for (let i = 1; i < sortedIndices.length; i++) {
+            if (sortedIndices[i] === sortedIndices[i - 1] + 1) {
+                // Consecutive line, add to current section
+                currentSection.push(sortedIndices[i]);
+            } else {
+                // Non-consecutive line, save current section and start new one
+                sections.push(currentSection);
+                currentSection = [sortedIndices[i]];
+            }
+        }
+        sections.push(currentSection); // Add the last section
+        
+        // Create meta tags for each section
+        const existingLines = lines.filter(line => !line.trim().startsWith('meta::code_block::'));
+        const newMetaTags = sections.map(section => {
+            const startLine = Math.min(...section) + 1; // Convert to 1-based
+            const endLine = Math.max(...section) + 1; // Convert to 1-based
+            return `meta::code_block::${startLine}_${endLine}`;
+        });
+        
+        const updatedContent = [...existingLines, ...newMetaTags].join('\n');
+        const reorderedContent = reorderMetaTags(updatedContent);
+        
+        updateNote(note.id, reorderedContent);
+        setCodeBlockMode(false);
+        setCodeBlockSelectedRows(new Set());
+        setCodeBlockError('');
+        toast.success('Code block sections saved');
+    };
+
+    const removeCodeBlockTags = () => {
+        const lines = note.content.split('\n');
+        const contentWithoutCodeBlockTags = lines.filter(line => !line.trim().startsWith('meta::code_block::'));
+        const updatedContent = contentWithoutCodeBlockTags.join('\n');
+        const reorderedContent = reorderMetaTags(updatedContent);
+        
+        updateNote(note.id, reorderedContent);
+        toast.success('Code block tags removed');
     };
 
     const toggleMultiMoveRowSelection = (idx) => {
@@ -799,6 +1066,7 @@ export default function NoteContent({
                         } ${
                             !focusMode ? 'hover:bg-gray-50' : ''
                         }`}
+                    style={getCodeBlockContainerStyle(idx)}
                 >
                     {bulkDeleteMode && bulkDeleteNoteId === note.id && (
                         <input
@@ -813,6 +1081,14 @@ export default function NoteContent({
                             type="checkbox"
                             checked={multiMoveSelectedRows.has(idx)}
                             onChange={() => toggleMultiMoveRowSelection(idx)}
+                            className="mr-2"
+                        />
+                    )}
+                    {codeBlockMode && (
+                        <input
+                            type="checkbox"
+                            checked={codeBlockSelectedRows.has(idx)}
+                            onChange={() => toggleCodeBlockRowSelection(idx)}
                             className="mr-2"
                         />
                     )}
@@ -921,6 +1197,7 @@ export default function NoteContent({
                     } ${
                         !focusMode ? 'hover:bg-gray-50' : ''
                     }`}
+                style={getCodeBlockContainerStyle(idx)}
             >
                 {bulkDeleteMode && bulkDeleteNoteId === note.id && (
                     <input
@@ -935,6 +1212,14 @@ export default function NoteContent({
                         type="checkbox"
                         checked={multiMoveSelectedRows.has(idx)}
                         onChange={() => toggleMultiMoveRowSelection(idx)}
+                        className="mr-2"
+                    />
+                )}
+                {codeBlockMode && (
+                    <input
+                        type="checkbox"
+                        checked={codeBlockSelectedRows.has(idx)}
+                        onChange={() => toggleCodeBlockRowSelection(idx)}
                         className="mr-2"
                     />
                 )}
@@ -1147,6 +1432,26 @@ export default function NoteContent({
                             >
                                 {multiMoveMode ? 'Cancel' : 'Multi Move'}
                             </button>
+                            <button
+                                onClick={toggleCodeBlockMode}
+                                className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-150 ${
+                                    codeBlockMode 
+                                        ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title={codeBlockMode ? 'Cancel code block' : 'Code block lines'}
+                            >
+                                {codeBlockMode ? 'Cancel' : 'Code Block'}
+                            </button>
+                            {note.content.includes('meta::code_block::') && (
+                                <button
+                                    onClick={removeCodeBlockTags}
+                                    className="px-3 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors duration-150"
+                                    title="Remove all code block tags"
+                                >
+                                    Remove Code Blocks
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
@@ -1155,6 +1460,13 @@ export default function NoteContent({
                 {multiMoveMode && multiMoveError && (
                     <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                         {multiMoveError}
+                    </div>
+                )}
+                
+                {/* Code block error message */}
+                {codeBlockMode && codeBlockError && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                        {codeBlockError}
                     </div>
                 )}
                 
@@ -1185,6 +1497,26 @@ export default function NoteContent({
                                 title="Click and drag this button to move the selected lines"
                             >
                                 🖱️ Drag to Move
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Code block save button */}
+                {codeBlockMode && codeBlockSelectedRows.size > 0 && !codeBlockError && (
+                    <div className="mt-2 p-3 bg-green-50 border-2 border-green-200 rounded-lg shadow-sm">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-green-700">
+                                    {codeBlockSelectedRows.size} line(s) selected for code block
+                                </span>
+                            </div>
+                            <button
+                                onClick={handleCodeBlockSave}
+                                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 active:bg-green-800 transition-all duration-150 shadow-md hover:shadow-lg"
+                                title="Save the selected lines as code block sections"
+                            >
+                                💾 Save Code Block
                             </button>
                         </div>
                     </div>

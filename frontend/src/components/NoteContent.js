@@ -598,14 +598,29 @@ export default function NoteContent({
 
         const sortedIndices = Array.from(selectedRows).sort((a, b) => a - b);
         
-        // Check if this is a valid consecutive selection
-        const isConsecutive = sortedIndices.every((index, i) => {
-            if (i === 0) return true;
-            return index === sortedIndices[i - 1] + 1;
-        });
+        // Check if this is a valid selection with multiple consecutive groups
+        const groups = [];
+        let currentGroup = [sortedIndices[0]];
         
-        if (!isConsecutive) {
-            setCodeBlockError('Please select consecutive lines only');
+        for (let i = 1; i < sortedIndices.length; i++) {
+            if (sortedIndices[i] === sortedIndices[i - 1] + 1) {
+                // Consecutive line, add to current group
+                currentGroup.push(sortedIndices[i]);
+            } else {
+                // Non-consecutive line, save current group and start new one
+                groups.push(currentGroup);
+                currentGroup = [sortedIndices[i]];
+            }
+        }
+        groups.push(currentGroup); // Add the last group
+        
+        // All groups must have at least one line
+        const isValid = groups.every(group => group.length > 0);
+        
+        if (!isValid) {
+            setCodeBlockError('Invalid selection');
+        } else if (groups.length > 1) {
+            setCodeBlockError(`Will create ${groups.length} separate code blocks`);
         } else {
             setCodeBlockError('');
         }
@@ -617,7 +632,7 @@ export default function NoteContent({
             return;
         }
 
-        if (codeBlockError) {
+        if (codeBlockError && !codeBlockError.includes('Will create')) {
             toast.error('Please fix the selection error before saving');
             return;
         }
@@ -656,7 +671,12 @@ export default function NoteContent({
         setCodeBlockMode(false);
         setCodeBlockSelectedRows(new Set());
         setCodeBlockError('');
-        toast.success('Code block sections saved');
+        
+        if (sections.length > 1) {
+            toast.success(`${sections.length} code block sections saved`);
+        } else {
+            toast.success('Code block section saved');
+        }
     };
 
     const removeCodeBlockTags = () => {
@@ -1542,13 +1562,18 @@ export default function NoteContent({
                 )}
                 
                 {/* Code block save button */}
-                {codeBlockMode && codeBlockSelectedRows.size > 0 && !codeBlockError && (
+                {codeBlockMode && codeBlockSelectedRows.size > 0 && (!codeBlockError || codeBlockError.includes('Will create')) && (
                     <div className="mt-2 p-3 bg-green-50 border-2 border-green-200 rounded-lg shadow-sm">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium text-green-700">
                                     {codeBlockSelectedRows.size} line(s) selected for code block
                                 </span>
+                                {codeBlockError && codeBlockError.includes('Will create') && (
+                                    <span className="text-xs text-blue-600">
+                                        {codeBlockError}
+                                    </span>
+                                )}
                             </div>
                             <button
                                 onClick={handleCodeBlockSave}

@@ -45,6 +45,7 @@ export default function NoteContent({
     bulkDeleteMode = false,
     setBulkDeleteMode = () => {},
     bulkDeleteNoteId = null,
+    setBulkDeleteNoteId = () => {},
     multiMoveNoteId = null,
     setFocusedNoteIndex = () => {},
     // Super edit mode props
@@ -518,7 +519,16 @@ export default function NoteContent({
     };
 
     const toggleBulkDeleteMode = () => {
-        setBulkDeleteMode(!bulkDeleteMode);
+        // Work directly with the current note
+        if (bulkDeleteMode && bulkDeleteNoteId === note.id) {
+            // Exit bulk delete mode for this note
+            setBulkDeleteMode(false);
+            setBulkDeleteNoteId(null);
+        } else {
+            // Enter bulk delete mode for this note
+            setBulkDeleteMode(true);
+            setBulkDeleteNoteId(note.id);
+        }
         setSelectedRows(new Set());
     };
 

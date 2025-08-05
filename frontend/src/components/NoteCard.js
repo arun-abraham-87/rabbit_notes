@@ -56,6 +56,7 @@ const NoteCard = ({
   bulkDeleteMode = false,
   setBulkDeleteMode = () => {},
   bulkDeleteNoteId = null,
+  setBulkDeleteNoteId = () => {},
   multiMoveNoteId = null,
   setSearchQuery,
   focusedNoteIndex = -1,
@@ -886,6 +887,7 @@ const NoteCard = ({
           bulkDeleteMode={bulkDeleteMode}
           setBulkDeleteMode={setBulkDeleteMode}
           bulkDeleteNoteId={bulkDeleteNoteId}
+          setBulkDeleteNoteId={setBulkDeleteNoteId}
           multiMoveNoteId={multiMoveNoteId}
           setFocusedNoteIndex={setFocusedNoteIndex}
           isSuperEditMode={isSuperEditMode}

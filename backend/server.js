@@ -90,9 +90,6 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
 
         if (matchInContent || matchInEvent || matchInTags) {
           
-          if (matchInContent) 
-          if (matchInEvent) 
-          if (matchInTags) 
         }
 
         return matchInContent || matchInEvent || matchInTags;
@@ -106,9 +103,6 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
 
       if (matchesSearchQuery) {
         
-        
-        if (eventDescription) 
-        if (noteTags.length > 0) 
       }
 
       // Check if the note is from today (if required)

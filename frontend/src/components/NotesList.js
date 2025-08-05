@@ -709,6 +709,12 @@ const NotesList = ({
             }
           }
         } else if (e.key === 'l' && focusedNoteIndexRef.current >= 0) {
+          // Check if user is typing in a textarea or input - if so, skip this handler
+          if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.contentEditable === 'true') {
+            console.log('l key pressed in textarea/input, skipping link handler');
+            return;
+          }
+          
           // Open the single link in the focused note if exactly one URL is present
           const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
           if (focusedNote) {

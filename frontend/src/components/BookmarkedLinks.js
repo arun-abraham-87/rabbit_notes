@@ -345,8 +345,6 @@ const BookmarkedLinks = ({ notes, setNotes }) => {
       <div className="flex items-center gap-4 px-4 py-2 bg-white rounded-lg shadow-sm">
         <div className="flex items-center gap-2 text-gray-600">
           <BookmarkIcon className="h-5 w-5" />
-          <span className="text-sm font-medium">Pinned Bookmarks:</span>
-          <span className="text-xs text-gray-400">(Press 1-9 to open)</span>
         </div>
         <div className="flex items-center gap-3 overflow-x-auto flex-1">
           {bookmarkedUrls.map(({ url, label }, index) => {

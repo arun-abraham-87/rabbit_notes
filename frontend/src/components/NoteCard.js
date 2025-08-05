@@ -93,7 +93,7 @@ const NoteCard = ({
   
   // Debug logging
   if (isFocused) {
-    console.log(`Note ${note.id} is focused, index: ${noteIndex}, focusedNoteIndex: ${focusedNoteIndex}`);
+    
   }
 
   // Click tracking functionality
@@ -207,7 +207,7 @@ const NoteCard = ({
                                  e.target.closest('textarea');
       
       if (isInlineEditorActive) {
-        console.log('Inline editor is active, skipping NoteCard keyboard handler');
+        
         return;
       }
       
@@ -346,7 +346,7 @@ const NoteCard = ({
         e.preventDefault();
         e.stopPropagation();
         
-        console.log('Shift+~ pressed, cycling text case');
+        
         
         // Cycle between different text cases: lowercase -> sentence case -> uppercase
         const lines = note.content.split('\n');
@@ -355,7 +355,7 @@ const NoteCard = ({
           const updatedLines = [...lines];
           const currentText = updatedLines[highlightedLineIndex];
           
-          console.log('Current text:', currentText);
+          
           
           // Helper function to convert to sentence case
           const toSentenceCase = (text) => {
@@ -372,22 +372,22 @@ const NoteCard = ({
           if (currentText === currentText.toUpperCase()) {
             // Currently uppercase, convert to lowercase
             newText = currentText.toLowerCase();
-            console.log('Converting from uppercase to lowercase');
+            
           } else if (currentText === toSentenceCase(currentText)) {
             // Currently sentence case, convert to title case
             newText = toTitleCase(currentText);
-            console.log('Converting from sentence case to title case');
+            
           } else if (currentText === toTitleCase(currentText)) {
             // Currently title case, convert to uppercase
             newText = currentText.toUpperCase();
-            console.log('Converting from title case to uppercase');
+            
           } else {
             // Currently lowercase or mixed, convert to sentence case
             newText = toSentenceCase(currentText);
-            console.log('Converting to sentence case');
+            
           }
           
-          console.log('New text:', newText);
+          
           
           updatedLines[highlightedLineIndex] = newText;
           
@@ -401,7 +401,7 @@ const NoteCard = ({
         e.preventDefault();
         e.stopPropagation();
         
-        console.log('Shift+Enter pressed in superedit mode, adding new line');
+        
         
         // Show inline editor at the end of the note to add a new line
         const lines = note.content.split('\n');
@@ -421,14 +421,14 @@ const NoteCard = ({
         e.preventDefault();
         e.stopPropagation();
         
-        console.log('Enter pressed in superedit mode, highlightedLineIndex:', highlightedLineIndex);
+        
         
         // Open the highlighted line in inline editor
         if (highlightedLineIndex !== -1) {
           const lines = note.content.split('\n');
           const lineToEdit = lines[highlightedLineIndex];
           
-          console.log('Opening inline editor for line:', lineToEdit, 'at index:', highlightedLineIndex);
+          
           
           // Store the line index before opening the editor
           setLastEditedLineIndex(highlightedLineIndex);
@@ -554,18 +554,18 @@ const NoteCard = ({
     const handleClickOutside = (e) => {
       // Don't handle clicks on textarea elements or their parents
       if (e.target.tagName === 'TEXTAREA' || e.target.closest('textarea')) {
-        console.log('Click on textarea detected, ignoring handleClickOutside');
+        
         return;
       }
       
       // Don't handle clicks on inline editor elements
       if (e.target.closest('[data-note-inline-editor="true"]')) {
-        console.log('Click on inline editor detected, ignoring handleClickOutside');
+        
         return;
       }
       
       if (isSuperEditMode && !e.target.closest(`[data-note-id="${note.id}"]`)) {
-        console.log('Click outside note card detected, exiting super edit mode');
+        
         setIsSuperEditMode(false);
         setHighlightedLineIndex(-1);
         setHighlightedLineText('');
@@ -590,7 +590,7 @@ const NoteCard = ({
         
         // Use the line index from the event detail, or the stored last edited line index, or fall back to 0
         const lineIndex = event.detail.lineIndex !== null ? event.detail.lineIndex : (lastEditedLineIndex !== -1 ? lastEditedLineIndex : 0);
-        console.log('Returning to superedit mode with lineIndex:', lineIndex, 'from event:', event.detail.lineIndex, 'from stored:', lastEditedLineIndex);
+        
         
         // Find the correct non-meta line index to highlight
         const lines = note.content.split('\n');
@@ -626,7 +626,7 @@ const NoteCard = ({
           targetLineIndex = 0;
         }
         
-        console.log('Final target line index:', targetLineIndex, 'non-meta indices:', nonTagLineIndices);
+        
         setHighlightedLineIndex(targetLineIndex);
         setWasOpenedFromSuperEdit(false);
         setLastEditedLineIndex(-1); // Reset the last edited line index
@@ -765,7 +765,7 @@ const NoteCard = ({
   };
 
   // Debug logging for developer mode
-  console.log('NoteCard - settings:', settings, 'developerMode:', settings?.developerMode);
+  
   
   // Add a simple test div to verify developer mode is working
   const testDevMode = settings?.developerMode || false;
@@ -958,8 +958,8 @@ const NoteCard = ({
                   setText={setNewLineText}
                   settings={settings}
                   onSave={async (finalText) => {
-            console.log('NoteCard onSave called with text:', finalText);
-            console.log('Current note content:', note.content);
+            
+            
             
             // Remove all trailing blank lines before appending the new line
             let contentWithNewline = note.content.replace(/\n+$/g, '');
@@ -967,15 +967,15 @@ const NoteCard = ({
               contentWithNewline += '\n';
             }
             const updated = contentWithNewline ? contentWithNewline + finalText : finalText;
-            console.log('Updated content:', updated);
+            
             
             const reorderedContent = reorderMetaTags(updated);
-            console.log('Reordered content:', reorderedContent);
             
-            console.log('Calling updateNote with note.id:', note.id);
+            
+            
             try {
               await updateNote(note.id, reorderedContent);
-              console.log('updateNote completed successfully');
+              
             } catch (error) {
               console.error('Error in updateNote:', error);
             }
@@ -987,7 +987,7 @@ const NoteCard = ({
               // Calculate the index of the newly added line
               const lines = updated.split('\n');
               const newLineIndex = lines.length - 1; // Index of the last line (the newly added one)
-              console.log('Saving new line, returning to superedit with lineIndex:', newLineIndex);
+              
               
               // Find the non-meta line indices to determine the correct highlight position
               const nonTagLineIndices = lines
@@ -1014,7 +1014,7 @@ const NoteCard = ({
                 }
               }
               
-              console.log('New line saved, target line index:', targetLineIndex, 'non-meta indices:', nonTagLineIndices);
+              
               const event = new CustomEvent('returnToSuperEdit', {
                 detail: { lineIndex: targetLineIndex }
               });
@@ -1030,7 +1030,7 @@ const NoteCard = ({
               // Calculate the index of the newly added line
               const lines = note.content.split('\n');
               const newLineIndex = lines.length - 1; // Index of the last line
-              console.log('Canceling new line, returning to superedit with lineIndex:', newLineIndex);
+              
               
               // Find the non-meta line indices to determine the correct highlight position
               const nonTagLineIndices = lines
@@ -1057,7 +1057,7 @@ const NoteCard = ({
                 }
               }
               
-              console.log('New line canceled, target line index:', targetLineIndex, 'non-meta indices:', nonTagLineIndices);
+              
               const event = new CustomEvent('returnToSuperEdit', {
                 detail: { lineIndex: targetLineIndex }
               });
@@ -1073,7 +1073,7 @@ const NoteCard = ({
             if (wasOpenedFromSuperEdit) {
               const lines = note.content.split('\n');
               const newLineIndex = lines.length - 1;
-              console.log('Deleting new line, returning to superedit with lineIndex:', newLineIndex);
+              
               
               // Find the non-meta line indices to determine the correct highlight position
               const nonTagLineIndices = lines
@@ -1100,7 +1100,7 @@ const NoteCard = ({
                 }
               }
               
-              console.log('New line deleted, target line index:', targetLineIndex, 'non-meta indices:', nonTagLineIndices);
+              
               const event = new CustomEvent('returnToSuperEdit', {
                 detail: { lineIndex: targetLineIndex }
               });

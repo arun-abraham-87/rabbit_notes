@@ -92,7 +92,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       const noteEditorContainer = document.querySelector('.note-editor-container');
       if (noteEditorContainer) {
         setTimeout(() => {
-          console.log('NoteEditor: Focusing container in modal context');
+          
           noteEditorContainer.focus();
         }, 100); // Slightly longer delay for modal context
       }
@@ -133,29 +133,29 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       // Focus on the best position when in edit mode
       setTimeout(() => {
         const bestIndex = findBestCursorPosition();
-        console.log('NoteEditor: Edit mode - best cursor position:', bestIndex, 'lines:', lines.map(l => l.text));
+        
         
         // Try multiple times to find the textarea
         const tryFocus = (attempts = 0) => {
-          console.log('NoteEditor: Attempt', attempts + 1, 'to focus textarea');
-          console.log('NoteEditor: Available textareas:', textareasRef.current.length);
+          
+          
           
           if (textareasRef.current[bestIndex]) {
             const textarea = textareasRef.current[bestIndex];
             textarea.focus();
             textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-            console.log('NoteEditor: Successfully focused textarea at index:', bestIndex);
+            
           } else if (textareasRef.current[0]) {
             // Fallback to first textarea if best position not found
             const textarea = textareasRef.current[0];
             textarea.focus();
             textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-            console.log('NoteEditor: Fallback to first textarea');
+            
           } else if (attempts < 5) {
             // Try again after a short delay
             setTimeout(() => tryFocus(attempts + 1), 50);
           } else {
-            console.log('NoteEditor: Failed to find any textareas after', attempts + 1, 'attempts');
+            
           }
         };
         
@@ -208,7 +208,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       setShowPopup(false);
       return;
     }
-    //console.log(objList);
+    //
     const filterText = match[1].toLowerCase();
     const filtered = objList.filter((tag) =>
       tag && tag.text && tag.text.toLowerCase().startsWith(filterText)
@@ -345,7 +345,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   const debouncedSetSearchQuery = useCallback(
     debounce((value) => {
       if (setSearchQuery) {
-        console.log('Setting searchQuery in handleTextChange:', value);
+        
         setSearchQuery(value);
       }
     }, 300),
@@ -353,7 +353,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   );
 
   const handleTextChange = (index, value) => {
-    console.log('NoteEditor: handleTextChange called for index:', index, 'value:', value);
+    
     const updatedLines = [...lines];
     updatedLines[index].text = value;
     setLines(updatedLines);
@@ -710,7 +710,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   };
 
   const saveNote = () => {
-    console.log('Saving note with lines:', lines);
+    
     
     // Preserve blank lines between content, only remove trailing empty lines
     const processedLines = lines.map(line => line.text);
@@ -721,11 +721,11 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       trimmedLines = trimmedLines.slice(0, -1);
     }
     
-    console.log('Trimmed lines:', trimmedLines);
+    
     
     // Join lines with newlines
     const merged = trimmedLines.join('\n');
-    console.log('Merged content:', merged);
+    
     
     // Check if note is empty or only contains whitespace
     if (!merged || !merged.trim()) {
@@ -734,8 +734,8 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
 
     // Reorder meta tags to ensure they appear at the bottom
     const reorderedContent = reorderMetaTags(merged);
-    console.log('Reordered content:', reorderedContent);
-   console.log('isAddMode', isAddMode);
+    
+   
     if (isAddMode) {
         addNote(reorderedContent);
         setLines([{ id: 'line-0', text: '', isTitle: false }]);
@@ -754,7 +754,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
 
   useEffect(() => {
     const handleGlobalKey = (e) => {
-      console.log('NoteEditor Global: Key pressed:', e.key, 'mode:', mode);
+      
       // Check if we're in the note editor context or modal
       const noteEditorContainer = document.querySelector('.note-editor-container');
       const modalContainer = document.querySelector('[data-modal="true"]');
@@ -763,11 +763,11 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                             document.activeElement?.closest('[data-modal]') ||
                             (modalContainer && modalContainer.contains(document.activeElement));
       
-      console.log('NoteEditor Global: isInNoteEditor:', isInNoteEditor, 'mode:', mode, 'activeElement:', document.activeElement?.tagName);
+      
       
       // Always handle navigation keys if we're in the note editor context and in view mode
       if (isInNoteEditor && mode === 'view') {
-        console.log('NoteEditor Global: Handling navigation key:', e.key, 'mode:', mode);
+        
         if (e.key === 'j' || e.key === 'ArrowDown') {
           e.preventDefault();
           e.stopPropagation();
@@ -822,9 +822,9 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       }
       
       // Handle header formatting in view mode
-      console.log('NoteEditor Global: Checking header formatting condition:', 'isInNoteEditor:', isInNoteEditor, 'mode:', mode, 'key:', e.key);
+      
       if (isInNoteEditor && mode === 'view' && (e.key === '1' || e.key === '2' || e.key === '0')) {
-        console.log('NoteEditor Global: Header formatting key pressed:', e.key, 'cursorLine:', cursorLine);
+        
         e.preventDefault();
         e.stopPropagation();
         
@@ -835,18 +835,18 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           // Make h1 by wrapping in ###
           if (!currentLine.text.startsWith('###') && !currentLine.text.endsWith('###')) {
             currentLine.text = `###${currentLine.text}###`;
-            console.log('NoteEditor Global: Applied h1 formatting');
+            
           }
         } else if (e.key === '2') {
           // Make h2 by wrapping in ##
           if (!currentLine.text.startsWith('##') && !currentLine.text.endsWith('##')) {
             currentLine.text = `##${currentLine.text}##`;
-            console.log('NoteEditor Global: Applied h2 formatting');
+            
           }
         } else if (e.key === '0') {
           // Clear all #'s wrapping from start and end
           currentLine.text = currentLine.text.replace(/^#+/, '').replace(/#+$/, '');
-          console.log('NoteEditor Global: Cleared header formatting');
+          
         }
         
         setLines(newLines);
@@ -864,13 +864,13 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       
       // Handle line deletion in view mode
       if (isInNoteEditor && mode === 'view' && e.key === 'x') {
-        console.log('NoteEditor Global: Delete line key pressed:', 'cursorLine:', cursorLine);
+        
         e.preventDefault();
         e.stopPropagation();
         
         // Don't delete if it's the last line and it's empty
         if (lines.length === 1 && lines[0].text.trim() === '') {
-          console.log('NoteEditor Global: Skipping deletion of last empty line');
+          
           return;
         }
         
@@ -899,7 +899,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           }
         }, 50);
         
-        console.log('NoteEditor Global: Line deleted, moved to line:', newCursorLine);
+        
         return;
       }
       
@@ -971,7 +971,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         if (!hasContent) {
           return; // Don't do anything if all lines are empty
         }
-       console.log('isAddMode', isAddMode);
+       
         saveNote();
       }
     };
@@ -1099,7 +1099,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   };
 
   // Debug logging for developer mode
-  console.log('NoteEditor - settings:', settings, 'developerMode:', settings?.developerMode);
+  
   
   return (
     <DevModeInfo 
@@ -1114,15 +1114,15 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         onClick={(e) => {
           // Focus the container when clicked
           if (e.target === e.currentTarget) {
-            console.log('NoteEditor: Container clicked, focusing');
+            
             e.currentTarget.focus();
           }
         }}
       onKeyDown={(e) => {
-        console.log('NoteEditor Container: Key pressed:', e.key, 'mode:', mode, 'target:', e.target.tagName);
+        
         // Direct keyboard handling for view mode navigation
         if (mode === 'view') {
-          console.log('NoteEditor: Key pressed in view mode:', e.key);
+          
           if (e.key === 'j' || e.key === 'ArrowDown') {
             e.preventDefault();
             e.stopPropagation();
@@ -1195,9 +1195,9 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           }
           
           // Handle header formatting in view mode
-          console.log('NoteEditor Container: Checking header formatting condition:', 'key:', e.key);
+          
           if (e.key === '1' || e.key === '2' || e.key === '0') {
-            console.log('NoteEditor: Header formatting key pressed:', e.key, 'cursorLine:', cursorLine);
+            
             e.preventDefault();
             e.stopPropagation();
             
@@ -1208,18 +1208,18 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
               // Make h1 by wrapping in ###
               if (!currentLine.text.startsWith('###') && !currentLine.text.endsWith('###')) {
                 currentLine.text = `###${currentLine.text}###`;
-                console.log('NoteEditor: Applied h1 formatting');
+                
               }
             } else if (e.key === '2') {
               // Make h2 by wrapping in ##
               if (!currentLine.text.startsWith('##') && !currentLine.text.endsWith('##')) {
                 currentLine.text = `##${currentLine.text}##`;
-                console.log('NoteEditor: Applied h2 formatting');
+                
               }
             } else if (e.key === '0') {
               // Clear all #'s wrapping from start and end
               currentLine.text = currentLine.text.replace(/^#+/, '').replace(/#+$/, '');
-              console.log('NoteEditor: Cleared header formatting');
+              
             }
             
             setLines(newLines);
@@ -1237,13 +1237,13 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           
           // Handle line deletion in view mode
           if (e.key === 'x') {
-            console.log('NoteEditor: Delete line key pressed:', 'cursorLine:', cursorLine);
+            
             e.preventDefault();
             e.stopPropagation();
             
             // Don't delete if it's the last line and it's empty
             if (lines.length === 1 && lines[0].text.trim() === '') {
-              console.log('NoteEditor: Skipping deletion of last empty line');
+              
               return;
             }
             
@@ -1272,7 +1272,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
               }
             }, 50);
             
-            console.log('NoteEditor: Line deleted, moved to line:', newCursorLine);
+            
             return;
           }
         }
@@ -1489,7 +1489,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
             setLines(updatedLines);
             // Update search query if in add mode
             if (isAddMode && setSearchQuery) {
-              console.log('Setting searchQuery in textarea mode:', e.target.value);
+              
               setSearchQuery(e.target.value);
             }
           }}
@@ -1605,7 +1605,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                     ref={(el) => (textareasRef.current[originalIndex] = el)}
                     value={line.text}
                     onFocus={() => {
-                      console.log('NoteEditor: Textarea focused at index:', originalIndex);
+                      
                       setFocusedLineIndex(originalIndex);
                     }}
                     onChange={(e) => {

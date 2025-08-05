@@ -24,7 +24,7 @@ const NotesMainContainer = ({
     refreshTags = () => {},
 }) => {
     // Debug logging for developer mode
-    console.log('NotesMainContainer - settings:', settings, 'developerMode:', settings?.developerMode);
+    
     const location = useLocation();
     const [checked, setChecked] = useState(false);
     const [compressedView, setCompressedView] = useState(false);
@@ -136,7 +136,7 @@ const NotesMainContainer = ({
                 e.target.tagName !== 'TEXTAREA' &&
                 e.target.contentEditable !== 'true') {
                 
-                console.log('Global key pressed:', e.key);
+                
                 
                 if (e.key === "f") {
                     e.preventDefault();
@@ -156,7 +156,7 @@ const NotesMainContainer = ({
                 }
                 if (e.key === "t") {
                     e.preventDefault();
-                    console.log('t key pressed - dispatching openNoteEditorTextMode event');
+                    
                     // Dispatch a custom event to open note editor in text mode
                     const openNoteEditorEvent = new CustomEvent('openNoteEditorTextMode');
                     document.dispatchEvent(openNoteEditorEvent);
@@ -181,10 +181,10 @@ const NotesMainContainer = ({
 
     // Listen for return to search event from notes navigation
     useEffect(() => {
-        console.log('Setting up returnToSearch event listener in NotesMainContainer');
+        
         
         const handleReturnToSearch = () => {
-            console.log('Return to search event received');
+            
             // Focus the search input
             if (searchInputRef.current) {
                 searchInputRef.current.focus();
@@ -195,37 +195,37 @@ const NotesMainContainer = ({
             // Clear the focused note by dispatching a custom event
             const clearFocusedNoteEvent = new CustomEvent('clearFocusedNote');
             document.dispatchEvent(clearFocusedNoteEvent);
-            console.log('Clear focused note event dispatched');
+            
         };
 
         document.addEventListener('returnToSearch', handleReturnToSearch);
         return () => {
-            console.log('Cleaning up returnToSearch event listener in NotesMainContainer');
+            
             document.removeEventListener('returnToSearch', handleReturnToSearch);
         };
     }, []);
 
     // Listen for toggle focus mode event from notes navigation
     useEffect(() => {
-        console.log('Setting up toggleFocusMode event listener in NotesMainContainer');
+        
         
         const handleToggleFocusMode = () => {
-            console.log('Toggle focus mode event received');
+            
             setFocusMode(false); // Exit focus mode
         };
 
         document.addEventListener('toggleFocusMode', handleToggleFocusMode);
         return () => {
-            console.log('Cleaning up toggleFocusMode event listener in NotesMainContainer');
+            
             document.removeEventListener('toggleFocusMode', handleToggleFocusMode);
         };
     }, []);
 
     // Debug: Log objList
     useEffect(() => {
-        console.log('NotesMainContainer - objList received:', objList);
-        console.log('NotesMainContainer - objList length:', objList?.length);
-        console.log('NotesMainContainer - Sample objList items:', objList?.slice(0, 3));
+        
+        
+        
     }, [objList]);
 
     // Save focus mode state to localStorage whenever it changes
@@ -296,33 +296,33 @@ const NotesMainContainer = ({
                         return tag.text.toLowerCase().includes(filterText);
                     });
 
-                    console.log('Filter text:', filterText);
-                    console.log('Filtered results:', filtered);
-                    console.log('Total mergedObjList:', mergedObjList.length);
-                    console.log('Sample mergedObjList items:', mergedObjList.slice(0, 5));
-                    console.log('All mergedObjList texts:', mergedObjList.map(tag => tag.text));
+                    
+                    
+                    
+                    
+                    
                     
                     // Debug: Check if any tags contain the filter text
                     const debugMatches = mergedObjList.filter(tag => {
                         if (!tag || !tag.text) return false;
                         const contains = tag.text.toLowerCase().includes(filterText);
                         if (contains) {
-                            console.log('Match found:', tag.text, 'contains', filterText);
+                            
                         }
                         return contains;
                     });
-                    console.log('Debug matches found:', debugMatches.length);
+                    
 
                     setFilteredTags(filtered);
                     
                     if (filtered.length > 0) {
                         const { x, y } = getCursorCoordinates(e);
-                        console.log('Popup position:', { x, y });
-                        console.log('Setting popup to show with', filtered.length, 'items');
+                        
+                        
                         setCursorPosition({ x, y });
                         setShowPopup(true);
                     } else {
-                        console.log('No matches found, hiding popup');
+                        
                         setShowPopup(false);
                     }
                 }, 300); // 300ms delay for throttling
@@ -534,13 +534,13 @@ const NotesMainContainer = ({
     };
 
     const handleNoteUpdate = async (noteId, updatedContent) => {
-        console.log('handleNoteUpdate called with noteId:', noteId, 'updatedContent:', updatedContent);
+        
         try {
             const response = await updateNoteById(noteId, updatedContent);
-            console.log('updateNoteById response:', response);
+            
             setAllNotes(allNotes.map(note => note.id === noteId ? response : note));
             setTotals(allNotes.length);
-            console.log('State updated successfully');
+            
         } catch (error) {
             console.error('Error updating note:', error);
         }
@@ -564,9 +564,9 @@ const NotesMainContainer = ({
 
     // Debug: Log mergedObjList
     useEffect(() => {
-        console.log('NotesMainContainer - mergedObjList:', mergedObjList);
-        console.log('NotesMainContainer - mergedObjList length:', mergedObjList?.length);
-        console.log('NotesMainContainer - Sample mergedObjList items:', mergedObjList?.slice(0, 3));
+        
+        
+        
     }, [mergedObjList]);
 
     return (
@@ -736,7 +736,7 @@ const NotesMainContainer = ({
                         setBulkDeleteMode={setBulkDeleteMode}
                         refreshTags={refreshTags}
                         onReturnToSearch={() => {
-                            console.log('Return to search callback called');
+                            
                             // Focus the search input
                             if (searchInputRef.current) {
                                 searchInputRef.current.focus();
@@ -747,7 +747,7 @@ const NotesMainContainer = ({
                             // Clear the focused note by dispatching a custom event
                             const clearFocusedNoteEvent = new CustomEvent('clearFocusedNote');
                             document.dispatchEvent(clearFocusedNoteEvent);
-                            console.log('Clear focused note event dispatched');
+                            
                         }}
                     />
                 </div>

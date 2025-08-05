@@ -26,8 +26,8 @@ export default function LinkedNotesSection({
       .split('\n')
       .filter(line => line.trim().toLowerCase().startsWith('meta::link'))
       .map(line => line.split('::').pop().trim());
-    console.log('LinkedNotesSection - orderedIds:', ids);
-    console.log('LinkedNotesSection - note.content:', note.content);
+    
+    
     return ids;
   }, [note.content]);
 
@@ -126,13 +126,13 @@ export default function LinkedNotesSection({
           </div>
           <div className="pl-4 border-l border-gray-300 space-y-4">
             {filteredNotes.map((id, index) => {
-              console.log('LinkedNotesSection - looking for note with id:', id);
-              console.log('LinkedNotesSection - allNotes length:', allNotes.length);
-              console.log('LinkedNotesSection - allNotes ids:', allNotes.map(n => n.id));
+              
+              
+              
               const ln = allNotes.find(n => String(n.id) === String(id));
-              console.log('LinkedNotesSection - found note:', ln);
+              
               if (!ln) {
-                console.log('LinkedNotesSection - note not found for id:', id);
+                
                 return (
                   <div
                     key={id}

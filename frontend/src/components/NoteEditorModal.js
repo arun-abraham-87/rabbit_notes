@@ -197,8 +197,8 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
       ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
       : contentWithNewline;
 
-    console.log('finalContent', finalContent);
-    console.log('customNote', customNote);
+    
+    
     
     // Reorder meta tags to ensure they appear at the bottom
     const reorderedContent = reorderMetaTags(finalContent);
@@ -223,7 +223,7 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
     const finalContent = selectedMetaTags.length > 0
       ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
       : contentWithNewline;
-    console.log('finalContent', finalContent);
+    
     
     // Reorder meta tags to ensure they appear at the bottom
     const reorderedContent = reorderMetaTags(finalContent);
@@ -232,7 +232,7 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
   };
 
   // Debug logging for developer mode
-  console.log('NoteEditorModal - settings:', settings, 'developerMode:', settings?.developerMode);
+  
   
   if (!isOpen) return null;
 

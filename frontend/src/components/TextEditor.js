@@ -37,7 +37,7 @@ const TextEditor = ({ addNotes, objList, searchQuery, settings = {} }) => {
         const x = rect.left + window.scrollX;
         const y = rect.bottom + window.scrollY;
 
-        console.log("Cursor coordinates:", { x, y });
+        
         return { x, y };
     }
 
@@ -280,7 +280,7 @@ const TextEditor = ({ addNotes, objList, searchQuery, settings = {} }) => {
 
 
     const handleInputChange = (e, index) => {
-        console.log("Input changed, objList:", objList);
+        
 
         const selection = window.getSelection();
         const range = selection.getRangeAt(0);
@@ -292,7 +292,7 @@ const TextEditor = ({ addNotes, objList, searchQuery, settings = {} }) => {
         const inputedText = e.currentTarget.innerText;
         updatedNotes[index] = inputedText
         setNotes(updatedNotes);
-        console.log(`Input text: ${inputedText}`);
+        
 
         //Needed to fix issue of popup showing after deleting all text and popup showing up based on last deleted char
         if (inputedText.trim().length === 0) {
@@ -304,14 +304,14 @@ const TextEditor = ({ addNotes, objList, searchQuery, settings = {} }) => {
         const match = inputedText.trim().match(/(\S+)$/); // Match the last word
         if (match) {
             const filterText = match[1].toLowerCase();
-            console.log("Filter text:", filterText);
+            
             let filtered = [];
 
             // Throttle logic
             if (filterText !== "") {
                 clearTimeout(throttleRef.current); // Clear the existing timeout
                 throttleRef.current = setTimeout(() => {
-                    console.log("Filtering tags for:", filterText);
+                    
                     if (filterText === "cal") {
                         let { x, y } = getCursorCoordinates();
                         x = x + 5;
@@ -322,7 +322,7 @@ const TextEditor = ({ addNotes, objList, searchQuery, settings = {} }) => {
                         filtered = objList.filter((tag) =>
                             tag.text.toLowerCase().startsWith(filterText)
                         );
-                        console.log("Filtered tags:", filtered);
+                        
 
                         setFilteredTags(filtered.map(tag => tag.text));
                     }
@@ -331,8 +331,8 @@ const TextEditor = ({ addNotes, objList, searchQuery, settings = {} }) => {
                         x = x + 5;
                         setCursorPosition({ x, y });
                         setShowPopup(true);
-                        console.log("Setting popup position:", { x, y });
-                        console.log("Setting showPopup to true");
+                        
+                        
                     } else {
                         setShowPopup(false);
                     }
@@ -417,7 +417,7 @@ const TextEditor = ({ addNotes, objList, searchQuery, settings = {} }) => {
     };
 
     // Debug logging for developer mode
-    console.log('TextEditor - settings:', settings, 'developerMode:', settings?.developerMode);
+    
     
     return (
         <DevModeInfo 

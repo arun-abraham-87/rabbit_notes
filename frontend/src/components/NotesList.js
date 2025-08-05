@@ -69,7 +69,7 @@ const NotesList = ({
   onReturnToSearch = () => {},
 }) => {
   // Debug logging for developer mode
-  console.log('NotesList - settings:', settings, 'developerMode:', settings?.developerMode);
+  
   const location = useLocation();
   const [isModalOpen, setModalOpen] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState(null);
@@ -148,15 +148,15 @@ const NotesList = ({
   
   // Callback to set focused note index
   const handleSetFocusedNoteIndex = (index) => {
-    console.log('handleSetFocusedNoteIndex called', index);
+    
     setFocusedNoteIndex(index);
   };
   
   // Debug focused note changes
   useEffect(() => {
-    console.log('focusedNoteIndex changed to:', focusedNoteIndex);
+    
     if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
-      console.log('Focused note:', safeNotes[focusedNoteIndex]);
+      
     }
   }, [focusedNoteIndex, safeNotes]);
   
@@ -172,27 +172,27 @@ const NotesList = ({
   // Handle bulk delete mode toggle from keyboard
   useEffect(() => {
     const handleToggleBulkDeleteMode = () => {
-      console.log('toggleBulkDeleteMode event received');
-      console.log('focusedNoteIndex:', focusedNoteIndex);
-      console.log('safeNotes length:', safeNotes.length);
+      
+      
+      
       
       if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
         const focusedNote = safeNotes[focusedNoteIndex];
-        console.log('Focused note found:', focusedNote.id);
+        
         
         if (bulkDeleteMode && bulkDeleteNoteId === focusedNote.id) {
           // Exit bulk delete mode for this note
-          console.log('Exiting bulk delete mode for note:', focusedNote.id);
+          
           setBulkDeleteMode(false);
           setBulkDeleteNoteId(null);
         } else {
           // Enter bulk delete mode for this note
-          console.log('Entering bulk delete mode for note:', focusedNote.id);
+          
           setBulkDeleteMode(true);
           setBulkDeleteNoteId(focusedNote.id);
         }
       } else {
-        console.log('No focused note found. focusedNoteIndex:', focusedNoteIndex);
+        
       }
     };
 
@@ -205,25 +205,25 @@ const NotesList = ({
   // Handle multi-move mode toggle from keyboard
   useEffect(() => {
     const handleToggleMultiMoveMode = () => {
-      console.log('toggleMultiMoveMode event received');
-      console.log('focusedNoteIndex:', focusedNoteIndex);
-      console.log('safeNotes length:', safeNotes.length);
+      
+      
+      
       
       if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
         const focusedNote = safeNotes[focusedNoteIndex];
-        console.log('Focused note found for multi-move:', focusedNote.id);
+        
         
         if (multiMoveNoteId === focusedNote.id) {
           // Exit multi-move mode for this note
-          console.log('Exiting multi-move mode for note:', focusedNote.id);
+          
           setMultiMoveNoteId(null);
         } else {
           // Enter multi-move mode for this note
-          console.log('Entering multi-move mode for note:', focusedNote.id);
+          
           setMultiMoveNoteId(focusedNote.id);
         }
       } else {
-        console.log('No focused note found for multi-move. focusedNoteIndex:', focusedNoteIndex);
+        
       }
     };
 
@@ -250,28 +250,28 @@ const NotesList = ({
 
   // Handle 't' key to open note editor in text mode
   useEffect(() => {
-    console.log('Setting up openNoteEditorTextMode event listener');
+    
     const handleOpenNoteEditorTextMode = () => {
-      console.log('openNoteEditorTextMode event received');
-      console.log('focusedNoteIndex:', focusedNoteIndex);
-      console.log('safeNotes length:', safeNotes.length);
+      
+      
+      
       
       if (focusedNoteIndex >= 0 && safeNotes[focusedNoteIndex]) {
         const focusedNote = safeNotes[focusedNoteIndex];
-        console.log('Opening note editor in text mode for note:', focusedNote.id);
+        
         
         // Open the note editor with the focused note and set text mode flag
         setPopupNoteText(focusedNote.id);
         // Set a flag to indicate this should open in text mode
         localStorage.setItem('openInTextMode', 'true');
       } else {
-        console.log('No focused note found for opening note editor. focusedNoteIndex:', focusedNoteIndex);
+        
       }
     };
 
     document.addEventListener('openNoteEditorTextMode', handleOpenNoteEditorTextMode);
     return () => {
-      console.log('Cleaning up openNoteEditorTextMode event listener');
+      
       document.removeEventListener('openNoteEditorTextMode', handleOpenNoteEditorTextMode);
     };
   }, [focusedNoteIndex, allNotes]);
@@ -508,7 +508,7 @@ const NotesList = ({
       
       // Only block if we're in a modal but NOT in a note editor
       if ((isAnyModalOpen || isInModal) && !isInNoteEditor && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'k')) {
-        console.log('Global: Modal is open but not in note editor, blocking arrow keys');
+        
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -524,7 +524,7 @@ const NotesList = ({
   // Handle keyboard navigation between notes
   useEffect(() => {
     const handleKeyDown = (e) => {
-      console.log(`Key event: key=${e.key}, shiftKey=${e.shiftKey}, metaKey=${e.metaKey}, ctrlKey=${e.ctrlKey}, altKey=${e.altKey}, target=${e.target.tagName}`);
+      
       
       // Check if any modal or popup is open and block arrow keys completely
       const isAnyModalOpen = showLinkPopupRef.current || showPastePopup || isModalOpen || isPopupVisible || linkPopupVisible || popupNoteText || rawNote || showNoteActionPopup.visible;
@@ -538,7 +538,7 @@ const NotesList = ({
       if ((isAnyModalOpen || isInModal) && !isInNoteEditor) {
         // Block arrow keys when any modal is open BUT NOT when in note editor
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'j' || e.key === 'k') {
-          console.log('Modal is open but not in note editor, blocking arrow keys');
+          
           e.preventDefault();
           e.stopPropagation();
           return;
@@ -547,7 +547,7 @@ const NotesList = ({
       
       // If link popup is open, completely skip all keyboard handling
       if (showLinkPopupRef.current) {
-        console.log('Link popup is open, skipping main keyboard handler');
+        
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -556,7 +556,7 @@ const NotesList = ({
       // Additional check: if the event target is within the link popup, skip processing
       const linkPopupElement = document.querySelector('[data-link-popup]');
       if (linkPopupElement && linkPopupElement.contains(e.target)) {
-        console.log('Event target is within link popup, skipping main keyboard handler');
+        
         return;
       }
       
@@ -567,19 +567,19 @@ const NotesList = ({
       const noteEditorModal = document.querySelector('.note-editor-container[data-modal="true"]');
       const isNoteEditorOpen = noteEditorModal !== null;
       if (isAnyPopupOpen || isNoteEditorOpen) {
-        console.log('NotesList: Modal/popup is open, checking number keys');
+        
         // Allow number keys (1, 2, 0) to pass through to note editor for header formatting
         if (e.key === '1' || e.key === '2' || e.key === '0') {
-          console.log('NotesList: Allowing number keys to pass through to note editor', e.key);
+          
           return; // Don't block, let it pass through
         }
-        console.log('NotesList: Popup or note editor is open, skipping general keyboard handling');
+        
         return;
       }
       
       // Skip all keyboard handling if the target is a textarea or input
       if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.contentEditable === 'true') {
-        console.log('Target is textarea/input, skipping main keyboard handler');
+        
         return;
       }
       
@@ -600,7 +600,7 @@ const NotesList = ({
             e.preventDefault();
             e.stopPropagation();
             
-            console.log(`Arrow key pressed: ${e.key}, focusedNoteIndex: ${focusedNoteIndexRef.current}, safeNotes.length: ${safeNotesRef.current.length}`);
+            
             
             if (safeNotesRef.current.length === 0) return;
             
@@ -612,15 +612,15 @@ const NotesList = ({
             
             let newIndex;
             if (e.key === 'ArrowUp') {
-              console.log(`Up arrow pressed, currentIndex: ${currentIndex}, checking if === 0`);
+              
               // If we're on the first note, move focus back to search bar
               if (currentIndex === 0) {
-                console.log('Up arrow pressed on first note, calling onReturnToSearch callback');
+                
                 // Call the callback to return focus to search bar
                 onReturnToSearch();
                 return;
               } else {
-                console.log(`Not on first note (currentIndex: ${currentIndex}), moving to previous note`);
+                
                 // Move to previous note (don't cycle to last)
                 newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex;
               }
@@ -629,7 +629,7 @@ const NotesList = ({
               newIndex = currentIndex < safeNotesRef.current.length - 1 ? currentIndex + 1 : currentIndex;
             }
             
-            console.log(`Navigating from ${currentIndex} to ${newIndex}, key: ${e.key}`);
+            
             setFocusedNoteIndex(newIndex);
             
             // Scroll to the focused note
@@ -641,10 +641,10 @@ const NotesList = ({
               }
             }
           } else {
-            console.log('Super edit mode is active, ignoring arrow key navigation');
+            
           }
         } else if (e.key === 'G') {
-          console.log(`G key pressed - key: ${e.key}, shiftKey: ${e.shiftKey}, safeNotes.length: ${safeNotesRef.current.length}`);
+          
                 } else if (e.key === 'Enter' && focusedNoteIndexRef.current >= 0) {
           const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
           const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') ||
@@ -687,17 +687,17 @@ const NotesList = ({
               setShowLinkPopup(true);
             }
           } else {
-            console.log('Enter pressed but super edit mode is active or inline editor is active, ignoring note navigation');
+            
           }
         } else if (e.key === 'G' && e.shiftKey && safeNotesRef.current.length > 0) {
           e.preventDefault();
           e.stopPropagation();
           
-          console.log(`Shift+G detected - key: ${e.key}, shiftKey: ${e.shiftKey}, safeNotes.length: ${safeNotesRef.current.length}, focusedNoteIndex: ${focusedNoteIndexRef.current}`);
+          
           
           // Move to the last note
           const lastNoteIndex = safeNotesRef.current.length - 1;
-          console.log(`Shift+G pressed, moving to last note (index: ${lastNoteIndex})`);
+          
           setFocusedNoteIndex(lastNoteIndex);
           
           // Scroll to the last note
@@ -711,7 +711,7 @@ const NotesList = ({
         } else if (e.key === 'l' && focusedNoteIndexRef.current >= 0) {
           // Check if user is typing in a textarea or input - if so, skip this handler
           if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.contentEditable === 'true') {
-            console.log('l key pressed in textarea/input, skipping link handler');
+            
             return;
           }
           
@@ -800,10 +800,10 @@ const NotesList = ({
     const isNotesPage = location.pathname === '/notes';
     
     if (isNotesPage) {
-      console.log('NotesList: Setting up keyboard navigation listener');
+      
       document.addEventListener('keydown', handleKeyDown, true);
       return () => {
-        console.log('NotesList: Cleaning up keyboard navigation listener');
+        
         document.removeEventListener('keydown', handleKeyDown, true);
       };
     }
@@ -817,7 +817,7 @@ const NotesList = ({
   // Focus link popup when it opens
   useEffect(() => {
     if (showLinkPopup) {
-      console.log('Link popup opened, focusing on navigation');
+      
       // Focus the popup container to ensure keyboard events are captured
       const popupElement = document.querySelector('[data-link-popup]');
       if (popupElement) {
@@ -832,7 +832,7 @@ const NotesList = ({
       // Only handle events when popup is actually open
       if (!showLinkPopupRef.current) return;
       
-      console.log('Link popup keyboard event:', e.key, 'selectedLinkIndex:', selectedLinkIndex, 'linkPopupLinks.length:', linkPopupLinks.length);
+      
       
       // Always prevent default and stop propagation for all events when popup is open
       e.preventDefault();
@@ -914,21 +914,21 @@ const NotesList = ({
           }
         }
         // Add a visual indicator that note navigation is active
-        console.log('Note navigation activated - use arrow keys to navigate between notes');
+        
       }
     };
 
     const handleClearFocusedNote = () => {
-      console.log('Clear focused note event received, current focusedNoteIndex:', focusedNoteIndex);
+      
       setFocusedNoteIndex(-1);
-      console.log('Note focus cleared - returning to search');
+      
     };
 
-    console.log('Setting up note navigation event listeners');
+    
     document.addEventListener('focusFirstNote', handleFocusFirstNote);
     document.addEventListener('clearFocusedNote', handleClearFocusedNote);
     return () => {
-      console.log('Cleaning up note navigation event listeners');
+      
       document.removeEventListener('focusFirstNote', handleFocusFirstNote);
       document.removeEventListener('clearFocusedNote', handleClearFocusedNote);
     };

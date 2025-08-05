@@ -15,7 +15,7 @@ import { DevModeInfo } from '../utils/DevUtils';
  * inputClass      – extra Tailwind classes for the textarea (optional)
  */
 const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false, lineIndex = null, settings = {} }) => {
-  console.log('InlineEditor props:', { isSuperEditMode, wasOpenedFromSuperEdit });
+  
   const inputRef = useRef(null);
   const [headerType, setHeaderType] = useState(null); // 'h1', 'h2', or null
   const [displayText, setDisplayText] = useState('');
@@ -86,7 +86,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   };
 
   const handleKeyDown = (e) => {
-    console.log('InlineEditor handleKeyDown called with key:', e.key, 'target:', e.target.tagName);
+    
     
     // Handle Escape to cancel
     if (e.key === 'Escape') {
@@ -117,16 +117,16 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       e.preventDefault();
       e.stopPropagation();
       
-      console.log('Enter pressed in InlineEditor:', { isSuperEditMode, wasOpenedFromSuperEdit, lineIndex });
+      
       
       if (isSuperEditMode || wasOpenedFromSuperEdit) {
         // In superedit mode or opened from superedit mode, Enter saves the line
-        console.log('Saving from superedit mode');
+        
         handleSave();
         return;
       } else {
         // In normal mode, Enter creates a new line
-        console.log('Creating new line in normal mode');
+        
         const newText = displayText + '\n';
         setDisplayText(newText);
         // Trigger resize after the newline is added
@@ -144,14 +144,14 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     // Only prevent default for specific shortcuts, not regular typing
     if (!e.metaKey && !e.ctrlKey && !e.altKey && e.key.length === 1) {
       // This is a regular character key, allow it to type normally
-      console.log('Regular character key pressed:', e.key);
+      
       // Don't prevent default or stop propagation for regular typing
       return;
     }
 
     // For any other keys that we don't specifically handle, don't prevent default
     // This ensures that arrow keys, backspace, delete, etc. work normally
-    console.log('Other key pressed:', e.key, '- allowing normal behavior');
+    
   };
 
   // Function to handle saving with proper header formatting
@@ -165,8 +165,8 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       finalText = '##' + displayText + '##';
     }
     
-    console.log('InlineEditor handleSave called with finalText:', finalText, 'wasOpenedFromSuperEdit:', wasOpenedFromSuperEdit, 'lineIndex:', lineIndex);
-    console.log('Calling onSave with:', finalText);
+    
+    
     onSave(finalText);
     
     // If this was opened from superedit mode, trigger a return to superedit
@@ -175,7 +175,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       const event = new CustomEvent('returnToSuperEdit', {
         detail: { lineIndex: lineIndex } // Pass the actual line index
       });
-      console.log('InlineEditor dispatching returnToSuperEdit event with lineIndex:', lineIndex);
+      
       document.dispatchEvent(event);
     }
   };
@@ -202,7 +202,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   };
 
   // Debug logging for developer mode
-  console.log('InlineEditor - settings:', settings, 'developerMode:', settings?.developerMode);
+  
   
   return (
     <DevModeInfo 
@@ -277,57 +277,57 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
         ref={inputRef}
         value={displayText}
         onChange={(e) => {
-          console.log('InlineEditor onChange:', e.target.value);
+          
           setDisplayText(e.target.value);
         }}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         onClick={(e) => {
-          console.log('InlineEditor textarea clicked');
+          
           e.stopPropagation();
         }}
         onFocus={(e) => {
-          console.log('InlineEditor focused');
+          
           // Prevent any immediate blur events
           setTimeout(() => {
             if (inputRef.current && document.activeElement !== inputRef.current) {
-              console.log('Focus was lost, attempting to restore');
+              
               inputRef.current.focus();
             }
           }, 0);
         }}
         onBlur={(e) => {
-          console.log('InlineEditor blurred');
-          console.log('Blur event target:', e.target);
-          console.log('Blur event relatedTarget:', e.relatedTarget);
-          console.log('Blur event currentTarget:', e.currentTarget);
-          console.log('Blur event timeStamp:', e.timeStamp);
+          
+          
+          
+          
+          
           // Check if the blur is happening immediately after focus
           const now = Date.now();
-          console.log('Blur timestamp:', now);
+          
           
           // If blur happens too quickly after focus, try to prevent it
           if (e.relatedTarget && e.relatedTarget.tagName !== 'TEXTAREA') {
-            console.log('Blur to non-textarea element detected, attempting to prevent');
+            
             setTimeout(() => {
               if (inputRef.current && document.activeElement !== inputRef.current) {
-                console.log('Restoring focus to textarea');
+                
                 inputRef.current.focus();
               }
             }, 10);
           }
         }}
         onInput={(e) => {
-          console.log('InlineEditor onInput:', e.target.value);
+          
           // Auto-resize the textarea
           e.target.style.height = 'auto';
           e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
         }}
         onKeyPress={(e) => {
-          console.log('InlineEditor onKeyPress:', e.key);
+          
         }}
         onKeyUp={(e) => {
-          console.log('InlineEditor onKeyUp:', e.key);
+          
         }}
         className={`w-full border border-gray-300 pl-8 pr-16 py-1 rounded text-sm resize-none ${inputClass}`}
         rows={1}

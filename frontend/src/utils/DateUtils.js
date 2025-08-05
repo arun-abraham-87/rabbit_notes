@@ -144,18 +144,40 @@ export const parseToMoment = (input) => {
     return moment(input);
   }
 
-  const str = input.toString();
+  const str = input.toString().trim();
+  
+  // Handle ISO format first
   if (str.includes('T')) {
     const m = moment(str, moment.ISO_8601, true);
     return m.isValid() ? m : null;
   }
 
+  // Handle "DD/MM/YYYY, h:mm:ss a" format
   let m = moment(str, "DD/MM/YYYY, h:mm:ss a", true);
   if (m.isValid()) return m;
 
+  // Handle "DD/MM/YYYY" format
   m = moment(str, "DD/MM/YYYY", true);
   if (m.isValid()) return m;
 
-  m = moment(str);
-  return m.isValid() ? m : null;
+  // Handle "MM/DD/YYYY, h:mm:ss a" format (US format)
+  m = moment(str, "MM/DD/YYYY, h:mm:ss a", true);
+  if (m.isValid()) return m;
+
+  // Handle "MM/DD/YYYY" format (US format)
+  m = moment(str, "MM/DD/YYYY", true);
+  if (m.isValid()) return m;
+
+  // Handle "YYYY-MM-DD" format
+  m = moment(str, "YYYY-MM-DD", true);
+  if (m.isValid()) return m;
+
+  // Try parsing with moment's default parsing as last resort
+  // but only if the string looks like it might be a date
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str) || /^\d{4}-\d{1,2}-\d{1,2}/.test(str)) {
+    m = moment(str);
+    return m.isValid() ? m : null;
+  }
+
+  return null;
 };

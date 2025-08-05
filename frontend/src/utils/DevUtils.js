@@ -71,7 +71,7 @@ export const useDevMode = (settings) => {
  * @returns {React.ReactNode} The wrapped component
  */
 export const DevModeInfo = ({ componentName, children, isDevMode }) => {
-  console.log('DevModeInfo - componentName:', componentName, 'isDevMode:', isDevMode);
+  
   
   if (!isDevMode) {
     return children;

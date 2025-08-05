@@ -801,9 +801,7 @@ export default function NoteContent({
     };
 
     const handleMultiMoveDragStart = (e) => {
-        console.log('Multi-move drag start triggered');
         if (multiMoveSelectedRows.size === 0 || multiMoveError) {
-            console.log('Drag prevented - no selection or error');
             return;
         }
         
@@ -812,8 +810,6 @@ export default function NoteContent({
         // Get the raw text content from the original note content
         const rawLines = getRawLines(note.content);
         const sectionLines = sortedIndices.map(idx => rawLines[idx]);
-        
-        console.log('Dragging lines:', sortedIndices, 'with content:', sectionLines);
         
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -1123,7 +1119,7 @@ export default function NoteContent({
                             className="mr-2"
                         />
                     )}
-                    {shouldIndent && !isH1 && !isH2 && !hasNoBulletsTag() && (
+                    {shouldIndent && !isH1 && !isH2 && !hasNoBulletsTag() && !isCodeBlockLine(idx) && (
                         <span className="mr-2 text-3xl self-start leading-none">•</span>
                     )}
                     <div className="flex items-center gap-2">
@@ -1258,7 +1254,7 @@ export default function NoteContent({
                     renderInlineEditor(idx, isH1, isH2)
                 ) : (
                     <>
-                        {(indentFlags[idx] || isListItem) && !isH1 && !isH2 && !hasNoBulletsTag() && (
+                        {(indentFlags[idx] || isListItem) && !isH1 && !isH2 && !hasNoBulletsTag() && !isCodeBlockLine(idx) && (
                             <span className="mr-2 text-3xl self-start leading-none">•</span>
                         )}
                         <div className="flex items-center gap-2">
@@ -1340,12 +1336,13 @@ export default function NoteContent({
                         {isCodeBlockStart(idx) && (
                             <button
                                 onClick={() => copyCodeBlock(idx)}
-                                className="ml-2 p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors duration-150 opacity-0 group-hover:opacity-100"
+                                className="ml-2 p-2 text-white bg-blue-500 hover:bg-blue-600 rounded transition-colors duration-150"
                                 title="Copy entire code block"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                 </svg>
+                                <span className="ml-1 text-xs">COPY</span>
                             </button>
                         )}
                     </>

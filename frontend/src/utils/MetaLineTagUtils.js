@@ -221,7 +221,7 @@ export const set_tags_in_mlt = async (note_content, note_id, line_index, tags) =
     let replaced_note_content = replace_line_in_note(note_content, line_index, replaced_line);
 
     if (note_id) {
-      //  console.log('Called Note Update')
+      
       //  await updateNoteById(note_id, replaced_note_content);
     }
 

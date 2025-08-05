@@ -82,7 +82,7 @@ const TextEditor = ({ addNotes, objList, searchQuery, settings = {} }) => {
 
 
     const handleKeyUp = (e, index) => {
-        // ////console.log(e.key)
+        // //
     }
 
     function prefixTabsBasedOnFirstString(firstString, secondString) {

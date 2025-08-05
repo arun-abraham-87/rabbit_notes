@@ -91,7 +91,7 @@ const ExpenseTracker = () => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
   const years = [2025, 2026, 2027];
-  ////console.log
+  //
 
   const [includeUnassigned, setIncludeUnassigned] = useState(false);
   const [includeExcluded, setIncludeExcluded] = useState(false);
@@ -417,9 +417,9 @@ const ExpenseTracker = () => {
 
   // Filter expenses when type, search query, unassigned filter, year, or month changes
   useEffect(() => {
-    //console.log
-    //console.log
-    //console.log
+    
+    
+    
 
     const filtered = expenses.filter(expense => {
       // Type filter
@@ -454,7 +454,7 @@ const ExpenseTracker = () => {
       const monthMatch = selectedMonths.has(expenseDate.getMonth());
 
       // Log the filtering results for debugging
-//      //console.log
+//      
 //        id: expense.id,
 //        date: expense.date,
 //        parsedDate: expenseDate,
@@ -475,7 +475,7 @@ const ExpenseTracker = () => {
              excludeOnceOffMatch && excludeHasTagsMatch;
     });
 
-    //console.log
+    
 
     const sortedAndFiltered = sortExpenses(filtered);
     setFilteredExpenses(sortedAndFiltered);
@@ -1315,7 +1315,7 @@ const ExpenseTracker = () => {
     );
   }
 
-  ////console.log
+  //
   return (
     <div className="w-full px-4 py-8">
       <div className="flex justify-between items-center mb-8">

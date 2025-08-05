@@ -37,9 +37,9 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   const [showTextSelection, setShowTextSelection] = useState(false);
 
   const replaceLastWord = (tag) => {
-    //console.log(lines)
-    //console.log(focusedLineIndex)
-    //console.log(lines[focusedLineIndex])
+    
+    
+    
     const lastSpaceIndex = lines[focusedLineIndex].text.lastIndexOf(" ");
     const updatedText =
       (lastSpaceIndex === -1 ? "" : lines[focusedLineIndex].text.slice(0, lastSpaceIndex + 1)) +

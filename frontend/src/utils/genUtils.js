@@ -494,8 +494,8 @@ export const renderLineWithClickableDates = (
   setEditingInlineDate,
   handleInlineDateSelect
 ) => {
-  //////console.log("reached inner")
-  //////console.log(line)
+  ////
+  ////
   const textWithAges = line;
   const segments = textWithAges.split(clickableDateRegex);
   return segments.map((seg, i) => {
@@ -594,9 +594,9 @@ export const getIndentFlags = (contentLines) => {
 
 
 export const getRawLines = (content) => {
-  //////console.log("Line")
-  //////console.log(content)
-  //////console.log("Line END")
+  ////
+  ////
+  ////
   let split_vals = content.split('\n').filter((line) => !line.trim().startsWith('meta::'))
   
   // Remove trailing empty lines
@@ -604,9 +604,9 @@ export const getRawLines = (content) => {
     split_vals.pop();
   }
   
-  //////console.log('Split vals')
-  //////console.log(split_vals)
-  //////console.log('Split vals End')
+  ////
+  ////
+  ////
   return split_vals
 };
 

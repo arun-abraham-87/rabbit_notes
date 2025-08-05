@@ -155,15 +155,15 @@ function parseDate(dateString) {
 const sortNotes = (notes) => {
   try {
     return [...notes].sort((a, b) => {
-      // console.log("-----------------------------------------")
-      // console.log(a.created_datetime)
-      // console.log(a)
-      // console.log(b)
-      // console.log(b.created_datetime)
+      
+      
+      
+      
+      
       const dateA = parseDate(a?.created_datetime);
       const dateB = parseDate(b?.created_datetime);
-      //console.log(`Trying to sort ${dateA} and ${dateB}`)
-      //console.log(dateA - dateB)
+      
+      
       return dateB - dateA; // Sort by date descending
     });
   } catch (error) {
@@ -271,7 +271,7 @@ app.put('/api/notes/:id', (req, res) => {
   const noteId = req.params.id;
   const { content } = req.body;
   let updatedNote = null;
-  //console.log("Recevied Update Request")
+  
   try {
     const files = fs.readdirSync(NOTES_DIR); // Read all files in the directory
     let noteUpdated = false;
@@ -286,7 +286,7 @@ app.put('/api/notes/:id', (req, res) => {
         let notesInFile = JSON.parse(fileContent); // Parse JSON content
 
         if (Array.isArray(notesInFile)) {
-          //console.log("File found")
+          
           // Find the note by its ID
           const noteIndex = notesInFile.findIndex(note => note.id === noteId);
 
@@ -294,7 +294,7 @@ app.put('/api/notes/:id', (req, res) => {
             // Update the note content
             notesInFile[noteIndex].content = content;
             updatedNote = notesInFile[noteIndex];
-            //console.log("Note found for update", content)
+            
             noteUpdated = true;
 
             // Write the updated notes array back to the file

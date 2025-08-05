@@ -34,7 +34,13 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     const saved = localStorage.getItem('reminderColors');
     return saved ? JSON.parse(saved) : {};
   });
+  const [reminderGroups, setReminderGroups] = useState(() => {
+    const saved = localStorage.getItem('reminderGroups');
+    return saved ? JSON.parse(saved) : {};
+  });
   const [showColorSelector, setShowColorSelector] = useState(null);
+  const [showGroupInput, setShowGroupInput] = useState(null);
+  const [editingGroupName, setEditingGroupName] = useState('');
   const numberBufferRef = useRef('');
 
   // Function to get color for a specific reminder
@@ -68,6 +74,32 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
       grouped[color].push(reminder);
     });
     return grouped;
+  };
+
+  // Function to get group name for a specific reminder
+  const getReminderGroup = (noteId) => {
+    return reminderGroups[noteId] || '';
+  };
+
+  // Function to handle group name change
+  const handleGroupNameChange = (noteId, groupName) => {
+    const newGroups = { ...reminderGroups, [noteId]: groupName };
+    setReminderGroups(newGroups);
+    localStorage.setItem('reminderGroups', JSON.stringify(newGroups));
+    setShowGroupInput(null);
+    setEditingGroupName('');
+  };
+
+  // Function to start editing group name
+  const startEditGroupName = (noteId) => {
+    setShowGroupInput(noteId);
+    setEditingGroupName(getReminderGroup(noteId));
+  };
+
+  // Function to cancel group name editing
+  const cancelEditGroupName = () => {
+    setShowGroupInput(null);
+    setEditingGroupName('');
   };
 
   useEffect(() => {
@@ -870,6 +902,13 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                             <CheckIcon className="h-5 w-5" />
                           </button>
                           <button
+                            onClick={() => handleEditNote(note.id)}
+                            className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                            title="Goto Note"
+                          >
+                            <PencilIcon className="h-5 w-5" />
+                          </button>
+                          <button
                             onClick={() => toggleOptions(note.id)}
                             className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none transition-colors duration-150"
                             title="More Options"
@@ -880,6 +919,59 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       )}
                     </div>
                   </div>
+                  
+                  {/* Group Name Section - Center of the card */}
+                  <div className="flex justify-center items-center py-2 border-t border-gray-200">
+                    {showGroupInput === note.id ? (
+                      <div className="flex items-center gap-2 w-full max-w-xs">
+                        <input
+                          type="text"
+                          value={editingGroupName}
+                          onChange={(e) => setEditingGroupName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleGroupNameChange(note.id, editingGroupName);
+                            } else if (e.key === 'Escape') {
+                              cancelEditGroupName();
+                            }
+                          }}
+                          onBlur={() => handleGroupNameChange(note.id, editingGroupName)}
+                          className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter group name..."
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleGroupNameChange(note.id, editingGroupName)}
+                          className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelEditGroupName}
+                          className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded hover:bg-gray-100"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        {getReminderGroup(note.id) ? (
+                          <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
+                            {getReminderGroup(note.id)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-500 italic">No group</span>
+                        )}
+                        <button
+                          onClick={() => startEditGroupName(note.id)}
+                          className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        >
+                          {getReminderGroup(note.id) ? 'Edit' : 'Add'} Group
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   {/* More Options Section */}
                   {expandedOptions[note.id] && !showCadenceSelector && (
                     <div className="px-6 py-3 border-t border-gray-200" style={{ backgroundColor: 'inherit' }}>
@@ -911,13 +1003,6 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                             title="Set Cadence"
                           >
                             Set Cadence
-                          </button>
-                          <button
-                            onClick={() => handleEditNote(note.id)}
-                            className="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-800 underline focus:outline-none transition-colors duration-150"
-                            title="Goto Note"
-                          >
-                            Goto Note
                           </button>
                         </div>
                       </div>
@@ -1010,8 +1095,68 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                         >
                           <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${expandedOptions[note.id] ? 'rotate-180' : ''}`} />
                         </button>
+                        <button
+                          onClick={() => handleEditNote(note.id)}
+                          className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+                          title="Goto Note"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
                       </div>
                     </div>
+                    
+                    {/* Group Name Section - Center of the card */}
+                    <div className="flex justify-center items-center py-2 border-t border-gray-200">
+                      {showGroupInput === note.id ? (
+                        <div className="flex items-center gap-2 w-full max-w-xs">
+                          <input
+                            type="text"
+                            value={editingGroupName}
+                            onChange={(e) => setEditingGroupName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleGroupNameChange(note.id, editingGroupName);
+                              } else if (e.key === 'Escape') {
+                                cancelEditGroupName();
+                              }
+                            }}
+                            onBlur={() => handleGroupNameChange(note.id, editingGroupName)}
+                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter group name..."
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleGroupNameChange(note.id, editingGroupName)}
+                            className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEditGroupName}
+                            className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded hover:bg-gray-100"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          {getReminderGroup(note.id) ? (
+                            <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
+                              {getReminderGroup(note.id)}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-500 italic">No group</span>
+                          )}
+                          <button
+                            onClick={() => startEditGroupName(note.id)}
+                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                          >
+                            {getReminderGroup(note.id) ? 'Edit' : 'Add'} Group
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     {/* More Options Section */}
                     {expandedOptions[note.id] && (
                       <div className="px-6 py-3 border-t border-gray-200" style={{ backgroundColor: 'inherit' }}>
@@ -1043,13 +1188,6 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                               title="Set Cadence"
                             >
                               Set Cadence
-                            </button>
-                            <button
-                              onClick={() => handleEditNote(note.id)}
-                              className="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-800 underline focus:outline-none transition-colors duration-150"
-                              title="Goto Note"
-                            >
-                              Goto Note
                             </button>
                           </div>
                         </div>

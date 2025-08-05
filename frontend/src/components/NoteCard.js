@@ -919,7 +919,23 @@ const NoteCard = ({
           highlightedLineText={highlightedLineText}
           wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
         />
-                        <NoteCardInlineEditor
+        {!focusMode && (
+          <div className="flex items-center space-x-4 px-4 py-2">
+            <NoteTagBar
+              note={note}
+              updateNote={updateNote}
+              duplicateUrlNoteIds={duplicateUrlNoteIds}
+              duplicateWithinNoteIds={duplicateWithinNoteIds}
+              urlShareSpaceNoteIds={urlShareSpaceNoteIds}
+              focusMode={focusMode}
+              onNavigate={onNavigate}
+              allNotes={allNotes}
+              setSearchQuery={setSearchQuery}
+            />
+          </div>
+        )}
+
+        <NoteCardInlineEditor
                   visible={addingLineNoteId === note.id}
                   text={newLineText}
                   setText={setNewLineText}

@@ -485,6 +485,37 @@ export default function NoteContent({
         return null;
     };
 
+    const getCodeBlockContent = (lineIndex) => {
+        const groupInfo = getCodeBlockGroupInfo(lineIndex);
+        if (!groupInfo) return null;
+        
+        const lines = note.content.split('\n');
+        const codeBlockLines = [];
+        
+        for (let i = groupInfo.startLine; i <= groupInfo.endLine; i++) {
+            const line = lines[i];
+            // Skip meta tags and empty lines
+            if (line && !line.trim().startsWith('meta::') && line.trim() !== '') {
+                codeBlockLines.push(line);
+            }
+        }
+        
+        return codeBlockLines.join('\n');
+    };
+
+    const copyCodeBlock = async (lineIndex) => {
+        const codeBlockContent = getCodeBlockContent(lineIndex);
+        if (codeBlockContent) {
+            try {
+                await navigator.clipboard.writeText(codeBlockContent);
+                toast.success('Code block copied to clipboard!');
+            } catch (error) {
+                console.error('Error copying code block:', error);
+                toast.error('Failed to copy code block');
+            }
+        }
+    };
+
     const toggleNoBullets = () => {
         const lines = note.content.split('\n');
         const hasTag = hasNoBulletsTag();
@@ -1306,6 +1337,17 @@ export default function NoteContent({
                             )}
                         </div>
                         {editingInlineDate?.noteId === note.id && editingInlineDate?.lineIndex === idx && renderDatePicker(idx)}
+                        {isCodeBlockStart(idx) && (
+                            <button
+                                onClick={() => copyCodeBlock(idx)}
+                                className="ml-2 p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors duration-150 opacity-0 group-hover:opacity-100"
+                                title="Copy entire code block"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                            </button>
+                        )}
                     </>
                 )}
             </div>

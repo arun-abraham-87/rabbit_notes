@@ -139,6 +139,19 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
         return;
       }
     }
+
+    // For all other keys, ensure they are not prevented from typing
+    // Only prevent default for specific shortcuts, not regular typing
+    if (!e.metaKey && !e.ctrlKey && !e.altKey && e.key.length === 1) {
+      // This is a regular character key, allow it to type normally
+      console.log('Regular character key pressed:', e.key);
+      // Don't prevent default or stop propagation for regular typing
+      return;
+    }
+
+    // For any other keys that we don't specifically handle, don't prevent default
+    // This ensures that arrow keys, backspace, delete, etc. work normally
+    console.log('Other key pressed:', e.key, '- allowing normal behavior');
   };
 
   // Function to handle saving with proper header formatting
@@ -196,7 +209,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       componentName="InlineEditor" 
       isDevMode={settings?.developerMode || false}
     >
-      <div className="w-full relative">
+      <div className="w-full relative" data-note-inline-editor="true">
       {/* Red X button for deleting the line */}
       <button
         onClick={onDelete}
@@ -263,20 +276,69 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       <textarea
         ref={inputRef}
         value={displayText}
-        onChange={(e) => setDisplayText(e.target.value)}
+        onChange={(e) => {
+          console.log('InlineEditor onChange:', e.target.value);
+          setDisplayText(e.target.value);
+        }}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
-        className={`w-full border border-gray-300 pl-8 pr-16 py-1 rounded text-sm resize-none ${inputClass}`}
-        rows={1}
-        style={{
-          resize: 'none',
-          overflow: 'hidden'
+        onClick={(e) => {
+          console.log('InlineEditor textarea clicked');
+          e.stopPropagation();
+        }}
+        onFocus={(e) => {
+          console.log('InlineEditor focused');
+          // Prevent any immediate blur events
+          setTimeout(() => {
+            if (inputRef.current && document.activeElement !== inputRef.current) {
+              console.log('Focus was lost, attempting to restore');
+              inputRef.current.focus();
+            }
+          }, 0);
+        }}
+        onBlur={(e) => {
+          console.log('InlineEditor blurred');
+          console.log('Blur event target:', e.target);
+          console.log('Blur event relatedTarget:', e.relatedTarget);
+          console.log('Blur event currentTarget:', e.currentTarget);
+          console.log('Blur event timeStamp:', e.timeStamp);
+          // Check if the blur is happening immediately after focus
+          const now = Date.now();
+          console.log('Blur timestamp:', now);
+          
+          // If blur happens too quickly after focus, try to prevent it
+          if (e.relatedTarget && e.relatedTarget.tagName !== 'TEXTAREA') {
+            console.log('Blur to non-textarea element detected, attempting to prevent');
+            setTimeout(() => {
+              if (inputRef.current && document.activeElement !== inputRef.current) {
+                console.log('Restoring focus to textarea');
+                inputRef.current.focus();
+              }
+            }, 10);
+          }
         }}
         onInput={(e) => {
+          console.log('InlineEditor onInput:', e.target.value);
           // Auto-resize the textarea
           e.target.style.height = 'auto';
           e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
         }}
+        onKeyPress={(e) => {
+          console.log('InlineEditor onKeyPress:', e.key);
+        }}
+        onKeyUp={(e) => {
+          console.log('InlineEditor onKeyUp:', e.key);
+        }}
+        className={`w-full border border-gray-300 pl-8 pr-16 py-1 rounded text-sm resize-none ${inputClass}`}
+        rows={1}
+        style={{
+          resize: 'none',
+          overflow: 'hidden',
+          pointerEvents: 'auto',
+          userSelect: 'text'
+        }}
+        autoComplete="off"
+        spellCheck="false"
       />
       
       {/* Floating buttons at the end of text */}

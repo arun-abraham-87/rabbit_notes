@@ -552,7 +552,20 @@ const NoteCard = ({
 
     // Exit super edit mode when clicking outside
     const handleClickOutside = (e) => {
+      // Don't handle clicks on textarea elements or their parents
+      if (e.target.tagName === 'TEXTAREA' || e.target.closest('textarea')) {
+        console.log('Click on textarea detected, ignoring handleClickOutside');
+        return;
+      }
+      
+      // Don't handle clicks on inline editor elements
+      if (e.target.closest('[data-note-inline-editor="true"]')) {
+        console.log('Click on inline editor detected, ignoring handleClickOutside');
+        return;
+      }
+      
       if (isSuperEditMode && !e.target.closest(`[data-note-id="${note.id}"]`)) {
+        console.log('Click outside note card detected, exiting super edit mode');
         setIsSuperEditMode(false);
         setHighlightedLineIndex(-1);
         setHighlightedLineText('');
@@ -789,6 +802,10 @@ const NoteCard = ({
           }
           // Increment click counter when Enter or 'l' is pressed on a focused note
           if ((e.key === 'Enter' || e.key === 'l') && isFocused && !isSuperEditMode) {
+            // Don't handle if the target is a textarea or input
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.closest('textarea') || e.target.closest('input')) {
+              return;
+            }
             e.preventDefault();
             e.stopPropagation();
             incrementClickCount(note.id);

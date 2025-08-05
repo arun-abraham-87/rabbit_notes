@@ -260,13 +260,13 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   
   // Add keyboard navigation for 't' key to show today's events
   useEffect(() => {
-    console.log('Setting up keyboard handler for EventsPage');
+    
     const handleKeyDown = (e) => {
-      console.log('EventsPage: Key pressed:', e.key, 'isSearchMode:', isSearchMode, 'target:', e.target.tagName);
+      
       
       // Test if any key is being captured
       if (e.key === 'Enter') {
-        console.log('EventsPage: ENTER KEY DETECTED!');
+        
       }
       
       // Only handle keys when not in an input/textarea and no modifier keys
@@ -279,7 +279,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         if (e.key === 'b' && !isSearchMode) {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Direct b key pressed - filtering birthdays and entering focus mode');
+          
           setSelectedTags(['birthday']);
           setIsFocusMode(true);
           return;
@@ -288,52 +288,52 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         if (e.key === 's' && !isSearchMode) {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Entering search mode');
+          
           setIsSearchMode(true);
           setSearchBuffer('');
         } else if (isSearchMode && e.key.length === 1) {
-          console.log('Search mode active, key pressed:', e.key, 'buffer:', searchBuffer);
+          
           e.preventDefault();
           e.stopPropagation();
           const newBuffer = searchBuffer + e.key;
-          console.log('New buffer will be:', newBuffer);
+          
           setSearchBuffer(newBuffer);
           
           // Handle specific search commands
-          console.log('Checking commands for buffer:', newBuffer);
+          
           if (newBuffer === 'b') {
             // Show only events with birthday tag (single 'b' command)
-            console.log('Setting birthday filter with single b command');
+            
             setSelectedTags(['birthday']);
             setIsSearchMode(false);
             setSearchBuffer('');
           } else if (newBuffer === 'w') {
             // Show only events with wedding tag (single 'w' command)
-            console.log('Setting wedding filter with single w command');
+            
             setSelectedTags(['wedding']);
             setIsSearchMode(false);
             setSearchBuffer('');
           } else if (newBuffer === 'h') {
             // Show only events with holiday tag (single 'h' command)
-            console.log('Setting holiday filter with single h command');
+            
             setSelectedTags(['holiday']);
             setIsSearchMode(false);
             setSearchBuffer('');
           } else if (newBuffer === 'tr') {
             // Show only events with travel tag (tr command)
-            console.log('Setting travel filter with tr command');
+            
             setSelectedTags(['travel']);
             setIsSearchMode(false);
             setSearchBuffer('');
           } else if (newBuffer === 'p') {
             // Show only events with purchase tag (single 'p' command)
-            console.log('Setting purchase filter with single p command');
+            
             setSelectedTags(['purchase']);
             setIsSearchMode(false);
             setSearchBuffer('');
           } else if (newBuffer === 'sb') {
             // Show only events with birthday tag (double command)
-            console.log('Setting birthday filter with sb command');
+            
             setSelectedTags(['birthday']);
             setIsSearchMode(false);
             setSearchBuffer('');
@@ -409,19 +409,19 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         } else if (e.key === 'Enter' && selectedEvent) {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Enter key pressed - opening selected event:', selectedEvent);
+          
           handleEditEvent(selectedEvent);
         } else if (e.key === 'Enter') {
-          console.log('Enter pressed but no selected event');
-          console.log('selectedEvent:', selectedEvent);
-          console.log('selectedEventIndex:', selectedEventIndex);
+          
+          
+          
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => {
-      console.log('Cleaning up keyboard handler for EventsPage');
+      
       window.removeEventListener('keydown', handleKeyDown, { capture: true });
     };
       }, [showTodaysEventsOnly, isFocusMode, isSearchMode, searchBuffer, calendarEvents, selectedEventIndex, selectedEvent]);
@@ -447,8 +447,8 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         eventTags.forEach(tag => tags.add(tag));
       });
     const sortedTags = Array.from(tags).sort();
-    console.log('Available unique tags:', sortedTags);
-    console.log('Available unique tags (lowercase):', sortedTags.map(tag => tag.toLowerCase()));
+    
+    
     return sortedTags;
   }, [allNotes]);
 
@@ -714,10 +714,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   };
 
   const handleEditEvent = (event) => {
-    console.log('handleEditEvent called with event:', event);
-    console.log('Event ID:', event.id);
-    console.log('Event content:', event.content);
-    console.log('All notes IDs:', allNotes.map(n => n.id));
+    
+    
+    
+    
     
     // Try to find the original note by ID
     let originalNote = allNotes.find(n => n.id === event.id);
@@ -737,14 +737,14 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       });
     }
     
-    console.log('Found original note:', originalNote);
+    
     if (originalNote) {
       // Pass the original note directly to the modal
       setEditingEvent(originalNote);
       setShowEditEventModal(true);
     } else {
-      console.log('No original note found for event id:', event.id);
-      console.log('Available notes:', allNotes);
+      
+      
     }
   };
 
@@ -757,7 +757,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const handleAddEvent = async (content) => {
     try {
       const response = await createNote(content);
-      console.log('API Response:', response);
+      
       setAllNotes(prevNotes => [...prevNotes, response]); // Add the entire response object
       return response;
     } catch (error) {
@@ -1089,7 +1089,7 @@ event_tags:${expense.tag.join(',')}`;
           onAddEvent={handleAddEvent}
           selectedEventIndex={selectedEventIndex}
           onEventSelect={(index, event) => {
-            console.log('Event selected at index:', index, 'event:', event);
+            
             setSelectedEventIndex(index);
             if (event) {
               setSelectedEvent(event);

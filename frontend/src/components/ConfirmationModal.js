@@ -21,7 +21,7 @@ function ConfirmationModal({ isOpen, onClose, onConfirm }) {
     // Close modal when clicking outside the modal content
     const handleBackdropClick = (e) => {
         if (e.target === e.currentTarget) {
-            console.log('Backdrop clicked, closing modal'); // Debugging
+             // Debugging
             onClose(); // Trigger the onClose function passed from parent
         }
     };
@@ -35,7 +35,7 @@ function ConfirmationModal({ isOpen, onClose, onConfirm }) {
                     <button
                         className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                         onClick={() => {
-                            console.log('Cancel clicked, closing modal'); // Debugging
+                             // Debugging
                             onClose(); // Trigger the onClose function to close modal
                         }}
                     >
@@ -44,7 +44,7 @@ function ConfirmationModal({ isOpen, onClose, onConfirm }) {
                     <button
                         className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
                         onClick={() => {
-                            console.log('Cancel clicked, closing modal'); // Debugging
+                             // Debugging
                             onConfirm(); // Trigger the onClose function to close modal
                         }}
                     >

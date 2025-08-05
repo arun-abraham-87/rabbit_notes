@@ -307,7 +307,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
 
   // Debug modal state changes
   useEffect(() => {
-    console.log('Modal state changed:', { isModalOpen, isEditMode });
+    
   }, [isModalOpen, isEditMode]);
 
   const handleEventInput = (e) => {
@@ -318,18 +318,18 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   const handleEventSubmit = (e) => {
     e.preventDefault();
     
-    console.log('Form submission triggered', { eventForm, isEditMode });
+    
     
     // Validation logic - allow empty content for notes
     if (eventForm.type === 'event') {
       if (!eventForm.name || !eventForm.date) {
-        console.log('Event validation failed', { name: eventForm.name, date: eventForm.date });
+        
         return;
       }
     }
     // For notes, allow empty content - just proceed with submission
     
-    console.log('Validation passed, processing submission');
+    
     
     if (isEditMode && eventForm.id) {
       // Update existing event/note
@@ -353,7 +353,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       console.error('Error saving events to localStorage:', error);
     }
     
-    console.log('Closing modal');
+    
     
     // Reset form and close modal - use a more direct approach
     setEventForm({ name: '', date: '', endDate: '', type: 'note', bgColor: '#ffffff' });
@@ -364,9 +364,9 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     
     // Double-check after a brief delay
     setTimeout(() => {
-      console.log('Double-checking modal state');
+      
       if (isModalOpen) {
-        console.log('Modal still open, forcing close');
+        
         setIsModalOpen(false);
       }
     }, 50);

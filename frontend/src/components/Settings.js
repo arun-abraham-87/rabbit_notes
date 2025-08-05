@@ -84,9 +84,9 @@ const Settings = ({ onClose, settings, setSettings }) => {
         }
         
         // Set developer mode from settings
-        console.log('Settings - loaded mergedSettings:', mergedSettings);
+        
         setDeveloperMode(mergedSettings.developerMode || false);
-        console.log('Settings - set developerMode to:', mergedSettings.developerMode || false);
+        
       } catch (error) {
         console.error('Failed to load settings:', error);
       }
@@ -126,7 +126,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
 
   const handleSave = async () => {
     try {
-      console.log('Settings - saving developerMode:', developerMode);
+      
       
       // Save selected timezones, base timezone, navbar pages visibility, and quick paste to localStorage
       localStorage.setItem('selectedTimezones', JSON.stringify(selectedTimezones));
@@ -140,7 +140,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
         developerMode: developerMode
       };
       
-      console.log('Settings - updatedSettings:', updatedSettings);
+      
       
       await updateSettings(updatedSettings);
       setSettings(updatedSettings);

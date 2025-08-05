@@ -49,9 +49,9 @@ const TagListing = () => {
       setIsLoading(true);
       setError(null);
       const fetchedTags = await loadTags();
-      console.log('TagListing - fetchedTags:', fetchedTags);
-      console.log('TagListing - fetchedTags length:', fetchedTags?.length);
-      console.log('TagListing - suggestions in fetchedTags:', fetchedTags?.filter(tag => tag.text.toLowerCase().includes('suggestions')));
+      
+      
+      
       if (Array.isArray(fetchedTags)) {
         setTags(fetchedTags);
       } else {

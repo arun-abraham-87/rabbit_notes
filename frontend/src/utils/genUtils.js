@@ -334,7 +334,7 @@ export const findDuplicatedUrls = (safeNotes) => {
 
 
 export const buildLineElements = (line, idx, isListItem, searchTerm) => {
-  console.log('🔧 buildLineElements called with line:', line);
+  
   const raw = isListItem ? line.slice(2) : line; // strip "- " bullet
   const elements = [];
   const regex =
@@ -344,8 +344,8 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
 
   // Walk through every markdown / URL / color match
   while ((match = regex.exec(raw)) !== null) {
-    console.log('🎯 Regex match found:', match[0]);
-    console.log('📋 Match groups:', match.slice(1));
+    
+    
     
     // Add text between previous match and current match (with highlights)
     if (match.index > lastIndex) {
@@ -362,15 +362,15 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
         <strong key={`bold-${idx}-${match.index}`}>{match[2]}</strong>
       );
     } else if (match[3] && match[4]) {
-      console.log('📎 Processing markdown link in buildLineElements');
+      
       // [text](url) - handle both regular and reversed URLs
       const url = match[5];
       const isReversedUrl = url.match(/[^\s]+\/\/[^\s]+ptth/);
       const originalUrl = isReversedUrl ? url.split('').reverse().join('') : url;
       
-      console.log('🔗 Markdown URL:', url);
-      console.log('🔄 Is reversed URL:', isReversedUrl);
-      console.log('🔗 Original URL:', originalUrl);
+      
+      
+      
       
       elements.push(
         <a
@@ -384,7 +384,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
           {match[4]}
         </a>
       );
-      console.log('✅ Created markdown link element');
+      
     } else if (match[6]) {
       // bare URL
       try {
@@ -419,15 +419,15 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
         );
       }
     } else if (match[7]) {
-      console.log('🔄 Processing reversed URL in buildLineElements:', match[7]);
+      
       // reversed URL (ends with ptth)
       try {
         const reversedUrl = match[7];
         const originalUrl = reversedUrl.split('').reverse().join('');
-        console.log('🔗 Reversed URL:', reversedUrl);
-        console.log('🔗 Original URL:', originalUrl);
+        
+        
         const host = new URL(originalUrl).hostname.replace(/^www\./, '');
-        console.log('🌐 Hostname:', host);
+        
         const linkIndicator = getLinkTypeIndicator(originalUrl);
         elements.push(
           <a
@@ -444,7 +444,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
             ) : host}
           </a>
         );
-        console.log('✅ Created reversed URL element');
+        
       } catch (error) {
         console.error('❌ Error processing reversed URL:', error);
         elements.push(

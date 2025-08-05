@@ -46,9 +46,9 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
           .map(word => word.trim().toLowerCase())
           .filter(word => word.length > 0);
 
-        console.log('\nOR Search detected:');
-        console.log('Original query:', searchQuery);
-        console.log('Search terms:', searchWords);
+        
+        
+        
       } else {
         // Regular AND search - split on spaces
         searchWords = searchQuery
@@ -57,9 +57,9 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
           .map(word => word.trim())
           .filter(word => word.length > 0);
 
-        console.log('\nAND Search detected:');
-        console.log('Original query:', searchQuery);
-        console.log('Search terms:', searchWords);
+        
+        
+        
       }
     }
 
@@ -89,10 +89,10 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
         const matchInTags = noteTags.some(tag => tag.includes(word));
 
         if (matchInContent || matchInEvent || matchInTags) {
-          console.log(`\nMatch found for term "${word}":`);
-          if (matchInContent) console.log('- Found in content');
-          if (matchInEvent) console.log('- Found in event_description');
-          if (matchInTags) console.log('- Found in tags');
+          
+          if (matchInContent) 
+          if (matchInEvent) 
+          if (matchInTags) 
         }
 
         return matchInContent || matchInEvent || matchInTags;
@@ -105,10 +105,10 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
         : searchWords.every(word => wordMatchesInNote(word));
 
       if (matchesSearchQuery) {
-        console.log('\nMatched Note:');
-        console.log('Content preview:', noteContentLower.substring(0, 50) + (noteContentLower.length > 50 ? '...' : ''));
-        if (eventDescription) console.log('Event:', eventDescription);
-        if (noteTags.length > 0) console.log('Tags:', noteTags);
+        
+        
+        if (eventDescription) 
+        if (noteTags.length > 0) 
       }
 
       // Check if the note is from today (if required)
@@ -121,7 +121,7 @@ const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
       return matchesSearchQuery;
     });
 
-    console.log(`\nTotal matches found: ${filteredNotes.length}`);
+    
     return filteredNotes;
 
   } catch (error) {
@@ -175,13 +175,13 @@ app.get('/api/notes', (req, res) => {
   try {
     // Decode the search query and clean it up
     const searchQuery = req.query.search ? decodeURIComponent(req.query.search).trim() : '';
-    console.log(`Raw search query received: "${req.query.search}"`);
-    console.log(`Decoded search query: "${searchQuery}"`);
+    
+    
 
     const currentDateNotesOnly = req.query.currentDate === 'true';
-    console.log(`Current Date Filter: ${currentDateNotesOnly}`);
+    
     const noteDate = req.query.noteDate;
-    console.log(`NoteDate: ${noteDate}`);
+    
 
     const files = fs.readdirSync(NOTES_DIR)
       .filter(file => {
@@ -275,7 +275,7 @@ app.put('/api/notes/:id', (req, res) => {
   try {
     const files = fs.readdirSync(NOTES_DIR); // Read all files in the directory
     let noteUpdated = false;
-    //console.log(files);
+    //
     // Process each file and search for the note with the given ID
     files.forEach((file) => {
       const filePath = path.join(NOTES_DIR, file);
@@ -345,7 +345,7 @@ app.post('/api/notes', (req, res) => {
     const formattedToday = `${todayInTimezone[2]}-${todayInTimezone[1].padStart(2, '0')}-${todayInTimezone[0].padStart(2, '0')}`;
 
     let created_datetime;
-    console.log("=============================");
+    
     console.log(noteDate)
     console.log(formattedToday)
 
@@ -360,9 +360,9 @@ app.post('/api/notes', (req, res) => {
       // Format it to the desired format: "dd/MM/yyyy, hh:mm:ss am/pm"
       created_datetime = noteDateObj.format("DD/MM/YYYY, hh:mm:ss a");
     }
-    console.log("Date");
-    console.log(created_datetime);
-    console.log("=============================");
+    
+    
+    
 
     const note = { id, content, created_datetime, tags };
 
@@ -404,7 +404,7 @@ app.post('/api/notes', (req, res) => {
 
 app.delete('/api/notes/:id', (req, res) => {
   const noteId = req.params.id;
-  //console.log("Received Delete Request for Note ID:", noteId);
+  //
   try {
     const files = fs.readdirSync(NOTES_DIR); // Read all files in the directory
     let noteDeleted = false;
@@ -419,14 +419,14 @@ app.delete('/api/notes/:id', (req, res) => {
         let notesInFile = JSON.parse(fileContent); // Parse JSON content
 
         if (Array.isArray(notesInFile)) {
-          //console.log("File found");
+          //
           // Find the note by its ID
           const noteIndex = notesInFile.findIndex(note => note.id === noteId);
 
           if (noteIndex !== -1) {
             // Delete the note from the array
             notesInFile.splice(noteIndex, 1);
-            //console.log("Note deleted", noteId);
+            //
             noteDeleted = true;
 
             // Write the updated notes array back to the file
@@ -579,36 +579,36 @@ app.put('/api/objects/:id', (req, res) => {
     const id = req.params.id;
     const { text } = req.body;
     
-    console.log('PUT /api/objects/:id - Request received');
-    console.log('ID:', id);
-    console.log('Text:', text);
-    console.log('Body:', req.body);
+    
+    
+    
+    
     
     const fileName = `objects.md`;
     const filePath = path.join(NOTES_DIR, fileName);
 
     if (!fs.existsSync(filePath)) {
-      console.log('Objects file not found');
+      
       return res.status(404).json({ error: 'Objects not found' });
     }
 
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     let objects = JSON.parse(fileContent || '[]');
     
-    console.log('Current objects:', objects.length);
-    console.log('Looking for object with ID:', id);
+    
+    
 
     const objectIndex = objects.findIndex(obj => obj.id === id);
-    console.log('Object index found:', objectIndex);
+    
     
     if (objectIndex === -1) {
-      console.log('Object not found in file');
+      
       return res.status(404).json({ error: 'Object not found' });
     }
 
-    console.log('Updating object:', objects[objectIndex]);
+    
     objects[objectIndex].text = text;
-    console.log('Updated object:', objects[objectIndex]);
+    
 
     fs.writeFileSync(filePath, JSON.stringify(objects, null, 2));
     res.json({ message: 'Object updated successfully', object: objects[objectIndex] });
@@ -793,7 +793,7 @@ app.post('/api/images', upload.single('image'), (req, res) => {
     console.log("IMage File not found")
     return res.status(400).json({ error: 'No image uploaded.' });
   }
-  console.log(`Image upload started: ${req.file.originalname}`);
+  
   res.status(200).json({ message: 'Image uploaded successfully.', filename: req.file.filename });
 });
 
@@ -803,11 +803,11 @@ const server = app.listen(PORT, '0.0.0.0', (err) => {
     console.error('Error starting server:', err);
     process.exit(1);
   }
-  console.log(`Server running on http://0.0.0.0:${PORT}`);
-  console.log('Available routes:');
-  console.log('- GET /api/settings');
-  console.log('- POST /api/settings');
-  console.log('- GET /api/settings/test');
+  
+  
+  
+  
+  
 });
 
 // Handle server errors

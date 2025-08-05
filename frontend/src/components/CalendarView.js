@@ -362,7 +362,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log('Event card clicked at index:', eventIndex, 'originalEvent:', occurrence.originalEvent);
+                                
                                 if (onEventSelect) {
                                   onEventSelect(eventIndex, occurrence.originalEvent);
                                 }

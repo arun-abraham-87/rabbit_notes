@@ -23,7 +23,7 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
         const response = await loadAllNotes();
         const allNotes = response.notes || [];
         
-        console.log('All Notes 1:', allNotes);
+        
         
         // Filter notes with meta::expense_source_type tag
         const sourceTypes = allNotes.filter(note => 
@@ -33,7 +33,7 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
           name: note.content.split('\n')[0]
         }));
 
-        console.log('sourceTypes', sourceTypes);
+        
 
         // Filter notes with meta::expense_source_name tag
         const sourceNames = allNotes.filter(note => 
@@ -43,8 +43,8 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
           name: note.content.split('\n')[0]
         }));
         
-        console.log('Source Types:', sourceTypes);
-        console.log('Source Names:', sourceNames);
+        
+        
         
         setExpenseSourceTypes(sourceTypes);
         setExpenseSourceNames(sourceNames);
@@ -212,7 +212,7 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
 
   const handleMergeColumns = () => {
     if (mergeColumns.length < 2) {
-      console.log('Not enough columns selected for merge:', mergeColumns);
+      
       return;
     }
 
@@ -288,7 +288,7 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
 
   // Add useEffect to debug mergeColumns state
   useEffect(() => {
-    console.log('Current mergeColumns state:', mergeColumns);
+    
   }, [mergeColumns]);
 
   return (

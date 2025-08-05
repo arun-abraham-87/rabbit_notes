@@ -63,7 +63,7 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
           if (!showToday && !showYesterday) return true;
           const todoDateMatch = todo.content.match(/meta::todo::([^\n]+)/);
           if (todoDateMatch) {
-            console.log('todoDateMatch',);
+            
           }else{
             return false;
           }

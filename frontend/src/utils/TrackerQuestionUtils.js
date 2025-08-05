@@ -118,7 +118,7 @@ export const createTrackerAnswerNote = async (trackerId, answer, date) => {
 
   const answerContent = `Answer: ${answer}\nDate: ${date}\nrecorded_on_date: ${date}\nmeta::link:${trackerId}\nmeta::tracker_answer`;
   
-  console.log('Creating tracker answer note:', { trackerId, answer, date, answerContent });
+  
   
   const response = await createNote(answerContent);
   if (!response || !response.id) {

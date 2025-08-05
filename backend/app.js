@@ -4,19 +4,19 @@ const path = require('path');
 const fs = require('fs').promises;
 
 // Import routers
-console.log('\nImporting routers...');
+
 
 const notesRouter = require('./routes/notes');
-console.log('✓ Notes router imported');
+
 
 const { router: settingsRouter } = require('./routes/settings');
-console.log('✓ Settings router imported');
+
 
 const tagsRouter = require('./routes/tags');
-console.log('✓ Tags router imported');
+
 
 const journalsRouter = require('./routes/journals');
-console.log('✓ Journals router imported');
+
 
 const app = express();
 
@@ -52,7 +52,7 @@ app.get('/debug/routes', (req, res) => {
 
 // Request logging middleware
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  
   next();
 });
 
@@ -62,22 +62,22 @@ app.get('/', (req, res) => {
 });
 
 // Debug route registration
-console.log('Registering routes...');
+
 
 // Mount routers
-console.log('\nRegistering API routes...');
+
 
 app.use('/api/notes', notesRouter);
-console.log('✓ Notes router registered at /api/notes');
+
 
 app.use('/api/settings', settingsRouter);
-console.log('✓ Settings router registered at /api/settings');
+
 
 app.use('/api/tags', tagsRouter);
-console.log('✓ Tags router registered at /api/tags');
+
 
 app.use('/api/journals', journalsRouter);
-console.log('✓ Journals router registered at /api/journals');
+
 
 // Test endpoint
 app.get('/api/test', (req, res) => {
@@ -93,18 +93,18 @@ app.get('/api/test', (req, res) => {
 });
 
 // List all registered routes
-console.log('\nAvailable routes:');
+
 app._router.stack.forEach(middleware => {
   if (middleware.route) {
     // Routes registered directly on the app
-    console.log(`- ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+    
   } else if (middleware.name === 'router') {
     // Router middleware
     middleware.handle.stack.forEach(handler => {
       if (handler.route) {
         const path = handler.route.path;
         const methods = Object.keys(handler.route.methods).join(', ').toUpperCase();
-        console.log(`- ${methods} /api${path}`);
+        
       }
     });
   }
@@ -127,7 +127,7 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5001;
 const server = app.listen(PORT, () => {
-  console.log(`\nServer running on http://0.0.0.0:${PORT}`);
+  
 });
 
 // Handle server errors

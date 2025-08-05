@@ -14,7 +14,7 @@ export function NoteEditorProvider({ children }) {
   // Add keyboard shortcut for opening note editor in edit mode
   useHotkeys('meta+k', (e) => {
     e.preventDefault();
-    console.log('NoteEditorContext: Command+K pressed'); // Debug log
+     // Debug log
     setIsOpen(true);
     setInitialContent('');
     setMode('edit'); // Changed from 'add' to 'edit'

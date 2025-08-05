@@ -80,7 +80,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       setShowPopup(false);
       return;
     }
-    //console.log(objList);
+    //
     const filterText = match[1].toLowerCase();
     const filtered = objList.filter((tag) =>
       tag && tag.text && tag.text.toLowerCase().startsWith(filterText)

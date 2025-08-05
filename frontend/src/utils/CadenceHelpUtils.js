@@ -29,7 +29,7 @@ export function getLastReviewTime(noteId) {
 
 //fiunction for adding current date with nte id into local storage
 export function addCurrentDateToLocalStorage(noteId) {
-  console.log('Adding current date to local storage for note', noteId);
+  
   const reviews = JSON.parse(localStorage.getItem('noteReviews') || '{}');
   reviews[noteId] = new Date().toISOString();
   localStorage.setItem('noteReviews', JSON.stringify(reviews));
@@ -291,7 +291,7 @@ export const addCadenceLineToNote = (note, cadenceObj = {}, dummy = false) => {
     } else {
       lines.push(metaLine);
     }
-    console.log("lines", lines);
+    
     const updatedContent = lines.join('\n');
     updateNoteById(note.id, updatedContent);
     return updatedContent;
@@ -310,7 +310,7 @@ export const updateCadenceHoursMinutes = (note, hours, minutes) => {
     cadenceObj.hours = hours;
     cadenceObj.minutes = minutes;
   }
-  console.log('cadenceObj', cadenceObj);
+  
   return handleCadenceChange(note, hours, minutes, cadenceObj.type, cadenceObj.days, cadenceObj.time, cadenceObj.time, cadenceObj.days, cadenceObj.time, cadenceObj.day, cadenceObj.start, cadenceObj.end);
 }
 
@@ -358,7 +358,7 @@ export const handleCadenceChange = (note, hours, minutes, cadenceType, cadenceDa
   cadenceObj.start = startDate;
   cadenceObj.end = endDate;
 
-  console.log('cadenceObj', cadenceObj);
+  
   // Build single-line meta tag
   return addCadenceLineToNote(note, cadenceObj, false);
 };

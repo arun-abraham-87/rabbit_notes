@@ -347,12 +347,12 @@ const AppContent = () => {
       // Handle Option + single-key navigation shortcuts (global)
       // On Mac, altKey is true when Option is pressed
       if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
-        console.log('Option key detected:', e.key, 'altKey:', e.altKey);
+        
         
         if (e.key === 'n') {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Navigating to notes');
+          
           navigate('/notes');
           return;
         }
@@ -360,7 +360,7 @@ const AppContent = () => {
         if (e.key === 'e') {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Navigating to events');
+          
           navigate('/events');
           return;
         }
@@ -375,7 +375,7 @@ const AppContent = () => {
         if (e.key === 'b') {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Toggling left panel');
+          
           // Toggle the left panel (sidebar)
           const leftPanelToggleEvent = new CustomEvent('toggleLeftPanel');
           document.dispatchEvent(leftPanelToggleEvent);
@@ -525,7 +525,7 @@ const AppContent = () => {
       // Create a new tag using the proper API
       const response = await addNewTag(tagText);
       if (callback) await callback();
-      console.log('Tag created successfully:', response);
+      
     } catch (error) {
       console.error('Error adding tag:', error);
     }

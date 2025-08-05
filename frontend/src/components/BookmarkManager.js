@@ -1440,10 +1440,10 @@ const BookmarkManager = ({ allNotes }) => {
   // Keyboard navigation for bookmarks
   useEffect(() => {
     const handleKeyDown = (e) => {
-      console.log('Key pressed:', e.key, 'Target:', e.target.tagName);
+      
       // Only handle arrow keys when not in an input/textarea
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-        console.log('Ignoring key in input/textarea');
+        
         return;
       }
 
@@ -1522,33 +1522,33 @@ const BookmarkManager = ({ allNotes }) => {
         // Move to first bookmark (vim-like 'g' or 'gg') - when no bookmark focused
         e.preventDefault();
         e.stopPropagation();
-        console.log('Vim navigation (no focus): g pressed, filteredBookmarks.length:', filteredBookmarks.length);
+        
         if (filteredBookmarks.length > 0) {
-          console.log('Setting focusedBookmarkIndex to 0 (no focus)');
+          
           setFocusedBookmarkIndex(0);
         }
       } else if (e.key === 'G') {
         // Move to last bookmark (vim-like 'G') - when no bookmark focused
         e.preventDefault();
         e.stopPropagation();
-        console.log('Vim navigation (no focus): G pressed, filteredBookmarks.length:', filteredBookmarks.length);
+        
         if (filteredBookmarks.length > 0) {
           const lastIndex = filteredBookmarks.length - 1;
-          console.log('Setting focusedBookmarkIndex to', lastIndex, '(no focus)');
+          
           setFocusedBookmarkIndex(lastIndex);
         }
       } else if (e.key >= '0' && e.key <= '9') {
         // Start number buffer for jump navigation - when no bookmark focused
         e.preventDefault();
         e.stopPropagation();
-        console.log('Vim navigation (no focus): Number', e.key, 'pressed, current buffer:', numberBuffer);
+        
         setNumberBuffer(prev => prev + e.key);
         setIsWaitingForJump(true);
         
         // Clear number buffer after 2 seconds if no 'j' or 'k' is pressed
         setTimeout(() => {
           if (isWaitingForJump) {
-            console.log('Clearing number buffer due to timeout (no focus)');
+            
             setNumberBuffer('');
             setIsWaitingForJump(false);
           }
@@ -1558,10 +1558,10 @@ const BookmarkManager = ({ allNotes }) => {
         e.preventDefault();
         e.stopPropagation();
         const jumpAmount = parseInt(numberBuffer);
-        console.log('Vim navigation (no focus): j pressed with buffer', numberBuffer, 'jumpAmount:', jumpAmount);
+        
         if (jumpAmount > 0 && filteredBookmarks.length > 0) {
           const targetIndex = Math.min(jumpAmount - 1, filteredBookmarks.length - 1);
-          console.log('Setting focusedBookmarkIndex to', targetIndex, '(no focus)');
+          
           setFocusedBookmarkIndex(targetIndex);
         }
         setNumberBuffer('');
@@ -1571,10 +1571,10 @@ const BookmarkManager = ({ allNotes }) => {
         e.preventDefault();
         e.stopPropagation();
         const jumpAmount = parseInt(numberBuffer);
-        console.log('Vim navigation (no focus): k pressed with buffer', numberBuffer, 'jumpAmount:', jumpAmount);
+        
         if (jumpAmount > 0 && filteredBookmarks.length > 0) {
           const targetIndex = Math.max(filteredBookmarks.length - jumpAmount, 0);
-          console.log('Setting focusedBookmarkIndex to', targetIndex, '(no focus)');
+          
           setFocusedBookmarkIndex(targetIndex);
         }
         setNumberBuffer('');
@@ -1623,33 +1623,33 @@ const BookmarkManager = ({ allNotes }) => {
         // Move to first bookmark (vim-like 'g' or 'gg')
         e.preventDefault();
         e.stopPropagation();
-        console.log('Vim navigation: g pressed, filteredBookmarks.length:', filteredBookmarks.length);
+        
         if (filteredBookmarks.length > 0) {
-          console.log('Setting focusedBookmarkIndex to 0');
+          
           setFocusedBookmarkIndex(0);
         }
       } else if (e.key === 'G') {
         // Move to last bookmark (vim-like 'G')
         e.preventDefault();
         e.stopPropagation();
-        console.log('Vim navigation: G pressed, filteredBookmarks.length:', filteredBookmarks.length);
+        
         if (filteredBookmarks.length > 0) {
           const lastIndex = filteredBookmarks.length - 1;
-          console.log('Setting focusedBookmarkIndex to', lastIndex);
+          
           setFocusedBookmarkIndex(lastIndex);
         }
       } else if (e.key >= '0' && e.key <= '9') {
         // Start number buffer for jump navigation
         e.preventDefault();
         e.stopPropagation();
-        console.log('Vim navigation: Number', e.key, 'pressed, current buffer:', numberBuffer);
+        
         setNumberBuffer(prev => prev + e.key);
         setIsWaitingForJump(true);
         
         // Clear number buffer after 2 seconds if no 'j' or 'k' is pressed
         setTimeout(() => {
           if (isWaitingForJump) {
-            console.log('Clearing number buffer due to timeout');
+            
             setNumberBuffer('');
             setIsWaitingForJump(false);
           }
@@ -1659,10 +1659,10 @@ const BookmarkManager = ({ allNotes }) => {
         e.preventDefault();
         e.stopPropagation();
         const jumpAmount = parseInt(numberBuffer);
-        console.log('Vim navigation: j pressed with buffer', numberBuffer, 'jumpAmount:', jumpAmount);
+        
         if (jumpAmount > 0 && filteredBookmarks.length > 0) {
           const targetIndex = Math.min(jumpAmount - 1, filteredBookmarks.length - 1);
-          console.log('Setting focusedBookmarkIndex to', targetIndex);
+          
           setFocusedBookmarkIndex(targetIndex);
         }
         setNumberBuffer('');
@@ -1672,10 +1672,10 @@ const BookmarkManager = ({ allNotes }) => {
         e.preventDefault();
         e.stopPropagation();
         const jumpAmount = parseInt(numberBuffer);
-        console.log('Vim navigation: k pressed with buffer', numberBuffer, 'jumpAmount:', jumpAmount);
+        
         if (jumpAmount > 0 && filteredBookmarks.length > 0) {
           const targetIndex = Math.max(filteredBookmarks.length - jumpAmount, 0);
-          console.log('Setting focusedBookmarkIndex to', targetIndex);
+          
           setFocusedBookmarkIndex(targetIndex);
         }
         setNumberBuffer('');

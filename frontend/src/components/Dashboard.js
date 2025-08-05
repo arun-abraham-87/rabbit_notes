@@ -409,10 +409,10 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
     const isDashboardPage = location.pathname === '/' || location.pathname === '/dashboard';
     
     if (isDashboardPage) {
-      console.log('Dashboard: Setting up keyboard event listener');
+      
       document.addEventListener('keydown', handleKeyDown);
       return () => {
-        console.log('Dashboard: Cleaning up keyboard event listener');
+        
         document.removeEventListener('keydown', handleKeyDown);
       };
     }

@@ -10,11 +10,11 @@ const JOURNALS_DIR = path.join(__dirname, '../../journals');
 async function initJournalsDir() {
   try {
     await fs.access(JOURNALS_DIR);
-    console.log('✓ Journals directory exists');
+    
   } catch (error) {
     if (error.code === 'ENOENT') {
       await fs.mkdir(JOURNALS_DIR, { recursive: true });
-      console.log('✓ Created journals directory');
+      
     } else {
       console.error('Error accessing journals directory:', error);
       throw error;

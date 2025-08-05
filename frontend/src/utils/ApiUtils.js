@@ -16,18 +16,18 @@ export const addNewNoteCommon = async (content, tags, noteDate) => {
 };
 
 export const updateNoteById = async (id, updatedContent) => {
-    console.log('updateNoteById called with id:', id, 'updatedContent:', updatedContent);
+    
     const reorderedContent = reorderMetaTags(updatedContent);
-    console.log('reorderedContent:', reorderedContent);
+    
     const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: reorderedContent }),
     });
-    console.log('Server response status:', response.status);
+    
     if (!response.ok) throw new Error('Failed to update note');
     const result = await response.json();
-    console.log('Server response data:', result);
+    
     return result;
 };
 
@@ -135,17 +135,17 @@ export const listJournals = async () => {
 // Tag Operations
 export const loadTags = async () => {
     try {
-        //console.log('loadTags - making request to /api/objects');
+        //
         const response = await fetch(`${API_BASE_URL}/objects`);
-        //console.log('loadTags - response status:', response.status);
+        //
         if (!response.ok) {
             console.warn('Failed to fetch tags, returning empty array');
             return [];
         }
         const data = await response.json();
-        //console.log('loadTags - received data:', data);
-        //console.log('loadTags - data length:', data?.length);
-        //console.log('loadTags - suggestions in data:', data?.filter(tag => tag.text.toLowerCase().includes('suggestions')));
+        //
+        //
+        //
         return data;
     } catch (error) {
         console.warn('Error fetching tags:', error);
@@ -225,16 +225,16 @@ export const deletePerson = async (personId) => {
 };
 
 export const editTag = async (tagId, newText) => {
-    //console.log('editTag called with:', { tagId, newText });
+    //
     const response = await fetch(`${API_BASE_URL}/objects/${tagId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: newText }),
     });
-    //console.log('editTag response status:', response.status);
+    //
     if (!response.ok) {
         const errorText = await response.text();
-        //console.log('editTag error response:', errorText);
+        //
         throw new Error('Failed to edit tag');
     }
     return await response.json();

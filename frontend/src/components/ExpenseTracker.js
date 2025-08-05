@@ -15,7 +15,7 @@ ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEle
 
 const ExpenseTracker = () => {
   const { notes: allNotes, setNotes: setAllNotes, isLoading: notesLoading } = useNotes();
-  console.log('allNotes at start', allNotes.length);
+  
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [expenseTypes, setExpenseTypes] = useState(['Unassigned']);
@@ -105,8 +105,8 @@ const ExpenseTracker = () => {
   const [excludeHasTags, setExcludeHasTags] = useState(false);
 
   const parseExpenses = (notes, typeMap) => {
-    console.log('Starting parseExpenses with notes:', notes.length);
-    console.log('First few notes:', notes.slice(0, 3).map(n => ({ id: n.id, content: n.content })));
+    
+    
     
     const expenseNotes = notes.filter(note => {
       const hasExpense = note.content.includes('meta::expense');
@@ -126,8 +126,8 @@ const ExpenseTracker = () => {
       return hasExpense && !isTypeNote && !isSourceTypeNote && !isSourceNameNote;
     });
 
-    console.log('Found expense notes:', expenseNotes.length);
-    console.log('Expense notes content:', expenseNotes.map(n => ({ id: n.id, content: n.content })));
+    
+    
 
     // Parse budget allocations
     const budgetNote = notes.find(note => note.content.includes('meta::budget'));
@@ -146,7 +146,7 @@ const ExpenseTracker = () => {
     const notesMap = new Map(notes.map(note => [note.id, note]));
 
     const parsedExpenses = expenseNotes.map(note => {
-      console.log('Processing expense note:', note.id);
+      
       
       // Get linked notes
       const linkedNotes = note.content
@@ -158,7 +158,7 @@ const ExpenseTracker = () => {
         })
         .filter(linkedNote => linkedNote);
 
-      console.log('Linked notes:', linkedNotes.map(n => ({ id: n.id, content: n.content })));
+      
 
       // Get expense source type from linked notes
       const expenseSourceType = linkedNotes
@@ -176,7 +176,7 @@ const ExpenseTracker = () => {
         .find(line => !line.includes('meta::'))
         ?.trim() || '';
 
-      console.log('Source info:', { expenseSourceType, expenseSourceName });
+      
 
       // Get expense type from meta tag
       const typeLine = note.content.split('\n').find(line => line.includes('meta::expense_type::'));
@@ -204,7 +204,7 @@ const ExpenseTracker = () => {
       );
 
       if (!expenseLine) {
-        console.log('No expense line found in note:', note.id);
+        
         return null;
       }
 
@@ -249,12 +249,12 @@ const ExpenseTracker = () => {
         }
       };
 
-      console.log('Created expense object:', expense);
+      
       return expense;
     }).filter(expense => expense !== null);
 
-    console.log('Final parsed expenses:', parsedExpenses.length);
-    console.log('First few expenses:', parsedExpenses.slice(0, 3));
+    
+    
     
     return parsedExpenses;
   };
@@ -263,8 +263,8 @@ const ExpenseTracker = () => {
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
-        console.log('Starting fetchExpenses');
-        console.log('allNotes fetched from useEffect', allNotes.length);
+        
+        
         
         // Create expense type map
         const typeMap = new Map();
@@ -274,8 +274,8 @@ const ExpenseTracker = () => {
           return hasTypeTag && !hasTypeValue;
         });
 
-        console.log('Found type notes:', typeNotes.length);
-        console.log('Type notes:', typeNotes.map(n => ({ id: n.id, content: n.content })));
+        
+        
 
         typeNotes.forEach(note => {
           const typeLine = note.content.split('\n').find(line => !line.includes('meta::'));
@@ -289,15 +289,15 @@ const ExpenseTracker = () => {
         const types = ['Unassigned', ...Array.from(typeMap.values())];
         setExpenseTypes(types);
         
-        console.log('Type map:', Object.fromEntries(typeMap));
-        console.log('Expense types:', types);
         
-        console.log('allNotes- just before parseExpenses', allNotes.length);
+        
+        
+        
         const parsedExpenses = parseExpenses(allNotes, typeMap);
-        console.log('parsedExpenses', parsedExpenses.length);
+        
         setExpenses(parsedExpenses);
         setFilteredExpenses(parsedExpenses);
-        console.log('parsedExpenses', parsedExpenses.length);
+        
         calculateTotals(parsedExpenses);
       } catch (error) {
         console.error('Error loading expenses:', error);
@@ -307,7 +307,7 @@ const ExpenseTracker = () => {
     };
 
     if (!notesLoading && allNotes.length > 0) {
-      console.log('Calling fetchExpenses');
+      
       fetchExpenses();
     }
   }, [allNotes, notesLoading]);

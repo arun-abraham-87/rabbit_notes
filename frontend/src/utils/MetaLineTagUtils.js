@@ -32,7 +32,7 @@ export const replace_mlt_in_line = (line, new_mlt) => {
 
 export const get_all_params = (mlt_line) => {
     const params = mlt_line.split('|');
-   // console.log('params', params);
+   // 
     return {
         tag_type_expense: params[0],
         tag_type_income: params[1],
@@ -91,7 +91,7 @@ export const get_expense_type = (mlt_line) => {
 
 export const set_value_in_mlt = (mlt_line, type, value) => {
     const params = get_all_params(mlt_line);
-    console.log('params', params);
+    
     if (type === tag_type_expense) {
         params.tag_type_expense = value;
     } else if (type === tag_type_income) {
@@ -208,16 +208,16 @@ export const get_basic_mlt = () => {
 }
 
 export const set_tags_in_mlt = async (note_content, note_id, line_index, tags) => {
-    console.log('set_tags_in_mlt', note_id, line_index, tags);
+    
     let line = get_line_from_note(note_content, line_index);
-    console.log('line', line);
+    
     let mlt_line = line_has_mlt(line) ? extract_mlt_from_line(line) : get_basic_mlt();
-    console.log('mlt_line1', mlt_line);
+    
     mlt_line = set_value_in_mlt(mlt_line, tag_type_tags, tags.length > 0 ? `<${tags.join(',')}>` : '');
-    console.log('mlt_line2', mlt_line);
+    
     let replaced_line = replace_mlt_in_line(line, mlt_line);
 
-    console.log('replaced_line', replaced_line);
+    
     let replaced_note_content = replace_line_in_note(note_content, line_index, replaced_line);
 
     if (note_id) {

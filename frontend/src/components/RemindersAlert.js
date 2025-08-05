@@ -240,11 +240,11 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
             window.open(links[0].url, '_blank');
           } else if (links.length > 1) {
             // Show popup with multiple links (similar to NotesList functionality)
-            console.log('Multiple links found:', links);
+            
             // For now, just open the first link
             window.open(links[0].url, '_blank');
           } else {
-            console.log('No URLs found in reminder');
+            
           }
         }
       } else if (e.key === 'l' && focusedReminderIndex >= 0) {
@@ -288,11 +288,11 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
             window.open(links[0].url, '_blank');
           } else if (links.length > 1) {
             // Show popup with multiple links (similar to NotesList functionality)
-            console.log('Multiple links found:', links);
+            
             // For now, just open the first link
             window.open(links[0].url, '_blank');
           } else {
-            console.log('No URLs found in reminder');
+            
           }
         }
       }
@@ -539,14 +539,14 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const getTimeSinceActive = (note) => {
     const lastReview = getLastReviewObject(note);
     if (!lastReview) {
-      console.log('No last review found for note:', note.id);
+      
       return 'no review history';
     }
     
     // Get the cadence from the note
     const cadenceMatch = note.content.match(/meta::cadence::([^\n]+)/);
     if (!cadenceMatch) {
-      console.log('No cadence found for note:', note.id);
+      
       return 'no cadence set';
     }
     
@@ -555,7 +555,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     
     // Validate the date
     if (isNaN(lastReviewDate.getTime())) {
-      console.log('Invalid last review date for note:', note.id, lastReview.date);
+      
       return 'invalid date';
     }
     
@@ -563,7 +563,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     const nextReviewDate = new Date(lastReviewDate);
     const match = cadence.match(/(\d+)([hd])/);
     if (!match) {
-      console.log('Invalid cadence format for note:', note.id, cadence);
+      
       return 'invalid cadence';
     }
     

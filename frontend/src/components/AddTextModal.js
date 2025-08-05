@@ -8,20 +8,20 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('handleSubmit called with customText:', customText, 'customUrl:', customUrl);
+    
     if (customText.trim() && customUrl.trim()) {
       // Check if the custom text was selected from the note
       const wasSelectedFromNote = availableTextOptions.some(option => option.value === customText);
-      console.log('wasSelectedFromNote:', wasSelectedFromNote);
+      
       
       if (wasSelectedFromNote) {
         // Remove the selected text from the note content
         const updatedContent = noteContent.replace(customText, '');
-        console.log('Saving with text removal. customText:', customText, 'updatedContent:', updatedContent);
+        
         onSave(noteId, customUrl.trim(), customText.trim(), updatedContent);
       } else {
         // Use original note content (no text removal)
-        console.log('Saving without text removal. customText:', customText, 'noteContent:', noteContent);
+        
         onSave(noteId, customUrl.trim(), customText.trim(), noteContent);
       }
       
@@ -57,9 +57,9 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
   };
 
   const handleDropdownSelection = (selectedValue) => {
-    console.log('Dropdown selection:', selectedValue);
+    
     if (selectedValue) {
-      console.log('Setting custom text to:', selectedValue);
+      
       setCustomText(selectedValue);
       // Don't save immediately - just populate the custom text field
     }
@@ -77,13 +77,13 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
   // Handle Cmd+Enter to save and close
   useEffect(() => {
     const handleKeyDown = (e) => {
-      console.log('AddTextModal keydown:', e.key, 'metaKey:', e.metaKey, 'ctrlKey:', e.ctrlKey, 'isOpen:', isOpen);
+      
       if (isOpen && (e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        console.log('Cmd+Enter detected in AddTextModal');
+        
         e.preventDefault();
-        console.log('customText:', customText, 'customUrl:', customUrl);
+        
         if (customText.trim() && customUrl.trim()) {
-          console.log('Saving with Cmd+Enter');
+          
           
           // Check if the custom text was selected from the note
           const wasSelectedFromNote = availableTextOptions.some(option => option.value === customText);
@@ -101,16 +101,16 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
           setCustomUrl('');
           onClose();
         } else {
-          console.log('Validation failed - missing text or URL');
+          
         }
       }
     };
 
     if (isOpen) {
-      console.log('AddTextModal: Setting up keydown listener');
+      
       document.addEventListener('keydown', handleKeyDown);
       return () => {
-        console.log('AddTextModal: Cleaning up keydown listener');
+        
         document.removeEventListener('keydown', handleKeyDown);
       };
     }
@@ -136,9 +136,9 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
         <form onSubmit={handleSubmit} className="p-6" onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
             e.preventDefault();
-            console.log('Form Cmd+Enter detected');
+            
             if (customText.trim() && customUrl.trim()) {
-              console.log('Form saving with Cmd+Enter');
+              
               
               // Check if the custom text was selected from the note
               const wasSelectedFromNote = availableTextOptions.some(option => option.value === customText);
@@ -170,9 +170,9 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                   e.preventDefault();
-                  console.log('Input Cmd+Enter detected');
+                  
                   if (customText.trim() && customUrl.trim()) {
-                    console.log('Input saving with Cmd+Enter');
+                    
                     
                     // Check if the custom text was selected from the note
                     const wasSelectedFromNote = availableTextOptions.some(option => option.value === customText);
@@ -211,9 +211,9 @@ const AddTextModal = ({ isOpen, onClose, onSave, noteId, url, isEditing = false,
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                   e.preventDefault();
-                  console.log('URL Input Cmd+Enter detected');
+                  
                   if (customText.trim() && customUrl.trim()) {
-                    console.log('URL Input saving with Cmd+Enter');
+                    
                     
                     // Check if the custom text was selected from the note
                     const wasSelectedFromNote = availableTextOptions.some(option => option.value === customText);

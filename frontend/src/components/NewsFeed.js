@@ -33,11 +33,11 @@ const NewsFeed = () => {
       try {
         const response = await loadAllNotes();
         const notes = response.notes || [];
-        console.log('Total notes:', notes.length);
+        
         
         const apiKeyNote = notes.find(note => {
           if (!note?.content) {
-            console.log('Note has no content:', note.id);
+            
             return false;
           }
           const lines = note.content.split('\n');
@@ -45,14 +45,14 @@ const NewsFeed = () => {
           const hasMetaTag = lines.some(line => {
             const trimmed = line.trim();
             const found = trimmed.includes('meta::api_key');
-            if (found) console.log('Found meta tag in line:', trimmed);
+            if (found) 
             return found;
           });
           
           const hasApiKey = lines.some(line => {
             const trimmed = line.trim();
             const found = trimmed.startsWith('newsapikey:');
-            if (found) console.log('Found API key in line:', trimmed);
+            if (found) 
             return found;
           });
           
@@ -67,25 +67,25 @@ const NewsFeed = () => {
         });
 
         if (apiKeyNote) {
-          console.log('apiKeyNote:', apiKeyNote);
+          
           if (!apiKeyNote.content) {
-            console.log('Note found but has no content');
+            
             setError("API key not found. Please add a line starting with 'newsapikey:' to the note with meta::api_key");
             return;
           }
           const apiKeyLine = apiKeyNote.content.split('\n').find(line => line.trim().startsWith('newsapikey:'));
-          console.log('apiKeyLine:', apiKeyLine);
+          
           if (apiKeyLine) {
             const key = apiKeyLine.split('newsapikey:')[1].trim();
-            console.log('Found NewsAPI key in note:', apiKeyNote.id);
-            console.log('API key:', key);
+            
+            
             setApiKey(key);
           } else {
-            console.log('Note with meta::api_key found but no newsapikey: line');
+            
             setError("API key not found. Please add a line starting with 'newsapikey:' to the note with meta::api_key");
           }
         } else {
-          console.log('No note found with both meta::api_key and newsapikey:');
+          
           setError("API key not found. Please create a note with meta::api_key and a line starting with 'newsapikey:'");
         }
       } catch (err) {

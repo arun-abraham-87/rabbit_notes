@@ -214,8 +214,8 @@ const formatDateString = (date) => {
 };
 
 const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [], content = '') => {
-  ////console.log('finding occurence');
-  ////console.log(recurrenceType);
+  ////
+  ////
   // Ensure meetingTime is a Date object
   const meetingDateObj = meetingTime instanceof Date ? meetingTime : new Date(meetingTime);
   const now = new Date();
@@ -295,8 +295,8 @@ const calculateNextOccurrence = (meetingTime, recurrenceType, selectedDays = [],
           nextDay = dayIndex;
         }
       });
-      ////console.log(recurrenceType);
-      ////console.log('Next day:', nextDay);
+      ////
+      ////
       if (nextDay === null) return null;
 
       nextDate.setDate(now.getDate() + minDiff);
@@ -461,7 +461,7 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
   }, [notes]);
 
   const bookmarkedUrls = useMemo(() => {
-    //console.log('LeftPanel: Recalculating bookmarkedUrls, notes count:', notes.length, 'pinUpdateTrigger:', pinUpdateTrigger);
+    //
     const seen = new Set();
     const list = [];
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+)/g;
@@ -486,13 +486,13 @@ const LeftPanel = ({ notes, setNotes, selectedNote, setSelectedNote, searchQuery
           if (!seen.has(key)) {
             seen.add(key);
             const isPinned = note.content.split('\n').some(line => line.trim().startsWith('meta::bookmark_pinned'));
-            //console.log('LeftPanel: Bookmark', url, 'isPinned:', isPinned, 'noteId:', note.id);
+            //
             list.push({ url, label, noteId: note.id, isPinned });
           }
         }
       }
     });
-    //console.log('LeftPanel: Final list has', list.length, 'bookmarks');
+    //
     // Sort bookmarks: pinned first, then unpinned
     return list.sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;

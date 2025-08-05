@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import NoteEditor from './NoteEditor';
+import React, { useState, useEffect, useRef } from 'react';
 import InlineEditor from './InlineEditor';
 import { PlusIcon } from '@heroicons/react/24/solid';
 import {
@@ -64,7 +63,6 @@ export default function NoteContent({
     // Drag and drop state
     const [draggedLineIndex, setDraggedLineIndex] = useState(null);
     const [dragOverLineIndex, setDragOverLineIndex] = useState(null);
-    const [isDragging, setIsDragging] = useState(false);
     
     // Grammar check state
     const [grammarResults, setGrammarResults] = useState(null);
@@ -76,7 +74,6 @@ export default function NoteContent({
     const [multiMoveSelectedRows, setMultiMoveSelectedRows] = useState(new Set());
     const [multiMoveError, setMultiMoveError] = useState('');
     const [isDraggingMultiMove, setIsDraggingMultiMove] = useState(false);
-    const [draggedMultiMoveSection, setDraggedMultiMoveSection] = useState(null);
 
     // Code block state
     const [codeBlockMode, setCodeBlockMode] = useState(false);
@@ -348,21 +345,6 @@ export default function NoteContent({
             }
         }
         return false;
-    };
-
-    const getCodeBlockStyle = (lineIndex) => {
-        if (!isCodeBlockLine(lineIndex)) return {};
-        
-        return {
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-            backgroundColor: '#f9fafb',
-            padding: '8px',
-            margin: '4px 0',
-            fontFamily: 'monospace',
-            fontSize: '0.875rem',
-            lineHeight: '1.25rem'
-        };
     };
 
     const isCodeBlockStart = (lineIndex) => {
@@ -839,12 +821,10 @@ export default function NoteContent({
         }));
         
         setIsDraggingMultiMove(true);
-        setDraggedMultiMoveSection({ indices: sortedIndices, lines: sectionLines });
     };
 
     const handleMultiMoveDragEnd = () => {
         setIsDraggingMultiMove(false);
-        setDraggedMultiMoveSection(null);
     };
 
     const handleMultiMoveDrop = (e, targetLineIndex) => {
@@ -930,7 +910,6 @@ export default function NoteContent({
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', lineIndex.toString());
         setDraggedLineIndex(lineIndex);
-        setIsDragging(true);
     };
 
     const handleDragOver = (e, lineIndex) => {
@@ -977,7 +956,6 @@ export default function NoteContent({
             if (sourceLineIndex === targetLineIndex) {
                 setDraggedLineIndex(null);
                 setDragOverLineIndex(null);
-                setIsDragging(false);
                 return;
             }
 
@@ -1001,7 +979,6 @@ export default function NoteContent({
             // Reset drag state
             setDraggedLineIndex(null);
             setDragOverLineIndex(null);
-            setIsDragging(false);
         } catch (error) {
             console.error('Error in handleDrop:', error);
         }
@@ -1010,7 +987,6 @@ export default function NoteContent({
     const handleDragEnd = () => {
         setDraggedLineIndex(null);
         setDragOverLineIndex(null);
-        setIsDragging(false);
     };
 
     const renderInlineEditor = (idx, isH1, isH2) => (

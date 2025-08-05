@@ -303,7 +303,6 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
           
           
           // Check if the blur is happening immediately after focus
-          const now = Date.now();
           
           
           // If blur happens too quickly after focus, try to prevent it

@@ -1,17 +1,9 @@
 import moment from 'moment';
 
-// Constants for date formatting
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const DATE_REGEX = /\b(\d{2})\/(\d{2})\/(\d{4})\b|\b(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g;
-
 /**
- * Checks if a date string matches today's date
- * Supports multiple date formats:
- * 1. "YYYY-MM-DD"
- * 2. "DD/MM/YYYY"
- * 3. "DD-MM-YYYY"
- * @param {string} dateString - The date string to check
- * @returns {boolean} True if the date matches today, false otherwise
+ * Checks if a date string is the same as today's date
+ * @param {string} dateString - Date string in format "DD/MM/YYYY" or "YYYY-MM-DD"
+ * @returns {boolean} True if the date is today, false otherwise
  */
 export const isSameAsTodaysDate = (dateString) => {
   if (!dateString) return false;

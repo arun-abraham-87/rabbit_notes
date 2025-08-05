@@ -1,6 +1,4 @@
-import React, { useState } from 'react';
-import LinkPreview from '../components/LinkPreview';
-import LinkWithPreview from '../components/LinkWithPreview';
+import React from 'react';
 
 /**
  * Comprehensive function to parse and format note content
@@ -77,27 +75,6 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText })
   });
 
   return processedElements;
-};
-
-/**
- * Parse and format a URL for display
- * @param {string} url - The URL to parse
- * @returns {string} - The formatted display text for the URL
- */
-const parseUrl = (url) => {
-  //('url', url);
-  return url;
-
-};
-
-/**
- * Extract URL from markdown link format [text](url)
- * @param {string} text - The text containing the markdown link
- * @returns {string|null} - The extracted URL or null if not found
- */
-const extractUrlFromMarkdown = (text) => {
-  const match = text.match(/\[[^\]]+\]\((https?:\/\/[^\s)]+)\)/);
-  return match ? match[1] : null;
 };
 
 /**
@@ -400,9 +377,14 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
     
     let urlElement = (
       <span key={`url-${lineIndex}`} className="inline-flex items-center gap-1">
-        <LinkWithPreview url={url}>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline hover:text-blue-800"
+        >
           {hostname}
-        </LinkWithPreview>
+        </a>
         <button
           onClick={() => onAddText && onAddText(url)}
           className="px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150"
@@ -425,9 +407,14 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
     
     let urlElement = (
       <span key={`url-${lineIndex}`} className="inline-flex items-center gap-1">
-        <LinkWithPreview url={originalUrl}>
+        <a
+          href={originalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline hover:text-blue-800"
+        >
           {hostname}
-        </LinkWithPreview>
+        </a>
         <button
           onClick={() => onAddText && onAddText(originalUrl)}
           className="px-1 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors duration-150"
@@ -491,13 +478,18 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
         const linkIndicator = getLinkTypeIndicator(originalUrl);
         const linkElement = (
           <span key={`url-${lineIndex}-${i}`} className="inline-flex items-center gap-1">
-            <LinkWithPreview url={originalUrl}>
+            <a
+              href={originalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
               {linkIndicator ? (
                 <>
                   {linkMatch.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
                 </>
               ) : linkMatch.customText}
-            </LinkWithPreview>
+            </a>
             <button
               onClick={() => onEditText && onEditText(originalUrl, linkMatch.customText)}
               className="px-1 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
@@ -547,8 +539,8 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
         }
 
         // Handle URLs
-        if (char === 'h' && processedContent.slice(i, i + 7) === 'http://' ||
-          char === 'h' && processedContent.slice(i, i + 8) === 'https://') {
+        if ((char === 'h' && processedContent.slice(i, i + 7) === 'http://') ||
+          (char === 'h' && processedContent.slice(i, i + 8) === 'https://')) {
           if (currentText) {
             elements.push(...highlightSearchTerm(currentText, searchTerm, `text-${lineIndex}-${i}`));
             currentText = '';

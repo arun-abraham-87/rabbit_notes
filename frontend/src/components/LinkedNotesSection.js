@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ChevronUpIcon, ChevronDownIcon, ArrowSmallUpIcon, ArrowSmallDownIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 
@@ -14,11 +14,9 @@ export default function LinkedNotesSection({
   initiallyOpen = false,
 }) {
   const [open, setOpen] = useState(initiallyOpen);
-  const [showRawNote, setShowRawNote] = useState(null);
   const [showMetaTags, setShowMetaTags] = useState({});
   const [hoveredNote, setHoveredNote] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [deletingLinkId, setDeletingLinkId] = useState(null);
 
   // Extract linked IDs in order
   const orderedIds = useMemo(() => {

@@ -53,7 +53,10 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const numberBufferRef = useRef('');
   const [showGroupDropdown, setShowGroupDropdown] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
-  const [groupByMode, setGroupByMode] = useState('color'); // 'color', 'title', or 'cadence'
+  const [groupByMode, setGroupByMode] = useState(() => {
+    const saved = localStorage.getItem('remindersGroupByMode');
+    return saved ? saved : 'color'; // 'color', 'title', or 'cadence'
+  });
 
   // Function to get color for a specific reminder
   const getReminderColor = (noteId) => {
@@ -86,8 +89,14 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     
     // If enabling yellow mode, switch away from color grouping
     if (newYellowMode && groupByMode === 'color') {
-      setGroupByMode('title');
+      handleGroupByModeChange('title');
     }
+  };
+
+  // Function to handle group by mode change
+  const handleGroupByModeChange = (newMode) => {
+    setGroupByMode(newMode);
+    localStorage.setItem('remindersGroupByMode', newMode);
   };
 
   // Function to determine cadence type from a note
@@ -1230,7 +1239,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
               <span className="text-xs font-medium text-gray-700">Group by:</span>
               {!yellowMode && (
                 <button
-                  onClick={() => setGroupByMode('color')}
+                  onClick={() => handleGroupByModeChange('color')}
                   className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
                     groupByMode === 'color'
                       ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
@@ -1241,7 +1250,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                 </button>
               )}
               <button
-                onClick={() => setGroupByMode('title')}
+                onClick={() => handleGroupByModeChange('title')}
                 className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
                   groupByMode === 'title'
                     ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
@@ -1251,7 +1260,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                 Title
               </button>
               <button
-                onClick={() => setGroupByMode('cadence')}
+                onClick={() => handleGroupByModeChange('cadence')}
                 className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
                   groupByMode === 'cadence'
                     ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
@@ -1537,7 +1546,6 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
 
               {/* Yellow Mode Toggle for Upcoming Reminders */}
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-gray-700">Yellow Mode:</span>
                 <button
                   onClick={handleYellowModeToggle}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 ${

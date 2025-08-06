@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import NoteCardHeader from './NoteCardHeader';
 import NoteCardContent from './NoteCardContent';
+import NoteCardFooter from './NoteCardFooter';
 import NoteTagBar from './NoteTagBar';
 import NoteCardSuperEditBanner from './NoteCardSuperEditBanner';
 import NoteCardLinkedNotes from './NoteCardLinkedNotes';
@@ -916,6 +917,20 @@ const NoteCard = ({
           allNotes={allNotes}
           onNavigate={onNavigate}
           updateNote={updateNote}
+        />
+        
+        <NoteCardFooter
+          note={note}
+          showCreatedDate={showCreatedDate}
+          handleDelete={handleDelete}
+          setPopupNoteText={setPopupNoteText}
+          setLinkingNoteId={setLinkingNoteId}
+          setLinkSearchTerm={setLinkSearchTerm}
+          setLinkPopupVisible={setLinkPopupVisible}
+          selectedNotes={selectedNotes}
+          toggleNoteSelection={toggleNoteSelection}
+          updateNote={updateNote}
+          focusMode={focusMode}
         />
       </div>
     </div>

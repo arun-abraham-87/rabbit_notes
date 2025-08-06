@@ -44,14 +44,22 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   const [editingGroupName, setEditingGroupName] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('');
   const [selectedColorFilter, setSelectedColorFilter] = useState('');
+  const [selectedCadenceFilter, setSelectedCadenceFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [yellowMode, setYellowMode] = useState(() => {
+    const saved = localStorage.getItem('remindersYellowMode');
+    return saved ? JSON.parse(saved) : false;
+  });
   const numberBufferRef = useRef('');
   const [showGroupDropdown, setShowGroupDropdown] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
-  const [groupByMode, setGroupByMode] = useState('color'); // 'color' or 'title'
+  const [groupByMode, setGroupByMode] = useState('color'); // 'color', 'title', or 'cadence'
 
   // Function to get color for a specific reminder
   const getReminderColor = (noteId) => {
+    if (yellowMode) {
+      return 'yellow'; // Force yellow when yellow mode is enabled
+    }
     return reminderColors[noteId] || 'yellow'; // Default to yellow
   };
 
@@ -68,6 +76,76 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     setReminderColors(newColors);
     localStorage.setItem('reminderColors', JSON.stringify(newColors));
     setShowColorSelector(null);
+  };
+
+  // Function to handle yellow mode toggle
+  const handleYellowModeToggle = () => {
+    const newYellowMode = !yellowMode;
+    setYellowMode(newYellowMode);
+    localStorage.setItem('remindersYellowMode', JSON.stringify(newYellowMode));
+    
+    // If enabling yellow mode, switch away from color grouping
+    if (newYellowMode && groupByMode === 'color') {
+      setGroupByMode('title');
+    }
+  };
+
+  // Function to determine cadence type from a note
+  const getCadenceType = (note) => {
+    const currentCadence = getCurrentCadence(note);
+    if (!currentCadence) return 'No Cadence';
+    
+    // Handle new format
+    if (typeof currentCadence === 'object') {
+      const meta = currentCadence;
+      
+      if (meta.type === 'every-x-hours') {
+        const hours = meta.hours || 0;
+        const minutes = meta.minutes || 0;
+        const totalHours = hours + (minutes / 60);
+        
+        if (totalHours < 24) return 'Hourly';
+        if (totalHours === 24) return 'Daily';
+        const days = Math.round(totalHours / 24);
+        if (days < 7) return 'Daily';
+        if (days < 30) return 'Weekly';
+        if (days < 365) return 'Monthly';
+        return 'Yearly';
+      } else if (meta.type === 'daily') {
+        return 'Daily';
+      } else if (meta.type === 'weekly') {
+        return 'Weekly';
+      } else if (meta.type === 'monthly') {
+        return 'Monthly';
+      }
+    }
+    
+    // Handle old format
+    if (typeof currentCadence === 'string') {
+      const match = currentCadence.match(/(\d+)([hd])/);
+      if (!match) return 'Unknown';
+      
+      const [, amount, unit] = match;
+      const num = parseInt(amount);
+      
+      if (unit === 'h') {
+        if (num < 24) return 'Hourly';
+        if (num === 24) return 'Daily';
+        const days = Math.round(num / 24);
+        if (days < 7) return 'Daily';
+        if (days < 30) return 'Weekly';
+        if (days < 365) return 'Monthly';
+        return 'Yearly';
+      } else if (unit === 'd') {
+        if (num === 1) return 'Daily';
+        if (num < 7) return 'Daily';
+        if (num < 30) return 'Weekly';
+        if (num < 365) return 'Monthly';
+        return 'Yearly';
+      }
+    }
+    
+    return 'Unknown';
   };
 
   // Function to group reminders by color
@@ -91,8 +169,37 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     return grouped;
   };
 
+  const groupRemindersByCadence = (reminders) => {
+    const grouped = {};
+    reminders.forEach(reminder => {
+      const cadenceType = getCadenceType(reminder.note);
+      if (!grouped[cadenceType]) grouped[cadenceType] = [];
+      grouped[cadenceType].push(reminder);
+    });
+    return grouped;
+  };
+
   const getGroupedReminders = (reminders) => {
-    return groupByMode === 'color' ? groupRemindersByColor(reminders) : groupRemindersByTitle(reminders);
+    if (groupByMode === 'color') return groupRemindersByColor(reminders);
+    if (groupByMode === 'title') return groupRemindersByTitle(reminders);
+    if (groupByMode === 'cadence') return groupRemindersByCadence(reminders);
+    return groupRemindersByColor(reminders); // Default fallback
+  };
+
+  const getFlatRemindersList = () => {
+    const filteredActiveReminders = applyAllFilters(reminderObjs);
+    const filteredUpcomingReminders = applyAllFilters(upcomingReminders);
+    return [...filteredActiveReminders, ...filteredUpcomingReminders];
+  };
+
+  const getReminderByIndex = (index) => {
+    const flatList = getFlatRemindersList();
+    return flatList[index];
+  };
+
+  const getReminderIndex = (reminderObj) => {
+    const flatList = getFlatRemindersList();
+    return flatList.findIndex(item => item.note.id === reminderObj.note.id);
   };
 
   // Function to get unique group names from reminders
@@ -119,7 +226,13 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     return reminders.filter(reminder => getReminderColor(reminder.note.id) === colorName);
   };
 
-  // Function to apply both color and group filters
+  // Function to filter reminders by cadence
+  const filterRemindersByCadence = (reminders, cadenceType) => {
+    if (!cadenceType) return reminders;
+    return reminders.filter(reminder => getCadenceType(reminder.note) === cadenceType);
+  };
+
+  // Function to apply color, group, and cadence filters
   const applyFilters = (reminders) => {
     let filtered = reminders;
     if (selectedColorFilter) {
@@ -127,6 +240,9 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     }
     if (selectedGroupFilter) {
       filtered = filterRemindersByGroup(filtered, selectedGroupFilter);
+    }
+    if (selectedCadenceFilter) {
+      filtered = filterRemindersByCadence(filtered, selectedCadenceFilter);
     }
     return filtered;
   };
@@ -156,7 +272,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     });
   };
 
-  // Function to apply all filters (search + color + group)
+  // Function to apply all filters (search + color + group + cadence)
   const applyAllFilters = (reminders) => {
     let filtered = reminders;
     
@@ -165,12 +281,15 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
       filtered = fuzzySearch(filtered, searchQuery);
     }
     
-    // Apply color and group filters
+    // Apply color, group, and cadence filters
     if (selectedColorFilter) {
       filtered = filterRemindersByColor(filtered, selectedColorFilter);
     }
     if (selectedGroupFilter) {
       filtered = filterRemindersByGroup(filtered, selectedGroupFilter);
+    }
+    if (selectedCadenceFilter) {
+      filtered = filterRemindersByCadence(filtered, selectedCadenceFilter);
     }
     
     return filtered;
@@ -184,6 +303,11 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
   // Function to handle color filter selection
   const handleColorFilterSelect = (colorName) => {
     setSelectedColorFilter(selectedColorFilter === colorName ? '' : colorName);
+  };
+
+  // Function to handle cadence filter selection
+  const handleCadenceFilterSelect = (cadenceType) => {
+    setSelectedCadenceFilter(selectedCadenceFilter === cadenceType ? '' : cadenceType);
   };
 
   // Function to get group name for a specific reminder
@@ -290,7 +414,8 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-      const totalReminders = reminderObjs.length + upcomingReminders.length;
+      const flatReminders = getFlatRemindersList();
+      const totalReminders = flatReminders.length;
       if (totalReminders === 0) return;
 
       // Handle number input for jump navigation (like 4j)
@@ -381,8 +506,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
         e.preventDefault();
         e.stopPropagation();
         // Handle 's' key - snooze the focused reminder
-        const allReminders = [...reminderObjs, ...upcomingReminders];
-        const focusedReminder = allReminders[focusedReminderIndex];
+        const focusedReminder = getReminderByIndex(focusedReminderIndex);
         if (focusedReminder) {
           // Snooze the focused reminder and move focus to next item
           handleDismissAndMoveFocus(focusedReminder.note);
@@ -1011,9 +1135,25 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                 )}
               </div>
 
-              {/* Color and Group Filter Buttons */}
+              {/* Yellow Mode Toggle */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleYellowModeToggle}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 ${
+                    yellowMode ? 'bg-yellow-500' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      yellowMode ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Color, Group, and Cadence Filter Buttons */}
               <div className="flex flex-wrap gap-1 flex-1">
-                {Object.entries(groupRemindersByColor(reminderObjs)).map(([colorName, colorReminders]) => {
+                {!yellowMode && Object.entries(groupRemindersByColor(reminderObjs)).map(([colorName, colorReminders]) => {
                   const colorConfig = REMINDER_COLORS.find(c => c.name === colorName) || REMINDER_COLORS[0];
                   return (
                     <button
@@ -1045,13 +1185,37 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                     {groupName} ({filterRemindersByGroup(reminderObjs, groupName).length})
                   </button>
                 ))}
+                {Object.entries(groupRemindersByCadence(reminderObjs)).map(([cadenceType, cadenceReminders]) => (
+                  <button
+                    key={cadenceType}
+                    onClick={() => handleCadenceFilterSelect(cadenceType)}
+                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
+                      selectedCadenceFilter === cadenceType
+                        ? 'bg-purple-100 text-purple-700 border-purple-300 ring-1 ring-purple-300'
+                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <div className={`w-2 h-2 rounded-full ${
+                        cadenceType === 'Hourly' ? 'bg-blue-500' :
+                        cadenceType === 'Daily' ? 'bg-green-500' :
+                        cadenceType === 'Weekly' ? 'bg-yellow-500' :
+                        cadenceType === 'Monthly' ? 'bg-orange-500' :
+                        cadenceType === 'Yearly' ? 'bg-red-500' :
+                        'bg-gray-500'
+                      } border border-gray-300`}></div>
+                      <span>{cadenceType} ({cadenceReminders.length})</span>
+                    </div>
+                  </button>
+                ))}
               </div>
 
-              {(selectedColorFilter || selectedGroupFilter || searchQuery) && (
+              {(selectedColorFilter || selectedGroupFilter || selectedCadenceFilter || searchQuery) && (
                 <button
                   onClick={() => {
                     setSelectedColorFilter('');
                     setSelectedGroupFilter('');
+                    setSelectedCadenceFilter('');
                     setSearchQuery('');
                   }}
                   className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-300 rounded hover:bg-gray-100 transition-colors duration-150"
@@ -1064,16 +1228,18 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
             {/* Group By Buttons */}
             <div className="flex items-center gap-2 mb-4">
               <span className="text-xs font-medium text-gray-700">Group by:</span>
-              <button
-                onClick={() => setGroupByMode('color')}
-                className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
-                  groupByMode === 'color'
-                    ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
-                    : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                }`}
-              >
-                Color
-              </button>
+              {!yellowMode && (
+                <button
+                  onClick={() => setGroupByMode('color')}
+                  className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
+                    groupByMode === 'color'
+                      ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
+                      : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                  }`}
+                >
+                  Color
+                </button>
+              )}
               <button
                 onClick={() => setGroupByMode('title')}
                 className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
@@ -1083,6 +1249,16 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                 }`}
               >
                 Title
+              </button>
+              <button
+                onClick={() => setGroupByMode('cadence')}
+                className={`px-3 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
+                  groupByMode === 'cadence'
+                    ? 'bg-blue-100 text-blue-700 border-blue-300 ring-1 ring-blue-300'
+                    : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                }`}
+              >
+                Cadence
               </button>
             </div>
             
@@ -1096,6 +1272,20 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       <div className={`w-3 h-3 rounded-full ${REMINDER_COLORS.find(c => c.name === groupName)?.bg.replace('bg-', 'bg-').replace('-100', '-500')} border ${REMINDER_COLORS.find(c => c.name === groupName)?.border}`}></div>
                       <span className="text-sm font-medium text-gray-700 capitalize">{groupName} ({groupReminders.length})</span>
                     </div>
+                  ) : groupByMode === 'title' ? (
+                    <span className="text-sm font-medium text-gray-700">{groupName} ({groupReminders.length})</span>
+                  ) : groupByMode === 'cadence' ? (
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${
+                        groupName === 'Hourly' ? 'bg-blue-500' :
+                        groupName === 'Daily' ? 'bg-green-500' :
+                        groupName === 'Weekly' ? 'bg-yellow-500' :
+                        groupName === 'Monthly' ? 'bg-orange-500' :
+                        groupName === 'Yearly' ? 'bg-red-500' :
+                        'bg-gray-500'
+                      } border border-gray-300`}></div>
+                      <span className="text-sm font-medium text-gray-700">{groupName} ({groupReminders.length})</span>
+                    </div>
                   ) : (
                     <span className="text-sm font-medium text-gray-700">{groupName} ({groupReminders.length})</span>
                   )}
@@ -1107,7 +1297,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                     const note = reminderObj.note;
                     const isDetailsExpanded = expandedDetails[note.id];
                     const isHovered = hoveredNote === note.id;
-                    const isFocused = isRemindersOnlyMode && focusedReminderIndex === reminderObjs.indexOf(reminderObj);
+                    const isFocused = isRemindersOnlyMode && focusedReminderIndex === getReminderIndex(reminderObj);
                     const contentLines = note.content
                       .split('\n')
                       .map(line => line.trim())
@@ -1131,7 +1321,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                         onMouseLeave={() => setHoveredNote(null)}
                         onClick={() => {
                           if (isRemindersOnlyMode) {
-                            setFocusedReminderIndex(index);
+                            setFocusedReminderIndex(getReminderIndex(reminderObj));
                           }
                         }}
                       >
@@ -1142,7 +1332,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                               {isRemindersOnlyMode && showRelativeNumbers && (
                                 <div className="flex-shrink-0">
                                   <div className="text-xs font-mono font-bold text-gray-600 px-2 py-1 min-w-[2rem] text-center">
-                                    {getRelativePosition(index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}
+                                    {getRelativePosition(getReminderIndex(reminderObj), focusedReminderIndex, getFlatRemindersList().length)}
                                   </div>
                                 </div>
                               )}
@@ -1266,24 +1456,26 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                           {expandedOptions[note.id] && !showCadenceSelector && (
                             <div className="px-6 py-3 border-t border-gray-200" style={{ backgroundColor: 'inherit' }}>
                               <div className="flex justify-between items-center">
-                                {/* Color selector */}
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-gray-600">Color:</span>
-                                  <div className="flex gap-2">
-                                    {REMINDER_COLORS.map((color) => (
-                                      <button
-                                        key={color.name}
-                                        onClick={() => handleColorSelect(note.id, color.name)}
-                                        className={`w-6 h-6 rounded-full border-2 transition-all duration-150 ${
-                                          getReminderColor(note.id) === color.name 
-                                            ? 'border-gray-600 scale-110' 
-                                            : 'border-gray-300 hover:border-gray-400'
-                                        } ${color.bg.replace('bg-', 'bg-').replace('-100', '-500')}`}
-                                        title={color.name}
-                                      />
-                                    ))}
+                                {/* Color selector - hidden when yellow mode is enabled */}
+                                {!yellowMode && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-gray-600">Color:</span>
+                                    <div className="flex gap-2">
+                                      {REMINDER_COLORS.map((color) => (
+                                        <button
+                                          key={color.name}
+                                          onClick={() => handleColorSelect(note.id, color.name)}
+                                          className={`w-6 h-6 rounded-full border-2 transition-all duration-150 ${
+                                            getReminderColor(note.id) === color.name 
+                                              ? 'border-gray-600 scale-110' 
+                                              : 'border-gray-300 hover:border-gray-400'
+                                          } ${color.bg.replace('bg-', 'bg-').replace('-100', '-500')}`}
+                                          title={color.name}
+                                        />
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
+                                )}
                                 
                                 {/* Other options */}
                                 <div className="flex gap-3">
@@ -1343,7 +1535,24 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                 )}
               </div>
 
-              {/* Color and Group Filter Buttons for Upcoming Reminders */}
+              {/* Yellow Mode Toggle for Upcoming Reminders */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-700">Yellow Mode:</span>
+                <button
+                  onClick={handleYellowModeToggle}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 ${
+                    yellowMode ? 'bg-yellow-500' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      yellowMode ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Color, Group, and Cadence Filter Buttons for Upcoming Reminders */}
               <div className="flex flex-wrap gap-1 flex-1">
                 {getUniqueGroups(upcomingReminders.map(r => r.note)).map((groupName) => (
                   <button
@@ -1358,13 +1567,37 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                     {groupName} ({filterRemindersByGroup(upcomingReminders.map(r => r.note), groupName).length})
                   </button>
                 ))}
+                {Object.entries(groupRemindersByCadence(upcomingReminders.map(r => r.note))).map(([cadenceType, cadenceReminders]) => (
+                  <button
+                    key={cadenceType}
+                    onClick={() => handleCadenceFilterSelect(cadenceType)}
+                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors duration-150 ${
+                      selectedCadenceFilter === cadenceType
+                        ? 'bg-purple-100 text-purple-700 border-purple-300 ring-1 ring-purple-300'
+                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <div className={`w-2 h-2 rounded-full ${
+                        cadenceType === 'Hourly' ? 'bg-blue-500' :
+                        cadenceType === 'Daily' ? 'bg-green-500' :
+                        cadenceType === 'Weekly' ? 'bg-yellow-500' :
+                        cadenceType === 'Monthly' ? 'bg-orange-500' :
+                        cadenceType === 'Yearly' ? 'bg-red-500' :
+                        'bg-gray-500'
+                      } border border-gray-300`}></div>
+                      <span>{cadenceType} ({cadenceReminders.length})</span>
+                    </div>
+                  </button>
+                ))}
               </div>
 
-              {(selectedColorFilter || selectedGroupFilter || searchQuery) && (
+              {(selectedColorFilter || selectedGroupFilter || selectedCadenceFilter || searchQuery) && (
                 <button
                   onClick={() => {
                     setSelectedColorFilter('');
                     setSelectedGroupFilter('');
+                    setSelectedCadenceFilter('');
                     setSearchQuery('');
                   }}
                   className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-300 rounded hover:bg-gray-100 transition-colors duration-150"
@@ -1377,7 +1610,10 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
             <div className="space-y-3">
               {applyAllFilters(upcomingReminders.map(r => r.note)).map(({ note, nextReview }, index) => {
                 const isDetailsExpanded = expandedDetails[note.id];
-                const isFocused = isRemindersOnlyMode && focusedReminderIndex === reminderObjs.length + index;
+                const flatList = getFlatRemindersList();
+                const activeRemindersCount = applyAllFilters(reminderObjs).length;
+                const reminderIndex = activeRemindersCount + index;
+                const isFocused = isRemindersOnlyMode && focusedReminderIndex === reminderIndex;
                 const contentLines = note.content
                   .split('\n')
                   .map(line => line.trim())
@@ -1399,7 +1635,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                     }`}
                     onClick={() => {
                       if (isRemindersOnlyMode) {
-                        setFocusedReminderIndex(reminderObjs.length + index);
+                        setFocusedReminderIndex(reminderIndex);
                       }
                     }}
                   >
@@ -1410,7 +1646,7 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                           {isRemindersOnlyMode && showRelativeNumbers && (
                             <div className="flex-shrink-0">
                               <div className="text-xs font-mono font-bold text-gray-600 px-2 py-1 min-w-[2rem] text-center">
-                                {getRelativePosition(reminderObjs.length + index, focusedReminderIndex, reminderObjs.length + upcomingReminders.length)}
+                                {getRelativePosition(reminderIndex, focusedReminderIndex, flatList.length)}
                               </div>
                             </div>
                           )}
@@ -1513,24 +1749,26 @@ const RemindersAlert = ({ allNotes, expanded: initialExpanded = true, setNotes, 
                       {expandedOptions[note.id] && (
                         <div className="px-6 py-3 border-t border-gray-200" style={{ backgroundColor: 'inherit' }}>
                           <div className="flex justify-between items-center">
-                            {/* Color selector */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-600">Color:</span>
-                              <div className="flex gap-2">
-                                {REMINDER_COLORS.map((color) => (
-                                  <button
-                                    key={color.name}
-                                    onClick={() => handleColorSelect(note.id, color.name)}
-                                    className={`w-6 h-6 rounded-full border-2 transition-all duration-150 ${
-                                      getReminderColor(note.id) === color.name 
-                                        ? 'border-gray-600 scale-110' 
-                                        : 'border-gray-300 hover:border-gray-400'
-                                    } ${color.bg.replace('bg-', 'bg-').replace('-100', '-500')}`}
-                                    title={color.name}
-                                  />
-                                ))}
+                            {/* Color selector - hidden when yellow mode is enabled */}
+                            {!yellowMode && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-600">Color:</span>
+                                <div className="flex gap-2">
+                                  {REMINDER_COLORS.map((color) => (
+                                    <button
+                                      key={color.name}
+                                      onClick={() => handleColorSelect(note.id, color.name)}
+                                      className={`w-6 h-6 rounded-full border-2 transition-all duration-150 ${
+                                        getReminderColor(note.id) === color.name 
+                                          ? 'border-gray-600 scale-110' 
+                                          : 'border-gray-300 hover:border-gray-400'
+                                      } ${color.bg.replace('bg-', 'bg-').replace('-100', '-500')}`}
+                                      title={color.name}
+                                    />
+                                  ))}
+                                </div>
                               </div>
-                            </div>
+                            )}
                             
                             {/* Other options */}
                             <div className="flex gap-3">

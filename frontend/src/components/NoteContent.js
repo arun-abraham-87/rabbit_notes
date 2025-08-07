@@ -104,6 +104,19 @@ export default function NoteContent({
         }
     }, [codeBlockMode]);
 
+    // Focus the new line input when adding line mode is activated
+    useEffect(() => {
+        if (addingLineNoteId === note.id && newLineInputRef.current) {
+            // Small delay to ensure the InlineEditor is rendered
+            setTimeout(() => {
+                const textarea = newLineInputRef.current?.querySelector('textarea');
+                if (textarea) {
+                    textarea.focus();
+                }
+            }, 100);
+        }
+    }, [addingLineNoteId, note.id]);
+
     if (!note) {
         return null;
     }
@@ -1635,6 +1648,36 @@ export default function NoteContent({
                                 <span>No grammar issues found</span>
                             </div>
                         )}
+                    </div>
+                )}
+                
+                {/* Add New Line Inline Editor */}
+                {addingLineNoteId === note.id && (
+                    <div className="mt-2" ref={newLineInputRef}>
+                        <InlineEditor
+                            text={newLineText}
+                            setText={setNewLineText}
+                            onSave={(newText) => {
+                                if (newText.trim()) {
+                                    const lines = note.content.split('\n');
+                                    lines.push(newText.trim());
+                                    updateNote(note.id, lines.join('\n'));
+                                }
+                                setAddingLineNoteId(null);
+                                setNewLineText('');
+                            }}
+                            onCancel={() => {
+                                setAddingLineNoteId(null);
+                                setNewLineText('');
+                            }}
+                            onDelete={() => {
+                                setAddingLineNoteId(null);
+                                setNewLineText('');
+                            }}
+                            isSuperEditMode={false}
+                            wasOpenedFromSuperEdit={false}
+                            lineIndex={-1}
+                        />
                     </div>
                 )}
             </div>

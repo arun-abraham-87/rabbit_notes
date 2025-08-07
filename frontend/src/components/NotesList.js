@@ -756,12 +756,17 @@ const NotesList = ({
           }
         } else if (e.key === 'a' && focusedNoteIndexRef.current >= 0 && addingLineNoteId === null) {
           // Add a new line to the end of the focused note in inline edit mode
-          const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
-          if (focusedNote) {
-            setAddingLineNoteId(focusedNote.id);
-            setNewLineText('');
+          const isAnyNoteInSuperEditMode = document.querySelector('[data-note-id].ring-purple-500');
+          const isInlineEditorActive = document.querySelector('textarea[class*="border-gray-300"]:focus') ||
+                             e.target.tagName === 'TEXTAREA';
+          if (!isAnyNoteInSuperEditMode && !isInlineEditorActive) {
             e.preventDefault();
             e.stopPropagation();
+            const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+            if (focusedNote) {
+              setAddingLineNoteId(focusedNote.id);
+              setNewLineText('');
+            }
           }
           return;
         } else if (e.key === 'e' && focusedNoteIndexRef.current >= 0) {

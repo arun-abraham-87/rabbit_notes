@@ -485,6 +485,14 @@ const NotesList = ({
       // Ignore if NoteActionPopup is open
       if (showNoteActionPopup.visible) return;
       if (e.key === 'Escape') {
+        // Exit multi-move mode if active
+        if (multiMoveNoteId) {
+          setMultiMoveNoteId(null);
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        
         setRightClickText(null);
         setRightClickIndex(null);
         setRightClickNoteId(null);
@@ -493,7 +501,7 @@ const NotesList = ({
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, []);
+  }, [multiMoveNoteId]);
 
   // Global event listener to block arrow keys when modals are open
   useEffect(() => {

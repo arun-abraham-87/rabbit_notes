@@ -96,6 +96,37 @@ const NotesMainContainer = ({
         }
     }, [location.state, setSearchQuery]);
 
+    // Handle URL query parameters for note filtering
+    useEffect(() => {
+        const urlParams = new URLSearchParams(location.search);
+        const noteId = urlParams.get('note');
+        
+        if (noteId) {
+            // Find the note by ID and use its first line as search query
+            const targetNote = allNotes.find(note => note.id === noteId);
+            if (targetNote) {
+                const firstLine = targetNote.content.split('\n')[0]?.trim();
+                if (firstLine) {
+                    setSearchQuery(firstLine);
+                    setLocalSearchQuery(firstLine);
+                    // Clear all filters when showing a specific note
+                    setExcludeEvents(false);
+                    setExcludeMeetings(false);
+                    setExcludeEventNotes(false);
+                    setExcludeBackupNotes(false);
+                    setExcludeWatchEvents(false);
+                    setExcludeSensitive(false);
+                    setExcludeTrackers(false);
+                    setExcludeBookmarks(false);
+                    setExcludeExpenses(false);
+                    setShowDeadlinePassedFilter(false);
+                    // Trigger UI filter reset
+                    setResetFilters(true);
+                }
+            }
+        }
+    }, [location.search, allNotes, setSearchQuery]);
+
     // Handle temporary search query from localStorage (for bookmark navigation)
     useEffect(() => {
         const tempSearchQuery = localStorage.getItem('tempSearchQuery');

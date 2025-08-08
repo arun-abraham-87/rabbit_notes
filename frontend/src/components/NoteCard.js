@@ -896,6 +896,7 @@ const NoteCard = ({
           highlightedLineIndex={highlightedLineIndex}
           highlightedLineText={highlightedLineText}
           wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
+          allNotes={fullNotesList}
         />
         {!focusMode && (
           <div className="flex items-center space-x-4 px-4 py-2">

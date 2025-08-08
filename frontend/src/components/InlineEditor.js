@@ -14,7 +14,7 @@ import { DevModeInfo } from '../utils/DevUtils';
  * onDelete        – fn()         called on Delete button click
  * inputClass      – extra Tailwind classes for the textarea (optional)
  */
-const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false, lineIndex = null, settings = {} }) => {
+const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false, lineIndex = null, settings = {}, allNotes = [] }) => {
   
   const inputRef = useRef(null);
   const [headerType, setHeaderType] = useState(null); // 'h1', 'h2', or null
@@ -22,6 +22,99 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   
   // Track if this is the initial mount
   const [isInitialMount, setIsInitialMount] = useState(true);
+  
+  // Workstream notes dropdown state
+  const [showWorkstreamDropdown, setShowWorkstreamDropdown] = useState(false);
+  const [workstreamSearch, setWorkstreamSearch] = useState('');
+  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
+  const [selectedWorkstreamIndex, setSelectedWorkstreamIndex] = useState(0);
+  const [triggerPosition, setTriggerPosition] = useState(null); // cursor position when [[ was typed
+  
+  // Filter workstream notes based on search
+  const getWorkstreamNotes = (searchTerm = '') => {
+    const workstreamNotes = allNotes.filter(note => 
+      note.content.split('\n').some(line => 
+        line.trim().startsWith('meta::workstream')
+      )
+    );
+    
+    if (!searchTerm) return workstreamNotes.slice(0, 5);
+    
+    const searchLower = searchTerm.toLowerCase();
+    return workstreamNotes
+      .filter(note => {
+        const firstLine = note.content.split('\n')[0]?.toLowerCase() || '';
+        return firstLine.includes(searchLower);
+      })
+      .slice(0, 5);
+  };
+  
+  // Get cursor position in the textarea
+  const getCursorPosition = () => {
+    if (!inputRef.current) return { x: 0, y: 0 };
+    
+    const textarea = inputRef.current;
+    const cursorPos = textarea.selectionStart;
+    
+    // Create a temporary element to measure text
+    const temp = document.createElement('div');
+    temp.style.position = 'absolute';
+    temp.style.visibility = 'hidden';
+    temp.style.whiteSpace = 'pre-wrap';
+    temp.style.font = window.getComputedStyle(textarea).font;
+    temp.style.width = textarea.offsetWidth + 'px';
+    temp.style.padding = window.getComputedStyle(textarea).padding;
+    
+    const textBeforeCursor = displayText.substring(0, cursorPos);
+    temp.textContent = textBeforeCursor;
+    document.body.appendChild(temp);
+    
+    const rect = textarea.getBoundingClientRect();
+    const tempRect = temp.getBoundingClientRect();
+    
+    document.body.removeChild(temp);
+    
+    return {
+      x: rect.left + tempRect.width,
+      y: rect.top + tempRect.height + window.scrollY
+    };
+  };
+  
+  // Close workstream dropdown
+  const closeWorkstreamDropdown = () => {
+    setShowWorkstreamDropdown(false);
+    setWorkstreamSearch('');
+    setSelectedWorkstreamIndex(0);
+    setTriggerPosition(null);
+  };
+  
+  // Insert selected workstream note as hyperlink
+  const insertWorkstreamNote = (note) => {
+    if (!inputRef.current || triggerPosition === null) return;
+    
+    const textarea = inputRef.current;
+    const currentCursor = textarea.selectionStart;
+    
+    // Get the first line of the note as the title
+    const noteTitle = note.content.split('\n')[0]?.trim() || `Note ${note.id}`;
+    
+    // Create a navigation link that filters by note ID in /notes
+    const linkText = `[${noteTitle}](#/notes?note=${note.id})`;
+    
+    // Replace the [[ and search text with the link
+    const beforeTrigger = displayText.substring(0, triggerPosition);
+    const afterCursor = displayText.substring(currentCursor);
+    const newText = beforeTrigger + linkText + afterCursor;
+    
+    setDisplayText(newText);
+    closeWorkstreamDropdown();
+    
+    // Position cursor after the inserted link
+    setTimeout(() => {
+      const newCursorPosition = triggerPosition + linkText.length;
+      textarea.setSelectionRange(newCursorPosition, newCursorPosition);
+    }, 0);
+  };
   
   useEffect(() => {
     if (inputRef.current && isInitialMount) {
@@ -87,6 +180,37 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
 
   const handleKeyDown = (e) => {
     
+    
+    // Handle workstream dropdown navigation
+    if (showWorkstreamDropdown) {
+      const workstreamNotes = getWorkstreamNotes(workstreamSearch);
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedWorkstreamIndex(prev => Math.min(prev + 1, workstreamNotes.length - 1));
+        return;
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedWorkstreamIndex(prev => Math.max(prev - 1, 0));
+        return;
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        if (workstreamNotes[selectedWorkstreamIndex]) {
+          insertWorkstreamNote(workstreamNotes[selectedWorkstreamIndex]);
+        }
+        return;
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeWorkstreamDropdown();
+        return;
+      } else if (e.key === 'Backspace') {
+        // Check if we're at the beginning of the search term
+        const currentCursor = inputRef.current?.selectionStart || 0;
+        if (triggerPosition !== null && currentCursor <= triggerPosition + 2) {
+          closeWorkstreamDropdown();
+        }
+      }
+    }
     
     // Handle Escape to cancel
     if (e.key === 'Escape') {
@@ -277,8 +401,37 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
         ref={inputRef}
         value={displayText}
         onChange={(e) => {
+          const newValue = e.target.value;
+          setDisplayText(newValue);
           
-          setDisplayText(e.target.value);
+          // Check for [[ trigger
+          const cursorPos = e.target.selectionStart;
+          const textBeforeCursor = newValue.substring(0, cursorPos);
+          
+          // Look for [[ pattern
+          const lastTwoBrackets = textBeforeCursor.slice(-2);
+          if (lastTwoBrackets === '[[' && !showWorkstreamDropdown) {
+            setTriggerPosition(cursorPos - 2);
+            setWorkstreamSearch('');
+            setSelectedWorkstreamIndex(0);
+            setShowWorkstreamDropdown(true);
+            
+            // Set dropdown position
+            setTimeout(() => {
+              const position = getCursorPosition();
+              setDropdownPosition(position);
+            }, 0);
+          } else if (showWorkstreamDropdown && triggerPosition !== null) {
+            // Update search term if dropdown is open
+            const searchText = textBeforeCursor.substring(triggerPosition + 2);
+            if (searchText.includes(']') || searchText.includes('\n')) {
+              // Close dropdown if ] or newline is typed
+              closeWorkstreamDropdown();
+            } else {
+              setWorkstreamSearch(searchText);
+              setSelectedWorkstreamIndex(0);
+            }
+          }
         }}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
@@ -358,6 +511,50 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
           </button>
         </div>
       </div>
+      
+      {/* Workstream notes dropdown */}
+      {showWorkstreamDropdown && (
+        <div
+          className="fixed bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-w-xs"
+          style={{
+            left: dropdownPosition.x,
+            top: dropdownPosition.y + 5,
+            maxHeight: '200px',
+            overflowY: 'auto'
+          }}
+        >
+          {(() => {
+            const workstreamNotes = getWorkstreamNotes(workstreamSearch);
+            if (workstreamNotes.length === 0) {
+              return (
+                <div className="p-3 text-gray-500 text-sm">
+                  No workstream notes found
+                </div>
+              );
+            }
+            
+            return workstreamNotes.map((note, index) => {
+              const noteTitle = note.content.split('\n')[0]?.trim() || `Note ${note.id}`;
+              const isSelected = index === selectedWorkstreamIndex;
+              
+              return (
+                <div
+                  key={note.id}
+                  className={`p-2 cursor-pointer text-sm border-b border-gray-100 last:border-b-0 ${
+                    isSelected ? 'bg-blue-100' : 'hover:bg-gray-50'
+                  }`}
+                  onClick={() => insertWorkstreamNote(note)}
+                  onMouseEnter={() => setSelectedWorkstreamIndex(index)}
+                >
+                  <div className="truncate">
+                    {noteTitle.length > 30 ? noteTitle.substring(0, 30) + '...' : noteTitle}
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      )}
     </div>
     </DevModeInfo>
   );

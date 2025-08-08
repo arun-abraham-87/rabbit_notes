@@ -43,6 +43,7 @@ export default function NoteContent({
     updateNote,
     focusMode = false,
     bulkDeleteMode = false,
+    allNotes = [],
     setBulkDeleteMode = () => {},
     bulkDeleteNoteId = null,
     setBulkDeleteNoteId = () => {},
@@ -1027,6 +1028,7 @@ export default function NoteContent({
             isSuperEditMode={isSuperEditMode}
             wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
             lineIndex={idx}
+            allNotes={allNotes}
         />
     );
 
@@ -1705,6 +1707,7 @@ export default function NoteContent({
                             isSuperEditMode={false}
                             wasOpenedFromSuperEdit={false}
                             lineIndex={-1}
+                            allNotes={allNotes}
                         />
                     </div>
                 )}

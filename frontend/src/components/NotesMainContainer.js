@@ -721,6 +721,7 @@ const NotesMainContainer = ({
                     <NotesList
                         objList={mergedObjList}
                         allNotes={filteredNotes}
+                        fullNotesList={allNotes}
                         addNotes={addNote}
                         updateNoteCallback={handleNoteUpdate}
                         handleDelete={handleDelete}

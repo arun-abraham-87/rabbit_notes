@@ -44,6 +44,7 @@ const NoteCard = ({
   selectedNotes,
   toggleNoteSelection,
   allNotes,
+  fullNotesList = allNotes, // Add prop for full notes list
   onNavigate,
   onContextMenu,
   isMeetingNote,
@@ -914,7 +915,7 @@ const NoteCard = ({
 
         <NoteCardLinkedNotes
           note={note}
-          allNotes={allNotes}
+          allNotes={fullNotesList}
           onNavigate={onNavigate}
           updateNote={updateNote}
         />

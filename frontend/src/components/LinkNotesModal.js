@@ -28,7 +28,15 @@ export default function LinkNotesModal({
     const searchLower = searchTerm.toLowerCase();
     return notes.filter(n => {
       if (n.id === linkingNoteId) return false;
-      if (!n.content.includes('meta::workstream')) return false;
+      
+      // Only show notes that have meta::workstream tag
+      const hasWorkstreamTag = n.content.split('\n').some(line => 
+        line.trim().startsWith('meta::workstream')
+      );
+      if (!hasWorkstreamTag) return false;
+      
+      // If no search term, show all workstream notes
+      if (!searchTerm) return true;
       
       // Search in all content
       const contentLower = n.content.toLowerCase();
@@ -82,7 +90,7 @@ export default function LinkNotesModal({
         
         <input
           type="text"
-          placeholder="Search notes to link..."
+          placeholder="Search workstream notes to link..."
           value={searchTerm}
           onChange={e => onSearchTermChange(e.target.value)}
           className="w-full p-2 border border-gray-300 rounded mb-3"
@@ -115,7 +123,7 @@ export default function LinkNotesModal({
 
           {!searchTerm && filteredNotes.length > 5 && (
             <div className="text-center text-gray-500 py-2 text-sm">
-              Type to search through all notes
+              Type to search through workstream notes
             </div>
           )}
         </div>

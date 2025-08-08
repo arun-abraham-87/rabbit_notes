@@ -51,6 +51,7 @@ export const clickableDateRegex = /(\b\d{2}\/\d{2}\/\d{4}\b|\b\d{2} [A-Za-z]+ \d
 const NotesList = ({
   objList,
   allNotes,
+  fullNotesList = allNotes, // Add prop for full notes list (unfiltered)
   addNotes,
   updateNoteCallback,
   updateTotals,
@@ -1397,6 +1398,7 @@ const NotesList = ({
                     selectedNotes={selectedNotes}
                     toggleNoteSelection={toggleNoteSelection}
                     allNotes={allNotes}
+                    fullNotesList={fullNotesList}
                     onNavigate={scrollToNote}
                     onContextMenu={handleContextMenu}
                     isMeetingNote={isMeetingNote}
@@ -1473,6 +1475,7 @@ const NotesList = ({
                     selectedNotes={selectedNotes}
                     toggleNoteSelection={toggleNoteSelection}
                     allNotes={allNotes}
+                    fullNotesList={fullNotesList}
                     onNavigate={scrollToNote}
                     onContextMenu={handleContextMenu}
                     isMeetingNote={isMeetingNote}
@@ -1551,6 +1554,7 @@ const NotesList = ({
                   selectedNotes={selectedNotes}
                   toggleNoteSelection={toggleNoteSelection}
                   allNotes={allNotes}
+                  fullNotesList={fullNotesList}
                   onNavigate={scrollToNote}
                   onContextMenu={handleContextMenu}
                   isMeetingNote={isMeetingNote}
@@ -1660,24 +1664,53 @@ const NotesList = ({
 
         <LinkNotesModal
           visible={linkPopupVisible}
-          notes={allNotes}
+          notes={fullNotesList}
           linkingNoteId={linkingNoteId}
           searchTerm={linkSearchTerm}
           onSearchTermChange={setLinkSearchTerm}
           onLink={(fromId, toId) => {
-            const source = allNotes.find(n => n.id === fromId) || allNotes.find(n => n.id === fromId);
-            const target = allNotes.find(n => n.id === toId) || allNotes.find(n => n.id === toId);
+            console.log('Linking notes:', { fromId, toId });
+            console.log('fullNotesList length:', fullNotesList.length);
+            console.log('fullNotesList IDs:', fullNotesList.map(n => n.id));
+            
+            let source = fullNotesList.find(n => n.id === fromId);
+            let target = fullNotesList.find(n => n.id === toId);
+            
+            // Fallback to allNotes if not found in fullNotesList
+            if (!source) {
+              source = allNotes.find(n => n.id === fromId);
+              console.log('Source not found in fullNotesList, trying allNotes');
+            }
+            if (!target) {
+              target = allNotes.find(n => n.id === toId);
+              console.log('Target not found in fullNotesList, trying allNotes');
+            }
+            
+            console.log('Found source:', source);
+            console.log('Found target:', target);
+            
+            if (!source || !target) {
+              console.error('Could not find source or target note for linking');
+              console.error('Source found:', !!source, 'Target found:', !!target);
+              return;
+            }
+            
             const addTag = (content, id) => {
               const lines = content.split('\n').map(l => l.trimEnd());
               const tag = `meta::link::${id}`;
               if (!lines.includes(tag)) lines.push(tag);
               return lines.join('\n');
             };
-            updateNoteCallback(fromId, addTag(source.content, toId));
-            updateNoteCallback(toId, addTag(target.content, fromId));
-            setLinkPopupVisible(false);
-            setLinkingNoteId(null);
-            setLinkSearchTerm('');
+            
+            try {
+              updateNoteCallback(fromId, addTag(source.content, toId));
+              updateNoteCallback(toId, addTag(target.content, fromId));
+              setLinkPopupVisible(false);
+              setLinkingNoteId(null);
+              setLinkSearchTerm('');
+            } catch (error) {
+              console.error('Error updating notes:', error);
+            }
           }}
           onCancel={() => {
             setLinkPopupVisible(false);

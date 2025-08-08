@@ -41,12 +41,14 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     if (!searchTerm) return workstreamNotes.slice(0, 5);
     
     const searchLower = searchTerm.toLowerCase();
-    return workstreamNotes
+    const filtered = workstreamNotes
       .filter(note => {
         const firstLine = note.content.split('\n')[0]?.toLowerCase() || '';
         return firstLine.includes(searchLower);
       })
       .slice(0, 5);
+      
+    return filtered;
   };
   
   // Get cursor position in the textarea
@@ -54,30 +56,18 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     if (!inputRef.current) return { x: 0, y: 0 };
     
     const textarea = inputRef.current;
-    const cursorPos = textarea.selectionStart;
-    
-    // Create a temporary element to measure text
-    const temp = document.createElement('div');
-    temp.style.position = 'absolute';
-    temp.style.visibility = 'hidden';
-    temp.style.whiteSpace = 'pre-wrap';
-    temp.style.font = window.getComputedStyle(textarea).font;
-    temp.style.width = textarea.offsetWidth + 'px';
-    temp.style.padding = window.getComputedStyle(textarea).padding;
-    
-    const textBeforeCursor = displayText.substring(0, cursorPos);
-    temp.textContent = textBeforeCursor;
-    document.body.appendChild(temp);
-    
     const rect = textarea.getBoundingClientRect();
-    const tempRect = temp.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(textarea);
     
-    document.body.removeChild(temp);
+    // For simplicity, position dropdown at the bottom-left of the textarea
+    // This ensures it's always visible and near the input area
+    const x = rect.left;
+    const y = rect.bottom + window.scrollY;
     
-    return {
-      x: rect.left + tempRect.width,
-      y: rect.top + tempRect.height + window.scrollY
-    };
+    console.log('Simple positioning - x:', x, 'y:', y);
+    console.log('Textarea rect:', rect);
+    
+    return { x, y };
   };
   
   // Close workstream dropdown
@@ -410,17 +400,22 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
           
           // Look for [[ pattern
           const lastTwoBrackets = textBeforeCursor.slice(-2);
+          console.log('=== DROPDOWN DEBUG ===');
+          console.log('lastTwoBrackets:', lastTwoBrackets);
+          console.log('showWorkstreamDropdown:', showWorkstreamDropdown);
+          console.log('Should trigger dropdown:', lastTwoBrackets === '[[' && !showWorkstreamDropdown);
+          
           if (lastTwoBrackets === '[[' && !showWorkstreamDropdown) {
+            console.log('Triggering dropdown!');
             setTriggerPosition(cursorPos - 2);
             setWorkstreamSearch('');
             setSelectedWorkstreamIndex(0);
             setShowWorkstreamDropdown(true);
             
-            // Set dropdown position
-            setTimeout(() => {
-              const position = getCursorPosition();
-              setDropdownPosition(position);
-            }, 0);
+            // Set dropdown position immediately
+            const position = getCursorPosition();
+            console.log('Dropdown position:', position);
+            setDropdownPosition(position);
           } else if (showWorkstreamDropdown && triggerPosition !== null) {
             // Update search term if dropdown is open
             const searchText = textBeforeCursor.substring(triggerPosition + 2);
@@ -515,15 +510,20 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       {/* Workstream notes dropdown */}
       {showWorkstreamDropdown && (
         <div
-          className="fixed bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-w-xs"
+          className="fixed bg-yellow-200 border-2 border-red-500 rounded-lg shadow-lg z-50 max-w-xs"
           style={{
             left: dropdownPosition.x,
             top: dropdownPosition.y + 5,
             maxHeight: '200px',
-            overflowY: 'auto'
+            overflowY: 'auto',
+            minWidth: '200px',
+            minHeight: '50px'
           }}
         >
           {(() => {
+            console.log('Dropdown is rendering! showWorkstreamDropdown:', showWorkstreamDropdown);
+            console.log('dropdownPosition:', dropdownPosition);
+            console.log('workstreamSearch:', workstreamSearch);
             const workstreamNotes = getWorkstreamNotes(workstreamSearch);
             if (workstreamNotes.length === 0) {
               return (

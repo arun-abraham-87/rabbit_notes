@@ -290,10 +290,22 @@ const NotesList = ({
   };
 
   // Scroll smoothly to another note card by id
-  const scrollToNote = (id) =>
+  const scrollToNote = (id) => {
+    // First, set search query to filter to this specific note
+    const targetNote = fullNotesList.find(n => n.id === id);
+    if (targetNote) {
+      // Get the first line of the note as the search term
+      const firstLine = targetNote.content.split('\n')[0]?.trim();
+      if (firstLine) {
+        setSearchQuery(firstLine);
+      }
+    }
+    
+    // Then scroll to the note
     document
       .querySelector(`#note-${id}`)
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const handleModalDelete = (noteId) => {
     setDeletingNoteId(noteId);
@@ -718,50 +730,24 @@ const NotesList = ({
             }
           }
         } else if (e.key === 'l' && focusedNoteIndexRef.current >= 0) {
+          console.log('L key pressed, focusedNoteIndex:', focusedNoteIndexRef.current);
+          
           // Check if user is typing in a textarea or input - if so, skip this handler
           if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.contentEditable === 'true') {
-            
+            console.log('Skipping L key handler - in textarea/input');
             return;
           }
           
-          // Open the single link in the focused note if exactly one URL is present
+          // Open the LinkNotesModal for the focused note
           const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
+          console.log('Focused note:', focusedNote);
           if (focusedNote) {
-            // Regex to match both markdown-style links [text](url) and plain URLs
-            const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-            const plainUrlRegex = /(https?:\/\/[^\s)]+)/g;
-            
-            const links = [];
-            
-            // Extract markdown-style links first
-            let match;
-            while ((match = markdownLinkRegex.exec(focusedNote.content)) !== null) {
-              links.push({
-                url: match[2],
-                text: match[1]
-              });
-            }
-            
-            // Extract plain URLs (excluding those already found in markdown links)
-            const markdownUrls = links.map(link => link.url);
-            while ((match = plainUrlRegex.exec(focusedNote.content)) !== null) {
-              if (!markdownUrls.includes(match[1])) {
-                links.push({
-                  url: match[1],
-                  text: match[1] // Use URL as text for plain URLs
-                });
-              }
-            }
-            
-            if (links.length === 1) {
-              window.open(links[0].url, '_blank');
-            } else {
-              // Show popup with links (or just "Open Popup" if no links)
-              setLinkPopupLinks(links);
-              setSelectedLinkIndex(0);
-              setLinkPopupSourceNoteId(focusedNote.id);
-              setShowLinkPopup(true);
-            }
+            console.log('Setting linkingNoteId to:', focusedNote.id);
+            setLinkingNoteId(focusedNote.id);
+            setLinkSearchTerm('');
+            setLinkPopupVisible(true);
+            e.preventDefault();
+            e.stopPropagation();
           }
         } else if (e.key === 'a' && focusedNoteIndexRef.current >= 0 && addingLineNoteId === null) {
           // Add a new line to the end of the focused note in inline edit mode

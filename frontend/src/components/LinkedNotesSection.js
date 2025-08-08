@@ -156,7 +156,11 @@ export default function LinkedNotesSection({
                   className="bg-white border rounded-lg shadow-sm overflow-hidden"
                 >
                   <div className="relative group">
-                    <div className="whitespace-pre-wrap font-mono text-sm p-4 bg-white text-gray-800 overflow-x-auto">
+                    <div 
+                      className="whitespace-pre-wrap font-mono text-sm p-4 bg-white text-gray-800 overflow-x-auto cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => onNavigate && onNavigate(id)}
+                      title="Click to navigate to this note"
+                    >
                       {parseNoteContent({ 
                         content: getFilteredContent(ln.content, showMetaTags[id]),
                         searchTerm: ''

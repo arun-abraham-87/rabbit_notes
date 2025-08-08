@@ -98,34 +98,53 @@ const NotesMainContainer = ({
 
     // Handle URL query parameters for note filtering
     useEffect(() => {
-        const urlParams = new URLSearchParams(location.search);
-        const noteId = urlParams.get('note');
+        // Parse query parameters from both location.search and the hash portion
+        let urlParams;
+        if (location.search) {
+            // Standard query parameters
+            urlParams = new URLSearchParams(location.search);
+        } else {
+            // For HashRouter, check if there are query parameters in the pathname
+            const pathWithQuery = location.pathname;
+            const queryIndex = pathWithQuery.indexOf('?');
+            if (queryIndex !== -1) {
+                const queryString = pathWithQuery.substring(queryIndex + 1);
+                urlParams = new URLSearchParams(queryString);
+            }
+        }
+        
+        const noteId = urlParams?.get('note');
         
         if (noteId) {
-            // Find the note by ID and use its first line as search query
+            // Use the existing ID-based search functionality with 'id:' prefix
+            const idSearchQuery = `id:${noteId}`;
+            setSearchQuery(idSearchQuery);
+            
+            // Find the note to display a user-friendly search query
             const targetNote = allNotes.find(note => note.id === noteId);
             if (targetNote) {
                 const firstLine = targetNote.content.split('\n')[0]?.trim();
-                if (firstLine) {
-                    setSearchQuery(firstLine);
-                    setLocalSearchQuery(firstLine);
-                    // Clear all filters when showing a specific note
-                    setExcludeEvents(false);
-                    setExcludeMeetings(false);
-                    setExcludeEventNotes(false);
-                    setExcludeBackupNotes(false);
-                    setExcludeWatchEvents(false);
-                    setExcludeSensitive(false);
-                    setExcludeTrackers(false);
-                    setExcludeBookmarks(false);
-                    setExcludeExpenses(false);
-                    setShowDeadlinePassedFilter(false);
-                    // Trigger UI filter reset
-                    setResetFilters(true);
-                }
+                const displayQuery = firstLine ? `Showing note: ${firstLine}` : `Showing note ID: ${noteId}`;
+                setLocalSearchQuery(displayQuery);
+            } else {
+                setLocalSearchQuery(idSearchQuery);
             }
+            
+            // Clear all filters when showing a specific note
+            setExcludeEvents(false);
+            setExcludeMeetings(false);
+            setExcludeEventNotes(false);
+            setExcludeBackupNotes(false);
+            setExcludeWatchEvents(false);
+            setExcludeSensitive(false);
+            setExcludeTrackers(false);
+            setExcludeBookmarks(false);
+            setExcludeExpenses(false);
+            setShowDeadlinePassedFilter(false);
+            // Trigger UI filter reset
+            setResetFilters(true);
         }
-    }, [location.search, allNotes, setSearchQuery]);
+    }, [location.pathname, location.search, allNotes, setSearchQuery]);
 
     // Handle temporary search query from localStorage (for bookmark navigation)
     useEffect(() => {

@@ -116,8 +116,17 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       return lastContentIndex >= 0 ? lastContentIndex + 1 : 0;
     }
     
-    // Return the position before the first meta line
-    return firstMetaIndex;
+    // When meta lines are present, find the last content line before the first meta line
+    let lastContentIndex = -1;
+    for (let i = firstMetaIndex - 1; i >= 0; i--) {
+      if (lines[i].text.trim() !== '') {
+        lastContentIndex = i;
+        break;
+      }
+    }
+    
+    // Return the position after the last content line (before the first meta line)
+    return lastContentIndex >= 0 ? lastContentIndex + 1 : firstMetaIndex;
   };
 
   // Focus when mode changes

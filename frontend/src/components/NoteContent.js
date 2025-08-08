@@ -261,6 +261,10 @@ export default function NoteContent({
         onAddText: handleAddText,
         onEditText: handleEditText
     });
+    
+
+    
+
     const indentFlags = getIndentFlags(contentLines);
 
     if (editingLine?.noteId === note.id) {
@@ -1269,7 +1273,7 @@ export default function NoteContent({
                         className="mr-2"
                     />
                 )}
-                {editingLine?.noteId === note.id && editingLine?.lineIndex === idx ? (
+                                {editingLine?.noteId === note.id && editingLine?.lineIndex === idx ? (
                     renderInlineEditor(idx, isH1, isH2)
                 ) : (
                     <>

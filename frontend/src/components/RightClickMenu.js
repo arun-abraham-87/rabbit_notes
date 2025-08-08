@@ -307,29 +307,69 @@ export default function RightClickMenu({
     {
       id: 'insert-above',
       label: 'Insert ↑',
-      onClick: () => {
+      onClick: async () => {
         const arr = note.content.split('\n');
-        arr.splice(lineIndex, 0, ' ');
-        const updatedContent = arr.join('\n');
-        updateNote(noteId, updatedContent);
         
-        // Open inline editor for the newly inserted row
-        setEditedLineContent('');
-        setEditingLine({ noteId, lineIndex });
+        // Find the raw line index for the content line index
+        let rawLineIndex = 0;
+        let contentLineCount = 0;
+        for (let i = 0; i < arr.length; i++) {
+          if (!arr[i].trim().startsWith('meta::')) {
+            if (contentLineCount === lineIndex) {
+              rawLineIndex = i;
+              break;
+            }
+            contentLineCount++;
+          }
+        }
+        
+        // Insert the new line
+        arr.splice(rawLineIndex, 0, ' ');
+        const updatedContent = arr.join('\n');
+        
+        // Wait for the note to be updated before setting editing line
+        await updateNote(noteId, updatedContent);
+        
+        // The new line will be at the same content line index (pushing the original line down)
+        const newContentLineIndex = lineIndex;
+        
+        // Open inline editor for the newly inserted row using content line index
+        setEditedLineContent(' ');
+        setEditingLine({ noteId, lineIndex: newContentLineIndex });
       }
     },
     {
       id: 'insert-below',
       label: 'Insert ↓',
-      onClick: () => {
+      onClick: async () => {
         const arr = note.content.split('\n');
-        arr.splice(lineIndex + 1, 0, ' ');
-        const updatedContent = arr.join('\n');
-        updateNote(noteId, updatedContent);
         
-        // Open inline editor for the newly inserted row
-        setEditedLineContent('');
-        setEditingLine({ noteId, lineIndex: lineIndex + 1 });
+        // Find the raw line index for the content line index
+        let rawLineIndex = 0;
+        let contentLineCount = 0;
+        for (let i = 0; i < arr.length; i++) {
+          if (!arr[i].trim().startsWith('meta::')) {
+            if (contentLineCount === lineIndex) {
+              rawLineIndex = i;
+              break;
+            }
+            contentLineCount++;
+          }
+        }
+        
+        // Insert the new line
+        arr.splice(rawLineIndex + 1, 0, ' ');
+        const updatedContent = arr.join('\n');
+        
+        // Wait for the note to be updated before setting editing line
+        await updateNote(noteId, updatedContent);
+        
+        // The new line will be at the next content line index
+        const newContentLineIndex = lineIndex + 1;
+        
+        // Open inline editor for the newly inserted row using content line index
+        setEditedLineContent(' ');
+        setEditingLine({ noteId, lineIndex: newContentLineIndex });
       }
     },
     {

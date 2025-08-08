@@ -1315,7 +1315,15 @@ export default function NoteContent({
                                     );
                                 }
                             })()}
-                            {!focusMode && !isUrlOnly && isFirstLine && !isFirstLineH1 && (
+                            {!focusMode && (() => {
+                                // Check if this line contains only a URL (same logic as above)
+                                const rawLines = getRawLines(note.content);
+                                const originalLine = rawLines[idx];
+                                const urlRegex = /^(https?:\/\/[^\s]+)$/;
+                                const markdownUrlRegex = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/;
+                                const isUrlOnly = originalLine && (urlRegex.test(originalLine.trim()) || markdownUrlRegex.test(originalLine.trim()));
+                                return !isUrlOnly;
+                            })() && isFirstLine && !isFirstLineH1 && (
                                 <button
                                     onClick={() => handleConvertToH1(note, lineContent)}
                                     className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
@@ -1324,7 +1332,15 @@ export default function NoteContent({
                                     H1
                                 </button>
                             )}
-                            {!focusMode && !isUrlOnly && !isFirstLine && (() => {
+                            {!focusMode && (() => {
+                                // Check if this line contains only a URL (same logic as above)
+                                const rawLines = getRawLines(note.content);
+                                const originalLine = rawLines[idx];
+                                const urlRegex = /^(https?:\/\/[^\s]+)$/;
+                                const markdownUrlRegex = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/;
+                                const isUrlOnly = originalLine && (urlRegex.test(originalLine.trim()) || markdownUrlRegex.test(originalLine.trim()));
+                                return !isUrlOnly;
+                            })() && !isFirstLine && (() => {
                                 // Check if this line is an H1 by looking at the raw content
                                 const rawLines = getRawLines(note.content);
                                 const originalLine = rawLines[idx];
@@ -1338,7 +1354,15 @@ export default function NoteContent({
                                     ↑
                                 </button>
                             )}
-                            {!focusMode && !isUrlOnly && !isFirstLine && (() => {
+                            {!focusMode && (() => {
+                                // Check if this line contains only a URL (same logic as above)
+                                const rawLines = getRawLines(note.content);
+                                const originalLine = rawLines[idx];
+                                const urlRegex = /^(https?:\/\/[^\s]+)$/;
+                                const markdownUrlRegex = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/;
+                                const isUrlOnly = originalLine && (urlRegex.test(originalLine.trim()) || markdownUrlRegex.test(originalLine.trim()));
+                                return !isUrlOnly;
+                            })() && !isFirstLine && (() => {
                                 // Check if this line is NOT an H1 or H2 by looking at the raw content
                                 const rawLines = getRawLines(note.content);
                                 const originalLine = rawLines[idx];

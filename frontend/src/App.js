@@ -261,6 +261,7 @@ const AppContent = () => {
   const [newNoteText, setNewNoteText] = useState('');
   const [selectedPriority, setSelectedPriority] = useState(null);
   const [isWatchSelected, setIsWatchSelected] = useState(false);
+  const [isSensitiveSelected, setIsSensitiveSelected] = useState(false);
   const [objList, setObjList] = useState([]);
   const [lastAddedNoteId, setLastAddedNoteId] = useState(() => {
     // Load last added note ID from localStorage on mount
@@ -434,7 +435,10 @@ const AppContent = () => {
         noteContent += getDummyCadenceLine();
       }
       
-
+      // Add sensitive meta tag if sensitive is selected
+      if (isSensitiveSelected) {
+        noteContent += `\nmeta::sensitive::`;
+      }
       
       const newNote = await createNote(noteContent);
       
@@ -452,6 +456,7 @@ const AppContent = () => {
       setNewNoteText('');
       setSelectedPriority(null);
       setIsWatchSelected(false);
+      setIsSensitiveSelected(false);
       Alerts.success('Note created successfully');
     } catch (error) {
       console.error('Error creating note:', error);
@@ -636,6 +641,7 @@ const AppContent = () => {
                     setNewNoteText('');
                     setSelectedPriority(null);
                     setIsWatchSelected(false);
+                    setIsSensitiveSelected(false);
                   }}
                   newNoteText={newNoteText}
                   setNewNoteText={setNewNoteText}
@@ -644,6 +650,8 @@ const AppContent = () => {
                   setSelectedPriority={setSelectedPriority}
                   isWatchSelected={isWatchSelected}
                   setIsWatchSelected={setIsWatchSelected}
+                  isSensitiveSelected={isSensitiveSelected}
+                  setIsSensitiveSelected={setIsSensitiveSelected}
                   onSave={handlePasteSubmit}
                   objList={objList}
                   allNotes={allNotes}

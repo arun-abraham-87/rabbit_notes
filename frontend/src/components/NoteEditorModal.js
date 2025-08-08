@@ -167,6 +167,15 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
         }
         setShowPriorityOptions(false);
         break;
+      case 'sensitive':
+        // Toggle sensitive tag
+        if (newTags.some(tag => tag.startsWith('meta::sensitive'))) {
+          newTags = newTags.filter(tag => !tag.startsWith('meta::sensitive'));
+        } else {
+          newTags.push(`meta::sensitive::`);
+        }
+        setShowPriorityOptions(false);
+        break;
       default:
         return;
     }
@@ -283,74 +292,74 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
         <div className="flex flex-col items-center gap-4 mt-4 p-2 border-t border-gray-200">
           <div className="flex items-center justify-center gap-4">
             <div className="flex items-center gap-2">
-
               <button
                 onClick={() => handleMetaTagClick('todo')}
-                className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.some(tag => tag.startsWith('meta::todo')) ? 'bg-green-100' : ''
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedMetaTags.some(tag => tag.startsWith('meta::todo')) ? 'bg-green-100 text-green-700 border border-green-300' : 'text-gray-600 hover:text-green-600 hover:bg-green-50 border border-gray-300'
                   }`}
                 title="Mark as Todo"
               >
-                <CheckCircleIcon className={`h-5 w-5 ${selectedMetaTags.some(tag => tag.startsWith('meta::todo')) ? 'text-green-600' : 'text-gray-500'
-                  }`} />
+                Todo
               </button>
               {showPriorityOptions && (
                 <>
                   <button
                     onClick={() => handleMetaTagClick('critical')}
-                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.includes('meta::critical') ? 'bg-red-100' : ''
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedMetaTags.includes('meta::critical') ? 'bg-red-100 text-red-700 border border-red-300' : 'text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-300'
                       }`}
                     title="Critical Priority"
                   >
-                    <FlagIcon className={`h-5 w-5 ${selectedMetaTags.includes('meta::critical') ? 'text-red-600' : 'text-red-400'
-                      }`} />
+                    Critical
                   </button>
                   <button
                     onClick={() => handleMetaTagClick('high')}
-                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.includes('meta::high') ? 'bg-orange-100' : ''
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedMetaTags.includes('meta::high') ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50 border border-orange-300'
                       }`}
                     title="High Priority"
                   >
-                    <FlagIcon className={`h-5 w-5 ${selectedMetaTags.includes('meta::high') ? 'text-orange-600' : 'text-orange-400'
-                      }`} />
+                    High
                   </button>
                   <button
                     onClick={() => handleMetaTagClick('medium')}
-                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.includes('meta::medium') ? 'bg-yellow-100' : ''
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedMetaTags.includes('meta::medium') ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' : 'text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 border border-yellow-300'
                       }`}
                     title="Medium Priority"
                   >
-                    <FlagIcon className={`h-5 w-5 ${selectedMetaTags.includes('meta::medium') ? 'text-yellow-600' : 'text-yellow-400'
-                      }`} />
+                    Medium
                   </button>
                   <button
                     onClick={() => handleMetaTagClick('low')}
-                    className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.includes('meta::low') ? 'bg-blue-100' : ''
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedMetaTags.includes('meta::low') ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-300'
                       }`}
                     title="Low Priority"
                   >
-                    <FlagIcon className={`h-5 w-5 ${selectedMetaTags.includes('meta::low') ? 'text-blue-600' : 'text-blue-400'
-                      }`} />
+                    Low
                   </button>
                 </>
               )}
             </div>
             <button
               onClick={() => handleMetaTagClick('watch')}
-              className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.some(tag => tag.startsWith('meta::watch')) ? 'bg-purple-100' : ''
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedMetaTags.some(tag => tag.startsWith('meta::watch')) ? 'bg-purple-100 text-purple-700 border border-purple-300' : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50 border border-gray-300'
                 }`}
               title="Add to Watch List"
             >
-              <EyeIcon className={`h-5 w-5 ${selectedMetaTags.some(tag => tag.startsWith('meta::watch')) ? 'text-purple-600' : 'text-gray-500'
-                }`} />
+              Watch
             </button>
             <button
               onClick={() => handleMetaTagClick('reminder')}
-              className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${selectedMetaTags.some(tag => tag.startsWith('meta::watch')) ? 'bg-purple-100' : ''
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedMetaTags.some(tag => tag.startsWith('meta::reminder')) ? 'bg-purple-100 text-purple-700 border border-purple-300' : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50 border border-gray-300'
                 }`}
               title="Add to reminder List"
             >
-              <BellIcon className={`h-5 w-5 ${selectedMetaTags.some(tag => tag.startsWith('meta::reminder')) ? 'text-purple-600' : 'text-gray-500'
-                }`} />
+              Reminder
+            </button>
+            <button
+              onClick={() => handleMetaTagClick('sensitive')}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedMetaTags.some(tag => tag.startsWith('meta::sensitive')) ? 'bg-red-100 text-red-700 border border-red-300' : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-300'
+                }`}
+              title="Mark as Sensitive"
+            >
+              Sensitive
             </button>
           </div>
 

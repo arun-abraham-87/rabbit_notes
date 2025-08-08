@@ -12,6 +12,8 @@ const TextPastePopup = ({
   setSelectedPriority,
   isWatchSelected,
   setIsWatchSelected,
+  isSensitiveSelected,
+  setIsSensitiveSelected,
   onSave,
   objList = [], // Add objList prop for tag suggestions
   allNotes = [], // Add allNotes prop for people and workstreams
@@ -236,6 +238,13 @@ const TextPastePopup = ({
               >
                 <EyeIcon className="h-5 w-5" />
               </button>
+              <button
+                onClick={() => setIsSensitiveSelected(!isSensitiveSelected)}
+                className={`px-2 py-1 rounded-md text-xs font-medium ${isSensitiveSelected ? 'bg-red-100 text-red-600 border border-red-300' : 'text-gray-400 hover:text-red-600 hover:bg-red-50 border border-gray-300'}`}
+                title="Mark as Sensitive"
+              >
+                Sensitive
+              </button>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-700">Priority:</span>
@@ -271,13 +280,16 @@ const TextPastePopup = ({
               </div>
             </div>
           </div>
-          {(selectedPriority || isWatchSelected) && (
+          {(selectedPriority || isWatchSelected || isSensitiveSelected) && (
             <div className="text-sm text-gray-600 italic space-y-1">
               {selectedPriority && (
                 <div>Marked as todo - priority {selectedPriority}</div>
               )}
               {isWatchSelected && (
                 <div>Added to watch list</div>
+              )}
+              {isSensitiveSelected && (
+                <div>Marked as sensitive</div>
               )}
             </div>
           )}

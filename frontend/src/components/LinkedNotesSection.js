@@ -48,13 +48,23 @@ export default function LinkedNotesSection({
     });
   }, [searchQuery, orderedIds, allNotes]);
 
-  // Filter out meta tags from content
+  // Filter out meta tags from content and truncate to 50 chars
   const getFilteredContent = (content, showMeta) => {
-    if (showMeta) return content;
-    return content
-      .split('\n')
-      .filter(line => !line.trim().toLowerCase().startsWith('meta::'))
-      .join('\n');
+    let filteredContent;
+    if (showMeta) {
+      filteredContent = content;
+    } else {
+      filteredContent = content
+        .split('\n')
+        .filter(line => !line.trim().toLowerCase().startsWith('meta::'))
+        .join('\n');
+    }
+    
+    // Truncate to 50 characters maximum
+    if (filteredContent.length > 50) {
+      return filteredContent.substring(0, 50) + '...';
+    }
+    return filteredContent;
   };
 
   // Function to move a note up or down in the order

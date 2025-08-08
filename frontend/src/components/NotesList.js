@@ -730,19 +730,14 @@ const NotesList = ({
             }
           }
         } else if (e.key === 'l' && focusedNoteIndexRef.current >= 0) {
-          console.log('L key pressed, focusedNoteIndex:', focusedNoteIndexRef.current);
-          
           // Check if user is typing in a textarea or input - if so, skip this handler
           if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.contentEditable === 'true') {
-            console.log('Skipping L key handler - in textarea/input');
             return;
           }
           
           // Open the LinkNotesModal for the focused note
           const focusedNote = safeNotesRef.current[focusedNoteIndexRef.current];
-          console.log('Focused note:', focusedNote);
           if (focusedNote) {
-            console.log('Setting linkingNoteId to:', focusedNote.id);
             setLinkingNoteId(focusedNote.id);
             setLinkSearchTerm('');
             setLinkPopupVisible(true);
@@ -1654,30 +1649,21 @@ const NotesList = ({
           linkingNoteId={linkingNoteId}
           searchTerm={linkSearchTerm}
           onSearchTermChange={setLinkSearchTerm}
-          onLink={(fromId, toId) => {
-            console.log('Linking notes:', { fromId, toId });
-            console.log('fullNotesList length:', fullNotesList.length);
-            console.log('fullNotesList IDs:', fullNotesList.map(n => n.id));
-            
+          addNote={addNotes}
+          onLink={async (fromId, toId) => {
             let source = fullNotesList.find(n => n.id === fromId);
             let target = fullNotesList.find(n => n.id === toId);
             
             // Fallback to allNotes if not found in fullNotesList
             if (!source) {
               source = allNotes.find(n => n.id === fromId);
-              console.log('Source not found in fullNotesList, trying allNotes');
             }
             if (!target) {
               target = allNotes.find(n => n.id === toId);
-              console.log('Target not found in fullNotesList, trying allNotes');
             }
-            
-            console.log('Found source:', source);
-            console.log('Found target:', target);
             
             if (!source || !target) {
               console.error('Could not find source or target note for linking');
-              console.error('Source found:', !!source, 'Target found:', !!target);
               return;
             }
             
@@ -1689,8 +1675,8 @@ const NotesList = ({
             };
             
             try {
-              updateNoteCallback(fromId, addTag(source.content, toId));
-              updateNoteCallback(toId, addTag(target.content, fromId));
+              await updateNoteCallback(fromId, addTag(source.content, toId));
+              await updateNoteCallback(toId, addTag(target.content, fromId));
               setLinkPopupVisible(false);
               setLinkingNoteId(null);
               setLinkSearchTerm('');

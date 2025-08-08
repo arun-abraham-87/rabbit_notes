@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ChevronUpIcon, ChevronDownIcon, ArrowSmallUpIcon, ArrowSmallDownIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 
@@ -13,7 +14,11 @@ export default function LinkedNotesSection({
   onNavigate,
   initiallyOpen = false,
 }) {
-  const [open, setOpen] = useState(initiallyOpen);
+  const location = useLocation();
+  
+  // Always show expanded in /notes, otherwise use initiallyOpen prop
+  const shouldBeOpen = location.pathname === '/notes' ? true : initiallyOpen;
+  const [open, setOpen] = useState(shouldBeOpen);
   const [showMetaTags, setShowMetaTags] = useState({});
   const [hoveredNote, setHoveredNote] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,7 +127,7 @@ export default function LinkedNotesSection({
             />
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           </div>
-          <div className="pl-4 border-l border-gray-300 space-y-4">
+          <div className="pl-4 border-l border-gray-300 flex flex-wrap">
             {filteredNotes.map((id, index) => {
               
               
@@ -134,16 +139,16 @@ export default function LinkedNotesSection({
                 return (
                   <div
                     key={id}
-                    className="bg-red-50 border border-red-200 rounded-lg shadow-sm overflow-hidden"
+                    className="bg-red-50 border border-red-200 rounded-lg shadow-sm overflow-hidden w-fit max-w-full"
                   >
-                    <div className="p-4 text-red-600 flex items-center justify-between">
-                      <span>Linked note not found (ID: {id})</span>
+                    <div className="p-3 text-red-600 flex items-center justify-between">
+                      <span className="text-sm">Linked note not found (ID: {id})</span>
                       <button
                         onClick={() => deleteLink(id)}
-                        className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded shadow-sm"
+                        className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded shadow-sm ml-2"
                         title="Delete broken link"
                       >
-                        <TrashIcon className="h-4 w-4" />
+                        <TrashIcon className="h-3 w-3" />
                       </button>
                     </div>
                   </div>
@@ -153,11 +158,11 @@ export default function LinkedNotesSection({
               return (
                 <div
                   key={id}
-                  className="bg-white border rounded-lg shadow-sm overflow-hidden"
+                  className="bg-white border rounded-lg shadow-sm overflow-hidden w-fit max-w-full"
                 >
                   <div className="relative group">
                     <div 
-                      className="whitespace-pre-wrap font-mono text-sm p-4 bg-white text-gray-800 overflow-x-auto cursor-pointer hover:bg-gray-50 transition-colors"
+                      className="whitespace-pre-wrap font-mono text-sm p-3 bg-white text-gray-800 cursor-pointer hover:bg-gray-50 transition-colors"
                       onClick={() => onNavigate && onNavigate(id)}
                       title="Click to navigate to this note"
                     >
@@ -169,44 +174,55 @@ export default function LinkedNotesSection({
                       ))}
                     </div>
                     <div 
-                      className="absolute right-0 top-0 bottom-0 w-24 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       onMouseEnter={() => setHoveredNote(id)}
                       onMouseLeave={() => setHoveredNote(null)}
                     >
-                      <div className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 transition-opacity duration-200 ${hoveredNote === id ? 'opacity-100' : 'opacity-0'}`}>
+                      <div className={`flex items-center gap-1 transition-opacity duration-200 ${hoveredNote === id ? 'opacity-100' : 'opacity-0'}`}>
                         <button
-                          onClick={() => setShowMetaTags(prev => ({ ...prev, [id]: !prev[id] }))}
-                          className="text-xs text-gray-400 hover:text-gray-700 bg-white/80 rounded shadow-sm px-2 py-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowMetaTags(prev => ({ ...prev, [id]: !prev[id] }));
+                          }}
+                          className="text-xs text-gray-400 hover:text-gray-700 bg-white/90 rounded shadow-sm px-1 py-0.5"
+                          title={showMetaTags[id] ? 'Hide meta' : 'Show meta'}
                         >
-                          {showMetaTags[id] ? 'Hide meta' : 'Show meta'}
+                          {showMetaTags[id] ? 'M' : 'M'}
                         </button>
-                        <div className="flex flex-col gap-1">
-                          {index > 0 && (
-                            <button
-                              onClick={() => moveNote(index, 'up')}
-                              className="text-gray-400 hover:text-gray-700 p-1 bg-white/80 rounded shadow-sm"
-                              title="Move up"
-                            >
-                              <ArrowSmallUpIcon className="h-4 w-4" />
-                            </button>
-                          )}
-                          {index < orderedIds.length - 1 && (
-                            <button
-                              onClick={() => moveNote(index, 'down')}
-                              className="text-gray-400 hover:text-gray-700 p-1 bg-white/80 rounded shadow-sm"
-                              title="Move down"
-                            >
-                              <ArrowSmallDownIcon className="h-4 w-4" />
-                            </button>
-                          )}
+                        {index > 0 && (
                           <button
-                            onClick={() => deleteLink(id)}
-                            className="text-red-400 hover:text-red-700 p-1 bg-white/80 rounded shadow-sm"
-                            title="Delete link"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveNote(index, 'up');
+                            }}
+                            className="text-gray-400 hover:text-gray-700 p-0.5 bg-white/90 rounded shadow-sm"
+                            title="Move up"
                           >
-                            <TrashIcon className="h-4 w-4" />
+                            <ArrowSmallUpIcon className="h-3 w-3" />
                           </button>
-                        </div>
+                        )}
+                        {index < orderedIds.length - 1 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveNote(index, 'down');
+                            }}
+                            className="text-gray-400 hover:text-gray-700 p-0.5 bg-white/90 rounded shadow-sm"
+                            title="Move down"
+                          >
+                            <ArrowSmallDownIcon className="h-3 w-3" />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteLink(id);
+                          }}
+                          className="text-red-400 hover:text-red-700 p-0.5 bg-white/90 rounded shadow-sm"
+                          title="Delete link"
+                        >
+                          <TrashIcon className="h-3 w-3" />
+                        </button>
                       </div>
                     </div>
                   </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { parseNoteContent } from '../utils/TextUtils';
 
 /**
@@ -12,6 +12,7 @@ import { parseNoteContent } from '../utils/TextUtils';
  * - onSearchTermChange: (term: string) => void — update the filter
  * - onLink: (fromId: number, toId: number) => void — callback to perform the link
  * - onCancel: () => void — callback to close the modal without action
+ * - addNote: (content: string) => Promise<Note> — callback to create a new note
  */
 export default function LinkNotesModal({
   visible,
@@ -21,9 +22,13 @@ export default function LinkNotesModal({
   onSearchTermChange,
   onLink,
   onCancel,
+  addNote,
 }) {
-  if (!visible) return null;
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef(null);
+  const itemRefs = useRef([]);
 
+  // Define filterNotes function before using it
   const filterNotes = (notes, searchTerm) => {
     const searchLower = searchTerm.toLowerCase();
     return notes.filter(n => {
@@ -75,8 +80,63 @@ export default function LinkNotesModal({
     );
   };
 
+  // Reset selected index when modal opens or search term changes
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [visible, searchTerm]);
+
+  // Focus input when modal opens
+  useEffect(() => {
+    if (visible && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [visible]);
+
   const filteredNotes = filterNotes(notes, searchTerm);
   const displayNotes = searchTerm ? filteredNotes : filteredNotes.slice(0, 5);
+
+  // Auto-scroll to selected item
+  useEffect(() => {
+    if (selectedIndex >= 0 && itemRefs.current[selectedIndex]) {
+      itemRefs.current[selectedIndex].scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+      });
+    }
+  }, [selectedIndex]);
+
+  // Handle keyboard navigation
+  const handleKeyDown = async (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.min(prev + 1, displayNotes.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (displayNotes.length > 0 && selectedIndex >= 0 && selectedIndex < displayNotes.length) {
+        // Link to existing note
+        onLink(linkingNoteId, displayNotes[selectedIndex].id);
+      } else if (displayNotes.length === 0 && searchTerm.trim() && addNote) {
+        // Create new note with workstream tag and link it
+        try {
+          const newNoteContent = `${searchTerm.trim()}\nmeta::workstream::`;
+          const newNote = await addNote(newNoteContent);
+          if (newNote && newNote.id) {
+            onLink(linkingNoteId, newNote.id);
+          }
+        } catch (error) {
+          console.error('Error creating new note:', error);
+        }
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancel();
+    }
+  };
+
+  if (!visible) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -89,25 +149,37 @@ export default function LinkNotesModal({
         </div>
         
         <input
+          ref={inputRef}
           type="text"
           placeholder="Search workstream notes to link..."
           value={searchTerm}
           onChange={e => onSearchTermChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="w-full p-2 border border-gray-300 rounded mb-3"
           autoFocus
         />
 
         <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-          {displayNotes.map(n => (
+          {displayNotes.map((n, index) => (
             <div
               key={n.id}
-              className="flex justify-between items-center p-2 border rounded hover:bg-gray-50"
+              ref={el => itemRefs.current[index] = el}
+              className={`flex justify-between items-center p-2 border rounded cursor-pointer transition-colors ${
+                index === selectedIndex 
+                  ? 'bg-blue-100 border-blue-300' 
+                  : 'hover:bg-gray-50'
+              }`}
+              onClick={() => onLink(linkingNoteId, n.id)}
+              onMouseEnter={() => setSelectedIndex(index)}
             >
               <div className="flex-1 mr-4">
                 {getPreviewContent(n.content)}
               </div>
               <button
-                onClick={() => onLink(linkingNoteId, n.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLink(linkingNoteId, n.id);
+                }}
                 className="text-blue-600 hover:text-blue-800 whitespace-nowrap"
               >
                 Link
@@ -117,7 +189,16 @@ export default function LinkNotesModal({
           
           {displayNotes.length === 0 && (
             <div className="text-center text-gray-500 py-4">
-              No matching notes found
+              {searchTerm.trim() ? (
+                <div>
+                  <p>No matching notes found</p>
+                  <p className="text-sm text-blue-600 mt-2">
+                    Press Enter to create a new workstream note: "{searchTerm.trim()}"
+                  </p>
+                </div>
+              ) : (
+                <p>No matching notes found</p>
+              )}
             </div>
           )}
 

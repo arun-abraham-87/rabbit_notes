@@ -538,8 +538,11 @@ const NotesMainContainer = ({
         try {
             const response = await updateNoteById(noteId, updatedContent);
             
-            setAllNotes(allNotes.map(note => note.id === noteId ? response : note));
-            setTotals(allNotes.length);
+            setAllNotes(prevNotes => {
+                const updatedNotes = prevNotes.map(note => note.id === noteId ? response : note);
+                setTotals(updatedNotes.length);
+                return updatedNotes;
+            });
             
         } catch (error) {
             console.error('Error updating note:', error);

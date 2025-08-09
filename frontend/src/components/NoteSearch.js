@@ -1,9 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { updateNoteById } from '../utils/ApiUtils';
 import NoteFilters from './NoteFilters';
-import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronRightIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { debounce } from 'lodash';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
+
+// API Base URL for image uploads
+const API_BASE_URL = 'http://localhost:5001/api';
 
 const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
@@ -35,6 +38,66 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const popupRef = useRef(null);
   const [showTextSelection, setShowTextSelection] = useState(false);
+
+  // Image handling state
+  const [pastedImage, setPastedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Cleanup image preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  // Upload image to server
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+    
+    // Ensure the file has a proper extension based on its MIME type
+    let filename = file.name;
+    if (!filename || !filename.includes('.')) {
+      const mimeType = file.type;
+      let extension = '.png'; // Default to PNG
+      
+      if (mimeType === 'image/jpeg') extension = '.jpg';
+      else if (mimeType === 'image/png') extension = '.png';
+      else if (mimeType === 'image/gif') extension = '.gif';
+      else if (mimeType === 'image/webp') extension = '.webp';
+      
+      filename = `clipboard-image${extension}`;
+    }
+    
+    // Create a new File object with proper filename if needed
+    const fileToUpload = filename !== file.name 
+      ? new File([file], filename, { type: file.type })
+      : file;
+    
+    formData.append('image', fileToUpload);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/images`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      return {
+        imageUrl: data.imageUrl,
+        imageId: data.imageId
+      };
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  };
 
   const replaceLastWord = (tag) => {
     
@@ -275,6 +338,34 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
   };
 
   const handlePaste = (e, index) => {
+    // Check for images first
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (blob) {
+            // Create a proper File object with extension from MIME type
+            let extension = '.png'; // Default
+            if (item.type === 'image/jpeg') extension = '.jpg';
+            else if (item.type === 'image/png') extension = '.png';
+            else if (item.type === 'image/gif') extension = '.gif';
+            else if (item.type === 'image/webp') extension = '.webp';
+            
+            const file = new File([blob], `clipboard-image${extension}`, { type: item.type });
+            
+            setPastedImage(file);
+            setImagePreview(URL.createObjectURL(file));
+            console.log('📸 [NoteSearch] Image pasted and preview set');
+          }
+          return;
+        }
+      }
+    }
+
+    // Handle text paste (existing logic)
     const pasteText = e.clipboardData.getData('text');
 
     if (pasteText.includes('\n')) {
@@ -530,29 +621,63 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
     }
   };
 
-  const saveNote = () => {
-    
-    // Remove empty lines from the end and trim all lines
-    const trimmedLines = lines
-      .map(line => line.text.trim()) // Trim each line
-      .filter(text => text !== ''); // Remove empty lines
-    
-    // Join lines with newlines
-    const merged = trimmedLines.join('\n');
-    
-    // Check if note is empty or only contains whitespace
-    if (!merged || !merged.trim()) {
-      return;
-    }
-    if (isAddMode) {
-        addNote(merged);
-        setLines([{ id: 'line-0', text: '', isTitle: false }]);
-        setUrlLabelSelection({ urlIndex: null, labelIndex: null });
-        onCancel();
-      //}
-    } else {
-        onSave(merged);
-    //  });
+  const saveNote = async () => {
+    try {
+      setIsUploadingImage(true);
+      
+      // Remove empty lines from the end and trim all lines
+      const trimmedLines = lines
+        .map(line => line.text.trim()) // Trim each line
+        .filter(text => text !== ''); // Remove empty lines
+      
+      // Join lines with newlines
+      let merged = trimmedLines.join('\n');
+      
+      // Handle image upload if image is pasted
+      if (pastedImage) {
+        const response = await uploadImage(pastedImage);
+        const { imageId } = response;
+        
+        // Add only the meta tag (no markdown line)
+        const imageMetaTag = `meta::image::${imageId}`;
+        merged = merged + 
+          (merged ? '\n' : '') + 
+          imageMetaTag;
+        
+        console.log('✅ [NoteSearch] Image uploaded and added to note');
+      }
+      
+      // Check if note is empty or only contains whitespace
+      if (!merged || !merged.trim()) {
+        setIsUploadingImage(false);
+        return;
+      }
+      
+      if (isAddMode) {
+          addNote(merged);
+          setLines([{ id: 'line-0', text: '', isTitle: false }]);
+          setUrlLabelSelection({ urlIndex: null, labelIndex: null });
+          
+          // Clear image state after successful save
+          setPastedImage(null);
+          setImagePreview(null);
+          
+          onCancel();
+        //}
+      } else {
+          onSave(merged);
+          
+          // Clear image state after successful save
+          setPastedImage(null);
+          setImagePreview(null);
+      //  });
+      }
+      
+      setIsUploadingImage(false);
+    } catch (error) {
+      console.error('❌ [NoteSearch] Error saving note with image:', error);
+      alert('Failed to upload image. Please try again.');
+      setIsUploadingImage(false);
     }
   };
 
@@ -1166,19 +1291,54 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
           </button>
         </div>
       )}
+
+      {/* Image Preview Section */}
+      {imagePreview && (
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="w-24 h-24 object-cover rounded-lg border border-gray-300"
+              />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">Image Ready to Upload</h4>
+                  <p className="text-xs text-gray-500">
+                    This image will be uploaded when you save the note.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setPastedImage(null);
+                    setImagePreview(null);
+                  }}
+                  className="flex items-center gap-1 px-3 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-150 text-sm"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-end gap-3 mt-6">
         {isAddMode && (
           <button
-            onClick={() => {
-              const merged = lines.map(line => line.text).join('\n');
-                addNote(merged);
-                setLines([{ id: 'line-0', text: '', isTitle: false }]);
-                setUrlLabelSelection({ urlIndex: null, labelIndex: null });
-                onCancel();
-            }}
-            className="px-3 py-1.5 rounded text-sm bg-gray-800 text-white hover:bg-gray-700 shadow-sm"
+            onClick={saveNote}
+            disabled={isUploadingImage}
+            className={`px-3 py-1.5 rounded text-sm shadow-sm ${
+              isUploadingImage 
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                : 'bg-gray-800 text-white hover:bg-gray-700'
+            }`}
           >
-            Add Note
+            {isUploadingImage ? 'Uploading...' : 'Add Note'}
           </button>
         )}
         {isAddMode ? (
@@ -1189,6 +1349,12 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
               setShowTodoSubButtons(false);
               setActivePriority('');
               setShowEndDateFilterSubButtons(false);
+              
+              // Clear image state
+              setPastedImage(null);
+              setImagePreview(null);
+              setIsUploadingImage(false);
+              
               setTimeout(() => {
                 if (textareasRef.current[0]) {
                   textareasRef.current[0].focus();
@@ -1201,7 +1367,13 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
           </button>
         ) : (
           <button
-            onClick={onCancel}
+            onClick={() => {
+              // Clear image state on cancel
+              setPastedImage(null);
+              setImagePreview(null);
+              setIsUploadingImage(false);
+              onCancel();
+            }}
             className="px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
           >
             Cancel
@@ -1210,9 +1382,14 @@ const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text,
         {!isAddMode && (
           <button
             onClick={handleSave}
-            className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+            disabled={isUploadingImage}
+            className={`px-4 py-2 rounded-md shadow-sm ${
+              isUploadingImage 
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
           >
-            Save
+            {isUploadingImage ? 'Uploading...' : 'Save'}
           </button>
         )}
       </div>

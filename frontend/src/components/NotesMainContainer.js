@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { debounce } from 'lodash';
 import { useLocation } from 'react-router-dom';
-import { XMarkIcon, EyeIcon, EyeSlashIcon, FireIcon } from '@heroicons/react/24/solid';
-
+import { XMarkIcon, EyeIcon, EyeSlashIcon, FireIcon, TrashIcon } from '@heroicons/react/24/solid';
 import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
 import WatchList from './WatchList';
@@ -10,6 +9,9 @@ import { updateNoteById, loadNotes, defaultSettings, deleteNoteById, deleteNoteW
 import { isSameAsTodaysDate } from '../utils/DateUtils';
 import { searchInNote, buildSuggestionsFromNotes } from '../utils/NotesUtils';
 import NoteFilters from './NoteFilters';
+
+// API Base URL for image uploads
+const API_BASE_URL = 'http://localhost:5001/api';
 
 const NotesMainContainer = ({
     objList = [],
@@ -64,6 +66,135 @@ const NotesMainContainer = ({
     const [selectedTagIndex, setSelectedTagIndex] = useState(-1);
     const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
     const throttleRef = useRef(null);
+
+    // Image handling state
+    const [pastedImage, setPastedImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+    // Upload image to server
+    const uploadImage = async (file) => {
+        const formData = new FormData();
+        
+        // Ensure the file has a proper extension based on its MIME type
+        let filename = file.name;
+        if (!filename || !filename.includes('.')) {
+            const mimeType = file.type;
+            let extension = '.png'; // Default to PNG
+            
+            if (mimeType === 'image/jpeg') extension = '.jpg';
+            else if (mimeType === 'image/png') extension = '.png';
+            else if (mimeType === 'image/gif') extension = '.gif';
+            else if (mimeType === 'image/webp') extension = '.webp';
+            
+            filename = `clipboard-image${extension}`;
+        }
+        
+        // Create a new File object with proper filename if needed
+        const fileToUpload = filename !== file.name 
+            ? new File([file], filename, { type: file.type })
+            : file;
+        
+        formData.append('image', fileToUpload);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/images`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to upload image');
+            }
+
+            const data = await response.json();
+            return {
+                imageUrl: data.imageUrl,
+                imageId: data.imageId
+            };
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            throw error;
+        }
+    };
+
+    // Cleanup image preview URL on unmount
+    useEffect(() => {
+        return () => {
+            if (imagePreview) {
+                URL.revokeObjectURL(imagePreview);
+            }
+        };
+    }, [imagePreview]);
+
+    // Handle image paste
+    const handlePaste = (e) => {
+        // Check for images first
+        const items = e.clipboardData?.items;
+        if (items) {
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const blob = item.getAsFile();
+                    if (blob) {
+                        // Create a proper File object with extension from MIME type
+                        let extension = '.png'; // Default
+                        if (item.type === 'image/jpeg') extension = '.jpg';
+                        else if (item.type === 'image/png') extension = '.png';
+                        else if (item.type === 'image/gif') extension = '.gif';
+                        else if (item.type === 'image/webp') extension = '.webp';
+                        
+                        const file = new File([blob], `clipboard-image${extension}`, { type: item.type });
+                        
+                        setPastedImage(file);
+                        setImagePreview(URL.createObjectURL(file));
+                        console.log('📸 [NotesMainContainer] Image pasted and preview set');
+                    }
+                    return;
+                }
+            }
+        }
+    };
+
+    // Handle note creation with optional image
+    const handleCreateNote = async () => {
+        try {
+            setIsUploadingImage(true);
+            let noteContent = localSearchQuery.trim();
+            
+            // Handle image upload if image is pasted
+            if (pastedImage) {
+                const response = await uploadImage(pastedImage);
+                const { imageId } = response;
+                
+                // Add only the meta tag (no markdown line)
+                const imageMetaTag = `meta::image::${imageId}`;
+                noteContent = noteContent + 
+                    (noteContent ? '\n' : '') + 
+                    imageMetaTag;
+                
+                console.log('✅ [NotesMainContainer] Image uploaded and added to note');
+            }
+            
+            // Create note if there's content or an image
+            if (noteContent || pastedImage) {
+                addNote(noteContent || 'Image');
+                setLocalSearchQuery('');
+                setSearchQuery('');
+                
+                // Clear image state after successful save
+                setPastedImage(null);
+                setImagePreview(null);
+            }
+            
+            setIsUploadingImage(false);
+        } catch (error) {
+            console.error('❌ [NotesMainContainer] Error creating note with image:', error);
+            alert('Failed to upload image. Please try again.');
+            setIsUploadingImage(false);
+        }
+    };
 
     // Focus search input on mount
     useEffect(() => {
@@ -421,10 +552,8 @@ const NotesMainContainer = ({
                     handleSelectTag(filteredTags[0]);
                 } else {
                     // Create note if no suggestions
-                    if (localSearchQuery.trim()) {
-                        addNote(localSearchQuery);
-                        setLocalSearchQuery('');
-                        setSearchQuery('');
+                    if (localSearchQuery.trim() || pastedImage) {
+                        handleCreateNote();
                     }
                 }
             } else if (e.key === "Tab") {
@@ -458,11 +587,9 @@ const NotesMainContainer = ({
             }
             
             // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && localSearchQuery.trim()) {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                 e.preventDefault();
-                addNote(localSearchQuery);
-                setLocalSearchQuery('');
-                setSearchQuery('');
+                handleCreateNote();
             }
         }
     };
@@ -638,6 +765,7 @@ const NotesMainContainer = ({
                             value={localSearchQuery}
                             onChange={handleSearchChange}
                             onKeyDown={handleKeyDown}
+                            onPaste={handlePaste}
                             placeholder="Search notes... (Cmd+Enter to create note, ↓ to navigate, Shift+G to last note)"
                             rows={1}
                             style={{
@@ -656,6 +784,12 @@ const NotesMainContainer = ({
                                     setLocalSearchQuery('');
                                     setSearchQuery('');
                                     setShowPopup(false);
+                                    
+                                    // Clear image state too
+                                    setPastedImage(null);
+                                    setImagePreview(null);
+                                    setIsUploadingImage(false);
+                                    
                                     searchInputRef.current?.focus();
                                 }}
                                 className="absolute right-2 top-2 p-1 text-gray-500 hover:text-gray-700 focus:outline-none"
@@ -665,6 +799,43 @@ const NotesMainContainer = ({
                             </button>
                         )}
                     </div>
+
+                    {/* Image Preview Section */}
+                    {imagePreview && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center gap-3">
+                                <div className="flex-shrink-0">
+                                    <img
+                                        src={imagePreview}
+                                        alt="Preview"
+                                        className="w-16 h-16 object-cover rounded border border-gray-300"
+                                    />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-sm font-medium text-gray-700">Image Ready</h4>
+                                            <p className="text-xs text-gray-500">
+                                                {isUploadingImage ? 'Uploading...' : 'Press Cmd+Enter to create note with image'}
+                                            </p>
+                                        </div>
+                                        {!isUploadingImage && (
+                                            <button
+                                                onClick={() => {
+                                                    setPastedImage(null);
+                                                    setImagePreview(null);
+                                                }}
+                                                className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors duration-150"
+                                                title="Remove image"
+                                            >
+                                                <TrashIcon className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Suggestion popup */}
                     {showPopup && (

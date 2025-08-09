@@ -533,17 +533,20 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       componentName="InlineEditor" 
       isDevMode={settings?.developerMode || false}
     >
-      <div className="w-full relative" data-note-inline-editor="true">
-      {/* Red X button for deleting the line */}
-      <button
-        onClick={onDelete}
-        className="absolute left-1 top-1/2 transform -translate-y-1/2 z-10 w-5 h-5 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors duration-150"
-        title="Delete this line"
-      >
-        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </button>
+      <div className="w-full flex items-start gap-2" data-note-inline-editor="true">
+        {/* Red X button for deleting the line */}
+        <button
+          onClick={onDelete}
+          className="flex-shrink-0 mt-1 w-5 h-5 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors duration-150"
+          title="Delete this line"
+        >
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </button>
+        
+        {/* Textarea container */}
+        <div className="flex-1 relative">
       
       {pendingUrl && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -686,7 +689,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
         onKeyUp={(e) => {
           
         }}
-        className={`w-full border border-gray-300 pl-8 pr-16 py-1 rounded text-sm resize-none ${inputClass}`}
+        className={`w-full border border-gray-300 pl-2 pr-2 py-1 rounded text-sm resize-none ${inputClass}`}
         rows={1}
         style={{
           resize: 'none',
@@ -733,9 +736,10 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
         </div>
       )}
       
-      {/* Floating buttons at the end of text */}
-      <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center pointer-events-none">
-        <div className="flex items-center gap-1 pointer-events-auto">
+        </div>
+        
+        {/* Action buttons outside textarea */}
+        <div className="flex-shrink-0 flex items-center gap-1 mt-1">
           <button
             onClick={handleSave}
             disabled={isUploadingImage}
@@ -761,7 +765,6 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
             Cancel
           </button>
         </div>
-      </div>
       
       {/* Workstream notes dropdown */}
       {showWorkstreamDropdown && (

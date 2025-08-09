@@ -646,6 +646,7 @@ const NoteFilters = ({
 
       {/* Exclude filters on a new line */}
       <div className="flex flex-wrap gap-3">
+        <span className="text-xs text-gray-700 font-medium self-center">Exclude:</span>
         <div className="flex flex-col">
           <label className="flex items-center gap-2 text-xs text-gray-600">
             <input
@@ -654,7 +655,7 @@ const NoteFilters = ({
               onChange={(e) => handleExcludeMeetingsChange(e.target.checked)}
               className="form-checkbox h-3 w-3 text-purple-600"
             />
-            Exclude Meetings
+            Meetings
           </label>
         </div>
         <div className="flex flex-col">
@@ -665,7 +666,7 @@ const NoteFilters = ({
               onChange={(e) => handleExcludeEventNotesChange(e.target.checked)}
               className="form-checkbox h-3 w-3 text-purple-600"
             />
-            Exclude Event Notes
+            Event Notes
           </label>
           {excludeEventNotes && eventNotesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
@@ -681,7 +682,7 @@ const NoteFilters = ({
               onChange={(e) => handleExcludeBackupNotesChange(e.target.checked)}
               className="form-checkbox h-3 w-3 text-purple-600"
             />
-            Exclude Backup
+            Backup
           </label>
           {excludeBackupNotes && backupNotesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
@@ -697,7 +698,7 @@ const NoteFilters = ({
               onChange={(e) => handleExcludeWatchEventsChange(e.target.checked)}
               className="form-checkbox h-3 w-3 text-purple-600"
             />
-            Exclude Watch Events
+            Watch Events
           </label>
           {excludeWatchEvents && watchEventsCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
@@ -713,7 +714,7 @@ const NoteFilters = ({
               onChange={(e) => handleExcludeBookmarksChange(e.target.checked)}
               className="form-checkbox h-3 w-3 text-purple-600"
             />
-            Exclude Bookmarks
+            Bookmarks
           </label>
           {excludeBookmarks && bookmarksCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
@@ -729,7 +730,7 @@ const NoteFilters = ({
               onChange={(e) => handleExcludeExpensesChange(e.target.checked)}
               className="form-checkbox h-3 w-3 text-purple-600"
             />
-            Exclude Expenses
+            Expenses
           </label>
           {excludeExpenses && expensesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
@@ -745,7 +746,7 @@ const NoteFilters = ({
               onChange={(e) => handleExcludeSensitiveChange(e.target.checked)}
               className="form-checkbox h-3 w-3 text-purple-600"
             />
-            Exclude Sensitive
+            Sensitive
           </label>
           {excludeSensitive && sensitiveNotesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
@@ -761,7 +762,7 @@ const NoteFilters = ({
               onChange={(e) => handleExcludeTrackersChange(e.target.checked)}
               className="form-checkbox h-3 w-3 text-purple-600"
             />
-            Exclude Trackers
+            Trackers
           </label>
           {excludeTrackers && trackerNotesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import InlineEditor from './InlineEditor';
 import NoteImages from './NoteImages';
 import { PlusIcon } from '@heroicons/react/24/solid';
@@ -58,6 +59,17 @@ export default function NoteContent({
     highlightedLineText = '',
     wasOpenedFromSuperEdit = false
 }) {
+    const navigate = useNavigate();
+    
+    // Navigation handler for note links
+    const handleNoteNavigation = (url) => {
+        if (url.startsWith('#/notes?note=')) {
+            // Extract the note ID from the URL
+            const noteId = url.split('note=')[1];
+            navigate(`/notes?note=${noteId}`);
+        }
+    };
+    
     // Use the bulkDeleteMode prop instead of local state
     const [selectedRows, setSelectedRows] = useState(new Set());
     const [showAddTextModal, setShowAddTextModal] = React.useState(false);
@@ -1339,7 +1351,8 @@ export default function NoteContent({
                                     searchQuery,
                                     parseNoteContent,
                                     setEditingInlineDate,
-                                    handleInlineDateSelect
+                                    handleInlineDateSelect,
+                                    handleNoteNavigation
                                 );
                                 
                                 if (isUrlOnly) {

@@ -333,7 +333,7 @@ export const findDuplicatedUrls = (safeNotes) => {
 }
 
 
-export const buildLineElements = (line, idx, isListItem, searchTerm) => {
+export const buildLineElements = (line, idx, isListItem, searchTerm, onNavigateToNote = null) => {
   
   const raw = isListItem ? line.slice(2) : line; // strip "- " bullet
   const elements = [];
@@ -368,22 +368,45 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
       const isReversedUrl = url.match(/[^\s]+\/\/[^\s]+ptth/);
       const originalUrl = isReversedUrl ? url.split('').reverse().join('') : url;
       
+      // Check if this is a note navigation link
+      const isNoteNavigationLink = originalUrl.startsWith('#/notes?note=');
       
-      
-      
-      
-      elements.push(
-        <a
-          key={`link-${idx}-${match.index}`}
-          href={originalUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline"
-          title={originalUrl}
-        >
-          {match[4]}
-        </a>
-      );
+      if (isNoteNavigationLink) {
+        // Handle note navigation links with SPA navigation
+        elements.push(
+          <a
+            key={`link-${idx}-${match.index}`}
+            href={originalUrl}
+            className="text-blue-600 underline cursor-pointer"
+            title={originalUrl}
+            onClick={(e) => {
+              e.preventDefault();
+              if (onNavigateToNote) {
+                onNavigateToNote(originalUrl);
+              } else {
+                // Fallback to window.location.href
+                window.location.href = originalUrl;
+              }
+            }}
+          >
+            {match[4]}
+          </a>
+        );
+      } else {
+        // Handle external links normally
+        elements.push(
+          <a
+            key={`link-${idx}-${match.index}`}
+            href={originalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+            title={originalUrl}
+          >
+            {match[4]}
+          </a>
+        );
+      }
       
     } else if (match[6]) {
       // bare URL
@@ -465,7 +488,7 @@ export const buildLineElements = (line, idx, isListItem, searchTerm) => {
       const text = match[9];
       elements.push(
         <span key={`color-${idx}-${match.index}`} style={{ color }}>
-          {buildLineElements(text, `${idx}-color-${match.index}`, false, searchTerm)}
+          {buildLineElements(text, `${idx}-color-${match.index}`, false, searchTerm, onNavigateToNote)}
         </span>
       );
     }
@@ -492,7 +515,8 @@ export const renderLineWithClickableDates = (
   searchTerm,
   parseFormattedContent,
   setEditingInlineDate,
-  handleInlineDateSelect
+  handleInlineDateSelect,
+  onNavigateToNote = null
 ) => {
   ////
   ////
@@ -522,7 +546,7 @@ export const renderLineWithClickableDates = (
       );
     }
     // Non-date segments
-    return buildLineElements(seg, idx, isListItem, searchTerm);
+    return buildLineElements(seg, idx, isListItem, searchTerm, onNavigateToNote);
   });
 };// ─── end line‑rendering helper ──────────────────────────────────────
 /**

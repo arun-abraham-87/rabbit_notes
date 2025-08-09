@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+import { createNote, updateNoteById, deleteNoteById, deleteNoteWithImages } from '../utils/ApiUtils';
 import {
   PencilIcon,
   XMarkIcon,
@@ -215,7 +215,12 @@ const TodoList = ({ allNotes, setAllNotes, updateNote }) => {
 
   const updateTodo = async (id, updatedContent, removeNote = false) => {
     if (removeNote) {
-      const response = await deleteNoteById(id);
+      const noteToDelete = allNotes.find(note => note.id === id);
+      if (noteToDelete) {
+        await deleteNoteWithImages(id, noteToDelete.content);
+      } else {
+        await deleteNoteById(id);
+      }
       setAllNotes(allNotes.filter((note) => note.id !== id));
     } else {
       const response = await updateNoteById(id, updatedContent);

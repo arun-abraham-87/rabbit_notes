@@ -1,6 +1,10 @@
 // src/components/InlineEditor.js
 import React, { useRef, useEffect, useState } from 'react';
 import { DevModeInfo } from '../utils/DevUtils';
+import { TrashIcon } from '@heroicons/react/24/outline';
+
+// API Base URL for image uploads
+const API_BASE_URL = 'http://localhost:5001/api';
 
 /**
  * Reusable inline‑edit UI: a textarea with Save / Cancel.
@@ -203,7 +207,94 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   const [labelInput, setLabelInput] = useState('');
   const [cursorPosition, setCursorPosition] = useState({ start: 0, end: 0 });
 
+  // Image handling state
+  const [pastedImage, setPastedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Cleanup image preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  // Upload image to server
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+    
+    // Ensure the file has a proper extension based on its MIME type
+    let filename = file.name;
+    if (!filename || !filename.includes('.')) {
+      const mimeType = file.type;
+      let extension = '.png'; // Default to PNG
+      
+      if (mimeType === 'image/jpeg') extension = '.jpg';
+      else if (mimeType === 'image/png') extension = '.png';
+      else if (mimeType === 'image/gif') extension = '.gif';
+      else if (mimeType === 'image/webp') extension = '.webp';
+      
+      filename = `clipboard-image${extension}`;
+    }
+    
+    // Create a new File object with proper filename if needed
+    const fileToUpload = filename !== file.name 
+      ? new File([file], filename, { type: file.type })
+      : file;
+    
+    formData.append('image', fileToUpload);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/images`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      return {
+        imageUrl: data.imageUrl,
+        imageId: data.imageId
+      };
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  };
+
   const handlePaste = (e) => {
+    // Check for images first
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (blob) {
+            // Create a proper File object with extension from MIME type
+            let extension = '.png'; // Default
+            if (item.type === 'image/jpeg') extension = '.jpg';
+            else if (item.type === 'image/png') extension = '.png';
+            else if (item.type === 'image/gif') extension = '.gif';
+            else if (item.type === 'image/webp') extension = '.webp';
+            
+            const file = new File([blob], `clipboard-image${extension}`, { type: item.type });
+            
+            setPastedImage(file);
+            setImagePreview(URL.createObjectURL(file));
+          }
+          return;
+        }
+      }
+    }
+
+    // Handle text paste (existing logic)
     const pasteText = e.clipboardData.getData('text');
     const urlPattern = /^https?:\/\/[^\s]+$/;
     if (urlPattern.test(pasteText)) {
@@ -327,28 +418,52 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   };
 
   // Function to handle saving with proper header formatting
-  const handleSave = () => {
-    let finalText = displayText;
-    
-    // Add header symbols back if it was a header
-    if (headerType === 'h1') {
-      finalText = '###' + displayText + '###';
-    } else if (headerType === 'h2') {
-      finalText = '##' + displayText + '##';
-    }
-    
-    
-    
-    onSave(finalText);
-    
-    // If this was opened from superedit mode, trigger a return to superedit
-    if (wasOpenedFromSuperEdit) {
-      // Dispatch a custom event to signal return to superedit mode
-      const event = new CustomEvent('returnToSuperEdit', {
-        detail: { lineIndex: lineIndex } // Pass the actual line index
-      });
+  const handleSave = async () => {
+    try {
+      setIsUploadingImage(true);
+      let finalText = displayText;
       
-      document.dispatchEvent(event);
+      // Add header symbols back if it was a header
+      if (headerType === 'h1') {
+        finalText = '###' + displayText + '###';
+      } else if (headerType === 'h2') {
+        finalText = '##' + displayText + '##';
+      }
+      
+      // Handle image upload if image is pasted
+      if (pastedImage) {
+        const response = await uploadImage(pastedImage);
+        const { imageId } = response;
+        
+        // Add only the meta tag (no markdown line)
+        const imageMetaTag = `meta::image::${imageId}`;
+        finalText = finalText + 
+          (finalText ? '\n' : '') + 
+          imageMetaTag;
+        
+        console.log('✅ [InlineEditor] Image uploaded and added to text');
+      }
+      
+      onSave(finalText);
+      
+      // Clear image state after successful save
+      setPastedImage(null);
+      setImagePreview(null);
+      setIsUploadingImage(false);
+      
+      // If this was opened from superedit mode, trigger a return to superedit
+      if (wasOpenedFromSuperEdit) {
+        // Dispatch a custom event to signal return to superedit mode
+        const event = new CustomEvent('returnToSuperEdit', {
+          detail: { lineIndex: lineIndex } // Pass the actual line index
+        });
+        
+        document.dispatchEvent(event);
+      }
+    } catch (error) {
+      console.error('❌ [InlineEditor] Error saving with image:', error);
+      alert('Failed to upload image. Please try again.');
+      setIsUploadingImage(false);
     }
   };
 
@@ -546,18 +661,64 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
         spellCheck="false"
       />
       
+      {/* Image Preview Section */}
+      {imagePreview && (
+        <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="w-16 h-16 object-cover rounded border border-gray-300"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-medium text-gray-700 mb-1">Image Ready</h4>
+                  <p className="text-xs text-gray-500">
+                    Will upload when saved
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setPastedImage(null);
+                    setImagePreview(null);
+                  }}
+                  className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors duration-150"
+                  title="Remove image"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Floating buttons at the end of text */}
       <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center pointer-events-none">
         <div className="flex items-center gap-1 pointer-events-auto">
           <button
             onClick={handleSave}
-            className="px-1.5 py-0.5 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-green-400 transition-colors duration-150 shadow-sm"
+            disabled={isUploadingImage}
+            className={`px-1.5 py-0.5 text-xs font-medium text-white rounded focus:outline-none focus:ring-1 transition-colors duration-150 shadow-sm ${
+              isUploadingImage 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-green-600 hover:bg-green-700 focus:ring-green-400'
+            }`}
           >
-            Save
+            {isUploadingImage ? 'Uploading...' : 'Save'}
           </button>
 
           <button
-            onClick={onCancel}
+            onClick={() => {
+              // Clear image state on cancel
+              setPastedImage(null);
+              setImagePreview(null);
+              setIsUploadingImage(false);
+              onCancel();
+            }}
             className="px-1.5 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150 shadow-sm"
           >
             Cancel

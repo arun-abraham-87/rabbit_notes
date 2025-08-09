@@ -6,7 +6,7 @@ import { XMarkIcon, EyeIcon, EyeSlashIcon, FireIcon } from '@heroicons/react/24/
 import InfoPanel from './InfoPanel.js';
 import NotesList from './NotesList.js';
 import WatchList from './WatchList';
-import { updateNoteById, loadNotes, defaultSettings, deleteNoteById } from '../utils/ApiUtils';
+import { updateNoteById, loadNotes, defaultSettings, deleteNoteById, deleteNoteWithImages } from '../utils/ApiUtils';
 import { isSameAsTodaysDate } from '../utils/DateUtils';
 import { searchInNote, buildSuggestionsFromNotes } from '../utils/NotesUtils';
 import NoteFilters from './NoteFilters';
@@ -601,7 +601,12 @@ const NotesMainContainer = ({
 
     const handleDelete = async (noteId) => {
         try {
-            await deleteNoteById(noteId);
+            const noteToDelete = allNotes.find(note => note.id === noteId);
+            if (noteToDelete) {
+                await deleteNoteWithImages(noteId, noteToDelete.content);
+            } else {
+                await deleteNoteById(noteId);
+            }
             setAllNotes(allNotes.filter(note => note.id !== noteId));
             setTotals(allNotes.length);
         } catch (error) {   

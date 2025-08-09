@@ -5,7 +5,7 @@ import { parseNoteContent } from '../utils/TextUtils';
 import AddPeopleModal from './AddPeopleModal';
 import NoteView from './NoteView';
 import PersonCard from './PersonCard';
-import { updateNoteById, createNote, deleteNoteById } from '../utils/ApiUtils';
+import { updateNoteById, createNote, deleteNoteById, deleteNoteWithImages } from '../utils/ApiUtils';
 
 const PeopleList = ({allNotes, setAllNotes}) => {
 
@@ -120,7 +120,12 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   // Handler for deleting a person
   const handleDeletePerson = async (id) => {
     try {
-      await deleteNoteById(id);
+      const noteToDelete = allNotes.find(note => note.id === id);
+      if (noteToDelete) {
+        await deleteNoteWithImages(id, noteToDelete.content);
+      } else {
+        await deleteNoteById(id);
+      }
       setAllNotes(allNotes.filter(note => note.id !== id));
       setEditPersonModal({ open: false, personNote: null });
       setDeleteModal({ open: false, noteId: null, personName: '' });

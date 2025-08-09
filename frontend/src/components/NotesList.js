@@ -4,7 +4,7 @@ import { Alerts } from './Alerts';
 
 
 import ConfirmationModal from './ConfirmationModal';
-import { updateNoteById, deleteNoteById, addNewNoteCommon, loadNotes } from '../utils/ApiUtils';
+import { updateNoteById, deleteNoteById, deleteNoteWithImages, addNewNoteCommon, loadNotes } from '../utils/ApiUtils';
 import { findDuplicatedUrls } from '../utils/genUtils';
 
 import RightClickMenu from './RightClickMenu';
@@ -392,7 +392,12 @@ const NotesList = ({
   };
 
   const deleteNote = async (id) => {
-    deleteNoteById(id);
+    const noteToDelete = allNotes.find(note => note.id === id);
+    if (noteToDelete) {
+      await deleteNoteWithImages(id, noteToDelete.content);
+    } else {
+      await deleteNoteById(id);
+    }
     updateNoteCallback(
       allNotes.filter((note) => note.id !== id) // Filter out the deleted note from the list
     );

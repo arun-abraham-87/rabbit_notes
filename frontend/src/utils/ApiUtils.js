@@ -1,4 +1,5 @@
 import { reorderMetaTags } from './MetaTagUtils';
+import { extractImageIds } from './NotesUtils';
 import JSZip from 'jszip';
 
 // API Base URL
@@ -38,6 +39,43 @@ export const deleteNoteById = async (id) => {
     });
     if (!response.ok) throw new Error('Failed to delete note');
     return await response.json();
+};
+
+// Image deletion functions
+export const deleteImageById = async (imageId) => {
+    const response = await fetch(`${API_BASE_URL}/images/${imageId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) throw new Error('Failed to delete image');
+    return await response.json();
+};
+
+export const deleteImagesFromNote = async (noteContent) => {
+    const imageIds = extractImageIds(noteContent);
+    const deletePromises = imageIds.map(imageId => 
+        deleteImageById(imageId).catch(error => {
+            console.warn(`Failed to delete image ${imageId}:`, error);
+            return null; // Don't fail the whole operation if one image fails
+        })
+    );
+    
+    await Promise.all(deletePromises);
+    return imageIds;
+};
+
+export const deleteNoteWithImages = async (id, noteContent) => {
+    try {
+        // First delete associated images
+        await deleteImagesFromNote(noteContent);
+        console.log('✅ Associated images deleted');
+    } catch (error) {
+        console.warn('⚠️ Some images could not be deleted:', error);
+        // Continue with note deletion even if image deletion fails
+    }
+    
+    // Then delete the note
+    return await deleteNoteById(id);
 };
 
 export const loadAllNotes = async (searchText, noteDate) => {

@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { XMarkIcon, EyeIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, EyeIcon, PhotoIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { buildSuggestionsFromNotes } from '../utils/NotesUtils';
+
+// API Base URL for consistent API calls
+const API_BASE_URL = 'http://localhost:5001/api';
 
 const TextPastePopup = ({
   isOpen,
@@ -26,6 +29,12 @@ const TextPastePopup = ({
   const [selectedTagIndex, setSelectedTagIndex] = useState(-1);
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [throttleRef] = useState({ current: null });
+  
+  // Image handling state
+  const [pastedImage, setPastedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Build merged suggestions from objList and allNotes (people and workstreams)
   const mergedObjList = useMemo(() =>
@@ -37,6 +46,8 @@ const TextPastePopup = ({
   useEffect(() => {
     if (isOpen) {
       setNewNoteText('');
+      setPastedImage(null);
+      setImagePreview(null);
       setTimeout(() => {
         textareaRef.current?.focus();
       }, 0);
@@ -110,6 +121,109 @@ const TextPastePopup = ({
     // Focus back to textarea
     if (textareaRef.current) {
       textareaRef.current.focus();
+    }
+  };
+
+  // Handle image paste
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            setPastedImage(file);
+            setImagePreview(URL.createObjectURL(file));
+          }
+          break;
+        }
+      }
+    }
+  };
+
+  // Handle file input change
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      setPastedImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Upload image to server
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/images`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      return {
+        imageUrl: data.imageUrl,
+        imageId: data.imageId
+      };
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  };
+
+  // Remove selected image
+  const removeImage = () => {
+    setPastedImage(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle save with image upload
+  const handleSave = async () => {
+    try {
+      setIsUploadingImage(true);
+
+      // Upload image if one is selected
+      if (pastedImage) {
+        const response = await uploadImage(pastedImage);
+        const { imageUrl, imageId } = response;
+        
+        // Add image markdown and meta tag to the note content
+        const imageMarkdown = `![Image](${imageUrl})`;
+        const imageMetaTag = `meta::image::${imageId}`;
+        const updatedText = newNoteText + 
+          (newNoteText ? '\n\n' : '') + 
+          imageMarkdown + 
+          '\n' + 
+          imageMetaTag;
+        
+        // Update state for UI display
+        setNewNoteText(updatedText);
+        
+        // Call onSave with the updated content directly
+        onSave(updatedText);
+        setIsUploadingImage(false);
+      } else {
+        // No image, just call onSave directly
+        onSave();
+        setIsUploadingImage(false);
+      }
+    } catch (error) {
+      console.error('Error saving note with image:', error);
+      alert('Failed to upload image. Please try again.');
+      setIsUploadingImage(false);
     }
   };
 
@@ -192,8 +306,9 @@ const TextPastePopup = ({
               ref={textareaRef}
               value={newNoteText}
               onChange={handleTextChange}
+              onPaste={handlePaste}
               className="w-full h-32 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="Type your note here... (Press Cmd+Enter to save)"
+              placeholder="Type your note here... (Press Cmd+Enter to save, or paste images)"
             />
             {/* Tag suggestions popup */}
             {showSuggestions && (
@@ -229,6 +344,56 @@ const TextPastePopup = ({
               <pre className="whitespace-pre-wrap text-sm text-gray-600">{pasteText}</pre>
             </div>
           </div>
+          
+          {/* Image section */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">Image</label>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md"
+                title="Select image file"
+              >
+                <PhotoIcon className="h-4 w-4" />
+                Choose File
+              </button>
+            </div>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            
+            {imagePreview && (
+              <div className="relative border border-gray-300 rounded-lg p-2 bg-gray-50">
+                <img
+                  src={imagePreview}
+                  alt="Pasted image preview"
+                  className="max-w-full max-h-48 object-contain rounded"
+                />
+                <button
+                  onClick={removeImage}
+                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  title="Remove image"
+                >
+                  <TrashIcon className="h-3 w-3" />
+                </button>
+                <div className="mt-2 text-xs text-gray-600">
+                  {pastedImage?.name || 'Pasted image'} ({pastedImage ? Math.round(pastedImage.size / 1024) : 0} KB)
+                </div>
+              </div>
+            )}
+            
+            {!imagePreview && (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-500 text-sm">
+                Paste an image here or click "Choose File" to select one
+              </div>
+            )}
+          </div>
+          
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <button
@@ -280,7 +445,7 @@ const TextPastePopup = ({
               </div>
             </div>
           </div>
-          {(selectedPriority || isWatchSelected || isSensitiveSelected) && (
+          {(selectedPriority || isWatchSelected || isSensitiveSelected || pastedImage) && (
             <div className="text-sm text-gray-600 italic space-y-1">
               {selectedPriority && (
                 <div>Marked as todo - priority {selectedPriority}</div>
@@ -291,15 +456,23 @@ const TextPastePopup = ({
               {isSensitiveSelected && (
                 <div>Marked as sensitive</div>
               )}
+              {pastedImage && (
+                <div>Image will be tagged for easy search</div>
+              )}
             </div>
           )}
         </div>
         <div className="mt-4 flex justify-end">
           <button
-            onClick={onSave}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            onClick={handleSave}
+            disabled={isUploadingImage}
+            className={`px-4 py-2 rounded-lg text-white ${
+              isUploadingImage 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-indigo-600 hover:bg-indigo-700'
+            }`}
           >
-            Save Note
+            {isUploadingImage ? 'Uploading...' : 'Save Note'}
           </button>
         </div>
       </div>

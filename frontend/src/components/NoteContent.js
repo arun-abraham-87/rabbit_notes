@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import InlineEditor from './InlineEditor';
+import NoteImages from './NoteImages';
 import { PlusIcon } from '@heroicons/react/24/solid';
 import {
     parseNoteContent
 } from '../utils/TextUtils';
 import { renderLineWithClickableDates, getIndentFlags, getRawLines } from '../utils/genUtils';
+import { extractImageIds } from '../utils/NotesUtils';
 import AddTextModal from './AddTextModal';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
 import { checkText } from '../utils/languageTool';
@@ -263,6 +265,9 @@ export default function NoteContent({
         onAddText: handleAddText,
         onEditText: handleEditText
     });
+    
+    // Extract image IDs from meta tags
+    const imageIds = extractImageIds(note.content);
     
 
     
@@ -1412,6 +1417,9 @@ export default function NoteContent({
         }`}>
             <div className="whitespace-pre-wrap break-words break-all space-y-1">
                 {contentLines.map((line, idx) => renderLine(line, idx))}
+                
+                {/* Display images if any meta::image:: tags are found */}
+                <NoteImages imageIds={imageIds} />
                 {/* Drop zone at the bottom for dragging to last position */}
                 {!focusMode && (
                     <div

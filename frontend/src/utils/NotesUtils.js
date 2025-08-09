@@ -65,3 +65,18 @@ export const buildSuggestionsFromNotes = (allNotes, objList = []) => {
         ...peopleSuggestions
     ];
 };
+
+// Extract image IDs from meta::image:: tags in note content
+export const extractImageIds = (noteContent) => {
+  if (!noteContent) return [];
+  
+  const imageMetaRegex = /meta::image::([a-f0-9-]+)/g;
+  const imageIds = [];
+  let match;
+  
+  while ((match = imageMetaRegex.exec(noteContent)) !== null) {
+    imageIds.push(match[1]);
+  }
+  
+  return imageIds;
+};

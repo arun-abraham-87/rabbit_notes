@@ -389,7 +389,7 @@ const AppContent = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [navigate, lastAddedNoteId]);
 
-  const handlePasteSubmit = async () => {
+  const handlePasteSubmit = async (customContent = null) => {
     try {
       // Get current date in YYYY-MM-DD format
       const now = new Date();
@@ -408,8 +408,16 @@ const AppContent = () => {
       // Get the first line from clipboard content
       const firstClipboardLine = pasteText.split('\n')[0].trim();
       
-      // Create the note with textbox content and first line from clipboard
-      let noteContent = `${newNoteText.trim()}\n${firstClipboardLine}`;
+      // Use custom content if provided (for image uploads), otherwise build normally
+      let noteContent;
+      if (customContent) {
+        // Custom content already includes newNoteText + image + meta tags
+        // Add the clipboard content
+        noteContent = `${customContent.trim()}\n${firstClipboardLine}`;
+      } else {
+        // Create the note with textbox content and first line from clipboard
+        noteContent = `${newNoteText.trim()}\n${firstClipboardLine}`;
+      }
       
       // Add comments for selections
       let comments = [];

@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const settingsRouter = require('./routes/settings');
 const journalsRouter = require('./routes/journals');
@@ -20,6 +21,10 @@ app.use('/api/journals', journalsRouter);
 
 const NOTES_DIR = './notes';
 if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);
+
+// Create images directory if it doesn't exist
+const IMAGES_DIR = path.join(NOTES_DIR, 'images');
+if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR);
 
 const filterNotes = (searchQuery, notes, isCurrentDaySearch, noteDateStr) => {
   try {
@@ -762,12 +767,6 @@ app.delete('/api/people/:id', (req, res) => {
   }
 });
 
-const multer = require('multer');
-
-// Create images directory if it doesn't exist
-const IMAGES_DIR = path.join(NOTES_DIR, 'images');
-if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR);
-
 // Setup multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -782,13 +781,30 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 app.post('/api/images', upload.single('image'), (req, res) => {
-  console.log("IMage Uplaod api called ")
+  console.log("Image Upload api called");
   if (!req.file) {
-    console.log("IMage File not found")
+    console.log("Image File not found");
     return res.status(400).json({ error: 'No image uploaded.' });
   }
   
-  res.status(200).json({ message: 'Image uploaded successfully.', filename: req.file.filename });
+  // Generate unique filename to avoid conflicts
+  const uniqueId = uuidv4();
+  const ext = path.extname(req.file.originalname);
+  const newFilename = `${uniqueId}${ext}`;
+  const oldPath = req.file.path;
+  const newPath = path.join(IMAGES_DIR, newFilename);
+  
+  // Rename file to have unique name
+  fs.renameSync(oldPath, newPath);
+  
+  // Return the image URL and ID that can be used in markdown and meta tags
+  const imageUrl = `/api/images/${newFilename}`;
+  res.status(200).json({ 
+    message: 'Image uploaded successfully.', 
+    filename: newFilename,
+    imageUrl: imageUrl,
+    imageId: uniqueId
+  });
 });
 
 const PORT = process.env.PORT || 5001;

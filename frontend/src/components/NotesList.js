@@ -100,6 +100,36 @@ const NotesList = ({
   const [editingLine, setEditingLine] = useState({ noteId: null, lineIndex: null });
   const [editedLineContent, setEditedLineContent] = useState('');
   const [addingLineNoteId, setAddingLineNoteId] = useState(null);
+  
+  // Image handling state for NoteEditor
+  const [pastedImageForEditor, setPastedImageForEditor] = useState(null);
+  const [imagePreviewForEditor, setImagePreviewForEditor] = useState(null);
+
+  // Upload image to server
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('http://localhost:5001/api/images', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      return {
+        imageUrl: data.imageUrl,
+        imageId: data.imageId
+      };
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  };
   const [newLineText, setNewLineText] = useState('');
   const newLineInputRef = useRef(null);
   const [showCopyToast, setShowCopyToast] = useState(false);
@@ -1589,34 +1619,99 @@ const NotesList = ({
               note={popupNoteText === 'new' ? null : allNotes.find(n => n.id === popupNoteText)}
               initialMode="edit"
               initialTextMode={localStorage.getItem('openInTextMode') === 'true'}
-              onSave={(updatedNote) => {
-                updateNoteCallback(popupNoteText, updatedNote);
-                setPopupNoteText(null);
-                // Clear the text mode flag
-                localStorage.removeItem('openInTextMode');
-                // Return focus to the original note after saving
-                setTimeout(() => {
-                  const noteElement = document.querySelector(`[data-note-id="${popupNoteText}"]`);
-                  if (noteElement) {
-                    noteElement.focus();
+              onSave={async (updatedNote) => {
+                try {
+                  let finalNoteContent = updatedNote;
+                  
+                  // Handle image upload if image is pasted
+                  if (pastedImageForEditor) {
+                    console.log('📤 [NotesList] Uploading image on save...');
+                    const response = await uploadImage(pastedImageForEditor);
+                    const { imageUrl, imageId } = response;
+                    
+                    // Add image markdown and meta tag to the note content
+                    const imageMarkdown = `![Image](${imageUrl})`;
+                    const imageMetaTag = `meta::image::${imageId}`;
+                    finalNoteContent = updatedNote + 
+                      (updatedNote ? '\n\n' : '') + 
+                      imageMarkdown + 
+                      '\n' + 
+                      imageMetaTag;
+                    
+                    console.log('✅ [NotesList] Image uploaded and added to note');
                   }
-                }, 100);
+                  
+                  updateNoteCallback(popupNoteText, finalNoteContent);
+                  setPopupNoteText(null);
+                  
+                  // Clear image state
+                  setPastedImageForEditor(null);
+                  setImagePreviewForEditor(null);
+                  
+                  // Clear the text mode flag
+                  localStorage.removeItem('openInTextMode');
+                  // Return focus to the original note after saving
+                  setTimeout(() => {
+                    const noteElement = document.querySelector(`[data-note-id="${popupNoteText}"]`);
+                    if (noteElement) {
+                      noteElement.focus();
+                    }
+                  }, 100);
+                } catch (error) {
+                  console.error('❌ [NotesList] Error saving note with image:', error);
+                  alert('Failed to upload image. Please try again.');
+                }
               }}
-              addNote={(content) => {
-                addNotes(content);
-                setPopupNoteText(null);
-                // Clear the text mode flag
-                localStorage.removeItem('openInTextMode');
-                // Return focus to the original note after adding
-                setTimeout(() => {
-                  const noteElement = document.querySelector(`[data-note-id="${popupNoteText}"]`);
-                  if (noteElement) {
-                    noteElement.focus();
+              addNote={async (content) => {
+                try {
+                  let finalNoteContent = content;
+                  
+                  // Handle image upload if image is pasted
+                  if (pastedImageForEditor) {
+                    console.log('📤 [NotesList] Uploading image on add note...');
+                    const response = await uploadImage(pastedImageForEditor);
+                    const { imageUrl, imageId } = response;
+                    
+                    // Add image markdown and meta tag to the note content
+                    const imageMarkdown = `![Image](${imageUrl})`;
+                    const imageMetaTag = `meta::image::${imageId}`;
+                    finalNoteContent = content + 
+                      (content ? '\n\n' : '') + 
+                      imageMarkdown + 
+                      '\n' + 
+                      imageMetaTag;
+                    
+                    console.log('✅ [NotesList] Image uploaded and added to new note');
                   }
-                }, 100);
+                  
+                  addNotes(finalNoteContent);
+                  setPopupNoteText(null);
+                  
+                  // Clear image state
+                  setPastedImageForEditor(null);
+                  setImagePreviewForEditor(null);
+                  
+                  // Clear the text mode flag
+                  localStorage.removeItem('openInTextMode');
+                  // Return focus to the original note after adding
+                  setTimeout(() => {
+                    const noteElement = document.querySelector(`[data-note-id="${popupNoteText}"]`);
+                    if (noteElement) {
+                      noteElement.focus();
+                    }
+                  }, 100);
+                } catch (error) {
+                  console.error('❌ [NotesList] Error adding note with image:', error);
+                  alert('Failed to upload image. Please try again.');
+                }
               }}
               onCancel={() => {
                 setPopupNoteText(null);
+                
+                // Clear image state
+                setPastedImageForEditor(null);
+                setImagePreviewForEditor(null);
+                
                 // Clear the text mode flag
                 localStorage.removeItem('openInTextMode');
                 // Return focus to the original note after canceling
@@ -1628,7 +1723,46 @@ const NotesList = ({
                 }, 100);
               }}
               objList={objList}
+              onImagePaste={(blob) => {
+                console.log('🎯 [NotesList] Image pasted in NoteEditor - showing preview');
+                setPastedImageForEditor(blob);
+                setImagePreviewForEditor(URL.createObjectURL(blob));
+              }}
             />
+            
+            {/* Image Preview Section */}
+            {imagePreviewForEditor && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    <img
+                      src={imagePreviewForEditor}
+                      alt="Preview"
+                      className="w-32 h-32 object-cover rounded-lg border border-gray-300"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-1">Image Ready to Upload</h4>
+                        <p className="text-xs text-gray-500">
+                          This image will be uploaded when you save the note.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setPastedImageForEditor(null);
+                          setImagePreviewForEditor(null);
+                        }}
+                        className="flex items-center gap-1 px-3 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-150 text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

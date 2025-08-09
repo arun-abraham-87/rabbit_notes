@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { addCadenceLineToNote } from '../utils/CadenceHelpUtils';
 import {
   XMarkIcon,
   CheckCircleIcon,
   EyeIcon,
   FlagIcon,
-  BellIcon
+  BellIcon,
+  PhotoIcon,
+  TrashIcon
 } from '@heroicons/react/24/solid';
 import { useNoteEditor } from '../contexts/NoteEditorContext';
 import NoteEditor from './NoteEditor';
@@ -14,12 +16,22 @@ import moment from 'moment';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
 import { DevModeInfo } from '../utils/DevUtils';
 
+// API Base URL for consistent API calls
+const API_BASE_URL = 'http://localhost:5001/api';
+
 const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
   const { isOpen, initialContent, mode, noteId, metaTags, closeEditor } = useNoteEditor();
+  
   const [settings, setSettings] = useState({});
   const [objList, setObjList] = useState([]);
   const [selectedMetaTags, setSelectedMetaTags] = useState([]);
   const [showPriorityOptions, setShowPriorityOptions] = useState(metaTags?.some(tag => tag.startsWith('meta::todo')) || false);
+  
+  // Image handling state
+  const [pastedImage, setPastedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Move fetchTags and refreshTags to top level
   const fetchTags = async () => {
@@ -32,6 +44,73 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
   };
   const refreshTags = fetchTags;
 
+  // Image handling functions
+  // Handle image paste from NoteEditor
+  const handleImagePasteFromEditor = useCallback((blob) => {
+    console.log('🎯 [NoteEditorModal] handleImagePasteFromEditor called');
+    console.log('   - Blob received:', blob);
+    console.log('   - Blob type:', blob?.type);
+    console.log('   - Blob size:', blob?.size);
+    
+    try {
+      console.log('🖼️ [NoteEditorModal] Setting pasted image state...');
+      setPastedImage(blob);
+      
+      console.log('🖼️ [NoteEditorModal] Creating image preview URL...');
+      const previewUrl = URL.createObjectURL(blob);
+      console.log('   - Preview URL created:', previewUrl);
+      setImagePreview(previewUrl);
+      
+      console.log('✅ [NoteEditorModal] Image state set successfully');
+    } catch (error) {
+      console.error('❌ [NoteEditorModal] Error setting image state:', error);
+    }
+  }, []);
+
+  // Image paste handler ready for use
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      setPastedImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeImage = () => {
+    setPastedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Upload image to server
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/images`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      return {
+        imageUrl: data.imageUrl,
+        imageId: data.imageId
+      };
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && isOpen) {
@@ -40,12 +119,13 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
     };
 
     document.addEventListener('keydown', handleEscape);
+    
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, closeEditor]);
 
-  // Focus the modal when it opens
+  // Focus the modal when it opens and reset image state
   useEffect(() => {
     if (isOpen) {
       const modalContainer = document.querySelector('[data-modal="true"]');
@@ -53,6 +133,14 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
         setTimeout(() => {
           modalContainer.focus();
         }, 0);
+      }
+    } else {
+      // Reset image state when modal closes
+      setPastedImage(null);
+      setImagePreview(null);
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
     }
   }, [isOpen]);
@@ -198,46 +286,94 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
     }
   };
 
-  const handleSave = (noteContent) => {
-    // Ensure content ends with a newline
-    const contentWithNewline = noteContent.endsWith('\n') ? noteContent : noteContent + '\n';
-    // Append meta tags with newlines
-    const finalContent = selectedMetaTags.length > 0
-      ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
-      : contentWithNewline;
-
-    
-    
-    
-    // Reorder meta tags to ensure they appear at the bottom
-    const reorderedContent = reorderMetaTags(finalContent);
-    
-    // If we have a noteId, update the existing note, otherwise add a new note
-    if (noteId) {
-      updateNote(noteId, reorderedContent);
-      if (selectedMetaTags.some(tag => tag.startsWith('meta::watch'))) {
-        addCadenceLineToNote(noteId, {}, true);
+  const handleSave = async (noteContent) => {
+    try {
+      setIsUploadingImage(true);
+      
+      let finalNoteContent = noteContent;
+      
+      // Upload image if one is selected
+      if (pastedImage) {
+        const response = await uploadImage(pastedImage);
+        const { imageUrl, imageId } = response;
+        
+        // Add image markdown and meta tag to the note content
+        const imageMarkdown = `![Image](${imageUrl})`;
+        const imageMetaTag = `meta::image::${imageId}`;
+        finalNoteContent = noteContent + 
+          (noteContent ? '\n\n' : '') + 
+          imageMarkdown + 
+          '\n' + 
+          imageMetaTag;
       }
-    } else {
-      addNote(reorderedContent);
+      
+      // Ensure content ends with a newline
+      const contentWithNewline = finalNoteContent.endsWith('\n') ? finalNoteContent : finalNoteContent + '\n';
+      // Append meta tags with newlines
+      const finalContent = selectedMetaTags.length > 0
+        ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
+        : contentWithNewline;
+
+      // Reorder meta tags to ensure they appear at the bottom
+      const reorderedContent = reorderMetaTags(finalContent);
+      
+      // If we have a noteId, update the existing note, otherwise add a new note
+      if (noteId) {
+        updateNote(noteId, reorderedContent);
+        if (selectedMetaTags.some(tag => tag.startsWith('meta::watch'))) {
+          addCadenceLineToNote(noteId, {}, true);
+        }
+      } else {
+        addNote(reorderedContent);
+      }
+      
+      closeEditor();
+      setIsUploadingImage(false);
+    } catch (error) {
+      console.error('Error saving note with image:', error);
+      alert('Failed to upload image. Please try again.');
+      setIsUploadingImage(false);
     }
-    
-    closeEditor();
   };
 
-  const handleAddNote = (noteContent) => {
-    // Ensure content ends with a newline
-    const contentWithNewline = noteContent.endsWith('\n') ? noteContent : noteContent + '\n';
-    // Append meta tags with newlines
-    const finalContent = selectedMetaTags.length > 0
-      ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
-      : contentWithNewline;
-    
-    
-    // Reorder meta tags to ensure they appear at the bottom
-    const reorderedContent = reorderMetaTags(finalContent);
-    addNote(reorderedContent);
-    closeEditor();
+  const handleAddNote = async (noteContent) => {
+    try {
+      setIsUploadingImage(true);
+      
+      let finalNoteContent = noteContent;
+      
+      // Upload image if one is selected
+      if (pastedImage) {
+        const response = await uploadImage(pastedImage);
+        const { imageUrl, imageId } = response;
+        
+        // Add image markdown and meta tag to the note content
+        const imageMarkdown = `![Image](${imageUrl})`;
+        const imageMetaTag = `meta::image::${imageId}`;
+        finalNoteContent = noteContent + 
+          (noteContent ? '\n\n' : '') + 
+          imageMarkdown + 
+          '\n' + 
+          imageMetaTag;
+      }
+      
+      // Ensure content ends with a newline
+      const contentWithNewline = finalNoteContent.endsWith('\n') ? finalNoteContent : finalNoteContent + '\n';
+      // Append meta tags with newlines
+      const finalContent = selectedMetaTags.length > 0
+        ? contentWithNewline + selectedMetaTags.join('\n') + '\n'
+        : contentWithNewline;
+      
+      // Reorder meta tags to ensure they appear at the bottom
+      const reorderedContent = reorderMetaTags(finalContent);
+      addNote(reorderedContent);
+      closeEditor();
+      setIsUploadingImage(false);
+    } catch (error) {
+      console.error('Error adding note with image:', error);
+      alert('Failed to upload image. Please try again.');
+      setIsUploadingImage(false);
+    }
   };
 
   // Debug logging for developer mode
@@ -288,7 +424,66 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
           objList={objList}
           settings={settings}
           refreshTags={refreshTags}
+          onImagePaste={handleImagePasteFromEditor}
         />
+
+        
+        {/* Image Upload Section */}
+        <div className="mt-4 p-4 border-t border-gray-200">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-all duration-150 text-sm font-medium"
+                disabled={isUploadingImage}
+              >
+                <PhotoIcon className="h-4 w-4" />
+                {isUploadingImage ? 'Uploading...' : 'Add Image'}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <span className="text-sm text-gray-500">or paste image with Ctrl+V</span>
+            </div>
+          </div>
+          
+          {/* Image Preview */}
+          {imagePreview && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-32 h-32 object-cover rounded-lg border border-gray-300"
+                  />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-1">Image Ready to Upload</h4>
+                      <p className="text-xs text-gray-500">
+                        This image will be uploaded when you save the note.
+                      </p>
+                    </div>
+                    <button
+                      onClick={removeImage}
+                      className="flex items-center gap-1 px-3 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-150 text-sm"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
         <div className="flex flex-col items-center gap-4 mt-4 p-2 border-t border-gray-200">
           <div className="flex items-center justify-center gap-4">
             <div className="flex items-center gap-2">
@@ -363,12 +558,15 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
             </button>
           </div>
 
-          {selectedMetaTags.length > 0 && (
+          {(selectedMetaTags.length > 0 || pastedImage) && (
             <div className="mt-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
               Will add:
               {selectedMetaTags.map((tag, index) => (
                 <div key={index} className="font-mono mt-1">{tag}</div>
               ))}
+              {pastedImage && (
+                <div className="font-mono mt-1 text-blue-600">meta::image::&lt;uuid&gt;</div>
+              )}
             </div>
           )}
         </div>

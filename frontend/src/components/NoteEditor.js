@@ -6,7 +6,9 @@ import { debounce } from 'lodash';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
 import { DevModeInfo } from '../utils/DevUtils';
 
-const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true, initialMode = 'view', initialTextMode = false }) => {
+const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true, initialMode = 'view', initialTextMode = false, onImagePaste = null }) => {
+  // Component initialized - debug logs removed for cleaner experience
+  
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
   
   // Function to separate content from meta tags
@@ -410,6 +412,20 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   };
 
   const handlePaste = (e, index) => {
+    // Check for images first if onImagePaste handler is provided
+    if (typeof onImagePaste === 'function') {
+      const items = e.clipboardData.items;
+      
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          e.preventDefault();
+          const blob = items[i].getAsFile();
+          onImagePaste(blob);
+          return;
+        }
+      }
+    }
+
     const pasteText = e.clipboardData.getData('text');
 
     if (pasteText.includes('\n')) {

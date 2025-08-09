@@ -5,7 +5,7 @@ import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { debounce } from 'lodash';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
 
-const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true }) => {
+const NoteSearchEditor = ({isModal=false, objList, note, onSave, onCancel, text, searchQuery='', setSearchQuery, addNote, isAddMode = false, settings = {}, onExcludeEventsChange=true, onExcludeMeetingsChange=true }) => {
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
   const initialLines = contentSource
     ? [
@@ -1374,4 +1374,4 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   );
 };
 
-export default NoteEditor;
+export default NoteSearchEditor;

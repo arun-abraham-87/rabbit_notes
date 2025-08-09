@@ -19,8 +19,8 @@ const NoteImages = ({ imageIds }) => {
 
     // Load each image
     const loadImages = async () => {
-      // Try common extensions in order of likelihood
-      const extensions = ['jpg', 'png', 'jpeg', 'gif', 'webp'];
+      // Try common extensions in order of likelihood (png first since it's most common for screenshots)
+      const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
       
       for (const imageId of imageIds) {
         let found = false;

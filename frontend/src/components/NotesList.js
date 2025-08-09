@@ -1400,6 +1400,7 @@ const NotesList = ({
                     setFocusedNoteIndex={setFocusedNoteIndex}
                     noteIndex={index}
                     settings={settings}
+                    addNote={addNotes}
                   />
                 ))}
               </div>
@@ -1478,6 +1479,7 @@ const NotesList = ({
                     noteIndex={safeNotes.filter(note => note.pinned).length + index}
                     onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
                     settings={settings}
+                    addNote={addNotes}
                   />
                 ))}
               </div>
@@ -1557,6 +1559,7 @@ const NotesList = ({
                   noteIndex={index}
                   onSetFocusedNoteIndex={handleSetFocusedNoteIndex}
                   settings={settings}
+                  addNote={addNotes}
                 />
               ))}
             </div>

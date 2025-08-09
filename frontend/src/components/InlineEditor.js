@@ -14,7 +14,7 @@ import { DevModeInfo } from '../utils/DevUtils';
  * onDelete        – fn()         called on Delete button click
  * inputClass      – extra Tailwind classes for the textarea (optional)
  */
-const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false, lineIndex = null, settings = {}, allNotes = [] }) => {
+const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = '', isSuperEditMode = false, wasOpenedFromSuperEdit = false, lineIndex = null, settings = {}, allNotes = [], addNote = null, updateNote = null, currentNoteId = null }) => {
   
   const inputRef = useRef(null);
   const [headerType, setHeaderType] = useState(null); // 'h1', 'h2', or null
@@ -78,8 +78,8 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     setTriggerPosition(null);
   };
   
-  // Insert selected workstream note as hyperlink
-  const insertWorkstreamNote = (note) => {
+  // Insert selected workstream note as hyperlink and create bidirectional links
+  const insertWorkstreamNote = async (note, currentNoteId = null) => {
     if (!inputRef.current || triggerPosition === null) return;
     
     const textarea = inputRef.current;
@@ -104,6 +104,61 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       const newCursorPosition = triggerPosition + linkText.length;
       textarea.setSelectionRange(newCursorPosition, newCursorPosition);
     }, 0);
+
+    // Create bidirectional links if we have the current note context and updateNote function
+    if (currentNoteId && updateNote) {
+      try {
+        // Helper function to add link tag to note content
+        const addLinkTag = (content, targetId) => {
+          const lines = content.split('\n').map(l => l.trimEnd());
+          const linkTag = `meta::link::${targetId}`;
+          if (!lines.includes(linkTag)) {
+            lines.push(linkTag);
+          }
+          return lines.join('\n');
+        };
+
+        // Find the current note and target note
+        const currentNote = allNotes.find(n => n.id === currentNoteId);
+        const targetNote = note;
+
+        if (currentNote && targetNote) {
+          console.log('Creating bidirectional links between:', currentNote.id, 'and', targetNote.id);
+          
+          // Add link from current note to target note
+          const updatedCurrentContent = addLinkTag(currentNote.content, targetNote.id);
+          await updateNote(currentNote.id, updatedCurrentContent);
+
+          // Add link from target note to current note
+          const updatedTargetContent = addLinkTag(targetNote.content, currentNote.id);
+          await updateNote(targetNote.id, updatedTargetContent);
+          
+          console.log('Bidirectional links created successfully');
+        }
+      } catch (error) {
+        console.error('Error creating bidirectional links:', error);
+      }
+    }
+  };
+
+  // Create new workstream note and insert link
+  const createWorkstreamNote = async (searchText, currentNoteId = null) => {
+    if (!addNote || !inputRef.current || triggerPosition === null) return;
+    
+    try {
+      // Create note content with workstream tag
+      const noteContent = `${searchText}\nmeta::workstream::`;
+      
+      // Create the new note
+      const newNote = await addNote(noteContent);
+      
+      if (newNote && newNote.id) {
+        // Insert link to the newly created note with bidirectional linking
+        await insertWorkstreamNote(newNote, currentNoteId);
+      }
+    } catch (error) {
+      console.error('Error creating workstream note:', error);
+    }
   };
   
   useEffect(() => {
@@ -186,7 +241,10 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       } else if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
         if (workstreamNotes[selectedWorkstreamIndex]) {
-          insertWorkstreamNote(workstreamNotes[selectedWorkstreamIndex]);
+          insertWorkstreamNote(workstreamNotes[selectedWorkstreamIndex], currentNoteId);
+        } else if (workstreamNotes.length === 0 && workstreamSearch.trim()) {
+          // Create new workstream note if no results found
+          createWorkstreamNote(workstreamSearch.trim(), currentNoteId);
         }
         return;
       } else if (e.key === 'Escape') {
@@ -510,14 +568,13 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       {/* Workstream notes dropdown */}
       {showWorkstreamDropdown && (
         <div
-          className="fixed bg-yellow-200 border-2 border-red-500 rounded-lg shadow-lg z-50 max-w-xs"
+          className="fixed bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-w-xs"
           style={{
             left: dropdownPosition.x,
             top: dropdownPosition.y + 5,
             maxHeight: '200px',
             overflowY: 'auto',
-            minWidth: '200px',
-            minHeight: '50px'
+            minWidth: '200px'
           }}
         >
           {(() => {
@@ -527,8 +584,19 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
             const workstreamNotes = getWorkstreamNotes(workstreamSearch);
             if (workstreamNotes.length === 0) {
               return (
-                <div className="p-3 text-gray-500 text-sm">
-                  No workstream notes found
+                <div className="p-2">
+                  <div className="p-2 text-gray-500 text-sm">
+                    No workstream notes found
+                  </div>
+                  {workstreamSearch.trim() && (
+                    <div
+                      className="p-2 cursor-pointer text-sm bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 text-blue-700"
+                      onClick={() => createWorkstreamNote(workstreamSearch.trim(), currentNoteId)}
+                    >
+                      <div className="font-medium">Create workstream</div>
+                      <div className="text-xs text-blue-600">"{workstreamSearch.trim()}"</div>
+                    </div>
+                  )}
                 </div>
               );
             }
@@ -543,7 +611,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
                   className={`p-2 cursor-pointer text-sm border-b border-gray-100 last:border-b-0 ${
                     isSelected ? 'bg-blue-100' : 'hover:bg-gray-50'
                   }`}
-                  onClick={() => insertWorkstreamNote(note)}
+                  onClick={() => insertWorkstreamNote(note, currentNoteId)}
                   onMouseEnter={() => setSelectedWorkstreamIndex(index)}
                 >
                   <div className="truncate">

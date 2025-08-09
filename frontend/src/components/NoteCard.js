@@ -65,7 +65,8 @@ const NoteCard = ({
   setFocusedNoteIndex = () => {},
   noteIndex = -1,
   onSetFocusedNoteIndex,
-  settings = {}
+  settings = {},
+  addNote = null
 }) => {
   const [isSuperEditMode, setIsSuperEditMode] = useState(false);
   const [highlightedLineIndex, setHighlightedLineIndex] = useState(-1);
@@ -897,6 +898,7 @@ const NoteCard = ({
           highlightedLineText={highlightedLineText}
           wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
           allNotes={fullNotesList}
+          addNote={addNote}
         />
         {!focusMode && (
           <div className="flex items-center space-x-4 px-4 py-2">

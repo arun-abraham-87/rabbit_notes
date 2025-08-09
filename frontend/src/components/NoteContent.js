@@ -49,6 +49,7 @@ export default function NoteContent({
     setBulkDeleteNoteId = () => {},
     multiMoveNoteId = null,
     setFocusedNoteIndex = () => {},
+    addNote = null, // Add addNote prop
     // Super edit mode props
     isSuperEditMode = false,
     highlightedLineIndex = -1,
@@ -1029,6 +1030,9 @@ export default function NoteContent({
             wasOpenedFromSuperEdit={wasOpenedFromSuperEdit}
             lineIndex={idx}
             allNotes={allNotes}
+            addNote={addNote}
+            updateNote={updateNote}
+            currentNoteId={note.id}
         />
     );
 
@@ -1708,6 +1712,9 @@ export default function NoteContent({
                             wasOpenedFromSuperEdit={false}
                             lineIndex={-1}
                             allNotes={allNotes}
+                            addNote={addNote}
+                            updateNote={updateNote}
+                            currentNoteId={note.id}
                         />
                     </div>
                 )}

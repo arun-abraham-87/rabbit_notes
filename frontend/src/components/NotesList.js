@@ -105,30 +105,67 @@ const NotesList = ({
   const [pastedImageForEditor, setPastedImageForEditor] = useState(null);
   const [imagePreviewForEditor, setImagePreviewForEditor] = useState(null);
 
+  // Compress image while maintaining dimensions
+  const compressImage = (file, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Keep original dimensions
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Draw image on canvas
+        ctx.drawImage(img, 0, 0);
+        
+        // Convert to blob with compression
+        canvas.toBlob(
+          (blob) => resolve(blob),
+          'image/jpeg', // Convert to JPEG for better compression
+          quality
+        );
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   // Upload image to server
   const uploadImage = async (file) => {
     const formData = new FormData();
     
+    // Compress image first (except for GIFs to preserve animation)
+    let fileToProcess = file;
+    if (file.type !== 'image/gif') {
+      console.log(`📊 Original size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+      fileToProcess = await compressImage(file, 0.8);
+      console.log(`📊 Compressed size: ${(fileToProcess.size / 1024 / 1024).toFixed(2)} MB`);
+    }
+    
     // Ensure the file has a proper extension based on its MIME type
     let filename = file.name;
     if (!filename || !filename.includes('.')) {
-      const mimeType = file.type;
-      let extension = '.png'; // Default to PNG
+      const mimeType = fileToProcess.type;
+      let extension = '.jpg'; // Default to JPG for compressed images
       
-      if (mimeType === 'image/jpeg') extension = '.jpg';
-      else if (mimeType === 'image/png') extension = '.png';
-      else if (mimeType === 'image/gif') extension = '.gif';
-      else if (mimeType === 'image/webp') extension = '.webp';
+      if (file.type === 'image/gif') extension = '.gif'; // Keep GIF as GIF
+      else if (file.type === 'image/png' && file.type === fileToProcess.type) extension = '.png';
+      else extension = '.jpg'; // Compressed images become JPG
       
       filename = `clipboard-image${extension}`;
+    } else {
+      // Update extension if we compressed to JPEG
+      if (file.type !== 'image/gif' && !filename.toLowerCase().endsWith('.gif')) {
+        filename = filename.replace(/\.[^/.]+$/, '.jpg');
+      }
     }
     
-    // Create a new File object with proper filename if needed
-    const fileToUpload = filename !== file.name 
-      ? new File([file], filename, { type: file.type })
-      : file;
+    // Create a new File object with proper filename
+    const finalFile = new File([fileToProcess], filename, { type: fileToProcess.type });
     
-    formData.append('image', fileToUpload);
+    formData.append('image', finalFile);
 
     try {
       const response = await fetch('http://localhost:5001/api/images', {

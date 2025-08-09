@@ -667,7 +667,7 @@ const NoteFilters = ({
             />
             Exclude Event Notes
           </label>
-          {excludeEventNotes && eventNotesCount > 0 && (
+          {excludeEventNotes && eventNotesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {eventNotesCount} hidden
             </span>
@@ -683,7 +683,7 @@ const NoteFilters = ({
             />
             Exclude Backup
           </label>
-          {excludeBackupNotes && backupNotesCount > 0 && (
+          {excludeBackupNotes && backupNotesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {backupNotesCount} hidden
             </span>
@@ -699,7 +699,7 @@ const NoteFilters = ({
             />
             Exclude Watch Events
           </label>
-          {excludeWatchEvents && watchEventsCount > 0 && (
+          {excludeWatchEvents && watchEventsCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {watchEventsCount} hidden
             </span>
@@ -715,7 +715,7 @@ const NoteFilters = ({
             />
             Exclude Bookmarks
           </label>
-          {excludeBookmarks && bookmarksCount > 0 && (
+          {excludeBookmarks && bookmarksCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {bookmarksCount} hidden
             </span>
@@ -731,7 +731,7 @@ const NoteFilters = ({
             />
             Exclude Expenses
           </label>
-          {excludeExpenses && expensesCount > 0 && (
+          {excludeExpenses && expensesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {expensesCount} hidden
             </span>
@@ -747,7 +747,7 @@ const NoteFilters = ({
             />
             Exclude Sensitive
           </label>
-          {excludeSensitive && sensitiveNotesCount > 0 && (
+          {excludeSensitive && sensitiveNotesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {sensitiveNotesCount} hidden
             </span>
@@ -763,7 +763,7 @@ const NoteFilters = ({
             />
             Exclude Trackers
           </label>
-          {excludeTrackers && trackerNotesCount > 0 && (
+          {excludeTrackers && trackerNotesCount > 0 && searchQuery && searchQuery.trim() !== '' && (
             <span className="ml-5 mt-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
               {trackerNotesCount} hidden
             </span>

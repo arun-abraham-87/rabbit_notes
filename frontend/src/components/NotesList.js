@@ -108,7 +108,27 @@ const NotesList = ({
   // Upload image to server
   const uploadImage = async (file) => {
     const formData = new FormData();
-    formData.append('image', file);
+    
+    // Ensure the file has a proper extension based on its MIME type
+    let filename = file.name;
+    if (!filename || !filename.includes('.')) {
+      const mimeType = file.type;
+      let extension = '.png'; // Default to PNG
+      
+      if (mimeType === 'image/jpeg') extension = '.jpg';
+      else if (mimeType === 'image/png') extension = '.png';
+      else if (mimeType === 'image/gif') extension = '.gif';
+      else if (mimeType === 'image/webp') extension = '.webp';
+      
+      filename = `clipboard-image${extension}`;
+    }
+    
+    // Create a new File object with proper filename if needed
+    const fileToUpload = filename !== file.name 
+      ? new File([file], filename, { type: file.type })
+      : file;
+    
+    formData.append('image', fileToUpload);
 
     try {
       const response = await fetch('http://localhost:5001/api/images', {
@@ -1719,8 +1739,18 @@ const NotesList = ({
               objList={objList}
               onImagePaste={(blob) => {
                 console.log('🎯 [NotesList] Image pasted in NoteEditor - showing preview');
-                setPastedImageForEditor(blob);
-                setImagePreviewForEditor(URL.createObjectURL(blob));
+                
+                // Create a proper File object with extension from MIME type
+                let extension = '.png'; // Default
+                if (blob.type === 'image/jpeg') extension = '.jpg';
+                else if (blob.type === 'image/png') extension = '.png';
+                else if (blob.type === 'image/gif') extension = '.gif';
+                else if (blob.type === 'image/webp') extension = '.webp';
+                
+                const file = new File([blob], `clipboard-image${extension}`, { type: blob.type });
+                
+                setPastedImageForEditor(file);
+                setImagePreviewForEditor(URL.createObjectURL(file));
               }}
             />
             

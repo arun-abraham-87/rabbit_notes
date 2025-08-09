@@ -288,9 +288,26 @@ const AppContent = () => {
 
         e.preventDefault();
         try {
+          // Check for text content first
           const text = await navigator.clipboard.readText();
           if (text) {
             setPasteText(text);
+            setNewNoteText('');
+            setSelectedPriority(null);
+            setIsWatchSelected(false);
+            setShowPastePopup(true);
+            return;
+          }
+          
+          // If no text, check for image content
+          const clipboardItems = await navigator.clipboard.read();
+          const hasImage = clipboardItems.some(item => 
+            item.types.some(type => type.startsWith('image/'))
+          );
+          
+          if (hasImage) {
+            // Open popup even if there's only an image
+            setPasteText(''); // Empty text since it's just an image
             setNewNoteText('');
             setSelectedPriority(null);
             setIsWatchSelected(false);

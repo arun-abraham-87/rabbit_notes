@@ -268,6 +268,37 @@ export default function NoteContent({
     
     // Extract image IDs from meta tags
     const imageIds = extractImageIds(note.content);
+
+    // Handle image deletion
+    const handleImageDelete = async (imageId) => {
+        if (!window.confirm('Are you sure you want to delete this image? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            // Delete the image file from server
+            const response = await fetch(`http://localhost:5001/api/images/${imageId}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete image from server');
+            }
+
+            // Remove the meta::image:: tag from note content
+            const updatedContent = note.content.replace(new RegExp(`meta::image::${imageId}\\s*\n?`, 'g'), '').trim();
+
+            // Update the note
+            if (updateNote) {
+                await updateNote(note.id, updatedContent);
+            }
+
+            console.log('✅ Image deleted successfully');
+        } catch (error) {
+            console.error('❌ Error deleting image:', error);
+            alert('Failed to delete image. Please try again.');
+        }
+    };
     
 
     
@@ -1419,7 +1450,10 @@ export default function NoteContent({
                 {contentLines.map((line, idx) => renderLine(line, idx))}
                 
                 {/* Display images if any meta::image:: tags are found */}
-                <NoteImages imageIds={imageIds} />
+                <NoteImages 
+                    imageIds={imageIds} 
+                    onDeleteImage={(imageId) => handleImageDelete(imageId)}
+                />
                 {/* Drop zone at the bottom for dragging to last position */}
                 {!focusMode && (
                     <div

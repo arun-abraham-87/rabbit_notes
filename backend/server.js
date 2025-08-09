@@ -807,6 +807,46 @@ app.post('/api/images', upload.single('image'), (req, res) => {
   });
 });
 
+// DELETE: Delete an image by ID
+app.delete('/api/images/:imageId', (req, res) => {
+  console.log("Image Delete api called");
+  const { imageId } = req.params;
+  
+  if (!imageId) {
+    return res.status(400).json({ error: 'Image ID is required.' });
+  }
+  
+  // Try common extensions to find the file
+  const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+  let deletedFile = null;
+  
+  for (const ext of extensions) {
+    const filename = `${imageId}.${ext}`;
+    const imagePath = path.join(IMAGES_DIR, filename);
+    
+    if (fs.existsSync(imagePath)) {
+      try {
+        fs.unlinkSync(imagePath);
+        deletedFile = filename;
+        console.log(`Deleted image file: ${filename}`);
+        break;
+      } catch (error) {
+        console.error(`Error deleting image file ${filename}:`, error);
+        return res.status(500).json({ error: 'Failed to delete image file.' });
+      }
+    }
+  }
+  
+  if (!deletedFile) {
+    return res.status(404).json({ error: 'Image not found.' });
+  }
+  
+  res.status(200).json({ 
+    message: 'Image deleted successfully.', 
+    filename: deletedFile 
+  });
+});
+
 const PORT = process.env.PORT || 5001;
 const server = app.listen(PORT, '0.0.0.0', (err) => {
   if (err) {

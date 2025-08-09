@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { XMarkIcon, EyeIcon, PhotoIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { buildSuggestionsFromNotes } from '../utils/NotesUtils';
 
@@ -48,9 +48,42 @@ const TextPastePopup = ({
       setNewNoteText('');
       setPastedImage(null);
       setImagePreview(null);
+      
+      // Check for image in clipboard when popup opens
+              const checkClipboardForImage = async () => {
+        try {
+          const clipboardItems = await navigator.clipboard.read();
+          for (const item of clipboardItems) {
+            for (const type of item.types) {
+              if (type.startsWith('image/')) {
+                const blob = await item.getType(type);
+                
+                // Create a proper File object with extension from MIME type
+                let extension = '.png'; // Default
+                if (type === 'image/jpeg') extension = '.jpg';
+                else if (type === 'image/png') extension = '.png';
+                else if (type === 'image/gif') extension = '.gif';
+                else if (type === 'image/webp') extension = '.webp';
+                
+                const file = new File([blob], `clipboard-image${extension}`, { type });
+                
+                setPastedImage(file);
+                setImagePreview(URL.createObjectURL(file));
+                console.log('📸 Auto-loaded image from clipboard');
+                return; // Found image, exit
+              }
+            }
+          }
+        } catch (error) {
+          console.log('Could not read clipboard for images:', error);
+        }
+      };
+      
+      // Check for clipboard image after a brief delay
       setTimeout(() => {
+        checkClipboardForImage();
         textareaRef.current?.focus();
-      }, 0);
+      }, 100);
     }
   }, [isOpen, setNewNoteText]);
 
@@ -132,8 +165,17 @@ const TextPastePopup = ({
         const item = items[i];
         if (item.type.startsWith('image/')) {
           e.preventDefault();
-          const file = item.getAsFile();
-          if (file) {
+          const blob = item.getAsFile();
+          if (blob) {
+            // Create a proper File object with extension from MIME type
+            let extension = '.png'; // Default
+            if (item.type === 'image/jpeg') extension = '.jpg';
+            else if (item.type === 'image/png') extension = '.png';
+            else if (item.type === 'image/gif') extension = '.gif';
+            else if (item.type === 'image/webp') extension = '.webp';
+            
+            const file = new File([blob], `clipboard-image${extension}`, { type: item.type });
+            
             setPastedImage(file);
             setImagePreview(URL.createObjectURL(file));
           }
@@ -155,7 +197,27 @@ const TextPastePopup = ({
   // Upload image to server
   const uploadImage = async (file) => {
     const formData = new FormData();
-    formData.append('image', file);
+    
+    // Ensure the file has a proper extension based on its MIME type
+    let filename = file.name;
+    if (!filename || !filename.includes('.')) {
+      const mimeType = file.type;
+      let extension = '.png'; // Default to PNG
+      
+      if (mimeType === 'image/jpeg') extension = '.jpg';
+      else if (mimeType === 'image/png') extension = '.png';
+      else if (mimeType === 'image/gif') extension = '.gif';
+      else if (mimeType === 'image/webp') extension = '.webp';
+      
+      filename = `clipboard-image${extension}`;
+    }
+    
+    // Create a new File object with proper filename if needed
+    const fileToUpload = filename !== file.name 
+      ? new File([file], filename, { type: file.type })
+      : file;
+    
+    formData.append('image', fileToUpload);
 
     try {
       const response = await fetch(`${API_BASE_URL}/images`, {
@@ -191,22 +253,19 @@ const TextPastePopup = ({
   };
 
   // Handle save with image upload
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     try {
       setIsUploadingImage(true);
 
       // Upload image if one is selected
       if (pastedImage) {
         const response = await uploadImage(pastedImage);
-        const { imageUrl, imageId } = response;
+        const { imageId } = response;
         
-        // Add image markdown and meta tag to the note content
-        const imageMarkdown = `![Image](${imageUrl})`;
+        // Add only the meta tag (no markdown line)
         const imageMetaTag = `meta::image::${imageId}`;
         const updatedText = newNoteText + 
-          (newNoteText ? '\n\n' : '') + 
-          imageMarkdown + 
-          '\n' + 
+          (newNoteText ? '\n' : '') + 
           imageMetaTag;
         
         // Update state for UI display
@@ -225,7 +284,7 @@ const TextPastePopup = ({
       alert('Failed to upload image. Please try again.');
       setIsUploadingImage(false);
     }
-  };
+  }, [pastedImage, newNoteText, onSave]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -263,7 +322,7 @@ const TextPastePopup = ({
         // Handle Cmd+Enter (or Ctrl+Enter) to save
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
           e.preventDefault();
-          onSave();
+          handleSave();
           return;
         }
 
@@ -277,7 +336,7 @@ const TextPastePopup = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onSave, onClose, showSuggestions, filteredTags, selectedTagIndex]);
+  }, [isOpen, onSave, onClose, showSuggestions, filteredTags, selectedTagIndex, handleSave]);
 
   if (!isOpen) return null;
 

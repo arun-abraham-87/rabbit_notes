@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { PhotoIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { PhotoIcon, ExclamationCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 // API Base URL for consistent API calls
 const API_BASE_URL = 'http://localhost:5001/api';
 
-const NoteImages = ({ imageIds }) => {
+const NoteImages = ({ imageIds, onDeleteImage }) => {
   const [imageStates, setImageStates] = useState({});
 
   useEffect(() => {
@@ -90,7 +90,7 @@ const NoteImages = ({ imageIds }) => {
 
         if (state.url) {
           return (
-            <div key={imageId} className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 transition-colors duration-200">
+            <div key={imageId} className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 transition-colors duration-200 group">
               <img
                 src={state.url}
                 alt={`Image ${imageId}`}
@@ -107,6 +107,19 @@ const NoteImages = ({ imageIds }) => {
                 }}
                 title="Click to view full size"
               />
+              {/* Delete button - shows on hover */}
+              {onDeleteImage && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent opening image in new tab
+                    onDeleteImage(imageId);
+                  }}
+                  className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg"
+                  title="Delete image"
+                >
+                  <XMarkIcon className="w-4 h-4" />
+                </button>
+              )}
             </div>
           );
         }

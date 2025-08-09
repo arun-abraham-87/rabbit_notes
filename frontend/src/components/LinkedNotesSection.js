@@ -127,16 +127,18 @@ export default function LinkedNotesSection({
       </button>
       {open && (
         <div className="mt-2 space-y-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search linked notes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          </div>
+          {orderedIds.length > 5 && (
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search linked notes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            </div>
+          )}
           <div className="pl-4 border-l border-gray-300 flex flex-wrap">
             {filteredNotes.map((id, index) => {
               

@@ -1627,15 +1627,12 @@ const NotesList = ({
                   if (pastedImageForEditor) {
                     console.log('📤 [NotesList] Uploading image on save...');
                     const response = await uploadImage(pastedImageForEditor);
-                    const { imageUrl, imageId } = response;
+                    const { imageId } = response;
                     
-                    // Add image markdown and meta tag to the note content
-                    const imageMarkdown = `![Image](${imageUrl})`;
+                    // Add only the meta tag (no markdown line)
                     const imageMetaTag = `meta::image::${imageId}`;
                     finalNoteContent = updatedNote + 
-                      (updatedNote ? '\n\n' : '') + 
-                      imageMarkdown + 
-                      '\n' + 
+                      (updatedNote ? '\n' : '') + 
                       imageMetaTag;
                     
                     console.log('✅ [NotesList] Image uploaded and added to note');
@@ -1670,15 +1667,12 @@ const NotesList = ({
                   if (pastedImageForEditor) {
                     console.log('📤 [NotesList] Uploading image on add note...');
                     const response = await uploadImage(pastedImageForEditor);
-                    const { imageUrl, imageId } = response;
+                    const { imageId } = response;
                     
-                    // Add image markdown and meta tag to the note content
-                    const imageMarkdown = `![Image](${imageUrl})`;
+                    // Add only the meta tag (no markdown line)
                     const imageMetaTag = `meta::image::${imageId}`;
                     finalNoteContent = content + 
-                      (content ? '\n\n' : '') + 
-                      imageMarkdown + 
-                      '\n' + 
+                      (content ? '\n' : '') + 
                       imageMetaTag;
                     
                     console.log('✅ [NotesList] Image uploaded and added to new note');

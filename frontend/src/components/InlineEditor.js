@@ -206,6 +206,7 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   const [pendingUrl, setPendingUrl] = useState(null);
   const [labelInput, setLabelInput] = useState('');
   const [cursorPosition, setCursorPosition] = useState({ start: 0, end: 0 });
+  const [urlPopupInputRef, setUrlPopupInputRef] = useState(null);
 
   // Image handling state
   const [pastedImage, setPastedImage] = useState(null);
@@ -220,6 +221,23 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       }
     };
   }, [imagePreview]);
+
+  // Handle focus when URL popup opens
+  useEffect(() => {
+    if (pendingUrl) {
+      // Disable the main textarea temporarily
+      if (inputRef.current) {
+        inputRef.current.disabled = true;
+      }
+      
+      return () => {
+        // Re-enable the main textarea
+        if (inputRef.current) {
+          inputRef.current.disabled = false;
+        }
+      };
+    }
+  }, [pendingUrl]);
 
   // Compress image while maintaining dimensions
   const compressImage = (file, quality = 0.8) => {
@@ -505,13 +523,14 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   };
 
   const closeUrlPopup = (newText) => {
-    // Insert the new text at the cursor position
+    // Insert the new text at the stored cursor position
     const before = displayText.slice(0, cursorPosition.start);
     const after = displayText.slice(cursorPosition.end);
     const newContent = before + newText + after;
     
     setDisplayText(newContent);
     setPendingUrl(null);
+    setLabelInput('');
     setCursorPosition({ start: 0, end: 0 });
     
     // Return focus to the main input after a short delay to ensure the DOM has updated
@@ -549,15 +568,30 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
         <div className="flex-1 relative">
       
       {pendingUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-4 rounded shadow-lg w-80">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          data-modal="true"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              closeUrlPopup(pendingUrl);
+            }
+          }}
+        >
+          <div 
+            className="bg-white p-4 rounded shadow-lg w-80"
+            data-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
             <label className="block text-sm mb-2">Link text:</label>
             <input
+              ref={setUrlPopupInputRef}
               type="text"
               value={labelInput}
               onChange={e => setLabelInput(e.target.value)}
               onKeyDown={e => {
                 if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
                   // confirm with custom or hostname
                   let label = labelInput.trim();
                   if (!label) {
@@ -569,12 +603,14 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
                   }
                   closeUrlPopup(`[${label}](${pendingUrl})`);
                 } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
                   // confirm bare URL
                   closeUrlPopup(pendingUrl);
                 }
               }}
-              autoFocus
               className="w-full border px-2 py-1 rounded mb-4"
+              autoFocus
             />
             <div className="flex justify-end space-x-2">
               <button

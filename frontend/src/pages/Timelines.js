@@ -40,7 +40,7 @@ const Timelines = ({ notes }) => {
         const eventMatch = trimmedLine.match(/^(.+?)\s*:\s*(.+)$/);
         if (eventMatch) {
           const [, event, dateStr] = eventMatch;
-          const parsedDate = moment(dateStr);
+          const parsedDate = moment(dateStr, ['DD/MM/YYYY', 'DD-MM-YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY'], true);
           if (parsedDate.isValid()) {
             timelineData.events.push({
               event: event.trim(),
@@ -126,9 +126,13 @@ const Timelines = ({ notes }) => {
             <div className="text-gray-500 text-lg mb-4">
               No timeline notes found
             </div>
-            <p className="text-gray-400">
+            <p className="text-gray-400 mb-4">
               Add <code className="bg-gray-200 px-2 py-1 rounded">meta::timeline::[value]</code> to notes to see them here
             </p>
+            <div className="text-sm text-gray-400">
+              <p>Total notes: {notes ? notes.length : 0}</p>
+              <p>Notes with meta::timeline: {timelineNotes.length}</p>
+            </div>
           </div>
         ) : (
           <div className="space-y-8">

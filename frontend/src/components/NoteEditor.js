@@ -66,8 +66,8 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   const popupRef = useRef(null);
   const [showTextSelection, setShowTextSelection] = useState(false);
 
-  // Vim-like mode system
-  const [mode, setMode] = useState(initialMode); // 'view' or 'edit'
+  // Vim-like mode system (disabled in modal)
+  const [mode, setMode] = useState(isModal ? 'edit' : initialMode); // 'view' or 'edit'
   const [cursorLine, setCursorLine] = useState(0); // Current line in view mode
   
   // Initialize cursor line to first non-empty line or 0
@@ -778,6 +778,8 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   };
 
   useEffect(() => {
+    // Disable Vim-like global key handling inside modal
+    if (isModal) return;
     const handleGlobalKey = (e) => {
       
       // Check if we're in the note editor context or modal
@@ -1004,7 +1006,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     return () => {
       document.removeEventListener('keydown', handleGlobalKey);
     };
-  }, [lines, isAddMode, note, addNote, onSave, onCancel, mode, cursorLine]);
+  }, [lines, isAddMode, note, addNote, onSave, onCancel, mode, cursorLine, isModal]);
 
   useEffect(() => {
     const hideContext = () => setContextMenu({ visible: false, x: 0, y: 0, index: null });
@@ -1144,6 +1146,10 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           }
         }}
       onKeyDown={(e) => {
+        // Disable Vim-like direct key handling inside modal
+        if (isModal) {
+          return;
+        }
         
         // Direct keyboard handling for view mode navigation
         if (mode === 'view') {
@@ -1303,7 +1309,8 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         }
       }}
     >
-      {/* Mode indicator */}
+      {/* Mode indicator (hidden in modal) */}
+      {!isModal && (
       <div className="mb-4 flex justify-between items-center">
         <div className="flex items-center space-x-4">
           <div className={`px-3 py-1 rounded text-sm font-mono ${
@@ -1326,6 +1333,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           </button>
         )}
       </div>
+      )}
       {mergedContent && (
         <div className="fixed top-10 left-1/2 transform -translate-x-1/2 bg-white shadow-lg border border-gray-300 rounded p-4 z-50 max-w-xl w-full">
           <h2 className="font-bold mb-2">Merged Note</h2>

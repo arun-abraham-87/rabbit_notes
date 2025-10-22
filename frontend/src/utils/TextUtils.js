@@ -382,6 +382,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-600 underline hover:text-blue-800"
+          onClick={(e) => e.stopPropagation()}
         >
           {hostname}
         </a>
@@ -412,6 +413,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-600 underline hover:text-blue-800"
+          onClick={(e) => e.stopPropagation()}
         >
           {hostname}
         </a>
@@ -483,6 +485,7 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 underline hover:text-blue-800"
+              onClick={(e) => e.stopPropagation()}
             >
               {linkIndicator ? (
                 <>

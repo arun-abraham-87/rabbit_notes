@@ -11,6 +11,62 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   
   const contentSource = isAddMode ? searchQuery || '' : text || note.content || '';
   
+  // Check if this note has reversed URLs
+  const hasReversedUrls = contentSource && contentSource.includes('meta::url_reversed');
+  
+  // Helper function to reverse a string
+  const reverseString = (str) => {
+    return str.split('').reverse().join('');
+  };
+  
+  // Helper function to reverse URLs in text
+  const reverseUrlsInText = (text) => {
+    // Regular expression to match URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    // Regular expression to match markdown links [text](url)
+    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    
+    let result = text;
+    
+    // First, handle markdown links
+    result = result.replace(markdownLinkRegex, (match, text, url) => {
+      const reversedUrl = reverseString(url);
+      return `[${text}](${reversedUrl})`;
+    });
+    
+    // Then, handle plain URLs
+    result = result.replace(urlRegex, (url) => {
+      return reverseString(url);
+    });
+    
+    return result;
+  };
+  
+  // Helper function to restore URLs from reversed form
+  const restoreUrlsInText = (text) => {
+    // Regular expression to match reversed URLs (ending with ptth)
+    const reversedUrlRegex = /(https?:\/\/[^\s]+ptth)/g;
+    
+    // Regular expression to match markdown links with reversed URLs
+    const reversedMarkdownLinkRegex = /\[([^\]]+)\]\(([^)]+ptth)\)/g;
+    
+    let result = text;
+    
+    // First, handle markdown links with reversed URLs
+    result = result.replace(reversedMarkdownLinkRegex, (match, text, url) => {
+      const originalUrl = reverseString(url);
+      return `[${text}](${originalUrl})`;
+    });
+    
+    // Then, handle plain reversed URLs
+    result = result.replace(reversedUrlRegex, (url) => {
+      return reverseString(url);
+    });
+    
+    return result;
+  };
+  
   // Function to separate content from meta tags
   const separateContentFromMeta = (content) => {
     const lines = content.split('\n');
@@ -30,10 +86,15 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   
   const { contentLines, metaLines } = separateContentFromMeta(contentSource);
   
+  // Process content lines to restore URLs if they were reversed
+  const processedContentLines = hasReversedUrls 
+    ? contentLines.map(text => restoreUrlsInText(text))
+    : contentLines;
+  
   const initialLines = contentSource
     ? [
-      // Content lines
-      ...contentLines.map((text, index) => ({
+      // Content lines (with restored URLs if they were reversed)
+      ...processedContentLines.map((text, index) => ({
         id: `line-${index}`,
         text,
         isTitle: text.startsWith('##') && text.endsWith('##'),
@@ -756,8 +817,22 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     
     
     // Join lines with newlines
-    const merged = trimmedLines.join('\n');
+    let merged = trimmedLines.join('\n');
     
+    // If this note originally had reversed URLs, re-reverse them before saving
+    if (hasReversedUrls) {
+      // Separate content from meta tags for processing
+      const { contentLines, metaLines } = separateContentFromMeta(merged);
+      
+      // Re-reverse URLs in content lines
+      const reReversedContentLines = contentLines.map(text => reverseUrlsInText(text));
+      
+      // Reconstruct the content with re-reversed URLs
+      merged = [
+        ...reReversedContentLines,
+        ...metaLines
+      ].join('\n');
+    }
     
     // Check if note is empty or only contains whitespace
     if (!merged || !merged.trim()) {

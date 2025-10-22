@@ -279,13 +279,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
   const [linkPopupLinks, setLinkPopupLinks] = useState([]);
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
   const [snoozeToast, setSnoozeToast] = useState(null);
-  const [isWaitingForJump, setIsWaitingForJump] = useState(false);
-  const [isWaitingForDoubleG, setIsWaitingForDoubleG] = useState(false);
-  const [showRelativeNumbers, setShowRelativeNumbers] = useState(() => {
-    const saved = localStorage.getItem('reviewsRelativeNumbers');
-    return saved ? JSON.parse(saved) : true;
-  });
-  const numberBufferRef = useRef('');
 
   useEffect(() => {
     const overdue = findwatchitemsOverdue(notes).filter(note => !note.content.includes('meta::reminder'));
@@ -329,19 +322,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
   const filteredOverdueNotes = filterNotesBySearch(overdueNotes);
   const filteredSnoozedNotes = filterNotesBySearch(snoozedNotes);
 
-  const toggleRelativeNumbers = () => {
-    const newValue = !showRelativeNumbers;
-    setShowRelativeNumbers(newValue);
-    localStorage.setItem('reviewsRelativeNumbers', JSON.stringify(newValue));
-  };
-
-  // Calculate relative position for vim navigation
-  const getRelativePosition = (currentIndex, focusedIndex, totalItems) => {
-    if (focusedIndex === -1) return null;
-    const relativePos = Math.abs(currentIndex - focusedIndex);
-    if (relativePos === 0) return '0';
-    return `${relativePos}`;
-  };
 
   // Add keyboard navigation for reviews-overdue-only mode
   useEffect(() => {
@@ -353,69 +333,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
       const totalReviews = filteredOverdueNotes.length + filteredSnoozedNotes.length;
       if (totalReviews === 0) return;
 
-      // Handle number input for jump navigation (like 4j)
-      if (/^[0-9]$/.test(e.key)) {
-        e.preventDefault();
-        e.stopPropagation();
-        numberBufferRef.current += e.key;
-        setIsWaitingForJump(true);
-        
-        // Set a timeout to clear the buffer if no 'j' is pressed
-        setTimeout(() => {
-          if (isWaitingForJump) {
-            numberBufferRef.current = '';
-            setIsWaitingForJump(false);
-          }
-        }, 2000);
-        return;
-      }
-
-      // Handle 'j' key for relative movement down
-      if (isWaitingForJump && e.key === 'j' && numberBufferRef.current.length > 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        const steps = parseInt(numberBufferRef.current);
-        setFocusedReviewIndex(prev => {
-          const newIndex = prev + steps;
-          return newIndex < totalReviews ? newIndex : totalReviews - 1;
-        });
-        numberBufferRef.current = '';
-        setIsWaitingForJump(false);
-        return;
-      }
-
-      // Handle 'k' key for relative movement up
-      if (isWaitingForJump && e.key === 'k' && numberBufferRef.current.length > 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        const steps = parseInt(numberBufferRef.current);
-        setFocusedReviewIndex(prev => {
-          const newIndex = prev - steps;
-          return newIndex >= 0 ? newIndex : 0;
-        });
-        numberBufferRef.current = '';
-        setIsWaitingForJump(false);
-        return;
-      }
-
-      // Handle 'g' key (gg for first item)
-      if (e.key === 'g') {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        if (isWaitingForDoubleG) {
-          // Double 'g' pressed - go to first item
-          setFocusedReviewIndex(0);
-          setIsWaitingForDoubleG(false);
-        } else {
-          // First 'g' pressed - wait for second 'g'
-          setIsWaitingForDoubleG(true);
-          setTimeout(() => {
-            setIsWaitingForDoubleG(false);
-          }, 300); // 300ms timeout for double 'g'
-        }
-        return;
-      }
 
       // Handle 'G' key (last item)
       if (e.key === 'G') {
@@ -1228,37 +1145,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
 
   return (
     <div className="w-full">
-      {/* Number buffer indicator */}
-      {isReviewsOverdueOnlyMode && isWaitingForJump && (
-        <div className="fixed top-4 right-4 bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg z-50">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Jump to:</span>
-            <span className="text-lg font-bold">{numberBufferRef.current}</span>
-            <span className="text-xs opacity-75">Press j/k</span>
-          </div>
-        </div>
-      )}
-
-      {/* Relative numbers toggle */}
-      {isReviewsOverdueOnlyMode && (
-        <div className="fixed top-24 left-4 bg-white border border-gray-300 rounded-lg shadow-lg z-50 px-3 py-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">Numbers:</span>
-            <button
-              onClick={toggleRelativeNumbers}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                showRelativeNumbers ? 'bg-blue-600' : 'bg-gray-200'
-              }`}
-            >
-              <span
-                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                  showRelativeNumbers ? 'translate-x-5' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Search Box */}
       <div className="mb-4">
@@ -1327,14 +1213,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                       : 'border-blue-200 border'
                   }`}>
                   <div className="grid grid-cols-4 gap-4">
-                    {/* Relative position indicator for vim navigation */}
-                    {isReviewsOverdueOnlyMode && showRelativeNumbers && (
-                      <div className="col-span-4 mb-2">
-                        <div className="text-xs font-mono font-bold text-gray-600 px-2 py-1 min-w-[2rem] text-center inline-block">
-                          {getRelativePosition(index, focusedReviewIndex, filteredOverdueNotes.length + filteredSnoozedNotes.length)}
-                        </div>
-                      </div>
-                    )}
                     {/* First Section - Description (50%) */}
                     <div className="col-span-2 flex flex-col">
                       <h4 className="text-base font-medium text-gray-900 mb-2 break-words">
@@ -1552,14 +1430,6 @@ const ReviewOverdueAlert = ({ notes, expanded: initialExpanded = true, setNotes,
                         : 'border-green-200 border'
                     }`}>
                     <div className="grid grid-cols-4 gap-4">
-                      {/* Relative position indicator for vim navigation */}
-                      {isReviewsOverdueOnlyMode && showRelativeNumbers && (
-                        <div className="col-span-4 mb-2">
-                          <div className="text-xs font-mono font-bold text-gray-600 px-2 py-1 min-w-[2rem] text-center inline-block">
-                            {getRelativePosition(filteredOverdueNotes.length + index, focusedReviewIndex, filteredOverdueNotes.length + filteredSnoozedNotes.length)}
-                          </div>
-                        </div>
-                      )}
                       {/* First Section - Description (50%) */}
                       <div className="col-span-2 flex flex-col">
                         <div className="flex items-center gap-2 mb-2">

@@ -83,8 +83,16 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   const calculateTimeDifferences = (events) => {
     if (events.length < 2) return events;
     
-    const eventsWithDiffs = [...events];
-    const startDate = events[0].date;
+    // Sort events by date first (events without dates go to the end)
+    const sortedEvents = [...events].sort((a, b) => {
+      if (!a.date && !b.date) return 0;
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      return a.date.diff(b.date);
+    });
+    
+    const eventsWithDiffs = [...sortedEvents];
+    const startDate = eventsWithDiffs[0].date;
     
     for (let i = 1; i < eventsWithDiffs.length; i++) {
       const currentEvent = eventsWithDiffs[i];

@@ -522,7 +522,40 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       }
                                       {!event.isDuration && event.daysFromPrevious !== undefined && (
                                         <span className="text-black font-normal text-sm ml-2">
-                                          ({event.daysFromPrevious} days since last event)
+                                          ({(() => {
+                                            const days = event.daysFromPrevious;
+                                            if (days > 365) {
+                                              const years = Math.floor(days / 365);
+                                              const remainingDays = days % 365;
+                                              const months = Math.floor(remainingDays / 30);
+                                              const finalDays = remainingDays % 30;
+                                              
+                                              let result = '';
+                                              if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                              if (months > 0) {
+                                                if (result) result += ', ';
+                                                result += `${months} month${months !== 1 ? 's' : ''}`;
+                                              }
+                                              if (finalDays > 0) {
+                                                if (result) result += ', ';
+                                                result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                              }
+                                              return result + ' since last event';
+                                            } else if (days > 30) {
+                                              const months = Math.floor(days / 30);
+                                              const remainingDays = days % 30;
+                                              
+                                              let result = '';
+                                              if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                              if (remainingDays > 0) {
+                                                if (result) result += ', ';
+                                                result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                              }
+                                              return result + ' since last event';
+                                            } else {
+                                              return `${days} days since last event`;
+                                            }
+                                          })()})
                                         </span>
                                       )}
                                     </h3>
@@ -533,27 +566,40 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     <div className="text-sm text-gray-600">
                                       <div className="flex items-center space-x-2">
                                         <span className="text-green-600 font-medium">
-                                          {event.daysFromStart > 365 
-                                            ? (() => {
-                                                const years = Math.floor(event.daysFromStart / 365);
-                                                const remainingDays = event.daysFromStart % 365;
-                                                const months = Math.floor(remainingDays / 30);
-                                                const days = remainingDays % 30;
-                                                
-                                                let result = '';
-                                                if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
-                                                if (months > 0) {
-                                                  if (result) result += ', ';
-                                                  result += `${months} month${months !== 1 ? 's' : ''}`;
-                                                }
-                                                if (days > 0) {
-                                                  if (result) result += ', ';
-                                                  result += `${days} day${days !== 1 ? 's' : ''}`;
-                                                }
-                                                return result + ' since start';
-                                              })()
-                                            : `${event.daysFromStart} days since start`
-                                          }
+                                          {(() => {
+                                            const days = event.daysFromStart;
+                                            if (days > 365) {
+                                              const years = Math.floor(days / 365);
+                                              const remainingDays = days % 365;
+                                              const months = Math.floor(remainingDays / 30);
+                                              const finalDays = remainingDays % 30;
+                                              
+                                              let result = '';
+                                              if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                              if (months > 0) {
+                                                if (result) result += ', ';
+                                                result += `${months} month${months !== 1 ? 's' : ''}`;
+                                              }
+                                              if (finalDays > 0) {
+                                                if (result) result += ', ';
+                                                result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                              }
+                                              return result + ' since start';
+                                            } else if (days > 30) {
+                                              const months = Math.floor(days / 30);
+                                              const remainingDays = days % 30;
+                                              
+                                              let result = '';
+                                              if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                              if (remainingDays > 0) {
+                                                if (result) result += ', ';
+                                                result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                              }
+                                              return result + ' since start';
+                                            } else {
+                                              return `${days} days since start`;
+                                            }
+                                          })()}
                                         </span>
                                       </div>
                                     </div>

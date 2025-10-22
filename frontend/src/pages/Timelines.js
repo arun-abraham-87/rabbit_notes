@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import moment from 'moment';
+import { PlusIcon, XMarkIcon } from '@heroicons/react/24/solid';
 
-const Timelines = ({ notes }) => {
+const Timelines = ({ notes, updateNote }) => {
   const [timelineNotes, setTimelineNotes] = useState([]);
+  const [showAddEventForm, setShowAddEventForm] = useState(null);
+  const [newEventText, setNewEventText] = useState('');
+  const [newEventDate, setNewEventDate] = useState('');
 
   useEffect(() => {
     if (notes) {
@@ -97,6 +101,47 @@ const Timelines = ({ notes }) => {
     return eventsWithDiffs;
   };
 
+  // Handle adding a new event
+  const handleAddEvent = async (noteId) => {
+    if (!newEventText.trim() || !newEventDate) {
+      alert('Please enter both event text and date');
+      return;
+    }
+
+    try {
+      const note = timelineNotes.find(n => n.id === noteId);
+      if (!note) return;
+
+      // Format the date as DD/MM/YYYY
+      const formattedDate = moment(newEventDate).format('DD/MM/YYYY');
+      const newEventLine = `${newEventText.trim()}: ${formattedDate}`;
+      
+      // Add the new event line before the meta tags
+      const lines = note.content.split('\n');
+      const metaLines = lines.filter(line => line.trim().startsWith('meta::'));
+      const contentLines = lines.filter(line => !line.trim().startsWith('meta::'));
+      
+      const updatedContent = [
+        ...contentLines,
+        newEventLine,
+        ...metaLines
+      ].join('\n');
+
+      // Update the note
+      if (updateNote) {
+        await updateNote(noteId, updatedContent);
+      }
+
+      // Reset form
+      setNewEventText('');
+      setNewEventDate('');
+      setShowAddEventForm(null);
+    } catch (error) {
+      console.error('Error adding event:', error);
+      alert('Failed to add event. Please try again.');
+    }
+  };
+
   // Sort notes by timeline value
   const sortedTimelineNotes = timelineNotes.sort((a, b) => {
     const aData = parseTimelineData(a.content);
@@ -168,17 +213,7 @@ const Timelines = ({ notes }) => {
                                   : 'bg-blue-500 border-blue-500'
                               }`}></div>
                               {index < eventsWithDiffs.length - 1 && (
-                                <div className="relative">
-                                  <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
-                                  {/* Days between events button */}
-                                  {event.daysFromPrevious !== undefined && (
-                                    <div className="absolute -right-2 top-1/2 transform -translate-y-1/2">
-                                      <div className="bg-orange-500 text-white text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-white">
-                                        {event.daysFromPrevious}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
+                                <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
                               )}
                             </div>
 
@@ -204,12 +239,81 @@ const Timelines = ({ notes }) => {
                                     </span>
                                   </div>
                                 )}
+                                {event.daysFromPrevious !== undefined && (
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-orange-600 font-medium">
+                                      {event.daysFromPrevious} days since last event
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
+
+                    {/* Add Event Button */}
+                    <div className="mt-6 pt-4 border-t border-gray-200">
+                      {showAddEventForm === note.id ? (
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <h4 className="text-sm font-medium text-gray-700 mb-3">Add New Event</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Event Description
+                              </label>
+                              <input
+                                type="text"
+                                value={newEventText}
+                                onChange={(e) => setNewEventText(e.target.value)}
+                                placeholder="e.g., Project milestone reached"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Date
+                              </label>
+                              <input
+                                type="date"
+                                value={newEventDate}
+                                onChange={(e) => setNewEventDate(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleAddEvent(note.id)}
+                                className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <PlusIcon className="h-4 w-4" />
+                                <span>Add Event</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowAddEventForm(null);
+                                  setNewEventText('');
+                                  setNewEventDate('');
+                                }}
+                                className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                              >
+                                <XMarkIcon className="h-4 w-4" />
+                                <span>Cancel</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowAddEventForm(note.id)}
+                          className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                          <span>Add Event</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

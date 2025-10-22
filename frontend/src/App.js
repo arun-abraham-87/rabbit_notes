@@ -243,7 +243,7 @@ const MainContentArea = ({
           <Route path="/timelines" element={
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                <Timelines notes={allNotes} />
+                <Timelines notes={allNotes} updateNote={updateNote} />
               </div>
             </div>
           } />

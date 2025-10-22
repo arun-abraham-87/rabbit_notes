@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import moment from 'moment';
-import { PlusIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid';
+import { useNavigate } from 'react-router-dom';
 
 const Timelines = ({ notes, updateNote, addNote }) => {
+  const navigate = useNavigate();
   const [timelineNotes, setTimelineNotes] = useState([]);
   const [showAddEventForm, setShowAddEventForm] = useState(null);
   const [newEventText, setNewEventText] = useState('');
@@ -110,6 +112,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     }
     
     return eventsWithDiffs;
+  };
+
+  // Handle navigation to notes page filtered by note ID
+  const handleViewNote = (noteId) => {
+    navigate(`/notes?note=${noteId}`);
   };
 
   // Handle creating a new timeline
@@ -278,12 +285,18 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                 <div key={note.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
                   {/* Timeline Header */}
                   <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4">
-                    <h2 className="text-2xl font-bold">
-                      {timelineData.timeline || 'Untitled Timeline'}
-                    </h2>
-                    <p className="text-blue-100 text-sm mt-1">
-                      Note ID: {note.id}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-2xl font-bold">
+                        {timelineData.timeline || 'Untitled Timeline'}
+                      </h2>
+                      <button
+                        onClick={() => handleViewNote(note.id)}
+                        className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-colors"
+                        title="View note in Notes page"
+                      >
+                        <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Timeline Events */}

@@ -30,6 +30,7 @@ import BookmarkManager from './components/BookmarkManager';
 import { initializeSearchIndex, searchNotes, addNoteToIndex, updateNoteInIndex, removeNoteFromIndex } from './utils/SearchUtils';
 import Assets from './components/Assets';
 import CountdownsPage from './pages/CountdownsPage';
+import Timelines from './pages/Timelines';
 import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceHelpUtils';
 import StockVesting from './components/StockVesting';
 import Pomodoro from './components/Pomodoro';
@@ -236,6 +237,13 @@ const MainContentArea = ({
                 <div className="min-h-screen bg-gray-50 flex justify-center items-center">
                   <Pomodoro />
                 </div>
+              </div>
+            </div>
+          } />
+          <Route path="/timelines" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <Timelines notes={allNotes} />
               </div>
             </div>
           } />

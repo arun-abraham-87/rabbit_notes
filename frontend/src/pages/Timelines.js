@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import moment from 'moment';
 
 const Timelines = ({ notes }) => {
   const [timelineNotes, setTimelineNotes] = useState([]);
@@ -16,18 +17,84 @@ const Timelines = ({ notes }) => {
   // Parse timeline data from note content
   const parseTimelineData = (content) => {
     const lines = content.split('\n');
-    const timelineData = {};
+    const timelineData = {
+      timeline: '',
+      events: []
+    };
     
-    lines.forEach(line => {
-      if (line.trim().startsWith('meta::timeline::')) {
-        const timelineValue = line.trim().replace('meta::timeline::', '').trim();
-        if (timelineValue) {
-          timelineData.timeline = timelineValue;
+    // Get content lines (non-meta lines)
+    const contentLines = lines.filter(line => 
+      !line.trim().startsWith('meta::') && line.trim() !== ''
+    );
+    
+    // First line is the title
+    if (contentLines.length > 0) {
+      timelineData.timeline = contentLines[0].trim();
+    }
+    
+    // Parse events from remaining content lines (skip first line which is title)
+    contentLines.slice(1).forEach((line, index) => {
+      const trimmedLine = line.trim();
+      if (trimmedLine) {
+        // Try to parse event:date format
+        const eventMatch = trimmedLine.match(/^(.+?)\s*:\s*(.+)$/);
+        if (eventMatch) {
+          const [, event, dateStr] = eventMatch;
+          const parsedDate = moment(dateStr);
+          if (parsedDate.isValid()) {
+            timelineData.events.push({
+              event: event.trim(),
+              date: parsedDate,
+              dateStr: dateStr.trim(),
+              lineIndex: index + 1 // +1 because we skipped the title line
+            });
+          } else {
+            // If not a valid date, treat as event without date
+            timelineData.events.push({
+              event: trimmedLine,
+              date: null,
+              dateStr: '',
+              lineIndex: index + 1
+            });
+          }
+        } else {
+          // If no colon found, treat as event without date
+          timelineData.events.push({
+            event: trimmedLine,
+            date: null,
+            dateStr: '',
+            lineIndex: index + 1
+          });
         }
       }
     });
     
     return timelineData;
+  };
+
+  // Calculate time differences between events
+  const calculateTimeDifferences = (events) => {
+    if (events.length < 2) return events;
+    
+    const eventsWithDiffs = [...events];
+    const startDate = events[0].date;
+    
+    for (let i = 1; i < eventsWithDiffs.length; i++) {
+      const currentEvent = eventsWithDiffs[i];
+      const previousEvent = eventsWithDiffs[i - 1];
+      
+      if (currentEvent.date && previousEvent.date) {
+        const daysDiff = currentEvent.date.diff(previousEvent.date, 'days');
+        currentEvent.daysFromPrevious = daysDiff;
+      }
+      
+      if (currentEvent.date && startDate) {
+        const totalDays = currentEvent.date.diff(startDate, 'days');
+        currentEvent.daysFromStart = totalDays;
+      }
+    }
+    
+    return eventsWithDiffs;
   };
 
   // Sort notes by timeline value
@@ -64,33 +131,81 @@ const Timelines = ({ notes }) => {
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {sortedTimelineNotes.map((note) => {
               const timelineData = parseTimelineData(note.content);
-              const contentWithoutMeta = note.content
-                .split('\n')
-                .filter(line => !line.trim().startsWith('meta::'))
-                .join('\n')
-                .trim();
+              const eventsWithDiffs = calculateTimeDifferences(timelineData.events);
 
               return (
-                <div key={note.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                          {timelineData.timeline || 'No timeline value'}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          Note ID: {note.id}
-                        </span>
+                <div key={note.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                  {/* Timeline Header */}
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4">
+                    <h2 className="text-2xl font-bold">
+                      {timelineData.timeline || 'Untitled Timeline'}
+                    </h2>
+                    <p className="text-blue-100 text-sm mt-1">
+                      Note ID: {note.id}
+                    </p>
+                  </div>
+
+                  {/* Timeline Events */}
+                  <div className="p-6">
+                    {eventsWithDiffs.length === 0 ? (
+                      <div className="text-gray-500 italic">No events found in this timeline</div>
+                    ) : (
+                      <div className="space-y-4">
+                        {eventsWithDiffs.map((event, index) => (
+                          <div key={index} className="flex items-start space-x-4">
+                            {/* Timeline connector */}
+                            <div className="flex flex-col items-center">
+                              <div className={`w-4 h-4 rounded-full border-2 ${
+                                index === 0 
+                                  ? 'bg-green-500 border-green-500' 
+                                  : 'bg-blue-500 border-blue-500'
+                              }`}></div>
+                              {index < eventsWithDiffs.length - 1 && (
+                                <div className="relative">
+                                  <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
+                                  {/* Days between events button */}
+                                  {event.daysFromPrevious !== undefined && (
+                                    <div className="absolute -right-2 top-1/2 transform -translate-y-1/2">
+                                      <div className="bg-orange-500 text-white text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-white">
+                                        {event.daysFromPrevious}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Event content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-3 mb-1">
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                  {event.event}
+                                </h3>
+                                {event.date && (
+                                  <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                    {event.date.format('DD/MMM/YYYY')}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Time differences */}
+                              <div className="text-sm text-gray-600 space-y-1">
+                                {event.daysFromStart !== undefined && (
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-green-600 font-medium">
+                                      {event.daysFromStart} days since start
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="prose max-w-none">
-                        <pre className="whitespace-pre-wrap text-gray-800 font-sans">
-                          {contentWithoutMeta}
-                        </pre>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               );

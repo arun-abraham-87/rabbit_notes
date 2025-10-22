@@ -541,7 +541,6 @@ const AppContent = () => {
   const addNote = async (content, tags) => {
     try {
       const response = await createNote(content);
-      setSearchQuery('');
       setAllNotes([response, ...allNotes]);
       // Track the last added note
       setLastAddedNoteId(response.id);

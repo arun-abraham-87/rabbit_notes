@@ -53,7 +53,23 @@ const Timelines = ({ notes, updateNote, addNote }) => {
         const eventMatch = trimmedLine.match(/^(.+?)\s*:\s*(.+)$/);
         if (eventMatch) {
           const [, event, dateStr] = eventMatch;
-          const parsedDate = moment(dateStr, ['DD/MM/YYYY', 'DD-MM-YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY'], true);
+          // Force DD/MM/YYYY parsing by manually splitting the date
+          const dateParts = dateStr.split('/');
+          let parsedDate;
+          
+          if (dateParts.length === 3) {
+            // Assume DD/MM/YYYY format
+            const day = parseInt(dateParts[0], 10);
+            const month = parseInt(dateParts[1], 10) - 1; // moment.js months are 0-indexed
+            const year = parseInt(dateParts[2], 10);
+            parsedDate = moment([year, month, day]);
+          } else {
+            // Fallback to moment parsing
+            parsedDate = moment(dateStr, 'DD/MM/YYYY', true);
+            if (!parsedDate.isValid()) {
+              parsedDate = moment(dateStr, ['DD-MM-YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'], true);
+            }
+          }
           if (parsedDate.isValid()) {
             timelineData.events.push({
               event: event.trim(),
@@ -154,8 +170,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   // Calculate duration in Years/Months/Days format
   const calculateDuration = (startDate, endDate) => {
     const years = endDate.diff(startDate, 'years');
-    const months = endDate.diff(startDate.add(years, 'years'), 'months');
-    const days = endDate.diff(startDate.add(months, 'months'), 'days');
+    const months = endDate.diff(startDate.clone().add(years, 'years'), 'months');
+    const days = endDate.diff(startDate.clone().add(years, 'years').add(months, 'months'), 'days');
     
     let duration = '';
     if (years > 0) duration += `${years} year${years !== 1 ? 's' : ''}`;

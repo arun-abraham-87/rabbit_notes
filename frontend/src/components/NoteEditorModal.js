@@ -481,6 +481,7 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
           isModal={true}
           note={mode === 'edit' && noteId ? { id: noteId, content: initialContent } : null}
           initialMode={mode === 'edit' ? 'edit' : 'view'}
+          initialTextMode={false}
           onSave={handleSave}
           addNote={handleAddNote}
           onCancel={() => {

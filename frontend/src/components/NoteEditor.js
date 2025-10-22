@@ -1406,15 +1406,19 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
             {mode === 'view' ? 'Press i to enter edit mode' : 'Press Esc to return to view mode'}
           </div>
         </div>
-        {!isAddMode && (
+      </div>
+      )}
+      
+      {/* Text Mode Toggle Button - shown in both modal and non-modal contexts */}
+      {(!isAddMode || isModal) && (
+        <div className="mb-4 flex justify-end">
           <button
             onClick={() => setIsTextMode(!isTextMode)}
             className="text-xs text-gray-500 hover:text-gray-700 underline"
           >
             {isTextMode ? 'Advanced Mode' : 'Text Mode'}
           </button>
-        )}
-      </div>
+        </div>
       )}
       {mergedContent && (
         <div className="fixed top-10 left-1/2 transform -translate-x-1/2 bg-white shadow-lg border border-gray-300 rounded p-4 z-50 max-w-xl w-full">

@@ -83,7 +83,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
 
   // Calculate time differences between events
   const calculateTimeDifferences = (events) => {
-    if (events.length < 2) return events;
+    if (events.length === 0) return events;
     
     // Sort events by date first (events without dates go to the end)
     const sortedEvents = [...events].sort((a, b) => {
@@ -93,7 +93,17 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       return a.date.diff(b.date);
     });
     
-    const eventsWithDiffs = [...sortedEvents];
+    // Add "Today" as a virtual event at the end
+    const today = moment();
+    const todayEvent = {
+      event: 'Today',
+      date: today,
+      dateStr: today.format('DD/MM/YYYY'),
+      lineIndex: -1, // Virtual event
+      isVirtual: true
+    };
+    
+    const eventsWithDiffs = [...sortedEvents, todayEvent];
     const startDate = eventsWithDiffs[0].date;
     
     for (let i = 1; i < eventsWithDiffs.length; i++) {
@@ -244,7 +254,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
             <div>
               <button
                 onClick={() => setShowNewTimelineForm(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-green-400 text-white rounded-lg hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-400 transition-colors"
               >
                 <PlusIcon className="h-5 w-5" />
                 <span>Start New Timeline</span>
@@ -284,18 +294,27 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               return (
                 <div key={note.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
                   {/* Timeline Header */}
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4">
+                  <div className="bg-gradient-to-r from-blue-400 to-blue-500 text-white px-6 py-4">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-2xl font-bold">
+                      <h2 className="text-2xl font-semibold text-blue-50">
                         {timelineData.timeline || 'Untitled Timeline'}
                       </h2>
-                      <button
-                        onClick={() => handleViewNote(note.id)}
-                        className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-colors"
-                        title="View note in Notes page"
-                      >
-                        <ArrowTopRightOnSquareIcon className="h-5 w-5" />
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setShowAddEventForm(note.id)}
+                          className="p-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors"
+                          title="Add new event"
+                        >
+                          <PlusIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleViewNote(note.id)}
+                          className="p-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors"
+                          title="View note in Notes page"
+                        >
+                          <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -310,9 +329,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                             {/* Timeline connector */}
                             <div className="flex flex-col items-center">
                               <div className={`w-4 h-4 rounded-full border-2 ${
-                                index === 0 
-                                  ? 'bg-green-500 border-green-500' 
-                                  : 'bg-blue-500 border-blue-500'
+                                event.isVirtual
+                                  ? 'bg-purple-500 border-purple-500'
+                                  : index === 0 
+                                    ? 'bg-green-500 border-green-500' 
+                                    : 'bg-blue-500 border-blue-500'
                               }`}></div>
                               {index < eventsWithDiffs.length - 1 && (
                                 <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
@@ -322,32 +343,37 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                             {/* Event content */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center space-x-3 mb-1">
-                                <h3 className="text-lg font-semibold text-gray-900">
-                                  {event.event}
-                                </h3>
                                 {event.date && (
-                                  <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                  <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded font-medium">
                                     {event.date.format('DD/MMM/YYYY')}
                                   </span>
                                 )}
+                                <h3 className={`text-lg font-semibold ${
+                                  event.isVirtual 
+                                    ? 'text-purple-600' 
+                                    : 'text-gray-900'
+                                }`}>
+                                  {event.event.charAt(0).toUpperCase() + event.event.slice(1)}
+                                </h3>
                               </div>
                               
                               {/* Time differences */}
-                              <div className="text-sm text-gray-600 space-y-1">
-                                {event.daysFromStart !== undefined && (
-                                  <div className="flex items-center space-x-2">
+                              <div className="text-sm text-gray-600">
+                                <div className="flex items-center space-x-2">
+                                  {event.daysFromStart !== undefined && (
                                     <span className="text-green-600 font-medium">
                                       {event.daysFromStart} days since start
                                     </span>
-                                  </div>
-                                )}
-                                {event.daysFromPrevious !== undefined && (
-                                  <div className="flex items-center space-x-2">
+                                  )}
+                                  {event.daysFromStart !== undefined && event.daysFromPrevious !== undefined && (
+                                    <span className="text-gray-400">,</span>
+                                  )}
+                                  {event.daysFromPrevious !== undefined && (
                                     <span className="text-orange-600 font-medium">
                                       {event.daysFromPrevious} days since last event
                                     </span>
-                                  </div>
-                                )}
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -355,9 +381,9 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                       </div>
                     )}
 
-                    {/* Add Event Button */}
-                    <div className="mt-6 pt-4 border-t border-gray-200">
-                      {showAddEventForm === note.id ? (
+                    {/* Add Event Form */}
+                    {showAddEventForm === note.id && (
+                      <div className="mt-6 pt-4 border-t border-gray-200">
                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                           <h4 className="text-sm font-medium text-gray-700 mb-3">Add New Event</h4>
                           <div className="space-y-3">
@@ -387,7 +413,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                             <div className="flex items-center space-x-2">
                               <button
                                 onClick={() => handleAddEvent(note.id)}
-                                className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="flex items-center space-x-2 px-4 py-2 bg-blue-400 text-white rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
                               >
                                 <PlusIcon className="h-4 w-4" />
                                 <span>Add Event</span>
@@ -406,16 +432,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                             </div>
                           </div>
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => setShowAddEventForm(note.id)}
-                          className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
-                        >
-                          <PlusIcon className="h-4 w-4" />
-                          <span>Add Event</span>
-                        </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -458,7 +476,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                 <div className="flex items-center space-x-3">
                   <button
                     onClick={handleCreateTimeline}
-                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-green-400 text-white rounded-md hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-400"
                   >
                     <PlusIcon className="h-4 w-4" />
                     <span>Create Timeline</span>

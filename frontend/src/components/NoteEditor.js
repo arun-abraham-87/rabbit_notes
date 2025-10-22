@@ -1440,8 +1440,14 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       <div className="mb-4 flex justify-end items-center">
   
         {pendingUrlIndex !== null && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-md w-96 max-h-[90vh] overflow-y-auto">
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div 
+              className="bg-white p-6 rounded-lg shadow-md w-96 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Edit Link Text</h3>
               <div className="space-y-4">
                 <div>
@@ -1487,7 +1493,10 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
 
                 <div className="border rounded-lg overflow-hidden">
                   <button
-                    onClick={() => setShowTextSelection(!showTextSelection)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowTextSelection(!showTextSelection);
+                    }}
                     className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-between"
                   >
                     <span>Select from text</span>
@@ -1515,7 +1524,8 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                         return (
                           <button
                             key={line.id}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setCustomLabel(line.text);
                               // Remove the selected line from the note
                               const newLines = [...lines];
@@ -1549,7 +1559,8 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                 </div>
                 <div className="flex justify-end space-x-3 mt-6">
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setPendingUrlIndex(null);
                       setCustomLabel('');
                       setShowTextSelection(false);
@@ -1559,7 +1570,8 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                     Cancel
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       const newLines = [...lines];
                       const url = newLines[pendingUrlIndex].text.match(/\((https?:\/\/[^\s)]+)\)/)?.[1] || newLines[pendingUrlIndex].text;
                       newLines[pendingUrlIndex].text = `[${customLabel}](${url})`;
@@ -1672,21 +1684,34 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                   />
                 )}
                 {line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/) ? (
-                  <div className="flex items-center pl-6 pr-28 w-full">
+                  <div 
+                    className="flex items-center pl-6 pr-28 w-full"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseUp={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                  >
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
                         const match = line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
                         const currentLabel = match[1];
                         const url = match[2];
                         setPendingUrlIndex(originalIndex);
                         setCustomLabel(currentLabel);
                       }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseUp={(e) => e.stopPropagation()}
                       className="text-blue-600 hover:text-blue-800 underline text-sm mr-2 text-left"
                     >
                       {line.text.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/)[1]}
                     </button>
                     <button
-                      onClick={() => handleDeleteLine(index)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteLine(index);
+                      }}
                       className="text-red-400 text-xs ml-2 font-mono transition-transform transform hover:scale-150"
                       title="Remove URL"
                     >
@@ -1694,18 +1719,31 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                     </button>
                   </div>
                 ) : line.text.match(/^https?:\/\/[^\s]+$/) ? (
-                  <div className="flex items-center pl-6 pr-28 w-full">
+                  <div 
+                    className="flex items-center pl-6 pr-28 w-full"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseUp={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                  >
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
                         setPendingUrlIndex(originalIndex);
                         setCustomLabel(new URL(line.text).hostname);
                       }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseUp={(e) => e.stopPropagation()}
                       className="text-blue-600 hover:text-blue-800 underline text-sm mr-2 text-left"
                     >
                       {new URL(line.text).hostname}
                     </button>
                     <button
-                      onClick={() => handleDeleteLine(index)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteLine(index);
+                      }}
                       className="text-red-400 text-xs ml-2 font-mono transition-transform transform hover:scale-150"
                       title="Remove URL"
                     >

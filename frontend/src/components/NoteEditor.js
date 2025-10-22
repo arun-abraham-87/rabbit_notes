@@ -463,6 +463,13 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
 
 
   const handleKeyDown = (e, index) => {
+    // Save on Cmd/Ctrl+Enter
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      saveNote();
+      return;
+    }
     // General Escape handler to cancel the note editor
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -1524,6 +1531,13 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
             if (isAddMode && setSearchQuery) {
               
               setSearchQuery(e.target.value);
+            }
+          }}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+              e.preventDefault();
+              e.stopPropagation();
+              saveNote();
             }
           }}
         />

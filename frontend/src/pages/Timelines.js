@@ -12,6 +12,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewTimelineForm, setShowNewTimelineForm] = useState(false);
   const [newTimelineTitle, setNewTimelineTitle] = useState('');
+  const [collapsedTimelines, setCollapsedTimelines] = useState(new Set());
 
   useEffect(() => {
     if (notes) {
@@ -20,6 +21,10 @@ const Timelines = ({ notes, updateNote, addNote }) => {
         note.content && note.content.includes('meta::timeline')
       );
       setTimelineNotes(filteredNotes);
+      
+      // Set all timelines as collapsed by default
+      const noteIds = filteredNotes.map(note => note.id);
+      setCollapsedTimelines(new Set(noteIds));
     }
   }, [notes]);
 
@@ -255,6 +260,19 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     }
   };
 
+  // Toggle timeline collapse state
+  const toggleTimelineCollapse = (noteId) => {
+    setCollapsedTimelines(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) {
+        newSet.delete(noteId);
+      } else {
+        newSet.add(noteId);
+      }
+      return newSet;
+    });
+  };
+
   // Handle adding a new event
   const handleAddEvent = async (noteId) => {
     if (!newEventText.trim() || !newEventDate) {
@@ -397,30 +415,49 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               return (
                 <div key={note.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
                   {/* Timeline Header */}
-                  <div className="bg-gradient-to-r from-blue-400 to-blue-500 text-white px-6 py-4">
+                  <div 
+                    className="bg-gradient-to-r from-blue-400 to-blue-500 text-white px-6 py-4 cursor-pointer hover:from-blue-500 hover:to-blue-600 transition-colors"
+                    onClick={() => toggleTimelineCollapse(note.id)}
+                  >
                     <div className="flex items-center justify-between">
-                      <h2 className="text-2xl font-semibold text-blue-50">
-                        {timelineData.timeline || 'Untitled Timeline'}
-                        {(() => {
-                          const eventsWithDates = timelineData.events.filter(event => event.date);
-                          if (eventsWithDates.length > 0) {
-                            const startDate = eventsWithDates[0].date;
-                            const lastEvent = eventsWithDates[eventsWithDates.length - 1];
-                            const eventCount = timelineData.events.length;
-                            
-                            return (
-                              <span className="text-lg font-normal text-blue-100 ml-2">
-                                ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events)
-                              </span>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </h2>
+                      <div className="flex items-center space-x-3">
+                        <div className="text-white">
+                          {collapsedTimelines.has(note.id) ? (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          )}
+                        </div>
+                        <h2 className="text-2xl font-semibold text-blue-50">
+                          {timelineData.timeline || 'Untitled Timeline'}
+                          {(() => {
+                            const eventsWithDates = timelineData.events.filter(event => event.date);
+                            if (eventsWithDates.length > 0) {
+                              const startDate = eventsWithDates[0].date;
+                              const lastEvent = eventsWithDates[eventsWithDates.length - 1];
+                              const eventCount = timelineData.events.length;
+                              
+                              return (
+                                <span className="text-lg font-normal text-blue-100 ml-2">
+                                  ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events)
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </h2>
+                      </div>
                       <div className="flex items-center space-x-2">
                         {!timelineData.isClosed && (
                           <button
-                            onClick={() => setShowAddEventForm(note.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowAddEventForm(note.id);
+                            }}
                             className="p-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors"
                             title="Add new event"
                           >
@@ -429,7 +466,10 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                         )}
                         {!timelineData.isClosed && (
                           <button
-                            onClick={() => handleCloseTimeline(note.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCloseTimeline(note.id);
+                            }}
                             className="p-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors"
                             title="Close timeline"
                           >
@@ -438,7 +478,10 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                         )}
                         {timelineData.isClosed && (
                           <button
-                            onClick={() => handleReopenTimeline(note.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReopenTimeline(note.id);
+                            }}
                             className="p-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors"
                             title="Reopen timeline"
                           >
@@ -446,7 +489,10 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                           </button>
                         )}
                         <button
-                          onClick={() => handleViewNote(note.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewNote(note.id);
+                          }}
                           className="p-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors"
                           title="View note in Notes page"
                         >
@@ -457,7 +503,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                   </div>
 
                   {/* Timeline Events */}
-                  <div className="p-6">
+                  {!collapsedTimelines.has(note.id) && (
+                    <div className="p-6">
                     {eventsWithDiffs.length === 0 ? (
                       <div className="text-gray-500 italic">No events found in this timeline</div>
                     ) : (
@@ -665,7 +712,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                         </div>
                       </div>
                     )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

@@ -42,20 +42,54 @@ function parseEventNotes(notes, excludePurchases = true) {
 
 function groupEventsByMonth(events) {
   const groups = {};
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  
   events.forEach(event => {
-    const month = event.date.toLocaleString('default', { month: 'long' });
-    if (!groups[month]) groups[month] = [];
-    groups[month].push(event);
+    const eventDate = new Date(event.date);
+    const eventYear = eventDate.getFullYear();
+    const month = eventDate.toLocaleString('default', { month: 'long' });
+    
+    // Create a key that includes the year for next year events
+    const groupKey = eventYear > currentYear ? `${month} ${eventYear}` : month;
+    
+    if (!groups[groupKey]) groups[groupKey] = [];
+    groups[groupKey].push(event);
   });
-  // Sort months by calendar order
+  
+  // Sort months by calendar order, with current year first, then next year
   const monthOrder = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-  const sortedKeys = Object.keys(groups).sort((a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
-  return sortedKeys.map(month => ({
-    key: month,
-    events: groups[month].sort((a, b) => a.date.getDate() - b.date.getDate())
+  
+  const sortedKeys = Object.keys(groups).sort((a, b) => {
+    // Extract year and month from keys
+    const getYear = (key) => {
+      const yearMatch = key.match(/\d{4}/);
+      return yearMatch ? parseInt(yearMatch[0]) : currentYear;
+    };
+    
+    const getMonth = (key) => {
+      const monthName = key.replace(/\s+\d{4}$/, '');
+      return monthOrder.indexOf(monthName);
+    };
+    
+    const yearA = getYear(a);
+    const yearB = getYear(b);
+    const monthA = getMonth(a);
+    const monthB = getMonth(b);
+    
+    // First sort by year, then by month
+    if (yearA !== yearB) {
+      return yearA - yearB;
+    }
+    return monthA - monthB;
+  });
+  
+  return sortedKeys.map(key => ({
+    key: key,
+    events: groups[key].sort((a, b) => a.date.getDate() - b.date.getDate())
   }));
 }
 
@@ -64,27 +98,50 @@ function filterFutureGroups(grouped, showPast) {
   if (showPast) return grouped;
   const now = new Date();
   
-  // Month-based filtering
+  // Month and year-based filtering
   const currentMonth = now.toLocaleString('default', { month: 'long' });
   const currentDay = now.getDate();
+  const currentYear = now.getFullYear();
   let foundCurrentOrFutureMonth = false;
   
   return grouped
     .filter(({ key }) => {
-      if (key === currentMonth) {
+      // Extract year from key (if present)
+      const yearMatch = key.match(/\d{4}/);
+      const keyYear = yearMatch ? parseInt(yearMatch[0]) : currentYear;
+      const monthName = key.replace(/\s+\d{4}$/, '');
+      
+      // If it's the current month and year
+      if (monthName === currentMonth && keyYear === currentYear) {
         foundCurrentOrFutureMonth = true;
         return true;
       }
+      
+      // Show all months from next year (including past months in next year)
+      if (keyYear > currentYear) return true;
+      
+      // If we've found current or future month, show all subsequent months
       if (foundCurrentOrFutureMonth) return true;
-      // Only show months after current month
-      const monthOrder = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
-      ];
-      return monthOrder.indexOf(key) > monthOrder.indexOf(currentMonth);
+      
+      // Only show months after current month in current year
+      if (keyYear === currentYear) {
+        const monthOrder = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        return monthOrder.indexOf(monthName) > monthOrder.indexOf(currentMonth);
+      }
+      
+      return false;
     })
     .map(group => {
-      if (group.key === currentMonth) {
+      const monthName = group.key.replace(/\s+\d{4}$/, '');
+      const yearMatch = group.key.match(/\d{4}/);
+      const keyYear = yearMatch ? parseInt(yearMatch[0]) : currentYear;
+      
+      // Only filter events within current month of current year to show future dates
+      // For next year events, show all events regardless of date
+      if (monthName === currentMonth && keyYear === currentYear) {
         return {
           ...group,
           events: group.events.filter(ev => ev.date.getDate() >= currentDay)
@@ -158,6 +215,7 @@ export default function CountdownsPage({ notes }) {
       
       return daysA - daysB;
     });
+    
   const unpinnedEvents = filteredEvents.filter(event => !isEventPinned(event.id));
   
   const grouped = groupEventsByMonth(unpinnedEvents);

@@ -28,13 +28,40 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     }
   }, [notes]);
 
+  // Extract dollar values from text
+  const extractDollarValues = (text) => {
+    // Match various dollar formats: $123, $123.45, $1,234.56, etc.
+    const dollarRegex = /\$[\d,]+(?:\.\d{2})?/g;
+    const matches = text.match(dollarRegex);
+    if (!matches) return [];
+    
+    return matches.map(match => {
+      // Remove $ and commas, then parse as float
+      const value = parseFloat(match.replace(/[$,]/g, ''));
+      return isNaN(value) ? 0 : value;
+    });
+  };
+
+  // Highlight dollar values in text with green color
+  const highlightDollarValues = (text) => {
+    if (!text) return text;
+    
+    // Match various dollar formats: $123, $123.45, $1,234.56, etc.
+    const dollarRegex = /\$[\d,]+(?:\.\d{2})?/g;
+    
+    return text.replace(dollarRegex, (match) => {
+      return `<span class="text-green-600 font-semibold">${match}</span>`;
+    });
+  };
+
   // Parse timeline data from note content
   const parseTimelineData = (content) => {
     const lines = content.split('\n');
     const timelineData = {
       timeline: '',
       events: [],
-      isClosed: false
+      isClosed: false,
+      totalDollarAmount: 0
     };
     
     // Check if timeline is closed
@@ -58,6 +85,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
         const eventMatch = trimmedLine.match(/^(.+?)\s*:\s*(.+)$/);
         if (eventMatch) {
           const [, event, dateStr] = eventMatch;
+          
+          // Extract dollar values from the event text
+          const dollarValues = extractDollarValues(event);
+          const eventDollarAmount = dollarValues.reduce((sum, value) => sum + value, 0);
+          
           // Force DD/MM/YYYY parsing by manually splitting the date
           const dateParts = dateStr.split('/');
           let parsedDate;
@@ -80,7 +112,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               event: event.trim(),
               date: parsedDate,
               dateStr: dateStr.trim(),
-              lineIndex: index + 1 // +1 because we skipped the title line
+              lineIndex: index + 1, // +1 because we skipped the title line
+              dollarAmount: eventDollarAmount
             });
           } else {
             // If not a valid date, treat as event without date
@@ -88,26 +121,34 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               event: trimmedLine,
               date: null,
               dateStr: '',
-              lineIndex: index + 1
+              lineIndex: index + 1,
+              dollarAmount: eventDollarAmount
             });
           }
         } else {
           // If no colon found, treat as event without date
+          const dollarValues = extractDollarValues(trimmedLine);
+          const eventDollarAmount = dollarValues.reduce((sum, value) => sum + value, 0);
+          
           timelineData.events.push({
             event: trimmedLine,
             date: null,
             dateStr: '',
-            lineIndex: index + 1
+            lineIndex: index + 1,
+            dollarAmount: eventDollarAmount
           });
         }
       }
     });
     
+    // Calculate total dollar amount
+    timelineData.totalDollarAmount = timelineData.events.reduce((sum, event) => sum + (event.dollarAmount || 0), 0);
+    
     return timelineData;
   };
 
   // Calculate time differences between events
-  const calculateTimeDifferences = (events, isClosed = false) => {
+  const calculateTimeDifferences = (events, isClosed = false, totalDollarAmount = 0) => {
     if (events.length === 0) return events;
     
     // Sort events by date first (events without dates go to the end)
@@ -120,6 +161,19 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     
     let eventsWithDiffs = [...sortedEvents];
     
+    // Add total dollar amount as last event if there are dollar values
+    if (totalDollarAmount > 0) {
+      const totalDollarEvent = {
+        event: `Total: $${totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        date: null,
+        dateStr: '',
+        lineIndex: -1, // Virtual event
+        isVirtual: true,
+        isTotal: true
+      };
+      eventsWithDiffs = [...eventsWithDiffs, totalDollarEvent];
+    }
+    
     if (!isClosed) {
       // Add "Today" as a virtual event at the end for open timelines
       const today = moment();
@@ -130,7 +184,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
         lineIndex: -1, // Virtual event
         isVirtual: true
       };
-      eventsWithDiffs = [...sortedEvents, todayEvent];
+      eventsWithDiffs = [...eventsWithDiffs, todayEvent];
     } else {
       // For closed timelines, add total duration as final event
       if (sortedEvents.length > 0 && sortedEvents[0].date) {
@@ -147,7 +201,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
             isVirtual: true,
             isDuration: true
           };
-          eventsWithDiffs = [...sortedEvents, durationEvent];
+          eventsWithDiffs = [...eventsWithDiffs, durationEvent];
         }
       }
     }
@@ -410,7 +464,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
           <div className="space-y-8">
             {filteredAndSortedTimelineNotes.map((note) => {
               const timelineData = parseTimelineData(note.content);
-              const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed);
+              const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
               return (
                 <div key={note.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
@@ -535,13 +589,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                 {/* Timeline connector */}
                                 <div className="flex flex-col items-center">
                                   <div className={`w-4 h-4 rounded-full border-2 ${
-                                    event.isDuration
-                                      ? 'bg-orange-500 border-orange-500'
-                                      : event.isVirtual
-                                        ? 'bg-purple-500 border-purple-500'
-                                        : index === 0 
-                                          ? 'bg-green-500 border-green-500' 
-                                          : 'bg-blue-500 border-blue-500'
+                                    event.isTotal
+                                      ? 'bg-green-600 border-green-600'
+                                      : event.isDuration
+                                        ? 'bg-orange-500 border-orange-500'
+                                        : event.isVirtual
+                                          ? 'bg-purple-500 border-purple-500'
+                                          : index === 0 
+                                            ? 'bg-green-500 border-green-500' 
+                                            : 'bg-blue-500 border-blue-500'
                                   }`}></div>
                                   {index < eventsWithDiffs.length - 1 && (
                                     <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
@@ -557,17 +613,26 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       </span>
                                     )}
                                     <h3 className={`text-lg font-semibold ${
-                                      event.isDuration
-                                        ? 'text-orange-600 font-bold'
-                                        : event.isVirtual 
-                                          ? 'text-purple-600' 
-                                          : 'text-gray-900'
+                                      event.isTotal
+                                        ? 'text-green-700 font-bold'
+                                        : event.isDuration
+                                          ? 'text-orange-600 font-bold'
+                                          : event.isVirtual 
+                                            ? 'text-purple-600' 
+                                            : 'text-gray-900'
                                     }`}>
-                                      {event.isDuration 
-                                        ? event.event 
-                                        : event.event.charAt(0).toUpperCase() + event.event.slice(1)
-                                      }
-                                      {!event.isDuration && event.daysFromPrevious !== undefined && (
+                                      {event.isTotal || event.isDuration ? (
+                                        event.event
+                                      ) : (
+                                        <span 
+                                          dangerouslySetInnerHTML={{
+                                            __html: highlightDollarValues(
+                                              event.event.charAt(0).toUpperCase() + event.event.slice(1)
+                                            )
+                                          }}
+                                        />
+                                      )}
+                                      {!event.isDuration && !event.isTotal && event.daysFromPrevious !== undefined && (
                                         <span className="text-black font-normal text-sm ml-2">
                                           ({(() => {
                                             const days = event.daysFromPrevious;
@@ -609,7 +674,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                   </div>
                                   
                                   {/* Time differences - only show days since start */}
-                                  {!event.isDuration && event.daysFromStart !== undefined && (
+                                  {!event.isDuration && !event.isTotal && event.daysFromStart !== undefined && (
                                     <div className="text-sm text-gray-600">
                                       <div className="flex items-center space-x-2">
                                         <span className="text-green-600 font-medium">

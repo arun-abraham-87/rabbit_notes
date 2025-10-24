@@ -158,6 +158,35 @@ export default function CountdownsPage({ notes }) {
   const [excludePurchases, setExcludePurchases] = useState(true);
   const [groupByDay, setGroupByDay] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [pinnedEvents, setPinnedEvents] = useState(() => {
+    try {
+      const stored = localStorage.getItem('pinnedCountdownEvents');
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error loading pinned events:', error);
+      return [];
+    }
+  });
+
+  // Functions to handle pinning/unpinning
+  const togglePinEvent = (eventId) => {
+    setPinnedEvents(prev => {
+      const isPinned = prev.includes(eventId);
+      const newPinned = isPinned 
+        ? prev.filter(id => id !== eventId)
+        : [...prev, eventId];
+      
+      try {
+        localStorage.setItem('pinnedCountdownEvents', JSON.stringify(newPinned));
+      } catch (error) {
+        console.error('Error saving pinned events:', error);
+      }
+      
+      return newPinned;
+    });
+  };
+
+  const isEventPinned = (eventId) => pinnedEvents.includes(eventId);
   
   const events = parseEventNotes(notes, excludePurchases);
   
@@ -169,8 +198,12 @@ export default function CountdownsPage({ notes }) {
         return searchWords.every(word => eventTitle.includes(word));
       })
     : events;
+
+  // Separate pinned and unpinned events
+  const pinnedEventList = filteredEvents.filter(event => isEventPinned(event.id));
+  const unpinnedEvents = filteredEvents.filter(event => !isEventPinned(event.id));
   
-  const grouped = groupByDay ? groupEventsByDaysRemaining(filteredEvents) : groupEventsByMonth(filteredEvents);
+  const grouped = groupByDay ? groupEventsByDaysRemaining(unpinnedEvents) : groupEventsByMonth(unpinnedEvents);
   const filteredGrouped = filterFutureGroups(grouped, showPast, groupByDay);
 
   return (
@@ -236,6 +269,28 @@ export default function CountdownsPage({ notes }) {
         </div>
       </div>
       <div className="space-y-10">
+        {/* Pinned Events Section */}
+        {pinnedEventList.length > 0 && (
+          <div>
+            <h2 className="text-xl font-semibold mb-4 sticky top-0 bg-gray-50 z-10 py-2 text-blue-600">
+              📌 Pinned Events
+            </h2>
+            <div className="flex flex-wrap gap-6">
+              {pinnedEventList.map(event => (
+                <CountdownCard
+                  key={event.id}
+                  title={event.title}
+                  date={event.date}
+                  useThisYear={useThisYear}
+                  isPinned={true}
+                  onTogglePin={() => togglePinEvent(event.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Regular Events */}
         {filteredGrouped.map(({ key, events }) => (
           <div key={key}>
             <h2 className="text-xl font-semibold mb-4 sticky top-0 bg-gray-50 z-10 py-2">{key}</h2>
@@ -246,6 +301,8 @@ export default function CountdownsPage({ notes }) {
                   title={event.title}
                   date={event.date}
                   useThisYear={useThisYear}
+                  isPinned={false}
+                  onTogglePin={() => togglePinEvent(event.id)}
                 />
               ))}
             </div>

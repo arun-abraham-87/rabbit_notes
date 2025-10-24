@@ -85,7 +85,7 @@ function getThisYearDate(date) {
   return new Date(now.getFullYear(), originalDate.getMonth(), originalDate.getDate());
 }
 
-export default function CountdownCard({ title, date, useThisYear }) {
+export default function CountdownCard({ title, date, useThisYear, isPinned = false, onTogglePin }) {
   const [displayMode, setDisplayMode] = useState(() => {
     try {
       const stored = localStorage.getItem('countdownDisplayMode');
@@ -168,13 +168,33 @@ export default function CountdownCard({ title, date, useThisYear }) {
   const thisYearDiff = daysDiff(thisYearDate);
   const thisYearIsPast = thisYearDiff < 0;
   
+  const handlePinClick = (e) => {
+    e.stopPropagation();
+    if (onTogglePin) {
+      onTogglePin();
+    }
+  };
+
   return (
     <div 
-      className={`rounded-xl shadow-md p-6 w-64 ${cardColor} ${borderColor} flex flex-col items-center cursor-pointer hover:shadow-lg transition-shadow`}
+      className={`rounded-xl shadow-md p-6 w-64 ${cardColor} ${borderColor} flex flex-col items-center cursor-pointer hover:shadow-lg transition-shadow relative`}
       onClick={toggleDisplayMode}
       title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}
     >
-      <div className={`text-lg font-bold mb-2 ${textColor}`}>{title}</div>
+      {/* Pin Button */}
+      {onTogglePin && (
+        <button
+          onClick={handlePinClick}
+          className={`absolute top-2 right-2 p-1 rounded-full hover:bg-gray-100 transition-colors ${
+            isPinned ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
+          }`}
+          title={isPinned ? 'Unpin event' : 'Pin event'}
+        >
+          {isPinned ? '📌' : '📍'}
+        </button>
+      )}
+      
+      <div className={`text-lg font-bold mb-2 ${textColor} ${isPinned ? 'pr-8' : ''}`}>{title}</div>
       <div className={`text-3xl font-bold text-center mb-2 ${textColor}`}>
         {displayText}
       </div>

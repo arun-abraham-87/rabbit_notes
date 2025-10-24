@@ -59,103 +59,45 @@ function groupEventsByMonth(events) {
   }));
 }
 
-function groupEventsByDaysRemaining(events) {
-  const groups = {};
-  const now = new Date();
-  now.setHours(0, 0, 0, 0); // Zero out time for accurate day calculation
-  
-  events.forEach(event => {
-    const eventDate = new Date(event.date);
-    eventDate.setHours(0, 0, 0, 0);
-    
-    const daysRemaining = Math.round((eventDate - now) / (1000 * 60 * 60 * 24));
-    
-    let dayKey;
-    if (daysRemaining === 0) {
-      dayKey = "Today";
-    } else if (daysRemaining === 1) {
-      dayKey = "1 day to event";
-    } else if (daysRemaining < 0) {
-      dayKey = `${Math.abs(daysRemaining)} days ago`;
-    } else {
-      dayKey = `${daysRemaining} days to event`;
-    }
-    
-    if (!groups[dayKey]) groups[dayKey] = [];
-    groups[dayKey].push(event);
-  });
-  
-  // Sort by days remaining (negative numbers first, then 0, then positive)
-  const sortedKeys = Object.keys(groups).sort((a, b) => {
-    const getDaysFromKey = (key) => {
-      if (key === "Today") return 0;
-      if (key === "1 day to event") return 1;
-      if (key.includes("days ago")) {
-        const days = parseInt(key.match(/(\d+) days ago/)[1]);
-        return -days;
-      }
-      const days = parseInt(key.match(/(\d+) days to event/)[1]);
-      return days;
-    };
-    
-    return getDaysFromKey(a) - getDaysFromKey(b);
-  });
-  
-  return sortedKeys.map(dayKey => ({
-    key: dayKey,
-    events: groups[dayKey].sort((a, b) => a.title.localeCompare(b.title))
-  }));
-}
 
-function filterFutureGroups(grouped, showPast, groupByDay = false) {
+function filterFutureGroups(grouped, showPast) {
   if (showPast) return grouped;
   const now = new Date();
   
-  if (groupByDay) {
-    // For days remaining grouping, filter out past events unless showPast is true
-    return grouped
-      .filter(({ key }) => {
-        if (showPast) return true;
-        // Keep "Today", "1 day to event", and positive days
-        return !key.includes("days ago");
-      })
-      .filter(group => group.events.length > 0);
-  } else {
-    // Original month-based filtering
-    const currentMonth = now.toLocaleString('default', { month: 'long' });
-    const currentDay = now.getDate();
-    let foundCurrentOrFutureMonth = false;
-    return grouped
-      .filter(({ key }) => {
-        if (key === currentMonth) {
-          foundCurrentOrFutureMonth = true;
-          return true;
-        }
-        if (foundCurrentOrFutureMonth) return true;
-        // Only show months after current month
-        const monthOrder = [
-          'January', 'February', 'March', 'April', 'May', 'June',
-          'July', 'August', 'September', 'October', 'November', 'December'
-        ];
-        return monthOrder.indexOf(key) > monthOrder.indexOf(currentMonth);
-      })
-      .map(group => {
-        if (group.key === currentMonth) {
-          return {
-            ...group,
-            events: group.events.filter(ev => ev.date.getDate() >= currentDay)
-          };
-        }
-        return group;
-      })
-      .filter(group => group.events.length > 0);
-  }
+  // Month-based filtering
+  const currentMonth = now.toLocaleString('default', { month: 'long' });
+  const currentDay = now.getDate();
+  let foundCurrentOrFutureMonth = false;
+  
+  return grouped
+    .filter(({ key }) => {
+      if (key === currentMonth) {
+        foundCurrentOrFutureMonth = true;
+        return true;
+      }
+      if (foundCurrentOrFutureMonth) return true;
+      // Only show months after current month
+      const monthOrder = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return monthOrder.indexOf(key) > monthOrder.indexOf(currentMonth);
+    })
+    .map(group => {
+      if (group.key === currentMonth) {
+        return {
+          ...group,
+          events: group.events.filter(ev => ev.date.getDate() >= currentDay)
+        };
+      }
+      return group;
+    })
+    .filter(group => group.events.length > 0);
 }
 
 export default function CountdownsPage({ notes }) {
   const [showPast, setShowPast] = useState(false);
   const [excludePurchases, setExcludePurchases] = useState(true);
-  const [groupByDay, setGroupByDay] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [pinnedEvents, setPinnedEvents] = useState(() => {
     try {
@@ -218,8 +160,8 @@ export default function CountdownsPage({ notes }) {
     });
   const unpinnedEvents = filteredEvents.filter(event => !isEventPinned(event.id));
   
-  const grouped = groupByDay ? groupEventsByDaysRemaining(unpinnedEvents) : groupEventsByMonth(unpinnedEvents);
-  const filteredGrouped = filterFutureGroups(grouped, showPast, groupByDay);
+  const grouped = groupEventsByMonth(unpinnedEvents);
+  const filteredGrouped = filterFutureGroups(grouped, showPast);
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -252,12 +194,6 @@ export default function CountdownsPage({ notes }) {
         </div>
       </div>
         <div className="flex gap-4 mb-8">
-          <button
-          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${groupByDay ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
-          onClick={() => setGroupByDay(v => !v)}
-        >
-          {groupByDay ? 'Group by Month' : 'Group by Days Remaining'}
-        </button>
         <button
           className={`px-4 py-2 rounded text-sm font-medium transition-colors ${showPast ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           onClick={() => setShowPast(v => !v)}

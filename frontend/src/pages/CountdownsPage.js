@@ -200,7 +200,23 @@ export default function CountdownsPage({ notes }) {
     : events;
 
   // Separate pinned and unpinned events
-  const pinnedEventList = filteredEvents.filter(event => isEventPinned(event.id));
+  const pinnedEventList = filteredEvents
+    .filter(event => isEventPinned(event.id))
+    .sort((a, b) => {
+      // Sort by days to event in ascending order (closest first)
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      
+      const dateA = new Date(a.date);
+      dateA.setHours(0, 0, 0, 0);
+      const daysA = Math.round((dateA - now) / (1000 * 60 * 60 * 24));
+      
+      const dateB = new Date(b.date);
+      dateB.setHours(0, 0, 0, 0);
+      const daysB = Math.round((dateB - now) / (1000 * 60 * 60 * 24));
+      
+      return daysA - daysB;
+    });
   const unpinnedEvents = filteredEvents.filter(event => !isEventPinned(event.id));
   
   const grouped = groupByDay ? groupEventsByDaysRemaining(unpinnedEvents) : groupEventsByMonth(unpinnedEvents);

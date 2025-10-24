@@ -153,7 +153,6 @@ function filterFutureGroups(grouped, showPast, groupByDay = false) {
 }
 
 export default function CountdownsPage({ notes }) {
-  const [useThisYear, setUseThisYear] = useState(true);
   const [showPast, setShowPast] = useState(false);
   const [excludePurchases, setExcludePurchases] = useState(true);
   const [groupByDay, setGroupByDay] = useState(false);
@@ -252,14 +251,8 @@ export default function CountdownsPage({ notes }) {
           )}
         </div>
       </div>
-      <div className="flex gap-4 mb-8">
-        <button
-          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${useThisYear ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
-          onClick={() => setUseThisYear(v => !v)}
-        >
-          {useThisYear ? 'Show Original Dates' : 'Use This Year Date for All'}
-        </button>
-        <button
+        <div className="flex gap-4 mb-8">
+          <button
           className={`px-4 py-2 rounded text-sm font-medium transition-colors ${groupByDay ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
           onClick={() => setGroupByDay(v => !v)}
         >
@@ -297,7 +290,7 @@ export default function CountdownsPage({ notes }) {
                   key={event.id}
                   title={event.title}
                   date={event.date}
-                  useThisYear={useThisYear}
+                  useThisYear={true}
                   isPinned={true}
                   onTogglePin={() => togglePinEvent(event.id)}
                 />
@@ -316,7 +309,7 @@ export default function CountdownsPage({ notes }) {
                   key={event.id}
                   title={event.title}
                   date={event.date}
-                  useThisYear={useThisYear}
+                  useThisYear={true}
                   isPinned={false}
                   onTogglePin={() => togglePinEvent(event.id)}
                 />

@@ -970,73 +970,159 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               ) : (
                                 <div className="space-y-4">
                                   {eventsWithDiffs.map((event, index) => {
-                                    const isDuration = event.isDuration;
-                                    const isTotal = event.isTotal;
-                                    const isLast = index === eventsWithDiffs.length - 1;
-                                    
+                                    const currentYear = event.date ? event.date.year() : null;
+                                    const previousYear = index > 0 && eventsWithDiffs[index - 1].date 
+                                      ? eventsWithDiffs[index - 1].date.year() 
+                                      : null;
+                                    const showYearHeader = currentYear && currentYear !== previousYear;
+
                                     return (
-                                      <div
-                                        key={index}
-                                        className={`flex items-start ${
-                                          isDuration || isTotal
-                                            ? 'bg-gray-100 border-l-4 border-green-500 pl-4 py-2 rounded-r'
-                                            : 'border-l-4 border-blue-500 pl-4'
-                                        } ${isLast ? 'pb-0' : 'pb-4 border-b border-gray-200'}`}
-                                      >
-                                        <div className="flex-1">
-                                          <h3 className="text-lg font-medium text-gray-900">
-                                            {event.event}
-                                            {event.daysFromPrevious !== undefined && event.daysFromPrevious !== null && !isDuration && !isTotal && (
-                                              <span className="ml-2 text-sm text-gray-500">
-                                                {(() => {
-                                                  const days = event.daysFromPrevious;
-                                                  if (days > 365) {
-                                                    const years = Math.floor(days / 365);
-                                                    const remainingDays = days % 365;
-                                                    const months = Math.floor(remainingDays / 30);
-                                                    const finalDays = remainingDays % 30;
-                                                    
-                                                    let result = '';
-                                                    if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
-                                                    if (months > 0) {
-                                                      if (result) result += ', ';
-                                                      result += `${months} month${months !== 1 ? 's' : ''}`;
-                                                    }
-                                                    if (finalDays > 0) {
-                                                      if (result) result += ', ';
-                                                      result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
-                                                    }
-                                                    return result + ' since last event';
-                                                  } else if (days > 30) {
-                                                    const months = Math.floor(days / 30);
-                                                    const remainingDays = days % 30;
-                                                    
-                                                    let result = '';
-                                                    if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
-                                                    if (remainingDays > 0) {
-                                                      if (result) result += ', ';
-                                                      result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
-                                                    }
-                                                    return result + ' since last event';
-                                                  } else {
-                                                    return `${days} days since last event`;
-                                                  }
-                                                })()}
-                                              </span>
+                                      <div key={index}>
+                                        {/* Year Header */}
+                                        {showYearHeader && (
+                                          <div className="flex items-center space-x-4 mb-4">
+                                            <div className="w-4 h-4"></div> {/* Spacer to align with events */}
+                                            <div className="flex-1">
+                                              <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2">
+                                                {currentYear}
+                                              </h2>
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Event */}
+                                        <div className="flex items-start space-x-4">
+                                          {/* Timeline connector */}
+                                          <div className="flex flex-col items-center">
+                                            <div className={`w-4 h-4 rounded-full border-2 ${
+                                              event.isTotal
+                                                ? 'bg-green-600 border-green-600'
+                                                : event.isDuration
+                                                  ? 'bg-orange-500 border-orange-500'
+                                                  : event.isVirtual
+                                                    ? 'bg-purple-500 border-purple-500'
+                                                    : index === 0 
+                                                      ? 'bg-green-500 border-green-500' 
+                                                      : 'bg-blue-500 border-blue-500'
+                                            }`}></div>
+                                            {index < eventsWithDiffs.length - 1 && (
+                                              <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
                                             )}
-                                          </h3>
-                                        </div>
-                                        <div className="ml-4 text-right">
-                                          {event.date && (
-                                            <div className="text-gray-600">
-                                              {event.date.format('DD MMM YYYY')}
+                                          </div>
+
+                                          {/* Event content */}
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center space-x-3 mb-1">
+                                              {event.date && (
+                                                <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded font-medium">
+                                                  {event.date.format('DD/MMM/YYYY')}
+                                                </span>
+                                              )}
+                                              <h3 className={`text-lg font-semibold ${
+                                                event.isTotal
+                                                  ? 'text-green-700 font-bold'
+                                                  : event.isDuration
+                                                    ? 'text-orange-600 font-bold'
+                                                    : event.isVirtual 
+                                                      ? 'text-purple-600' 
+                                                      : 'text-gray-900'
+                                              }`}>
+                                                {event.isTotal || event.isDuration ? (
+                                                  event.event
+                                                ) : (
+                                                  <span 
+                                                    dangerouslySetInnerHTML={{
+                                                      __html: highlightDollarValues(
+                                                        event.event.charAt(0).toUpperCase() + event.event.slice(1)
+                                                      )
+                                                    }}
+                                                  />
+                                                )}
+                                                {!event.isDuration && !event.isTotal && event.daysFromPrevious !== undefined && (
+                                                  <span className="text-black font-normal text-sm ml-2">
+                                                    ({(() => {
+                                                      const days = event.daysFromPrevious;
+                                                      if (days > 365) {
+                                                        const years = Math.floor(days / 365);
+                                                        const remainingDays = days % 365;
+                                                        const months = Math.floor(remainingDays / 30);
+                                                        const finalDays = remainingDays % 30;
+                                                        
+                                                        let result = '';
+                                                        if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                                        if (months > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                        }
+                                                        if (finalDays > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                                        }
+                                                        return result + ' since last event';
+                                                      } else if (days > 30) {
+                                                        const months = Math.floor(days / 30);
+                                                        const remainingDays = days % 30;
+                                                        
+                                                        let result = '';
+                                                        if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                        if (remainingDays > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                                        }
+                                                        return result + ' since last event';
+                                                      } else {
+                                                        return `${days} days since last event`;
+                                                      }
+                                                    })()})
+                                                  </span>
+                                                )}
+                                              </h3>
                                             </div>
-                                          )}
-                                          {event.dateStr && (
-                                            <div className="text-sm text-gray-500">
-                                              {event.dateStr}
-                                            </div>
-                                          )}
+                                            
+                                            {/* Time differences - only show days since start */}
+                                            {!event.isDuration && !event.isTotal && event.daysFromStart !== undefined && (
+                                              <div className="text-sm text-gray-600">
+                                                <div className="flex items-center space-x-2">
+                                                  <span className="text-green-600 font-medium">
+                                                    {(() => {
+                                                      const days = event.daysFromStart;
+                                                      if (days > 365) {
+                                                        const years = Math.floor(days / 365);
+                                                        const remainingDays = days % 365;
+                                                        const months = Math.floor(remainingDays / 30);
+                                                        const finalDays = remainingDays % 30;
+                                                        
+                                                        let result = '';
+                                                        if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                                        if (months > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                        }
+                                                        if (finalDays > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                                        }
+                                                        return result + ' since start';
+                                                      } else if (days > 30) {
+                                                        const months = Math.floor(days / 30);
+                                                        const remainingDays = days % 30;
+                                                        
+                                                        let result = '';
+                                                        if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                        if (remainingDays > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                                        }
+                                                        return result + ' since start';
+                                                      } else {
+                                                        return `${days} days since start`;
+                                                      }
+                                                    })()}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
                                         </div>
                                       </div>
                                     );

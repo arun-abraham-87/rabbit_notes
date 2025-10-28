@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { getAgeInStringFmt } from '../utils/DateUtils';
+import { useNavigate } from 'react-router-dom';
 
 // Add pin icon import
 import { MapPinIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon } from '@heroicons/react/24/solid';
 
 // Helper function to parse and make links clickable
 const parseLinks = (text) => {
@@ -33,6 +35,8 @@ const parseLinks = (text) => {
 };
 
 const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent, eventFilter = 'all', eventTextFilter = '' }) => {
+  const navigate = useNavigate();
+  
   const [events, setEvents] = useState(() => {
     try {
       const stored = localStorage.getItem('tempEvents');
@@ -1061,11 +1065,21 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
             {timelineNotes.map(timeline => (
               <div
                 key={`timeline-${timeline.id}`}
-                className="group border-2 border-blue-400 bg-blue-50 rounded-lg px-3 py-2 flex-shrink-0 hover:shadow-md transition-shadow"
+                className="group border-2 border-blue-400 bg-blue-50 rounded-lg px-3 py-2 flex-shrink-0 hover:shadow-md transition-shadow relative"
                 style={{ minWidth: '120px' }}
                 title={timeline.title}
               >
-                <div className="text-xs font-medium text-gray-700 truncate">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/notes?note=${timeline.id}`);
+                  }}
+                  className="absolute top-1 right-1 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+                  title="View note"
+                >
+                  <DocumentTextIcon className="h-3 w-3" />
+                </button>
+                <div className="text-xs font-medium text-gray-700 truncate pr-6">
                   {timeline.title}
                 </div>
                 <div className="text-xs font-semibold text-gray-900 mt-1">

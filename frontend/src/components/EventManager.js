@@ -268,7 +268,8 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     const timelineData = {
       title: '',
       firstDate: null,
-      isClosed: false
+      isClosed: false,
+      totalDollarAmount: 0
     };
     
     // Check if timeline is closed
@@ -284,28 +285,50 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       timelineData.title = contentLines[0].trim();
     }
     
+    // Calculate total dollar amount from all events
+    let totalAmount = 0;
+    let firstDateSet = false;
+    
     // Parse events from remaining content lines (skip first line which is title)
     for (let i = 1; i < contentLines.length; i++) {
       const line = contentLines[i].trim();
       // Try to parse event:date format
       const eventMatch = line.match(/^(.+?)\s*:\s*(.+)$/);
       if (eventMatch) {
-        const dateStr = eventMatch[2].trim();
-        // Parse DD/MM/YYYY format
-        const dateParts = dateStr.split('/');
-        if (dateParts.length === 3) {
-          const day = parseInt(dateParts[0], 10);
-          const month = parseInt(dateParts[1], 10) - 1;
-          const year = parseInt(dateParts[2], 10);
-          const parsedDate = new Date(year, month, day);
-          if (!isNaN(parsedDate.getTime())) {
-            timelineData.firstDate = parsedDate;
-            break; // Only get the first date
+        const eventText = eventMatch[1].trim();
+        
+        // Extract dollar values from event text
+        const dollarRegex = /\$[\d,]+(?:\.\d{2})?/g;
+        const matches = eventText.match(dollarRegex);
+        if (matches) {
+          matches.forEach(match => {
+            const value = parseFloat(match.replace(/[$,]/g, ''));
+            if (!isNaN(value)) {
+              totalAmount += value;
+            }
+          });
+        }
+        
+        // Get first date (keep the break behavior but only set firstDate once)
+        if (!firstDateSet) {
+          const dateStr = eventMatch[2].trim();
+          // Parse DD/MM/YYYY format
+          const dateParts = dateStr.split('/');
+          if (dateParts.length === 3) {
+            const day = parseInt(dateParts[0], 10);
+            const month = parseInt(dateParts[1], 10) - 1;
+            const year = parseInt(dateParts[2], 10);
+            const parsedDate = new Date(year, month, day);
+            if (!isNaN(parsedDate.getTime())) {
+              timelineData.firstDate = parsedDate;
+              firstDateSet = true; // Mark as set but continue parsing for dollar amounts
+            }
           }
         }
       }
     }
     
+    timelineData.totalDollarAmount = totalAmount;
     return timelineData;
   };
 
@@ -368,6 +391,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
           title: timelineData.title,
           firstDate: timelineData.firstDate,
           isClosed: timelineData.isClosed,
+          totalDollarAmount: timelineData.totalDollarAmount,
           content: note.content
         };
       })
@@ -1163,6 +1187,11 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   <div className="text-xs text-gray-600 mt-1" title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}>
                     {displayText} since start
                   </div>
+                  {timeline.totalDollarAmount && timeline.totalDollarAmount > 0 && (
+                    <div className="text-xs text-green-600 font-semibold mt-1">
+                      ${timeline.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  )}
                 </div>
               );
             })}

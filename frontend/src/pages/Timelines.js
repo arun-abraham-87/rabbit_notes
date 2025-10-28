@@ -591,9 +591,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                 durationText = durationText_formatted;
                               }
                               
+                              // Show total amount if it exists
+                              let totalAmountText = '';
+                              if (timelineData.totalDollarAmount && timelineData.totalDollarAmount > 0) {
+                                totalAmountText = `[$${timelineData.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}]`;
+                              }
+                              
                               return (
                                 <span className="text-base font-normal text-gray-600 ml-2">
-                                  ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events) {durationText ? `(${durationText})` : ''}
+                                  ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events) {durationText ? `(${durationText})` : ''} {totalAmountText && <span className="text-green-600 font-semibold">{totalAmountText}</span>}
                                 </span>
                               );
                             }
@@ -1154,9 +1160,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                         durationText = durationText_formatted;
                                       }
                                       
+                                      // Show total amount if it exists
+                                      let totalAmountText = '';
+                                      if (timelineData.totalDollarAmount && timelineData.totalDollarAmount > 0) {
+                                        totalAmountText = `[$${timelineData.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}]`;
+                                      }
+                                      
                                       return (
                                         <span className="text-base font-normal text-gray-500 ml-2">
-                                          ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events) {durationText ? `(${durationText})` : ''}
+                                          ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events) {durationText ? `(${durationText})` : ''} {totalAmountText && <span className="text-green-600 font-semibold">{totalAmountText}</span>}
                                         </span>
                                       );
                                     }

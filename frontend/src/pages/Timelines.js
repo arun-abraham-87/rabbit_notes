@@ -1068,9 +1068,49 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       const lastEvent = eventsWithDates[eventsWithDates.length - 1];
                                       const eventCount = timelineData.events.length;
                                       
+                                      // Calculate duration for closed timelines
+                                      let durationText = '';
+                                      if (timelineData.isClosed && lastEvent.date) {
+                                        const durationDays = lastEvent.date.diff(startDate, 'days');
+                                        const durationText_formatted = (() => {
+                                          if (durationDays > 365) {
+                                            const years = Math.floor(durationDays / 365);
+                                            const remainingDays = durationDays % 365;
+                                            const months = Math.floor(remainingDays / 30);
+                                            const finalDays = remainingDays % 30;
+                                            
+                                            let result = '';
+                                            if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                            if (months > 0) {
+                                              if (result) result += ', ';
+                                              result += `${months} month${months !== 1 ? 's' : ''}`;
+                                            }
+                                            if (finalDays > 0) {
+                                              if (result) result += ', ';
+                                              result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                            }
+                                            return result;
+                                          } else if (durationDays > 30) {
+                                            const months = Math.floor(durationDays / 30);
+                                            const remainingDays = durationDays % 30;
+                                            
+                                            let result = '';
+                                            if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                            if (remainingDays > 0) {
+                                              if (result) result += ', ';
+                                              result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                            }
+                                            return result;
+                                          } else {
+                                            return `${durationDays} day${durationDays !== 1 ? 's' : ''}`;
+                                          }
+                                        })();
+                                        durationText = ` • ${durationText_formatted}`;
+                                      }
+                                      
                                       return (
                                         <span className="text-base font-normal text-gray-500 ml-2">
-                                          ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events)
+                                          ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events{durationText})
                                         </span>
                                       );
                                     }

@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { MagnifyingGlassIcon, XMarkIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 // Function to extract event details from note content
@@ -77,6 +76,73 @@ const highlightSearchTerms = (text, searchQuery) => {
     }
     return part;
   });
+};
+
+// Helper function to calculate age in years, months, and days
+const calculateDetailedAge = (dateString) => {
+  if (!dateString) return '';
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eventDate = new Date(dateString);
+  eventDate.setHours(0, 0, 0, 0);
+  
+  let years = today.getFullYear() - eventDate.getFullYear();
+  let months = today.getMonth() - eventDate.getMonth();
+  let days = today.getDate() - eventDate.getDate();
+  
+  // Adjust for negative days
+  if (days < 0) {
+    months--;
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, eventDate.getDate());
+    lastMonth.setHours(0, 0, 0, 0);
+    days = Math.floor((today - lastMonth) / (1000 * 60 * 60 * 24));
+  }
+  
+  // Adjust for negative months
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+  
+  // If future date, calculate days to event
+  if (years < 0 || (years === 0 && months < 0) || (years === 0 && months === 0 && days < 0)) {
+    const diff = Math.abs(Math.floor((today - eventDate) / (1000 * 60 * 60 * 24)));
+    if (diff < 1) return 'today';
+    if (diff < 30) return `in ${diff} day${diff !== 1 ? 's' : ''}`;
+    const futureMonths = Math.floor(diff / 30);
+    const futureDays = diff % 30;
+    if (futureMonths < 12) {
+      return futureDays > 0 
+        ? `in ${futureMonths} month${futureMonths !== 1 ? 's' : ''}, ${futureDays} day${futureDays !== 1 ? 's' : ''}`
+        : `in ${futureMonths} month${futureMonths !== 1 ? 's' : ''}`;
+    }
+    const futureYears = Math.floor(futureMonths / 12);
+    const remainingMonths = futureMonths % 12;
+    return futureYears > 0
+      ? remainingMonths > 0
+        ? `in ${futureYears} year${futureYears !== 1 ? 's' : ''}, ${remainingMonths} month${remainingMonths !== 1 ? 's' : ''}`
+        : `in ${futureYears} year${futureYears !== 1 ? 's' : ''}`
+      : `in ${futureMonths} month${futureMonths !== 1 ? 's' : ''}`;
+  }
+  
+  const parts = [];
+  if (years > 0) parts.push(`${years} year${years !== 1 ? 's' : ''}`);
+  if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+  if (days > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+  
+  return parts.length > 0 ? parts.join(', ') + ' ago' : 'today';
+};
+
+// Helper function to format date with detailed age
+const formatDateWithAge = (dateString) => {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  const formattedDate = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const age = calculateDetailedAge(dateString);
+  
+  return `${formattedDate} (${age})`;
 };
 
 const Purchases = ({ allNotes }) => {
@@ -211,22 +277,54 @@ const Purchases = ({ allNotes }) => {
     return sortedGrouped;
   }, [purchaseEvents]);
 
-  // Calculate total
-  const totalAmount = useMemo(() => {
-    return purchaseEvents.reduce((total, event) => {
-      return total + extractDollarAmount(event.description, event.customFields);
-    }, 0);
+  // Calculate statistics
+  const statistics = useMemo(() => {
+    const amounts = purchaseEvents.map(event => extractDollarAmount(event.description, event.customFields));
+    const totalAmount = amounts.reduce((total, amount) => total + amount, 0);
+    const maxAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
+    const minAmount = amounts.length > 0 ? Math.min(...amounts.filter(a => a > 0)) : 0;
+    
+    return {
+      count: purchaseEvents.length,
+      totalAmount,
+      maxAmount,
+      minAmount
+    };
   }, [purchaseEvents]);
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Purchases</h1>
-        {totalAmount > 0 && (
-          <div className="text-xl font-bold text-green-700">
-            Total: ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
+
+      {/* Statistics Tiles */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="text-sm text-blue-700 font-medium mb-1">Total Count</div>
+          <div className="text-2xl font-bold text-blue-900">{statistics.count}</div>
+        </div>
+        
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="text-sm text-green-700 font-medium mb-1">Total Amount</div>
+          <div className="text-2xl font-bold text-green-900">
+            ${statistics.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-        )}
+        </div>
+        
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="text-sm text-purple-700 font-medium mb-1">Max Value</div>
+          <div className="text-2xl font-bold text-purple-900">
+            ${statistics.maxAmount > 0 ? statistics.maxAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00'}
+          </div>
+        </div>
+        
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="text-sm text-orange-700 font-medium mb-1">Min Value</div>
+          <div className="text-2xl font-bold text-orange-900">
+            ${statistics.minAmount > 0 ? statistics.minAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00'}
+          </div>
+        </div>
       </div>
 
       {/* Search Box */}
@@ -372,7 +470,7 @@ const Purchases = ({ allNotes }) => {
                                   <div className="flex items-center gap-3 mb-2">
                                     {event.dateTime && (
                                       <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded font-medium">
-                                        {getDateInDDMMYYYYFormatWithAgeInParentheses(event.dateTime)}
+                                        {formatDateWithAge(event.dateTime)}
                                       </span>
                                     )}
                                     <span className={`text-lg font-semibold ${dollarAmount > 0 ? 'text-green-700' : 'text-gray-400'}`}>

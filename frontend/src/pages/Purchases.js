@@ -54,6 +54,31 @@ const extractDollarAmount = (description, customFields = {}) => {
   }, 0);
 };
 
+// Helper function to highlight search terms in text
+const highlightSearchTerms = (text, searchQuery) => {
+  if (!searchQuery || !text) return text;
+  
+  const query = searchQuery.trim();
+  if (!query) return text;
+  
+  // Escape special regex characters
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escapedQuery})`, 'gi');
+  
+  const parts = text.split(regex);
+  return parts.map((part, index) => {
+    // Check if part is lowercase version of query (case-insensitive match)
+    if (part.toLowerCase() === query.toLowerCase()) {
+      return (
+        <mark key={index} className="bg-yellow-200 font-semibold">
+          {part}
+        </mark>
+      );
+    }
+    return part;
+  });
+};
+
 const Purchases = ({ allNotes }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedYears, setCollapsedYears] = useState(new Set());
@@ -260,7 +285,7 @@ const Purchases = ({ allNotes }) => {
                               ${dollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                             <h3 className="text-lg font-semibold text-gray-900 mt-2">
-                              {event.description}
+                              {highlightSearchTerms(event.description, searchQuery)}
                             </h3>
                           </div>
                         </div>
@@ -355,7 +380,7 @@ const Purchases = ({ allNotes }) => {
                                     </span>
                                   </div>
                                   <h3 className="text-lg font-semibold text-gray-900">
-                                    {event.description}
+                                    {highlightSearchTerms(event.description, searchQuery)}
                                   </h3>
                                 </div>
                               </div>

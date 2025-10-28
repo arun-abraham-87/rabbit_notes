@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
+import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 // Function to extract event details from note content
 const getEventDetails = (content) => {
@@ -33,9 +34,11 @@ const extractDollarAmount = (text) => {
 };
 
 const Purchases = ({ allNotes }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Filter purchase events
   const purchaseEvents = useMemo(() => {
-    return allNotes
+    const events = allNotes
       .filter(note => note?.content && note.content.includes('meta::event::'))
       .map(note => {
         const eventDetails = getEventDetails(note.content);
@@ -49,7 +52,24 @@ const Purchases = ({ allNotes }) => {
         if (!b.dateTime) return -1;
         return new Date(b.dateTime) - new Date(a.dateTime);
       });
-  }, [allNotes]);
+
+    // Apply fuzzy search if query exists
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      return events.filter(event => {
+        const description = event.description.toLowerCase();
+        const amount = extractDollarAmount(event.description).toString();
+        const dateStr = event.dateTime ? new Date(event.dateTime).toLocaleDateString().toLowerCase() : '';
+        
+        // Check if any part matches
+        return description.includes(query) || 
+               amount.includes(query) || 
+               dateStr.includes(query);
+      });
+    }
+    
+    return events;
+  }, [allNotes, searchQuery]);
 
   // Calculate total
   const totalAmount = useMemo(() => {
@@ -60,7 +80,7 @@ const Purchases = ({ allNotes }) => {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Purchases</h1>
         {totalAmount > 0 && (
           <div className="text-xl font-bold text-green-700">
@@ -69,9 +89,38 @@ const Purchases = ({ allNotes }) => {
         )}
       </div>
 
+      {/* Search Box */}
+      <div className="mb-6">
+        <div className="relative">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search purchases by description, amount, or date..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Results count */}
+      {searchQuery && (
+        <div className="mb-4 text-sm text-gray-600">
+          Showing {purchaseEvents.length} result{purchaseEvents.length !== 1 ? 's' : ''} for "{searchQuery}"
+        </div>
+      )}
+
       {purchaseEvents.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
-          <p>No purchase events found.</p>
+          <p>{searchQuery ? `No purchases found matching "${searchQuery}".` : 'No purchase events found.'}</p>
         </div>
       ) : (
         <div className="space-y-4">

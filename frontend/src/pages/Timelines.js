@@ -688,15 +688,124 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                       <div className="text-gray-500 italic">No events found in this timeline</div>
                     ) : (
                       <div className="space-y-4">
+                        {/* Preview marker at the beginning if new event should be first */}
+                        {(() => {
+                          if (!newEventDate || showAddEventForm !== note.id || eventsWithDiffs.length === 0) {
+                            return null;
+                          }
+                          
+                          const newEventMoment = moment(newEventDate);
+                          const firstEvent = eventsWithDiffs[0];
+                          
+                          // Show preview at start if new event is before first event
+                          const shouldShowAtStart = firstEvent && firstEvent.date && newEventMoment.isBefore(firstEvent.date);
+                          
+                          if (!shouldShowAtStart) {
+                            return null;
+                          }
+                          
+                          const showStartYearHeader = firstEvent.date && firstEvent.date.year() !== newEventMoment.year();
+                          
+                          return (
+                            <>
+                              {showStartYearHeader && (
+                                <div className="flex items-center space-x-4 mb-4">
+                                  <div className="w-4 h-4"></div>
+                                  <div className="flex-1">
+                                    <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
+                                      {newEventMoment.year()}
+                                    </h2>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed mb-4">
+                                <div className="flex items-start space-x-4">
+                                  <div className="flex flex-col items-center">
+                                    <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
+                                    <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-3 mb-1">
+                                      <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
+                                        {newEventMoment.format('DD/MMM/YYYY')}
+                                      </span>
+                                      <h3 className="text-lg font-semibold text-gray-900 italic">
+                                        {newEventText || 'New Event Preview'}
+                                      </h3>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
+                        
                         {eventsWithDiffs.map((event, index) => {
                           const currentYear = event.date ? event.date.year() : null;
                           const previousYear = index > 0 && eventsWithDiffs[index - 1].date 
                             ? eventsWithDiffs[index - 1].date.year() 
                             : null;
                           const showYearHeader = currentYear && currentYear !== previousYear;
+                          
+                          // Check if we should insert preview marker here
+                          const shouldShowPreview = showAddEventForm === note.id && newEventDate;
+                          let showPreviewBefore = false;
+                          
+                          if (shouldShowPreview && event.date) {
+                            const newEventMoment = moment(newEventDate);
+                            const isAfterThis = newEventMoment.isAfter(event.date);
+                            const isBeforeNext = index === eventsWithDiffs.length - 1 || 
+                              !eventsWithDiffs[index + 1].date || 
+                              newEventMoment.isBefore(eventsWithDiffs[index + 1].date);
+                            
+                            showPreviewBefore = isAfterThis && isBeforeNext;
+                          }
 
                           return (
-                            <div key={index}>
+                            <React.Fragment key={index}>
+                              {/* Preview Marker - show after this event if new event should be inserted here */}
+                              {showPreviewBefore && (() => {
+                                const newEventMoment = moment(newEventDate);
+                                
+                                // Check if we need a year header for the new event
+                                const showPreviewYearHeader = currentYear !== newEventMoment.year();
+                                
+                                return (
+                                  <>
+                                    {showPreviewYearHeader && (
+                                      <div className="flex items-center space-x-4 mb-4">
+                                        <div className="w-4 h-4"></div>
+                                        <div className="flex-1">
+                                          <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
+                                            {newEventMoment.year()}
+                                          </h2>
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed mb-4">
+                                      <div className="flex items-start space-x-4">
+                                        <div className="flex flex-col items-center">
+                                          <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
+                                          <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
+                                        </div>
+                                        <div className="flex-1">
+                                          <div className="flex items-center space-x-3 mb-1">
+                                            <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
+                                              {newEventMoment.format('DD/MMM/YYYY')}
+                                            </span>
+                                            <h3 className="text-lg font-semibold text-gray-900 italic">
+                                              {newEventText || 'New Event Preview'}
+                                            </h3>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                              
                               {/* Year Header */}
                               {showYearHeader && (
                                 <div className="flex items-center space-x-4 mb-4">
@@ -843,9 +952,61 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                   )}
                                 </div>
                               </div>
-                            </div>
+                            </React.Fragment>
                           );
                         })}
+                        
+                        {/* Preview at end - if new event should be after last event */}
+                        {(() => {
+                          if (showAddEventForm !== note.id || !newEventDate || eventsWithDiffs.length === 0) {
+                            return null;
+                          }
+                          
+                          const newEventMoment = moment(newEventDate);
+                          const lastEvent = eventsWithDiffs[eventsWithDiffs.length - 1];
+                          const shouldShowAtEnd = lastEvent && 
+                            lastEvent.date && 
+                            newEventMoment.isAfter(lastEvent.date);
+                          
+                          if (!shouldShowAtEnd) {
+                            return null;
+                          }
+                          
+                          const showEndYearHeader = lastEvent.date && lastEvent.date.year() !== newEventMoment.year();
+                          
+                          return (
+                            <>
+                              {showEndYearHeader && (
+                                <div className="flex items-center space-x-4 mb-4">
+                                  <div className="w-4 h-4"></div>
+                                  <div className="flex-1">
+                                    <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
+                                      {newEventMoment.year()}
+                                    </h2>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed">
+                                <div className="flex items-start space-x-4">
+                                  <div className="flex flex-col items-center">
+                                    <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-3 mb-1">
+                                      <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
+                                        {newEventMoment.format('DD/MMM/YYYY')}
+                                      </span>
+                                      <h3 className="text-lg font-semibold text-gray-900 italic">
+                                        {newEventText || 'New Event Preview'}
+                                      </h3>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
                     </div>

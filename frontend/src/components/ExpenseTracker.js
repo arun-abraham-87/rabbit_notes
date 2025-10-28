@@ -54,7 +54,7 @@ const ExpenseTracker = () => {
     key: 'amount',
     direction: 'desc'
   });
-  const [typeBreakdownSort, setTypeBreakdownSort] = useState('desc');
+  const [typeBreakdownSort, setTypeBreakdownSort] = useState('name');
   const [hoveredType, setHoveredType] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [chartType, setChartType] = useState('pie');
@@ -1971,9 +1971,9 @@ const ExpenseTracker = () => {
               <div className="flex justify-between items-center mb-2">
                 <h2 
                   className="text-lg font-semibold cursor-pointer hover:text-blue-600"
-                  onClick={() => setTypeBreakdownSort(prev => prev === 'desc' ? 'asc' : 'desc')}
+                  onClick={() => setTypeBreakdownSort(prev => prev === 'name' ? 'desc' : prev === 'desc' ? 'asc' : 'name')}
                 >
-                  Type Distribution {typeBreakdownSort === 'desc' ? '↓' : '↑'}
+                  Type Distribution {typeBreakdownSort === 'desc' ? '↓' : typeBreakdownSort === 'asc' ? '↑' : 'A-Z'}
                 </h2>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Pie</span>
@@ -2102,9 +2102,9 @@ const ExpenseTracker = () => {
               <div className="flex items-center gap-4">
                 <h2 
                   className="text-lg font-semibold cursor-pointer hover:text-blue-600"
-                  onClick={() => setTypeBreakdownSort(prev => prev === 'desc' ? 'asc' : 'desc')}
+                  onClick={() => setTypeBreakdownSort(prev => prev === 'name' ? 'desc' : prev === 'desc' ? 'asc' : 'name')}
                 >
-                  {breakdownView === 'type' ? 'Type Breakdown' : 'Tag Breakdown'} {typeBreakdownSort === 'desc' ? '↓' : '↑'}
+                  {breakdownView === 'type' ? 'Type Breakdown' : 'Tag Breakdown'} {typeBreakdownSort === 'desc' ? '↓' : typeBreakdownSort === 'asc' ? '↑' : 'A-Z'}
                 </h2>
                 <div className="flex items-center space-x-2">
                   <button
@@ -2159,10 +2159,15 @@ const ExpenseTracker = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {Object.entries(typeTotals)
-                        .sort(([, a], [, b]) => {
-                          const amountA = Math.abs(a);
-                          const amountB = Math.abs(b);
-                          return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
+                        .sort(([typeA, a], [typeB, b]) => {
+                          // If sorting by amount
+                          if (typeBreakdownSort === 'desc' || typeBreakdownSort === 'asc') {
+                            const amountA = Math.abs(a);
+                            const amountB = Math.abs(b);
+                            return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
+                          }
+                          // Otherwise sort alphabetically by type name
+                          return typeA.localeCompare(typeB);
                         })
                         .map(([type, total]) => {
                           const currentDate = new Date();
@@ -2248,10 +2253,15 @@ const ExpenseTracker = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {Object.entries(tagTotals)
-                        .sort(([, a], [, b]) => {
-                          const amountA = Math.abs(a);
-                          const amountB = Math.abs(b);
-                          return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
+                        .sort(([tagA, a], [tagB, b]) => {
+                          // If sorting by amount
+                          if (typeBreakdownSort === 'desc' || typeBreakdownSort === 'asc') {
+                            const amountA = Math.abs(a);
+                            const amountB = Math.abs(b);
+                            return typeBreakdownSort === 'desc' ? amountB - amountA : amountA - amountB;
+                          }
+                          // Otherwise sort alphabetically by tag name
+                          return tagA.localeCompare(tagB);
                         })
                         .map(([tag, total]) => (
                           <tr key={tag} className="bg-white border-b hover:bg-gray-50" data-expense-id={tag}>

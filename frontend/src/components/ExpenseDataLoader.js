@@ -291,6 +291,22 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
     
   }, [mergeColumns]);
 
+  // Function to get expected column type based on position
+  const getExpectedColumnType = (index) => {
+    const expectedTypes = [
+      'Date',
+      'Description', 
+      'Amount',
+      'Category',
+      'Merchant',
+      'Notes',
+      'Tags',
+      'Reference'
+    ];
+    
+    return expectedTypes[index] || `Field ${index + 1}`;
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
@@ -306,18 +322,43 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
 
         <div className="p-4">
           {data.length === 0 ? (
-            <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center ${
-                isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-              }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <ArrowUpTrayIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-600">
-                Drag and drop a CSV file here, or click to select
-              </p>
+            <div className="space-y-6">
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center ${
+                  isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <ArrowUpTrayIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-600">
+                  Drag and drop a CSV file here, or click to select
+                </p>
+              </div>
+              
+              {/* Sample CSV Format */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Expected CSV Format</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  Your CSV file should contain expense data with columns separated by commas. Here's a sample format:
+                </p>
+                <div className="bg-white rounded border p-3 font-mono text-sm">
+                  <div className="text-gray-500 mb-2">Sample CSV content:</div>
+                  <div className="text-gray-800">
+                    <div>Date,Description,Amount,Category,Merchant</div>
+                    <div>2025-01-15,Grocery Shopping,45.50,Food,SuperMart</div>
+                    <div>2025-01-16,Gas Station,32.00,Transportation,Shell</div>
+                    <div>2025-01-17,Coffee,4.50,Food,Starbucks</div>
+                  </div>
+                </div>
+                <div className="mt-3 text-xs text-gray-500">
+                  <p>• Each row represents one expense</p>
+                  <p>• First row should contain column headers</p>
+                  <p>• Use commas to separate columns</p>
+                  <p>• Text with commas should be wrapped in quotes</p>
+                </div>
+              </div>
             </div>
           ) : (
             <>
@@ -396,10 +437,43 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
                 </div>
               </div>
 
+              {/* Table Instructions */}
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-start gap-2">
+                  <div className="text-blue-600 mt-0.5">💡</div>
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium mb-1">Column Mapping Guide:</p>
+                    <p>The blue headers above show what each column should contain. Drag columns to reorder them to match your data structure.</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="relative overflow-x-auto shadow-md sm:rounded-lg border border-gray-200">
                 <div className="inline-block min-w-full align-middle">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
+                      {/* Virtual Headers - Expected Column Types */}
+                      <tr className="bg-blue-50">
+                        <th className="px-6 py-2 text-left text-xs font-medium text-blue-700 uppercase tracking-wider sticky left-0 bg-blue-50 z-10 border-r border-gray-200">
+                          Actions
+                        </th>
+                        {headers.map((header, index) => (
+                          <th
+                            key={`virtual-${index}`}
+                            className="px-6 py-2 text-left text-xs font-medium text-blue-700 uppercase tracking-wider max-w-[50ch] break-words"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-blue-600 font-semibold">
+                                {getExpectedColumnType(index)}
+                              </span>
+                              <span className="text-blue-500 text-xs">
+                                (Column {index + 1})
+                              </span>
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                      {/* Actual Column Headers */}
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-white z-10 border-r border-gray-200">
                           Select

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MagnifyingGlassIcon, XMarkIcon, ChevronDownIcon, ChevronRightIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, XMarkIcon, ChevronDownIcon, ChevronRightIcon, DocumentTextIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 // Function to extract event details from note content
 const getEventDetails = (content) => {
@@ -147,16 +147,65 @@ const formatDateWithAge = (dateString) => {
   return `${dayOfWeek} ${formattedDate} (${age})`;
 };
 
-const Purchases = ({ allNotes }) => {
+const Purchases = ({ allNotes, onCreateNote }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedYears, setCollapsedYears] = useState(new Set());
   const [collapsedMonths, setCollapsedMonths] = useState(new Set());
-  const [filterByAmount, setFilterByAmount] = useState(null); // null, 'min', or 'max'
+  const [filterByAmount, setFilterByAmount] = useState(null);
+  const [showAddPurchaseModal, setShowAddPurchaseModal] = useState(false);
+  const [newPurchase, setNewPurchase] = useState({
+    description: '',
+    date: '',
+    tags: '',
+    notes: '',
+    amount: ''
+  }); // null, 'min', or 'max'
 
   const handleViewNote = (eventId) => {
     // Navigate to notes page and filter by note ID
     navigate(`/notes?note=${eventId}`);
+  };
+
+  const handleAddPurchase = async () => {
+    if (!newPurchase.description || !newPurchase.date || !newPurchase.amount) {
+      alert('Please fill in description, date, and amount');
+      return;
+    }
+
+    // Add time 12:00 if only date is provided (format: YYYY-MM-DD)
+    let dateTime = newPurchase.date;
+    if (dateTime && !dateTime.includes('T')) {
+      dateTime = `${newPurchase.date}T12:00`;
+    }
+
+    const noteContent = `event_description: ${newPurchase.description}
+event_date: ${dateTime}
+event_tags: ${newPurchase.tags || 'purchase'}
+event_notes: ${newPurchase.notes || ''}
+event_$: ${newPurchase.amount}`;
+
+    if (onCreateNote) {
+      await onCreateNote(noteContent);
+      alert('Purchase saved successfully!');
+    }
+
+    // Reset form and close modal
+    setNewPurchase({
+      description: '',
+      date: '',
+      tags: '',
+      notes: '',
+      amount: ''
+    });
+    setShowAddPurchaseModal(false);
+  };
+
+  const handleInputChange = (field, value) => {
+    setNewPurchase(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const toggleYear = (year) => {
@@ -326,6 +375,13 @@ const Purchases = ({ allNotes }) => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Purchases</h1>
+        <button
+          onClick={() => setShowAddPurchaseModal(true)}
+          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+        >
+          <PlusIcon className="h-5 w-5" />
+          Add Purchase
+        </button>
       </div>
 
       {/* Statistics Tiles */}
@@ -547,6 +603,105 @@ const Purchases = ({ allNotes }) => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Add Purchase Modal */}
+      {showAddPurchaseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Add New Purchase</h2>
+              <button
+                onClick={() => setShowAddPurchaseModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description *
+                </label>
+                <input
+                  type="text"
+                  value={newPurchase.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="What did you buy?"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date *
+                </label>
+                <input
+                  type="date"
+                  value={newPurchase.date}
+                  onChange={(e) => handleInputChange('date', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Amount *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newPurchase.amount}
+                  onChange={(e) => handleInputChange('amount', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tags
+                </label>
+                <input
+                  type="text"
+                  value={newPurchase.tags}
+                  onChange={(e) => handleInputChange('tags', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="purchase, food, etc."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes
+                </label>
+                <textarea
+                  value={newPurchase.notes}
+                  onChange={(e) => handleInputChange('notes', e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Additional notes..."
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowAddPurchaseModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddPurchase}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Add Purchase
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

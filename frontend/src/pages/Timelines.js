@@ -445,8 +445,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-semibold text-gray-900">
-              Timelines
-            </h1>
+            Timelines
+          </h1>
             <button
               onClick={() => setShowNewTimelineForm(true)}
               className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
@@ -888,14 +888,14 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     event.isToday
                                       ? 'bg-yellow-500 border-yellow-600 animate-pulse'
                                       : event.isTotal
-                                        ? 'bg-green-600 border-green-600'
-                                        : event.isDuration
-                                          ? 'bg-orange-500 border-orange-500'
-                                          : event.isVirtual
-                                            ? 'bg-purple-500 border-purple-500'
-                                            : index === 0 
-                                              ? 'bg-green-500 border-green-500' 
-                                              : 'bg-blue-500 border-blue-500'
+                                      ? 'bg-green-600 border-green-600'
+                                      : event.isDuration
+                                        ? 'bg-orange-500 border-orange-500'
+                                        : event.isVirtual
+                                          ? 'bg-purple-500 border-purple-500'
+                                          : index === 0 
+                                            ? 'bg-green-500 border-green-500' 
+                                            : 'bg-blue-500 border-blue-500'
                                   }`}></div>
                                   {index < eventsWithDiffs.length - 1 && (
                                     <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
@@ -918,12 +918,12 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       event.isToday
                                         ? 'text-yellow-900 font-bold'
                                         : event.isTotal
-                                          ? 'text-green-700 font-bold'
-                                          : event.isDuration
-                                            ? 'text-orange-600 font-bold'
-                                            : event.isVirtual 
-                                              ? 'text-purple-600' 
-                                              : 'text-gray-900'
+                                        ? 'text-green-700 font-bold'
+                                        : event.isDuration
+                                          ? 'text-orange-600 font-bold'
+                                          : event.isVirtual 
+                                            ? 'text-purple-600' 
+                                            : 'text-gray-900'
                                     }`}>
                                       {event.isTotal || event.isDuration ? (
                                         event.event
@@ -1079,11 +1079,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     if (isPast && event.daysFromStart !== undefined) {
                                       const days = event.daysFromStart;
                                       return (
-                                        <div className="text-sm text-gray-600">
-                                          <div className="flex items-center space-x-2">
-                                            <span className="text-green-600 font-medium">
-                                              {(() => {
-                                                const days = event.daysFromStart;
+                                    <div className="text-sm text-gray-600">
+                                      <div className="flex items-center space-x-2">
+                                        <span className="text-green-600 font-medium">
+                                          {(() => {
+                                            const days = event.daysFromStart;
                                             if (days > 365) {
                                               const years = Math.floor(days / 365);
                                               const remainingDays = days % 365;
@@ -1115,8 +1115,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             } else {
                                               return `${days} days since start`;
                                             }
-                                              })()}
-                                            </span>
+                                          })()}
+                                        </span>
                                           </div>
                                         </div>
                                       );
@@ -1156,15 +1156,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
                                       {newEventMoment.year()}
                                     </h2>
-                                  </div>
-                                </div>
-                              )}
+                                      </div>
+                                    </div>
+                                  )}
                               
                               <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed">
                                 <div className="flex items-start space-x-4">
                                   <div className="flex flex-col items-center">
                                     <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
-                                  </div>
+                                </div>
                                   <div className="flex-1">
                                     <div className="flex items-center space-x-3 mb-1">
                                       <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
@@ -1173,7 +1173,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       <h3 className="text-lg font-semibold text-gray-900 italic">
                                         {newEventText || 'New Event Preview'}
                                       </h3>
-                                    </div>
+                              </div>
                                   </div>
                                 </div>
                               </div>
@@ -1184,10 +1184,10 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                     )}
                     </div>
                   )}
-                </div>
-              );
-            })}
-                    </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                   );
                 }
                 return null;
@@ -1299,10 +1299,10 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     return null;
                                   })()}
                                 </h2>
-                              </div>
-                              <div className="flex items-center space-x-2">
+                            </div>
+                            <div className="flex items-center space-x-2">
                                 {timelineData.isClosed && (
-                                  <button
+                              <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleReopenTimeline(note.id);
@@ -1312,7 +1312,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                   >
                                     <ArrowPathIcon className="h-4 w-4" />
                                     <span className="text-sm font-medium">Reopen</span>
-                                  </button>
+                              </button>
                                 )}
                                 <label 
                                   className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors cursor-pointer flex items-center space-x-1.5 border border-gray-300"
@@ -1330,7 +1330,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                   />
                                   <span className="text-sm font-medium">Track</span>
                                 </label>
-                                <button
+                              <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleViewNote(note.id);
@@ -1340,9 +1340,9 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                 >
                                   <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                                   <span className="text-sm font-medium">View</span>
-                                </button>
-                              </div>
+                              </button>
                             </div>
+                          </div>
                           </div>
 
                           {/* Timeline Events */}
@@ -1369,8 +1369,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                               <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2">
                                                 {currentYear}
                                               </h2>
-                                            </div>
-                                          </div>
+                        </div>
+                      </div>
                                         )}
 
                                         {/* Event */}
@@ -1392,8 +1392,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             }`}></div>
                                             {index < eventsWithDiffs.length - 1 && (
                                               <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
-                                            )}
-                                          </div>
+                    )}
+                    </div>
 
                                           {/* Event content */}
                                           <div className={`flex-1 min-w-0 ${event.isToday ? 'bg-yellow-50 px-4 py-3 rounded-lg border-2 border-yellow-300' : ''}`}>
@@ -1515,9 +1515,9 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             )}
                                           </div>
                                         </div>
-                                      </div>
-                                    );
-                                  })}
+                </div>
+              );
+            })}
                                 </div>
                               )}
                             </div>

@@ -49,7 +49,8 @@ const MainContentArea = ({
   refreshTags, 
   objList, 
   updateNote,
-  navigate
+  navigate,
+  handleCreatePurchaseNote
 }) => {
   const { isVisible } = useLeftPanel();
   
@@ -251,7 +252,7 @@ const MainContentArea = ({
           <Route path="/purchases" element={
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                <Purchases allNotes={allNotes} />
+                <Purchases allNotes={allNotes} onCreateNote={handleCreatePurchaseNote} />
               </div>
             </div>
           } />
@@ -505,6 +506,26 @@ const AppContent = () => {
     }
   };
 
+  const handleCreatePurchaseNote = async (noteContent) => {
+    try {
+      const newNote = await createNote(noteContent);
+      
+      // Track the last added note
+      setLastAddedNoteId(newNote.id);
+      localStorage.setItem('lastAddedNoteId', newNote.id.toString());
+      
+      // Refresh the notes list
+      const data = await loadAllNotes(searchQuery, noteDate);
+      setAllNotes(data.notes || []);
+      setTotals(data.totals || 0);
+      
+      Alerts.success('Purchase note created successfully');
+    } catch (error) {
+      console.error('Error creating purchase note:', error);
+      Alerts.error('Failed to create purchase note');
+    }
+  };
+
   // Save active page to localStorage
   useEffect(() => {
     localStorage.setItem('activePage', activePage);
@@ -646,6 +667,7 @@ const AppContent = () => {
                   objList={objList}
                   updateNote={updateNote}
                   navigate={navigate}
+                  handleCreatePurchaseNote={handleCreatePurchaseNote}
                 />
                 
                 {/* Right panel: pinned notes */}

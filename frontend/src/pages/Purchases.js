@@ -183,11 +183,11 @@ const Purchases = ({ allNotes, onCreateNote }) => {
 event_date: ${dateTime}
 event_tags: ${newPurchase.tags || 'purchase'}
 event_notes: ${newPurchase.notes || ''}
-event_$: ${newPurchase.amount}`;
+event_$: ${newPurchase.amount}
+meta::event`;
 
     if (onCreateNote) {
       await onCreateNote(noteContent);
-      alert('Purchase saved successfully!');
     }
 
     // Reset form and close modal
@@ -236,7 +236,7 @@ event_$: ${newPurchase.amount}`;
   // Filter purchase events
   const purchaseEvents = useMemo(() => {
     const events = allNotes
-      .filter(note => note?.content && note.content.includes('meta::event::'))
+      .filter(note => note?.content && note.content.includes('meta::event'))
       .map(note => {
         const eventDetails = getEventDetails(note.content);
         return { note, ...eventDetails };

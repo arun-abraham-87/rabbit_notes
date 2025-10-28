@@ -2179,10 +2179,15 @@ const ExpenseTracker = () => {
                           const progress = budget === 0 ? 0 : (Math.abs(total) / budget) * 100;
 
                           return (
-                            <tr key={type} className="bg-white border-b hover:bg-gray-50" data-expense-id={type}>
+                            <tr 
+                              key={type} 
+                              className="bg-white border-b hover:bg-blue-50 cursor-pointer" 
+                              data-expense-id={type}
+                              onClick={() => setSelectedType(type)}
+                            >
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                 <div 
-                                  className="cursor-help"
+                                  className="cursor-pointer font-medium text-blue-700 hover:text-blue-900"
                                   onMouseEnter={(e) => handleAmountHover(e, type)}
                                   onMouseLeave={() => setHoveredType(null)}
                                 >
@@ -2264,8 +2269,13 @@ const ExpenseTracker = () => {
                           return tagA.localeCompare(tagB);
                         })
                         .map(([tag, total]) => (
-                          <tr key={tag} className="bg-white border-b hover:bg-gray-50" data-expense-id={tag}>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{tag}</td>
+                          <tr 
+                            key={tag} 
+                            className="bg-white border-b hover:bg-purple-50 cursor-pointer" 
+                            data-expense-id={tag}
+                            onClick={() => setSearchQuery(tag)}
+                          >
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 font-medium text-purple-700 hover:text-purple-900">{tag}</td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium">
                               ${Math.abs(total).toFixed(2)}
                             </td>

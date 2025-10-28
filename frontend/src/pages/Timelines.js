@@ -429,13 +429,22 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">
-            Timelines
-          </h1>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-semibold text-gray-900">
+              Timelines
+            </h1>
+            <button
+              onClick={() => setShowNewTimelineForm(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+            >
+              <PlusIcon className="h-5 w-5" />
+              <span>New Timeline</span>
+            </button>
+          </div>
           
-          {/* Search Box and New Timeline Button */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+          {/* Search Box */}
+          <div className="flex flex-col gap-4">
             <div className="flex-1 max-w-md">
               <label htmlFor="timeline-search" className="block text-sm font-medium text-gray-700 mb-2">
                 Search Timelines
@@ -464,17 +473,6 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                 )}
               </div>
             </div>
-            
-            {/* New Timeline Button */}
-            <div>
-              <button
-                onClick={() => setShowNewTimelineForm(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-400 text-white rounded-lg hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-400 transition-colors"
-              >
-                <PlusIcon className="h-5 w-5" />
-                <span>Start New Timeline</span>
-              </button>
-            </div>
           </div>
         </div>
 
@@ -501,7 +499,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
             </p>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Open Timelines */}
             {(() => {
               const openTimelines = filteredAndSortedTimelineNotes.filter(note => {
@@ -512,9 +510,9 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               
               if (openTimelines.length > 0) {
                 return (
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-3 border-b border-gray-300">
-                      Open Timelines ({openTimelines.length})
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-semibold text-gray-700">
+                      Open Timelines <span className="font-normal text-gray-500">({openTimelines.length})</span>
                     </h2>
                     {openTimelines.map((note) => {
               if (!note || !note.content) return null;
@@ -522,15 +520,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
               return (
-                <div key={note.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                <div key={note.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                   {/* Timeline Header */}
                   <div 
-                    className="bg-gradient-to-r from-blue-400 to-blue-500 text-white px-6 py-4 cursor-pointer hover:from-blue-500 hover:to-blue-600 transition-colors"
+                    className="bg-gray-50 px-6 py-4 cursor-pointer hover:bg-gray-100 border-b border-gray-200 transition-colors"
                     onClick={() => toggleTimelineCollapse(note.id)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="text-white">
+                        <div className="text-gray-600">
                           {collapsedTimelines.has(note.id) ? (
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -541,7 +539,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                             </svg>
                           )}
                         </div>
-                        <h2 className="text-2xl font-semibold text-blue-50">
+                        <h2 className="text-xl font-semibold text-gray-900">
                           {timelineData.timeline || 'Untitled Timeline'}
                           {(() => {
                             const eventsWithDates = timelineData.events.filter(event => event.date);
@@ -551,7 +549,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               const eventCount = timelineData.events.length;
                               
                               return (
-                                <span className="text-lg font-normal text-blue-100 ml-2">
+                                <span className="text-base font-normal text-gray-600 ml-2">
                                   ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events)
                                 </span>
                               );
@@ -567,11 +565,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               e.stopPropagation();
                               setShowAddEventForm(note.id);
                             }}
-                            className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors flex items-center space-x-1.5 border border-blue-200"
                             title="Add new event"
                           >
-                            <PlusIcon className="h-5 w-5" />
-                            <span className="text-sm">Add Event</span>
+                            <PlusIcon className="h-4 w-4" />
+                            <span className="text-sm font-medium">Add Event</span>
                           </button>
                         )}
                         {!timelineData.isClosed && (
@@ -580,11 +578,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               e.stopPropagation();
                               handleCloseTimeline(note.id);
                             }}
-                            className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
+                            className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md transition-colors flex items-center space-x-1.5 border border-red-200"
                             title="Close timeline"
                           >
-                            <XCircleIcon className="h-5 w-5" />
-                            <span className="text-sm">Close</span>
+                            <XCircleIcon className="h-4 w-4" />
+                            <span className="text-sm font-medium">Close</span>
                           </button>
                         )}
                         {timelineData.isClosed && (
@@ -593,15 +591,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               e.stopPropagation();
                               handleReopenTimeline(note.id);
                             }}
-                            className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
+                            className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors flex items-center space-x-1.5 border border-green-200"
                             title="Reopen timeline"
                           >
-                            <ArrowPathIcon className="h-5 w-5" />
-                            <span className="text-sm">Reopen</span>
+                            <ArrowPathIcon className="h-4 w-4" />
+                            <span className="text-sm font-medium">Reopen</span>
                           </button>
                         )}
                         <label 
-                          className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors cursor-pointer flex items-center space-x-1.5"
+                          className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors cursor-pointer flex items-center space-x-1.5 border border-gray-300"
                           title={note.content.includes('meta::tracked') ? 'Untrack timeline' : 'Track timeline'}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -611,21 +609,21 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                           <input
                             type="checkbox"
                             checked={note.content.includes('meta::tracked')}
-                            onChange={() => {}} // Controlled by label click
+                            onChange={() => {}}
                             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
                           />
-                          <span className="text-sm">Track</span>
+                          <span className="text-sm font-medium">Track</span>
                         </label>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleViewNote(note.id);
                           }}
-                          className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
+                          className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors flex items-center space-x-1.5 border border-gray-300"
                           title="View note in Notes page"
                         >
-                          <ArrowTopRightOnSquareIcon className="h-5 w-5" />
-                          <span className="text-sm">View Note</span>
+                          <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                          <span className="text-sm font-medium">View</span>
                         </button>
                       </div>
                     </div>
@@ -873,9 +871,9 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               
               if (closedTimelines.length > 0) {
                 return (
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-700 mb-6 pb-3 border-b border-gray-300 mt-8">
-                      Closed Timelines ({closedTimelines.length})
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-semibold text-gray-700">
+                      Closed Timelines <span className="font-normal text-gray-500">({closedTimelines.length})</span>
                     </h2>
                     {closedTimelines.map((note) => {
                       if (!note || !note.content) return null;
@@ -883,15 +881,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                       const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
                       return (
-                        <div key={note.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden opacity-75">
+                        <div key={note.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden opacity-75">
                           {/* Timeline Header */}
                           <div 
-                            className="bg-gradient-to-r from-gray-400 to-gray-500 text-white px-6 py-4 cursor-pointer hover:from-gray-500 hover:to-gray-600 transition-colors"
+                            className="bg-gray-50 px-6 py-4 cursor-pointer hover:bg-gray-100 border-b border-gray-200 transition-colors"
                             onClick={() => toggleTimelineCollapse(note.id)}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
-                                <div className="text-white">
+                                <div className="text-gray-500">
                                   {collapsedTimelines.has(note.id) ? (
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -902,7 +900,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     </svg>
                                   )}
                                 </div>
-                                <h2 className="text-2xl font-semibold text-gray-100">
+                                <h2 className="text-xl font-semibold text-gray-600">
                                   {timelineData.timeline || 'Untitled Timeline'}
                                   {(() => {
                                     const eventsWithDates = timelineData.events.filter(event => event.date);
@@ -912,7 +910,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       const eventCount = timelineData.events.length;
                                       
                                       return (
-                                        <span className="text-lg font-normal text-gray-200 ml-2">
+                                        <span className="text-base font-normal text-gray-500 ml-2">
                                           ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events)
                                         </span>
                                       );
@@ -928,15 +926,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       e.stopPropagation();
                                       handleReopenTimeline(note.id);
                                     }}
-                                    className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
+                                    className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors flex items-center space-x-1.5 border border-green-200"
                                     title="Reopen timeline"
                                   >
-                                    <ArrowPathIcon className="h-5 w-5" />
-                                    <span className="text-sm">Reopen</span>
+                                    <ArrowPathIcon className="h-4 w-4" />
+                                    <span className="text-sm font-medium">Reopen</span>
                                   </button>
                                 )}
                                 <label 
-                                  className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors cursor-pointer flex items-center space-x-1.5"
+                                  className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors cursor-pointer flex items-center space-x-1.5 border border-gray-300"
                                   title={note.content.includes('meta::tracked') ? 'Untrack timeline' : 'Track timeline'}
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -949,18 +947,18 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     onChange={() => {}}
                                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
                                   />
-                                  <span className="text-sm">Track</span>
+                                  <span className="text-sm font-medium">Track</span>
                                 </label>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleViewNote(note.id);
                                   }}
-                                  className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
+                                  className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors flex items-center space-x-1.5 border border-gray-300"
                                   title="View note in Notes page"
                                 >
-                                  <ArrowTopRightOnSquareIcon className="h-5 w-5" />
-                                  <span className="text-sm">View Note</span>
+                                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                                  <span className="text-sm font-medium">View</span>
                                 </button>
                               </div>
                             </div>

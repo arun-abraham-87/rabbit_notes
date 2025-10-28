@@ -251,17 +251,106 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         const daysA = Math.ceil((a.nextOccurrence - now) / (1000 * 60 * 60 * 24));
         const daysB = Math.ceil((b.nextOccurrence - now) / (1000 * 60 * 60 * 24));
         
-        // First sort by pinned status (pinned events first)
-        const aIsPinned = pinnedEvents.includes(a.id);
-        const bIsPinned = pinnedEvents.includes(b.id);
-        
-        if (aIsPinned && !bIsPinned) return -1;
-        if (!aIsPinned && bIsPinned) return 1;
-        
-        // Then sort by days until event (ascending)
+        // Sort by days until event (ascending) - no special treatment for pinned events
         return daysA - daysB;
       })
       .slice(0, 10); // Get top 10
+  };
+
+  // Helper function to get pinned events only (doesn't limit to top 10)
+  const getPinnedEventNotes = () => {
+    if (!notes) return [];
+    
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    // Load stored background colors for event notes
+    let storedColors = {};
+    try {
+      const stored = localStorage.getItem('eventNoteColors');
+      if (stored) {
+        storedColors = JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('Error loading event note colors:', error);
+    }
+    
+    return notes
+      .filter(note => {
+        if (!note?.content) return false;
+        if (!note.content.includes('meta::event')) return false;
+        return pinnedEvents.includes(note.id); // Filter for pinned events
+      })
+      .filter(note => {
+        const content = note.content.toLowerCase();
+        if (content.includes('purchase')) return false;
+        
+        // Apply filter based on eventFilter
+        if (eventFilter === 'all') {
+          return true;
+        } else if (eventFilter === 'deadline') {
+          const lines = note.content.split('\n');
+          const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+          if (tagsLine) {
+            const tags = tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim());
+            return tags.some(tag => tag.toLowerCase() === 'deadline');
+          }
+          return false;
+        } else if (eventFilter === 'holiday') {
+          const lines = note.content.split('\n');
+          const tagsLine = lines.find(line => line.startsWith('event_tags:'));
+          if (tagsLine) {
+            const tags = tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim());
+            return tags.some(tag => tag.toLowerCase() === 'holiday');
+          }
+          return false;
+        }
+        return true;
+      })
+      .filter(note => {
+        if (eventTextFilter && eventTextFilter.trim() !== '') {
+          const searchTerm = eventTextFilter.toLowerCase();
+          const description = note.content.toLowerCase();
+          const lines = note.content.split('\n');
+          const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+          const eventDescription = descriptionLine ? descriptionLine.replace('event_description:', '').trim().toLowerCase() : '';
+          
+          return description.includes(searchTerm) || eventDescription.includes(searchTerm);
+        }
+        return true;
+      })
+      .map(note => {
+        const details = getEventDetails(note.content);
+        let defaultColor = '#ffffff';
+        if (details.isDeadline) {
+          defaultColor = '#f3e8ff';
+        }
+        return {
+          ...note,
+          ...details,
+          bgColor: storedColors[note.id] || defaultColor
+        };
+      })
+      .filter(event => {
+        if (!event.dateTime) return false;
+        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline);
+        if (!nextOccurrence) return false;
+        nextOccurrence.setHours(0, 0, 0, 0);
+        const daysUntilEvent = Math.ceil((nextOccurrence - now) / (1000 * 60 * 60 * 24));
+        return daysUntilEvent >= 0;
+      })
+      .map(event => {
+        const nextOccurrence = calculateNextOccurrence(event.dateTime, event.isDeadline);
+        return {
+          ...event,
+          nextOccurrence: nextOccurrence
+        };
+      })
+      .sort((a, b) => {
+        const daysA = Math.ceil((a.nextOccurrence - now) / (1000 * 60 * 60 * 24));
+        const daysB = Math.ceil((b.nextOccurrence - now) / (1000 * 60 * 60 * 24));
+        return daysA - daysB;
+      });
   };
 
   // Update eventForm when selectedDate changes
@@ -539,7 +628,42 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   };
 
     return (
-    <div className="flex flex-row gap-3 items-stretch">
+    <div className="flex flex-col gap-4">
+      {/* Pinned Events - Small Tiles */}
+      {(type === 'all' || type === 'eventNotes') && (() => {
+        const pinnedEventNotes = getPinnedEventNotes();
+        if (pinnedEventNotes.length === 0) return null;
+        
+        return (
+          <div className="flex flex-row gap-2 flex-wrap">
+            {pinnedEventNotes.map(note => {
+              const eventDate = note.nextOccurrence ? new Date(note.nextOccurrence) : new Date(note.dateTime);
+              const now = new Date();
+              now.setHours(0, 0, 0, 0);
+              eventDate.setHours(0, 0, 0, 0);
+              const totalDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+              
+              return (
+                <div
+                  key={`pinned-${note.id}`}
+                  className="group border-2 border-yellow-400 bg-yellow-50 rounded-lg px-3 py-2 flex-shrink-0 hover:shadow-md transition-shadow cursor-pointer"
+                  style={{ minWidth: '120px' }}
+                  title={note.description}
+                >
+                  <div className="text-xs font-medium text-gray-700">
+                    {totalDays} {totalDays === 1 ? 'day' : 'days'} to
+                  </div>
+                  <div className="text-sm font-semibold text-gray-900 truncate">
+                    {note.description}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+      
+      <div className="flex flex-row gap-3 items-stretch">
       {/* Events */}
       {(type === 'all' || type === 'events') && (() => {
         const eventItems = events.filter(ev => ev.type === 'event');
@@ -837,7 +961,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
             );
           });
         })()}
-
+      </div>
 
       {/* Event Modal */}
       {isModalOpen && (

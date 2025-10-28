@@ -34,7 +34,7 @@ const parseLinks = (text) => {
   return processedText;
 };
 
-const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent, eventFilter = 'all', eventTextFilter = '' }) => {
+const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePage, onEditEvent, eventFilter = 'all', eventTextFilter = '', onDeleteNote }) => {
   const navigate = useNavigate();
   
   const [events, setEvents] = useState(() => {
@@ -63,6 +63,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [pendingDeleteNoteId, setPendingDeleteNoteId] = useState(null);
   const modalRef = useRef(null);
   
   // State for pinned events
@@ -599,21 +600,35 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     setPendingDeleteId(id);
   };
 
+  const handleDeleteNote = (noteId) => {
+    setPendingDeleteNoteId(noteId);
+  };
+
   const confirmDelete = () => {
-    setEvents(prev => {
-      const updatedEvents = prev.filter(ev => ev.id !== pendingDeleteId);
-      try {
-        localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
-      } catch (error) {
-        console.error('Error saving events to localStorage:', error);
-      }
-      return updatedEvents;
-    });
-    setPendingDeleteId(null);
+    // Handle deleting temp events
+    if (pendingDeleteId) {
+      setEvents(prev => {
+        const updatedEvents = prev.filter(ev => ev.id !== pendingDeleteId);
+        try {
+          localStorage.setItem('tempEvents', JSON.stringify(updatedEvents));
+        } catch (error) {
+          console.error('Error saving events to localStorage:', error);
+        }
+        return updatedEvents;
+      });
+      setPendingDeleteId(null);
+    }
+    
+    // Handle deleting notes
+    if (pendingDeleteNoteId && onDeleteNote) {
+      onDeleteNote(pendingDeleteNoteId);
+      setPendingDeleteNoteId(null);
+    }
   };
 
   const cancelDelete = () => {
     setPendingDeleteId(null);
+    setPendingDeleteNoteId(null);
   };
 
   const toggleDisplayMode = () => {
@@ -945,14 +960,20 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                     ))}
                   </div>
                   <button 
-                    onClick={() => handleEditEvent(ev)} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditEvent(ev);
+                    }}
                     className="text-blue-500 hover:text-blue-700 p-1"
                     title="Edit"
                   >
                     <PencilIcon className="h-4 w-4" />
                   </button>
                   <button 
-                    onClick={() => handleDeleteEvent(ev.id)} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteEvent(ev.id);
+                    }}
                     className="text-red-500 hover:text-red-700 p-1"
                     title="Delete"
                   >
@@ -1083,6 +1104,16 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                     title="Edit Event"
                   >
                     <PencilIcon className="h-4 w-4" />
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteNote(note.id);
+                    }} 
+                    className="text-red-500 hover:text-red-700 p-1"
+                    title="Delete Event"
+                  >
+                    <TrashIcon className="h-4 w-4" />
                   </button>
                 </div>
               </div>
@@ -1246,10 +1277,12 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       )}
 
       {/* Delete Confirmation Modal */}
-      {pendingDeleteId && (
+      {(pendingDeleteId || pendingDeleteNoteId) && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-xs shadow-lg flex flex-col items-center">
-            <div className="text-lg font-semibold mb-4 text-center">Are you sure you want to delete this item?</div>
+            <div className="text-lg font-semibold mb-4 text-center">
+              Are you sure you want to delete this {pendingDeleteNoteId ? 'note' : 'item'}?
+            </div>
             <div className="flex gap-4 mt-2">
               <button
                 onClick={cancelDelete}

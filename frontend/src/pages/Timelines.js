@@ -563,6 +563,10 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              // Open timeline if it's collapsed
+                              if (collapsedTimelines.has(note.id)) {
+                                toggleTimelineCollapse(note.id);
+                              }
                               setShowAddEventForm(note.id);
                             }}
                             className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors flex items-center space-x-1.5 border border-blue-200"
@@ -632,6 +636,54 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                   {/* Timeline Events */}
                   {!collapsedTimelines.has(note.id) && (
                     <div className="p-6">
+                    {/* Add Event Form */}
+                    {showAddEventForm === note.id && (
+                      <div className="mb-6 pb-6 border-b border-gray-200">
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                          <h4 className="text-sm font-medium text-gray-700 mb-3">Add New Event</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Event Description
+                              </label>
+                              <input
+                                type="text"
+                                value={newEventText}
+                                onChange={(e) => setNewEventText(e.target.value)}
+                                placeholder="e.g., Project milestone reached"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Date
+                              </label>
+                              <input
+                                type="date"
+                                value={newEventDate}
+                                onChange={(e) => setNewEventDate(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleAddEvent(note.id)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                              >
+                                Add Event
+                              </button>
+                              <button
+                                onClick={() => setShowAddEventForm(null)}
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {eventsWithDiffs.length === 0 ? (
                       <div className="text-gray-500 italic">No events found in this timeline</div>
                     ) : (
@@ -794,60 +846,6 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                             </div>
                           );
                         })}
-                      </div>
-                    )}
-
-                    {/* Add Event Form */}
-                    {showAddEventForm === note.id && (
-                      <div className="mt-6 pt-4 border-t border-gray-200">
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <h4 className="text-sm font-medium text-gray-700 mb-3">Add New Event</h4>
-                          <div className="space-y-3">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Event Description
-                              </label>
-                              <input
-                                type="text"
-                                value={newEventText}
-                                onChange={(e) => setNewEventText(e.target.value)}
-                                placeholder="e.g., Project milestone reached"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Date
-                              </label>
-                              <input
-                                type="date"
-                                value={newEventDate}
-                                onChange={(e) => setNewEventDate(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => handleAddEvent(note.id)}
-                                className="flex items-center space-x-2 px-4 py-2 bg-blue-400 text-white rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                              >
-                                <PlusIcon className="h-4 w-4" />
-                                <span>Add Event</span>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setShowAddEventForm(null);
-                                  setNewEventText('');
-                                  setNewEventDate('');
-                                }}
-                                className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                              >
-                                <XMarkIcon className="h-4 w-4" />
-                                <span>Cancel</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
                       </div>
                     )}
                     </div>

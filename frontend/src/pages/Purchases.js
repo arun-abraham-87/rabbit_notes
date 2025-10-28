@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { MagnifyingGlassIcon, XMarkIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
+import { MagnifyingGlassIcon, XMarkIcon, ChevronDownIcon, ChevronRightIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 
 // Function to extract event details from note content
 const getEventDetails = (content) => {
@@ -146,9 +147,15 @@ const formatDateWithAge = (dateString) => {
 };
 
 const Purchases = ({ allNotes }) => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedYears, setCollapsedYears] = useState(new Set());
   const [collapsedMonths, setCollapsedMonths] = useState(new Set());
+
+  const handleViewNote = (eventId) => {
+    // Navigate to notes page and filter by note ID
+    navigate(`/notes?note=${eventId}`);
+  };
 
   const toggleYear = (year) => {
     setCollapsedYears(prev => {
@@ -377,7 +384,7 @@ const Purchases = ({ allNotes }) => {
                         key={event.note.id}
                         className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                       >
-                        <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <span className={`text-lg font-semibold ${dollarAmount > 0 ? 'text-green-700' : 'text-gray-400'}`}>
                               ${dollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -386,6 +393,13 @@ const Purchases = ({ allNotes }) => {
                               {highlightSearchTerms(event.description, searchQuery)}
                             </h3>
                           </div>
+                          <button
+                            onClick={() => handleViewNote(event.note.id)}
+                            className="flex-shrink-0 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View in Notes"
+                          >
+                            <DocumentTextIcon className="h-5 w-5" />
+                          </button>
                         </div>
                       </div>
                     );
@@ -465,7 +479,7 @@ const Purchases = ({ allNotes }) => {
                               key={event.note.id}
                               className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                             >
-                              <div className="flex items-start justify-between">
+                              <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-3 mb-2">
                                     {event.dateTime && (
@@ -481,6 +495,13 @@ const Purchases = ({ allNotes }) => {
                                     {highlightSearchTerms(event.description, searchQuery)}
                                   </h3>
                                 </div>
+                                <button
+                                  onClick={() => handleViewNote(event.note.id)}
+                                  className="flex-shrink-0 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                  title="View in Notes"
+                                >
+                                  <DocumentTextIcon className="h-5 w-5" />
+                                </button>
                               </div>
                             </div>
                           );

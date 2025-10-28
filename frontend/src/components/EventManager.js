@@ -257,6 +257,90 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
       .slice(0, 10); // Get top 10
   };
 
+  // Helper function to parse timeline notes
+  const parseTimelineData = (content) => {
+    const lines = content.split('\n');
+    const timelineData = {
+      title: '',
+      firstDate: null,
+      isClosed: false
+    };
+    
+    // Check if timeline is closed
+    timelineData.isClosed = lines.some(line => line.trim() === 'Closed');
+    
+    // Get content lines (non-meta lines, excluding 'Closed')
+    const contentLines = lines.filter(line => 
+      !line.trim().startsWith('meta::') && line.trim() !== '' && line.trim() !== 'Closed'
+    );
+    
+    // First line is the title
+    if (contentLines.length > 0) {
+      timelineData.title = contentLines[0].trim();
+    }
+    
+    // Parse events from remaining content lines (skip first line which is title)
+    for (let i = 1; i < contentLines.length; i++) {
+      const line = contentLines[i].trim();
+      // Try to parse event:date format
+      const eventMatch = line.match(/^(.+?)\s*:\s*(.+)$/);
+      if (eventMatch) {
+        const dateStr = eventMatch[2].trim();
+        // Parse DD/MM/YYYY format
+        const dateParts = dateStr.split('/');
+        if (dateParts.length === 3) {
+          const day = parseInt(dateParts[0], 10);
+          const month = parseInt(dateParts[1], 10) - 1;
+          const year = parseInt(dateParts[2], 10);
+          const parsedDate = new Date(year, month, day);
+          if (!isNaN(parsedDate.getTime())) {
+            timelineData.firstDate = parsedDate;
+            break; // Only get the first date
+          }
+        }
+      }
+    }
+    
+    return timelineData;
+  };
+
+  // Helper function to get timeline notes
+  const getTimelineNotes = () => {
+    if (!notes) return [];
+    
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    return notes
+      .filter(note => {
+        if (!note?.content) return false;
+        return note.content.includes('meta::timeline::');
+      })
+      .map(note => {
+        const timelineData = parseTimelineData(note.content);
+        return {
+          id: note.id,
+          title: timelineData.title,
+          firstDate: timelineData.firstDate,
+          isClosed: timelineData.isClosed,
+          content: note.content
+        };
+      })
+      .filter(note => {
+        // Only include non-closed timelines with valid dates
+        return !note.isClosed && note.firstDate && note.firstDate <= now;
+      })
+      .map(note => {
+        // Calculate days since start
+        const daysSince = Math.floor((now - note.firstDate) / (1000 * 60 * 60 * 24));
+        return {
+          ...note,
+          daysSince: daysSince
+        };
+      })
+      .sort((a, b) => b.daysSince - a.daysSince); // Sort by most recent first
+  };
+
   // Helper function to get pinned events only (doesn't limit to top 10)
   const getPinnedEventNotes = () => {
     if (!notes) return [];
@@ -962,6 +1046,39 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
           });
         })()}
       </div>
+
+      {/* Timeline Tiles */}
+      {(type === 'all' || type === 'eventNotes') && (() => {
+        const timelineNotes = getTimelineNotes();
+        if (timelineNotes.length === 0) return null;
+        
+        return (
+          <div className="flex flex-row gap-2 flex-wrap mt-4">
+            {timelineNotes.map(timeline => (
+              <div
+                key={`timeline-${timeline.id}`}
+                className="group border-2 border-blue-400 bg-blue-50 rounded-lg px-3 py-2 flex-shrink-0 hover:shadow-md transition-shadow"
+                style={{ minWidth: '120px' }}
+                title={timeline.title}
+              >
+                <div className="text-xs font-medium text-gray-700 truncate">
+                  {timeline.title}
+                </div>
+                <div className="text-xs font-semibold text-gray-900 mt-1">
+                  {timeline.firstDate.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    year: 'numeric' 
+                  })}
+                </div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {timeline.daysSince} {timeline.daysSince === 1 ? 'day' : 'days'} since start
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Event Modal */}
       {isModalOpen && (

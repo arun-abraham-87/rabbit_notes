@@ -93,6 +93,7 @@ const ExpenseTracker = () => {
   const years = [2025, 2026, 2027];
   //
 
+  // Declare filter state variables before using them in useEffect
   const [includeUnassigned, setIncludeUnassigned] = useState(false);
   const [includeExcluded, setIncludeExcluded] = useState(false);
   const [includeIncome, setIncludeIncome] = useState(false);
@@ -103,6 +104,80 @@ const ExpenseTracker = () => {
   const [excludeIncome, setExcludeIncome] = useState(false);
   const [excludeOnceOff, setExcludeOnceOff] = useState(false);
   const [excludeHasTags, setExcludeHasTags] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Load filters from localStorage on mount
+  useEffect(() => {
+    const savedFilters = localStorage.getItem('expenseTrackerFilters');
+    if (savedFilters) {
+      try {
+        const filters = JSON.parse(savedFilters);
+        setSelectedType(filters.selectedType || 'All');
+        setSelectedCategory(filters.selectedCategory || 'All');
+        setSearchQuery(filters.searchQuery || '');
+        setSelectedYear(filters.selectedYear || new Date().getFullYear());
+        setSelectedMonths(new Set(filters.selectedMonths || [new Date().getMonth() === 0 ? 11 : new Date().getMonth() - 1]));
+        setIncludeUnassigned(filters.includeUnassigned || false);
+        setIncludeExcluded(filters.includeExcluded || false);
+        setIncludeIncome(filters.includeIncome || false);
+        setIncludeOnceOff(filters.includeOnceOff || false);
+        setIncludeHasTags(filters.includeHasTags || false);
+        setExcludeUnassigned(filters.excludeUnassigned || false);
+        setExcludeExcluded(filters.excludeExcluded || false);
+        setExcludeIncome(filters.excludeIncome || false);
+        setExcludeOnceOff(filters.excludeOnceOff || false);
+        setExcludeHasTags(filters.excludeHasTags || false);
+      } catch (error) {
+        console.error('Error loading filters from localStorage:', error);
+      }
+    }
+    // Mark initial load as complete after a short delay to allow state to update
+    setTimeout(() => setIsInitialLoad(false), 0);
+  }, []);
+
+  // Save filters to localStorage whenever they change
+  useEffect(() => {
+    // Skip saving during initial load to prevent overwriting with default values
+    if (isInitialLoad) {
+      return;
+    }
+    
+    const filters = {
+      selectedType,
+      selectedCategory,
+      searchQuery,
+      selectedYear,
+      selectedMonths: Array.from(selectedMonths),
+      includeUnassigned,
+      includeExcluded,
+      includeIncome,
+      includeOnceOff,
+      includeHasTags,
+      excludeUnassigned,
+      excludeExcluded,
+      excludeIncome,
+      excludeOnceOff,
+      excludeHasTags
+    };
+    localStorage.setItem('expenseTrackerFilters', JSON.stringify(filters));
+  }, [
+    isInitialLoad,
+    selectedType, 
+    selectedCategory, 
+    searchQuery, 
+    selectedYear, 
+    selectedMonths, 
+    includeUnassigned, 
+    includeExcluded, 
+    includeIncome, 
+    includeOnceOff, 
+    includeHasTags, 
+    excludeUnassigned, 
+    excludeExcluded, 
+    excludeIncome, 
+    excludeOnceOff, 
+    excludeHasTags
+  ]);
 
   const parseExpenses = (notes, typeMap) => {
     

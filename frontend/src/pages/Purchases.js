@@ -248,10 +248,20 @@ const Purchases = ({ allNotes }) => {
             const year = parseInt(yearKey);
             const months = groupedPurchases[year];
             
+            // Calculate year total
+            const yearTotal = Object.values(months).reduce((total, monthData) => {
+              return total + monthData.events.reduce((monthTotal, event) => {
+                return monthTotal + extractDollarAmount(event.description, event.customFields);
+              }, 0);
+            }, 0);
+
             return (
               <div key={year} className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2">
-                  {year}
+                <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 flex items-center justify-between">
+                  <span>{year}</span>
+                  <span className={`text-xl font-bold ${yearTotal > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                    ${yearTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
                 </h2>
                 
                 {Object.entries(months).map(([monthNum, monthData]) => {
@@ -266,11 +276,9 @@ const Purchases = ({ allNotes }) => {
                         <h3 className="text-lg font-semibold text-gray-700">
                           {monthData.name}
                         </h3>
-                        {monthTotal > 0 && (
-                          <span className="text-base font-semibold text-green-600">
-                            ${monthTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        )}
+                        <span className={`text-base font-semibold ${monthTotal > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                          ${monthTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
                       </div>
                       
                       <div className="space-y-3 ml-4">

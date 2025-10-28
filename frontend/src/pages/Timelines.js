@@ -184,16 +184,29 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     }
     
     if (!isClosed) {
-      // Add "Today" as a virtual event at the end for open timelines
       const today = moment();
+      
+      // Separate past and future events
+      const pastEvents = sortedEvents.filter(e => e.date && e.date.isBefore(today));
+      const futureEvents = sortedEvents.filter(e => e.date && e.date.isSameOrAfter(today));
+      
+      eventsWithDiffs = [...pastEvents];
+      
+      // Add "Today" as a virtual event marker
       const todayEvent = {
         event: 'Today',
         date: today,
         dateStr: today.format('DD/MM/YYYY'),
         lineIndex: -1, // Virtual event
-        isVirtual: true
+        isVirtual: true,
+        isToday: true
       };
-      eventsWithDiffs = [...eventsWithDiffs, todayEvent];
+      eventsWithDiffs.push(todayEvent);
+      
+      // Add future events after "Today"
+      if (futureEvents.length > 0) {
+        eventsWithDiffs = [...eventsWithDiffs, ...futureEvents];
+      }
     } else {
       // For closed timelines, add total duration as final event
       if (sortedEvents.length > 0 && sortedEvents[0].date) {
@@ -872,15 +885,17 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                 {/* Timeline connector */}
                                 <div className="flex flex-col items-center">
                                   <div className={`w-4 h-4 rounded-full border-2 ${
-                                    event.isTotal
-                                      ? 'bg-green-600 border-green-600'
-                                      : event.isDuration
-                                        ? 'bg-orange-500 border-orange-500'
-                                        : event.isVirtual
-                                          ? 'bg-purple-500 border-purple-500'
-                                          : index === 0 
-                                            ? 'bg-green-500 border-green-500' 
-                                            : 'bg-blue-500 border-blue-500'
+                                    event.isToday
+                                      ? 'bg-yellow-500 border-yellow-600 animate-pulse'
+                                      : event.isTotal
+                                        ? 'bg-green-600 border-green-600'
+                                        : event.isDuration
+                                          ? 'bg-orange-500 border-orange-500'
+                                          : event.isVirtual
+                                            ? 'bg-purple-500 border-purple-500'
+                                            : index === 0 
+                                              ? 'bg-green-500 border-green-500' 
+                                              : 'bg-blue-500 border-blue-500'
                                   }`}></div>
                                   {index < eventsWithDiffs.length - 1 && (
                                     <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
@@ -888,21 +903,27 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                 </div>
 
                                 {/* Event content */}
-                                <div className="flex-1 min-w-0">
+                                <div className={`flex-1 min-w-0 ${event.isToday ? 'bg-yellow-50 px-4 py-3 rounded-lg border-2 border-yellow-300' : ''}`}>
                                   <div className="flex items-center space-x-3 mb-1">
                                     {event.date && (
-                                      <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded font-medium">
+                                      <span className={`text-sm px-2 py-1 rounded font-medium ${
+                                        event.isToday 
+                                          ? 'text-yellow-800 bg-yellow-200' 
+                                          : 'text-gray-500 bg-gray-100'
+                                      }`}>
                                         {event.date.format('DD/MMM/YYYY')}
                                       </span>
                                     )}
                                     <h3 className={`text-lg font-semibold ${
-                                      event.isTotal
-                                        ? 'text-green-700 font-bold'
-                                        : event.isDuration
-                                          ? 'text-orange-600 font-bold'
-                                          : event.isVirtual 
-                                            ? 'text-purple-600' 
-                                            : 'text-gray-900'
+                                      event.isToday
+                                        ? 'text-yellow-900 font-bold'
+                                        : event.isTotal
+                                          ? 'text-green-700 font-bold'
+                                          : event.isDuration
+                                            ? 'text-orange-600 font-bold'
+                                            : event.isVirtual 
+                                              ? 'text-purple-600' 
+                                              : 'text-gray-900'
                                     }`}>
                                       {event.isTotal || event.isDuration ? (
                                         event.event
@@ -915,7 +936,55 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           }}
                                         />
                                       )}
-                                      {!event.isDuration && !event.isTotal && event.daysFromPrevious !== undefined && (
+                                      {!event.isDuration && !event.isTotal && (() => {
+                                        // Check if event is in the future
+                                        const today = moment();
+                                        const isFuture = event.date && event.date.isAfter(today);
+                                        
+                                        if (isFuture && event.date) {
+                                          const daysToEvent = event.date.diff(today, 'days');
+                                          const days = daysToEvent;
+                                          return (
+                                            <span className="text-blue-600 font-normal text-sm ml-2">
+                                              ({(() => {
+                                                if (days > 365) {
+                                                  const years = Math.floor(days / 365);
+                                                  const remainingDays = days % 365;
+                                                  const months = Math.floor(remainingDays / 30);
+                                                  const finalDays = remainingDays % 30;
+                                                  
+                                                  let result = '';
+                                                  if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                                  if (months > 0) {
+                                                    if (result) result += ', ';
+                                                    result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                  }
+                                                  if (finalDays > 0) {
+                                                    if (result) result += ', ';
+                                                    result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                                  }
+                                                  return result + ' to event';
+                                                } else if (days > 30) {
+                                                  const months = Math.floor(days / 30);
+                                                  const remainingDays = days % 30;
+                                                  
+                                                  let result = '';
+                                                  if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                  if (remainingDays > 0) {
+                                                    if (result) result += ', ';
+                                                    result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                                  }
+                                                  return result + ' to event';
+                                                } else {
+                                                  return `${days} day${days !== 1 ? 's' : ''} to event`;
+                                                }
+                                              })()})
+                                            </span>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
+                                      {!event.isDuration && !event.isTotal && event.daysFromPrevious !== undefined && !event.date.isAfter(moment()) && (
                                         <span className="text-black font-normal text-sm ml-2">
                                           ({(() => {
                                             const days = event.daysFromPrevious;
@@ -956,13 +1025,65 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     </h3>
                                   </div>
                                   
-                                  {/* Time differences - only show days since start */}
-                                  {!event.isDuration && !event.isTotal && event.daysFromStart !== undefined && (
-                                    <div className="text-sm text-gray-600">
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-green-600 font-medium">
-                                          {(() => {
-                                            const days = event.daysFromStart;
+                                  {/* Time differences - show days since start or days to event */}
+                                  {!event.isDuration && !event.isTotal && (() => {
+                                    const today = moment();
+                                    const isFuture = event.date && event.date.isAfter(today);
+                                    const isPast = event.date && event.date.isBefore(today) && event.daysFromStart !== undefined;
+                                    
+                                    if (isFuture && event.date) {
+                                      const daysToEvent = event.date.diff(today, 'days');
+                                      const days = daysToEvent;
+                                      return (
+                                        <div className="text-sm text-gray-600">
+                                          <div className="flex items-center space-x-2">
+                                            <span className="text-blue-600 font-medium">
+                                              {(() => {
+                                                if (days > 365) {
+                                                  const years = Math.floor(days / 365);
+                                                  const remainingDays = days % 365;
+                                                  const months = Math.floor(remainingDays / 30);
+                                                  const finalDays = remainingDays % 30;
+                                                  
+                                                  let result = '';
+                                                  if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                                  if (months > 0) {
+                                                    if (result) result += ', ';
+                                                    result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                  }
+                                                  if (finalDays > 0) {
+                                                    if (result) result += ', ';
+                                                    result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                                  }
+                                                  return result + ' to event';
+                                                } else if (days > 30) {
+                                                  const months = Math.floor(days / 30);
+                                                  const remainingDays = days % 30;
+                                                  
+                                                  let result = '';
+                                                  if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                  if (remainingDays > 0) {
+                                                    if (result) result += ', ';
+                                                    result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                                  }
+                                                  return result + ' to event';
+                                                } else {
+                                                  return `${days} day${days !== 1 ? 's' : ''} to event`;
+                                                }
+                                              })()}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    if (isPast && event.daysFromStart !== undefined) {
+                                      const days = event.daysFromStart;
+                                      return (
+                                        <div className="text-sm text-gray-600">
+                                          <div className="flex items-center space-x-2">
+                                            <span className="text-green-600 font-medium">
+                                              {(() => {
+                                                const days = event.daysFromStart;
                                             if (days > 365) {
                                               const years = Math.floor(days / 365);
                                               const remainingDays = days % 365;
@@ -994,11 +1115,14 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             } else {
                                               return `${days} days since start`;
                                             }
-                                          })()}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  )}
+                                              })()}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                 </div>
                               </div>
                             </React.Fragment>
@@ -1254,15 +1378,17 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           {/* Timeline connector */}
                                           <div className="flex flex-col items-center">
                                             <div className={`w-4 h-4 rounded-full border-2 ${
-                                              event.isTotal
-                                                ? 'bg-green-600 border-green-600'
-                                                : event.isDuration
-                                                  ? 'bg-orange-500 border-orange-500'
-                                                  : event.isVirtual
-                                                    ? 'bg-purple-500 border-purple-500'
-                                                    : index === 0 
-                                                      ? 'bg-green-500 border-green-500' 
-                                                      : 'bg-blue-500 border-blue-500'
+                                              event.isToday
+                                                ? 'bg-yellow-500 border-yellow-600 animate-pulse'
+                                                : event.isTotal
+                                                  ? 'bg-green-600 border-green-600'
+                                                  : event.isDuration
+                                                    ? 'bg-orange-500 border-orange-500'
+                                                    : event.isVirtual
+                                                      ? 'bg-purple-500 border-purple-500'
+                                                      : index === 0 
+                                                        ? 'bg-green-500 border-green-500' 
+                                                        : 'bg-blue-500 border-blue-500'
                                             }`}></div>
                                             {index < eventsWithDiffs.length - 1 && (
                                               <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
@@ -1270,21 +1396,27 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           </div>
 
                                           {/* Event content */}
-                                          <div className="flex-1 min-w-0">
+                                          <div className={`flex-1 min-w-0 ${event.isToday ? 'bg-yellow-50 px-4 py-3 rounded-lg border-2 border-yellow-300' : ''}`}>
                                             <div className="flex items-center space-x-3 mb-1">
                                               {event.date && (
-                                                <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded font-medium">
+                                                <span className={`text-sm px-2 py-1 rounded font-medium ${
+                                                  event.isToday 
+                                                    ? 'text-yellow-800 bg-yellow-200' 
+                                                    : 'text-gray-500 bg-gray-100'
+                                                }`}>
                                                   {event.date.format('DD/MMM/YYYY')}
                                                 </span>
                                               )}
                                               <h3 className={`text-lg font-semibold ${
-                                                event.isTotal
-                                                  ? 'text-green-700 font-bold'
-                                                  : event.isDuration
-                                                    ? 'text-orange-600 font-bold'
-                                                    : event.isVirtual 
-                                                      ? 'text-purple-600' 
-                                                      : 'text-gray-900'
+                                                event.isToday
+                                                  ? 'text-yellow-900 font-bold'
+                                                  : event.isTotal
+                                                    ? 'text-green-700 font-bold'
+                                                    : event.isDuration
+                                                      ? 'text-orange-600 font-bold'
+                                                      : event.isVirtual 
+                                                        ? 'text-purple-600' 
+                                                        : 'text-gray-900'
                                               }`}>
                                                 {event.isTotal || event.isDuration ? (
                                                   event.event

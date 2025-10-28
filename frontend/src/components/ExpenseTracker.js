@@ -2358,6 +2358,15 @@ const ExpenseTracker = () => {
                 </tr>
               </React.Fragment>
             ))}
+            {/* Totals Row */}
+            <tr className="bg-gray-100 border-t-2 border-gray-300 font-semibold">
+              <td colSpan={7} className="px-6 py-4 text-sm text-gray-700 text-right">
+                Total:
+              </td>
+              <td className="px-6 py-4 text-sm text-gray-900">
+                ${filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0).toFixed(2)}
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>

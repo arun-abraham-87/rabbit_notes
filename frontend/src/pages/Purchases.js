@@ -151,6 +151,7 @@ const Purchases = ({ allNotes }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedYears, setCollapsedYears] = useState(new Set());
   const [collapsedMonths, setCollapsedMonths] = useState(new Set());
+  const [filterByAmount, setFilterByAmount] = useState(null); // null, 'min', or 'max'
 
   const handleViewNote = (eventId) => {
     // Navigate to notes page and filter by note ID
@@ -217,11 +218,32 @@ const Purchases = ({ allNotes }) => {
     return events;
   }, [allNotes, searchQuery]);
 
+  // Apply amount filter (min/max)
+  const filteredPurchaseEvents = useMemo(() => {
+    if (!filterByAmount) return purchaseEvents;
+    
+    if (filterByAmount === 'min') {
+      const minAmount = purchaseEvents.length > 0 ? Math.min(...purchaseEvents.map(e => extractDollarAmount(e.description, e.customFields)).filter(a => a > 0)) : 0;
+      return purchaseEvents.filter(event => {
+        const amount = extractDollarAmount(event.description, event.customFields);
+        return amount > 0 && Math.abs(amount - minAmount) < 0.01;
+      });
+    } else if (filterByAmount === 'max') {
+      const maxAmount = purchaseEvents.length > 0 ? Math.max(...purchaseEvents.map(e => extractDollarAmount(e.description, e.customFields))) : 0;
+      return purchaseEvents.filter(event => {
+        const amount = extractDollarAmount(event.description, event.customFields);
+        return Math.abs(amount - maxAmount) < 0.01;
+      });
+    }
+    
+    return purchaseEvents;
+  }, [purchaseEvents, filterByAmount]);
+
   // Group events by year and month
   const groupedPurchases = useMemo(() => {
     const grouped = {};
     
-    purchaseEvents.forEach(event => {
+    filteredPurchaseEvents.forEach(event => {
       if (!event.dateTime) {
         // Group events without dates in a special group
         if (!grouped['No Date']) {
@@ -282,7 +304,7 @@ const Purchases = ({ allNotes }) => {
     });
 
     return sortedGrouped;
-  }, [purchaseEvents]);
+  }, [filteredPurchaseEvents]);
 
   // Calculate statistics
   const statistics = useMemo(() => {
@@ -319,15 +341,25 @@ const Purchases = ({ allNotes }) => {
           </div>
         </div>
         
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <div className="text-sm text-purple-700 font-medium mb-1">Max Value</div>
+        <div 
+          onClick={() => setFilterByAmount(filterByAmount === 'max' ? null : 'max')}
+          className="bg-purple-50 border border-purple-200 rounded-lg p-4 cursor-pointer hover:bg-purple-100 transition-colors"
+        >
+          <div className="text-sm text-purple-700 font-medium mb-1">
+            Max Value {filterByAmount === 'max' && <span className="text-xs">(filtered)</span>}
+          </div>
           <div className="text-2xl font-bold text-purple-900">
             ${statistics.maxAmount > 0 ? statistics.maxAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00'}
           </div>
         </div>
         
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <div className="text-sm text-orange-700 font-medium mb-1">Min Value</div>
+        <div 
+          onClick={() => setFilterByAmount(filterByAmount === 'min' ? null : 'min')}
+          className="bg-orange-50 border border-orange-200 rounded-lg p-4 cursor-pointer hover:bg-orange-100 transition-colors"
+        >
+          <div className="text-sm text-orange-700 font-medium mb-1">
+            Min Value {filterByAmount === 'min' && <span className="text-xs">(filtered)</span>}
+          </div>
           <div className="text-2xl font-bold text-orange-900">
             ${statistics.minAmount > 0 ? statistics.minAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00'}
           </div>
@@ -359,13 +391,13 @@ const Purchases = ({ allNotes }) => {
       {/* Results count */}
       {searchQuery && (
         <div className="mb-4 text-sm text-gray-600">
-          Showing {purchaseEvents.length} result{purchaseEvents.length !== 1 ? 's' : ''} for "{searchQuery}"
+          Showing {filteredPurchaseEvents.length} result{filteredPurchaseEvents.length !== 1 ? 's' : ''} for "{searchQuery}"
         </div>
       )}
 
-      {purchaseEvents.length === 0 ? (
+      {filteredPurchaseEvents.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
-          <p>{searchQuery ? `No purchases found matching "${searchQuery}".` : 'No purchase events found.'}</p>
+          <p>{searchQuery ? `No purchases found matching "${searchQuery}".` : filterByAmount ? 'No purchases found with this amount.' : 'No purchase events found.'}</p>
         </div>
       ) : (
         <div className="space-y-6">

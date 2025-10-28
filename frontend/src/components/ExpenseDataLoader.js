@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { XMarkIcon, ArrowUpTrayIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowUpTrayIcon, CheckCircleIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, createNote, loadAllNotes } from '../utils/ApiUtils';
 
 const ExpenseDataLoader = ({ onClose, noteId }) => {
@@ -16,6 +16,7 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
   const [expenseSourceNames, setExpenseSourceNames] = useState([]);
   const [selectedSourceType, setSelectedSourceType] = useState('');
   const [selectedSourceName, setSelectedSourceName] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   useEffect(() => {
     const fetchExpenseSources = async () => {
@@ -307,6 +308,44 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
     return expectedTypes[index] || `Field ${index + 1}`;
   };
 
+  // Sorting functions
+  const handleSort = (columnIndex) => {
+    let direction = 'asc';
+    if (sortConfig.key === columnIndex && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    
+    setSortConfig({ key: columnIndex, direction });
+    
+    const sortedData = [...data].sort((a, b) => {
+      const aVal = a[columnIndex] || '';
+      const bVal = b[columnIndex] || '';
+      
+      // Try to parse as numbers for numeric columns
+      const aNum = parseFloat(aVal);
+      const bNum = parseFloat(bVal);
+      
+      if (!isNaN(aNum) && !isNaN(bNum)) {
+        return direction === 'asc' ? aNum - bNum : bNum - aNum;
+      }
+      
+      // String comparison
+      const comparison = aVal.toLowerCase().localeCompare(bVal.toLowerCase());
+      return direction === 'asc' ? comparison : -comparison;
+    });
+    
+    setData(sortedData);
+  };
+
+  const getSortIcon = (columnIndex) => {
+    if (sortConfig.key !== columnIndex) {
+      return <ChevronUpIcon className="h-4 w-4 text-gray-400" />;
+    }
+    return sortConfig.direction === 'asc' 
+      ? <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+      : <ChevronDownIcon className="h-4 w-4 text-blue-600" />;
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
@@ -443,7 +482,7 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
                   <div className="text-blue-600 mt-0.5">💡</div>
                   <div className="text-sm text-blue-800">
                     <p className="font-medium mb-1">Column Mapping Guide:</p>
-                    <p>The blue headers above show what each column should contain. Drag columns to reorder them to match your data structure.</p>
+                    <p>The blue headers above show what each column should contain. Drag columns to reorder them to match your data structure. Click the sort icons to sort by any column.</p>
                   </div>
                 </div>
               </div>
@@ -491,7 +530,19 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
                             onClick={() => handleColumnSelect(index)}
                             onDoubleClick={() => handleColumnMergeSelect(index)}
                           >
-                            {header}
+                            <div className="flex items-center justify-between">
+                              <span>{header}</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSort(index);
+                                }}
+                                className="ml-2 p-1 hover:bg-gray-200 rounded"
+                                title="Sort column"
+                              >
+                                {getSortIcon(index)}
+                              </button>
+                            </div>
                           </th>
                         ))}
                       </tr>

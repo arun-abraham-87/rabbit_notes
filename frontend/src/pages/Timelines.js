@@ -56,6 +56,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
 
   // Parse timeline data from note content
   const parseTimelineData = (content) => {
+    if (!content || typeof content !== 'string') {
+      return {
+        timeline: '',
+        events: [],
+        isClosed: false,
+        totalDollarAmount: 0
+      };
+    }
+    
     const lines = content.split('\n');
     const timelineData = {
       timeline: '',
@@ -400,6 +409,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   // Filter and sort timeline notes
   const filteredAndSortedTimelineNotes = timelineNotes
     .filter(note => {
+      // Safety check: ensure note has valid content
+      if (!note || !note.content) return false;
       if (!searchQuery.trim()) return true;
       const timelineData = parseTimelineData(note.content);
       return timelineData.timeline.toLowerCase().includes(searchQuery.toLowerCase());
@@ -494,6 +505,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
             {/* Open Timelines */}
             {(() => {
               const openTimelines = filteredAndSortedTimelineNotes.filter(note => {
+                if (!note || !note.content) return false;
                 const timelineData = parseTimelineData(note.content);
                 return !timelineData.isClosed;
               });
@@ -505,6 +517,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                       Open Timelines ({openTimelines.length})
                     </h2>
                     {openTimelines.map((note) => {
+              if (!note || !note.content) return null;
               const timelineData = parseTimelineData(note.content);
               const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
@@ -853,6 +866,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
             {/* Closed Timelines */}
             {(() => {
               const closedTimelines = filteredAndSortedTimelineNotes.filter(note => {
+                if (!note || !note.content) return false;
                 const timelineData = parseTimelineData(note.content);
                 return timelineData.isClosed;
               });
@@ -864,6 +878,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                       Closed Timelines ({closedTimelines.length})
                     </h2>
                     {closedTimelines.map((note) => {
+                      if (!note || !note.content) return null;
                       const timelineData = parseTimelineData(note.content);
                       const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 

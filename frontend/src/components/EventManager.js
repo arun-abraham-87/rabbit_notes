@@ -316,6 +316,10 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         if (!note?.content) return false;
         return note.content.includes('meta::timeline::');
       })
+      .filter(note => {
+        // Only include tracked timelines
+        return note.content.includes('meta::tracked');
+      })
       .map(note => {
         const timelineData = parseTimelineData(note.content);
         return {

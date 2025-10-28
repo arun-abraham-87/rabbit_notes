@@ -308,6 +308,42 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
     return timelineData;
   };
 
+  // Helper function to calculate timeline display text
+  const calculateTimelineDisplayText = (daysSince) => {
+    let timeUnit, displayText;
+    
+    switch (displayMode) {
+      case 'weeks':
+        const weeks = Math.floor(daysSince / 7);
+        const remainingDays = daysSince % 7;
+        timeUnit = 'weeks';
+        displayText = weeks > 0 ? `${weeks} week${weeks !== 1 ? 's' : ''}${remainingDays > 0 ? ` ${remainingDays} day${remainingDays !== 1 ? 's' : ''}` : ''}` : `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+        break;
+      case 'months':
+        const months = Math.floor(daysSince / 30.44);
+        const remainingDaysInMonth = Math.floor(daysSince % 30.44);
+        timeUnit = 'months';
+        displayText = months > 0 ? `${months} month${months !== 1 ? 's' : ''}${remainingDaysInMonth > 0 ? ` ${remainingDaysInMonth} day${remainingDaysInMonth !== 1 ? 's' : ''}` : ''}` : `${remainingDaysInMonth} day${remainingDaysInMonth !== 1 ? 's' : ''}`;
+        break;
+      case 'years':
+        const years = Math.floor(daysSince / 365.25);
+        const remainingDaysInYear = Math.floor(daysSince % 365.25);
+        const monthsInYear = Math.floor(remainingDaysInYear / 30.44);
+        timeUnit = 'years';
+        if (years > 0) {
+          displayText = `${years} year${years !== 1 ? 's' : ''}${monthsInYear > 0 ? ` ${monthsInYear} month${monthsInYear !== 1 ? 's' : ''}` : ''}`;
+        } else {
+          displayText = monthsInYear > 0 ? `${monthsInYear} month${monthsInYear !== 1 ? 's' : ''}` : `${remainingDaysInYear} day${remainingDaysInYear !== 1 ? 's' : ''}`;
+        }
+        break;
+      default:
+        timeUnit = 'days';
+        displayText = `${daysSince} day${daysSince !== 1 ? 's' : ''}`;
+    }
+    
+    return { timeUnit, displayText };
+  };
+
   // Helper function to get timeline notes
   const getTimelineNotes = () => {
     if (!notes) return [];
@@ -1062,38 +1098,43 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         
         return (
           <div className="flex flex-row gap-2 flex-wrap mt-4">
-            {timelineNotes.map(timeline => (
-              <div
-                key={`timeline-${timeline.id}`}
-                className="group border-2 border-blue-400 bg-blue-50 rounded-lg px-3 py-2 flex-shrink-0 hover:shadow-md transition-shadow relative"
-                style={{ minWidth: '120px' }}
-                title={timeline.title}
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/notes?note=${timeline.id}`);
-                  }}
-                  className="absolute top-1 right-1 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
-                  title="View note"
+            {timelineNotes.map(timeline => {
+              const { timeUnit, displayText } = calculateTimelineDisplayText(timeline.daysSince);
+              
+              return (
+                <div
+                  key={`timeline-${timeline.id}`}
+                  className="group border-2 border-blue-400 bg-blue-50 rounded-lg px-3 py-2 flex-shrink-0 hover:shadow-md transition-shadow relative cursor-pointer"
+                  style={{ minWidth: '120px' }}
+                  title={timeline.title}
+                  onClick={toggleDisplayMode}
                 >
-                  <DocumentTextIcon className="h-3 w-3" />
-                </button>
-                <div className="text-xs font-medium text-gray-700 truncate pr-6">
-                  {timeline.title}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/notes?note=${timeline.id}`);
+                    }}
+                    className="absolute top-1 right-1 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+                    title="View note"
+                  >
+                    <DocumentTextIcon className="h-3 w-3" />
+                  </button>
+                  <div className="text-xs font-medium text-gray-700 truncate pr-6">
+                    {timeline.title}
+                  </div>
+                  <div className="text-xs font-semibold text-gray-900 mt-1">
+                    {timeline.firstDate.toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric', 
+                      year: 'numeric' 
+                    })}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1" title={`Click to cycle through days, weeks, months, years (currently showing ${timeUnit})`}>
+                    {displayText} since start
+                  </div>
                 </div>
-                <div className="text-xs font-semibold text-gray-900 mt-1">
-                  {timeline.firstDate.toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    year: 'numeric' 
-                  })}
-                </div>
-                <div className="text-xs text-gray-600 mt-1">
-                  {timeline.daysSince} {timeline.daysSince === 1 ? 'day' : 'days'} since start
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         );
       })()}

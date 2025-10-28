@@ -16,7 +16,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     } else {
       // Default: all true
       setNavbarPagesVisibility({
-        dashboard: true, notes: true, todos: true, watch: true, tags: true, journals: true, events: true, countdowns: true, people: true, news: true, expense: true, trackers: true, calendar: true, bookmarks: true, assets: true, 'stock-vesting': true, pomodoro: true, timelines: true
+        dashboard: true, notes: true, todos: true, watch: true, tags: true, journals: true, events: true, countdowns: true, people: true, news: true, expense: true, trackers: true, calendar: true, bookmarks: true, assets: true, 'stock-vesting': true, pomodoro: true, timelines: true, purchases: true
       });
     }
   }, []);
@@ -30,6 +30,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     { id: 'journals', label: 'Journals' },
     { id: 'events', label: 'Events' },
     { id: 'timelines', label: 'Timelines' },
+    { id: 'purchases', label: 'Purchases' },
     { id: 'countdowns', label: 'Countdowns' },
     { id: 'people', label: 'People' },
     { id: 'news', label: 'News' },

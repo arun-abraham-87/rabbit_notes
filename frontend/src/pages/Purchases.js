@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, XMarkIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 // Function to extract event details from note content
 const getEventDetails = (content) => {
@@ -56,6 +56,33 @@ const extractDollarAmount = (description, customFields = {}) => {
 
 const Purchases = ({ allNotes }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [collapsedYears, setCollapsedYears] = useState(new Set());
+  const [collapsedMonths, setCollapsedMonths] = useState(new Set());
+
+  const toggleYear = (year) => {
+    setCollapsedYears(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(year)) {
+        newSet.delete(year);
+      } else {
+        newSet.add(year);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleMonth = (year, monthNum) => {
+    const key = `${year}-${monthNum}`;
+    setCollapsedMonths(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
 
   // Filter purchase events
   const purchaseEvents = useMemo(() => {
@@ -255,33 +282,59 @@ const Purchases = ({ allNotes }) => {
               }, 0);
             }, 0);
 
+            const isYearCollapsed = collapsedYears.has(year);
+
             return (
               <div key={year} className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 flex items-center justify-between">
-                  <span>{year}</span>
+                <h2 
+                  onClick={() => toggleYear(year)}
+                  className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 flex items-center justify-between cursor-pointer hover:bg-gray-50 -mx-2 px-2 py-1 rounded transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {isYearCollapsed ? (
+                      <ChevronRightIcon className="h-6 w-6 text-gray-600" />
+                    ) : (
+                      <ChevronDownIcon className="h-6 w-6 text-gray-600" />
+                    )}
+                    <span>{year}</span>
+                  </div>
                   <span className={`text-xl font-bold ${yearTotal > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                     ${yearTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </h2>
                 
-                {Object.entries(months).map(([monthNum, monthData]) => {
+                {!isYearCollapsed && Object.entries(months).map(([monthNum, monthData]) => {
                   const events = monthData.events;
                   const monthTotal = events.reduce((total, event) => {
                     return total + extractDollarAmount(event.description, event.customFields);
                   }, 0);
 
+                  const monthKey = `${year}-${monthNum}`;
+                  const isMonthCollapsed = collapsedMonths.has(monthKey);
+
                   return (
                     <div key={monthNum} className="space-y-3">
-                      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                        <h3 className="text-lg font-semibold text-gray-700">
-                          {monthData.name}
-                        </h3>
+                      <div 
+                        onClick={() => toggleMonth(year, monthNum)}
+                        className="flex items-center justify-between border-b border-gray-200 pb-2 cursor-pointer hover:bg-gray-50 -mx-2 px-2 py-1 rounded transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          {isMonthCollapsed ? (
+                            <ChevronRightIcon className="h-5 w-5 text-gray-600" />
+                          ) : (
+                            <ChevronDownIcon className="h-5 w-5 text-gray-600" />
+                          )}
+                          <h3 className="text-lg font-semibold text-gray-700">
+                            {monthData.name}
+                          </h3>
+                        </div>
                         <span className={`text-base font-semibold ${monthTotal > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                           ${monthTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                       
-                      <div className="space-y-3 ml-4">
+                      {!isMonthCollapsed && (
+                        <div className="space-y-3 ml-4">
                         {events.map((event) => {
                           const dollarAmount = extractDollarAmount(event.description, event.customFields);
                           return (
@@ -309,7 +362,8 @@ const Purchases = ({ allNotes }) => {
                             </div>
                           );
                         })}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

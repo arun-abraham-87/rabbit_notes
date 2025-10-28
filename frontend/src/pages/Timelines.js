@@ -491,7 +491,20 @@ const Timelines = ({ notes, updateNote, addNote }) => {
           </div>
         ) : (
           <div className="space-y-8">
-            {filteredAndSortedTimelineNotes.map((note) => {
+            {/* Open Timelines */}
+            {(() => {
+              const openTimelines = filteredAndSortedTimelineNotes.filter(note => {
+                const timelineData = parseTimelineData(note.content);
+                return !timelineData.isClosed;
+              });
+              
+              if (openTimelines.length > 0) {
+                return (
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-3 border-b border-gray-300">
+                      Open Timelines ({openTimelines.length})
+                    </h2>
+                    {openTimelines.map((note) => {
               const timelineData = parseTimelineData(note.content);
               const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
@@ -831,6 +844,204 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                 </div>
               );
             })}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            
+            {/* Closed Timelines */}
+            {(() => {
+              const closedTimelines = filteredAndSortedTimelineNotes.filter(note => {
+                const timelineData = parseTimelineData(note.content);
+                return timelineData.isClosed;
+              });
+              
+              if (closedTimelines.length > 0) {
+                return (
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-700 mb-6 pb-3 border-b border-gray-300 mt-8">
+                      Closed Timelines ({closedTimelines.length})
+                    </h2>
+                    {closedTimelines.map((note) => {
+                      const timelineData = parseTimelineData(note.content);
+                      const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
+
+                      return (
+                        <div key={note.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden opacity-75">
+                          {/* Timeline Header */}
+                          <div 
+                            className="bg-gradient-to-r from-gray-400 to-gray-500 text-white px-6 py-4 cursor-pointer hover:from-gray-500 hover:to-gray-600 transition-colors"
+                            onClick={() => toggleTimelineCollapse(note.id)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className="text-white">
+                                  {collapsedTimelines.has(note.id) ? (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  ) : (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  )}
+                                </div>
+                                <h2 className="text-2xl font-semibold text-gray-100">
+                                  {timelineData.timeline || 'Untitled Timeline'}
+                                  {(() => {
+                                    const eventsWithDates = timelineData.events.filter(event => event.date);
+                                    if (eventsWithDates.length > 0) {
+                                      const startDate = eventsWithDates[0].date;
+                                      const lastEvent = eventsWithDates[eventsWithDates.length - 1];
+                                      const eventCount = timelineData.events.length;
+                                      
+                                      return (
+                                        <span className="text-lg font-normal text-gray-200 ml-2">
+                                          ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events)
+                                        </span>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                </h2>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {timelineData.isClosed && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleReopenTimeline(note.id);
+                                    }}
+                                    className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
+                                    title="Reopen timeline"
+                                  >
+                                    <ArrowPathIcon className="h-5 w-5" />
+                                    <span className="text-sm">Reopen</span>
+                                  </button>
+                                )}
+                                <label 
+                                  className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors cursor-pointer flex items-center space-x-1.5"
+                                  title={note.content.includes('meta::tracked') ? 'Untrack timeline' : 'Track timeline'}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleTracked(note.id);
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={note.content.includes('meta::tracked')}
+                                    onChange={() => {}}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                                  />
+                                  <span className="text-sm">Track</span>
+                                </label>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewNote(note.id);
+                                  }}
+                                  className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
+                                  title="View note in Notes page"
+                                >
+                                  <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                                  <span className="text-sm">View Note</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Timeline Events */}
+                          {!collapsedTimelines.has(note.id) && (
+                            <div className="p-6">
+                              {eventsWithDiffs.length === 0 ? (
+                                <div className="text-gray-500 italic">No events found in this timeline</div>
+                              ) : (
+                                <div className="space-y-4">
+                                  {eventsWithDiffs.map((event, index) => {
+                                    const isDuration = event.isDuration;
+                                    const isTotal = event.isTotal;
+                                    const isLast = index === eventsWithDiffs.length - 1;
+                                    
+                                    return (
+                                      <div
+                                        key={index}
+                                        className={`flex items-start ${
+                                          isDuration || isTotal
+                                            ? 'bg-gray-100 border-l-4 border-green-500 pl-4 py-2 rounded-r'
+                                            : 'border-l-4 border-blue-500 pl-4'
+                                        } ${isLast ? 'pb-0' : 'pb-4 border-b border-gray-200'}`}
+                                      >
+                                        <div className="flex-1">
+                                          <h3 className="text-lg font-medium text-gray-900">
+                                            {event.event}
+                                            {event.daysFromPrevious !== undefined && event.daysFromPrevious !== null && !isDuration && !isTotal && (
+                                              <span className="ml-2 text-sm text-gray-500">
+                                                {(() => {
+                                                  const days = event.daysFromPrevious;
+                                                  if (days > 365) {
+                                                    const years = Math.floor(days / 365);
+                                                    const remainingDays = days % 365;
+                                                    const months = Math.floor(remainingDays / 30);
+                                                    const finalDays = remainingDays % 30;
+                                                    
+                                                    let result = '';
+                                                    if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                                    if (months > 0) {
+                                                      if (result) result += ', ';
+                                                      result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                    }
+                                                    if (finalDays > 0) {
+                                                      if (result) result += ', ';
+                                                      result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                                    }
+                                                    return result + ' since last event';
+                                                  } else if (days > 30) {
+                                                    const months = Math.floor(days / 30);
+                                                    const remainingDays = days % 30;
+                                                    
+                                                    let result = '';
+                                                    if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                    if (remainingDays > 0) {
+                                                      if (result) result += ', ';
+                                                      result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                                    }
+                                                    return result + ' since last event';
+                                                  } else {
+                                                    return `${days} days since last event`;
+                                                  }
+                                                })()}
+                                              </span>
+                                            )}
+                                          </h3>
+                                        </div>
+                                        <div className="ml-4 text-right">
+                                          {event.date && (
+                                            <div className="text-gray-600">
+                                              {event.date.format('DD MMM YYYY')}
+                                            </div>
+                                          )}
+                                          {event.dateStr && (
+                                            <div className="text-sm text-gray-500">
+                                              {event.dateStr}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
         )}
 

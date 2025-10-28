@@ -13,6 +13,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   const [showNewTimelineForm, setShowNewTimelineForm] = useState(false);
   const [newTimelineTitle, setNewTimelineTitle] = useState('');
   const [collapsedTimelines, setCollapsedTimelines] = useState(new Set());
+  const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
 
   useEffect(() => {
     if (notes) {
@@ -52,6 +53,49 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     return text.replace(dollarRegex, (match) => {
       return `<span class="text-green-600 font-semibold">${match}</span>`;
     });
+  };
+
+  // Handle event selection
+  const handleEventClick = (timelineId, eventIndex) => {
+    setSelectedEvents(prev => {
+      const current = prev[timelineId] || [];
+      
+      // If already selected, deselect it
+      if (current.includes(eventIndex)) {
+        const filtered = current.filter(idx => idx !== eventIndex);
+        return { ...prev, [timelineId]: filtered.length > 0 ? filtered : undefined };
+      }
+      
+      // If already 2 selected, replace the first with the new one
+      if (current.length >= 2) {
+        return { ...prev, [timelineId]: [current[1], eventIndex] };
+      }
+      
+      // Add to selection
+      return { ...prev, [timelineId]: [...current, eventIndex] };
+    });
+  };
+
+  // Calculate difference between two dates
+  const calculateDateDifference = (date1, date2) => {
+    const moment1 = moment(date1);
+    const moment2 = moment(date2);
+    
+    const years = moment2.diff(moment1, 'years');
+    const months = moment2.diff(moment1, 'months') % 12;
+    const days = moment2.diff(moment1, 'days') % 30;
+    
+    const parts = [];
+    if (years > 0) parts.push(`${years} year${years !== 1 ? 's' : ''}`);
+    if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+    if (days > 0 || parts.length === 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+    
+    return parts.join(', ');
+  };
+
+  // Check if event is selected
+  const isEventSelected = (timelineId, eventIndex) => {
+    return selectedEvents[timelineId]?.includes(eventIndex) || false;
   };
 
   // Parse timeline data from note content
@@ -824,6 +868,9 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                             showPreviewBefore = isAfterThis && isBeforeNext;
                           }
 
+                          const isSelected = isEventSelected(note.id, index);
+                          const isHighlighted = isSelected && selectedEvents[note.id] && selectedEvents[note.id].length === 2;
+                          
                           return (
                             <React.Fragment key={index}>
                               {/* Preview Marker - show after this event if new event should be inserted here */}
@@ -881,7 +928,10 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               )}
 
                               {/* Event */}
-                              <div className="flex items-start space-x-4">
+                              <div 
+                                className={`flex items-start space-x-4 ${isSelected ? 'bg-blue-100 rounded-lg p-2 -ml-2' : ''} cursor-pointer`}
+                                onClick={() => handleEventClick(note.id, index)}
+                              >
                                 {/* Timeline connector */}
                                 <div className="flex flex-col items-center">
                                   <div className={`w-4 h-4 rounded-full border-2 ${
@@ -1128,6 +1178,31 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                             </React.Fragment>
                           );
                         })}
+                        
+                        {/* Date Difference Display - Show when 2 events are selected */}
+                        {selectedEvents[note.id] && selectedEvents[note.id].length === 2 && (() => {
+                          const [firstIndex, secondIndex] = selectedEvents[note.id];
+                          const firstEvent = eventsWithDiffs[firstIndex];
+                          const secondEvent = eventsWithDiffs[secondIndex];
+                          
+                          if (firstEvent && secondEvent && firstEvent.date && secondEvent.date) {
+                            const diff = calculateDateDifference(firstEvent.date, secondEvent.date);
+                            return (
+                              <div className="mt-4 p-4 bg-purple-100 border-2 border-purple-500 rounded-lg">
+                                <div className="text-center">
+                                  <div className="text-sm text-purple-700 font-medium mb-2">Selected Events Difference</div>
+                                  <div className="text-2xl font-bold text-purple-900">
+                                    {diff}
+                                  </div>
+                                  <div className="text-xs text-purple-600 mt-1">
+                                    Between: {firstEvent.event} and {secondEvent.event}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                         
                         {/* Preview at end - if new event should be after last event */}
                         {(() => {

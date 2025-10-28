@@ -18,13 +18,34 @@ const getEventDetails = (content) => {
   const tagsLine = lines.find(line => line.startsWith('event_tags:'));
   const tags = tagsLine ? tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim()) : [];
   
-  return { description, dateTime, tags };
+  // Find custom fields (like event_$:5.4)
+  const customFields = {};
+  lines.forEach(line => {
+    if (line.startsWith('event_') && line.includes(':')) {
+      const [key, value] = line.split(':');
+      if (key !== 'event_description' && key !== 'event_date' && key !== 'event_notes' && key !== 'event_recurring_type' && key !== 'event_tags') {
+        const fieldName = key.replace('event_', '');
+        customFields[fieldName] = value.trim();
+      }
+    }
+  });
+  
+  return { description, dateTime, tags, customFields };
 };
 
-// Helper function to extract dollar amount from text
-const extractDollarAmount = (text) => {
-  if (!text) return 0;
-  const matches = text.match(/\$[\d,]+(?:\.\d{2})?/g);
+// Helper function to extract dollar amount from event data
+const extractDollarAmount = (description, customFields = {}) => {
+  // First check for event_$ custom field
+  if (customFields['$']) {
+    const value = parseFloat(customFields['$']);
+    if (!isNaN(value)) {
+      return value;
+    }
+  }
+  
+  // Fall back to parsing dollar amounts from description text
+  if (!description) return 0;
+  const matches = description.match(/\$[\d,]+(?:\.\d{2})?/g);
   if (!matches) return 0;
   
   return matches.reduce((total, match) => {
@@ -58,7 +79,7 @@ const Purchases = ({ allNotes }) => {
       const query = searchQuery.toLowerCase();
       return events.filter(event => {
         const description = event.description.toLowerCase();
-        const amount = extractDollarAmount(event.description).toString();
+        const amount = extractDollarAmount(event.description, event.customFields).toString();
         const dateStr = event.dateTime ? new Date(event.dateTime).toLocaleDateString().toLowerCase() : '';
         
         // Check if any part matches
@@ -97,22 +118,38 @@ const Purchases = ({ allNotes }) => {
         grouped[year][month] = { name: monthName, events: [] };
       }
       grouped[year][month].events.push(event);
+      // Keep events sorted by date within each month (newest first)
+      grouped[year][month].events.sort((a, b) => {
+        if (!a.dateTime && !b.dateTime) return 0;
+        if (!a.dateTime) return 1;
+        if (!b.dateTime) return -1;
+        return new Date(b.dateTime) - new Date(a.dateTime);
+      });
     });
 
     // Sort years and months properly
-    const sortedGrouped = {};
-    Object.keys(grouped).sort((a, b) => {
+    const sortedKeys = Object.keys(grouped).sort((a, b) => {
       if (a === 'No Date') return 1;
       if (b === 'No Date') return -1;
-      return parseInt(b) - parseInt(a); // Descending order
-    }).forEach(key => {
+      // Ensure we're comparing numbers for descending order (latest first)
+      const yearA = parseInt(a);
+      const yearB = parseInt(b);
+      return yearB - yearA; // Latest year first
+    });
+
+    const sortedGrouped = {};
+    sortedKeys.forEach(key => {
       if (key === 'No Date') {
         sortedGrouped[key] = grouped[key];
       } else {
         const year = parseInt(key);
         sortedGrouped[key] = {};
         Object.keys(grouped[year])
-          .sort((a, b) => parseInt(b) - parseInt(a)) // Descending order
+          .sort((a, b) => {
+            const monthA = parseInt(a);
+            const monthB = parseInt(b);
+            return monthB - monthA; // Latest month first
+          })
           .forEach(month => {
             sortedGrouped[key][month] = grouped[year][month];
           });
@@ -125,7 +162,7 @@ const Purchases = ({ allNotes }) => {
   // Calculate total
   const totalAmount = useMemo(() => {
     return purchaseEvents.reduce((total, event) => {
-      return total + extractDollarAmount(event.description);
+      return total + extractDollarAmount(event.description, event.customFields);
     }, 0);
   }, [purchaseEvents]);
 
@@ -184,7 +221,7 @@ const Purchases = ({ allNotes }) => {
                     No Date
                   </h2>
                   {groupedPurchases[yearKey].map((event) => {
-                    const dollarAmount = extractDollarAmount(event.description);
+                    const dollarAmount = extractDollarAmount(event.description, event.customFields);
                     return (
                       <div
                         key={event.note.id}
@@ -192,11 +229,9 @@ const Purchases = ({ allNotes }) => {
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            {dollarAmount > 0 && (
-                              <span className="text-lg font-semibold text-green-700">
-                                ${dollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            )}
+                            <span className={`text-lg font-semibold ${dollarAmount > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                              ${dollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
                             <h3 className="text-lg font-semibold text-gray-900 mt-2">
                               {event.description}
                             </h3>
@@ -222,7 +257,7 @@ const Purchases = ({ allNotes }) => {
                 {Object.entries(months).map(([monthNum, monthData]) => {
                   const events = monthData.events;
                   const monthTotal = events.reduce((total, event) => {
-                    return total + extractDollarAmount(event.description);
+                    return total + extractDollarAmount(event.description, event.customFields);
                   }, 0);
 
                   return (
@@ -240,7 +275,7 @@ const Purchases = ({ allNotes }) => {
                       
                       <div className="space-y-3 ml-4">
                         {events.map((event) => {
-                          const dollarAmount = extractDollarAmount(event.description);
+                          const dollarAmount = extractDollarAmount(event.description, event.customFields);
                           return (
                             <div
                               key={event.note.id}
@@ -254,11 +289,9 @@ const Purchases = ({ allNotes }) => {
                                         {getDateInDDMMYYYYFormatWithAgeInParentheses(event.dateTime)}
                                       </span>
                                     )}
-                                    {dollarAmount > 0 && (
-                                      <span className="text-lg font-semibold text-green-700">
-                                        ${dollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                      </span>
-                                    )}
+                                    <span className={`text-lg font-semibold ${dollarAmount > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                                      ${dollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
                                   </div>
                                   <h3 className="text-lg font-semibold text-gray-900">
                                     {event.description}

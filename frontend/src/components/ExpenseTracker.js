@@ -1884,7 +1884,7 @@ const ExpenseTracker = () => {
                         .map(expense => (
                           <div key={expense.id} className="flex justify-between">
                             <span className="text-gray-600 truncate">{expense.description}</span>
-                            <span className="font-medium ml-2">${Math.abs(expense.amount).toFixed(2)}</span>
+                            <span className="font-medium ml-2">{expense.amount > 0 ? '+' : ''}${Math.abs(expense.amount).toFixed(2)}</span>
                           </div>
                         ))}
                     </div>
@@ -2239,7 +2239,7 @@ const ExpenseTracker = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredExpenses.map((expense, index) => (
               <React.Fragment key={expense.id}>
-                <tr className="bg-white border-b hover:bg-gray-50" data-expense-id={expense.id}>
+                <tr className={`border-b hover:bg-gray-50 ${expense.amount > 0 ? 'bg-green-50' : 'bg-red-50'}`} data-expense-id={expense.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-1/12">
                     <input
                       type="checkbox"
@@ -2325,7 +2325,7 @@ const ExpenseTracker = () => {
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-1/12">
-                    ${Math.abs(expense.amount).toFixed(2)}
+                    {expense.amount > 0 ? '+' : ''}${Math.abs(expense.amount).toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center gap-2">

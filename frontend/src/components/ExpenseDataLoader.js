@@ -28,7 +28,7 @@ const ExpenseDataLoader = ({ onClose, noteId }) => {
         
         // Filter notes with meta::expense_source_type tag
         const sourceTypes = allNotes.filter(note => 
-          note.content.split('\n').some(line => line.trim().includes('meta::expense'))
+          note.content.split('\n').some(line => line.trim() === 'meta::expense_source_type')
         ).map(note => ({
           id: note.id,
           name: note.content.split('\n')[0]

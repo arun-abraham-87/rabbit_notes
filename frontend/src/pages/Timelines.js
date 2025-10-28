@@ -291,6 +291,35 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     }
   };
 
+  // Handle tracking a timeline
+  const handleToggleTracked = async (noteId) => {
+    try {
+      const note = notes.find(n => n.id === noteId);
+      if (!note) return;
+
+      const hasTracked = note.content.includes('meta::tracked');
+      let newContent;
+      
+      if (hasTracked) {
+        // Remove tracked tag
+        newContent = note.content.replace('\nmeta::tracked', '');
+      } else {
+        // Add tracked tag
+        newContent = note.content.trim() + '\nmeta::tracked';
+      }
+      
+      await updateNote(noteId, newContent);
+      
+      // Refresh the timeline notes by re-parsing all notes
+      const timelineNotes = notes
+        .filter(note => note.content && note.content.includes('meta::timeline'))
+        .map(note => parseTimelineData(note.content));
+      setTimelineNotes(timelineNotes);
+    } catch (error) {
+      console.error('Error toggling tracked status:', error);
+    }
+  };
+
   // Handle creating a new timeline
   const handleCreateTimeline = async () => {
     if (!newTimelineTitle.trim()) {
@@ -512,10 +541,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               e.stopPropagation();
                               setShowAddEventForm(note.id);
                             }}
-                            className="p-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors"
+                            className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
                             title="Add new event"
                           >
                             <PlusIcon className="h-5 w-5" />
+                            <span className="text-sm">Add Event</span>
                           </button>
                         )}
                         {!timelineData.isClosed && (
@@ -524,10 +554,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               e.stopPropagation();
                               handleCloseTimeline(note.id);
                             }}
-                            className="p-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors"
+                            className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
                             title="Close timeline"
                           >
                             <XCircleIcon className="h-5 w-5" />
+                            <span className="text-sm">Close</span>
                           </button>
                         )}
                         {timelineData.isClosed && (
@@ -536,21 +567,39 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               e.stopPropagation();
                               handleReopenTimeline(note.id);
                             }}
-                            className="p-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors"
+                            className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
                             title="Reopen timeline"
                           >
                             <ArrowPathIcon className="h-5 w-5" />
+                            <span className="text-sm">Reopen</span>
                           </button>
                         )}
+                        <label 
+                          className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors cursor-pointer flex items-center space-x-1.5"
+                          title={note.content.includes('meta::tracked') ? 'Untrack timeline' : 'Track timeline'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleTracked(note.id);
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={note.content.includes('meta::tracked')}
+                            onChange={() => {}} // Controlled by label click
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                          />
+                          <span className="text-sm">Track</span>
+                        </label>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleViewNote(note.id);
                           }}
-                          className="p-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors"
+                          className="px-3 py-2 bg-white bg-opacity-15 hover:bg-opacity-25 rounded-lg transition-colors flex items-center space-x-1.5"
                           title="View note in Notes page"
                         >
                           <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                          <span className="text-sm">View Note</span>
                         </button>
                       </div>
                     </div>

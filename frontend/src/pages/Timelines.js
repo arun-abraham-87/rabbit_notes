@@ -140,7 +140,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   };
 
   // Parse timeline data from note content
-  const parseTimelineData = (content) => {
+  const parseTimelineData = (content, allNotes = []) => {
     if (!content || typeof content !== 'string') {
       return {
         timeline: '',
@@ -234,6 +234,48 @@ const Timelines = ({ notes, updateNote, addNote }) => {
         }
       }
     });
+    
+    // Process linked events from meta::linked_from_events
+    const linkedFromLine = lines.find(line => line.trim().startsWith('meta::linked_from_events::'));
+    if (linkedFromLine && allNotes.length > 0) {
+      const linkedEventIds = linkedFromLine.replace('meta::linked_from_events::', '').split(',').map(id => id.trim()).filter(id => id);
+      
+      linkedEventIds.forEach(eventId => {
+        const linkedEventNote = allNotes.find(note => note.id === eventId);
+        if (linkedEventNote && linkedEventNote.content) {
+          const eventLines = linkedEventNote.content.split('\n');
+          
+          // Extract event description
+          const descriptionLine = eventLines.find(line => line.startsWith('event_description:'));
+          const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+          
+          // Extract event date
+          const dateLine = eventLines.find(line => line.startsWith('event_date:'));
+          const eventDate = dateLine ? dateLine.replace('event_date:', '').trim() : '';
+          
+          if (description && eventDate) {
+            // Parse the event date (ISO format)
+            const parsedEventDate = moment(eventDate);
+            
+            if (parsedEventDate.isValid()) {
+              // Extract dollar values from the event description
+              const dollarValues = extractDollarValues(description);
+              const eventDollarAmount = dollarValues.reduce((sum, value) => sum + value, 0);
+              
+              timelineData.events.push({
+                event: description,
+                date: parsedEventDate,
+                dateStr: parsedEventDate.format('DD/MM/YYYY'),
+                lineIndex: -1, // Virtual event from linked note
+                dollarAmount: eventDollarAmount,
+                isLinkedEvent: true,
+                linkedEventId: eventId
+              });
+            }
+          }
+        }
+      });
+    }
     
     // Calculate total dollar amount
     timelineData.totalDollarAmount = timelineData.events.reduce((sum, event) => sum + (event.dollarAmount || 0), 0);
@@ -417,7 +459,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       // Refresh the timeline notes by re-parsing all notes
       const timelineNotes = notes
         .filter(note => note.content && note.content.includes('meta::timeline'))
-        .map(note => parseTimelineData(note.content));
+        .map(note => parseTimelineData(note.content, notes));
       setTimelineNotes(timelineNotes);
     } catch (error) {
       console.error('Error closing timeline:', error);
@@ -437,7 +479,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       // Refresh the timeline notes by re-parsing all notes
       const timelineNotes = notes
         .filter(note => note.content && note.content.includes('meta::timeline'))
-        .map(note => parseTimelineData(note.content));
+        .map(note => parseTimelineData(note.content, notes));
       setTimelineNotes(timelineNotes);
     } catch (error) {
       console.error('Error reopening timeline:', error);
@@ -466,7 +508,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       // Refresh the timeline notes by re-parsing all notes
       const timelineNotes = notes
         .filter(note => note.content && note.content.includes('meta::timeline'))
-        .map(note => parseTimelineData(note.content));
+        .map(note => parseTimelineData(note.content, notes));
       setTimelineNotes(timelineNotes);
     } catch (error) {
       console.error('Error toggling tracked status:', error);
@@ -560,12 +602,12 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       // Safety check: ensure note has valid content
       if (!note || !note.content) return false;
       if (!searchQuery.trim()) return true;
-      const timelineData = parseTimelineData(note.content);
+      const timelineData = parseTimelineData(note.content, notes);
       return timelineData.timeline.toLowerCase().includes(searchQuery.toLowerCase());
     })
     .sort((a, b) => {
-      const aData = parseTimelineData(a.content);
-      const bData = parseTimelineData(b.content);
+      const aData = parseTimelineData(a.content, notes);
+      const bData = parseTimelineData(b.content, notes);
       
       if (!aData.timeline && !bData.timeline) return 0;
       if (!aData.timeline) return 1;
@@ -652,7 +694,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
             {(() => {
               const openTimelines = filteredAndSortedTimelineNotes.filter(note => {
                 if (!note || !note.content) return false;
-                const timelineData = parseTimelineData(note.content);
+                const timelineData = parseTimelineData(note.content, notes);
                 return !timelineData.isClosed;
               });
               
@@ -664,7 +706,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                     </h2>
                     {openTimelines.map((note) => {
               if (!note || !note.content) return null;
-              const timelineData = parseTimelineData(note.content);
+              const timelineData = parseTimelineData(note.content, notes);
               const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
               return (
@@ -1032,11 +1074,13 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       ? 'bg-green-600 border-green-600'
                                       : event.isDuration
                                         ? 'bg-orange-500 border-orange-500'
-                                        : event.isVirtual
-                                          ? 'bg-purple-500 border-purple-500'
-                                          : index === 0 
-                                            ? 'bg-green-500 border-green-500' 
-                                            : 'bg-blue-500 border-blue-500'
+                                        : event.isLinkedEvent
+                                          ? 'bg-indigo-500 border-indigo-500'
+                                          : event.isVirtual
+                                            ? 'bg-purple-500 border-purple-500'
+                                            : index === 0 
+                                              ? 'bg-green-500 border-green-500' 
+                                              : 'bg-blue-500 border-blue-500'
                                   }`}></div>
                                   {index < eventsWithDiffs.length - 1 && (
                                     <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
@@ -1055,33 +1099,42 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                         {event.date.format('DD/MMM/YYYY')}
                                       </span>
                                     )}
-                                    <h3 className={`text-lg font-semibold ${
-                                      event.isToday
-                                        ? 'text-yellow-900 font-bold'
-                                        : event.isTotal
-                                        ? 'text-green-700 font-bold'
-                                        : event.isDuration
-                                          ? 'text-orange-600 font-bold'
-                                          : event.isVirtual 
-                                            ? 'text-purple-600' 
-                                            : 'text-gray-900'
-                                    }`}>
-                                      {event.isTotal || event.isDuration ? (
-                                        event.event
-                                      ) : (
-                                        <span 
-                                          dangerouslySetInnerHTML={{
-                                            __html: highlightDollarValues(
-                                              event.event.charAt(0).toUpperCase() + event.event.slice(1)
-                                            )
-                                          }}
-                                        />
+                                    <div className="flex items-center gap-2">
+                                      <h3 className={`text-lg font-semibold ${
+                                        event.isToday
+                                          ? 'text-yellow-900 font-bold'
+                                          : event.isTotal
+                                          ? 'text-green-700 font-bold'
+                                          : event.isDuration
+                                            ? 'text-orange-600 font-bold'
+                                            : event.isLinkedEvent
+                                              ? 'text-indigo-600 font-semibold'
+                                              : event.isVirtual 
+                                                ? 'text-purple-600' 
+                                                : 'text-gray-900'
+                                      }`}>
+                                        {event.isTotal || event.isDuration ? (
+                                          event.event
+                                        ) : (
+                                          <span 
+                                            dangerouslySetInnerHTML={{
+                                              __html: highlightDollarValues(
+                                                event.event.charAt(0).toUpperCase() + event.event.slice(1)
+                                              )
+                                            }}
+                                          />
+                                        )}
+                                      </h3>
+                                      {event.isLinkedEvent && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                          Linked
+                                        </span>
                                       )}
-                                    </h3>
+                                    </div>
                                   </div>
                                   
                                   {/* Second line with age and time differences */}
-                                  {!event.isVirtual && !event.isTotal && !event.isDuration && (
+                                  {!event.isVirtual && !event.isTotal && !event.isDuration && !event.isLinkedEvent && (
                                     <div className="flex items-center space-x-2 mb-1">
                                       {event.date && (
                                         <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
@@ -1313,7 +1366,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
             {(() => {
               const closedTimelines = filteredAndSortedTimelineNotes.filter(note => {
                 if (!note || !note.content) return false;
-                const timelineData = parseTimelineData(note.content);
+                const timelineData = parseTimelineData(note.content, notes);
                 return timelineData.isClosed;
               });
               
@@ -1325,7 +1378,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                     </h2>
                     {closedTimelines.map((note) => {
                       if (!note || !note.content) return null;
-                      const timelineData = parseTimelineData(note.content);
+                      const timelineData = parseTimelineData(note.content, notes);
                       const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
                       return (
@@ -1500,11 +1553,13 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                   ? 'bg-green-600 border-green-600'
                                                   : event.isDuration
                                                     ? 'bg-orange-500 border-orange-500'
-                                                    : event.isVirtual
-                                                      ? 'bg-purple-500 border-purple-500'
-                                                      : index === 0 
-                                                        ? 'bg-green-500 border-green-500' 
-                                                        : 'bg-blue-500 border-blue-500'
+                                                    : event.isLinkedEvent
+                                                      ? 'bg-indigo-500 border-indigo-500'
+                                                      : event.isVirtual
+                                                        ? 'bg-purple-500 border-purple-500'
+                                                        : index === 0 
+                                                          ? 'bg-green-500 border-green-500' 
+                                                          : 'bg-blue-500 border-blue-500'
                                             }`}></div>
                                             {index < eventsWithDiffs.length - 1 && (
                                               <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
@@ -1523,33 +1578,42 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                   {event.date.format('DD/MMM/YYYY')}
                                                 </span>
                                               )}
-                                              <h3 className={`text-lg font-semibold ${
-                                                event.isToday
-                                                  ? 'text-yellow-900 font-bold'
-                                                  : event.isTotal
-                                                    ? 'text-green-700 font-bold'
-                                                    : event.isDuration
-                                                      ? 'text-orange-600 font-bold'
-                                                      : event.isVirtual 
-                                                        ? 'text-purple-600' 
-                                                        : 'text-gray-900'
-                                              }`}>
-                                                {event.isTotal || event.isDuration ? (
-                                                  event.event
-                                                ) : (
-                                                  <span 
-                                                    dangerouslySetInnerHTML={{
-                                                      __html: highlightDollarValues(
-                                                        event.event.charAt(0).toUpperCase() + event.event.slice(1)
-                                                      )
-                                                    }}
-                                                  />
+                                              <div className="flex items-center gap-2">
+                                                <h3 className={`text-lg font-semibold ${
+                                                  event.isToday
+                                                    ? 'text-yellow-900 font-bold'
+                                                    : event.isTotal
+                                                      ? 'text-green-700 font-bold'
+                                                      : event.isDuration
+                                                        ? 'text-orange-600 font-bold'
+                                                        : event.isLinkedEvent
+                                                          ? 'text-indigo-600 font-semibold'
+                                                          : event.isVirtual 
+                                                            ? 'text-purple-600' 
+                                                            : 'text-gray-900'
+                                                }`}>
+                                                  {event.isTotal || event.isDuration ? (
+                                                    event.event
+                                                  ) : (
+                                                    <span 
+                                                      dangerouslySetInnerHTML={{
+                                                        __html: highlightDollarValues(
+                                                          event.event.charAt(0).toUpperCase() + event.event.slice(1)
+                                                        )
+                                                      }}
+                                                    />
+                                                  )}
+                                                </h3>
+                                                {event.isLinkedEvent && (
+                                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                                    Linked
+                                                  </span>
                                                 )}
-                                              </h3>
+                                              </div>
                                             </div>
                                             
                                             {/* Second line with age and time differences for closed timelines */}
-                                            {!event.isVirtual && !event.isTotal && !event.isDuration && (
+                                            {!event.isVirtual && !event.isTotal && !event.isDuration && !event.isLinkedEvent && (
                                               <div className="flex items-center space-x-2 mb-1">
                                                 {event.date && (
                                                   <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">

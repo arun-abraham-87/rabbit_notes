@@ -6,11 +6,15 @@ import {
   EyeSlashIcon,
   FlagIcon,
   CodeBracketIcon,
-  XMarkIcon
+  XMarkIcon,
+  LinkIcon
 } from '@heroicons/react/24/solid';
+import TimelineLinkModal from './TimelineLinkModal';
 
-const EventsByAgeView = ({ events, onEventUpdated, onDelete }) => {
+const EventsByAgeView = ({ events, onEventUpdated, onDelete, notes }) => {
   const [rawNote, setRawNote] = useState(null);
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [selectedEventForTimeline, setSelectedEventForTimeline] = useState(null);
 
   // Function to calculate age in years, months, and days
   const calculateAge = (date) => {
@@ -109,6 +113,16 @@ const EventsByAgeView = ({ events, onEventUpdated, onDelete }) => {
       : event.content.trim() + '\nmeta::event_hidden';
     
     await onEventUpdated(event.id, updatedContent);
+  };
+
+  const handleOpenTimelineModal = (event) => {
+    setSelectedEventForTimeline(event);
+    setShowTimelineModal(true);
+  };
+
+  const handleCloseTimelineModal = () => {
+    setShowTimelineModal(false);
+    setSelectedEventForTimeline(null);
   };
 
   return (
@@ -226,6 +240,13 @@ const EventsByAgeView = ({ events, onEventUpdated, onDelete }) => {
                   >
                     <CodeBracketIcon className="h-5 w-5" />
                   </button>
+                  <button
+                    onClick={() => handleOpenTimelineModal(event)}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Link to timeline"
+                  >
+                    <LinkIcon className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -252,6 +273,13 @@ const EventsByAgeView = ({ events, onEventUpdated, onDelete }) => {
           </div>
         </div>
       )}
+      {/* Timeline Link Modal */}
+      <TimelineLinkModal
+        isOpen={showTimelineModal}
+        onClose={handleCloseTimelineModal}
+        event={selectedEventForTimeline}
+        allNotes={notes}
+      />
     </div>
   );
 };

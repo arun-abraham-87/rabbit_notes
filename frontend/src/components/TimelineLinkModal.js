@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, LinkIcon } from '@heroicons/react/24/outline';
+import { updateNoteById } from '../utils/ApiUtils';
 
 const TimelineLinkModal = ({ isOpen, onClose, event, allNotes }) => {
   const [selectedTimeline, setSelectedTimeline] = useState('');
   const [timelines, setTimelines] = useState([]);
+  const [isLinking, setIsLinking] = useState(false);
 
   useEffect(() => {
     if (isOpen && allNotes) {
+      // Reset state when modal opens
+      setSelectedTimeline('');
+      setIsLinking(false);
+      
       // Filter notes that contain meta::timeline tag
       const timelineNotes = allNotes.filter(note => 
         note.content && note.content.includes('meta::timeline')
@@ -29,17 +35,83 @@ const TimelineLinkModal = ({ isOpen, onClose, event, allNotes }) => {
     }
   }, [isOpen, allNotes]);
 
-  const handleLink = () => {
-    if (selectedTimeline) {
-      // TODO: Implement linking logic here
-      console.log('Linking event to timeline:', selectedTimeline);
-      console.log('Event:', event);
-      onClose();
+  const handleLink = async () => {
+    if (selectedTimeline && event && !isLinking) {
+      setIsLinking(true);
+      try {
+        // Find the timeline note
+        const timelineNote = allNotes.find(note => note.id === selectedTimeline);
+        if (!timelineNote) {
+          console.error('Timeline note not found');
+          return;
+        }
+
+        // 1. Add meta::linked_to_timeline::<timeline_note_id> to the event note
+        const eventNote = allNotes.find(note => note.id === event.id);
+        if (!eventNote) {
+          console.error('Event note not found');
+          return;
+        }
+
+        // Check if already linked to avoid duplicates
+        const existingEventLink = `meta::linked_to_timeline::${selectedTimeline}`;
+        if (eventNote.content.includes(existingEventLink)) {
+          console.log('Event already linked to this timeline');
+          onClose();
+          return;
+        }
+
+        // Add the link tag to event note
+        const updatedEventContent = eventNote.content.trim() + '\n' + existingEventLink;
+        await updateNoteById(event.id, updatedEventContent);
+
+        // 2. Add meta::linked_from_events::<note_id> to the timeline note
+        const existingTimelineLink = `meta::linked_from_events::${event.id}`;
+        let updatedTimelineContent;
+        
+        if (timelineNote.content.includes('meta::linked_from_events::')) {
+          // If there are already linked events, append to the existing line
+          const lines = timelineNote.content.split('\n');
+          const linkedFromLineIndex = lines.findIndex(line => line.startsWith('meta::linked_from_events::'));
+          
+          if (linkedFromLineIndex !== -1) {
+            const existingLinkedEvents = lines[linkedFromLineIndex].replace('meta::linked_from_events::', '');
+            const eventIds = existingLinkedEvents.split(',').map(id => id.trim()).filter(id => id);
+            
+            // Check if this event is already linked
+            if (!eventIds.includes(event.id)) {
+              eventIds.push(event.id);
+              lines[linkedFromLineIndex] = `meta::linked_from_events::${eventIds.join(',')}`;
+              updatedTimelineContent = lines.join('\n');
+            } else {
+              console.log('Event already linked to timeline');
+              onClose();
+              return;
+            }
+          } else {
+            updatedTimelineContent = timelineNote.content.trim() + '\n' + existingTimelineLink;
+          }
+        } else {
+          // No existing linked events, add new line
+          updatedTimelineContent = timelineNote.content.trim() + '\n' + existingTimelineLink;
+        }
+
+        await updateNoteById(selectedTimeline, updatedTimelineContent);
+
+        console.log('Successfully linked event to timeline');
+        onClose();
+      } catch (error) {
+        console.error('Error linking event to timeline:', error);
+        alert('Failed to link event to timeline. Please try again.');
+      } finally {
+        setIsLinking(false);
+      }
     }
   };
 
   const handleCancel = () => {
     setSelectedTimeline('');
+    setIsLinking(false);
     onClose();
   };
 
@@ -107,11 +179,11 @@ const TimelineLinkModal = ({ isOpen, onClose, event, allNotes }) => {
           </button>
           <button
             onClick={handleLink}
-            disabled={!selectedTimeline}
+            disabled={!selectedTimeline || isLinking}
             className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <LinkIcon className="h-4 w-4" />
-            Link
+            {isLinking ? 'Linking...' : 'Link'}
           </button>
         </div>
       </div>

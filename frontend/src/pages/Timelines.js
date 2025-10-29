@@ -353,6 +353,52 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     return duration || '0 days';
   };
 
+  // Calculate age from event date to today
+  const calculateAge = (eventDate) => {
+    if (!eventDate) return null;
+    
+    const today = moment();
+    const isFuture = eventDate.isAfter(today);
+    
+    if (isFuture) {
+      // For future events, show "in X time"
+      const years = eventDate.diff(today, 'years');
+      const months = eventDate.diff(today.clone().add(years, 'years'), 'months');
+      const days = eventDate.diff(today.clone().add(years, 'years').add(months, 'months'), 'days');
+      
+      let age = '';
+      if (years > 0) age += `${years} year${years !== 1 ? 's' : ''}`;
+      if (months > 0) {
+        if (age) age += ', ';
+        age += `${months} month${months !== 1 ? 's' : ''}`;
+      }
+      if (days > 0) {
+        if (age) age += ', ';
+        age += `${days} day${days !== 1 ? 's' : ''}`;
+      }
+      
+      return `in ${age || '0 days'}`;
+    } else {
+      // For past events, show age
+      const years = today.diff(eventDate, 'years');
+      const months = today.diff(eventDate.clone().add(years, 'years'), 'months');
+      const days = today.diff(eventDate.clone().add(years, 'years').add(months, 'months'), 'days');
+      
+      let age = '';
+      if (years > 0) age += `${years} year${years !== 1 ? 's' : ''}`;
+      if (months > 0) {
+        if (age) age += ', ';
+        age += `${months} month${months !== 1 ? 's' : ''}`;
+      }
+      if (days > 0) {
+        if (age) age += ', ';
+        age += `${days} day${days !== 1 ? 's' : ''}`;
+      }
+      
+      return `age: ${age || '0 days'}`;
+    }
+  };
+
   // Handle navigation to notes page filtered by note ID
   const handleViewNote = (noteId) => {
     navigate(`/notes?note=${noteId}`);
@@ -1009,6 +1055,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                         {event.date.format('DD/MMM/YYYY')}
                                       </span>
                                     )}
+                                    {event.date && !event.isVirtual && !event.isTotal && !event.isDuration && (
+                                      <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
+                                        {calculateAge(event.date)}
+                                      </span>
+                                    )}
                                     <h3 className={`text-lg font-semibold ${
                                       event.isToday
                                         ? 'text-yellow-900 font-bold'
@@ -1525,6 +1576,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                     : 'text-gray-500 bg-gray-100'
                                                 }`}>
                                                   {event.date.format('DD/MMM/YYYY')}
+                                                </span>
+                                              )}
+                                              {event.date && !event.isVirtual && !event.isTotal && !event.isDuration && (
+                                                <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
+                                                  {calculateAge(event.date)}
                                                 </span>
                                               )}
                                               <h3 className={`text-lg font-semibold ${

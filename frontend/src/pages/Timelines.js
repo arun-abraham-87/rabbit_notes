@@ -15,6 +15,33 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   const [collapsedTimelines, setCollapsedTimelines] = useState(new Set());
   const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
 
+  // localStorage key for timeline collapse states
+  const TIMELINE_COLLAPSE_STORAGE_KEY = 'timeline_collapse_states';
+
+  // Load timeline collapse states from localStorage
+  const loadCollapseStates = () => {
+    try {
+      const savedStates = localStorage.getItem(TIMELINE_COLLAPSE_STORAGE_KEY);
+      if (savedStates) {
+        const parsedStates = JSON.parse(savedStates);
+        return new Set(parsedStates);
+      }
+    } catch (error) {
+      console.error('Error loading timeline collapse states:', error);
+    }
+    return new Set();
+  };
+
+  // Save timeline collapse states to localStorage
+  const saveCollapseStates = (collapsedSet) => {
+    try {
+      const statesArray = Array.from(collapsedSet);
+      localStorage.setItem(TIMELINE_COLLAPSE_STORAGE_KEY, JSON.stringify(statesArray));
+    } catch (error) {
+      console.error('Error saving timeline collapse states:', error);
+    }
+  };
+
   useEffect(() => {
     if (notes) {
       // Filter notes that contain meta::timeline tag
@@ -23,9 +50,23 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       );
       setTimelineNotes(filteredNotes);
       
-      // Set all timelines as collapsed by default
-      const noteIds = filteredNotes.map(note => note.id);
-      setCollapsedTimelines(new Set(noteIds));
+      // Load saved collapse states from localStorage
+      const savedStates = loadCollapseStates();
+      const currentNoteIds = filteredNotes.map(note => note.id);
+      
+      // Merge saved states with current timelines
+      // Keep saved states for existing timelines, default new timelines to expanded (not in collapsed set)
+      const mergedStates = new Set();
+      
+      // Add saved states for timelines that still exist
+      savedStates.forEach(noteId => {
+        if (currentNoteIds.includes(noteId)) {
+          mergedStates.add(noteId);
+        }
+      });
+      
+      // New timelines are expanded by default (not added to collapsed set)
+      setCollapsedTimelines(mergedStates);
     }
   }, [notes]);
 
@@ -418,6 +459,10 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       } else {
         newSet.add(noteId);
       }
+      
+      // Save the updated state to localStorage
+      saveCollapseStates(newSet);
+      
       return newSet;
     });
   };

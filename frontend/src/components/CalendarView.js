@@ -15,11 +15,13 @@ import {
   CodeBracketIcon,
   FunnelIcon,
   ClockIcon,
-  PlusIcon
+  PlusIcon,
+  LinkIcon
 } from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
 import EventsByAgeView from './EventsByAgeView';
+import TimelineLinkModal from './TimelineLinkModal';
 
 const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAddEvent, onDelete, selectedEventIndex, onEventSelect }) => {
   const [showPastEvents, setShowPastEvents] = useState(false);
@@ -29,6 +31,8 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'age'
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [selectedEventForTimeline, setSelectedEventForTimeline] = useState(null);
   const selectedEventRef = useRef(null);
 
   // Function to calculate age in years, months, and days
@@ -230,6 +234,16 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
       : event.content.trim() + '\nmeta::event_hidden';
     
     await onEventUpdated(event.id, updatedContent);
+  };
+
+  const handleOpenTimelineModal = (event) => {
+    setSelectedEventForTimeline(event);
+    setShowTimelineModal(true);
+  };
+
+  const handleCloseTimelineModal = () => {
+    setShowTimelineModal(false);
+    setSelectedEventForTimeline(null);
   };
 
   // Auto-scroll to selected event
@@ -563,6 +577,13 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                       >
                                         <PencilIcon className="h-5 w-5" />
                                       </button>
+                                      <button
+                                        onClick={() => handleOpenTimelineModal(occurrence.event)}
+                                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        title="Link to timeline"
+                                      >
+                                        <LinkIcon className="h-5 w-5" />
+                                      </button>
                                     </div>
                                   </div>
                                 </div>
@@ -659,6 +680,13 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
           </div>
         </div>
       )}
+      {/* Timeline Link Modal */}
+      <TimelineLinkModal
+        isOpen={showTimelineModal}
+        onClose={handleCloseTimelineModal}
+        event={selectedEventForTimeline}
+        allNotes={notes}
+      />
     </div>
   );
 };

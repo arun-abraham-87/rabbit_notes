@@ -833,10 +833,698 @@ const Timelines = ({ notes, updateNote, addNote }) => {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Flagged Timelines */}
+            {(() => {
+              const flaggedTimelines = filteredAndSortedTimelineNotes.filter(note => {
+                if (!note || !note.content) return false;
+                return note.content.includes('meta::flagged_timeline');
+              });
+              
+              if (flaggedTimelines.length > 0) {
+                return (
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-semibold text-red-700">
+                      🚩 Flagged Timelines <span className="font-normal text-gray-500">({flaggedTimelines.length})</span>
+                    </h2>
+                    {flaggedTimelines.map((note) => {
+                      if (!note || !note.content) return null;
+                      const timelineData = parseTimelineData(note.content, notes);
+                      const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
+
+                      return (
+                        <div key={note.id} className="bg-white rounded-lg shadow-sm border-2 border-red-300 overflow-hidden">
+                          {/* Timeline Header */}
+                          <div 
+                            className="bg-red-50 px-6 py-4 cursor-pointer hover:bg-red-100 border-b border-red-200 transition-colors"
+                            onClick={() => toggleTimelineCollapse(note.id)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className="text-red-600">
+                                  {collapsedTimelines.has(note.id) ? (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  ) : (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  )}
+                                </div>
+                                <h2 className="text-xl font-semibold text-gray-900">
+                                  {timelineData.timeline || 'Untitled Timeline'}
+                                  {(() => {
+                                    const eventsWithDates = timelineData.events
+                                      .filter(event => event.date)
+                                      .sort((a, b) => a.date.diff(b.date));
+                                    
+                                    if (eventsWithDates.length > 0) {
+                                      const startDate = eventsWithDates[0].date;
+                                      const lastEvent = eventsWithDates[eventsWithDates.length - 1];
+                                      const eventCount = timelineData.events.length;
+                                      
+                                      // Calculate duration for open timelines
+                                      let durationText = '';
+                                      if (lastEvent.date) {
+                                        const durationDays = lastEvent.date.diff(startDate, 'days');
+                                        const durationText_formatted = (() => {
+                                          if (durationDays > 365) {
+                                            const years = Math.floor(durationDays / 365);
+                                            const remainingDays = durationDays % 365;
+                                            const months = Math.floor(remainingDays / 30);
+                                            const finalDays = remainingDays % 30;
+                                            
+                                            let result = '';
+                                            if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                            if (months > 0) {
+                                              if (result) result += ', ';
+                                              result += `${months} month${months !== 1 ? 's' : ''}`;
+                                            }
+                                            if (finalDays > 0) {
+                                              if (result) result += ', ';
+                                              result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                            }
+                                            return result;
+                                          } else if (durationDays > 30) {
+                                            const months = Math.floor(durationDays / 30);
+                                            const remainingDays = durationDays % 30;
+                                            
+                                            let result = '';
+                                            if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                            if (remainingDays > 0) {
+                                              if (result) result += ', ';
+                                              result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                            }
+                                            return result;
+                                          } else {
+                                            return `${durationDays} day${durationDays !== 1 ? 's' : ''}`;
+                                          }
+                                        })();
+                                        durationText = durationText_formatted;
+                                      }
+                                      
+                                      // Show total amount if it exists
+                                      let totalAmountText = '';
+                                      if (timelineData.totalDollarAmount && timelineData.totalDollarAmount > 0) {
+                                        totalAmountText = `[$${timelineData.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}]`;
+                                      }
+                                      
+                                      return (
+                                        <span className="text-base font-normal text-gray-600 ml-2">
+                                          ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events) {durationText ? `(${durationText})` : ''} {totalAmountText && <span className="text-green-600 font-semibold">{totalAmountText}</span>}
+                                        </span>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                </h2>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {!timelineData.isClosed && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // Open timeline if it's collapsed
+                                      if (collapsedTimelines.has(note.id)) {
+                                        toggleTimelineCollapse(note.id);
+                                      }
+                                      setShowAddEventForm(note.id);
+                                    }}
+                                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors flex items-center space-x-1.5 border border-blue-200"
+                                    title="Add new event"
+                                  >
+                                    <PlusIcon className="h-4 w-4" />
+                                    <span className="text-sm font-medium">Add Event</span>
+                                  </button>
+                                )}
+                                {!timelineData.isClosed && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCloseTimeline(note.id);
+                                    }}
+                                    className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md transition-colors flex items-center space-x-1.5 border border-red-200"
+                                    title="Close timeline"
+                                  >
+                                    <XCircleIcon className="h-4 w-4" />
+                                    <span className="text-sm font-medium">Close</span>
+                                  </button>
+                                )}
+                                {timelineData.isClosed && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleReopenTimeline(note.id);
+                                    }}
+                                    className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors flex items-center space-x-1.5 border border-green-200"
+                                    title="Reopen timeline"
+                                  >
+                                    <ArrowPathIcon className="h-4 w-4" />
+                                    <span className="text-sm font-medium">Reopen</span>
+                                  </button>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleFlagged(note.id);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-md transition-colors flex items-center space-x-1.5 border ${
+                                    note.content.includes('meta::flagged_timeline')
+                                      ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+                                      : 'bg-gray-50 hover:bg-gray-100 text-gray-500 border-gray-300'
+                                  }`}
+                                  title={note.content.includes('meta::flagged_timeline') ? 'Unflag timeline' : 'Flag timeline (needs attention)'}
+                                >
+                                  <FlagIcon className="h-4 w-4" />
+                                  <span className="text-sm font-medium">Flag</span>
+                                </button>
+                                <label 
+                                  className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors cursor-pointer flex items-center space-x-1.5 border border-gray-300"
+                                  title={note.content.includes('meta::tracked') ? 'Untrack timeline' : 'Track timeline'}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleTracked(note.id);
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={note.content.includes('meta::tracked')}
+                                    onChange={() => {}}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                                  />
+                                  <span className="text-sm font-medium">Track</span>
+                                </label>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewNote(note.id);
+                                  }}
+                                  className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors flex items-center space-x-1.5 border border-gray-300"
+                                  title="View note in Notes page"
+                                >
+                                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                                  <span className="text-sm font-medium">View</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Timeline Events */}
+                          {!collapsedTimelines.has(note.id) && (
+                            <div className="p-6">
+                              {/* Add Event Form */}
+                              {showAddEventForm === note.id && (
+                                <div className="mb-6 pb-6 border-b border-gray-200">
+                                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <h4 className="text-sm font-medium text-gray-700 mb-3">Add New Event</h4>
+                                    <div className="space-y-3">
+                                      <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                          Event Description
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={newEventText}
+                                          onChange={(e) => setNewEventText(e.target.value)}
+                                          placeholder="e.g., Project milestone reached"
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                          Date
+                                        </label>
+                                        <input
+                                          type="date"
+                                          value={newEventDate}
+                                          onChange={(e) => setNewEventDate(e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <button
+                                          onClick={() => handleAddEvent(note.id)}
+                                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                        >
+                                          Add Event
+                                        </button>
+                                        <button
+                                          onClick={() => setShowAddEventForm(null)}
+                                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {eventsWithDiffs.length === 0 ? (
+                                <div className="text-gray-500 italic">No events found in this timeline</div>
+                              ) : (
+                                <div className="space-y-4">
+                                  {/* Preview marker at the beginning if new event should be first */}
+                                  {(() => {
+                                    if (!newEventDate || showAddEventForm !== note.id || eventsWithDiffs.length === 0) {
+                                      return null;
+                                    }
+                                    
+                                    const newEventMoment = moment(newEventDate);
+                                    const firstEvent = eventsWithDiffs[0];
+                                    
+                                    // Show preview at start if new event is before first event
+                                    const shouldShowAtStart = firstEvent && firstEvent.date && newEventMoment.isBefore(firstEvent.date);
+                                    
+                                    if (!shouldShowAtStart) {
+                                      return null;
+                                    }
+                                    
+                                    const showStartYearHeader = firstEvent.date && firstEvent.date.year() !== newEventMoment.year();
+                                    
+                                    return (
+                                      <>
+                                        {showStartYearHeader && (
+                                          <div className="flex items-center space-x-4 mb-4">
+                                            <div className="w-4 h-4"></div>
+                                            <div className="flex-1">
+                                              <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
+                                                {newEventMoment.year()}
+                                              </h2>
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed mb-4">
+                                          <div className="flex items-start space-x-4">
+                                            <div className="flex flex-col items-center">
+                                              <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
+                                              <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
+                                            </div>
+                                            <div className="flex-1">
+                                              <div className="flex items-center space-x-3 mb-1">
+                                                <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
+                                                  {newEventMoment.format('DD/MMM/YYYY')}
+                                                </span>
+                                                <h3 className="text-lg font-semibold text-gray-900 italic">
+                                                  {newEventText || 'New Event Preview'}
+                                                </h3>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
+                                  
+                                  {eventsWithDiffs.map((event, index) => {
+                                    const currentYear = event.date ? event.date.year() : null;
+                                    const previousYear = index > 0 && eventsWithDiffs[index - 1].date 
+                                      ? eventsWithDiffs[index - 1].date.year() 
+                                      : null;
+                                    const showYearHeader = currentYear && currentYear !== previousYear;
+                                    
+                                    // Check if we should insert preview marker here
+                                    const shouldShowPreview = showAddEventForm === note.id && newEventDate;
+                                    let showPreviewBefore = false;
+                                    
+                                    if (shouldShowPreview && event.date) {
+                                      const newEventMoment = moment(newEventDate);
+                                      const isAfterThis = newEventMoment.isAfter(event.date);
+                                      const isBeforeNext = index === eventsWithDiffs.length - 1 || 
+                                        !eventsWithDiffs[index + 1].date || 
+                                        newEventMoment.isBefore(eventsWithDiffs[index + 1].date);
+                                      
+                                      showPreviewBefore = isAfterThis && isBeforeNext;
+                                    }
+
+                                    const isSelected = isEventSelected(note.id, index);
+                                    const isHighlighted = isSelected && selectedEvents[note.id] && selectedEvents[note.id].length === 2;
+                                    
+                                    return (
+                                      <React.Fragment key={index}>
+                                        {/* Preview Marker - show after this event if new event should be inserted here */}
+                                        {showPreviewBefore && (() => {
+                                          const newEventMoment = moment(newEventDate);
+                                          
+                                          // Check if we need a year header for the new event
+                                          const showPreviewYearHeader = currentYear !== newEventMoment.year();
+                                          
+                                          return (
+                                            <>
+                                              {showPreviewYearHeader && (
+                                                <div className="flex items-center space-x-4 mb-4">
+                                                  <div className="w-4 h-4"></div>
+                                                  <div className="flex-1">
+                                                    <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
+                                                      {newEventMoment.year()}
+                                                    </h2>
+                                                  </div>
+                                                </div>
+                                              )}
+                                              
+                                              <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed mb-4">
+                                                <div className="flex items-start space-x-4">
+                                                  <div className="flex flex-col items-center">
+                                                    <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
+                                                    <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
+                                                  </div>
+                                                  <div className="flex-1">
+                                                    <div className="flex items-center space-x-3 mb-1">
+                                                      <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
+                                                        {newEventMoment.format('DD/MMM/YYYY')}
+                                                      </span>
+                                                      <h3 className="text-lg font-semibold text-gray-900 italic">
+                                                        {newEventText || 'New Event Preview'}
+                                                      </h3>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </>
+                                          );
+                                        })()}
+                                        
+                                        {/* Year Header */}
+                                        {showYearHeader && (
+                                          <div className="flex items-center space-x-4 mb-4">
+                                            <div className="w-4 h-4"></div> {/* Spacer to align with events */}
+                                            <div className="flex-1">
+                                              <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2">
+                                                {currentYear}
+                                              </h2>
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Event */}
+                                        <div 
+                                          className={`flex items-start space-x-4 ${isSelected ? 'bg-blue-100 rounded-lg p-2 -ml-2' : ''} cursor-pointer`}
+                                          onClick={() => handleEventClick(note.id, index)}
+                                        >
+                                          {/* Timeline connector */}
+                                          <div className="flex flex-col items-center">
+                                            <div className={`w-4 h-4 rounded-full border-2 ${
+                                              event.isToday
+                                                ? 'bg-yellow-500 border-yellow-600 animate-pulse'
+                                                : event.isTotal
+                                                ? 'bg-green-600 border-green-600'
+                                                : event.isDuration
+                                                  ? 'bg-orange-500 border-orange-500'
+                                                  : event.isLinkedEvent
+                                                    ? 'bg-indigo-500 border-indigo-500'
+                                                    : event.isVirtual
+                                                      ? 'bg-purple-500 border-purple-500'
+                                                      : index === 0 
+                                                        ? 'bg-green-500 border-green-500' 
+                                                        : 'bg-blue-500 border-blue-500'
+                                            }`}></div>
+                                            {index < eventsWithDiffs.length - 1 && (
+                                              <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
+                                            )}
+                                          </div>
+
+                                          {/* Event content */}
+                                          <div className={`flex-1 min-w-0 ${event.isToday ? 'bg-yellow-50 px-4 py-3 rounded-lg border-2 border-yellow-300' : ''}`}>
+                                            <div className="flex items-center space-x-3 mb-1">
+                                              {event.date && (
+                                                <span className={`text-sm px-2 py-1 rounded font-medium ${
+                                                  event.isToday 
+                                                    ? 'text-yellow-800 bg-yellow-200' 
+                                                    : 'text-gray-500 bg-gray-100'
+                                                }`}>
+                                                  {event.date.format('DD/MMM/YYYY')}
+                                                </span>
+                                              )}
+                                              <div className="flex items-center gap-2">
+                                                <h3 className={`text-lg font-semibold ${
+                                                  event.isToday
+                                                    ? 'text-yellow-900 font-bold'
+                                                    : event.isTotal
+                                                    ? 'text-green-700 font-bold'
+                                                    : event.isDuration
+                                                      ? 'text-orange-600 font-bold'
+                                                      : event.isLinkedEvent
+                                                        ? 'text-indigo-600 font-semibold'
+                                                        : event.isVirtual 
+                                                          ? 'text-purple-600' 
+                                                          : 'text-gray-900'
+                                                }`}>
+                                                  {event.isTotal || event.isDuration ? (
+                                                    event.event
+                                                  ) : (
+                                                    <span 
+                                                      dangerouslySetInnerHTML={{
+                                                        __html: highlightDollarValues(
+                                                          event.event.charAt(0).toUpperCase() + event.event.slice(1)
+                                                        )
+                                                      }}
+                                                    />
+                                                  )}
+                                                </h3>
+                                                {event.isLinkedEvent && (
+                                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                                    Linked
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            
+                                            {/* Second line with age and time differences */}
+                                            {!event.isVirtual && !event.isTotal && !event.isDuration && !event.isLinkedEvent && (
+                                              <div className="flex items-center space-x-2 mb-1">
+                                                {event.date && (
+                                                  <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
+                                                    {calculateAge(event.date)}
+                                                  </span>
+                                                )}
+                                                {(() => {
+                                                  const today = moment();
+                                                  const isFuture = event.date && event.date.isAfter(today);
+                                                  
+                                                  if (isFuture && event.date) {
+                                                    const daysToEvent = event.date.diff(today, 'days');
+                                                    const days = daysToEvent;
+                                                    return (
+                                                      <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
+                                                        {(() => {
+                                                          if (days > 365) {
+                                                            const years = Math.floor(days / 365);
+                                                            const remainingDays = days % 365;
+                                                            const months = Math.floor(remainingDays / 30);
+                                                            const finalDays = remainingDays % 30;
+                                                            
+                                                            let result = '';
+                                                            if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                                            if (months > 0) {
+                                                              if (result) result += ', ';
+                                                              result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                            }
+                                                            if (finalDays > 0) {
+                                                              if (result) result += ', ';
+                                                              result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                                            }
+                                                            return result + ' to event';
+                                                          } else if (days > 30) {
+                                                            const months = Math.floor(days / 30);
+                                                            const remainingDays = days % 30;
+                                                            
+                                                            let result = '';
+                                                            if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                            if (remainingDays > 0) {
+                                                              if (result) result += ', ';
+                                                              result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                                            }
+                                                            return result + ' to event';
+                                                          } else {
+                                                            return `${days} day${days !== 1 ? 's' : ''} to event`;
+                                                          }
+                                                        })()}
+                                                      </span>
+                                                    );
+                                                  }
+                                                  return null;
+                                                })()}
+                                                {event.daysFromPrevious !== undefined && event.date && !event.date.isAfter(moment()) && (
+                                                  <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
+                                                    {(() => {
+                                                      const days = event.daysFromPrevious;
+                                                      if (days > 365) {
+                                                        const years = Math.floor(days / 365);
+                                                        const remainingDays = days % 365;
+                                                        const months = Math.floor(remainingDays / 30);
+                                                        const finalDays = remainingDays % 30;
+                                                        
+                                                        let result = '';
+                                                        if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                                        if (months > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                        }
+                                                        if (finalDays > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                                        }
+                                                        return result + ' since last event';
+                                                      } else if (days > 30) {
+                                                        const months = Math.floor(days / 30);
+                                                        const remainingDays = days % 30;
+                                                        
+                                                        let result = '';
+                                                        if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                        if (remainingDays > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                                        }
+                                                        return result + ' since last event';
+                                                      } else {
+                                                        return `${days} days since last event`;
+                                                      }
+                                                    })()}
+                                                  </span>
+                                                )}
+                                                {event.daysFromStart !== undefined && event.date && !event.date.isAfter(moment()) && (
+                                                  <span className="text-xs px-2 py-1 rounded font-medium text-green-600 bg-green-100">
+                                                    {(() => {
+                                                      const days = event.daysFromStart;
+                                                      if (days > 365) {
+                                                        const years = Math.floor(days / 365);
+                                                        const remainingDays = days % 365;
+                                                        const months = Math.floor(remainingDays / 30);
+                                                        const finalDays = remainingDays % 30;
+                                                        
+                                                        let result = '';
+                                                        if (years > 0) result += `${years} year${years !== 1 ? 's' : ''}`;
+                                                        if (months > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                        }
+                                                        if (finalDays > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${finalDays} day${finalDays !== 1 ? 's' : ''}`;
+                                                        }
+                                                        return result + ' since start';
+                                                      } else if (days > 30) {
+                                                        const months = Math.floor(days / 30);
+                                                        const remainingDays = days % 30;
+                                                        
+                                                        let result = '';
+                                                        if (months > 0) result += `${months} month${months !== 1 ? 's' : ''}`;
+                                                        if (remainingDays > 0) {
+                                                          if (result) result += ', ';
+                                                          result += `${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+                                                        }
+                                                        return result + ' since start';
+                                                      } else {
+                                                        return `${days} days since start`;
+                                                      }
+                                                    })()}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            )}
+                                            
+                                          </div>
+                                        </div>
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                  
+                                  {/* Date Difference Display - Show when 2 events are selected */}
+                                  {selectedEvents[note.id] && selectedEvents[note.id].length === 2 && (() => {
+                                    const [firstIndex, secondIndex] = selectedEvents[note.id];
+                                    const firstEvent = eventsWithDiffs[firstIndex];
+                                    const secondEvent = eventsWithDiffs[secondIndex];
+                                    
+                                    if (firstEvent && secondEvent && firstEvent.date && secondEvent.date) {
+                                      const diff = calculateDateDifference(firstEvent.date, secondEvent.date);
+                                      return (
+                                        <div className="mt-4 p-4 bg-purple-100 border-2 border-purple-500 rounded-lg">
+                                          <div className="text-center">
+                                            <div className="text-sm text-purple-700 font-medium mb-2">Selected Events Difference</div>
+                                            <div className="text-2xl font-bold text-purple-900">
+                                              {diff}
+                                            </div>
+                                            <div className="text-xs text-purple-600 mt-1">
+                                              Between: {firstEvent.event} and {secondEvent.event}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                  
+                                  {/* Preview at end - if new event should be after last event */}
+                                  {(() => {
+                                    if (showAddEventForm !== note.id || !newEventDate || eventsWithDiffs.length === 0) {
+                                      return null;
+                                    }
+                                    
+                                    const newEventMoment = moment(newEventDate);
+                                    const lastEvent = eventsWithDiffs[eventsWithDiffs.length - 1];
+                                    const shouldShowAtEnd = lastEvent && 
+                                      lastEvent.date && 
+                                      newEventMoment.isAfter(lastEvent.date);
+                                    
+                                    if (!shouldShowAtEnd) {
+                                      return null;
+                                    }
+                                    
+                                    const showEndYearHeader = lastEvent.date && lastEvent.date.year() !== newEventMoment.year();
+                                    
+                                    return (
+                                      <>
+                                        {showEndYearHeader && (
+                                          <div className="flex items-center space-x-4 mb-4">
+                                            <div className="w-4 h-4"></div>
+                                            <div className="flex-1">
+                                              <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
+                                                {newEventMoment.year()}
+                                              </h2>
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed">
+                                          <div className="flex items-start space-x-4">
+                                            <div className="flex flex-col items-center">
+                                              <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
+                                            </div>
+                                            <div className="flex-1">
+                                              <div className="flex items-center space-x-3 mb-1">
+                                                <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
+                                                  {newEventMoment.format('DD/MMM/YYYY')}
+                                                </span>
+                                                <h3 className="text-lg font-semibold text-gray-900 italic">
+                                                  {newEventText || 'New Event Preview'}
+                                                </h3>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            
             {/* Open Timelines */}
             {(() => {
               const openTimelines = filteredAndSortedTimelineNotes.filter(note => {
                 if (!note || !note.content) return false;
+                // Exclude flagged timelines (they appear in Flagged section)
+                if (note.content.includes('meta::flagged_timeline')) return false;
                 const timelineData = parseTimelineData(note.content, notes);
                 return !timelineData.isClosed;
               });
@@ -1524,6 +2212,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
             {(() => {
               const closedTimelines = filteredAndSortedTimelineNotes.filter(note => {
                 if (!note || !note.content) return false;
+                // Exclude flagged timelines (they appear in Flagged section)
+                if (note.content.includes('meta::flagged_timeline')) return false;
                 const timelineData = parseTimelineData(note.content, notes);
                 return timelineData.isClosed;
               });

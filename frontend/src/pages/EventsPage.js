@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon, EyeIcon, EyeSlashIcon, ArrowsRightLeftIcon, FlagIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
@@ -257,6 +257,20 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [searchBuffer, setSearchBuffer] = useState('');
   const [selectedEventIndex, setSelectedEventIndex] = useState(-1);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [showPastEvents, setShowPastEvents] = useState(false);
+  const shouldClearFiltersRef = useRef(false);
+  
+  // Helper function to clear all filters
+  const clearAllFilters = () => {
+    setSelectedTags([]);
+    setSelectedMonth('');
+    setSelectedDay('');
+    setSelectedYear('');
+    setShowOnlyDeadlines(false);
+    setShowTodaysEventsOnly(false);
+    setExcludePurchases(false);
+    setShowPastEvents(true);
+  };
   
   // Add keyboard navigation for 't' key to show today's events
   useEffect(() => {
@@ -866,12 +880,36 @@ event_tags:${expense.tag.join(',')}`;
                 type="text"
                 placeholder="Search events..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => {
+                  // When user focuses on search box with existing text, mark that filters should be cleared if they start typing
+                  // This handles the case when search is already active and user wants to start new search
+                  if (searchQuery.trim() !== '') {
+                    shouldClearFiltersRef.current = true;
+                  }
+                }}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  const wasEmpty = searchQuery.trim() === '';
+                  const nowHasText = newValue.trim() !== '';
+                  
+                  // Detect if this is a new search:
+                  // 1. Was empty, now has text (starting a new search from empty)
+                  // 2. Search was cleared (flag set) and user is typing again
+                  if ((wasEmpty && nowHasText) || (shouldClearFiltersRef.current && nowHasText)) {
+                    clearAllFilters();
+                    shouldClearFiltersRef.current = false; // Reset flag after clearing
+                  }
+                  
+                  setSearchQuery(newValue);
+                }}
                 className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full"
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => {
+                    shouldClearFiltersRef.current = true; // Mark that filters should be cleared on next input
+                    setSearchQuery('');
+                  }}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
                 >
                   <XMarkIcon className="h-5 w-5" />
@@ -1095,6 +1133,8 @@ event_tags:${expense.tag.join(',')}`;
               setSelectedEvent(event);
             }
           }}
+          showPastEvents={showPastEvents}
+          onShowPastEventsChange={setShowPastEvents}
         />
       </div>
 

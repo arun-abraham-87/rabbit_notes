@@ -23,8 +23,11 @@ import EditEventModal from './EditEventModal';
 import EventsByAgeView from './EventsByAgeView';
 import TimelineLinkModal from './TimelineLinkModal';
 
-const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAddEvent, onDelete, selectedEventIndex, onEventSelect }) => {
-  const [showPastEvents, setShowPastEvents] = useState(false);
+const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAddEvent, onDelete, selectedEventIndex, onEventSelect, showPastEvents: showPastEventsProp, onShowPastEventsChange }) => {
+  const [showPastEventsInternal, setShowPastEventsInternal] = useState(false);
+  // Use prop if provided, otherwise use internal state
+  const showPastEvents = showPastEventsProp !== undefined ? showPastEventsProp : showPastEventsInternal;
+  const setShowPastEvents = onShowPastEventsChange || setShowPastEventsInternal;
   const [showDetails, setShowDetails] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [rawNote, setRawNote] = useState(null);

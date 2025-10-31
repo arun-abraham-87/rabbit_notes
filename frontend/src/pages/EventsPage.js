@@ -260,6 +260,38 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [showPastEvents, setShowPastEvents] = useState(false);
   const shouldClearFiltersRef = useRef(false);
   
+  // Store filter state to restore when search is cleared
+  const savedFiltersRef = useRef(null);
+  
+  // Helper function to save current filter state
+  const saveFilterState = () => {
+    savedFiltersRef.current = {
+      selectedTags: [...selectedTags],
+      selectedMonth,
+      selectedDay,
+      selectedYear,
+      showOnlyDeadlines,
+      showTodaysEventsOnly,
+      excludePurchases,
+      showPastEvents
+    };
+  };
+  
+  // Helper function to restore saved filter state
+  const restoreFilterState = () => {
+    if (savedFiltersRef.current) {
+      setSelectedTags(savedFiltersRef.current.selectedTags);
+      setSelectedMonth(savedFiltersRef.current.selectedMonth);
+      setSelectedDay(savedFiltersRef.current.selectedDay);
+      setSelectedYear(savedFiltersRef.current.selectedYear);
+      setShowOnlyDeadlines(savedFiltersRef.current.showOnlyDeadlines);
+      setShowTodaysEventsOnly(savedFiltersRef.current.showTodaysEventsOnly);
+      setExcludePurchases(savedFiltersRef.current.excludePurchases);
+      setShowPastEvents(savedFiltersRef.current.showPastEvents);
+      savedFiltersRef.current = null; // Clear saved state after restoring
+    }
+  };
+  
   // Helper function to clear all filters
   const clearAllFilters = () => {
     setSelectedTags([]);
@@ -891,11 +923,19 @@ event_tags:${expense.tag.join(',')}`;
                   const newValue = e.target.value;
                   const wasEmpty = searchQuery.trim() === '';
                   const nowHasText = newValue.trim() !== '';
+                  const nowEmpty = newValue.trim() === '';
+                  
+                  // If search is being cleared (had text, now empty), restore saved filters
+                  if (!wasEmpty && nowEmpty && savedFiltersRef.current) {
+                    restoreFilterState();
+                  }
                   
                   // Detect if this is a new search:
                   // 1. Was empty, now has text (starting a new search from empty)
                   // 2. Search was cleared (flag set) and user is typing again
                   if ((wasEmpty && nowHasText) || (shouldClearFiltersRef.current && nowHasText)) {
+                    // Save current filter state before clearing
+                    saveFilterState();
                     clearAllFilters();
                     shouldClearFiltersRef.current = false; // Reset flag after clearing
                   }
@@ -907,6 +947,10 @@ event_tags:${expense.tag.join(',')}`;
               {searchQuery && (
                 <button
                   onClick={() => {
+                    // Restore filters when clearing search
+                    if (savedFiltersRef.current) {
+                      restoreFilterState();
+                    }
                     shouldClearFiltersRef.current = true; // Mark that filters should be cleared on next input
                     setSearchQuery('');
                   }}

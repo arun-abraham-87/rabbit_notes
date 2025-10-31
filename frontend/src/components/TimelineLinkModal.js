@@ -66,35 +66,39 @@ const TimelineLinkModal = ({ isOpen, onClose, event, allNotes }) => {
         await updateNoteById(event.id, updatedEventContent);
 
         // 2. Add meta::linked_from_events::<note_id> to the timeline note
-        const existingTimelineLink = `meta::linked_from_events::${event.id}`;
+        // Support multiple events linking to the same timeline - consolidate all linked events
         let updatedTimelineContent;
+        const lines = timelineNote.content.split('\n');
         
-        if (timelineNote.content.includes('meta::linked_from_events::')) {
-          // If there are already linked events, append to the existing line
-          const lines = timelineNote.content.split('\n');
-          const linkedFromLineIndex = lines.findIndex(line => line.startsWith('meta::linked_from_events::'));
-          
-          if (linkedFromLineIndex !== -1) {
-            const existingLinkedEvents = lines[linkedFromLineIndex].replace('meta::linked_from_events::', '');
-            const eventIds = existingLinkedEvents.split(',').map(id => id.trim()).filter(id => id);
-            
-            // Check if this event is already linked
-            if (!eventIds.includes(event.id)) {
-              eventIds.push(event.id);
-              lines[linkedFromLineIndex] = `meta::linked_from_events::${eventIds.join(',')}`;
-              updatedTimelineContent = lines.join('\n');
-            } else {
-              console.log('Event already linked to timeline');
-              onClose();
-              return;
-            }
-          } else {
-            updatedTimelineContent = timelineNote.content.trim() + '\n' + existingTimelineLink;
+        // Find all lines with meta::linked_from_events:: and collect all event IDs
+        const allLinkedEventIds = new Set();
+        const linkedFromLinesIndices = [];
+        
+        lines.forEach((line, index) => {
+          if (line.trim().startsWith('meta::linked_from_events::')) {
+            linkedFromLinesIndices.push(index);
+            const eventIdsString = line.replace('meta::linked_from_events::', '');
+            const eventIds = eventIdsString.split(',').map(id => id.trim()).filter(id => id);
+            eventIds.forEach(id => allLinkedEventIds.add(id));
           }
-        } else {
-          // No existing linked events, add new line
-          updatedTimelineContent = timelineNote.content.trim() + '\n' + existingTimelineLink;
+        });
+        
+        // Check if this event is already linked (prevent duplicate links)
+        if (allLinkedEventIds.has(event.id)) {
+          console.log('Event already linked to this timeline');
+          onClose();
+          return;
         }
+        
+        // Add the new event ID
+        allLinkedEventIds.add(event.id);
+        
+        // Remove all existing meta::linked_from_events:: lines
+        const filteredLines = lines.filter((line, index) => !linkedFromLinesIndices.includes(index));
+        
+        // Add a single consolidated meta::linked_from_events:: line with all event IDs
+        const consolidatedLinkedEventsLine = `meta::linked_from_events::${Array.from(allLinkedEventIds).join(',')}`;
+        updatedTimelineContent = filteredLines.join('\n').trim() + '\n' + consolidatedLinkedEventsLine;
 
         await updateNoteById(selectedTimeline, updatedTimelineContent);
 

@@ -108,6 +108,30 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
     return occurrences;
   };
 
+  // Helper function to get timeline info from event content
+  const getTimelineInfo = (eventContent) => {
+    const lines = eventContent.split('\n');
+    const timelineLinkLine = lines.find(line => line.trim().startsWith('meta::linked_to_timeline::'));
+    
+    if (timelineLinkLine) {
+      const timelineId = timelineLinkLine.replace('meta::linked_to_timeline::', '').trim();
+      const timelineNote = notes.find(note => note.id === timelineId);
+      
+      if (timelineNote) {
+        // Extract timeline title (first non-meta line)
+        const timelineLines = timelineNote.content.split('\n');
+        const firstLine = timelineLines.find(line => 
+          line.trim() && !line.trim().startsWith('meta::') && line.trim() !== 'Closed'
+        );
+        return {
+          id: timelineId,
+          title: firstLine || 'Untitled Timeline'
+        };
+      }
+    }
+    return null;
+  };
+
   // Function to extract event details from note content
   const getEventDetails = (content) => {
     const lines = content.split('\n');
@@ -452,6 +476,15 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                           Deadline
                                         </span>
                                       )}
+                                      {(() => {
+                                        const timelineInfo = getTimelineInfo(occurrence.event.content);
+                                        return timelineInfo && (
+                                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            <LinkIcon className="h-3 w-3 mr-1" />
+                                            Timeline: {timelineInfo.title}
+                                          </span>
+                                        );
+                                      })()}
                                     </h3>
                                     <div className="flex flex-col gap-1">
                                       <div className="grid grid-cols-[120px_1fr] gap-x-2">

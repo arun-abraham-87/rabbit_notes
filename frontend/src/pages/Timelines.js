@@ -1485,34 +1485,63 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                 </span>
                                               )}
                                               <div className="flex items-center gap-2">
-                                                <h3 className={`text-lg font-semibold ${
-                                                  event.isToday
-                                                    ? 'text-emerald-700 font-bold'
-                                                    : event.isTotal
-                                                    ? 'text-emerald-700 font-bold'
-                                                    : event.isDuration
-                                                      ? 'text-orange-600 font-bold'
-                                                      : event.isLinkedEvent
-                                                        ? 'text-indigo-600 font-semibold'
+                                                {event.isLinkedEvent ? (
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      navigate(`/events?note=${event.linkedEventId}`, { replace: false });
+                                                    }}
+                                                    className="text-left hover:underline cursor-pointer"
+                                                  >
+                                                    <h3 className={`text-lg font-semibold ${
+                                                      event.isToday
+                                                        ? 'text-emerald-700 font-bold'
+                                                        : 'text-indigo-600 font-semibold'
+                                                    }`}>
+                                                      {event.isTotal || event.isDuration ? (
+                                                        <span title={event.event.length > 50 ? event.event : undefined}>
+                                                          {truncateText(event.event)}
+                                                        </span>
+                                                      ) : (
+                                                        <span 
+                                                          title={event.event.length > 50 ? event.event : undefined}
+                                                          dangerouslySetInnerHTML={{
+                                                            __html: highlightDollarValues(
+                                                              truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
+                                                            )
+                                                          }}
+                                                        />
+                                                      )}
+                                                    </h3>
+                                                  </button>
+                                                ) : (
+                                                  <h3 className={`text-lg font-semibold ${
+                                                    event.isToday
+                                                      ? 'text-emerald-700 font-bold'
+                                                      : event.isTotal
+                                                      ? 'text-emerald-700 font-bold'
+                                                      : event.isDuration
+                                                        ? 'text-orange-600 font-bold'
                                                         : event.isVirtual 
                                                           ? 'text-violet-600' 
                                                           : 'text-slate-800'
-                                                }`}>
-                                                  {event.isTotal || event.isDuration ? (
-                                                    <span title={event.event.length > 50 ? event.event : undefined}>
-                                                      {truncateText(event.event)}
-                                                    </span>
-                                                  ) : (
-                                                    <span 
-                                                      title={event.event.length > 50 ? event.event : undefined}
-                                                      dangerouslySetInnerHTML={{
-                                                        __html: highlightDollarValues(
-                                                          truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
-                                                        )
-                                                      }}
-                                                    />
-                                                  )}
-                                                </h3>
+                                                  }`}>
+                                                    {event.isTotal || event.isDuration ? (
+                                                      <span title={event.event.length > 50 ? event.event : undefined}>
+                                                        {truncateText(event.event)}
+                                                      </span>
+                                                    ) : (
+                                                      <span 
+                                                        title={event.event.length > 50 ? event.event : undefined}
+                                                        dangerouslySetInnerHTML={{
+                                                          __html: highlightDollarValues(
+                                                            truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
+                                                          )
+                                                        }}
+                                                      />
+                                                    )}
+                                                  </h3>
+                                                )}
                                               </div>
                                             </div>
                                             
@@ -2228,6 +2257,45 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             )}
                                           </h3>
                                         </a>
+                                      ) : event.isLinkedEvent ? (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            console.log('[Timelines] Clicked linked event (open/closed section):', {
+                                              linkedEventId: event.linkedEventId,
+                                              event: event.event,
+                                              fullEvent: event
+                                            });
+                                            // For HashRouter, we need to use hash with query params
+                                            const targetUrl = `/events?note=${event.linkedEventId}`;
+                                            console.log('[Timelines] Navigating to:', targetUrl);
+                                            console.log('[Timelines] Current window location:', window.location.href);
+                                            navigate(targetUrl, { replace: false });
+                                            console.log('[Timelines] After navigate, window location:', window.location.href);
+                                          }}
+                                          className="text-left hover:underline cursor-pointer"
+                                        >
+                                          <h3 className={`text-lg font-semibold ${
+                                            event.isToday
+                                              ? 'text-emerald-700 font-bold'
+                                              : 'text-indigo-600 font-semibold'
+                                          }`}>
+                                            {event.isTotal || event.isDuration ? (
+                                              <span title={event.event.length > 50 ? event.event : undefined}>
+                                                {truncateText(event.event)}
+                                              </span>
+                                            ) : (
+                                              <span 
+                                                title={event.event.length > 50 ? event.event : undefined}
+                                                dangerouslySetInnerHTML={{
+                                                  __html: highlightDollarValues(
+                                                    truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
+                                                  )
+                                                }}
+                                              />
+                                            )}
+                                          </h3>
+                                        </button>
                                       ) : (
                                         <h3 className={`text-lg font-semibold ${
                                           event.isToday
@@ -2236,11 +2304,9 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             ? 'text-green-700 font-bold'
                                             : event.isDuration
                                               ? 'text-orange-600 font-bold'
-                                              : event.isLinkedEvent
-                                                ? 'text-indigo-600 font-semibold'
-                                                : event.isVirtual 
-                                                  ? 'text-purple-600' 
-                                                  : 'text-gray-900'
+                                              : event.isVirtual 
+                                                ? 'text-purple-600' 
+                                                : 'text-gray-900'
                                         }`}>
                                           {event.isTotal || event.isDuration ? (
                                             <span title={event.event.length > 50 ? event.event : undefined}>

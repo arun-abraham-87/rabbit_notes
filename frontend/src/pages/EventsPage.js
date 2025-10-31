@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon, EyeIcon, EyeSlashIcon, ArrowsRightLeftIcon, FlagIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
@@ -234,6 +234,16 @@ const getEventDetails = (content) => {
 
 const EventsPage = ({ allNotes, setAllNotes }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const restoringUrlRef = useRef(false);
+  
+  console.log('[EventsPage] Component rendered:', {
+    pathname: location.pathname,
+    search: location.search,
+    hash: location.hash,
+    allNotesLength: allNotes?.length || 0,
+    timestamp: new Date().toISOString()
+  });
   
   // localStorage keys for persisting state
   const SEARCH_QUERY_STORAGE_KEY = 'eventsPage_searchQuery';
@@ -279,9 +289,73 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     }
   };
   
-  const initialState = loadInitialState();
+  // Check URL parameters for note filtering FIRST, before loading saved state
+  // For HashRouter, query params are in location.hash
+  const getInitialNoteId = () => {
+    console.log('[EventsPage] getInitialNoteId called:', {
+      search: location.search,
+      hash: location.hash,
+      pathname: location.pathname
+    });
+    
+    // Try location.search first (BrowserRouter)
+    if (location.search) {
+      const searchParams = new URLSearchParams(location.search);
+      const noteId = searchParams.get('note');
+      console.log('[EventsPage] Found noteId in location.search:', noteId);
+      if (noteId) return noteId;
+    }
+    // Try location.hash (HashRouter)
+    if (location.hash) {
+      console.log('[EventsPage] Checking location.hash:', location.hash);
+      const hashParts = location.hash.split('?');
+      console.log('[EventsPage] Hash parts:', hashParts);
+      if (hashParts.length > 1) {
+        const searchParams = new URLSearchParams(hashParts[1]);
+        const noteId = searchParams.get('note');
+        console.log('[EventsPage] Found noteId in location.hash:', noteId);
+        if (noteId) return noteId;
+      }
+    }
+    console.log('[EventsPage] No noteId found in URL');
+    return null;
+  };
+  
+  const initialNoteId = getInitialNoteId();
+  const hasNoteIdParam = initialNoteId !== null;
+  
+  console.log('[EventsPage] Initial note ID check:', {
+    initialNoteId,
+    hasNoteIdParam,
+    willSkipLocalStorage: hasNoteIdParam
+  });
+  
+  // Only load saved state if there's no note ID parameter
+  const initialState = hasNoteIdParam ? {
+    searchQuery: '',
+    selectedTags: [],
+    selectedMonth: '',
+    selectedDay: '',
+    selectedYear: '',
+    showOnlyDeadlines: false,
+    showTodaysEventsOnly: false,
+    excludePurchases: false,
+    showPastEvents: false
+  } : loadInitialState();
   
   const [searchQuery, setSearchQuery] = useState(initialState.searchQuery);
+  const [filterByNoteId, setFilterByNoteId] = useState(() => {
+    const noteId = getInitialNoteId();
+    console.log('[EventsPage] Initializing filterByNoteId state:', noteId);
+    return noteId;
+  });
+  
+  console.log('[EventsPage] State initialized:', {
+    searchQuery,
+    filterByNoteId,
+    selectedTags: initialState.selectedTags,
+    initialState
+  });
   const [selectedTags, setSelectedTags] = useState(initialState.selectedTags);
   const [selectedMonth, setSelectedMonth] = useState(initialState.selectedMonth);
   const [selectedDay, setSelectedDay] = useState(initialState.selectedDay);
@@ -333,8 +407,14 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     }
   }, [searchQuery]);
   
-  // Save filter state to localStorage whenever any filter changes
+  // Save filter state to localStorage whenever any filter changes (skip if filtering by note ID)
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const noteIdParam = searchParams.get('note');
+    if (noteIdParam) {
+      // Don't save filters when filtering by note ID
+      return;
+    }
     // Skip saving on initial mount (since we initialized from localStorage)
     if (isInitialMountRef.current) {
       isInitialMountRef.current = false;
@@ -356,7 +436,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     } catch (error) {
       console.error('Error saving filter state to localStorage:', error);
     }
-  }, [selectedTags, selectedMonth, selectedDay, selectedYear, showOnlyDeadlines, showTodaysEventsOnly, excludePurchases, showPastEvents]);
+  }, [selectedTags, selectedMonth, selectedDay, selectedYear, showOnlyDeadlines, showTodaysEventsOnly, excludePurchases, showPastEvents, location.search]);
   
   // Helper function to save current filter state
   const saveFilterState = () => {
@@ -616,8 +696,127 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     return Array.from(years).sort((a, b) => b - a); // Sort years in descending order
   }, [allNotes]);
 
+  // Update filterByNoteId when URL parameter changes (run FIRST to clear filters)
   useEffect(() => {
+    console.log('[EventsPage] URL change useEffect triggered:', {
+      search: location.search,
+      hash: location.hash,
+      pathname: location.pathname,
+      windowHash: window.location.hash,
+      windowSearch: window.location.search,
+      currentFilterByNoteId: filterByNoteId,
+      timestamp: new Date().toISOString()
+    });
+    
+    // For HashRouter, query params might be in window.location.hash
+    // Try location.search first, then window.location.hash, then location.hash
+    let noteIdParam = null;
+    
+    // First check location.search (standard React Router)
+    if (location.search) {
+      const searchParams = new URLSearchParams(location.search);
+      noteIdParam = searchParams.get('note');
+      console.log('[EventsPage] NoteId from location.search in useEffect:', noteIdParam);
+    }
+    
+    // If not found, check window.location.hash (HashRouter puts query in hash)
+    if (!noteIdParam && window.location.hash) {
+      const hashWithQuery = window.location.hash;
+      console.log('[EventsPage] Checking window.location.hash in useEffect:', hashWithQuery);
+      if (hashWithQuery.includes('?')) {
+        const hashParts = hashWithQuery.split('?');
+        console.log('[EventsPage] Hash parts from window.location:', hashParts);
+        if (hashParts.length > 1) {
+          const searchParams = new URLSearchParams(hashParts[1]);
+          noteIdParam = searchParams.get('note');
+          console.log('[EventsPage] NoteId from window.location.hash in useEffect:', noteIdParam);
+        }
+      }
+    }
+    
+    // Also check location.hash (backup)
+    if (!noteIdParam && location.hash) {
+      console.log('[EventsPage] Checking location.hash in useEffect:', location.hash);
+      const hashParts = location.hash.split('?');
+      console.log('[EventsPage] Hash parts in useEffect:', hashParts);
+      if (hashParts.length > 1) {
+        const searchParams = new URLSearchParams(hashParts[1]);
+        noteIdParam = searchParams.get('note');
+        console.log('[EventsPage] NoteId from location.hash in useEffect:', noteIdParam);
+      }
+    }
+    
+    console.log('[EventsPage] Final noteIdParam in useEffect:', noteIdParam, 'current filterByNoteId:', filterByNoteId);
+    
+    if (noteIdParam) {
+      console.log('[EventsPage] Clearing filters and setting filterByNoteId to:', noteIdParam);
+      // Always clear other filters when filtering by note ID (even if filterByNoteId hasn't changed)
+      // This ensures filters are cleared on initial load with note parameter
+      setSearchQuery('');
+      setSelectedTags([]);
+      setSelectedMonth('');
+      setSelectedDay('');
+      setSelectedYear('');
+      setShowOnlyDeadlines(false);
+      setShowTodaysEventsOnly(false);
+      setExcludePurchases(false);
+      if (noteIdParam !== filterByNoteId) {
+        console.log('[EventsPage] Updating filterByNoteId from', filterByNoteId, 'to', noteIdParam);
+        setFilterByNoteId(noteIdParam);
+      } else {
+        console.log('[EventsPage] filterByNoteId already set, skipping update');
+      }
+    } else if (!noteIdParam && filterByNoteId) {
+      console.log('[EventsPage] No noteIdParam in URL but filterByNoteId exists:', filterByNoteId);
+      // Don't clear filterByNoteId if we just lost the URL param due to HashRouter normalization
+      // Only clear if we're explicitly navigating away (pathname changes)
+      if (location.pathname === '/events') {
+        // Keep the filter active even if URL param is lost
+        console.log('[EventsPage] Keeping filterByNoteId since we\'re still on /events');
+        
+        // Restore the query parameter in the URL if it was lost due to HashRouter normalization
+        // Use a ref to prevent infinite loops
+        const currentHash = window.location.hash;
+        const expectedHash = `#/events?note=${filterByNoteId}`;
+        if (currentHash !== expectedHash && !currentHash.includes(`note=${filterByNoteId}`) && !restoringUrlRef.current) {
+          console.log('[EventsPage] Restoring query parameter in URL:', expectedHash, 'current:', currentHash);
+          restoringUrlRef.current = true;
+          // Use setTimeout to avoid infinite loop
+          setTimeout(() => {
+            if (window.location.hash !== expectedHash && !window.location.hash.includes(`note=${filterByNoteId}`)) {
+              navigate(`/events?note=${filterByNoteId}`, { replace: true });
+            }
+            restoringUrlRef.current = false;
+          }, 0);
+        }
+      } else {
+        console.log('[EventsPage] Clearing filterByNoteId - navigating away from /events');
+        setFilterByNoteId(null);
+      }
+    } else if (noteIdParam) {
+      // Reset the ref when we successfully read the param from URL
+      restoringUrlRef.current = false;
+    }
+  }, [location.search, location.hash, location.pathname, filterByNoteId, navigate]);
+  
+  useEffect(() => {
+    console.log('[EventsPage] useEffect for getCalendarEvents triggered:', {
+      allNotesLength: allNotes?.length || 0,
+      searchQuery,
+      selectedTags,
+      filterByNoteId,
+      locationSearch: location.search,
+      locationHash: location.hash,
+      locationPathname: location.pathname,
+      timestamp: new Date().toISOString()
+    });
+    
     const events = getCalendarEvents();
+    console.log('[EventsPage] getCalendarEvents returned', events.length, 'events');
+    if (events.length > 0) {
+      console.log('[EventsPage] First few events:', events.slice(0, 3).map(e => ({ id: e.id, description: e.description })));
+    }
+    
     setCalendarEvents(events);
     setTotal(events.length);
     
@@ -626,8 +825,21 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       setSelectedEventIndex(-1);
     }
 
-    // Calculate past events count
-    if (!showOnlyDeadlines) {
+    // Calculate past events count (skip if filtering by note ID)
+    // Check both search and hash for note ID
+    let noteIdFromUrl = null;
+    if (location.search) {
+      const searchParams = new URLSearchParams(location.search);
+      noteIdFromUrl = searchParams.get('note');
+    }
+    if (!noteIdFromUrl && location.hash) {
+      const hashParts = location.hash.split('?');
+      if (hashParts.length > 1) {
+        const searchParams = new URLSearchParams(hashParts[1]);
+        noteIdFromUrl = searchParams.get('note');
+      }
+    }
+    if (!noteIdFromUrl && !showOnlyDeadlines) {
       const pastEvents = allNotes
         .filter(note => note?.content && note.content.includes('meta::event::'))
         .filter(note => {
@@ -665,13 +877,185 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     } else {
       setPastEventsCount(0);
     }
-  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases]);
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, filterByNoteId, location.search, location.hash]);
+
+  useEffect(() => {
+    console.log('[EventsPage] useEffect for getCalendarEvents triggered:', {
+      allNotesLength: allNotes?.length || 0,
+      searchQuery,
+      selectedTags,
+      filterByNoteId,
+      locationSearch: location.search,
+      locationHash: location.hash,
+      locationPathname: location.pathname,
+      timestamp: new Date().toISOString()
+    });
+    
+    const calendarEvents = getCalendarEvents();
+    console.log('[EventsPage] getCalendarEvents returned', calendarEvents.length, 'events');
+    if (calendarEvents.length > 0) {
+      console.log('[EventsPage] First few events:', calendarEvents.slice(0, 3).map(e => ({ id: e.id, description: e.description })));
+    }
+    
+    setCalendarEvents(calendarEvents);
+    setTotal(calendarEvents.length);
+    
+    // Reset selectedEventIndex when events change to prevent invalid index
+    if (selectedEventIndex >= calendarEvents.length) {
+      setSelectedEventIndex(-1);
+    }
+
+    // Calculate past events count (skip if filtering by note ID)
+    // Check both search and hash for note ID
+    let noteIdFromUrl = null;
+    if (location.search) {
+      const searchParams = new URLSearchParams(location.search);
+      noteIdFromUrl = searchParams.get('note');
+    }
+    if (!noteIdFromUrl && location.hash) {
+      const hashParts = location.hash.split('?');
+      if (hashParts.length > 1) {
+        const searchParams = new URLSearchParams(hashParts[1]);
+        noteIdFromUrl = searchParams.get('note');
+      }
+    }
+    if (!noteIdFromUrl && !showOnlyDeadlines) {
+      const pastEvents = allNotes
+        .filter(note => note?.content && note.content.includes('meta::event::'))
+        .filter(note => {
+          const { dateTime, description, tags } = getEventDetails(note.content);
+          if (!dateTime) return false;
+          
+          const eventDate = new Date(dateTime);
+          const now = new Date();
+          const isPast = eventDate < now;
+
+          // Check if event matches current filters
+          const matchesSearch = searchQuery === '' || description.toLowerCase().includes(searchQuery.toLowerCase());
+          const matchesTags = selectedTags.length === 0 || 
+            selectedTags.every(tag => tags.includes(tag));
+          
+          // Handle purchase filtering
+          const isPurchase = tags.some(tag => tag.toLowerCase() === 'purchase');
+          const matchesPurchaseFilter = excludePurchases ? !isPurchase : true;
+          
+          let matchesDate = true;
+          if (selectedYear) {
+            matchesDate = matchesDate && (eventDate.getFullYear() === parseInt(selectedYear));
+          }
+          if (selectedMonth) {
+            matchesDate = matchesDate && (eventDate.getMonth() + 1 === parseInt(selectedMonth));
+          }
+          if (selectedDay) {
+            matchesDate = matchesDate && (eventDate.getDate() === parseInt(selectedDay));
+          }
+
+          return isPast && matchesSearch && matchesTags && matchesDate && matchesPurchaseFilter;
+        }).length;
+      
+      setPastEventsCount(pastEvents);
+    } else {
+      setPastEventsCount(0);
+    }
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, filterByNoteId, location.search, location.hash]);
 
   const getCalendarEvents = () => {
+    console.log('[EventsPage] getCalendarEvents called:', {
+      search: location.search,
+      hash: location.hash,
+      pathname: location.pathname,
+      filterByNoteId,
+      allNotesLength: allNotes?.length || 0
+    });
+    
+    // Always check URL parameter directly first (most reliable)
+    // For HashRouter, query params are in location.hash, not location.search
+    let noteIdFromUrl = null;
+    if (location.search) {
+      const searchParams = new URLSearchParams(location.search);
+      noteIdFromUrl = searchParams.get('note');
+      console.log('[EventsPage] NoteId from location.search in getCalendarEvents:', noteIdFromUrl);
+    }
+    // Also check hash for HashRouter compatibility
+    if (!noteIdFromUrl && location.hash) {
+      console.log('[EventsPage] Checking location.hash in getCalendarEvents:', location.hash);
+      const hashParts = location.hash.split('?');
+      console.log('[EventsPage] Hash parts in getCalendarEvents:', hashParts);
+      if (hashParts.length > 1) {
+        const searchParams = new URLSearchParams(hashParts[1]);
+        noteIdFromUrl = searchParams.get('note');
+        console.log('[EventsPage] NoteId from location.hash in getCalendarEvents:', noteIdFromUrl);
+      }
+    }
+    const activeFilterByNoteId = noteIdFromUrl || filterByNoteId;
+    
+    console.log('[EventsPage] Active filterByNoteId:', {
+      noteIdFromUrl,
+      filterByNoteId,
+      activeFilterByNoteId
+    });
+    
+    // If no notes loaded yet, return empty array
+    if (!allNotes || allNotes.length === 0) {
+      console.log('[EventsPage] No notes loaded yet, returning empty array');
+      return [];
+    }
+    
     // Filter and group events
-    const events = allNotes
-      .filter(note => note?.content && note.content.includes('meta::event::'))
-      .filter(note => {
+    let filteredNotes = allNotes.filter(note => note?.content && note.content.includes('meta::event::'));
+    console.log('[EventsPage] Filtered event notes (before note ID filter):', filteredNotes.length);
+    
+    // If filtering by note ID, return early with just that note
+    if (activeFilterByNoteId) {
+      console.log('[EventsPage] Filtering by note ID:', activeFilterByNoteId);
+      filteredNotes = filteredNotes.filter(note => {
+        // Compare both as string and as-is to handle type mismatches
+        const matches = String(note.id) === String(activeFilterByNoteId) || note.id === activeFilterByNoteId;
+        if (matches) {
+          console.log('[EventsPage] Found matching note:', {
+            noteId: note.id,
+            description: getEventDetails(note.content).description,
+            noteIdType: typeof note.id,
+            filterIdType: typeof activeFilterByNoteId
+          });
+        }
+        return matches;
+      });
+      
+      console.log('[EventsPage] After note ID filter:', filteredNotes.length, 'notes');
+      
+      // If no matching note found, return empty (don't show all events)
+      if (filteredNotes.length === 0) {
+        console.warn('[EventsPage] No matching note found for ID:', activeFilterByNoteId, {
+          allEventNoteIds: allNotes
+            .filter(note => note?.content && note.content.includes('meta::event::'))
+            .slice(0, 10)
+            .map(n => ({ id: n.id, type: typeof n.id }))
+        });
+        return [];
+      }
+      
+      // Prepare events for calendar view (skip all other filters)
+      const calendarEvents = filteredNotes.map(note => {
+        const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, notes } = getEventDetails(note.content);
+        return {
+          id: note.id,
+          description,
+          dateTime,
+          recurrence,
+          metaDate,
+          nextOccurrence,
+          lastOccurrence,
+          notes,
+          content: note.content
+        };
+      });
+      console.log('[EventsPage] Returning', calendarEvents.length, 'calendar events for note ID filter');
+      return calendarEvents;
+    }
+    
+    // Normal filtering logic when not filtering by note ID
+    const filteredEvents = filteredNotes.filter(note => {
         const eventDetails = getEventDetails(note.content);
         const { description, tags, dateTime, recurrence } = eventDetails;
         const matchesSearch = searchQuery === '' || description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -781,7 +1165,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       });
 
     // Calculate totals for different recurrence types
-    const { total, daily, weekly, monthly, none } = events.reduce(
+    const { total, daily, weekly, monthly, none } = filteredEvents.reduce(
       (acc, event) => {
         const { recurrence } = getEventDetails(event.content);
         acc.total++;
@@ -797,7 +1181,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     setNone(none);
 
     // Prepare events for calendar view
-    const calendarEvents = events.map(event => {
+    const calendarEvents = filteredEvents.map(event => {
       const { description, dateTime, recurrence, metaDate, nextOccurrence, lastOccurrence, notes } = getEventDetails(event.content);
       return {
         id: event.id,

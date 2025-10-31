@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import moment from 'moment';
 import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon } from '@heroicons/react/24/solid';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Timelines = ({ notes, updateNote, addNote }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [timelineNotes, setTimelineNotes] = useState([]);
   const [showAddEventForm, setShowAddEventForm] = useState(null);
   const [newEventText, setNewEventText] = useState('');
@@ -43,11 +44,13 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   };
 
   useEffect(() => {
-    if (notes) {
+    if (notes && notes.length > 0) {
       // Filter notes that contain meta::timeline tag
       const filteredNotes = notes.filter(note => 
         note.content && note.content.includes('meta::timeline')
       );
+      // Always update timelineNotes to ensure it reflects the latest notes
+      // This is important when notes are updated (e.g., when events are linked)
       setTimelineNotes(filteredNotes);
       
       // Load saved collapse states from localStorage
@@ -67,8 +70,12 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       
       // New timelines are expanded by default (not added to collapsed set)
       setCollapsedTimelines(mergedStates);
+    } else if (notes && notes.length === 0) {
+      // Handle empty notes array
+      setTimelineNotes([]);
+      setCollapsedTimelines(new Set());
     }
-  }, [notes]);
+  }, [notes, location.pathname]);
 
   // Extract dollar values from text
   const extractDollarValues = (text) => {
@@ -555,6 +562,83 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       setTimelineNotes(filteredNotes);
     } catch (error) {
       console.error('Error toggling flagged status:', error);
+    }
+  };
+
+  // Handle unlinking an event from a timeline
+  const handleUnlinkEvent = async (timelineNoteId, linkedEventId) => {
+    try {
+      // 1. Remove meta::linked_to_timeline::<timeline_id> from the event note
+      const eventNote = notes.find(n => n.id === linkedEventId);
+      let updatedEventContent = null;
+      if (eventNote) {
+        const eventLines = eventNote.content.split('\n');
+        const filteredEventLines = eventLines.filter(line => 
+          !line.trim().startsWith(`meta::linked_to_timeline::${timelineNoteId}`)
+        );
+        updatedEventContent = filteredEventLines.join('\n').trim();
+        await updateNote(linkedEventId, updatedEventContent);
+      }
+
+      // 2. Remove the event ID from meta::linked_from_events:: in the timeline note
+      const timelineNote = notes.find(n => n.id === timelineNoteId);
+      let updatedTimelineContent = null;
+      if (timelineNote) {
+        const timelineLines = timelineNote.content.split('\n');
+        
+        // Find all meta::linked_from_events:: lines
+        const linkedFromLinesIndices = [];
+        const allLinkedEventIds = new Set();
+        
+        timelineLines.forEach((line, index) => {
+          if (line.trim().startsWith('meta::linked_from_events::')) {
+            linkedFromLinesIndices.push(index);
+            const eventIdsString = line.replace('meta::linked_from_events::', '').trim();
+            const eventIds = eventIdsString.split(',').map(id => id.trim()).filter(id => id);
+            eventIds.forEach(id => {
+              if (id !== linkedEventId) { // Only keep other event IDs
+                allLinkedEventIds.add(id);
+              }
+            });
+          }
+        });
+        
+        // Remove all existing meta::linked_from_events:: lines
+        const filteredTimelineLines = timelineLines.filter((line, index) => 
+          !linkedFromLinesIndices.includes(index)
+        );
+        
+        // If there are still linked events, add back the consolidated line
+        if (allLinkedEventIds.size > 0) {
+          const consolidatedLinkedEventsLine = `meta::linked_from_events::${Array.from(allLinkedEventIds).join(',')}`;
+          updatedTimelineContent = filteredTimelineLines.join('\n').trim() + '\n' + consolidatedLinkedEventsLine;
+        } else {
+          // No more linked events, just remove the line
+          updatedTimelineContent = filteredTimelineLines.join('\n').trim();
+        }
+        
+        await updateNote(timelineNoteId, updatedTimelineContent);
+      }
+
+      // Update local notes array for immediate UI refresh
+      const updatedNotes = notes.map(note => {
+        if (note.id === linkedEventId && updatedEventContent) {
+          return { ...note, content: updatedEventContent };
+        }
+        if (note.id === timelineNoteId && updatedTimelineContent) {
+          return { ...note, content: updatedTimelineContent };
+        }
+        return note;
+      });
+
+      // Refresh the timeline notes
+      const timelineNotes = updatedNotes
+        .filter(note => note.content && note.content.includes('meta::timeline'))
+        .map(note => parseTimelineData(note.content, updatedNotes));
+      setTimelineNotes(timelineNotes);
+    } catch (error) {
+      console.error('Error unlinking event from timeline:', error);
+      alert('Failed to unlink event from timeline. Please try again.');
     }
   };
 
@@ -1292,15 +1376,30 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                   )}
                                                 </h3>
                                                 {event.isLinkedEvent && (
-                                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
-                                                    Linked
-                                                  </span>
+                                                  <div className="inline-flex items-center gap-2">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                                      Linked
+                                                    </span>
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (window.confirm('Are you sure you want to unlink this event from the timeline?')) {
+                                                          handleUnlinkEvent(note.id, event.linkedEventId);
+                                                        }
+                                                      }}
+                                                      className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
+                                                      title="Unlink event from timeline"
+                                                    >
+                                                      <XMarkIcon className="h-3 w-3 mr-1" />
+                                                      Unlink
+                                                    </button>
+                                                  </div>
                                                 )}
                                               </div>
                                             </div>
                                             
                                             {/* Second line with age and time differences */}
-                                            {!event.isVirtual && !event.isTotal && !event.isDuration && !event.isLinkedEvent && (
+                                            {!event.isVirtual && !event.isTotal && !event.isDuration && (
                                               <div className="flex items-center space-x-2 mb-1">
                                                 {event.date && (
                                                   <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
@@ -1981,15 +2080,30 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                         )}
                                       </h3>
                                       {event.isLinkedEvent && (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
-                                          Linked
-                                        </span>
+                                        <div className="inline-flex items-center gap-2">
+                                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                            Linked
+                                          </span>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (window.confirm('Are you sure you want to unlink this event from the timeline?')) {
+                                                handleUnlinkEvent(note.id, event.linkedEventId);
+                                              }
+                                            }}
+                                            className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
+                                            title="Unlink event from timeline"
+                                          >
+                                            <XMarkIcon className="h-3 w-3 mr-1" />
+                                            Unlink
+                                          </button>
+                                        </div>
                                       )}
                                     </div>
                                   </div>
                                   
                                   {/* Second line with age and time differences */}
-                                  {!event.isVirtual && !event.isTotal && !event.isDuration && !event.isLinkedEvent && (
+                                  {!event.isVirtual && !event.isTotal && !event.isDuration && (
                                     <div className="flex items-center space-x-2 mb-1">
                                       {event.date && (
                                         <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
@@ -2477,15 +2591,30 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                   )}
                                                 </h3>
                                                 {event.isLinkedEvent && (
-                                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
-                                                    Linked
-                                                  </span>
+                                                  <div className="inline-flex items-center gap-2">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                                      Linked
+                                                    </span>
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (window.confirm('Are you sure you want to unlink this event from the timeline?')) {
+                                                          handleUnlinkEvent(note.id, event.linkedEventId);
+                                                        }
+                                                      }}
+                                                      className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
+                                                      title="Unlink event from timeline"
+                                                    >
+                                                      <XMarkIcon className="h-3 w-3 mr-1" />
+                                                      Unlink
+                                                    </button>
+                                                  </div>
                                                 )}
                                               </div>
                                             </div>
                                             
                                             {/* Second line with age and time differences for closed timelines */}
-                                            {!event.isVirtual && !event.isTotal && !event.isDuration && !event.isLinkedEvent && (
+                                            {!event.isVirtual && !event.isTotal && !event.isDuration && (
                                               <div className="flex items-center space-x-2 mb-1">
                                                 {event.date && (
                                                   <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">

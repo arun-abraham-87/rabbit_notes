@@ -1328,7 +1328,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           <div className="flex flex-col items-center">
                                             <div className={`w-4 h-4 rounded-full border-2 ${
                                               event.isToday
-                                                ? 'bg-yellow-500 border-yellow-600 animate-pulse'
+                                                ? 'bg-emerald-500 border-emerald-600'
                                                 : event.isTotal
                                                 ? 'bg-emerald-600 border-emerald-600'
                                                 : event.isDuration
@@ -1347,12 +1347,12 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           </div>
 
                                           {/* Event content */}
-                                          <div className={`flex-1 min-w-0 ${event.isToday ? 'bg-yellow-50 px-4 py-3 rounded-lg border-2 border-yellow-300' : ''}`}>
+                                          <div className="flex-1 min-w-0">
                                             <div className="flex items-center space-x-3 mb-1">
                                               {event.date && (
                                                 <span                                     className={`text-sm px-2 py-1 rounded font-medium ${
                                         event.isToday 
-                                          ? 'text-amber-800 bg-amber-100 border border-amber-200' 
+                                          ? 'text-emerald-800 bg-emerald-100 border border-emerald-200' 
                                           : 'text-slate-600 bg-slate-100 border border-slate-200'
                                       }`}>
                                                   {event.date.format('DD/MMM/YYYY')}
@@ -1361,7 +1361,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                               <div className="flex items-center gap-2">
                                                 <h3 className={`text-lg font-semibold ${
                                                   event.isToday
-                                                    ? 'text-amber-700 font-bold'
+                                                    ? 'text-emerald-700 font-bold'
                                                     : event.isTotal
                                                     ? 'text-emerald-700 font-bold'
                                                     : event.isDuration
@@ -1409,7 +1409,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             </div>
                                             
                                             {/* Second line with age and time differences */}
-                                            {!event.isVirtual && !event.isTotal && !event.isDuration && (
+                                            {(!event.isVirtual || event.isToday) && !event.isTotal && !event.isDuration && (
                                               <div className="flex items-center space-x-2 mb-1">
                                                 {event.date && (
                                                   <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
@@ -2033,7 +2033,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                 <div className="flex flex-col items-center">
                                   <div className={`w-4 h-4 rounded-full border-2 ${
                                     event.isToday
-                                      ? 'bg-yellow-500 border-yellow-600 animate-pulse'
+                                      ? 'bg-emerald-500 border-emerald-600'
                                       : event.isTotal
                                       ? 'bg-green-600 border-green-600'
                                       : event.isDuration
@@ -2052,12 +2052,12 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                 </div>
 
                                 {/* Event content */}
-                                <div className={`flex-1 min-w-0 ${event.isToday ? 'bg-yellow-50 px-4 py-3 rounded-lg border-2 border-yellow-300' : ''}`}>
+                                <div className="flex-1 min-w-0">
                                   <div className="flex items-center space-x-3 mb-1">
                                     {event.date && (
                                       <span                                     className={`text-sm px-2 py-1 rounded font-medium ${
                                         event.isToday 
-                                          ? 'text-amber-800 bg-amber-100 border border-amber-200' 
+                                          ? 'text-emerald-800 bg-emerald-100 border border-emerald-200' 
                                           : 'text-slate-600 bg-slate-100 border border-slate-200'
                                       }`}>
                                         {event.date.format('DD/MMM/YYYY')}
@@ -2066,7 +2066,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     <div className="flex items-center gap-2">
                                       <h3 className={`text-lg font-semibold ${
                                         event.isToday
-                                          ? 'text-yellow-900 font-bold'
+                                          ? 'text-emerald-700 font-bold'
                                           : event.isTotal
                                           ? 'text-green-700 font-bold'
                                           : event.isDuration
@@ -2114,7 +2114,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                   </div>
                                   
                                   {/* Second line with age and time differences */}
-                                  {!event.isVirtual && !event.isTotal && !event.isDuration && (
+                                  {(!event.isVirtual || event.isToday) && !event.isTotal && !event.isDuration && (
                                     <div className="flex items-center space-x-2 mb-1">
                                       {event.date && (
                                         <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
@@ -2545,7 +2545,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           <div className="flex flex-col items-center">
                                             <div className={`w-4 h-4 rounded-full border-2 ${
                                               event.isToday
-                                                ? 'bg-yellow-500 border-yellow-600 animate-pulse'
+                                                ? 'bg-emerald-500 border-emerald-600'
                                                 : event.isTotal
                                                   ? 'bg-emerald-600 border-emerald-600'
                                                   : event.isDuration
@@ -2564,12 +2564,12 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                     </div>
 
                                           {/* Event content */}
-                                          <div className={`flex-1 min-w-0 ${event.isToday ? 'bg-yellow-50 px-4 py-3 rounded-lg border-2 border-yellow-300' : ''}`}>
+                                          <div className="flex-1 min-w-0">
                                             <div className="flex items-center space-x-3 mb-1">
                                               {event.date && (
                                                 <span                                     className={`text-sm px-2 py-1 rounded font-medium ${
                                         event.isToday 
-                                          ? 'text-amber-800 bg-amber-100 border border-amber-200' 
+                                          ? 'text-emerald-800 bg-emerald-100 border border-emerald-200' 
                                           : 'text-slate-600 bg-slate-100 border border-slate-200'
                                       }`}>
                                                   {event.date.format('DD/MMM/YYYY')}
@@ -2578,7 +2578,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                               <div className="flex items-center gap-2">
                                                 <h3 className={`text-lg font-semibold ${
                                                   event.isToday
-                                                    ? 'text-yellow-900 font-bold'
+                                                    ? 'text-emerald-700 font-bold'
                                                     : event.isTotal
                                                       ? 'text-green-700 font-bold'
                                                       : event.isDuration
@@ -2626,7 +2626,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             </div>
                                             
                                             {/* Second line with age and time differences for closed timelines */}
-                                            {!event.isVirtual && !event.isTotal && !event.isDuration && (
+                                            {(!event.isVirtual || event.isToday) && !event.isTotal && !event.isDuration && (
                                               <div className="flex items-center space-x-2 mb-1">
                                                 {event.date && (
                                                   <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">

@@ -555,6 +555,20 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     });
   };
 
+  // Collapse all timelines
+  const handleCollapseAll = () => {
+    const allTimelineIds = new Set(timelineNotes.map(note => note.id));
+    saveCollapseStates(allTimelineIds);
+    setCollapsedTimelines(allTimelineIds);
+  };
+
+  // Expand all timelines
+  const handleExpandAll = () => {
+    const emptySet = new Set();
+    saveCollapseStates(emptySet);
+    setCollapsedTimelines(emptySet);
+  };
+
   // Handle adding a new event
   const handleAddEvent = async (noteId) => {
     if (!newEventText.trim() || !newEventDate) {
@@ -602,8 +616,24 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       // Safety check: ensure note has valid content
       if (!note || !note.content) return false;
       if (!searchQuery.trim()) return true;
+      
       const timelineData = parseTimelineData(note.content, notes);
-      return timelineData.timeline.toLowerCase().includes(searchQuery.toLowerCase());
+      const query = searchQuery.toLowerCase();
+      
+      // Search in timeline title
+      if (timelineData.timeline.toLowerCase().includes(query)) {
+        return true;
+      }
+      
+      // Search in events (both regular and linked events)
+      const hasMatchingEvent = timelineData.events.some(event => {
+        if (event.event && typeof event.event === 'string') {
+          return event.event.toLowerCase().includes(query);
+        }
+        return false;
+      });
+      
+      return hasMatchingEvent;
     })
     .sort((a, b) => {
       const aData = parseTimelineData(a.content, notes);
@@ -616,6 +646,60 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       return aData.timeline.localeCompare(bData.timeline);
     });
 
+  // Auto-expand timelines with matching events when searching
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      // When search is cleared, collapse all timelines
+      if (timelineNotes.length > 0) {
+        const allTimelineIds = new Set(timelineNotes.map(note => note.id));
+        saveCollapseStates(allTimelineIds);
+        setCollapsedTimelines(allTimelineIds);
+      }
+      return;
+    }
+
+    if (timelineNotes.length > 0 && notes.length > 0) {
+      const query = searchQuery.toLowerCase();
+      const matchingTimelineIds = new Set();
+      
+      timelineNotes.forEach(note => {
+        if (!note || !note.content) return;
+        
+        const timelineData = parseTimelineData(note.content, notes);
+        
+        // Check if timeline title matches
+        if (timelineData.timeline.toLowerCase().includes(query)) {
+          matchingTimelineIds.add(note.id);
+        }
+        
+        // Check if any event matches
+        const hasMatchingEvent = timelineData.events.some(event => {
+          if (event.event && typeof event.event === 'string') {
+            return event.event.toLowerCase().includes(query);
+          }
+          return false;
+        });
+        
+        if (hasMatchingEvent) {
+          matchingTimelineIds.add(note.id);
+        }
+      });
+      
+      // Expand matching timelines (remove from collapsed set)
+      if (matchingTimelineIds.size > 0) {
+        setCollapsedTimelines(prev => {
+          const newSet = new Set(prev);
+          matchingTimelineIds.forEach(id => {
+            newSet.delete(id);
+          });
+          // Save to localStorage
+          saveCollapseStates(newSet);
+          return newSet;
+        });
+      }
+    }
+  }, [searchQuery, timelineNotes, notes]);
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -624,13 +708,29 @@ const Timelines = ({ notes, updateNote, addNote }) => {
             <h1 className="text-2xl font-semibold text-gray-900">
             Timelines
           </h1>
-            <button
-              onClick={() => setShowNewTimelineForm(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
-            >
-              <PlusIcon className="h-5 w-5" />
-              <span>New Timeline</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExpandAll}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                title="Expand all timelines"
+              >
+                <span>Expand All</span>
+              </button>
+              <button
+                onClick={handleCollapseAll}
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+                title="Collapse all timelines"
+              >
+                <span>Collapse All</span>
+              </button>
+              <button
+                onClick={() => setShowNewTimelineForm(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+              >
+                <PlusIcon className="h-5 w-5" />
+                <span>New Timeline</span>
+              </button>
+            </div>
           </div>
           
           {/* Search Box */}
@@ -645,7 +745,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by timeline title..."
+                  placeholder="Search by timeline title or events..."
                   className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

@@ -477,7 +477,14 @@ meta::event`;
         </div>
       ) : (
         <div className="space-y-6">
-          {Object.keys(groupedPurchases).map(yearKey => {
+          {Object.keys(groupedPurchases).sort((a, b) => {
+            if (a === 'No Date') return 1;
+            if (b === 'No Date') return -1;
+            // Sort years in descending order (latest first)
+            const yearA = parseInt(a);
+            const yearB = parseInt(b);
+            return yearB - yearA;
+          }).map(yearKey => {
             // Handle "No Date" group
             if (yearKey === 'No Date') {
               return (

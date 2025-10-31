@@ -101,7 +101,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     const dollarRegex = /\$[\d,]+(?:\.\d{2})?/g;
     
     return text.replace(dollarRegex, (match) => {
-      return `<span class="text-green-600 font-semibold">${match}</span>`;
+      return `<span class="text-emerald-600 font-semibold">${match}</span>`;
     });
   };
 
@@ -450,18 +450,18 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       const months = today.diff(eventDate.clone().add(years, 'years'), 'months');
       const days = today.diff(eventDate.clone().add(years, 'years').add(months, 'months'), 'days');
       
-      let age = '';
-      if (years > 0) age += `${years} year${years !== 1 ? 's' : ''}`;
-      if (months > 0) {
-        if (age) age += ', ';
-        age += `${months} month${months !== 1 ? 's' : ''}`;
+      const parts = [];
+      if (years > 0) {
+        parts.push(`${years} year${years !== 1 ? 's' : ''}`);
       }
-      if (days > 0) {
-        if (age) age += ', ';
-        age += `${days} day${days !== 1 ? 's' : ''}`;
+      if (months > 0) {
+        parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+      }
+      if (days > 0 || parts.length === 0) {
+        parts.push(`${days} day${days !== 1 ? 's' : ''}`);
       }
       
-      return `age: ${age || '0 days'}`;
+      return `${parts.join(' ')} old`;
     }
   };
 
@@ -845,31 +845,31 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   }, [searchQuery, timelineNotes, notes]);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
             Timelines
           </h1>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleExpandAll}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md"
                 title="Expand all timelines"
               >
                 <span>Expand All</span>
               </button>
               <button
                 onClick={handleCollapseAll}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md"
                 title="Collapse all timelines"
               >
                 <span>Collapse All</span>
               </button>
               <button
                 onClick={() => setShowNewTimelineForm(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:from-emerald-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md"
               >
                 <PlusIcon className="h-5 w-5" />
                 <span>New Timeline</span>
@@ -880,7 +880,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
           {/* Search Box */}
           <div className="flex flex-col gap-4">
             <div className="flex-1 max-w-md">
-              <label htmlFor="timeline-search" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="timeline-search" className="block text-sm font-medium text-slate-700 mb-2">
                 Search Timelines
               </label>
               <div className="relative">
@@ -890,17 +890,17 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by timeline title or events..."
-                  className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 pl-10 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-white shadow-sm transition-all"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
                   >
                     <XMarkIcon className="h-5 w-5" />
                   </button>
@@ -944,8 +944,9 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               if (flaggedTimelines.length > 0) {
                 return (
                   <div className="space-y-4">
-                    <h2 className="text-xl font-semibold text-red-700">
-                      🚩 Flagged Timelines <span className="font-normal text-gray-500">({flaggedTimelines.length})</span>
+                    <h2 className="text-xl font-semibold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
+                      <span className="text-2xl">🚩</span>
+                      Flagged Timelines <span className="font-normal text-slate-500">({flaggedTimelines.length})</span>
                     </h2>
                     {flaggedTimelines.map((note) => {
                       if (!note || !note.content) return null;
@@ -953,15 +954,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                       const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
                       return (
-                        <div key={note.id} className="bg-white rounded-lg shadow-sm border-2 border-red-300 overflow-hidden">
+                        <div key={note.id} className="bg-white rounded-xl shadow-md border-l-4 border-rose-400 overflow-hidden hover:shadow-lg transition-shadow">
                           {/* Timeline Header */}
                           <div 
-                            className="bg-red-50 px-6 py-4 cursor-pointer hover:bg-red-100 border-b border-red-200 transition-colors"
+                            className="bg-gradient-to-r from-rose-50 to-pink-50 px-6 py-4 cursor-pointer hover:from-rose-100 hover:to-pink-100 border-b border-rose-200/50 transition-all"
                             onClick={() => toggleTimelineCollapse(note.id)}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
-                                <div className="text-red-600">
+                                <div className="text-rose-600">
                                   {collapsedTimelines.has(note.id) ? (
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -1032,7 +1033,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       
                                       return (
                                         <span className="text-base font-normal text-gray-600 ml-2">
-                                          ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events) {durationText ? `(${durationText})` : ''} {totalAmountText && <span className="text-green-600 font-semibold">{totalAmountText}</span>}
+                                          ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events) {durationText ? `(${durationText})` : ''} {totalAmountText && <span className="text-emerald-600 font-semibold">{totalAmountText}</span>}
                                         </span>
                                       );
                                     }
@@ -1051,11 +1052,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       }
                                       setShowAddEventForm(note.id);
                                     }}
-                                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors flex items-center space-x-1.5 border border-blue-200"
+                                    className="px-2 py-1 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 text-indigo-700 rounded-md transition-all flex items-center space-x-1 border border-indigo-200 shadow-sm hover:shadow"
                                     title="Add new event"
                                   >
-                                    <PlusIcon className="h-4 w-4" />
-                                    <span className="text-sm font-medium">Add Event</span>
+                                    <PlusIcon className="h-3 w-3" />
+                                    <span className="text-xs font-medium">Add Event</span>
                                   </button>
                                 )}
                                 {!timelineData.isClosed && (
@@ -1064,11 +1065,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       e.stopPropagation();
                                       handleCloseTimeline(note.id);
                                     }}
-                                    className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md transition-colors flex items-center space-x-1.5 border border-red-200"
+                                    className="px-2 py-1 bg-gradient-to-r from-rose-50 to-pink-50 hover:from-rose-100 hover:to-pink-100 text-rose-700 rounded-md transition-all flex items-center space-x-1 border border-rose-200 shadow-sm hover:shadow"
                                     title="Close timeline"
                                   >
-                                    <XCircleIcon className="h-4 w-4" />
-                                    <span className="text-sm font-medium">Close</span>
+                                    <XCircleIcon className="h-3 w-3" />
+                                    <span className="text-xs font-medium">Close</span>
                                   </button>
                                 )}
                                 {timelineData.isClosed && (
@@ -1077,11 +1078,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       e.stopPropagation();
                                       handleReopenTimeline(note.id);
                                     }}
-                                    className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors flex items-center space-x-1.5 border border-green-200"
+                                    className="px-2 py-1 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-700 rounded-md transition-all flex items-center space-x-1 border border-emerald-200 shadow-sm hover:shadow"
                                     title="Reopen timeline"
                                   >
-                                    <ArrowPathIcon className="h-4 w-4" />
-                                    <span className="text-sm font-medium">Reopen</span>
+                                    <ArrowPathIcon className="h-3 w-3" />
+                                    <span className="text-xs font-medium">Reopen</span>
                                   </button>
                                 )}
                                 <button
@@ -1089,18 +1090,18 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     e.stopPropagation();
                                     handleToggleFlagged(note.id);
                                   }}
-                                  className={`px-3 py-1.5 rounded-md transition-colors flex items-center space-x-1.5 border ${
+                                  className={`px-2 py-1 rounded-md transition-all flex items-center space-x-1 border shadow-sm hover:shadow ${
                                     note.content.includes('meta::flagged_timeline')
-                                      ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
-                                      : 'bg-gray-50 hover:bg-gray-100 text-gray-500 border-gray-300'
+                                      ? 'bg-gradient-to-r from-rose-50 to-pink-50 hover:from-rose-100 hover:to-pink-100 text-rose-700 border-rose-200'
+                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-500 border-slate-300'
                                   }`}
                                   title={note.content.includes('meta::flagged_timeline') ? 'Unflag timeline' : 'Flag timeline (needs attention)'}
                                 >
-                                  <FlagIcon className="h-4 w-4" />
-                                  <span className="text-sm font-medium">Flag</span>
+                                  <FlagIcon className="h-3 w-3" />
+                                  <span className="text-xs font-medium">Flag</span>
                                 </button>
                                 <label 
-                                  className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors cursor-pointer flex items-center space-x-1.5 border border-gray-300"
+                                  className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-md transition-all cursor-pointer flex items-center space-x-1 border border-slate-300 shadow-sm hover:shadow"
                                   title={note.content.includes('meta::tracked') ? 'Untrack timeline' : 'Track timeline'}
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1111,20 +1112,20 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     type="checkbox"
                                     checked={note.content.includes('meta::tracked')}
                                     onChange={() => {}}
-                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                                    className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded cursor-pointer"
                                   />
-                                  <span className="text-sm font-medium">Track</span>
+                                  <span className="text-xs font-medium">Track</span>
                                 </label>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleViewNote(note.id);
                                   }}
-                                  className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors flex items-center space-x-1.5 border border-gray-300"
+                                  className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-md transition-all flex items-center space-x-1 border border-slate-300 shadow-sm hover:shadow"
                                   title="View note in Notes page"
                                 >
-                                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                                  <span className="text-sm font-medium">View</span>
+                                  <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+                                  <span className="text-xs font-medium">View</span>
                                 </button>
                               </div>
                             </div>
@@ -1135,12 +1136,12 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                             <div className="p-6">
                               {/* Add Event Form */}
                               {showAddEventForm === note.id && (
-                                <div className="mb-6 pb-6 border-b border-gray-200">
-                                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                    <h4 className="text-sm font-medium text-gray-700 mb-3">Add New Event</h4>
+                                <div className="mb-6 pb-6 border-b border-slate-200">
+                                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-4 rounded-lg border border-indigo-200 shadow-sm">
+                                    <h4 className="text-sm font-medium text-slate-700 mb-3">Add New Event</h4>
                                     <div className="space-y-3">
                                       <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">
                                           Event Description
                                         </label>
                                         <input
@@ -1148,30 +1149,30 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           value={newEventText}
                                           onChange={(e) => setNewEventText(e.target.value)}
                                           placeholder="e.g., Project milestone reached"
-                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-white shadow-sm transition-all"
                                         />
                                       </div>
                                       <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">
                                           Date
                                         </label>
                                         <input
                                           type="date"
                                           value={newEventDate}
                                           onChange={(e) => setNewEventDate(e.target.value)}
-                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-white shadow-sm transition-all"
                                         />
                                       </div>
                                       <div className="flex items-center space-x-2">
                                         <button
                                           onClick={() => handleAddEvent(note.id)}
-                                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md"
                                         >
                                           Add Event
                                         </button>
                                         <button
                                           onClick={() => setShowAddEventForm(null)}
-                                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                                          className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-all shadow-sm hover:shadow-md"
                                         >
                                           Cancel
                                         </button>
@@ -1209,7 +1210,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           <div className="flex items-center space-x-4 mb-4">
                                             <div className="w-4 h-4"></div>
                                             <div className="flex-1">
-                                              <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
+                                              <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent border-b-2 border-indigo-300 pb-2">
                                                 {newEventMoment.year()}
                                               </h2>
                                             </div>
@@ -1277,7 +1278,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                 <div className="flex items-center space-x-4 mb-4">
                                                   <div className="w-4 h-4"></div>
                                                   <div className="flex-1">
-                                                    <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
+                                                    <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent border-b-2 border-indigo-300 pb-2">
                                                       {newEventMoment.year()}
                                                     </h2>
                                                   </div>
@@ -1311,7 +1312,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           <div className="flex items-center space-x-4 mb-4">
                                             <div className="w-4 h-4"></div> {/* Spacer to align with events */}
                                             <div className="flex-1">
-                                              <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2">
+                                              <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-700 to-indigo-700 bg-clip-text text-transparent border-b-2 border-slate-300 pb-2">
                                                 {currentYear}
                                               </h2>
                                             </div>
@@ -1329,7 +1330,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                               event.isToday
                                                 ? 'bg-yellow-500 border-yellow-600 animate-pulse'
                                                 : event.isTotal
-                                                ? 'bg-green-600 border-green-600'
+                                                ? 'bg-emerald-600 border-emerald-600'
                                                 : event.isDuration
                                                   ? 'bg-orange-500 border-orange-500'
                                                   : event.isLinkedEvent
@@ -1337,7 +1338,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                     : event.isVirtual
                                                       ? 'bg-purple-500 border-purple-500'
                                                       : index === 0 
-                                                        ? 'bg-green-500 border-green-500' 
+                                                        ? 'bg-emerald-500 border-emerald-500' 
                                                         : 'bg-blue-500 border-blue-500'
                                             }`}></div>
                                             {index < eventsWithDiffs.length - 1 && (
@@ -1349,27 +1350,27 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           <div className={`flex-1 min-w-0 ${event.isToday ? 'bg-yellow-50 px-4 py-3 rounded-lg border-2 border-yellow-300' : ''}`}>
                                             <div className="flex items-center space-x-3 mb-1">
                                               {event.date && (
-                                                <span className={`text-sm px-2 py-1 rounded font-medium ${
-                                                  event.isToday 
-                                                    ? 'text-yellow-800 bg-yellow-200' 
-                                                    : 'text-gray-500 bg-gray-100'
-                                                }`}>
+                                                <span                                     className={`text-sm px-2 py-1 rounded font-medium ${
+                                        event.isToday 
+                                          ? 'text-amber-800 bg-amber-100 border border-amber-200' 
+                                          : 'text-slate-600 bg-slate-100 border border-slate-200'
+                                      }`}>
                                                   {event.date.format('DD/MMM/YYYY')}
                                                 </span>
                                               )}
                                               <div className="flex items-center gap-2">
                                                 <h3 className={`text-lg font-semibold ${
                                                   event.isToday
-                                                    ? 'text-yellow-900 font-bold'
+                                                    ? 'text-amber-700 font-bold'
                                                     : event.isTotal
-                                                    ? 'text-green-700 font-bold'
+                                                    ? 'text-emerald-700 font-bold'
                                                     : event.isDuration
                                                       ? 'text-orange-600 font-bold'
                                                       : event.isLinkedEvent
                                                         ? 'text-indigo-600 font-semibold'
                                                         : event.isVirtual 
-                                                          ? 'text-purple-600' 
-                                                          : 'text-gray-900'
+                                                          ? 'text-violet-600' 
+                                                          : 'text-slate-800'
                                                 }`}>
                                                   {event.isTotal || event.isDuration ? (
                                                     <span title={event.event.length > 50 ? event.event : undefined}>
@@ -1411,7 +1412,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             {!event.isVirtual && !event.isTotal && !event.isDuration && (
                                               <div className="flex items-center space-x-2 mb-1">
                                                 {event.date && (
-                                                  <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
+                                                  <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
                                                     {calculateAge(event.date)}
                                                   </span>
                                                 )}
@@ -1423,7 +1424,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                     const daysToEvent = event.date.diff(today, 'days');
                                                     const days = daysToEvent;
                                                     return (
-                                                      <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
+                                                      <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
                                                         {(() => {
                                                           if (days > 365) {
                                                             const years = Math.floor(days / 365);
@@ -1501,7 +1502,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                   </span>
                                                 )}
                                                 {event.daysFromStart !== undefined && event.date && !event.date.isAfter(moment()) && (
-                                                  <span className="text-xs px-2 py-1 rounded font-medium text-green-600 bg-green-100">
+                                                  <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
                                                     {(() => {
                                                       const days = event.daysFromStart;
                                                       if (days > 365) {
@@ -1596,7 +1597,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           <div className="flex items-center space-x-4 mb-4">
                                             <div className="w-4 h-4"></div>
                                             <div className="flex-1">
-                                              <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
+                                              <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent border-b-2 border-indigo-300 pb-2">
                                                 {newEventMoment.year()}
                                               </h2>
                                             </div>
@@ -1649,8 +1650,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               if (openTimelines.length > 0) {
                 return (
                   <div className="space-y-4">
-                    <h2 className="text-xl font-semibold text-gray-700">
-                      Open Timelines <span className="font-normal text-gray-500">({openTimelines.length})</span>
+                    <h2 className="text-xl font-semibold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
+                      Open Timelines <span className="font-normal text-slate-500">({openTimelines.length})</span>
                     </h2>
                     {openTimelines.map((note) => {
               if (!note || !note.content) return null;
@@ -1658,15 +1659,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
               return (
-                <div key={note.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div key={note.id} className="bg-white rounded-xl shadow-md border-l-4 border-indigo-400 overflow-hidden hover:shadow-lg transition-shadow">
                   {/* Timeline Header */}
                   <div 
-                    className="bg-gray-50 px-6 py-4 cursor-pointer hover:bg-gray-100 border-b border-gray-200 transition-colors"
+                    className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 cursor-pointer hover:from-indigo-100 hover:to-blue-100 border-b border-indigo-200/50 transition-all"
                     onClick={() => toggleTimelineCollapse(note.id)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="text-gray-600">
+                        <div className="text-indigo-600">
                           {collapsedTimelines.has(note.id) ? (
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -1782,7 +1783,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               e.stopPropagation();
                               handleReopenTimeline(note.id);
                             }}
-                            className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors flex items-center space-x-1.5 border border-green-200"
+                            className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-700 rounded-lg transition-all flex items-center space-x-1.5 border border-emerald-200 shadow-sm hover:shadow-md"
                             title="Reopen timeline"
                           >
                             <ArrowPathIcon className="h-4 w-4" />
@@ -2016,7 +2017,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                 <div className="flex items-center space-x-4 mb-4">
                                   <div className="w-4 h-4"></div> {/* Spacer to align with events */}
                                   <div className="flex-1">
-                                    <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2">
+                                    <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-700 to-indigo-700 bg-clip-text text-transparent border-b-2 border-slate-300 pb-2">
                                       {currentYear}
                                     </h2>
                                   </div>
@@ -2054,10 +2055,10 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                 <div className={`flex-1 min-w-0 ${event.isToday ? 'bg-yellow-50 px-4 py-3 rounded-lg border-2 border-yellow-300' : ''}`}>
                                   <div className="flex items-center space-x-3 mb-1">
                                     {event.date && (
-                                      <span className={`text-sm px-2 py-1 rounded font-medium ${
+                                      <span                                     className={`text-sm px-2 py-1 rounded font-medium ${
                                         event.isToday 
-                                          ? 'text-yellow-800 bg-yellow-200' 
-                                          : 'text-gray-500 bg-gray-100'
+                                          ? 'text-amber-800 bg-amber-100 border border-amber-200' 
+                                          : 'text-slate-600 bg-slate-100 border border-slate-200'
                                       }`}>
                                         {event.date.format('DD/MMM/YYYY')}
                                       </span>
@@ -2354,8 +2355,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               if (closedTimelines.length > 0) {
                 return (
                   <div className="space-y-4">
-                    <h2 className="text-xl font-semibold text-gray-700">
-                      Closed Timelines <span className="font-normal text-gray-500">({closedTimelines.length})</span>
+                    <h2 className="text-xl font-semibold bg-gradient-to-r from-slate-600 to-gray-600 bg-clip-text text-transparent">
+                      Closed Timelines <span className="font-normal text-slate-400">({closedTimelines.length})</span>
                     </h2>
                     {closedTimelines.map((note) => {
                       if (!note || !note.content) return null;
@@ -2363,15 +2364,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                       const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
                       return (
-                        <div key={note.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden opacity-75">
+                        <div key={note.id} className="bg-white rounded-xl shadow-md border-l-4 border-slate-300 overflow-hidden opacity-80 hover:opacity-100 hover:shadow-lg transition-all">
                           {/* Timeline Header */}
                           <div 
-                            className="bg-gray-50 px-6 py-4 cursor-pointer hover:bg-gray-100 border-b border-gray-200 transition-colors"
+                            className="bg-gradient-to-r from-slate-50 to-gray-50 px-6 py-4 cursor-pointer hover:from-slate-100 hover:to-gray-100 border-b border-slate-200/50 transition-all"
                             onClick={() => toggleTimelineCollapse(note.id)}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
-                                <div className="text-gray-500">
+                                <div className="text-slate-500">
                                   {collapsedTimelines.has(note.id) ? (
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -2442,7 +2443,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       
                                       return (
                                         <span className="text-base font-normal text-gray-500 ml-2">
-                                          ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events) {durationText ? `(${durationText})` : ''} {totalAmountText && <span className="text-green-600 font-semibold">{totalAmountText}</span>}
+                                          ({startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')}) ({eventCount} events) {durationText ? `(${durationText})` : ''} {totalAmountText && <span className="text-emerald-600 font-semibold">{totalAmountText}</span>}
                                         </span>
                                       );
                                     }
@@ -2457,7 +2458,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       e.stopPropagation();
                                       handleReopenTimeline(note.id);
                                     }}
-                                    className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors flex items-center space-x-1.5 border border-green-200"
+                                    className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-700 rounded-lg transition-all flex items-center space-x-1.5 border border-emerald-200 shadow-sm hover:shadow-md"
                                     title="Reopen timeline"
                                   >
                                     <ArrowPathIcon className="h-4 w-4" />
@@ -2531,7 +2532,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           <div className="flex items-center space-x-4 mb-4">
                                             <div className="w-4 h-4"></div> {/* Spacer to align with events */}
                                             <div className="flex-1">
-                                              <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2">
+                                              <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-700 to-indigo-700 bg-clip-text text-transparent border-b-2 border-slate-300 pb-2">
                                                 {currentYear}
                                               </h2>
                         </div>
@@ -2546,7 +2547,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                               event.isToday
                                                 ? 'bg-yellow-500 border-yellow-600 animate-pulse'
                                                 : event.isTotal
-                                                  ? 'bg-green-600 border-green-600'
+                                                  ? 'bg-emerald-600 border-emerald-600'
                                                   : event.isDuration
                                                     ? 'bg-orange-500 border-orange-500'
                                                     : event.isLinkedEvent
@@ -2554,7 +2555,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                       : event.isVirtual
                                                         ? 'bg-purple-500 border-purple-500'
                                                         : index === 0 
-                                                          ? 'bg-green-500 border-green-500' 
+                                                          ? 'bg-emerald-500 border-emerald-500' 
                                                           : 'bg-blue-500 border-blue-500'
                                             }`}></div>
                                             {index < eventsWithDiffs.length - 1 && (
@@ -2566,11 +2567,11 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           <div className={`flex-1 min-w-0 ${event.isToday ? 'bg-yellow-50 px-4 py-3 rounded-lg border-2 border-yellow-300' : ''}`}>
                                             <div className="flex items-center space-x-3 mb-1">
                                               {event.date && (
-                                                <span className={`text-sm px-2 py-1 rounded font-medium ${
-                                                  event.isToday 
-                                                    ? 'text-yellow-800 bg-yellow-200' 
-                                                    : 'text-gray-500 bg-gray-100'
-                                                }`}>
+                                                <span                                     className={`text-sm px-2 py-1 rounded font-medium ${
+                                        event.isToday 
+                                          ? 'text-amber-800 bg-amber-100 border border-amber-200' 
+                                          : 'text-slate-600 bg-slate-100 border border-slate-200'
+                                      }`}>
                                                   {event.date.format('DD/MMM/YYYY')}
                                                 </span>
                                               )}
@@ -2628,7 +2629,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             {!event.isVirtual && !event.isTotal && !event.isDuration && (
                                               <div className="flex items-center space-x-2 mb-1">
                                                 {event.date && (
-                                                  <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
+                                                  <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
                                                     {calculateAge(event.date)}
                                                   </span>
                                                 )}
@@ -2671,7 +2672,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                   </span>
                                                 )}
                                                 {event.daysFromStart !== undefined && (
-                                                  <span className="text-xs px-2 py-1 rounded font-medium text-green-600 bg-green-100">
+                                                  <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
                                                     {(() => {
                                                       const days = event.daysFromStart;
                                                       if (days > 365) {

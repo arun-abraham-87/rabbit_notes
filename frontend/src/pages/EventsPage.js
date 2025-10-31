@@ -232,11 +232,57 @@ const getEventDetails = (content) => {
 };
 
 const EventsPage = ({ allNotes, setAllNotes }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState('');
-  const [selectedDay, setSelectedDay] = useState('');
-  const [selectedYear, setSelectedYear] = useState('');
+  // localStorage keys for persisting state
+  const SEARCH_QUERY_STORAGE_KEY = 'eventsPage_searchQuery';
+  const FILTER_STATE_STORAGE_KEY = 'eventsPage_filterState';
+  
+  // Helper function to load initial state from localStorage
+  const loadInitialState = () => {
+    try {
+      // Load search query
+      const savedQuery = localStorage.getItem(SEARCH_QUERY_STORAGE_KEY) || '';
+      
+      // Load filter state
+      const savedState = localStorage.getItem(FILTER_STATE_STORAGE_KEY);
+      let filterState = {};
+      if (savedState) {
+        filterState = JSON.parse(savedState);
+      }
+      
+      return {
+        searchQuery: savedQuery,
+        selectedTags: filterState.selectedTags || [],
+        selectedMonth: filterState.selectedMonth || '',
+        selectedDay: filterState.selectedDay || '',
+        selectedYear: filterState.selectedYear || '',
+        showOnlyDeadlines: filterState.showOnlyDeadlines || false,
+        showTodaysEventsOnly: filterState.showTodaysEventsOnly || false,
+        excludePurchases: filterState.excludePurchases !== undefined ? filterState.excludePurchases : true,
+        showPastEvents: filterState.showPastEvents || false
+      };
+    } catch (error) {
+      console.error('Error loading initial state from localStorage:', error);
+      return {
+        searchQuery: '',
+        selectedTags: [],
+        selectedMonth: '',
+        selectedDay: '',
+        selectedYear: '',
+        showOnlyDeadlines: false,
+        showTodaysEventsOnly: false,
+        excludePurchases: true,
+        showPastEvents: false
+      };
+    }
+  };
+  
+  const initialState = loadInitialState();
+  
+  const [searchQuery, setSearchQuery] = useState(initialState.searchQuery);
+  const [selectedTags, setSelectedTags] = useState(initialState.selectedTags);
+  const [selectedMonth, setSelectedMonth] = useState(initialState.selectedMonth);
+  const [selectedDay, setSelectedDay] = useState(initialState.selectedDay);
+  const [selectedYear, setSelectedYear] = useState(initialState.selectedYear);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [total, setTotal] = useState(0);
@@ -244,24 +290,70 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [weekly, setWeekly] = useState(0);
   const [monthly, setMonthly] = useState(0);
   const [none, setNone] = useState(0);
-  const [showOnlyDeadlines, setShowOnlyDeadlines] = useState(false);
-  const [excludePurchases, setExcludePurchases] = useState(true);
+  const [showOnlyDeadlines, setShowOnlyDeadlines] = useState(initialState.showOnlyDeadlines);
+  const [excludePurchases, setExcludePurchases] = useState(initialState.excludePurchases);
   const [isBulkLoadOpen, setIsBulkLoadOpen] = useState(false);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [pastEventsCount, setPastEventsCount] = useState(0);
-  const [showTodaysEventsOnly, setShowTodaysEventsOnly] = useState(false);
+  const [showTodaysEventsOnly, setShowTodaysEventsOnly] = useState(initialState.showTodaysEventsOnly);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchBuffer, setSearchBuffer] = useState('');
   const [selectedEventIndex, setSelectedEventIndex] = useState(-1);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [showPastEvents, setShowPastEvents] = useState(false);
+  const [showPastEvents, setShowPastEvents] = useState(initialState.showPastEvents);
   const shouldClearFiltersRef = useRef(false);
   
   // Store filter state to restore when search is cleared
   const savedFiltersRef = useRef(null);
+  const isInitialMountRef = useRef(true);
+  
+  // Save search query to localStorage whenever it changes
+  useEffect(() => {
+    // Skip saving on initial mount
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+    
+    try {
+      if (searchQuery.trim()) {
+        localStorage.setItem(SEARCH_QUERY_STORAGE_KEY, searchQuery);
+      } else {
+        // Remove from localStorage if search is cleared
+        localStorage.removeItem(SEARCH_QUERY_STORAGE_KEY);
+      }
+    } catch (error) {
+      console.error('Error saving search query to localStorage:', error);
+    }
+  }, [searchQuery]);
+  
+  // Save filter state to localStorage whenever any filter changes
+  useEffect(() => {
+    // Skip saving on initial mount (since we initialized from localStorage)
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+    
+    try {
+      const filterState = {
+        selectedTags: [...selectedTags],
+        selectedMonth,
+        selectedDay,
+        selectedYear,
+        showOnlyDeadlines,
+        showTodaysEventsOnly,
+        excludePurchases,
+        showPastEvents
+      };
+      localStorage.setItem(FILTER_STATE_STORAGE_KEY, JSON.stringify(filterState));
+    } catch (error) {
+      console.error('Error saving filter state to localStorage:', error);
+    }
+  }, [selectedTags, selectedMonth, selectedDay, selectedYear, showOnlyDeadlines, showTodaysEventsOnly, excludePurchases, showPastEvents]);
   
   // Helper function to save current filter state
   const saveFilterState = () => {

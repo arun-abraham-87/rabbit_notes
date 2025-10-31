@@ -236,11 +236,20 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     });
     
     // Process linked events from meta::linked_from_events
-    const linkedFromLine = lines.find(line => line.trim().startsWith('meta::linked_from_events::'));
-    if (linkedFromLine && allNotes.length > 0) {
-      const linkedEventIds = linkedFromLine.replace('meta::linked_from_events::', '').split(',').map(id => id.trim()).filter(id => id);
-      
-      linkedEventIds.forEach(eventId => {
+    // Find ALL meta::linked_from_events:: lines and collect all event IDs
+    const allLinkedEventIds = new Set();
+    
+    lines.forEach(line => {
+      if (line.trim().startsWith('meta::linked_from_events::')) {
+        const eventIdsString = line.replace('meta::linked_from_events::', '').trim();
+        const eventIds = eventIdsString.split(',').map(id => id.trim()).filter(id => id);
+        eventIds.forEach(id => allLinkedEventIds.add(id));
+      }
+    });
+    
+    // Process all linked event IDs
+    if (allLinkedEventIds.size > 0 && allNotes.length > 0) {
+      Array.from(allLinkedEventIds).forEach(eventId => {
         const linkedEventNote = allNotes.find(note => note.id === eventId);
         if (linkedEventNote && linkedEventNote.content) {
           const eventLines = linkedEventNote.content.split('\n');

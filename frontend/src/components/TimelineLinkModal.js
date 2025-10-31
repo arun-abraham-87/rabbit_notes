@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { XMarkIcon, LinkIcon } from '@heroicons/react/24/outline';
 import { updateNoteById } from '../utils/ApiUtils';
 
-const TimelineLinkModal = ({ isOpen, onClose, event, allNotes }) => {
+const TimelineLinkModal = ({ isOpen, onClose, event, allNotes, onEventUpdated }) => {
   const [selectedTimeline, setSelectedTimeline] = useState('');
   const [timelines, setTimelines] = useState([]);
   const [isLinking, setIsLinking] = useState(false);
@@ -63,7 +63,12 @@ const TimelineLinkModal = ({ isOpen, onClose, event, allNotes }) => {
 
         // Add the link tag to event note
         const updatedEventContent = eventNote.content.trim() + '\n' + existingEventLink;
-        await updateNoteById(event.id, updatedEventContent);
+        const updatedEventResponse = await updateNoteById(event.id, updatedEventContent);
+        
+        // Notify parent component that event was updated
+        if (onEventUpdated && updatedEventResponse) {
+          onEventUpdated(event.id, updatedEventResponse.content || updatedEventContent);
+        }
 
         // 2. Add meta::linked_from_events::<note_id> to the timeline note
         // Support multiple events linking to the same timeline - consolidate all linked events

@@ -723,6 +723,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
         onClose={handleCloseTimelineModal}
         event={selectedEventForTimeline}
         allNotes={notes}
+        onEventUpdated={onEventUpdated}
       />
     </div>
   );

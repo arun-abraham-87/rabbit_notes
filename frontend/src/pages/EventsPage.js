@@ -939,7 +939,7 @@ event_tags:${expense.tag.join(',')}`;
 
   const handleEventUpdated = (eventId, updatedContent) => {
     updateNoteById(eventId, updatedContent);
-    setAllNotes(allNotes.map(note => 
+    setAllNotes(prevNotes => prevNotes.map(note => 
       note.id === eventId ? { ...note, content: updatedContent } : note
     ));
   };

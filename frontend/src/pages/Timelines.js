@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import moment from 'moment';
-import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon } from '@heroicons/react/24/solid';
 import { useNavigate } from 'react-router-dom';
 
 const Timelines = ({ notes, updateNote, addNote }) => {
@@ -515,6 +515,40 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     }
   };
 
+  const handleToggleFlagged = async (noteId) => {
+    try {
+      const note = notes.find(n => n.id === noteId);
+      if (!note) return;
+
+      const hasFlagged = note.content.includes('meta::flagged_timeline');
+      let newContent;
+      
+      if (hasFlagged) {
+        // Remove flagged tag - handle both standalone and with newline
+        const lines = note.content.split('\n');
+        const filteredLines = lines.filter(line => line.trim() !== 'meta::flagged_timeline');
+        newContent = filteredLines.join('\n').trim();
+      } else {
+        // Add flagged tag
+        newContent = note.content.trim() + '\nmeta::flagged_timeline';
+      }
+      
+      await updateNote(noteId, newContent);
+      
+      // Refresh the timeline notes by updating the note content in the current notes
+      // The parent component should refresh notes, but we update locally for immediate feedback
+      const updatedNotes = notes.map(n => 
+        n.id === noteId ? { ...n, content: newContent } : n
+      );
+      const filteredNotes = updatedNotes.filter(note => 
+        note.content && note.content.includes('meta::timeline')
+      );
+      setTimelineNotes(filteredNotes);
+    } catch (error) {
+      console.error('Error toggling flagged status:', error);
+    }
+  };
+
   // Handle creating a new timeline
   const handleCreateTimeline = async () => {
     if (!newTimelineTitle.trim()) {
@@ -599,6 +633,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       if (updateNote) {
         await updateNote(noteId, updatedContent);
       }
+
+      // Ensure timeline stays open after adding event (remove from collapsed set)
+      setCollapsedTimelines(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(noteId);
+        // Save to localStorage
+        saveCollapseStates(newSet);
+        return newSet;
+      });
 
       // Reset form
       setNewEventText('');
@@ -941,6 +984,21 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                             <span className="text-sm font-medium">Reopen</span>
                           </button>
                         )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleFlagged(note.id);
+                          }}
+                          className={`px-3 py-1.5 rounded-md transition-colors flex items-center space-x-1.5 border ${
+                            note.content.includes('meta::flagged_timeline')
+                              ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+                              : 'bg-gray-50 hover:bg-gray-100 text-gray-500 border-gray-300'
+                          }`}
+                          title={note.content.includes('meta::flagged_timeline') ? 'Unflag timeline' : 'Flag timeline (needs attention)'}
+                        >
+                          <FlagIcon className="h-4 w-4" />
+                          <span className="text-sm font-medium">Flag</span>
+                        </button>
                         <label 
                           className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors cursor-pointer flex items-center space-x-1.5 border border-gray-300"
                           title={note.content.includes('meta::tracked') ? 'Untrack timeline' : 'Track timeline'}
@@ -1583,6 +1641,21 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     <span className="text-sm font-medium">Reopen</span>
                               </button>
                                 )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleFlagged(note.id);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-md transition-colors flex items-center space-x-1.5 border ${
+                                    note.content.includes('meta::flagged_timeline')
+                                      ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+                                      : 'bg-gray-50 hover:bg-gray-100 text-gray-500 border-gray-300'
+                                  }`}
+                                  title={note.content.includes('meta::flagged_timeline') ? 'Unflag timeline' : 'Flag timeline (needs attention)'}
+                                >
+                                  <FlagIcon className="h-4 w-4" />
+                                  <span className="text-sm font-medium">Flag</span>
+                                </button>
                                 <label 
                                   className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors cursor-pointer flex items-center space-x-1.5 border border-gray-300"
                                   title={note.content.includes('meta::tracked') ? 'Untrack timeline' : 'Track timeline'}

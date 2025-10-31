@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import moment from 'moment';
-import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon, LinkIcon } from '@heroicons/react/24/solid';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
@@ -17,6 +17,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   const [collapsedTimelines, setCollapsedTimelines] = useState(new Set());
   const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
   const [unlinkConfirmation, setUnlinkConfirmation] = useState({ isOpen: false, timelineId: null, eventId: null });
+  const [addLinkModal, setAddLinkModal] = useState({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' });
 
   // localStorage key for timeline collapse states
   const TIMELINE_COLLAPSE_STORAGE_KEY = 'timeline_collapse_states';
@@ -190,10 +191,24 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     contentLines.slice(1).forEach((line, index) => {
       const trimmedLine = line.trim();
       if (trimmedLine) {
-        // Try to parse event:date format
+        // Try to parse event:date:link format (link is optional)
         const eventMatch = trimmedLine.match(/^(.+?)\s*:\s*(.+)$/);
         if (eventMatch) {
-          const [, event, dateStr] = eventMatch;
+          const [, event, rest] = eventMatch;
+          
+          // Check if there's a link after the date (format: date:link)
+          const dateLinkMatch = rest.match(/^(.+?)\s*:\s*(.+)$/);
+          let dateStr, link;
+          
+          if (dateLinkMatch) {
+            // Format: event:date:link
+            dateStr = dateLinkMatch[1].trim();
+            link = dateLinkMatch[2].trim();
+          } else {
+            // Format: event:date
+            dateStr = rest.trim();
+            link = null;
+          }
           
           // Extract dollar values from the event text
           const dollarValues = extractDollarValues(event);
@@ -222,7 +237,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               date: parsedDate,
               dateStr: dateStr.trim(),
               lineIndex: index + 1, // +1 because we skipped the title line
-              dollarAmount: eventDollarAmount
+              dollarAmount: eventDollarAmount,
+              link: link || null
             });
           } else {
             // If not a valid date, treat as event without date
@@ -231,7 +247,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
               date: null,
               dateStr: '',
               lineIndex: index + 1,
-              dollarAmount: eventDollarAmount
+              dollarAmount: eventDollarAmount,
+              link: null
             });
           }
         } else {
@@ -244,7 +261,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
             date: null,
             dateStr: '',
             lineIndex: index + 1,
-            dollarAmount: eventDollarAmount
+            dollarAmount: eventDollarAmount,
+            link: null
           });
         }
       }
@@ -293,7 +311,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                 lineIndex: -1, // Virtual event from linked note
                 dollarAmount: eventDollarAmount,
                 isLinkedEvent: true,
-                linkedEventId: eventId
+                linkedEventId: eventId,
+                link: null // Linked events don't have links in timeline format
               });
             }
           }
@@ -753,6 +772,73 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     } catch (error) {
       console.error('Error adding event:', error);
       alert('Failed to add event. Please try again.');
+    }
+  };
+
+  // Handle adding/updating link for an event
+  const handleAddLink = async (timelineId, eventIndex, link) => {
+    try {
+      const note = timelineNotes.find(n => n.id === timelineId);
+      if (!note) return;
+
+      const timelineData = parseTimelineData(note.content, notes);
+      const event = timelineData.events[eventIndex];
+      
+      if (!event || event.lineIndex === -1) {
+        // Can't add link to linked events or virtual events
+        alert('Cannot add link to this type of event');
+        return;
+      }
+
+      const lines = note.content.split('\n');
+      const eventLineIndex = event.lineIndex;
+      
+      // Get the current event line
+      let eventLine = lines[eventLineIndex];
+      
+      // Parse the current line to extract event and date
+      const eventMatch = eventLine.match(/^(.+?)\s*:\s*(.+)$/);
+      if (!eventMatch) {
+        alert('Invalid event format');
+        return;
+      }
+
+      const [, eventText, rest] = eventMatch;
+      const dateLinkMatch = rest.match(/^(.+?)\s*:\s*(.+)$/);
+      
+      let formattedDate;
+      if (dateLinkMatch) {
+        // Already has a link, replace it
+        formattedDate = dateLinkMatch[1].trim();
+      } else {
+        // No link yet, use the rest as date
+        formattedDate = rest.trim();
+      }
+
+      // Build the new event line
+      let newEventLine;
+      if (link && link.trim()) {
+        newEventLine = `${eventText.trim()}: ${formattedDate}: ${link.trim()}`;
+      } else {
+        // Remove link if empty
+        newEventLine = `${eventText.trim()}: ${formattedDate}`;
+      }
+
+      // Update the line
+      lines[eventLineIndex] = newEventLine;
+
+      const updatedContent = lines.join('\n');
+
+      // Update the note
+      if (updateNote) {
+        await updateNote(timelineId, updatedContent);
+      }
+
+      // Close modal
+      setAddLinkModal({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' });
+    } catch (error) {
+      console.error('Error adding link:', error);
+      alert('Failed to add link. Please try again.');
     }
   };
 
@@ -2128,6 +2214,41 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           </button>
                                         </div>
                                       )}
+                                      {!event.isLinkedEvent && !event.isTotal && !event.isDuration && !event.isVirtual && (
+                                        <div className="flex items-center gap-2 ml-auto">
+                                          {event.link && (
+                                            <a
+                                              href={event.link}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
+                                              title={event.link}
+                                            >
+                                              <LinkIcon className="h-3 w-3 mr-1" />
+                                              Link
+                                            </a>
+                                          )}
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const timelineData = parseTimelineData(note.content, notes);
+                                              const eventToLink = timelineData.events[index];
+                                              setAddLinkModal({ 
+                                                isOpen: true, 
+                                                timelineId: note.id, 
+                                                eventIndex: index, 
+                                                currentLink: eventToLink.link || '' 
+                                              });
+                                            }}
+                                            className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors"
+                                            title={event.link ? 'Edit link' : 'Add link'}
+                                          >
+                                            <LinkIcon className="h-3 w-3 mr-1" />
+                                            {event.link ? 'Edit' : 'Add'} Link
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                   
@@ -2826,6 +2947,61 @@ const Timelines = ({ notes, updateNote, addNote }) => {
           message="Are you sure you want to unlink this event from the timeline?"
           confirmButtonText="Unlink"
         />
+
+        {/* Add Link Modal */}
+        {addLinkModal.isOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {addLinkModal.currentLink ? 'Edit Link' : 'Add Link'}
+                </h3>
+                <button
+                  onClick={() => setAddLinkModal({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' })}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Link URL
+                  </label>
+                  <input
+                    type="url"
+                    value={addLinkModal.currentLink}
+                    onChange={(e) => setAddLinkModal({ ...addLinkModal, currentLink: e.target.value })}
+                    placeholder="https://example.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setAddLinkModal({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' })}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (addLinkModal.timelineId !== null && addLinkModal.eventIndex !== null) {
+                      handleAddLink(addLinkModal.timelineId, addLinkModal.eventIndex, addLinkModal.currentLink);
+                    }
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center gap-2"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                  {addLinkModal.currentLink ? 'Update' : 'Add'} Link
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

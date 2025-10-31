@@ -578,19 +578,28 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     }
   }, [isSearchMode, searchBuffer]);
 
-  // Get all unique tags from events
-  const uniqueTags = useMemo(() => {
+  // Get all unique tags from events (sorted and in sentence case)
+  const { uniqueTags, tagMap } = useMemo(() => {
     const tags = new Set();
+    const tagMapInstance = new Map(); // Map sentence case to original tag
+    
     allNotes
       .filter(note => note?.content && note.content.includes('meta::event::'))
       .forEach(note => {
         const { tags: eventTags } = getEventDetails(note.content);
-        eventTags.forEach(tag => tags.add(tag));
+        eventTags.forEach(tag => {
+          // Convert to sentence case for display
+          const sentenceCaseTag = tag.length === 0 ? tag : tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase();
+          tags.add(sentenceCaseTag);
+          // Map sentence case back to original (use first original encountered)
+          if (!tagMapInstance.has(sentenceCaseTag)) {
+            tagMapInstance.set(sentenceCaseTag, tag);
+          }
+        });
       });
-    const sortedTags = Array.from(tags).sort();
-    
-    
-    return sortedTags;
+    // Sort alphabetically (case-insensitive)
+    const sortedTags = Array.from(tags).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    return { uniqueTags: sortedTags, tagMap: tagMapInstance };
   }, [allNotes]);
 
   // Get unique years from events
@@ -842,14 +851,18 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     }
   };
 
-  const handleTagClick = (tag) => {
+  const handleTagClick = (displayTag) => {
+    // Convert displayed tag back to original case for matching
+    const originalTag = tagMap?.get(displayTag) || displayTag;
     setSelectedTags(prev => {
-      if (prev.includes(tag)) {
-        // Remove the tag if it's already selected
-        return prev.filter(t => t !== tag);
+      // Check if original tag is already selected (case-insensitive check)
+      const isSelected = prev.some(t => t.toLowerCase() === originalTag.toLowerCase());
+      if (isSelected) {
+        // Remove the tag if it's already selected (remove by original case)
+        return prev.filter(t => t.toLowerCase() !== originalTag.toLowerCase());
       } else {
-        // Add the tag if it's not selected
-        return [...prev, tag];
+        // Add the original tag if it's not selected
+        return [...prev, originalTag];
       }
     });
   };
@@ -1159,7 +1172,10 @@ event_tags:${expense.tag.join(',')}`;
               )}
               {selectedTags.length > 0 && (
                 <span className="px-2 py-1 bg-white rounded border text-gray-700">
-                  Tags: {selectedTags.join(', ')}
+                  Tags: {selectedTags.map(tag => {
+                    // Convert to sentence case for display
+                    return tag.length === 0 ? tag : tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase();
+                  }).join(', ')}
                 </span>
               )}
               {showOnlyDeadlines && (
@@ -1214,18 +1230,24 @@ event_tags:${expense.tag.join(',')}`;
 
         {/* Tag Pills */}
         <div className="flex flex-wrap gap-2 items-center">
-          {uniqueTags.map(tag => (
-            <button
-              key={tag}
-              onClick={() => handleTagClick(tag)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${selectedTags.includes(tag)
-                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
-                }`}
-            >
-              {tag}
-            </button>
-          ))}
+          {uniqueTags.map(displayTag => {
+            // Get original tag for matching
+            const originalTag = tagMap?.get(displayTag) || displayTag;
+            // Check if tag is selected (case-insensitive comparison)
+            const isSelected = selectedTags.some(t => t.toLowerCase() === originalTag.toLowerCase());
+            return (
+              <button
+                key={displayTag}
+                onClick={() => handleTagClick(displayTag)}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${isSelected
+                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+                  }`}
+              >
+                {displayTag}
+              </button>
+            );
+          })}
         </div>
       </div>
       )}

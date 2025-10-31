@@ -1,7 +1,7 @@
 import React from 'react';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
-const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmButtonText = 'Delete' }) => {
   if (!isOpen) return null;
 
   return (
@@ -31,7 +31,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, title, message })
               className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
               onClick={onConfirm}
             >
-              Delete
+              {confirmButtonText}
             </button>
             <button
               type="button"

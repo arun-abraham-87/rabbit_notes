@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import moment from 'moment';
 import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon } from '@heroicons/react/24/solid';
 import { useNavigate, useLocation } from 'react-router-dom';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
 const Timelines = ({ notes, updateNote, addNote }) => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   const [newTimelineTitle, setNewTimelineTitle] = useState('');
   const [collapsedTimelines, setCollapsedTimelines] = useState(new Set());
   const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
+  const [unlinkConfirmation, setUnlinkConfirmation] = useState({ isOpen: false, timelineId: null, eventId: null });
 
   // localStorage key for timeline collapse states
   const TIMELINE_COLLAPSE_STORAGE_KEY = 'timeline_collapse_states';
@@ -101,6 +103,12 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     return text.replace(dollarRegex, (match) => {
       return `<span class="text-green-600 font-semibold">${match}</span>`;
     });
+  };
+
+  // Truncate text to max length and add ellipsis
+  const truncateText = (text, maxLength = 50) => {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
   };
 
   // Handle event selection
@@ -1364,12 +1372,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                           : 'text-gray-900'
                                                 }`}>
                                                   {event.isTotal || event.isDuration ? (
-                                                    event.event
+                                                    <span title={event.event.length > 50 ? event.event : undefined}>
+                                                      {truncateText(event.event)}
+                                                    </span>
                                                   ) : (
                                                     <span 
+                                                      title={event.event.length > 50 ? event.event : undefined}
                                                       dangerouslySetInnerHTML={{
                                                         __html: highlightDollarValues(
-                                                          event.event.charAt(0).toUpperCase() + event.event.slice(1)
+                                                          truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
                                                         )
                                                       }}
                                                     />
@@ -1383,9 +1394,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                     <button
                                                       onClick={(e) => {
                                                         e.stopPropagation();
-                                                        if (window.confirm('Are you sure you want to unlink this event from the timeline?')) {
-                                                          handleUnlinkEvent(note.id, event.linkedEventId);
-                                                        }
+                                                        setUnlinkConfirmation({ isOpen: true, timelineId: note.id, eventId: event.linkedEventId });
                                                       }}
                                                       className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
                                                       title="Unlink event from timeline"
@@ -2068,12 +2077,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                 : 'text-gray-900'
                                       }`}>
                                         {event.isTotal || event.isDuration ? (
-                                          event.event
+                                          <span title={event.event.length > 50 ? event.event : undefined}>
+                                            {truncateText(event.event)}
+                                          </span>
                                         ) : (
                                           <span 
+                                            title={event.event.length > 50 ? event.event : undefined}
                                             dangerouslySetInnerHTML={{
                                               __html: highlightDollarValues(
-                                                event.event.charAt(0).toUpperCase() + event.event.slice(1)
+                                                truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
                                               )
                                             }}
                                           />
@@ -2087,9 +2099,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              if (window.confirm('Are you sure you want to unlink this event from the timeline?')) {
-                                                handleUnlinkEvent(note.id, event.linkedEventId);
-                                              }
+                                              setUnlinkConfirmation({ isOpen: true, timelineId: note.id, eventId: event.linkedEventId });
                                             }}
                                             className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
                                             title="Unlink event from timeline"
@@ -2579,12 +2589,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                             : 'text-gray-900'
                                                 }`}>
                                                   {event.isTotal || event.isDuration ? (
-                                                    event.event
+                                                    <span title={event.event.length > 50 ? event.event : undefined}>
+                                                      {truncateText(event.event)}
+                                                    </span>
                                                   ) : (
                                                     <span 
+                                                      title={event.event.length > 50 ? event.event : undefined}
                                                       dangerouslySetInnerHTML={{
                                                         __html: highlightDollarValues(
-                                                          event.event.charAt(0).toUpperCase() + event.event.slice(1)
+                                                          truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
                                                         )
                                                       }}
                                                     />
@@ -2598,9 +2611,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                     <button
                                                       onClick={(e) => {
                                                         e.stopPropagation();
-                                                        if (window.confirm('Are you sure you want to unlink this event from the timeline?')) {
-                                                          handleUnlinkEvent(note.id, event.linkedEventId);
-                                                        }
+                                                        setUnlinkConfirmation({ isOpen: true, timelineId: note.id, eventId: event.linkedEventId });
                                                       }}
                                                       className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
                                                       title="Unlink event from timeline"
@@ -2773,6 +2784,21 @@ const Timelines = ({ notes, updateNote, addNote }) => {
             </div>
           </div>
         )}
+
+        {/* Unlink Confirmation Modal */}
+        <DeleteConfirmationModal
+          isOpen={unlinkConfirmation.isOpen}
+          onClose={() => setUnlinkConfirmation({ isOpen: false, timelineId: null, eventId: null })}
+          onConfirm={() => {
+            if (unlinkConfirmation.timelineId && unlinkConfirmation.eventId) {
+              handleUnlinkEvent(unlinkConfirmation.timelineId, unlinkConfirmation.eventId);
+            }
+            setUnlinkConfirmation({ isOpen: false, timelineId: null, eventId: null });
+          }}
+          title="Unlink Event"
+          message="Are you sure you want to unlink this event from the timeline?"
+          confirmButtonText="Unlink"
+        />
       </div>
     </div>
   );

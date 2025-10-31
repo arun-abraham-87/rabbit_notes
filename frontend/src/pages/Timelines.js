@@ -1513,24 +1513,6 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                     />
                                                   )}
                                                 </h3>
-                                                {event.isLinkedEvent && (
-                                                  <div className="inline-flex items-center gap-2">
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
-                                                      Linked
-                                                    </span>
-                                                    <button
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setUnlinkConfirmation({ isOpen: true, timelineId: note.id, eventId: event.linkedEventId });
-                                                      }}
-                                                      className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
-                                                      title="Unlink event from timeline"
-                                                    >
-                                                      <XMarkIcon className="h-3 w-3 mr-1" />
-                                                      Unlink
-                                                    </button>
-                                                  </div>
-                                                )}
                                               </div>
                                             </div>
                                             
@@ -1664,6 +1646,24 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                       }
                                                     })()}
                                                   </span>
+                                                )}
+                                                {event.isLinkedEvent && (
+                                                  <>
+                                                    <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
+                                                      Linked
+                                                    </span>
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setUnlinkConfirmation({ isOpen: true, timelineId: note.id, eventId: event.linkedEventId });
+                                                      }}
+                                                      className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
+                                                      title="Unlink event from timeline"
+                                                    >
+                                                      <XMarkIcon className="h-3 w-3 mr-1" />
+                                                      Unlink
+                                                    </button>
+                                                  </>
                                                 )}
                                               </div>
                                             )}
@@ -2258,24 +2258,6 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                           )}
                                         </h3>
                                       )}
-                                      {event.isLinkedEvent && (
-                                        <div className="inline-flex items-center gap-2">
-                                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
-                                            Linked
-                                          </span>
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setUnlinkConfirmation({ isOpen: true, timelineId: note.id, eventId: event.linkedEventId });
-                                            }}
-                                            className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
-                                            title="Unlink event from timeline"
-                                          >
-                                            <XMarkIcon className="h-3 w-3 mr-1" />
-                                            Unlink
-                                          </button>
-                                        </div>
-                                      )}
                                       {!event.isLinkedEvent && !event.isTotal && !event.isDuration && !event.isVirtual && (
                                         <button
                                           onClick={(e) => {
@@ -2429,6 +2411,24 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             }
                                           })()}
                                         </span>
+                                      )}
+                                      {event.isLinkedEvent && (
+                                        <>
+                                          <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
+                                            Linked
+                                          </span>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setUnlinkConfirmation({ isOpen: true, timelineId: note.id, eventId: event.linkedEventId });
+                                            }}
+                                            className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
+                                            title="Unlink event from timeline"
+                                          >
+                                            <XMarkIcon className="h-3 w-3 mr-1" />
+                                            Unlink
+                                          </button>
+                                        </>
                                       )}
                                     </div>
                                   )}
@@ -2902,6 +2902,24 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                       }
                                                     })()}
                                                   </span>
+                                                )}
+                                                {event.isLinkedEvent && (
+                                                  <>
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                                      Linked
+                                                    </span>
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setUnlinkConfirmation({ isOpen: true, timelineId: note.id, eventId: event.linkedEventId });
+                                                      }}
+                                                      className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
+                                                      title="Unlink event from timeline"
+                                                    >
+                                                      <XMarkIcon className="h-3 w-3 mr-1" />
+                                                      Unlink
+                                                    </button>
+                                                  </>
                                                 )}
                                               </div>
                                             )}

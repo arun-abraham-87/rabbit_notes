@@ -7,18 +7,6 @@ import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 const Timelines = ({ notes, updateNote, addNote }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [timelineNotes, setTimelineNotes] = useState([]);
-  const [showAddEventForm, setShowAddEventForm] = useState(null);
-  const [newEventText, setNewEventText] = useState('');
-  const [newEventDate, setNewEventDate] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showNewTimelineForm, setShowNewTimelineForm] = useState(false);
-  const [newTimelineTitle, setNewTimelineTitle] = useState('');
-  const [collapsedTimelines, setCollapsedTimelines] = useState(new Set());
-  const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
-  const [unlinkConfirmation, setUnlinkConfirmation] = useState({ isOpen: false, timelineId: null, eventId: null });
-  const [addLinkModal, setAddLinkModal] = useState({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' });
-
   // localStorage key for timeline collapse states
   const TIMELINE_COLLAPSE_STORAGE_KEY = 'timeline_collapse_states';
 
@@ -36,6 +24,19 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     return new Set();
   };
 
+  // Initialize state with saved collapse states
+  const [timelineNotes, setTimelineNotes] = useState([]);
+  const [showAddEventForm, setShowAddEventForm] = useState(null);
+  const [newEventText, setNewEventText] = useState('');
+  const [newEventDate, setNewEventDate] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showNewTimelineForm, setShowNewTimelineForm] = useState(false);
+  const [newTimelineTitle, setNewTimelineTitle] = useState('');
+  const [collapsedTimelines, setCollapsedTimelines] = useState(() => loadCollapseStates());
+  const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
+  const [unlinkConfirmation, setUnlinkConfirmation] = useState({ isOpen: false, timelineId: null, eventId: null });
+  const [addLinkModal, setAddLinkModal] = useState({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' });
+
   // Save timeline collapse states to localStorage
   const saveCollapseStates = (collapsedSet) => {
     try {
@@ -45,6 +46,14 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       console.error('Error saving timeline collapse states:', error);
     }
   };
+
+  // Restore collapse states when navigating to timelines page
+  useEffect(() => {
+    if (location.pathname === '/timelines') {
+      const savedStates = loadCollapseStates();
+      setCollapsedTimelines(savedStates);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (notes && notes.length > 0) {
@@ -56,7 +65,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       // This is important when notes are updated (e.g., when events are linked)
       setTimelineNotes(filteredNotes);
       
-      // Load saved collapse states from localStorage
+      // When notes change, update collapse states to remove deleted timelines
       const savedStates = loadCollapseStates();
       const currentNoteIds = filteredNotes.map(note => note.id);
       
@@ -71,14 +80,25 @@ const Timelines = ({ notes, updateNote, addNote }) => {
         }
       });
       
-      // New timelines are expanded by default (not added to collapsed set)
-      setCollapsedTimelines(mergedStates);
+      // Update collapse states to remove references to deleted timelines
+      // Only update if there are actual changes to avoid unnecessary re-renders
+      setCollapsedTimelines(prev => {
+        const prevArray = Array.from(prev).sort();
+        const mergedArray = Array.from(mergedStates).sort();
+        
+        // Check if they're different
+        if (prevArray.length !== mergedArray.length) {
+          return mergedStates;
+        }
+        
+        const hasChanges = prevArray.some((id, index) => id !== mergedArray[index]);
+        return hasChanges ? mergedStates : prev;
+      });
     } else if (notes && notes.length === 0) {
       // Handle empty notes array
       setTimelineNotes([]);
-      setCollapsedTimelines(new Set());
     }
-  }, [notes, location.pathname]);
+  }, [notes]);
 
   // Extract dollar values from text
   const extractDollarValues = (text) => {
@@ -289,11 +309,21 @@ const Timelines = ({ notes, updateNote, addNote }) => {
           
           // Extract event description
           const descriptionLine = eventLines.find(line => line.startsWith('event_description:'));
-          const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+          let description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
           
           // Extract event date
           const dateLine = eventLines.find(line => line.startsWith('event_date:'));
           const eventDate = dateLine ? dateLine.replace('event_date:', '').trim() : '';
+          
+          // Check if this is a purchase (has event_$: line)
+          const priceLine = eventLines.find(line => line.trim().startsWith('event_$:'));
+          if (priceLine) {
+            const priceValue = priceLine.replace('event_$:', '').trim();
+            // Append the price to the description header
+            if (priceValue) {
+              description = description ? `${description} $${priceValue}` : `$${priceValue}`;
+            }
+          }
           
           if (description && eventDate) {
             // Parse the event date (ISO format)
@@ -704,7 +734,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
         newSet.add(noteId);
       }
       
-      // Save the updated state to localStorage
+      // Save the updated state to localStorage immediately
       saveCollapseStates(newSet);
       
       return newSet;
@@ -2167,35 +2197,67 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                         {event.date.format('DD/MMM/YYYY')}
                                       </span>
                                     )}
-                                    <div className="flex items-center gap-2">
-                                      <h3 className={`text-lg font-semibold ${
-                                        event.isToday
-                                          ? 'text-emerald-700 font-bold'
-                                          : event.isTotal
-                                          ? 'text-green-700 font-bold'
-                                          : event.isDuration
-                                            ? 'text-orange-600 font-bold'
-                                            : event.isLinkedEvent
-                                              ? 'text-indigo-600 font-semibold'
-                                              : event.isVirtual 
-                                                ? 'text-purple-600' 
-                                                : 'text-gray-900'
-                                      }`}>
-                                        {event.isTotal || event.isDuration ? (
-                                          <span title={event.event.length > 50 ? event.event : undefined}>
-                                            {truncateText(event.event)}
-                                          </span>
-                                        ) : (
-                                          <span 
-                                            title={event.event.length > 50 ? event.event : undefined}
-                                            dangerouslySetInnerHTML={{
-                                              __html: highlightDollarValues(
-                                                truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
-                                              )
-                                            }}
-                                          />
-                                        )}
-                                      </h3>
+                                    <div className="flex items-center gap-2 flex-1">
+                                      {event.link && !event.isLinkedEvent && !event.isTotal && !event.isDuration && !event.isVirtual ? (
+                                        <a
+                                          href={event.link}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="text-lg font-semibold hover:underline text-blue-600"
+                                          title={event.link}
+                                        >
+                                          <h3 className={`inline ${
+                                            event.isToday
+                                              ? 'text-emerald-700 font-bold'
+                                              : 'text-blue-600'
+                                          }`}>
+                                            {event.isTotal || event.isDuration ? (
+                                              <span title={event.event.length > 50 ? event.event : undefined}>
+                                                {truncateText(event.event)}
+                                              </span>
+                                            ) : (
+                                              <span 
+                                                title={event.event.length > 50 ? event.event : undefined}
+                                                dangerouslySetInnerHTML={{
+                                                  __html: highlightDollarValues(
+                                                    truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
+                                                  )
+                                                }}
+                                              />
+                                            )}
+                                          </h3>
+                                        </a>
+                                      ) : (
+                                        <h3 className={`text-lg font-semibold ${
+                                          event.isToday
+                                            ? 'text-emerald-700 font-bold'
+                                            : event.isTotal
+                                            ? 'text-green-700 font-bold'
+                                            : event.isDuration
+                                              ? 'text-orange-600 font-bold'
+                                              : event.isLinkedEvent
+                                                ? 'text-indigo-600 font-semibold'
+                                                : event.isVirtual 
+                                                  ? 'text-purple-600' 
+                                                  : 'text-gray-900'
+                                        }`}>
+                                          {event.isTotal || event.isDuration ? (
+                                            <span title={event.event.length > 50 ? event.event : undefined}>
+                                              {truncateText(event.event)}
+                                            </span>
+                                          ) : (
+                                            <span 
+                                              title={event.event.length > 50 ? event.event : undefined}
+                                              dangerouslySetInnerHTML={{
+                                                __html: highlightDollarValues(
+                                                  truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
+                                                )
+                                              }}
+                                            />
+                                          )}
+                                        </h3>
+                                      )}
                                       {event.isLinkedEvent && (
                                         <div className="inline-flex items-center gap-2">
                                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
@@ -2215,39 +2277,24 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                         </div>
                                       )}
                                       {!event.isLinkedEvent && !event.isTotal && !event.isDuration && !event.isVirtual && (
-                                        <div className="flex items-center gap-2 ml-auto">
-                                          {event.link && (
-                                            <a
-                                              href={event.link}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              onClick={(e) => e.stopPropagation()}
-                                              className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
-                                              title={event.link}
-                                            >
-                                              <LinkIcon className="h-3 w-3 mr-1" />
-                                              Link
-                                            </a>
-                                          )}
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              const timelineData = parseTimelineData(note.content, notes);
-                                              const eventToLink = timelineData.events[index];
-                                              setAddLinkModal({ 
-                                                isOpen: true, 
-                                                timelineId: note.id, 
-                                                eventIndex: index, 
-                                                currentLink: eventToLink.link || '' 
-                                              });
-                                            }}
-                                            className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors"
-                                            title={event.link ? 'Edit link' : 'Add link'}
-                                          >
-                                            <LinkIcon className="h-3 w-3 mr-1" />
-                                            {event.link ? 'Edit' : 'Add'} Link
-                                          </button>
-                                        </div>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const timelineData = parseTimelineData(note.content, notes);
+                                            const eventToLink = timelineData.events[index];
+                                            setAddLinkModal({ 
+                                              isOpen: true, 
+                                              timelineId: note.id, 
+                                              eventIndex: index, 
+                                              currentLink: eventToLink.link || '' 
+                                            });
+                                          }}
+                                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors ml-auto"
+                                          title={event.link ? 'Edit link' : 'Add link'}
+                                        >
+                                          <LinkIcon className="h-3 w-3 mr-1" />
+                                          {event.link ? 'Edit' : 'Add'} Link
+                                        </button>
                                       )}
                                     </div>
                                   </div>

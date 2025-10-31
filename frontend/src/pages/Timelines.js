@@ -589,40 +589,42 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       }
 
       // 2. Remove the event ID from meta::linked_from_events:: in the timeline note
+      // Each event should be on its own line, so remove the specific line
       const timelineNote = notes.find(n => n.id === timelineNoteId);
       let updatedTimelineContent = null;
       if (timelineNote) {
         const timelineLines = timelineNote.content.split('\n');
         
-        // Find all meta::linked_from_events:: lines
-        const linkedFromLinesIndices = [];
-        const allLinkedEventIds = new Set();
+        // Process each line: remove the linked event ID, keep other event IDs as separate lines
+        const processedLines = [];
+        const remainingEventIds = new Set();
         
-        timelineLines.forEach((line, index) => {
+        timelineLines.forEach((line) => {
           if (line.trim().startsWith('meta::linked_from_events::')) {
-            linkedFromLinesIndices.push(index);
             const eventIdsString = line.replace('meta::linked_from_events::', '').trim();
             const eventIds = eventIdsString.split(',').map(id => id.trim()).filter(id => id);
+            
+            // Filter out the event ID we're unlinking, and collect remaining IDs
             eventIds.forEach(id => {
-              if (id !== linkedEventId) { // Only keep other event IDs
-                allLinkedEventIds.add(id);
+              if (id !== linkedEventId) {
+                remainingEventIds.add(id);
               }
             });
+          } else {
+            // Keep non-linked_from_events lines as-is
+            processedLines.push(line);
           }
         });
         
-        // Remove all existing meta::linked_from_events:: lines
-        const filteredTimelineLines = timelineLines.filter((line, index) => 
-          !linkedFromLinesIndices.includes(index)
-        );
+        // Build the updated content
+        updatedTimelineContent = processedLines.join('\n').trim();
         
-        // If there are still linked events, add back the consolidated line
-        if (allLinkedEventIds.size > 0) {
-          const consolidatedLinkedEventsLine = `meta::linked_from_events::${Array.from(allLinkedEventIds).join(',')}`;
-          updatedTimelineContent = filteredTimelineLines.join('\n').trim() + '\n' + consolidatedLinkedEventsLine;
-        } else {
-          // No more linked events, just remove the line
-          updatedTimelineContent = filteredTimelineLines.join('\n').trim();
+        // Add remaining event IDs as separate lines (one per event)
+        if (remainingEventIds.size > 0) {
+          const linkedEventLines = Array.from(remainingEventIds).map(eventId => 
+            `meta::linked_from_events::${eventId}`
+          );
+          updatedTimelineContent = updatedTimelineContent + '\n' + linkedEventLines.join('\n');
         }
         
         await updateNote(timelineNoteId, updatedTimelineContent);
@@ -1035,7 +1037,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                       return (
                                         <>
                                           <div className="text-sm font-normal text-gray-600 mt-1">
-                                            {startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')} • {eventCount} events{durationText ? ` • ${durationText}` : ''}
+                                            {startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')} | {eventCount} events{durationText ? ` | ${durationText}` : ''}
                                           </div>
                                           {totalAmount && (
                                             <div className="text-sm font-semibold text-emerald-600 mt-1">

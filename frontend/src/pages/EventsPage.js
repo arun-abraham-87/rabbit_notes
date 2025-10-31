@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ExclamationTriangleIcon, CalendarIcon, ListBulletIcon, TagIcon, PlusIcon, EyeIcon, EyeSlashIcon, ArrowsRightLeftIcon, FlagIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { updateNoteById, deleteNoteById, createNote } from '../utils/ApiUtils';
@@ -232,6 +233,8 @@ const getEventDetails = (content) => {
 };
 
 const EventsPage = ({ allNotes, setAllNotes }) => {
+  const navigate = useNavigate();
+  
   // localStorage keys for persisting state
   const SEARCH_QUERY_STORAGE_KEY = 'eventsPage_searchQuery';
   const FILTER_STATE_STORAGE_KEY = 'eventsPage_filterState';
@@ -1294,6 +1297,9 @@ event_tags:${expense.tag.join(',')}`;
           setSelectedDate(null);
         }}
         onSwitchToNormalEdit={() => {
+          if (editingEvent && editingEvent.id) {
+            navigate(`/notes?note=${editingEvent.id}`);
+          }
           setShowEditEventModal(false);
           setEditingEvent(null);
           setSelectedDate(null);

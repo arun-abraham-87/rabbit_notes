@@ -71,24 +71,27 @@ const TimelineLinkModal = ({ isOpen, onClose, event, allNotes, onEventUpdated })
         }
 
         // 2. Add meta::linked_from_events::<note_id> to the timeline note
-        // Support multiple events linking to the same timeline - consolidate all linked events
+        // Each event gets its own separate line
         let updatedTimelineContent;
         const lines = timelineNote.content.split('\n');
         
-        // Find all lines with meta::linked_from_events:: and collect all event IDs
+        // Process all lines: split comma-separated linked_from_events lines and collect unique event IDs
+        const otherLines = [];
         const allLinkedEventIds = new Set();
-        const linkedFromLinesIndices = [];
         
-        lines.forEach((line, index) => {
+        lines.forEach((line) => {
           if (line.trim().startsWith('meta::linked_from_events::')) {
-            linkedFromLinesIndices.push(index);
-            const eventIdsString = line.replace('meta::linked_from_events::', '');
+            // Split comma-separated event IDs (for backward compatibility)
+            const eventIdsString = line.replace('meta::linked_from_events::', '').trim();
             const eventIds = eventIdsString.split(',').map(id => id.trim()).filter(id => id);
             eventIds.forEach(id => allLinkedEventIds.add(id));
+          } else {
+            // Keep non-linked_from_events lines as-is
+            otherLines.push(line);
           }
         });
         
-        // Check if this event is already linked (prevent duplicate links)
+        // Check if this event is already linked
         if (allLinkedEventIds.has(event.id)) {
           console.log('Event already linked to this timeline');
           onClose();
@@ -98,12 +101,14 @@ const TimelineLinkModal = ({ isOpen, onClose, event, allNotes, onEventUpdated })
         // Add the new event ID
         allLinkedEventIds.add(event.id);
         
-        // Remove all existing meta::linked_from_events:: lines
-        const filteredLines = lines.filter((line, index) => !linkedFromLinesIndices.includes(index));
-        
-        // Add a single consolidated meta::linked_from_events:: line with all event IDs
-        const consolidatedLinkedEventsLine = `meta::linked_from_events::${Array.from(allLinkedEventIds).join(',')}`;
-        updatedTimelineContent = filteredLines.join('\n').trim() + '\n' + consolidatedLinkedEventsLine;
+        // Build the updated content with each event ID on its own line
+        updatedTimelineContent = otherLines.join('\n').trim();
+        if (allLinkedEventIds.size > 0) {
+          const linkedEventLines = Array.from(allLinkedEventIds).map(eventId => 
+            `meta::linked_from_events::${eventId}`
+          );
+          updatedTimelineContent = updatedTimelineContent + '\n' + linkedEventLines.join('\n');
+        }
 
         await updateNoteById(selectedTimeline, updatedTimelineContent);
 

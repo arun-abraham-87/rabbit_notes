@@ -144,6 +144,10 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
     const eventDateLine = lines.find(line => line.startsWith('event_date:'));
     const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
     
+    // Find event notes
+    const notesLine = lines.find(line => line.startsWith('event_notes:'));
+    const notes = notesLine ? notesLine.replace('event_notes:', '').trim() : '';
+    
     // Find recurring info
     const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
     const recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
@@ -174,6 +178,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
       recurrence,
       metaDate,
       tags,
+      notes,
       customFields
     };
   };
@@ -187,7 +192,8 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
       event: {
         ...event,
         tags: eventDetails.tags,
-        customFields: eventDetails.customFields
+        customFields: eventDetails.customFields,
+        notes: eventDetails.notes
       },
       originalEvent: event, // Store the original event
       isToday: date.toDateString() === new Date().toDateString(),
@@ -486,6 +492,11 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                         );
                                       })()}
                                     </h3>
+                                    {occurrence.event.notes && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        {occurrence.event.notes}
+                                      </p>
+                                    )}
                                     <div className="flex flex-col gap-1">
                                       <div className="grid grid-cols-[120px_1fr] gap-x-2">
                                         <p className="text-sm text-gray-600">

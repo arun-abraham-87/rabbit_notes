@@ -164,7 +164,7 @@ const EventsByAgeView = ({ events, onEventUpdated, onDelete, notes }) => {
                     <p className="text-gray-600">
                       <span className="font-medium">Age:</span>
                     </p>
-                    <p className="text-gray-900 font-semibold">
+                    <p className="text-gray-900">
                       {event.age}
                     </p>
                     

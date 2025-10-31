@@ -482,15 +482,6 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                           Deadline
                                         </span>
                                       )}
-                                      {(() => {
-                                        const timelineInfo = getTimelineInfo(occurrence.event.content);
-                                        return timelineInfo && (
-                                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                            <LinkIcon className="h-3 w-3 mr-1" />
-                                            Timeline: {timelineInfo.title}
-                                          </span>
-                                        );
-                                      })()}
                                     </h3>
                                     {occurrence.event.notes && (
                                       <p className="text-xs text-gray-500 mt-1">
@@ -526,12 +517,12 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                         )}
                                         {occurrence.event.recurrence !== 'none' && occurrence.age && (
                                           <>
-                                            <p className={`text-sm font-medium ${
+                                            <p className={`text-sm ${
                                               occurrence.isToday ? 'text-indigo-700' : 'text-gray-600'
                                             }`}>
-                                              <span className="font-bold">Age:</span>
+                                              <span className="font-medium">Age:</span>
                                             </p>
-                                            <p className={`text-sm font-semibold ${
+                                            <p className={`text-sm ${
                                               occurrence.isToday ? 'text-indigo-700' : 'text-gray-600'
                                             }`}>
                                               {occurrence.age}
@@ -555,9 +546,9 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                         ))}
                                       </div>
                                       {/* Tags display */}
-                                      {occurrence.event.tags && occurrence.event.tags.length > 0 && (
+                                      {((occurrence.event.tags && occurrence.event.tags.length > 0) || getTimelineInfo(occurrence.event.content)) && (
                                         <div className="mt-2 flex flex-wrap gap-1">
-                                          {occurrence.event.tags.map(tag => (
+                                          {occurrence.event.tags && occurrence.event.tags.map(tag => (
                                             <span
                                               key={tag}
                                               className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -569,6 +560,19 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                               {tag}
                                             </span>
                                           ))}
+                                          {(() => {
+                                            const timelineInfo = getTimelineInfo(occurrence.event.content);
+                                            return timelineInfo && (
+                                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                occurrence.isToday 
+                                                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                                  : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                              }`}>
+                                                <LinkIcon className="h-3 w-3 mr-1" />
+                                                Timeline: {timelineInfo.title}
+                                              </span>
+                                            );
+                                          })()}
                                         </div>
                                       )}
                                     </div>

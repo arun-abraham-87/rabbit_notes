@@ -675,36 +675,123 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         </div>
       )}
       {/* All Recorded Values Modal */}
-      {showLastValuesModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg relative max-h-[80vh] overflow-y-auto">
-            <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-              onClick={() => setShowLastValuesModal(false)}
-              aria-label="Close"
-            >
-              &times;
-            </button>
-            <h2 className="text-lg font-semibold mb-4 text-center">All Recorded Values</h2>
-            <div className="mt-2 text-xs text-gray-600 text-center w-full">
-              {(answers || [])
-                .filter(ans => ans.value !== undefined || ans.answer !== undefined)
-                .sort((a, b) => new Date(b.date) - new Date(a.date))
-                .map(ans => (
-                  <div key={ans.id || ans.date} className="flex justify-between px-2 py-1 border-b last:border-b-0">
-                    <span className="text-[11px] text-gray-500">{new Date(ans.date).toLocaleDateString()}</span>
-                    <span className="font-mono text-[13px] text-gray-800">
-                      {ans.value !== undefined ? ans.value : (ans.answer !== undefined ? (ans.answer === 'yes' ? 'Yes' : ans.answer === 'no' ? 'No' : ans.answer) : '')}
-                    </span>
-                  </div>
-                ))}
-              {(!answers || answers.filter(ans => ans.value !== undefined || ans.answer !== undefined).length === 0) && (
-                <div className="text-gray-400 italic">No values entered yet.</div>
+      {showLastValuesModal && (() => {
+        const type = tracker.type ? tracker.type.toLowerCase() : '';
+        const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+        
+        // Filter answers based on yes/no filter
+        let filteredAnswers = (answers || []).filter(ans => ans.value !== undefined || ans.answer !== undefined);
+        
+        if (isYesNoTracker) {
+          if (yesNoFilter === 'yes') {
+            filteredAnswers = filteredAnswers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes');
+          } else if (yesNoFilter === 'no') {
+            filteredAnswers = filteredAnswers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'no');
+          }
+        }
+        
+        // Group by year
+        const groupedByYear = filteredAnswers.reduce((acc, ans) => {
+          const year = moment(ans.date).year();
+          if (!acc[year]) {
+            acc[year] = [];
+          }
+          acc[year].push(ans);
+          return acc;
+        }, {});
+        
+        // Sort years descending
+        const sortedYears = Object.keys(groupedByYear).sort((a, b) => parseInt(b) - parseInt(a));
+        
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg relative max-h-[80vh] overflow-y-auto">
+              <button
+                className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+                onClick={() => {
+                  setShowLastValuesModal(false);
+                  setYesNoFilter('both');
+                }}
+                aria-label="Close"
+              >
+                &times;
+              </button>
+              <h2 className="text-lg font-semibold mb-4 text-center">All Recorded Values</h2>
+              
+              {/* Filter buttons for yes/no trackers */}
+              {isYesNoTracker && (
+                <div className="flex gap-2 justify-center mb-4">
+                  <button
+                    onClick={() => setYesNoFilter('both')}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                      yesNoFilter === 'both'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Both
+                  </button>
+                  <button
+                    onClick={() => setYesNoFilter('yes')}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                      yesNoFilter === 'yes'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Yes Only
+                  </button>
+                  <button
+                    onClick={() => setYesNoFilter('no')}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                      yesNoFilter === 'no'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    No Only
+                  </button>
+                </div>
               )}
+              
+              <div className="mt-2 text-xs text-gray-600 w-full">
+                {sortedYears.length === 0 ? (
+                  <div className="text-gray-400 italic text-center">No values entered yet.</div>
+                ) : (
+                  sortedYears.map(year => {
+                    const yearAnswers = groupedByYear[year].sort((a, b) => new Date(b.date) - new Date(a.date));
+                    return (
+                      <div key={year} className="mb-4">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-2 pb-1 border-b border-gray-200">
+                          {year}
+                        </h3>
+                        {yearAnswers.map(ans => {
+                          const age = calculateAge(ans.date);
+                          return (
+                            <div key={ans.id || ans.date} className="flex justify-between items-center px-2 py-1 border-b last:border-b-0">
+                              <div className="flex flex-col">
+                                <span className="text-[11px] text-gray-500">
+                                  {moment(ans.date).format('DD-MM-YYYY')}
+                                </span>
+                                <span className="text-[10px] text-gray-400 mt-0.5">
+                                  Age: {age}
+                                </span>
+                              </div>
+                              <span className="font-mono text-[13px] text-gray-800">
+                                {ans.value !== undefined ? ans.value : (ans.answer !== undefined ? (ans.answer === 'yes' ? 'Yes' : ans.answer === 'no' ? 'No' : ans.answer) : '')}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
       {showValueModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">

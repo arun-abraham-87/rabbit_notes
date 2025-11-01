@@ -10,8 +10,11 @@ import { addNoteToIndex } from '../utils/SearchUtils';
 const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  // localStorage key for timeline collapse states
+  // localStorage keys
   const TIMELINE_COLLAPSE_STORAGE_KEY = 'timeline_collapse_states';
+  const TIMELINE_MAIN_SEARCH_KEY = 'timeline_main_search';
+  const TIMELINE_SEARCH_QUERIES_KEY = 'timeline_search_queries';
+  const TIMELINE_SECTION_COLLAPSE_KEY = 'timeline_section_collapse_states';
 
   // Load timeline collapse states from localStorage
   const loadCollapseStates = () => {
@@ -27,6 +30,44 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     return new Set();
   };
 
+  // Load section collapse states from localStorage
+  const loadSectionCollapseStates = () => {
+    try {
+      const savedStates = localStorage.getItem(TIMELINE_SECTION_COLLAPSE_KEY);
+      if (savedStates) {
+        const parsedStates = JSON.parse(savedStates);
+        return new Set(parsedStates);
+      }
+    } catch (error) {
+      console.error('Error loading section collapse states:', error);
+    }
+    return new Set();
+  };
+
+  // Load main search query from localStorage
+  const loadMainSearchQuery = () => {
+    try {
+      const saved = localStorage.getItem(TIMELINE_MAIN_SEARCH_KEY);
+      return saved || '';
+    } catch (error) {
+      console.error('Error loading main search query:', error);
+      return '';
+    }
+  };
+
+  // Load timeline search queries from localStorage
+  const loadTimelineSearchQueries = () => {
+    try {
+      const saved = localStorage.getItem(TIMELINE_SEARCH_QUERIES_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading timeline search queries:', error);
+    }
+    return {};
+  };
+
   // Initialize state with saved collapse states
   const [timelineNotes, setTimelineNotes] = useState([]);
   const [showAddEventForm, setShowAddEventForm] = useState(null);
@@ -34,7 +75,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [editingTimelineId, setEditingTimelineId] = useState(null);
   const [newEventText, setNewEventText] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => loadMainSearchQuery());
   const [showNewTimelineForm, setShowNewTimelineForm] = useState(false);
   const [newTimelineTitle, setNewTimelineTitle] = useState('');
   // Initialize with saved states from localStorage
@@ -47,7 +88,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
   const [unlinkConfirmation, setUnlinkConfirmation] = useState({ isOpen: false, timelineId: null, eventId: null });
   const [addLinkModal, setAddLinkModal] = useState({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' });
-  const [timelineSearchQueries, setTimelineSearchQueries] = useState({}); // { timelineId: searchQuery }
+  const [timelineSearchQueries, setTimelineSearchQueries] = useState(() => loadTimelineSearchQueries()); // { timelineId: searchQuery }
+  const [collapsedSections, setCollapsedSections] = useState(() => loadSectionCollapseStates()); // Set of collapsed section names: 'flagged', 'open', 'closed'
 
   // Save timeline collapse states to localStorage
   const saveCollapseStates = (collapsedSet) => {
@@ -59,7 +101,17 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     }
   };
 
-  // Restore collapse states when navigating to timelines page
+  // Save section collapse states to localStorage
+  const saveSectionCollapseStates = (collapsedSet) => {
+    try {
+      const statesArray = Array.from(collapsedSet);
+      localStorage.setItem(TIMELINE_SECTION_COLLAPSE_KEY, JSON.stringify(statesArray));
+    } catch (error) {
+      console.error('Error saving section collapse states:', error);
+    }
+  };
+
+  // Restore collapse states and search queries when navigating to timelines page
   // This effect runs when navigating back to /timelines to restore saved states
   useEffect(() => {
     if (location.pathname === '/timelines') {
@@ -69,6 +121,18 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       // This ensures the state is persisted across page navigation
       setCollapsedTimelines(savedStates);
       console.log('[Timelines] Restored collapse states from localStorage:', Array.from(savedStates));
+      
+      // Restore section collapse states
+      const savedSectionStates = loadSectionCollapseStates();
+      setCollapsedSections(savedSectionStates);
+      console.log('[Timelines] Restored section collapse states from localStorage:', Array.from(savedSectionStates));
+      
+      // Restore search queries
+      const savedMainSearch = loadMainSearchQuery();
+      const savedTimelineSearches = loadTimelineSearchQueries();
+      setSearchQuery(savedMainSearch);
+      setTimelineSearchQueries(savedTimelineSearches);
+      console.log('[Timelines] Restored search queries from localStorage:', { main: savedMainSearch, timeline: savedTimelineSearches });
     }
   }, [location.pathname]);
 
@@ -272,11 +336,29 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
 
   // Update search query for a timeline
   const handleTimelineSearchChange = (timelineId, query) => {
-    setTimelineSearchQueries(prev => ({
-      ...prev,
-      [timelineId]: query
-    }));
+    setTimelineSearchQueries(prev => {
+      const updated = {
+        ...prev,
+        [timelineId]: query
+      };
+      // Save to localStorage
+      try {
+        localStorage.setItem(TIMELINE_SEARCH_QUERIES_KEY, JSON.stringify(updated));
+      } catch (error) {
+        console.error('Error saving timeline search queries:', error);
+      }
+      return updated;
+    });
   };
+
+  // Save main search query to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(TIMELINE_MAIN_SEARCH_KEY, searchQuery);
+    } catch (error) {
+      console.error('Error saving main search query:', error);
+    }
+  }, [searchQuery]);
 
   // Parse timeline data from note content
   const parseTimelineData = (content, allNotes = []) => {
@@ -844,6 +926,23 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     });
   };
 
+  // Toggle section collapse state
+  const toggleSectionCollapse = (sectionName) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionName)) {
+        newSet.delete(sectionName);
+      } else {
+        newSet.add(sectionName);
+      }
+      
+      // Save the updated state to localStorage immediately
+      saveSectionCollapseStates(newSet);
+      
+      return newSet;
+    });
+  };
+
   // Collapse all timelines
   const handleCollapseAll = () => {
     const allTimelineIds = new Set(timelineNotes.map(note => note.id));
@@ -1194,13 +1293,27 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
               });
               
               if (flaggedTimelines.length > 0) {
+                const isSectionCollapsed = collapsedSections.has('flagged');
                 return (
                   <div className="space-y-4">
-                    <h2 className="text-xl font-semibold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
+                    <h2 
+                      onClick={() => toggleSectionCollapse('flagged')}
+                      className="text-xl font-semibold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                    >
                       <span className="text-2xl">🚩</span>
-                      Flagged Timelines <span className="font-normal text-slate-500">({flaggedTimelines.length})</span>
+                      <span className="flex items-center gap-2">
+                        <svg 
+                          className={`w-5 h-5 text-rose-600 transition-transform ${isSectionCollapsed ? '' : 'rotate-90'}`} 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        Flagged Timelines <span className="font-normal text-slate-500">({flaggedTimelines.length})</span>
+                      </span>
                     </h2>
-                    {flaggedTimelines.map((note) => {
+                    {!isSectionCollapsed && flaggedTimelines.map((note) => {
                       if (!note || !note.content) return null;
                       const timelineData = parseTimelineData(note.content, notes);
                       const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
@@ -1963,12 +2076,26 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
               });
               
               if (openTimelines.length > 0) {
+                const isSectionCollapsed = collapsedSections.has('open');
                 return (
                   <div className="space-y-4">
-                    <h2 className="text-xl font-semibold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
-                      Open Timelines <span className="font-normal text-slate-500">({openTimelines.length})</span>
+                    <h2 
+                      onClick={() => toggleSectionCollapse('open')}
+                      className="text-xl font-semibold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg 
+                          className={`w-5 h-5 text-indigo-600 transition-transform ${isSectionCollapsed ? '' : 'rotate-90'}`} 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        Open Timelines <span className="font-normal text-slate-500">({openTimelines.length})</span>
+                      </span>
                     </h2>
-                    {openTimelines.map((note) => {
+                    {!isSectionCollapsed && openTimelines.map((note) => {
               if (!note || !note.content) return null;
               const timelineData = parseTimelineData(note.content, notes);
               const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
@@ -2791,12 +2918,26 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
               });
               
               if (closedTimelines.length > 0) {
+                const isSectionCollapsed = collapsedSections.has('closed');
                 return (
                   <div className="space-y-4">
-                    <h2 className="text-xl font-semibold bg-gradient-to-r from-slate-600 to-gray-600 bg-clip-text text-transparent">
-                      Closed Timelines <span className="font-normal text-slate-400">({closedTimelines.length})</span>
+                    <h2 
+                      onClick={() => toggleSectionCollapse('closed')}
+                      className="text-xl font-semibold bg-gradient-to-r from-slate-600 to-gray-600 bg-clip-text text-transparent flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg 
+                          className={`w-5 h-5 text-slate-600 transition-transform ${isSectionCollapsed ? '' : 'rotate-90'}`} 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        Closed Timelines <span className="font-normal text-slate-400">({closedTimelines.length})</span>
+                      </span>
                     </h2>
-                    {closedTimelines.map((note) => {
+                    {!isSectionCollapsed && closedTimelines.map((note) => {
                       if (!note || !note.content) return null;
                       const timelineData = parseTimelineData(note.content, notes);
                       const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);

@@ -3,6 +3,11 @@ import { getAllUniqueTags } from '../utils/EventUtils';
 import { deleteNoteById, updateNoteById, getNoteById } from '../utils/ApiUtils';
 import ConfirmationModal from './ConfirmationModal';
 
+// Module-level refs that persist across component unmounts/remounts
+// This ensures timeline data persists when modal closes and reopens
+const persistentTimelinesRef = { current: [] };
+const persistentTimelineLinkQueues = { current: new Map() };
+
 const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '', onTimelineUpdated, initialTimelineId = null }) => {
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
@@ -21,8 +26,9 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [timelines, setTimelines] = useState([]);
   const [validationErrors, setValidationErrors] = useState({ description: false, eventDate: false });
 
-  // Queue to serialize timeline link operations per timeline ID to prevent race conditions
-  const timelineLinkQueues = useRef(new Map());
+  // Use module-level refs that persist across component lifecycle
+  const timelineLinkQueues = persistentTimelineLinkQueues;
+  const timelinesRef = persistentTimelinesRef;
 
   const existingTags = getAllUniqueTags(notes || []);
 
@@ -136,6 +142,41 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       
       setTimelines(timelineList);
       
+      // CRITICAL: Only sync ref if it's empty or if the modal just opened
+      // Don't overwrite ref if it already has newer data from previous operations
+      // Check if ref is empty or if this is a fresh initialization
+      if (timelinesRef.current.length === 0 || !timelinesRef.current.some(t => t.id === timelineList[0]?.id)) {
+        timelinesRef.current = timelineList;
+        console.log('[EditEventModal] Initial timelines loaded and synced to ref:', timelineList.length);
+      } else {
+        // Ref already has data - merge new timelines with existing ref data
+        // Preserve ref content for timelines that exist in both, use new content for new timelines
+        console.log('[EditEventModal] Ref already has data, merging with prop data...');
+        console.log('[EditEventModal] Ref timelines count:', timelinesRef.current.length);
+        console.log('[EditEventModal] Prop timelines count:', timelineList.length);
+        
+        const mergedTimelines = timelineList.map(newTimeline => {
+          const existingInRef = timelinesRef.current.find(t => t.id === newTimeline.id);
+          if (existingInRef) {
+            // Keep existing ref content (which may have been updated by previous operations)
+            // Always prefer ref content since it has the latest manual updates
+            const refLinkedEvents = (existingInRef.content.match(/meta::linked_from_events::/g) || []).length;
+            const newLinkedEvents = (newTimeline.content.match(/meta::linked_from_events::/g) || []).length;
+            
+            console.log(`[EditEventModal] Timeline ${newTimeline.id}: ref has ${refLinkedEvents} linked events, prop has ${newLinkedEvents}`);
+            console.log(`[EditEventModal] Timeline ${newTimeline.id}: ref content length ${existingInRef.content.length}, prop content length ${newTimeline.content.length}`);
+            
+            // Always prefer ref version - it has the latest manual updates
+            console.log(`[EditEventModal] Preserving ref version for timeline ${newTimeline.id}`);
+            return existingInRef; // Keep ref version which has latest updates
+          }
+          console.log(`[EditEventModal] New timeline found: ${newTimeline.id}, using prop version`);
+          return newTimeline; // New timeline, use it
+        });
+        timelinesRef.current = mergedTimelines;
+        console.log('[EditEventModal] Merged timelines with ref (preserving manual updates):', mergedTimelines.length);
+      }
+      
       // Pre-select timeline if initialTimelineId is provided (for adding events from timelines page)
       if (initialTimelineId && !note) {
         setSelectedTimeline(initialTimelineId);
@@ -233,19 +274,26 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
         console.log(`${debugPrefix} Timeline note content length: ${timelineNote?.content?.length}`);
         console.log(`${debugPrefix} Timeline note content preview (first 300 chars):`, timelineNote?.content?.substring(0, 300));
         console.log(`${debugPrefix} Timeline note content preview (last 300 chars):`, timelineNote?.content?.substring(Math.max(0, timelineNote?.content?.length - 300)));
-      } catch (fetchError) {
-        console.warn(`${debugPrefix} ⚠️ Failed to fetch timeline from server, trying local copy:`, fetchError);
-        // If fetch fails, try to use the local timeline if available
-        if (localTimeline && localTimeline.content) {
-          timelineNote = {
-            id: localTimeline.id,
-            content: localTimeline.content
-          };
-          console.log(`${debugPrefix} Using local timeline copy (length: ${timelineNote.content.length})`);
-        } else {
-          throw fetchError; // Re-throw if we don't have a local copy
+        } catch (fetchError) {
+          console.warn(`${debugPrefix} ⚠️ Failed to fetch timeline from server, trying latest local copy...`, fetchError);
+          // If fetch fails, try to use the LATEST local timeline from state (which may have been updated by previous operations)
+          // Use ref to get the latest value since state updates are asynchronous
+          // CRITICAL: Read from ref.current directly (not from closure) to get the absolute latest value
+          const currentTimelines = timelinesRef.current;
+          console.log(`${debugPrefix}   Reading from ref - current ref length: ${currentTimelines.length}`);
+          const latestLocalTimeline = currentTimelines.find(t => t.id === timelineId);
+          if (latestLocalTimeline && latestLocalTimeline.content) {
+            timelineNote = {
+              id: latestLocalTimeline.id,
+              content: latestLocalTimeline.content
+            };
+            console.log(`${debugPrefix} Using latest local timeline copy from ref (length: ${timelineNote.content.length})`);
+            console.log(`${debugPrefix} Local timeline content preview (last 300 chars):`, timelineNote.content.substring(Math.max(0, timelineNote.content.length - 300)));
+          } else {
+            console.error(`${debugPrefix} ❌ No local timeline copy available either!`);
+            throw fetchError; // Re-throw if we don't have a local copy
+          }
         }
-      }
       
       console.log(`${debugPrefix} Step 2: Parsing timeline content...`);
       if (!timelineNote || !timelineNote.content) {
@@ -335,15 +383,46 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
           console.error(`${debugPrefix}   Content last 500 chars:`, updateResult?.content?.substring(Math.max(0, updateResult.content.length - 500)));
         }
         
+        // CRITICAL: Update ref IMMEDIATELY after API update completes (before any other operations)
+        // This ensures the next queued operation will see the latest data
+        // IMPORTANT: Use the updateResult content directly - don't read from ref to avoid stale data
+        console.log(`${debugPrefix} Step 7a: Updating ref IMMEDIATELY after API update...`);
+        const finalContent = updateResult?.content || updatedTimelineContent;
+        
+        // Update ref by finding the timeline and updating its content directly
+        // We MUST read from ref.current at THIS moment to get the absolute latest value
+        const currentRefTimelines = [...timelinesRef.current]; // Copy array to avoid mutation issues
+        console.log(`${debugPrefix}   Current ref has ${currentRefTimelines.length} timelines`);
+        const timelineIndex = currentRefTimelines.findIndex(t => t.id === timelineId);
+        
+        if (timelineIndex !== -1) {
+          console.log(`${debugPrefix}   🔄 Updating timeline ${timelineId} in ref`);
+          console.log(`${debugPrefix}   Old content length: ${currentRefTimelines[timelineIndex].content?.length || 0}`);
+          console.log(`${debugPrefix}   New content length: ${finalContent.length}`);
+          currentRefTimelines[timelineIndex] = {
+            ...currentRefTimelines[timelineIndex],
+            content: finalContent
+          };
+          // Update ref with new array (ensures React sees the change)
+          timelinesRef.current = currentRefTimelines;
+          console.log(`${debugPrefix}   ✅ Ref updated immediately with content length ${finalContent.length}`);
+        } else {
+          console.error(`${debugPrefix}   ❌ ERROR: Timeline ${timelineId} not found in ref!`);
+        }
+        
         // Notify parent component that timeline was updated
         if (onTimelineUpdated) {
           console.log(`${debugPrefix} Step 8: Calling onTimelineUpdated callback...`);
-          const finalContent = updateResult?.content || updatedTimelineContent;
           onTimelineUpdated(timelineId, finalContent);
           console.log(`${debugPrefix} ✅ onTimelineUpdated callback completed`);
         } else {
           console.log(`${debugPrefix} ⚠️ No onTimelineUpdated callback provided`);
         }
+        
+        // Update state (ref already updated, so this is just for UI)
+        setTimelines(currentRefTimelines);
+        console.log(`${debugPrefix} Step 9: State update queued (ref already updated)`);
+        
         console.log(`${debugPrefix} ✅ Timeline updated successfully for event ${eventIdToLink}`);
       } else {
         console.log(`${debugPrefix} ⏭️ Event ${eventIdToLink} already linked to timeline, skipping update`);

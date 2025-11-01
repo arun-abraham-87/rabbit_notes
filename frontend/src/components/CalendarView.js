@@ -22,6 +22,8 @@ import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
 import EventsByAgeView from './EventsByAgeView';
 import TimelineLinkModal from './TimelineLinkModal';
+import { updateNoteById, getNoteById } from '../utils/ApiUtils';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAddEvent, onDelete, selectedEventIndex, onEventSelect, showPastEvents: showPastEventsProp, onShowPastEventsChange, onTimelineUpdated }) => {
   const [showPastEventsInternal, setShowPastEventsInternal] = useState(false);
@@ -36,6 +38,10 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'age'
   const [showTimelineModal, setShowTimelineModal] = useState(false);
   const [selectedEventForTimeline, setSelectedEventForTimeline] = useState(null);
+  const [showUnlinkConfirmation, setShowUnlinkConfirmation] = useState(false);
+  const [unlinkEventId, setUnlinkEventId] = useState(null);
+  const [unlinkTimelineId, setUnlinkTimelineId] = useState(null);
+  const [unlinkTimelineTitle, setUnlinkTimelineTitle] = useState('');
   const selectedEventRef = useRef(null);
 
   // Function to calculate age in years, months, and days
@@ -130,6 +136,85 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
       }
     }
     return null;
+  };
+
+  // Handler to unlink event from timeline
+  const handleUnlinkFromTimeline = async (eventId, timelineId) => {
+    try {
+      // Find the event note
+      const eventNote = notes.find(note => note.id === eventId);
+      if (!eventNote) {
+        console.error('[CalendarView] Event note not found:', eventId);
+        alert('Event note not found. Please try again.');
+        return;
+      }
+
+      // 1. Remove meta::linked_to_timeline::<timelineId> from the event note
+      const eventLines = eventNote.content.split('\n');
+      const filteredEventLines = eventLines.filter(line => 
+        !line.trim().startsWith(`meta::linked_to_timeline::${timelineId}`)
+      );
+      const updatedEventContent = filteredEventLines.join('\n').trim();
+      
+      const updatedEventResponse = await updateNoteById(eventId, updatedEventContent);
+      
+      // Notify parent component that event was updated
+      if (onEventUpdated && updatedEventResponse) {
+        onEventUpdated(eventId, updatedEventResponse.content || updatedEventContent);
+      }
+
+      // 2. Remove meta::linked_from_events::<eventId> from the timeline note
+      // Fetch the latest timeline note from server to avoid stale data
+      let latestTimelineNote;
+      try {
+        latestTimelineNote = await getNoteById(timelineId);
+        console.log('[CalendarView] Fetched latest timeline note:', latestTimelineNote.id);
+      } catch (fetchError) {
+        console.error('[CalendarView] Error fetching latest timeline note:', fetchError);
+        // Fall back to using the note from notes prop if fetch fails
+        const timelineNote = notes.find(note => note.id === timelineId);
+        if (!timelineNote) {
+          console.error('[CalendarView] Timeline note not found:', timelineId);
+          alert('Timeline note not found. Please try again.');
+          return;
+        }
+        latestTimelineNote = timelineNote;
+      }
+      
+      const timelineLines = latestTimelineNote.content.split('\n');
+      
+      // Remove the line containing meta::linked_from_events::<eventId>
+      const filteredTimelineLines = timelineLines.filter(line => 
+        !line.trim().startsWith(`meta::linked_from_events::${eventId}`)
+      );
+      
+      const updatedTimelineContent = filteredTimelineLines.join('\n').trim();
+      const updatedTimelineResponse = await updateNoteById(timelineId, updatedTimelineContent);
+      
+      console.log('[CalendarView] Successfully unlinked event from timeline');
+      
+      // Notify parent component that timeline was updated
+      if (onTimelineUpdated && updatedTimelineResponse) {
+        onTimelineUpdated(timelineId, updatedTimelineResponse.content || updatedTimelineContent);
+      }
+      
+      // Close the confirmation modal
+      setShowUnlinkConfirmation(false);
+      setUnlinkEventId(null);
+      setUnlinkTimelineId(null);
+      setUnlinkTimelineTitle('');
+    } catch (error) {
+      console.error('[CalendarView] Error unlinking event from timeline:', error);
+      alert(`Failed to unlink event from timeline: ${error.message || 'Unknown error'}. Please check the console for details.`);
+    }
+  };
+
+  // Handler to initiate unlink (opens confirmation modal)
+  const handleInitiateUnlink = (eventId, timelineId, timelineTitle) => {
+    setUnlinkEventId(eventId);
+    setUnlinkTimelineId(timelineId);
+    setUnlinkTimelineTitle(timelineTitle);
+    setShowUnlinkConfirmation(true);
   };
 
   // Function to extract event details from note content
@@ -563,13 +648,23 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                           {(() => {
                                             const timelineInfo = getTimelineInfo(occurrence.event.content);
                                             return timelineInfo && (
-                                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                                                 occurrence.isToday 
                                                   ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
                                                   : 'bg-gray-100 text-gray-600 border border-gray-200'
                                               }`}>
-                                                <LinkIcon className="h-3 w-3 mr-1" />
-                                                Timeline: {timelineInfo.title}
+                                                <LinkIcon className="h-3 w-3" />
+                                                <span>Timeline: {timelineInfo.title}</span>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleInitiateUnlink(occurrence.event.id, timelineInfo.id, timelineInfo.title);
+                                                  }}
+                                                  className="ml-1 hover:bg-red-200 rounded-full p-0.5 transition-colors flex items-center justify-center"
+                                                  title="Unlink from timeline"
+                                                >
+                                                  <XMarkIcon className="h-3 w-3 text-gray-600 hover:text-red-600" />
+                                                </button>
                                               </span>
                                             );
                                           })()}
@@ -757,6 +852,25 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
         allNotes={notes}
         onEventUpdated={onEventUpdated}
         onTimelineUpdated={onTimelineUpdated}
+      />
+      
+      {/* Unlink Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showUnlinkConfirmation}
+        onClose={() => {
+          setShowUnlinkConfirmation(false);
+          setUnlinkEventId(null);
+          setUnlinkTimelineId(null);
+          setUnlinkTimelineTitle('');
+        }}
+        onConfirm={() => {
+          if (unlinkEventId && unlinkTimelineId) {
+            handleUnlinkFromTimeline(unlinkEventId, unlinkTimelineId);
+          }
+        }}
+        title="Unlink from Timeline"
+        message={`Are you sure you want to unlink this event from "${unlinkTimelineTitle}"? This will remove the link from both the event and the timeline.`}
+        confirmButtonText="Unlink"
       />
     </div>
   );

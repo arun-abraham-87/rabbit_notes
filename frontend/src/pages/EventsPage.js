@@ -271,6 +271,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         showOnlyDeadlines: filterState.showOnlyDeadlines || false,
         showTodaysEventsOnly: filterState.showTodaysEventsOnly || false,
         excludePurchases: filterState.excludePurchases !== undefined ? filterState.excludePurchases : true,
+        excludeTimelineLinked: filterState.excludeTimelineLinked !== undefined ? filterState.excludeTimelineLinked : false,
         showPastEvents: filterState.showPastEvents || false
       };
     } catch (error) {
@@ -284,6 +285,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         showOnlyDeadlines: false,
         showTodaysEventsOnly: false,
         excludePurchases: true,
+        excludeTimelineLinked: false,
         showPastEvents: false
       };
     }
@@ -340,6 +342,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     showOnlyDeadlines: false,
     showTodaysEventsOnly: false,
     excludePurchases: false,
+    excludeTimelineLinked: false,
     showPastEvents: false
   } : loadInitialState();
   
@@ -369,6 +372,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [none, setNone] = useState(0);
   const [showOnlyDeadlines, setShowOnlyDeadlines] = useState(initialState.showOnlyDeadlines);
   const [excludePurchases, setExcludePurchases] = useState(initialState.excludePurchases);
+  const [excludeTimelineLinked, setExcludeTimelineLinked] = useState(initialState.excludeTimelineLinked);
   const [isBulkLoadOpen, setIsBulkLoadOpen] = useState(false);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -430,13 +434,14 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         showOnlyDeadlines,
         showTodaysEventsOnly,
         excludePurchases,
+        excludeTimelineLinked,
         showPastEvents
       };
       localStorage.setItem(FILTER_STATE_STORAGE_KEY, JSON.stringify(filterState));
     } catch (error) {
       console.error('Error saving filter state to localStorage:', error);
     }
-  }, [selectedTags, selectedMonth, selectedDay, selectedYear, showOnlyDeadlines, showTodaysEventsOnly, excludePurchases, showPastEvents, location.search]);
+  }, [selectedTags, selectedMonth, selectedDay, selectedYear, showOnlyDeadlines, showTodaysEventsOnly, excludePurchases, excludeTimelineLinked, showPastEvents, location.search]);
   
   // Helper function to save current filter state
   const saveFilterState = () => {
@@ -448,6 +453,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       showOnlyDeadlines,
       showTodaysEventsOnly,
       excludePurchases,
+      excludeTimelineLinked,
       showPastEvents
     };
   };
@@ -462,6 +468,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       setShowOnlyDeadlines(savedFiltersRef.current.showOnlyDeadlines);
       setShowTodaysEventsOnly(savedFiltersRef.current.showTodaysEventsOnly);
       setExcludePurchases(savedFiltersRef.current.excludePurchases);
+      setExcludeTimelineLinked(savedFiltersRef.current.excludeTimelineLinked);
       setShowPastEvents(savedFiltersRef.current.showPastEvents);
       savedFiltersRef.current = null; // Clear saved state after restoring
     }
@@ -476,6 +483,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     setShowOnlyDeadlines(false);
     setShowTodaysEventsOnly(false);
     setExcludePurchases(false);
+    setExcludeTimelineLinked(false);
     setShowPastEvents(true);
   };
   
@@ -760,6 +768,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       setShowOnlyDeadlines(false);
       setShowTodaysEventsOnly(false);
       setExcludePurchases(false);
+      setExcludeTimelineLinked(false);
       if (noteIdParam !== filterByNoteId) {
         console.log('[EventsPage] Updating filterByNoteId from', filterByNoteId, 'to', noteIdParam);
         setFilterByNoteId(noteIdParam);
@@ -859,6 +868,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           const isPurchase = tags.some(tag => tag.toLowerCase() === 'purchase');
           const matchesPurchaseFilter = excludePurchases ? !isPurchase : true;
           
+          // Handle timeline-linked filtering
+          const isTimelineLinked = note.content.includes('meta::linked_to_timeline::');
+          const matchesTimelineFilter = excludeTimelineLinked ? !isTimelineLinked : true;
+          
           let matchesDate = true;
           if (selectedYear) {
             matchesDate = matchesDate && (eventDate.getFullYear() === parseInt(selectedYear));
@@ -870,14 +883,14 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
             matchesDate = matchesDate && (eventDate.getDate() === parseInt(selectedDay));
           }
 
-          return isPast && matchesSearch && matchesTags && matchesDate && matchesPurchaseFilter;
+          return isPast && matchesSearch && matchesTags && matchesDate && matchesPurchaseFilter && matchesTimelineFilter;
         }).length;
       
       setPastEventsCount(pastEvents);
     } else {
       setPastEventsCount(0);
     }
-  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, filterByNoteId, location.search, location.hash]);
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, excludeTimelineLinked, filterByNoteId, location.search, location.hash]);
 
   useEffect(() => {
     console.log('[EventsPage] useEffect for getCalendarEvents triggered:', {
@@ -939,6 +952,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           const isPurchase = tags.some(tag => tag.toLowerCase() === 'purchase');
           const matchesPurchaseFilter = excludePurchases ? !isPurchase : true;
           
+          // Handle timeline-linked filtering
+          const isTimelineLinked = note.content.includes('meta::linked_to_timeline::');
+          const matchesTimelineFilter = excludeTimelineLinked ? !isTimelineLinked : true;
+          
           let matchesDate = true;
           if (selectedYear) {
             matchesDate = matchesDate && (eventDate.getFullYear() === parseInt(selectedYear));
@@ -950,14 +967,14 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
             matchesDate = matchesDate && (eventDate.getDate() === parseInt(selectedDay));
           }
 
-          return isPast && matchesSearch && matchesTags && matchesDate && matchesPurchaseFilter;
+          return isPast && matchesSearch && matchesTags && matchesDate && matchesPurchaseFilter && matchesTimelineFilter;
         }).length;
       
       setPastEventsCount(pastEvents);
     } else {
       setPastEventsCount(0);
     }
-  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, filterByNoteId, location.search, location.hash]);
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, excludeTimelineLinked, filterByNoteId, location.search, location.hash]);
 
   const getCalendarEvents = () => {
     console.log('[EventsPage] getCalendarEvents called:', {
@@ -1070,6 +1087,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         const isPurchase = tags.some(tag => tag.toLowerCase() === 'purchase');
         const matchesPurchaseFilter = excludePurchases ? !isPurchase : true;
         
+        // Handle timeline-linked filtering
+        const isTimelineLinked = note.content.includes('meta::linked_to_timeline::');
+        const matchesTimelineFilter = excludeTimelineLinked ? !isTimelineLinked : true;
+        
         // Month, day, and year filtering
         let matchesDate = true;
         if (dateTime) {
@@ -1140,7 +1161,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
 
         // If no tags are selected, show all events
         if (selectedTags.length === 0) {
-          return matchesSearch && matchesDeadline && matchesDate && matchesPurchaseFilter;
+          return matchesSearch && matchesDeadline && matchesDate && matchesPurchaseFilter && matchesTimelineFilter;
         }
         // If tags are selected, show only events that have ALL selected tags
         const matchesTags = selectedTags.every(selectedTag => 
@@ -1161,7 +1182,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           });
         }
         
-        return matchesSearch && matchesTags && matchesDeadline && matchesDate && matchesPurchaseFilter;
+        return matchesSearch && matchesTags && matchesDeadline && matchesDate && matchesPurchaseFilter && matchesTimelineFilter;
       });
 
     // Calculate totals for different recurrence types
@@ -1540,6 +1561,17 @@ event_tags:${expense.tag.join(',')}`;
               Exclude Purchases
             </label>
 
+            {/* Exclude Timeline-Linked Events Checkbox */}
+            <label className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={excludeTimelineLinked}
+                onChange={(e) => setExcludeTimelineLinked(e.target.checked)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              Exclude Events with Timelines Linked
+            </label>
+
             {/* Year Filter */}
             <select
               value={selectedYear}
@@ -1654,6 +1686,7 @@ event_tags:${expense.tag.join(',')}`;
                 setSelectedDay('');
                 setSelectedYear('');
                 setExcludePurchases(true);
+                setExcludeTimelineLinked(false);
               }}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
             >

@@ -43,6 +43,11 @@ export const deleteNoteById = async (id) => {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
     });
+    // If 404, the note is already deleted - don't throw error
+    if (response.status === 404) {
+        console.log('[ApiUtils] Note already deleted (404):', id);
+        return { success: true, alreadyDeleted: true };
+    }
     if (!response.ok) throw new Error('Failed to delete note');
     return await response.json();
 };

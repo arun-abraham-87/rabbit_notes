@@ -1199,13 +1199,54 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   };
 
   const handleDelete = async (eventId) => {
-    const deletingEvent = allNotes.find(note => note.id === eventId);
-    if (!deletingEvent) return;
+    console.log('[EventsPage] handleDelete called with eventId:', eventId);
+    // Check if event is still in allNotes before trying to delete
+    const deletingEvent = allNotes.find(note => {
+      const noteIdStr = String(note.id);
+      const eventIdStr = String(eventId);
+      return noteIdStr === eventIdStr;
+    });
+    
+    if (!deletingEvent) {
+      console.log('[EventsPage] Event not found in allNotes, may have already been deleted');
+      // Still update state in case it's there but wasn't found due to type mismatch
+      setAllNotes(prevNotes => {
+        const filtered = prevNotes.filter(note => {
+          const noteIdStr = String(note.id);
+          const eventIdStr = String(eventId);
+          return noteIdStr !== eventIdStr;
+        });
+        console.log('[EventsPage] handleDelete: Filtered notes length:', filtered.length, 'Previous:', prevNotes.length);
+        return filtered;
+      });
+      return;
+    }
+    
     try {
       await deleteNoteById(deletingEvent.id);
-      await setAllNotes(allNotes.filter(note => note.id !== deletingEvent.id));
+      setAllNotes(prevNotes => {
+        const filtered = prevNotes.filter(note => {
+          const noteIdStr = String(note.id);
+          const eventIdStr = String(eventId);
+          return noteIdStr !== eventIdStr;
+        });
+        console.log('[EventsPage] handleDelete: Filtered notes length:', filtered.length, 'Previous:', prevNotes.length);
+        return filtered;
+      });
     } catch (error) {
-      console.error('Error deleting event:', error);
+      console.error('[EventsPage] Error deleting event:', error);
+      // If deletion fails on backend but event is already gone, still update state
+      if (error.message && error.message.includes('404')) {
+        console.log('[EventsPage] 404 error - note already deleted, updating state anyway');
+        setAllNotes(prevNotes => {
+          const filtered = prevNotes.filter(note => {
+            const noteIdStr = String(note.id);
+            const eventIdStr = String(eventId);
+            return noteIdStr !== eventIdStr;
+          });
+          return filtered;
+        });
+      }
     }
   };
 
@@ -1724,10 +1765,33 @@ event_tags:${expense.tag.join(',')}`;
           setSelectedDate(null);
         }}
         onDelete={(eventId) => {
-          setAllNotes(allNotes.filter(note => note.id !== eventId));
+          console.log('[EventsPage] onDelete called with eventId:', eventId, 'Type:', typeof eventId);
+          console.log('[EventsPage] Current allNotes length:', allNotes.length);
+          console.log('[EventsPage] allNotes IDs:', allNotes.map(n => ({ id: n.id, type: typeof n.id })));
+          
+          // Use functional update to ensure we have the latest state
+          // This updates the state in App.js, which will cause EventsPage to re-render with new allNotes prop
+          setAllNotes(prevNotes => {
+            const filtered = prevNotes.filter(note => {
+              const noteIdStr = String(note.id);
+              const eventIdStr = String(eventId);
+              const matches = noteIdStr !== eventIdStr;
+              if (!matches) {
+                console.log('[EventsPage] Removing note:', note.id, 'Type:', typeof note.id);
+              }
+              return matches;
+            });
+            console.log('[EventsPage] Filtered notes length:', filtered.length);
+            console.log('[EventsPage] Previous notes length:', prevNotes.length);
+            // Return a new array reference to ensure React detects the change
+            return [...filtered];
+          });
+          
+          // Close modal immediately - state update will propagate
           setShowEditEventModal(false);
           setEditingEvent(null);
           setSelectedDate(null);
+          console.log('[EventsPage] State update completed, modal closing');
         }}
         notes={allNotes}
       />

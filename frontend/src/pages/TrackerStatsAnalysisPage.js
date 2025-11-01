@@ -178,8 +178,9 @@ function EnhancedStats({ answers, tracker }) {
         label: isYesNoTracker ? 'Yes' : 'Value',
         data: last30Answers.map(a => {
           if (typeof a.answer === 'string') {
+            // For yes/no: yes = 1 (above), no = -1 (below)
             if (a.answer.toLowerCase() === 'yes') return 1;
-            if (a.answer.toLowerCase() === 'no') return 0;
+            if (a.answer.toLowerCase() === 'no') return -1;
             return parseFloat(a.answer) || 0;
           }
           if (a.value !== undefined) return parseFloat(a.value) || 0;
@@ -214,7 +215,7 @@ function EnhancedStats({ answers, tracker }) {
         callbacks: {
           label: function(context) {
             if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
-              return context.parsed.y === 1 ? 'Yes' : 'No';
+              return context.parsed.y === 1 ? 'Yes' : context.parsed.y === -1 ? 'No' : '';
             }
             return context.parsed.y;
           }
@@ -223,16 +224,20 @@ function EnhancedStats({ answers, tracker }) {
     },
     scales: {
       y: {
-        beginAtZero: true,
+        beginAtZero: tracker.type && tracker.type.toLowerCase().includes('yes') ? false : true,
         ticks: {
           stepSize: tracker.type && tracker.type.toLowerCase().includes('yes') ? 1 : undefined,
           callback: function(value) {
             if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
-              return value === 1 ? 'Yes' : 'No';
+              if (value === 1) return 'Yes';
+              if (value === -1) return 'No';
+              if (value === 0) return '';
+              return '';
             }
             return value;
           }
         },
+        min: tracker.type && tracker.type.toLowerCase().includes('yes') ? -1 : undefined,
         max: tracker.type && tracker.type.toLowerCase().includes('yes') ? 1 : undefined,
       }
     }

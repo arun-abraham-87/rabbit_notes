@@ -209,6 +209,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       ? note.content.split('\n').find(line => line.startsWith('meta::linked_to_timeline::'))
       : null;
     const previousTimelineId = previousTimelineLink ? previousTimelineLink.replace('meta::linked_to_timeline::', '').trim() : null;
+    const timelineChanged = selectedTimeline !== previousTimelineId;
 
     // Add timeline link if selected
     if (selectedTimeline) {
@@ -224,12 +225,17 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     // Save the event and get the result
     const savedEvent = await onSave(content);
     const eventId = savedEvent?.id || note?.id;
+    
+    console.log('[EditEventModal] Event saved:', { savedEvent, note, eventId, selectedTimeline, isNewTimelineLink, timelineChanged });
 
-    // If timeline link changed, update the timeline note
-    if (selectedTimeline && isNewTimelineLink && eventId) {
+    // If timeline is selected, update the timeline note (whether new or existing event)
+    if (selectedTimeline && eventId) {
       try {
+        console.log('[EditEventModal] Updating timeline:', selectedTimeline, 'with event:', eventId);
         // Get the latest timeline note
         const timelineNote = await getNoteById(selectedTimeline);
+        console.log('[EditEventModal] Fetched timeline note:', timelineNote);
+        
         if (timelineNote && timelineNote.content) {
           const lines = timelineNote.content.split('\n');
           const otherLines = [];
@@ -246,9 +252,15 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
             }
           });
           
+          console.log('[EditEventModal] Existing linked event IDs:', Array.from(allLinkedEventIds));
+          console.log('[EditEventModal] Event ID to add:', eventId, 'Type:', typeof eventId);
+          
+          // Convert eventId to string for comparison
+          const eventIdStr = String(eventId);
+          
           // Check if event is already linked
-          if (!allLinkedEventIds.has(eventId)) {
-            allLinkedEventIds.add(eventId);
+          if (!Array.from(allLinkedEventIds).some(id => String(id) === eventIdStr)) {
+            allLinkedEventIds.add(eventIdStr);
             
             // Build updated content with each event on its own line
             let updatedTimelineContent = otherLines.join('\n').trim();
@@ -259,6 +271,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
               updatedTimelineContent = updatedTimelineContent + '\n' + linkedEventLines.join('\n');
             }
             
+            console.log('[EditEventModal] Updating timeline content:', updatedTimelineContent);
             await updateNoteById(selectedTimeline, updatedTimelineContent);
             
             // Notify parent component that timeline was updated
@@ -266,12 +279,19 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
               const updatedTimeline = await getNoteById(selectedTimeline);
               onTimelineUpdated(selectedTimeline, updatedTimeline.content || updatedTimelineContent);
             }
+            console.log('[EditEventModal] Timeline updated successfully');
+          } else {
+            console.log('[EditEventModal] Event already linked to timeline');
           }
+        } else {
+          console.error('[EditEventModal] Timeline note not found or has no content');
         }
       } catch (error) {
         console.error('[EditEventModal] Error updating timeline note:', error);
         // Don't fail the save if timeline update fails
       }
+    } else {
+      console.log('[EditEventModal] Skipping timeline update:', { selectedTimeline, eventId });
     }
 
     // If timeline link was removed, update the timeline note
@@ -700,17 +720,17 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
               {!note && <div></div>}
               <div className="flex space-x-3">
                 <button
-                  onClick={handleCancel}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
                   onClick={handleSubmit}
                   disabled={!description.trim() || !eventDate}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {note ? 'Save Changes' : 'Add Event'}
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  Cancel
                 </button>
               </div>
             </div>

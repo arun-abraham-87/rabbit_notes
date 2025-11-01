@@ -914,6 +914,23 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 let color = '';
                 let isYesNoTracker = tracker.type && tracker.type.toLowerCase().includes('yes');
                 
+                // Check if this date is allowed for weekly trackers
+                let isDateAllowed = true;
+                if (cadence === 'weekly' && tracker.days && tracker.days.length > 0) {
+                  // Get allowed weekday indices
+                  const selectedDays = tracker.days.map(d => {
+                    if (typeof d === 'string') {
+                      const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
+                      return idx >= 0 ? idx : d;
+                    }
+                    return d;
+                  }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
+                  
+                  // Check if this date's weekday is in the allowed days
+                  const dateWeekday = dateObj.day(); // 0 = Sunday, 6 = Saturday
+                  isDateAllowed = selectedDays.includes(dateWeekday);
+                }
+                
                 if (isYesNoTracker) {
                   if (displayValue === 'yes') {
                     color = 'bg-green-300';
@@ -926,8 +943,12 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                   color = displayValue ? 'bg-green-300' : '';
                 }
                 
+                // Disable color styling if date is not allowed for weekly trackers
+                const isDisabled = !isDateAllowed && cadence === 'weekly';
+                
                 const handleMonthlyDateClick = () => {
                   if (!isYesNoTracker) return; // Only allow clicking for yes/no trackers
+                  if (!isDateAllowed && cadence === 'weekly') return; // Disable clicks for non-allowed dates
                   
                   // Get current state (pending change or existing answer)
                   const currentState = pendingValue !== undefined 
@@ -947,7 +968,8 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                   console.log('[TrackerCard] Monthly date click', { 
                     dateStr, 
                     currentState, 
-                    newValue 
+                    newValue,
+                    isDateAllowed
                   });
                   
                   setMonthlyModalPendingChanges(prev => ({
@@ -961,11 +983,19 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{dateObj.format('ddd')}</span>
                     <button
                       onClick={handleMonthlyDateClick}
-                      className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm ${color} border-gray-300 ${
-                        isYesNoTracker ? 'cursor-pointer hover:ring-2 hover:ring-blue-400' : 'cursor-default'
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm ${color} ${
+                        isDisabled 
+                          ? 'border-gray-200 opacity-30 cursor-not-allowed' 
+                          : isYesNoTracker 
+                            ? 'border-gray-300 cursor-pointer hover:ring-2 hover:ring-blue-400' 
+                            : 'border-gray-300 cursor-default'
                       }`}
-                      title={dateObj.format('MMM D, YYYY') + (isYesNoTracker ? ' - Click to toggle yes/no/remove' : '')}
-                      disabled={!isYesNoTracker}
+                      title={
+                        dateObj.format('MMM D, YYYY') + 
+                        (isDisabled ? ' - Not available for this tracker' : 
+                         isYesNoTracker ? ' - Click to toggle yes/no/remove' : '')
+                      }
+                      disabled={!isYesNoTracker || isDisabled}
                     >
                       {dateObj.date()}
                     </button>

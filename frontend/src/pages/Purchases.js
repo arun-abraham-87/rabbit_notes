@@ -324,7 +324,7 @@ const Purchases = ({ allNotes, onCreateNote, setAllNotes }) => {
           .sort((a, b) => {
             const monthA = parseInt(a);
             const monthB = parseInt(b);
-            return monthB - monthA; // Latest month first
+            return monthB - monthA; // Latest month first (December first)
           })
           .forEach(month => {
             sortedGrouped[key][month] = grouped[year][month];
@@ -599,7 +599,13 @@ const Purchases = ({ allNotes, onCreateNote, setAllNotes }) => {
                   </span>
                 </h2>
                 
-                {!isYearCollapsed && Object.entries(months).map(([monthNum, monthData]) => {
+                {!isYearCollapsed && Object.entries(months)
+                  .sort(([monthNumA], [monthNumB]) => {
+                    const monthA = parseInt(monthNumA);
+                    const monthB = parseInt(monthNumB);
+                    return monthB - monthA; // Latest month first (December first)
+                  })
+                  .map(([monthNum, monthData]) => {
                   const events = monthData.events;
                   const monthTotal = events.reduce((total, event) => {
                     return total + extractDollarAmount(event.description, event.customFields);

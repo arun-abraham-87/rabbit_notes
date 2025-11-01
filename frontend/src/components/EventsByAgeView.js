@@ -79,19 +79,38 @@ const EventsByAgeView = ({ events, onEventUpdated, onDelete, notes }) => {
     };
   };
 
-  // Process and sort events by age
+  // Process and group events by year
   const processedEvents = events.map(event => {
     const details = getEventDetails(event.content);
     const age = calculateAge(details.dateTime);
     const ageInDays = Math.floor((new Date() - new Date(details.dateTime)) / (1000 * 60 * 60 * 24));
+    const eventYear = details.dateTime ? new Date(details.dateTime).getFullYear() : null;
     
     return {
       ...event,
       ...details,
       age,
-      ageInDays
+      ageInDays,
+      eventYear
     };
   }).sort((a, b) => b.ageInDays - a.ageInDays);
+
+  // Group events by year
+  const eventsByYear = processedEvents.reduce((acc, event) => {
+    const year = event.eventYear || 'Unknown';
+    if (!acc[year]) {
+      acc[year] = [];
+    }
+    acc[year].push(event);
+    return acc;
+  }, {});
+
+  // Sort years in descending order (most recent first)
+  const sortedYears = Object.keys(eventsByYear).sort((a, b) => {
+    if (a === 'Unknown') return 1;
+    if (b === 'Unknown') return -1;
+    return parseInt(b) - parseInt(a);
+  });
 
   const handleToggleDeadline = async (event) => {
     const hasDeadline = event.content.includes('meta::event_deadline');
@@ -129,126 +148,133 @@ const EventsByAgeView = ({ events, onEventUpdated, onDelete, notes }) => {
     <div className="space-y-6">
       <div className="bg-white rounded-lg border p-6 shadow-sm">
         <h2 className="text-xl font-semibold text-gray-900 mb-6">Events by Age</h2>
-        <div className="space-y-4">
-          {processedEvents.map((event) => (
-            <div
-              key={event.id}
-              className="p-4 rounded-lg border bg-white hover:bg-gray-50 transition-all duration-200"
-            >
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {event.content.includes('meta::event_hidden') ? (
-                        <div className="flex items-center gap-2">
-                          <span>XXXXXXXXXXXX</span>
-                          <button
-                            onClick={() => handleToggleHidden(event)}
-                            className="text-xs text-indigo-600 hover:text-indigo-700 underline"
-                          >
-                            Reveal
-                          </button>
+        <div className="space-y-8">
+          {sortedYears.map((year) => (
+            <div key={year} className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
+                {year}
+              </h3>
+              {eventsByYear[year].map((event) => (
+                <div
+                  key={event.id}
+                  className="p-4 rounded-lg border bg-white hover:bg-gray-50 transition-all duration-200"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-medium text-gray-900">
+                          {event.content.includes('meta::event_hidden') ? (
+                            <div className="flex items-center gap-2">
+                              <span>XXXXXXXXXXXX</span>
+                              <button
+                                onClick={() => handleToggleHidden(event)}
+                                className="text-xs text-indigo-600 hover:text-indigo-700 underline"
+                              >
+                                Reveal
+                              </button>
+                            </div>
+                          ) : (
+                            event.description
+                          )}
+                        </h3>
+                        {event.content.includes('meta::event_deadline') && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Deadline
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-[120px_1fr] gap-x-2 text-sm">
+                        <p className="text-gray-600">
+                          <span className="font-medium">Age:</span>
+                        </p>
+                        <p className="text-gray-900">
+                          {event.age}
+                        </p>
+                        
+                        <p className="text-gray-600">
+                          <span className="font-medium">Original date:</span>
+                        </p>
+                        <p className="text-gray-600">
+                          {new Date(event.dateTime).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+
+                        {event.recurrence !== 'none' && (
+                          <>
+                            <p className="text-gray-600">
+                              <span className="font-medium">Recurrence:</span>
+                            </p>
+                            <p className="text-gray-600">
+                              {event.recurrence.charAt(0).toUpperCase() + event.recurrence.slice(1)}
+                            </p>
+                          </>
+                        )}
+                      </div>
+
+                      {event.tags && event.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {event.tags.map(tag => (
+                            <span
+                              key={tag}
+                              className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200"
+                            >
+                              {tag}
+                            </span>
+                          ))}
                         </div>
-                      ) : (
-                        event.description
                       )}
-                    </h3>
-                    {event.content.includes('meta::event_deadline') && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        Deadline
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-[120px_1fr] gap-x-2 text-sm">
-                    <p className="text-gray-600">
-                      <span className="font-medium">Age:</span>
-                    </p>
-                    <p className="text-gray-900">
-                      {event.age}
-                    </p>
-                    
-                    <p className="text-gray-600">
-                      <span className="font-medium">Original date:</span>
-                    </p>
-                    <p className="text-gray-600">
-                      {new Date(event.dateTime).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-
-                    {event.recurrence !== 'none' && (
-                      <>
-                        <p className="text-gray-600">
-                          <span className="font-medium">Recurrence:</span>
-                        </p>
-                        <p className="text-gray-600">
-                          {event.recurrence.charAt(0).toUpperCase() + event.recurrence.slice(1)}
-                        </p>
-                      </>
-                    )}
-                  </div>
-
-                  {event.tags && event.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {event.tags.map(tag => (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200"
-                        >
-                          {tag}
-                        </span>
-                      ))}
                     </div>
-                  )}
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleToggleHidden(event)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      event.content.includes('meta::event_hidden')
-                        ? 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                    title={event.content.includes('meta::event_hidden') ? "Show event" : "Hide event"}
-                  >
-                    {event.content.includes('meta::event_hidden') ? (
-                      <EyeSlashIcon className="h-5 w-5" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleToggleDeadline(event)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      event.content.includes('meta::event_deadline')
-                        ? 'text-red-500 hover:text-red-600 hover:bg-red-50'
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                    title={event.content.includes('meta::event_deadline') ? "Remove deadline" : "Mark as deadline"}
-                  >
-                    <FlagIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => setRawNote(event)}
-                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="View raw note"
-                  >
-                    <CodeBracketIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => handleOpenTimelineModal(event)}
-                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Link to timeline"
-                  >
-                    <LinkIcon className="h-5 w-5" />
-                  </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleHidden(event)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          event.content.includes('meta::event_hidden')
+                            ? 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                        }`}
+                        title={event.content.includes('meta::event_hidden') ? "Show event" : "Hide event"}
+                      >
+                        {event.content.includes('meta::event_hidden') ? (
+                          <EyeSlashIcon className="h-5 w-5" />
+                        ) : (
+                          <EyeIcon className="h-5 w-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleToggleDeadline(event)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          event.content.includes('meta::event_deadline')
+                            ? 'text-red-500 hover:text-red-600 hover:bg-red-50'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                        }`}
+                        title={event.content.includes('meta::event_deadline') ? "Remove deadline" : "Mark as deadline"}
+                      >
+                        <FlagIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => setRawNote(event)}
+                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="View raw note"
+                      >
+                        <CodeBracketIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handleOpenTimelineModal(event)}
+                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Link to timeline"
+                      >
+                        <LinkIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           ))}
         </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import moment from 'moment';
 import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon, LinkIcon } from '@heroicons/react/24/solid';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -15,6 +15,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const TIMELINE_MAIN_SEARCH_KEY = 'timeline_main_search';
   const TIMELINE_SEARCH_QUERIES_KEY = 'timeline_search_queries';
   const TIMELINE_SECTION_COLLAPSE_KEY = 'timeline_section_collapse_states';
+  const TIMELINE_SEARCH_TITLES_ONLY_KEY = 'timeline_search_titles_only';
 
   // Load timeline collapse states from localStorage
   const loadCollapseStates = () => {
@@ -68,6 +69,17 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     return {};
   };
 
+  // Load search titles only setting from localStorage
+  const loadSearchTitlesOnly = () => {
+    try {
+      const saved = localStorage.getItem(TIMELINE_SEARCH_TITLES_ONLY_KEY);
+      return saved === 'true';
+    } catch (error) {
+      console.error('Error loading search titles only setting:', error);
+      return false;
+    }
+  };
+
   // Initialize state with saved collapse states
   const [timelineNotes, setTimelineNotes] = useState([]);
   const [showAddEventForm, setShowAddEventForm] = useState(null);
@@ -76,6 +88,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [newEventText, setNewEventText] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
   const [searchQuery, setSearchQuery] = useState(() => loadMainSearchQuery());
+  const [searchTitlesOnly, setSearchTitlesOnly] = useState(() => loadSearchTitlesOnly());
   const [showNewTimelineForm, setShowNewTimelineForm] = useState(false);
   const [newTimelineTitle, setNewTimelineTitle] = useState('');
   // Initialize with saved states from localStorage
@@ -130,9 +143,11 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       // Restore search queries
       const savedMainSearch = loadMainSearchQuery();
       const savedTimelineSearches = loadTimelineSearchQueries();
+      const savedSearchTitlesOnly = loadSearchTitlesOnly();
       setSearchQuery(savedMainSearch);
       setTimelineSearchQueries(savedTimelineSearches);
-      console.log('[Timelines] Restored search queries from localStorage:', { main: savedMainSearch, timeline: savedTimelineSearches });
+      setSearchTitlesOnly(savedSearchTitlesOnly);
+      console.log('[Timelines] Restored search queries from localStorage:', { main: savedMainSearch, timeline: savedTimelineSearches, titlesOnly: savedSearchTitlesOnly });
     }
   }, [location.pathname]);
 
@@ -359,6 +374,28 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       console.error('Error saving main search query:', error);
     }
   }, [searchQuery]);
+
+  // Save search titles only setting to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(TIMELINE_SEARCH_TITLES_ONLY_KEY, searchTitlesOnly.toString());
+    } catch (error) {
+      console.error('Error saving search titles only setting:', error);
+    }
+  }, [searchTitlesOnly]);
+
+  // Save timeline collapse states to localStorage whenever they change
+  // This ensures collapse state is always tracked, even when there's no search query
+  useEffect(() => {
+    if (timelineNotes.length > 0) {
+      try {
+        saveCollapseStates(collapsedTimelines);
+        console.log('[Timelines] Saved collapse states to localStorage:', Array.from(collapsedTimelines));
+      } catch (error) {
+        console.error('Error saving collapse states:', error);
+      }
+    }
+  }, [collapsedTimelines, timelineNotes.length]);
 
   // Parse timeline data from note content
   const parseTimelineData = (content, allNotes = []) => {
@@ -1120,6 +1157,11 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         return true;
       }
       
+      // If "search only titles" is checked, don't search in events
+      if (searchTitlesOnly) {
+        return false;
+      }
+      
       // Search in events (both regular and linked events)
       const hasMatchingEvent = timelineData.events.some(event => {
         if (event.event && typeof event.event === 'string') {
@@ -1141,15 +1183,32 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       return aData.timeline.localeCompare(bData.timeline);
     });
 
+  // Track previous search query to detect when user actively clears search
+  const prevSearchQueryRef = useRef(searchQuery);
+
   // Auto-expand timelines with matching events when searching
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      // When search is cleared, collapse all timelines
+    // Only collapse all timelines when user actively clears search (not on initial load or when returning to page)
+    // Check if search query changed from non-empty to empty
+    const wasSearching = prevSearchQueryRef.current && prevSearchQueryRef.current.trim();
+    const isSearchCleared = !searchQuery.trim() && wasSearching;
+    
+    // Update ref for next comparison
+    prevSearchQueryRef.current = searchQuery;
+    
+    if (isSearchCleared) {
+      // User actively cleared search - collapse all timelines
       if (timelineNotes.length > 0) {
         const allTimelineIds = new Set(timelineNotes.map(note => note.id));
         saveCollapseStates(allTimelineIds);
         setCollapsedTimelines(allTimelineIds);
       }
+      return;
+    }
+    
+    if (!searchQuery.trim()) {
+      // No search query and user didn't just clear it - don't change collapse state
+      // This preserves the saved collapse state from localStorage
       return;
     }
 
@@ -1167,16 +1226,19 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           matchingTimelineIds.add(note.id);
         }
         
-        // Check if any event matches
-        const hasMatchingEvent = timelineData.events.some(event => {
-          if (event.event && typeof event.event === 'string') {
-            return event.event.toLowerCase().includes(query);
+        // Only check events if "search only titles" is not checked
+        if (!searchTitlesOnly) {
+          // Check if any event matches
+          const hasMatchingEvent = timelineData.events.some(event => {
+            if (event.event && typeof event.event === 'string') {
+              return event.event.toLowerCase().includes(query);
+            }
+            return false;
+          });
+          
+          if (hasMatchingEvent) {
+            matchingTimelineIds.add(note.id);
           }
-          return false;
-        });
-        
-        if (hasMatchingEvent) {
-          matchingTimelineIds.add(note.id);
         }
       });
       
@@ -1193,7 +1255,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         });
       }
     }
-  }, [searchQuery, timelineNotes, notes]);
+  }, [searchQuery, searchTitlesOnly, timelineNotes, notes]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 py-8">
@@ -1240,7 +1302,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by timeline title or events..."
+                  placeholder={searchTitlesOnly ? "Search by timeline title..." : "Search by timeline title or events..."}
                   className="w-full px-4 py-2 pl-10 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-white shadow-sm transition-all"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -1256,6 +1318,17 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                     <XMarkIcon className="h-5 w-5" />
                   </button>
                 )}
+              </div>
+              <div className="mt-2">
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={searchTitlesOnly}
+                    onChange={(e) => setSearchTitlesOnly(e.target.checked)}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <span>Search only titles</span>
+                </label>
               </div>
             </div>
           </div>

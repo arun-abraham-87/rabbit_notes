@@ -1091,8 +1091,9 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           </div>
         </div>
       )}
-      {!isDevMode && lastRecordedDate && (
-        <div className="mt-4 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+      {/* Footer */}
+      <div className="mt-4 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+        {!isDevMode && lastRecordedDate && (
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1">
               <span className="font-medium">Last recorded:</span>
@@ -1103,33 +1104,34 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               <span>{lastRecordedAge}</span>
             </div>
           </div>
+        )}
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="font-medium">Total events: {answers.length}</span>
         </div>
-      )}
-      {isDevMode && (
-        <div className="mt-4 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-          <div className="flex items-center gap-1">
+        {isDevMode && (
+          <div className="flex items-center gap-1 ml-4">
             <span>ID:</span>
             <code className="font-mono bg-gray-50 px-1 py-0.5 rounded">{tracker.id}</code>
+            <button
+              onClick={handleCopyToClipboard}
+              className="flex items-center gap-1 hover:text-gray-700 transition-colors ml-1"
+              title="Copy ID to clipboard"
+            >
+              {copied ? (
+                <>
+                  <ClipboardDocumentCheckIcon className="h-4 w-4 text-green-500" />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <ClipboardIcon className="h-4 w-4" />
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
           </div>
-          <button
-            onClick={handleCopyToClipboard}
-            className="flex items-center gap-1 hover:text-gray-700 transition-colors"
-            title="Copy ID to clipboard"
-          >
-            {copied ? (
-              <>
-                <ClipboardDocumentCheckIcon className="h-4 w-4 text-green-500" />
-                <span>Copied!</span>
-              </>
-            ) : (
-              <>
-                <ClipboardIcon className="h-4 w-4" />
-                <span>Copy</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

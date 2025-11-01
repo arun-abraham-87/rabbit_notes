@@ -361,6 +361,64 @@ const Purchases = ({ allNotes, onCreateNote, setAllNotes }) => {
     }
   }, [groupedPurchases, isInitialized]);
 
+  // Expand years and months that contain matching records when searching
+  useEffect(() => {
+    if (!isInitialized) return; // Wait for initial collapse state to be set
+    
+    if (searchQuery.trim()) {
+      // Search is active - expand all years and months that exist in groupedPurchases
+      // (since groupedPurchases only contains filtered/matching events)
+      const expandedYears = new Set();
+      const expandedMonths = new Set();
+      
+      Object.keys(groupedPurchases).forEach(yearKey => {
+        if (yearKey !== 'No Date') {
+          const year = parseInt(yearKey);
+          expandedYears.add(year); // Expand all years with matching events
+          
+          const months = groupedPurchases[year];
+          Object.keys(months).forEach(monthNum => {
+            const monthKey = `${year}-${monthNum}`;
+            expandedMonths.add(monthKey); // Expand all months with matching events
+          });
+        }
+      });
+      
+      // Remove matching years/months from collapsed sets (expand them)
+      setCollapsedYears(prev => {
+        const newSet = new Set(prev);
+        expandedYears.forEach(year => newSet.delete(year));
+        return newSet;
+      });
+      
+      setCollapsedMonths(prev => {
+        const newSet = new Set(prev);
+        expandedMonths.forEach(month => newSet.delete(month));
+        return newSet;
+      });
+    } else {
+      // Search is cleared - collapse everything back to default
+      const allYears = new Set();
+      const allMonths = new Set();
+      
+      Object.keys(groupedPurchases).forEach(yearKey => {
+        if (yearKey !== 'No Date') {
+          const year = parseInt(yearKey);
+          allYears.add(year);
+          
+          const months = groupedPurchases[year];
+          Object.keys(months).forEach(monthNum => {
+            const monthKey = `${year}-${monthNum}`;
+            allMonths.add(monthKey);
+          });
+        }
+      });
+      
+      setCollapsedYears(allYears);
+      setCollapsedMonths(allMonths);
+    }
+  }, [searchQuery, groupedPurchases, isInitialized]);
+
   // Calculate statistics
   const statistics = useMemo(() => {
     const amounts = purchaseEvents.map(event => extractDollarAmount(event.description, event.customFields));

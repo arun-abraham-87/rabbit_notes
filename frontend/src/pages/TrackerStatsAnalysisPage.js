@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadNotes } from '../utils/ApiUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
-import { Line } from 'react-chartjs-2';
+import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend
@@ -21,6 +22,7 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend
@@ -28,12 +30,98 @@ ChartJS.register(
 
 // EnhancedStats component (same as in TrackerCard)
 function EnhancedStats({ answers, tracker }) {
+  const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'lastMonth', 'last3Months', 'ytd', 'last365Days'
+  
+  // Check if this is a yes/no tracker
+  const isYesNoTracker = tracker.type && tracker.type.toLowerCase().includes('yes');
+  
+  // Filter answers based on time filter
+  const getFilteredAnswers = () => {
+    if (timeFilter === 'all') {
+      return answers;
+    }
+    
+    const now = moment();
+    let startDate;
+    
+    switch (timeFilter) {
+      case 'lastMonth':
+        startDate = moment().subtract(1, 'months').startOf('month');
+        break;
+      case 'last3Months':
+        startDate = moment().subtract(3, 'months').startOf('month');
+        break;
+      case 'ytd':
+        startDate = moment().startOf('year');
+        break;
+      case 'last365Days':
+        startDate = moment().subtract(365, 'days');
+        break;
+      default:
+        return answers;
+    }
+    
+    return answers.filter(ans => moment(ans.date).isSameOrAfter(startDate));
+  };
+  
+  const filteredAnswers = getFilteredAnswers();
+  
   if (!answers || answers.length === 0) {
-    return <div className="text-gray-400 italic text-center">No check-ins yet.</div>;
+    return (
+      <div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {['all', 'lastMonth', 'last3Months', 'ytd', 'last365Days'].map(filter => (
+            <button
+              key={filter}
+              onClick={() => setTimeFilter(filter)}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                timeFilter === filter
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {filter === 'all' ? 'All Events' :
+               filter === 'lastMonth' ? 'Last Month' :
+               filter === 'last3Months' ? 'Last 3 Months' :
+               filter === 'ytd' ? 'YTD' :
+               'Last 365 Days'}
+            </button>
+          ))}
+        </div>
+        <div className="text-gray-400 italic text-center">No check-ins yet.</div>
+      </div>
+    );
+  }
+  
+  if (!filteredAnswers || filteredAnswers.length === 0) {
+    return (
+      <div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {['all', 'lastMonth', 'last3Months', 'ytd', 'last365Days'].map(filter => (
+            <button
+              key={filter}
+              onClick={() => setTimeFilter(filter)}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                timeFilter === filter
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {filter === 'all' ? 'All Events' :
+               filter === 'lastMonth' ? 'Last Month' :
+               filter === 'last3Months' ? 'Last 3 Months' :
+               filter === 'ytd' ? 'YTD' :
+               'Last 365 Days'}
+            </button>
+          ))}
+        </div>
+        <div className="text-gray-400 italic text-center">No check-ins in selected period.</div>
+      </div>
+    );
   }
 
   // Normalize and deduplicate dates
-  const dateSet = new Set(answers.map(a => moment(a.date).format('YYYY-MM-DD')));
+  const dateSet = new Set(filteredAnswers.map(a => moment(a.date).format('YYYY-MM-DD')));
   const sortedDates = Array.from(dateSet).sort();
 
   // Longest streak calculation (robust)
@@ -57,7 +145,7 @@ function EnhancedStats({ answers, tracker }) {
   });
 
   // Sort answers by date ascending
-  const sorted = [...answers].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const sorted = [...filteredAnswers].sort((a, b) => new Date(a.date) - new Date(b.date));
   const firstDate = sorted[0]?.date;
   const lastDate = sorted[sorted.length - 1]?.date;
   const total = sorted.length;
@@ -82,12 +170,13 @@ function EnhancedStats({ answers, tracker }) {
   }
 
   // Prepare chart data (show last 30 check-ins)
+  const last30Answers = sorted.slice(-30);
   const chartData = {
-    labels: sorted.slice(-30).map(a => new Date(a.date).toLocaleDateString()),
+    labels: last30Answers.map(a => new Date(a.date).toLocaleDateString()),
     datasets: [
       {
-        label: tracker.type && tracker.type.toLowerCase().includes('yes') ? 'Yes' : 'Value',
-        data: sorted.slice(-30).map(a => {
+        label: isYesNoTracker ? 'Yes' : 'Value',
+        data: last30Answers.map(a => {
           if (typeof a.answer === 'string') {
             if (a.answer.toLowerCase() === 'yes') return 1;
             if (a.answer.toLowerCase() === 'no') return 0;
@@ -96,11 +185,24 @@ function EnhancedStats({ answers, tracker }) {
           if (a.value !== undefined) return parseFloat(a.value) || 0;
           return 0;
         }),
-        borderColor: 'rgb(34, 197, 94)',
-        backgroundColor: 'rgba(34, 197, 94, 0.2)',
-        tension: 0.2,
-        fill: true,
-        pointRadius: 2,
+        // For yes/no trackers, use conditional colors per bar
+        backgroundColor: isYesNoTracker
+          ? last30Answers.map(a => {
+              const answer = typeof a.answer === 'string' ? a.answer.toLowerCase() : '';
+              return answer === 'yes' ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)';
+            })
+          : 'rgba(34, 197, 94, 0.2)',
+        borderColor: isYesNoTracker
+          ? last30Answers.map(a => {
+              const answer = typeof a.answer === 'string' ? a.answer.toLowerCase() : '';
+              return answer === 'yes' ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)';
+            })
+          : 'rgb(34, 197, 94)',
+        borderWidth: isYesNoTracker ? 1 : 1,
+        // Line chart specific properties
+        tension: isYesNoTracker ? undefined : 0.2,
+        fill: isYesNoTracker ? false : true,
+        pointRadius: isYesNoTracker ? undefined : 2,
       },
     ],
   };
@@ -138,8 +240,33 @@ function EnhancedStats({ answers, tracker }) {
 
   return (
     <div>
+      {/* Time Filter Buttons */}
+      <div className="flex flex-wrap gap-2 mb-3">
+        {['all', 'lastMonth', 'last3Months', 'ytd', 'last365Days'].map(filter => (
+          <button
+            key={filter}
+            onClick={() => setTimeFilter(filter)}
+            className={`px-3 py-1 text-xs rounded-md transition-colors ${
+              timeFilter === filter
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            {filter === 'all' ? 'All Events' :
+             filter === 'lastMonth' ? 'Last Month' :
+             filter === 'last3Months' ? 'Last 3 Months' :
+             filter === 'ytd' ? 'YTD' :
+             'Last 365 Days'}
+          </button>
+        ))}
+      </div>
+      
       <div className="mb-4">
-        <Line data={chartData} options={chartOptions} height={120} />
+        {isYesNoTracker ? (
+          <Bar data={chartData} options={chartOptions} height={120} />
+        ) : (
+          <Line data={chartData} options={chartOptions} height={120} />
+        )}
       </div>
       <div className="grid grid-cols-2 gap-2 text-sm mb-2">
         <div><span className="font-semibold">Total Check-ins:</span> {total}</div>
@@ -168,6 +295,7 @@ const TrackerStatsAnalysisPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTrackers, setSelectedTrackers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadTrackers();
@@ -252,6 +380,12 @@ const TrackerStatsAnalysisPage = () => {
   };
 
   const selectedTrackersList = trackers.filter(t => selectedTrackers.includes(t.id));
+  
+  // Filter trackers based on search query
+  const filteredTrackers = trackers.filter(tracker => 
+    tracker.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (tracker.question && tracker.question.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   if (isLoading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">{error}</div>;
@@ -271,9 +405,33 @@ const TrackerStatsAnalysisPage = () => {
       
       {/* Tracker Selection Buttons */}
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-700 mb-3">Select Trackers:</h2>
+        <div className="flex items-center gap-4 mb-3">
+          <h2 className="text-lg font-semibold text-gray-700">Select Trackers:</h2>
+          <div className="relative flex-1 max-w-md">
+            <input
+              type="text"
+              placeholder="Search trackers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
         <div className="flex flex-wrap gap-2">
-          {trackers.map(tracker => {
+          {filteredTrackers.map(tracker => {
             const isSelected = selectedTrackers.includes(tracker.id);
             return (
               <button
@@ -292,6 +450,9 @@ const TrackerStatsAnalysisPage = () => {
         </div>
         {trackers.length === 0 && (
           <div className="text-gray-400 italic">No trackers found.</div>
+        )}
+        {trackers.length > 0 && filteredTrackers.length === 0 && (
+          <div className="text-gray-400 italic">No trackers match your search.</div>
         )}
       </div>
 

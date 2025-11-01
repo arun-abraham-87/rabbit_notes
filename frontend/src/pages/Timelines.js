@@ -42,6 +42,7 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
   const [unlinkConfirmation, setUnlinkConfirmation] = useState({ isOpen: false, timelineId: null, eventId: null });
   const [addLinkModal, setAddLinkModal] = useState({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' });
+  const [timelineSearchQueries, setTimelineSearchQueries] = useState({}); // { timelineId: searchQuery }
 
   // Save timeline collapse states to localStorage
   const saveCollapseStates = (collapsedSet) => {
@@ -209,6 +210,12 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     });
   };
 
+  // Check if an event is selected
+  const isEventSelected = (timelineId, eventIndex) => {
+    const selected = selectedEvents[timelineId] || [];
+    return selected.includes(eventIndex);
+  };
+
   // Calculate difference between two dates
   const calculateDateDifference = (date1, date2) => {
     const moment1 = moment(date1);
@@ -226,9 +233,44 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     return parts.join(', ');
   };
 
-  // Check if event is selected
-  const isEventSelected = (timelineId, eventIndex) => {
-    return selectedEvents[timelineId]?.includes(eventIndex) || false;
+  // Fuzzy search function for events
+  const fuzzySearch = (text, query) => {
+    if (!query || !query.trim()) return true;
+    
+    const normalizedText = text.toLowerCase().trim();
+    const normalizedQuery = query.toLowerCase().trim();
+    
+    // Exact match
+    if (normalizedText.includes(normalizedQuery)) return true;
+    
+    // Fuzzy match: check if all characters in query appear in order in text
+    let textIndex = 0;
+    for (let i = 0; i < normalizedQuery.length; i++) {
+      const char = normalizedQuery[i];
+      const foundIndex = normalizedText.indexOf(char, textIndex);
+      if (foundIndex === -1) return false;
+      textIndex = foundIndex + 1;
+    }
+    return true;
+  };
+
+  // Filter events based on search query
+  const filterEventsBySearch = (events, searchQuery) => {
+    if (!searchQuery || !searchQuery.trim()) return events;
+    
+    return events.filter(event => {
+      if (!event.event) return false;
+      const eventText = typeof event.event === 'string' ? event.event : String(event.event);
+      return fuzzySearch(eventText, searchQuery);
+    });
+  };
+
+  // Update search query for a timeline
+  const handleTimelineSearchChange = (timelineId, query) => {
+    setTimelineSearchQueries(prev => ({
+      ...prev,
+      [timelineId]: query
+    }));
   };
 
   // Parse timeline data from note content
@@ -1312,6 +1354,38 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               </div>
                             </div>
                           </div>
+                          
+                          {/* Timeline Search */}
+                          {!collapsedTimelines.has(note.id) && (
+                            <div className="px-6 py-3 bg-gray-50 border-b border-rose-200/50">
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={timelineSearchQueries[note.id] || ''}
+                                  onChange={(e) => handleTimelineSearchChange(note.id, e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  placeholder="Search events in this timeline..."
+                                  className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-400 bg-white text-sm"
+                                />
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                  </svg>
+                                </div>
+                                {timelineSearchQueries[note.id] && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleTimelineSearchChange(note.id, '');
+                                    }}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                  >
+                                    <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
 
                           {/* Timeline Events */}
                           {!collapsedTimelines.has(note.id) && (
@@ -1366,87 +1440,100 @@ const Timelines = ({ notes, updateNote, addNote }) => {
 
                               {eventsWithDiffs.length === 0 ? (
                                 <div className="text-gray-500 italic">No events found in this timeline</div>
-                              ) : (
-                                <div className="space-y-4">
-                                  {/* Preview marker at the beginning if new event should be first */}
-                                  {(() => {
-                                    if (!newEventDate || showAddEventForm !== note.id || eventsWithDiffs.length === 0) {
-                                      return null;
-                                    }
-                                    
-                                    const newEventMoment = moment(newEventDate);
-                                    const firstEvent = eventsWithDiffs[0];
-                                    
-                                    // Show preview at start if new event is before first event
-                                    const shouldShowAtStart = firstEvent && firstEvent.date && newEventMoment.isBefore(firstEvent.date);
-                                    
-                                    if (!shouldShowAtStart) {
-                                      return null;
-                                    }
-                                    
-                                    const showStartYearHeader = firstEvent.date && firstEvent.date.year() !== newEventMoment.year();
-                                    
-                                    return (
-                                      <>
-                                        {showStartYearHeader && (
-                                          <div className="flex items-center space-x-4 mb-4">
-                                            <div className="w-4 h-4"></div>
-                                            <div className="flex-1">
-                                              <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent border-b-2 border-indigo-300 pb-2">
-                                                {newEventMoment.year()}
-                                              </h2>
+                              ) : (() => {
+                                const searchQuery = timelineSearchQueries[note.id] || '';
+                                const filteredEvents = filterEventsBySearch(eventsWithDiffs, searchQuery);
+                                
+                                if (filteredEvents.length === 0 && searchQuery) {
+                                  return (
+                                    <div className="text-center py-8 text-gray-500">
+                                      <p>No events found matching "{searchQuery}"</p>
+                                    </div>
+                                  );
+                                }
+                                
+                                return (
+                                  <div className="space-y-4">
+                                    {/* Preview marker at the beginning if new event should be first */}
+                                    {(() => {
+                                      if (!newEventDate || showAddEventForm !== note.id || filteredEvents.length === 0) {
+                                        return null;
+                                      }
+                                      
+                                      const newEventMoment = moment(newEventDate);
+                                      const firstEvent = filteredEvents[0];
+                                      
+                                      // Show preview at start if new event is before first event
+                                      const shouldShowAtStart = firstEvent && firstEvent.date && newEventMoment.isBefore(firstEvent.date);
+                                      
+                                      if (!shouldShowAtStart) {
+                                        return null;
+                                      }
+                                      
+                                      const showStartYearHeader = firstEvent.date && firstEvent.date.year() !== newEventMoment.year();
+                                      
+                                      return (
+                                        <>
+                                          {showStartYearHeader && (
+                                            <div className="flex items-center space-x-4 mb-4">
+                                              <div className="w-4 h-4"></div>
+                                              <div className="flex-1">
+                                                <h2 className="text-2xl font-bold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent border-b-2 border-rose-300 pb-2">
+                                                  {newEventMoment.year()}
+                                                </h2>
+                                              </div>
                                             </div>
-                                          </div>
-                                        )}
-                                        
-                                        <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed mb-4">
-                                          <div className="flex items-start space-x-4">
-                                            <div className="flex flex-col items-center">
-                                              <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
-                                              <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
-                                            </div>
-                                            <div className="flex-1">
-                                              <div className="flex items-center space-x-3 mb-1">
-                                                <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
-                                                  {newEventMoment.format('DD/MMM/YYYY')}
-                                                </span>
-                                                <h3 className="text-lg font-semibold text-gray-900 italic">
-                                                  {newEventText || 'New Event Preview'}
-                                                </h3>
+                                          )}
+                                          
+                                          <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed mb-4">
+                                            <div className="flex items-start space-x-4">
+                                              <div className="flex flex-col items-center">
+                                                <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
+                                                <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
+                                              </div>
+                                              <div className="flex-1">
+                                                <div className="flex items-center space-x-3 mb-1">
+                                                  <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
+                                                    {newEventMoment.format('DD/MMM/YYYY')}
+                                                  </span>
+                                                  <h3 className="text-lg font-semibold text-gray-900 italic">
+                                                    {newEventText || 'New Event Preview'}
+                                                  </h3>
+                                                </div>
                                               </div>
                                             </div>
                                           </div>
-                                        </div>
-                                      </>
-                                    );
-                                  })()}
-                                  
-                                  {eventsWithDiffs.map((event, index) => {
-                                    const currentYear = event.date ? event.date.year() : null;
-                                    const previousYear = index > 0 && eventsWithDiffs[index - 1].date 
-                                      ? eventsWithDiffs[index - 1].date.year() 
-                                      : null;
-                                    const showYearHeader = currentYear && currentYear !== previousYear;
+                                        </>
+                                      );
+                                    })()}
                                     
-                                    // Check if we should insert preview marker here
-                                    const shouldShowPreview = showAddEventForm === note.id && newEventDate;
-                                    let showPreviewBefore = false;
-                                    
-                                    if (shouldShowPreview && event.date) {
-                                      const newEventMoment = moment(newEventDate);
-                                      const isAfterThis = newEventMoment.isAfter(event.date);
-                                      const isBeforeNext = index === eventsWithDiffs.length - 1 || 
-                                        !eventsWithDiffs[index + 1].date || 
-                                        newEventMoment.isBefore(eventsWithDiffs[index + 1].date);
+                                    {filteredEvents.map((event, index) => {
+                                      // Find original index in eventsWithDiffs for proper year headers and selection
+                                      const originalIndex = eventsWithDiffs.findIndex(e => e === event);
+                                      const currentYear = event.date ? event.date.year() : null;
+                                      const previousEvent = originalIndex > 0 ? eventsWithDiffs[originalIndex - 1] : null;
+                                      const previousYear = previousEvent && previousEvent.date ? previousEvent.date.year() : null;
+                                      const showYearHeader = currentYear && currentYear !== previousYear;
                                       
-                                      showPreviewBefore = isAfterThis && isBeforeNext;
-                                    }
+                                      // Check if we should insert preview marker here
+                                      const shouldShowPreview = showAddEventForm === note.id && newEventDate;
+                                      let showPreviewBefore = false;
+                                      
+                                      if (shouldShowPreview && event.date) {
+                                        const newEventMoment = moment(newEventDate);
+                                        const isAfterThis = newEventMoment.isAfter(event.date);
+                                        const isBeforeNext = index === filteredEvents.length - 1 || 
+                                          !filteredEvents[index + 1].date || 
+                                          newEventMoment.isBefore(filteredEvents[index + 1].date);
+                                        
+                                        showPreviewBefore = isAfterThis && isBeforeNext;
+                                      }
 
-                                    const isSelected = isEventSelected(note.id, index);
-                                    const isHighlighted = isSelected && selectedEvents[note.id] && selectedEvents[note.id].length === 2;
+                                      const isSelected = isEventSelected(note.id, originalIndex);
+                                      const isHighlighted = isSelected && selectedEvents[note.id] && selectedEvents[note.id].length === 2;
                                     
-                                    return (
-                                      <React.Fragment key={index}>
+                                      return (
+                                        <React.Fragment key={originalIndex}>
                                         {/* Preview Marker - show after this event if new event should be inserted here */}
                                         {showPreviewBefore && (() => {
                                           const newEventMoment = moment(newEventDate);
@@ -1848,7 +1935,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                     );
                                   })()}
                                 </div>
-                              )}
+                                );
+                              })()}
                             </div>
                           )}
                         </div>
@@ -2064,184 +2152,229 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                           <span className="text-sm font-medium">View</span>
                         </button>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Timeline Events */}
-                  {!collapsedTimelines.has(note.id) && (
-                    <div className="p-6">
-                    {/* Add Event Form */}
-                    {showAddEventForm === note.id && (
-                      <div className="mb-6 pb-6 border-b border-gray-200">
-                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                          <h4 className="text-sm font-medium text-gray-700 mb-3">Add New Event</h4>
-                          <div className="space-y-3">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Event Description
-                              </label>
-                              <input
-                                type="text"
-                                value={newEventText}
-                                onChange={(e) => setNewEventText(e.target.value)}
-                                placeholder="e.g., Project milestone reached"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Date
-                              </label>
-                              <input
-                                type="date"
-                                value={newEventDate}
-                                onChange={(e) => setNewEventDate(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => handleAddEvent(note.id)}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                              >
-                                Add Event
-                              </button>
-                              <button
-                                onClick={() => setShowAddEventForm(null)}
-                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
-                              >
-                                Cancel
-                              </button>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {eventsWithDiffs.length === 0 ? (
-                      <div className="text-gray-500 italic">No events found in this timeline</div>
-                    ) : (
-                      <div className="space-y-4">
-                        {/* Preview marker at the beginning if new event should be first */}
-                        {(() => {
-                          if (!newEventDate || showAddEventForm !== note.id || eventsWithDiffs.length === 0) {
-                            return null;
-                          }
                           
-                          const newEventMoment = moment(newEventDate);
-                          const firstEvent = eventsWithDiffs[0];
+                          {/* Timeline Search */}
+                          {!collapsedTimelines.has(note.id) && (
+                            <div className="px-6 py-3 bg-gray-50 border-b border-slate-200/50">
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={timelineSearchQueries[note.id] || ''}
+                                  onChange={(e) => handleTimelineSearchChange(note.id, e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  placeholder="Search events in this timeline..."
+                                  className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-400 bg-white text-sm"
+                                />
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                  </svg>
+                                </div>
+                                {timelineSearchQueries[note.id] && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleTimelineSearchChange(note.id, '');
+                                    }}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                  >
+                                    <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
                           
-                          // Show preview at start if new event is before first event
-                          const shouldShowAtStart = firstEvent && firstEvent.date && newEventMoment.isBefore(firstEvent.date);
-                          
-                          if (!shouldShowAtStart) {
-                            return null;
-                          }
-                          
-                          const showStartYearHeader = firstEvent.date && firstEvent.date.year() !== newEventMoment.year();
-                          
-                          return (
-                            <>
-                              {showStartYearHeader && (
-                                <div className="flex items-center space-x-4 mb-4">
-                                  <div className="w-4 h-4"></div>
-                                  <div className="flex-1">
-                                    <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
-                                      {newEventMoment.year()}
-                                    </h2>
+                          {/* Timeline Events */}
+                          {!collapsedTimelines.has(note.id) && (
+                            <div className="p-6">
+                              {/* Add Event Form */}
+                              {showAddEventForm === note.id && (
+                                <div className="mb-6 pb-6 border-b border-slate-200">
+                                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-4 rounded-lg border border-indigo-200 shadow-sm">
+                                    <h4 className="text-sm font-medium text-slate-700 mb-3">Add New Event</h4>
+                                    <div className="space-y-3">
+                                      <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                                          Event Description
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={newEventText}
+                                          onChange={(e) => setNewEventText(e.target.value)}
+                                          placeholder="e.g., Project milestone reached"
+                                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-white shadow-sm transition-all"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                                          Date
+                                        </label>
+                                        <input
+                                          type="date"
+                                          value={newEventDate}
+                                          onChange={(e) => setNewEventDate(e.target.value)}
+                                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-white shadow-sm transition-all"
+                                        />
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <button
+                                          onClick={() => handleAddEvent(note.id)}
+                                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md"
+                                        >
+                                          Add Event
+                                        </button>
+                                        <button
+                                          onClick={() => setShowAddEventForm(null)}
+                                          className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-all shadow-sm hover:shadow-md"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               )}
-                              
-                              <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed mb-4">
-                                <div className="flex items-start space-x-4">
-                                  <div className="flex flex-col items-center">
-                                    <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
-                                    <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className="flex items-center space-x-3 mb-1">
-                                      <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
-                                        {newEventMoment.format('DD/MMM/YYYY')}
-                                      </span>
-                                      <h3 className="text-lg font-semibold text-gray-900 italic">
-                                        {newEventText || 'New Event Preview'}
-                                      </h3>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </>
-                          );
-                        })()}
-                        
-                        {eventsWithDiffs.map((event, index) => {
-                          const currentYear = event.date ? event.date.year() : null;
-                          const previousYear = index > 0 && eventsWithDiffs[index - 1].date 
-                            ? eventsWithDiffs[index - 1].date.year() 
-                            : null;
-                          const showYearHeader = currentYear && currentYear !== previousYear;
-                          
-                          // Check if we should insert preview marker here
-                          const shouldShowPreview = showAddEventForm === note.id && newEventDate;
-                          let showPreviewBefore = false;
-                          
-                          if (shouldShowPreview && event.date) {
-                            const newEventMoment = moment(newEventDate);
-                            const isAfterThis = newEventMoment.isAfter(event.date);
-                            const isBeforeNext = index === eventsWithDiffs.length - 1 || 
-                              !eventsWithDiffs[index + 1].date || 
-                              newEventMoment.isBefore(eventsWithDiffs[index + 1].date);
-                            
-                            showPreviewBefore = isAfterThis && isBeforeNext;
-                          }
 
-                          const isSelected = isEventSelected(note.id, index);
-                          const isHighlighted = isSelected && selectedEvents[note.id] && selectedEvents[note.id].length === 2;
-                          
-                          return (
-                            <React.Fragment key={index}>
-                              {/* Preview Marker - show after this event if new event should be inserted here */}
-                              {showPreviewBefore && (() => {
-                                const newEventMoment = moment(newEventDate);
+                              {eventsWithDiffs.length === 0 ? (
+                                <div className="text-gray-500 italic">No events found in this timeline</div>
+                              ) : (() => {
+                                const searchQuery = timelineSearchQueries[note.id] || '';
+                                const filteredEvents = filterEventsBySearch(eventsWithDiffs, searchQuery);
                                 
-                                // Check if we need a year header for the new event
-                                const showPreviewYearHeader = currentYear !== newEventMoment.year();
+                                if (filteredEvents.length === 0 && searchQuery) {
+                                  return (
+                                    <div className="text-center py-8 text-gray-500">
+                                      <p>No events found matching "{searchQuery}"</p>
+                                    </div>
+                                  );
+                                }
                                 
                                 return (
-                                  <>
-                                    {showPreviewYearHeader && (
-                                      <div className="flex items-center space-x-4 mb-4">
-                                        <div className="w-4 h-4"></div>
-                                        <div className="flex-1">
-                                          <h2 className="text-2xl font-bold text-blue-800 border-b-2 border-blue-300 pb-2">
-                                            {newEventMoment.year()}
-                                          </h2>
-                                        </div>
-                                      </div>
-                                    )}
-                                    
-                                    <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed mb-4">
-                                      <div className="flex items-start space-x-4">
-                                        <div className="flex flex-col items-center">
-                                          <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
-                                          <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
-                                        </div>
-                                        <div className="flex-1">
-                                          <div className="flex items-center space-x-3 mb-1">
-                                            <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
-                                              {newEventMoment.format('DD/MMM/YYYY')}
-                                            </span>
-                                            <h3 className="text-lg font-semibold text-gray-900 italic">
-                                              {newEventText || 'New Event Preview'}
-                                            </h3>
+                                  <div className="space-y-4">
+                                    {/* Preview marker at the beginning if new event should be first */}
+                                    {(() => {
+                                      if (!newEventDate || showAddEventForm !== note.id || filteredEvents.length === 0) {
+                                        return null;
+                                      }
+                                      
+                                      const newEventMoment = moment(newEventDate);
+                                      const firstEvent = filteredEvents[0];
+                                      
+                                      // Show preview at start if new event is before first event
+                                      const shouldShowAtStart = firstEvent && firstEvent.date && newEventMoment.isBefore(firstEvent.date);
+                                      
+                                      if (!shouldShowAtStart) {
+                                        return null;
+                                      }
+                                      
+                                      const showStartYearHeader = firstEvent.date && firstEvent.date.year() !== newEventMoment.year();
+                                      
+                                      return (
+                                        <>
+                                          {showStartYearHeader && (
+                                            <div className="flex items-center space-x-4 mb-4">
+                                              <div className="w-4 h-4"></div>
+                                              <div className="flex-1">
+                                                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent border-b-2 border-indigo-300 pb-2">
+                                                  {newEventMoment.year()}
+                                                </h2>
+                                              </div>
+                                            </div>
+                                          )}
+                                          
+                                          <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed mb-4">
+                                            <div className="flex items-start space-x-4">
+                                              <div className="flex flex-col items-center">
+                                                <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
+                                                <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
+                                              </div>
+                                              <div className="flex-1">
+                                                <div className="flex items-center space-x-3 mb-1">
+                                                  <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
+                                                    {newEventMoment.format('DD/MMM/YYYY')}
+                                                  </span>
+                                                  <h3 className="text-lg font-semibold text-gray-900 italic">
+                                                    {newEventText || 'New Event Preview'}
+                                                  </h3>
+                                                </div>
+                                              </div>
+                                            </div>
                                           </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </>
-                                );
-                              })()}
+                                        </>
+                                      );
+                                    })()}
+                                    
+                                    {filteredEvents.map((event, index) => {
+                                      // Find original index in eventsWithDiffs for proper year headers and selection
+                                      const originalIndex = eventsWithDiffs.findIndex(e => e === event);
+                                      const currentYear = event.date ? event.date.year() : null;
+                                      const previousEvent = originalIndex > 0 ? eventsWithDiffs[originalIndex - 1] : null;
+                                      const previousYear = previousEvent && previousEvent.date ? previousEvent.date.year() : null;
+                                      const showYearHeader = currentYear && currentYear !== previousYear;
+                                      
+                                      // Check if we should insert preview marker here
+                                      const shouldShowPreview = showAddEventForm === note.id && newEventDate;
+                                      let showPreviewBefore = false;
+                                      
+                                      if (shouldShowPreview && event.date) {
+                                        const newEventMoment = moment(newEventDate);
+                                        const isAfterThis = newEventMoment.isAfter(event.date);
+                                        const isBeforeNext = index === filteredEvents.length - 1 || 
+                                          !filteredEvents[index + 1].date || 
+                                          newEventMoment.isBefore(filteredEvents[index + 1].date);
+                                        
+                                        showPreviewBefore = isAfterThis && isBeforeNext;
+                                      }
+
+                                      const isSelected = isEventSelected(note.id, originalIndex);
+                                      const isHighlighted = isSelected && selectedEvents[note.id] && selectedEvents[note.id].length === 2;
+                                    
+                                      return (
+                                        <React.Fragment key={originalIndex}>
+                                          {/* Preview Marker - show after this event if new event should be inserted here */}
+                                          {showPreviewBefore && (() => {
+                                            const newEventMoment = moment(newEventDate);
+                                            
+                                            // Check if we need a year header for the new event
+                                            const showPreviewYearHeader = currentYear !== newEventMoment.year();
+                                            
+                                            return (
+                                              <>
+                                                {showPreviewYearHeader && (
+                                                  <div className="flex items-center space-x-4 mb-4">
+                                                    <div className="w-4 h-4"></div>
+                                                    <div className="flex-1">
+                                                      <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent border-b-2 border-indigo-300 pb-2">
+                                                        {newEventMoment.year()}
+                                                      </h2>
+                                                    </div>
+                                                  </div>
+                                                )}
+                                                
+                                                <div className="opacity-50 border border-blue-400 bg-blue-50 rounded-md p-4 border-dashed mb-4">
+                                                  <div className="flex items-start space-x-4">
+                                                    <div className="flex flex-col items-center">
+                                                      <div className="w-4 h-4 rounded-full border-2 bg-blue-400 border-blue-400 animate-pulse"></div>
+                                                      <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                      <div className="flex items-center space-x-3 mb-1">
+                                                        <span className="text-sm text-gray-500 bg-blue-100 px-2 py-1 rounded font-medium">
+                                                          {newEventMoment.format('DD/MMM/YYYY')}
+                                                        </span>
+                                                        <h3 className="text-lg font-semibold text-gray-900 italic">
+                                                          {newEventText || 'New Event Preview'}
+                                                        </h3>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </>
+                                            );
+                                          })()}
                               
                               {/* Year Header */}
                               {showYearHeader && (
@@ -2662,17 +2795,18 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                           );
                         })()}
                       </div>
-                    )}
-                    </div>
-                  )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                  );
-                }
-                return null;
-              })()}
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  return null;
+})()}
             
             {/* Closed Timelines */}
             {(() => {
@@ -2848,22 +2982,67 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                   <span className="text-sm font-medium">View</span>
                               </button>
                             </div>
+                            </div>
                           </div>
-                          </div>
-
+                          
+                          {/* Timeline Search */}
+                          {!collapsedTimelines.has(note.id) && (
+                            <div className="px-6 py-3 bg-gray-50 border-b border-slate-200/50">
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={timelineSearchQueries[note.id] || ''}
+                                  onChange={(e) => handleTimelineSearchChange(note.id, e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  placeholder="Search events in this timeline..."
+                                  className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-400 bg-white text-sm"
+                                />
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                  </svg>
+                                </div>
+                                {timelineSearchQueries[note.id] && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleTimelineSearchChange(note.id, '');
+                                    }}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                  >
+                                    <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
                           {/* Timeline Events */}
                           {!collapsedTimelines.has(note.id) && (
                             <div className="p-6">
                               {eventsWithDiffs.length === 0 ? (
                                 <div className="text-gray-500 italic">No events found in this timeline</div>
-                              ) : (
-                                <div className="space-y-4">
-                                  {eventsWithDiffs.map((event, index) => {
-                                    const currentYear = event.date ? event.date.year() : null;
-                                    const previousYear = index > 0 && eventsWithDiffs[index - 1].date 
-                                      ? eventsWithDiffs[index - 1].date.year() 
-                                      : null;
-                                    const showYearHeader = currentYear && currentYear !== previousYear;
+                              ) : (() => {
+                                const searchQuery = timelineSearchQueries[note.id] || '';
+                                const filteredEvents = filterEventsBySearch(eventsWithDiffs, searchQuery);
+                                
+                                if (filteredEvents.length === 0 && searchQuery) {
+                                  return (
+                                    <div className="text-center py-8 text-gray-500">
+                                      <p>No events found matching "{searchQuery}"</p>
+                                    </div>
+                                  );
+                                }
+                                
+                                return (
+                                  <div className="space-y-4">
+                                    {filteredEvents.map((event, index) => {
+                                      // Find original index in eventsWithDiffs for proper year headers
+                                      const originalIndex = eventsWithDiffs.findIndex(e => e === event);
+                                      const currentYear = event.date ? event.date.year() : null;
+                                      const previousEvent = originalIndex > 0 ? eventsWithDiffs[originalIndex - 1] : null;
+                                      const previousYear = previousEvent && previousEvent.date ? previousEvent.date.year() : null;
+                                      const showYearHeader = currentYear && currentYear !== previousYear;
 
                                     return (
                                       <div key={index}>
@@ -3077,21 +3256,47 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                             )}
                                           </div>
                                         </div>
+                                      </div>
+                                    );
+                                  })}
+                                  
+                                  {/* Date Difference Display - Show when 2 events are selected */}
+                                  {selectedEvents[note.id] && selectedEvents[note.id].length === 2 && (() => {
+                                    const [firstIndex, secondIndex] = selectedEvents[note.id];
+                                    const firstEvent = eventsWithDiffs[firstIndex];
+                                    const secondEvent = eventsWithDiffs[secondIndex];
+                                    
+                                    if (firstEvent && secondEvent && firstEvent.date && secondEvent.date) {
+                                      const diff = calculateDateDifference(firstEvent.date, secondEvent.date);
+                                      return (
+                                        <div className="mt-4 p-4 bg-purple-100 border-2 border-purple-500 rounded-lg">
+                                          <div className="text-center">
+                                            <div className="text-sm text-purple-700 font-medium mb-2">Selected Events Difference</div>
+                                            <div className="text-2xl font-bold text-purple-900">
+                                              {diff}
+                                            </div>
+                                            <div className="text-xs text-purple-600 mt-1">
+                                              Between: {firstEvent.event} and {secondEvent.event}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
-            })}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              }
-              return null;
-            })()}
+            }
+            return null;
+          })()}
           </div>
         )}
 

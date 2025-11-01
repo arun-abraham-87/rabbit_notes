@@ -19,6 +19,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [normalEditContent, setNormalEditContent] = useState('');
   const [selectedTimeline, setSelectedTimeline] = useState('');
   const [timelines, setTimelines] = useState([]);
+  const [validationErrors, setValidationErrors] = useState({ description: false, eventDate: false });
 
   const existingTags = getAllUniqueTags(notes || []);
 
@@ -31,12 +32,15 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       // Reset normal edit mode
       setNormalEditMode(false);
       setNormalEditContent('');
+      // Show validation errors for empty required fields on new event
+      setValidationErrors({ description: true, eventDate: true });
       return;
     }
     
     // Reset normal edit mode when note changes
     setNormalEditMode(false);
     setNormalEditContent('');
+    setValidationErrors({ description: false, eventDate: false });
     
     const lines = note.content.split('\n');
 
@@ -96,6 +100,14 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       const timelineId = timelineLinkLine.replace('meta::linked_to_timeline::', '').trim();
       setSelectedTimeline(timelineId);
     }
+
+    // Set validation errors based on loaded data
+    const parsedDescription = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+    const parsedEventDate = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
+    setValidationErrors({
+      description: !parsedDescription,
+      eventDate: !parsedEventDate
+    });
   }, [note]);
 
   // Load timelines when modal opens
@@ -151,6 +163,17 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   };
 
   const handleSubmit = async () => {
+    // Validate required fields
+    const errors = {
+      description: !description.trim(),
+      eventDate: !eventDate
+    };
+    setValidationErrors(errors);
+
+    if (errors.description || errors.eventDate) {
+      return; // Don't submit if there are validation errors
+    }
+
     if (!description.trim() || !eventDate) return;
 
     let content = `event_description:${description.trim()}\n`;
@@ -311,6 +334,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setSelectedTimeline('');
     setNormalEditMode(false);
     setNormalEditContent('');
+    setValidationErrors({ description: false, eventDate: false });
   };
 
   const handleDelete = async () => {
@@ -361,6 +385,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setSelectedTimeline('');
     setNormalEditMode(false);
     setNormalEditContent('');
+    setValidationErrors({ description: false, eventDate: false });
 
     // Call the onCancel prop
     if (typeof onCancel === 'function') {
@@ -469,11 +494,28 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                 <input
                   type="text"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    if (validationErrors.description && e.target.value.trim()) {
+                      setValidationErrors(prev => ({ ...prev, description: false }));
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!description.trim()) {
+                      setValidationErrors(prev => ({ ...prev, description: true }));
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                    validationErrors.description 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                   placeholder="Event description..."
                   autoFocus
                 />
+                {validationErrors.description && (
+                  <p className="mt-1 text-sm text-red-600">Description is required</p>
+                )}
               </div>
 
               <div>
@@ -496,9 +538,26 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                 <input
                   type="date"
                   value={eventDate}
-                  onChange={handleDateChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => {
+                    handleDateChange(e);
+                    if (validationErrors.eventDate && e.target.value) {
+                      setValidationErrors(prev => ({ ...prev, eventDate: false }));
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!eventDate) {
+                      setValidationErrors(prev => ({ ...prev, eventDate: true }));
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                    validationErrors.eventDate 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                 />
+                {validationErrors.eventDate && (
+                  <p className="mt-1 text-sm text-red-600">Event date is required</p>
+                )}
               </div>
 
               <div>

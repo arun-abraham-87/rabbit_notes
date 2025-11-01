@@ -7,6 +7,7 @@ const StockVesting = ({ notes }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showUnvestedOnly, setShowUnvestedOnly] = useState(false);
   const [showNext3Months, setShowNext3Months] = useState(false);
+  const [showSalesModal, setShowSalesModal] = useState(false);
   const [activeTab, setActiveTab] = useState('future');
   const [monthsToShow, setMonthsToShow] = useState(3);
   const [stockPrice, setStockPrice] = useState(null);
@@ -220,6 +221,36 @@ const StockVesting = ({ notes }) => {
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
     return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+  };
+
+  // Group sales by date of sale
+  const groupSalesBySaleDate = () => {
+    if (!soldRecords || soldRecords.length === 0) return [];
+    
+    const grouped = soldRecords.reduce((acc, sale) => {
+      if (!sale.dateOfSell) return acc;
+      
+      // Parse date (dd/mm/yyyy format)
+      const [day, month, year] = sale.dateOfSell.split('/');
+      if (!day || !month || !year) return acc;
+      
+      const saleDate = new Date(year, parseInt(month) - 1, day);
+      const dateKey = saleDate.toISOString().split('T')[0]; // YYYY-MM-DD for sorting
+      
+      if (!acc[dateKey]) {
+        acc[dateKey] = {
+          saleDate: saleDate,
+          dateStr: sale.dateOfSell,
+          sales: []
+        };
+      }
+      
+      acc[dateKey].sales.push(sale);
+      return acc;
+    }, {});
+    
+    // Convert to array and sort by date (newest first)
+    return Object.values(grouped).sort((a, b) => b.saleDate - a.saleDate);
   };
 
   const handleLoadMore = () => {
@@ -834,15 +865,77 @@ const StockVesting = ({ notes }) => {
                 >
                   Previous {monthsToShow} Months
                 </button>
+                <button
+                  onClick={() => handleTabChange('sales')}
+                  className={`${
+                    activeTab === 'sales'
+                      ? 'border-black text-black'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                >
+                  Sales View
+                </button>
               </nav>
             </div>
 
             <div className="space-y-6">
-              {groupVestingsByMonth(
-                vestingData.flatMap(schedule => 
-                  getVestingsInDateRange(schedule, activeTab === 'future')
+              {activeTab === 'sales' ? (
+                groupSalesBySaleDate().length > 0 ? (
+                  groupSalesBySaleDate().map((saleGroup, index) => (
+                    <div key={index} className="border-b pb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-medium text-lg">
+                          {formatDateWithMonthName(saleGroup.dateStr)}
+                        </h3>
+                        <div className="font-semibold">
+                          <div>Total Quantity: {saleGroup.sales.reduce((sum, s) => sum + (parseFloat(s.quantity) || 0), 0).toLocaleString()}</div>
+                          <div>Total Proceeds: {currency === 'USD' ? '$' : 'A$'} {saleGroup.sales.reduce((sum, s) => sum + (parseFloat(s.totalProceeds) || 0), 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                          <div className={`${saleGroup.sales.reduce((sum, s) => sum + (parseFloat(s.gainLoss) || 0), 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            Total Gain/Loss: {currency === 'USD' ? '$' : 'A$'} {saleGroup.sales.reduce((sum, s) => sum + (parseFloat(s.gainLoss) || 0), 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {saleGroup.sales.map((sale, saleIndex) => (
+                          <div key={saleIndex} className="flex justify-between items-center pl-4 border-l-2 border-gray-200">
+                            <div className="flex-1">
+                              <div className="font-medium">
+                                {sale.symbol || 'N/A'} - Quantity: {parseFloat(sale.quantity || 0).toLocaleString()}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                Date Acquired: {formatDateWithMonthName(sale.dateAcquired || 'N/A')}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                Cost Basis: {currency === 'USD' ? '$' : 'A$'} {parseFloat(sale.adjustedCostBasis || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Status: {sale.capitalGainsStatus || 'N/A'}
+                              </div>
+                            </div>
+                            <div className="text-right ml-4">
+                              <div className="font-medium">
+                                Proceeds: {currency === 'USD' ? '$' : 'A$'} {parseFloat(sale.totalProceeds || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                              </div>
+                              <div className={`font-semibold ${parseFloat(sale.gainLoss || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                Gain/Loss: {currency === 'USD' ? '$' : 'A$'} {parseFloat(sale.gainLoss || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    No sales data available.
+                  </div>
                 )
-              ).map((monthGroup, index) => (
+              ) : (
+                groupVestingsByMonth(
+                  vestingData.flatMap(schedule => 
+                    getVestingsInDateRange(schedule, activeTab === 'future')
+                  )
+                ).map((monthGroup, index) => (
                 <div key={index} className="border-b pb-4">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-medium text-lg">{formatMonthYear(monthGroup.month)}</h3>
@@ -886,17 +979,20 @@ const StockVesting = ({ notes }) => {
                     ))}
                   </div>
                 </div>
-              ))}
+                ))
+              )}
 
-              {/* Load More Button */}
-              <div className="flex justify-center pt-4">
-                <button
-                  onClick={handleLoadMore}
-                  className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
-                >
-                  Load {activeTab === 'future' ? 'Next' : 'Previous'} 3 Months
-                </button>
-              </div>
+              {/* Load More Button - only show for future/past tabs */}
+              {activeTab !== 'sales' && (
+                <div className="flex justify-center pt-4">
+                  <button
+                    onClick={handleLoadMore}
+                    className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+                  >
+                    Load {activeTab === 'future' ? 'Next' : 'Previous'} 3 Months
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

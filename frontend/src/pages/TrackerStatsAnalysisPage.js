@@ -31,6 +31,7 @@ ChartJS.register(
 // EnhancedStats component (same as in TrackerCard)
 function EnhancedStats({ answers, tracker }) {
   const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'lastMonth', 'last3Months', 'ytd', 'last365Days'
+  const [excludeUnmarked, setExcludeUnmarked] = useState(true);
   
   // Check if this is a yes/no tracker
   const isYesNoTracker = tracker.type && tracker.type.toLowerCase().includes('yes');
@@ -268,7 +269,13 @@ function EnhancedStats({ answers, tracker }) {
   // Prepare chart data with all dates
   // For "All Events", show all dates; for other filters, limit to last 200 days if too many
   const maxDaysToShow = timeFilter === 'all' ? Infinity : 200;
-  const datesToShow = allDates.length > maxDaysToShow ? allDates.slice(-maxDaysToShow) : allDates;
+  let datesToShow = allDates.length > maxDaysToShow ? allDates.slice(-maxDaysToShow) : allDates;
+  
+  // If excludeUnmarked is true, filter out dates that don't have answers
+  if (excludeUnmarked) {
+    datesToShow = datesToShow.filter(date => answeredDatesMap.has(date));
+  }
+  
   const chartLabels = datesToShow.map(date => moment(date).format('DD MMM YYYY'));
   
   const chartData = {
@@ -363,7 +370,7 @@ function EnhancedStats({ answers, tracker }) {
   return (
     <div>
       {/* Time Filter Buttons */}
-      <div className="flex flex-wrap gap-2 mb-3">
+      <div className="flex flex-wrap items-center gap-2 mb-3">
         {['all', 'lastMonth', 'last3Months', 'ytd', 'last365Days'].map(filter => (
           <button
             key={filter}
@@ -381,6 +388,17 @@ function EnhancedStats({ answers, tracker }) {
              'Last 365 Days'}
           </button>
         ))}
+        
+        {/* Exclude Unmarked Checkbox */}
+        <label className="flex items-center gap-2 px-3 py-1 text-xs bg-white border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 ml-auto">
+          <input
+            type="checkbox"
+            checked={excludeUnmarked}
+            onChange={(e) => setExcludeUnmarked(e.target.checked)}
+            className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+          />
+          <span className="text-gray-700">Exclude Unmarked</span>
+        </label>
       </div>
       
       {/* Stats Section */}

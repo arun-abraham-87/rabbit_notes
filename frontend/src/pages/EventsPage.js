@@ -1336,9 +1336,11 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const handleAddEvent = async (content) => {
     try {
       const response = await createNote(content);
+      console.log('[EventsPage] handleAddEvent response:', response);
+      console.log('[EventsPage] handleAddEvent response.id:', response?.id);
       
       setAllNotes(prevNotes => [...prevNotes, response]); // Add the entire response object
-      return response;
+      return response; // Return the note object with id
     } catch (error) {
       console.error('Error adding event:', error);
       throw error;

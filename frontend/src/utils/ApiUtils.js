@@ -17,14 +17,28 @@ export const addNewNoteCommon = async (content, tags, noteDate) => {
 };
 
 export const getNoteById = async (id) => {
+    console.log('[ApiUtils] getNoteById called:', id);
     const response = await fetch(`${API_BASE_URL}/notes/${id}`);
-    if (!response.ok) throw new Error('Failed to fetch note');
-    return await response.json();
+    console.log('[ApiUtils] getNoteById response status:', response.status);
+    console.log('[ApiUtils] getNoteById response ok:', response.ok);
+    if (!response.ok) {
+        console.error('[ApiUtils] getNoteById failed:', { status: response.status, id });
+        throw new Error('Failed to fetch note');
+    }
+    const result = await response.json();
+    console.log('[ApiUtils] getNoteById success:', { id, hasContent: !!result?.content, contentLength: result?.content?.length });
+    console.log('[ApiUtils] getNoteById - content preview (last 200 chars):', result?.content?.substring(Math.max(0, result.content.length - 200)));
+    return result;
 };
 
 export const updateNoteById = async (id, updatedContent) => {
+    console.log('[ApiUtils] updateNoteById called:', { id, contentLength: updatedContent?.length });
+    console.log('[ApiUtils] updateNoteById - content preview (first 200 chars):', updatedContent?.substring(0, 200));
+    console.log('[ApiUtils] updateNoteById - content preview (last 200 chars):', updatedContent?.substring(Math.max(0, updatedContent.length - 200)));
     
     const reorderedContent = reorderMetaTags(updatedContent);
+    console.log('[ApiUtils] updateNoteById - after reorderMetaTags, content length:', reorderedContent?.length);
+    console.log('[ApiUtils] updateNoteById - reordered content preview (last 200 chars):', reorderedContent?.substring(Math.max(0, reorderedContent.length - 200)));
     
     const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
         method: 'PUT',
@@ -32,8 +46,18 @@ export const updateNoteById = async (id, updatedContent) => {
         body: JSON.stringify({ content: reorderedContent }),
     });
     
-    if (!response.ok) throw new Error('Failed to update note');
+    console.log('[ApiUtils] updateNoteById response status:', response.status);
+    console.log('[ApiUtils] updateNoteById response ok:', response.ok);
+    
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[ApiUtils] updateNoteById failed:', { status: response.status, errorText });
+        throw new Error('Failed to update note');
+    }
+    
     const result = await response.json();
+    console.log('[ApiUtils] updateNoteById success:', result);
+    console.log('[ApiUtils] updateNoteById - returned note content preview (last 200 chars):', result?.content?.substring(Math.max(0, result.content.length - 200)));
     
     return result;
 };

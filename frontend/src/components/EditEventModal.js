@@ -140,6 +140,152 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     return `${dateStr}T12:00`;
   };
 
+  // Helper function to link event to timeline
+  const linkEventToTimeline = async (eventIdToLink, timelineId) => {
+    console.log('[EditEventModal] linkEventToTimeline called:', { eventIdToLink, timelineId });
+    console.log('[EditEventModal] Available timelines:', timelines.map(t => ({ id: t.id, title: t.title })));
+    
+    if (!eventIdToLink || !timelineId) {
+      console.error('[EditEventModal] Cannot link: missing eventId or timelineId', { eventIdToLink, timelineId });
+      return;
+    }
+    
+    // First, try to find the timeline in the local timelines list
+    const localTimeline = timelines.find(t => t.id === timelineId);
+    console.log('[EditEventModal] Found timeline in local list?', !!localTimeline);
+    
+    let timelineNote = null;
+    
+    try {
+      console.log('[EditEventModal] Step 1: Linking event to timeline:', { eventIdToLink, timelineId });
+      console.log('[EditEventModal] Step 2: Fetching timeline note from server...');
+      
+      // Get the latest timeline note from server
+      try {
+        timelineNote = await getNoteById(timelineId);
+        console.log('[EditEventModal] Step 3: Fetched timeline note from server:', timelineNote);
+      } catch (fetchError) {
+        console.warn('[EditEventModal] Failed to fetch timeline from server, trying local copy:', fetchError);
+        // If fetch fails, try to use the local timeline if available
+        if (localTimeline && localTimeline.content) {
+          timelineNote = {
+            id: localTimeline.id,
+            content: localTimeline.content
+          };
+          console.log('[EditEventModal] Using local timeline copy:', timelineNote);
+        } else {
+          throw fetchError; // Re-throw if we don't have a local copy
+        }
+      }
+      
+      console.log('[EditEventModal] Step 3a: Timeline note exists?', !!timelineNote);
+      console.log('[EditEventModal] Step 3b: Timeline note has content?', !!timelineNote?.content);
+      
+      if (timelineNote && timelineNote.content) {
+        console.log('[EditEventModal] Step 4: Parsing timeline content...');
+        console.log('[EditEventModal] Step 4a: Timeline content length:', timelineNote.content.length);
+        console.log('[EditEventModal] Step 4b: Timeline content preview:', timelineNote.content.substring(0, 200));
+        
+        const lines = timelineNote.content.split('\n');
+        console.log('[EditEventModal] Step 5: Split into lines, total lines:', lines.length);
+        
+        const otherLines = [];
+        const allLinkedEventIds = new Set();
+        
+        // Process existing linked events
+        console.log('[EditEventModal] Step 6: Processing existing linked events...');
+        lines.forEach((line, index) => {
+          if (line.trim().startsWith('meta::linked_from_events::')) {
+            console.log('[EditEventModal] Step 6a: Found linked event line at index', index, ':', line);
+            const eventIdsString = line.replace('meta::linked_from_events::', '').trim();
+            const eventIds = eventIdsString.split(',').map(id => id.trim()).filter(id => id);
+            console.log('[EditEventModal] Step 6b: Parsed event IDs from line:', eventIds);
+            eventIds.forEach(id => {
+              console.log('[EditEventModal] Step 6c: Adding existing event ID to set:', id);
+              allLinkedEventIds.add(id);
+            });
+          } else {
+            otherLines.push(line);
+          }
+        });
+        
+        console.log('[EditEventModal] Step 7: Existing linked event IDs:', Array.from(allLinkedEventIds));
+        console.log('[EditEventModal] Step 8: Event ID to add:', eventIdToLink, 'Type:', typeof eventIdToLink);
+        console.log('[EditEventModal] Step 9: Other lines count:', otherLines.length);
+        
+        // Convert eventId to string for comparison
+        const eventIdStr = String(eventIdToLink);
+        console.log('[EditEventModal] Step 10: Event ID as string:', eventIdStr);
+        
+        // Check if event is already linked
+        const alreadyLinked = Array.from(allLinkedEventIds).some(id => String(id) === eventIdStr);
+        console.log('[EditEventModal] Step 11: Event already linked?', alreadyLinked);
+        
+        if (!alreadyLinked) {
+          console.log('[EditEventModal] Step 12: Adding event ID to set...');
+          allLinkedEventIds.add(eventIdStr);
+          console.log('[EditEventModal] Step 13: Updated linked event IDs:', Array.from(allLinkedEventIds));
+          
+          // Build updated content with each event on its own line
+          console.log('[EditEventModal] Step 14: Building updated timeline content...');
+          let updatedTimelineContent = otherLines.join('\n').trim();
+          console.log('[EditEventModal] Step 14a: Base content length:', updatedTimelineContent.length);
+          
+          if (allLinkedEventIds.size > 0) {
+            const linkedEventLines = Array.from(allLinkedEventIds).map(eId => 
+              `meta::linked_from_events::${eId}`
+            );
+            console.log('[EditEventModal] Step 14b: Linked event lines to add:', linkedEventLines);
+            updatedTimelineContent = updatedTimelineContent + '\n' + linkedEventLines.join('\n');
+            console.log('[EditEventModal] Step 14c: Updated content length:', updatedTimelineContent.length);
+            console.log('[EditEventModal] Step 14d: Updated content preview:', updatedTimelineContent.substring(Math.max(0, updatedTimelineContent.length - 200)));
+          }
+          
+          console.log('[EditEventModal] Step 15: Calling updateNoteById...');
+          console.log('[EditEventModal] Step 15a: Timeline ID:', timelineId);
+          console.log('[EditEventModal] Step 15b: Content length:', updatedTimelineContent.length);
+          
+          const updateResult = await updateNoteById(timelineId, updatedTimelineContent);
+          console.log('[EditEventModal] Step 16: updateNoteById result:', updateResult);
+          console.log('[EditEventModal] Step 16a: Update result content preview:', updateResult?.content?.substring(Math.max(0, updateResult.content.length - 200)));
+          
+          // Notify parent component that timeline was updated
+          if (onTimelineUpdated) {
+            console.log('[EditEventModal] Step 17: Calling onTimelineUpdated callback...');
+            // Use the content from the update result if available, otherwise use the updated content we sent
+            const finalContent = updateResult?.content || updatedTimelineContent;
+            console.log('[EditEventModal] Step 17a: Final content to pass to callback:', finalContent.substring(Math.max(0, finalContent.length - 200)));
+            onTimelineUpdated(timelineId, finalContent);
+            console.log('[EditEventModal] Step 17b: onTimelineUpdated callback completed');
+          } else {
+            console.log('[EditEventModal] Step 17: No onTimelineUpdated callback provided');
+          }
+          console.log('[EditEventModal] Step 18: Timeline updated successfully');
+        } else {
+          console.log('[EditEventModal] Step 12: Event already linked to timeline, skipping update');
+        }
+      } else {
+        console.error('[EditEventModal] Step 4: Timeline note not found or has no content', {
+          timelineNote,
+          hasContent: !!timelineNote?.content,
+          contentLength: timelineNote?.content?.length
+        });
+      }
+    } catch (error) {
+      console.error('[EditEventModal] Error updating timeline note:', error);
+      console.error('[EditEventModal] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        eventIdToLink,
+        timelineId,
+        localTimelineExists: !!localTimeline
+      });
+      // Don't fail the save if timeline update fails
+      // But log a warning so user knows
+      alert(`Warning: Could not link event to timeline. The timeline may have been deleted. Error: ${error.message}`);
+    }
+  };
+
   const handleAddTag = () => {
     if (!tagInput.trim()) return;
     const newTags = tags ? `${tags},${tagInput.trim()}` : tagInput.trim();
@@ -224,74 +370,43 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
 
     // Save the event and get the result
     const savedEvent = await onSave(content);
-    const eventId = savedEvent?.id || note?.id;
     
-    console.log('[EditEventModal] Event saved:', { savedEvent, note, eventId, selectedTimeline, isNewTimelineLink, timelineChanged });
+    // Extract eventId - for new events, savedEvent should be the note object from createNote
+    // For existing events, note.id should be available
+    let eventId = savedEvent?.id || note?.id;
+    
+    console.log('[EditEventModal] Event saved:', { 
+      savedEvent, 
+      savedEventType: typeof savedEvent,
+      savedEventKeys: savedEvent ? Object.keys(savedEvent) : [],
+      savedEventId: savedEvent?.id,
+      noteId: note?.id,
+      eventId, 
+      selectedTimeline, 
+      isNewTimelineLink, 
+      timelineChanged 
+    });
 
     // If timeline is selected, update the timeline note (whether new or existing event)
-    if (selectedTimeline && eventId) {
-      try {
-        console.log('[EditEventModal] Updating timeline:', selectedTimeline, 'with event:', eventId);
-        // Get the latest timeline note
-        const timelineNote = await getNoteById(selectedTimeline);
-        console.log('[EditEventModal] Fetched timeline note:', timelineNote);
-        
-        if (timelineNote && timelineNote.content) {
-          const lines = timelineNote.content.split('\n');
-          const otherLines = [];
-          const allLinkedEventIds = new Set();
-          
-          // Process existing linked events
-          lines.forEach((line) => {
-            if (line.trim().startsWith('meta::linked_from_events::')) {
-              const eventIdsString = line.replace('meta::linked_from_events::', '').trim();
-              const eventIds = eventIdsString.split(',').map(id => id.trim()).filter(id => id);
-              eventIds.forEach(id => allLinkedEventIds.add(id));
-            } else {
-              otherLines.push(line);
-            }
-          });
-          
-          console.log('[EditEventModal] Existing linked event IDs:', Array.from(allLinkedEventIds));
-          console.log('[EditEventModal] Event ID to add:', eventId, 'Type:', typeof eventId);
-          
-          // Convert eventId to string for comparison
-          const eventIdStr = String(eventId);
-          
-          // Check if event is already linked
-          if (!Array.from(allLinkedEventIds).some(id => String(id) === eventIdStr)) {
-            allLinkedEventIds.add(eventIdStr);
-            
-            // Build updated content with each event on its own line
-            let updatedTimelineContent = otherLines.join('\n').trim();
-            if (allLinkedEventIds.size > 0) {
-              const linkedEventLines = Array.from(allLinkedEventIds).map(eId => 
-                `meta::linked_from_events::${eId}`
-              );
-              updatedTimelineContent = updatedTimelineContent + '\n' + linkedEventLines.join('\n');
-            }
-            
-            console.log('[EditEventModal] Updating timeline content:', updatedTimelineContent);
-            await updateNoteById(selectedTimeline, updatedTimelineContent);
-            
-            // Notify parent component that timeline was updated
-            if (onTimelineUpdated) {
-              const updatedTimeline = await getNoteById(selectedTimeline);
-              onTimelineUpdated(selectedTimeline, updatedTimeline.content || updatedTimelineContent);
-            }
-            console.log('[EditEventModal] Timeline updated successfully');
+    if (selectedTimeline) {
+      if (!eventId) {
+        console.error('[EditEventModal] Cannot link to timeline: eventId is missing', { savedEvent, note });
+        // Wait a bit and try again in case the ID hasn't propagated yet
+        setTimeout(async () => {
+          const retryEventId = savedEvent?.id;
+          if (retryEventId) {
+            console.log('[EditEventModal] Retrying timeline link with extracted eventId:', retryEventId);
+            await linkEventToTimeline(retryEventId, selectedTimeline);
           } else {
-            console.log('[EditEventModal] Event already linked to timeline');
+            console.error('[EditEventModal] Could not extract eventId even after retry', savedEvent);
           }
-        } else {
-          console.error('[EditEventModal] Timeline note not found or has no content');
-        }
-      } catch (error) {
-        console.error('[EditEventModal] Error updating timeline note:', error);
-        // Don't fail the save if timeline update fails
+        }, 100);
+      } else {
+        console.log('[EditEventModal] Linking event to timeline with eventId:', eventId);
+        await linkEventToTimeline(eventId, selectedTimeline);
       }
     } else {
-      console.log('[EditEventModal] Skipping timeline update:', { selectedTimeline, eventId });
+      console.log('[EditEventModal] No timeline selected, skipping timeline link');
     }
 
     // If timeline link was removed, update the timeline note

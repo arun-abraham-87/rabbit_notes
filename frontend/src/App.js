@@ -22,6 +22,7 @@ import WatchList from './components/WatchList';
 import News from './components/News';
 import ExpenseTracker from './components/ExpenseTracker';
 import TrackerListing from './components/TrackerListing';
+import TrackerStatsAnalysisPage from './pages/TrackerStatsAnalysisPage';
 import Dashboard from './components/Dashboard';
 import TextPastePopup from './components/TextPastePopup';
 import { Alerts } from './components/Alerts';
@@ -188,6 +189,15 @@ const MainContentArea = ({
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                 <div className="min-h-screen bg-gray-50">
                   <TrackerListing />
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/tracker-stats-analysis" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="min-h-screen bg-gray-50">
+                  <TrackerStatsAnalysisPage />
                 </div>
               </div>
             </div>

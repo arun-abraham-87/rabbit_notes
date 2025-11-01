@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { loadNotes, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+import { useNavigate } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
   XMarkIcon,
@@ -44,6 +45,7 @@ ChartJS.register(
 );
 
 const TrackerListing = () => {
+  const navigate = useNavigate();
   const [trackers, setTrackers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -588,6 +590,12 @@ const TrackerListing = () => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Trackers</h1>
         <div className="flex gap-3">
+          <button
+            onClick={() => navigate('/tracker-stats-analysis')}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            View Stats Analysis
+          </button>
           <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
             <input
               type="checkbox"

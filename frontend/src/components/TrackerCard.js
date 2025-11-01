@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
-import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { Line } from 'react-chartjs-2';
 import moment from 'moment';
 
@@ -124,6 +124,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [dateOffset, setDateOffset] = useState(0);
   const [copied, setCopied] = useState(false);
   const [yesNoFilter, setYesNoFilter] = useState('both'); // 'yes', 'no', 'both'
+  const [showCustomDateModal, setShowCustomDateModal] = useState(false);
+  const [customDate, setCustomDate] = useState(moment().format('YYYY-MM-DD'));
+  const [customValue, setCustomValue] = useState('');
+  const [customExistingAnswer, setCustomExistingAnswer] = useState(null);
 
   const handleDateClick = (date, dateStr) => {
     const type = tracker.type.toLowerCase();
@@ -176,6 +180,62 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     setShowYesNoModal(false);
     setSelectedDate(null);
     setExistingAnswer(null);
+  };
+
+  const handleCustomDateSubmit = async () => {
+    const type = tracker.type ? tracker.type.toLowerCase() : '';
+    const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+    const isValueTracker = type === 'value';
+    
+    let answer;
+    if (isValueTracker) {
+      if (!customValue.trim()) {
+        alert('Please enter a value');
+        return;
+      }
+      answer = customValue.trim();
+    } else if (isYesNoTracker) {
+      if (!customValue || (customValue !== 'yes' && customValue !== 'no')) {
+        alert('Please select Yes or No');
+        return;
+      }
+      answer = customValue;
+    } else {
+      answer = 'yes'; // Default for other trackers
+    }
+    
+    // Check if there's already an answer for this date
+    const existingAnswer = customExistingAnswer || getAnswerForDate(customDate);
+    
+    if (existingAnswer && existingAnswer.id) {
+      // Update existing note
+      await updateNoteById(existingAnswer.id, answer);
+    } else {
+      // Create new answer
+      onToggleDay(tracker.id, customDate, answer);
+    }
+    
+    setShowCustomDateModal(false);
+    setCustomValue('');
+    setCustomDate(moment().format('YYYY-MM-DD'));
+    setCustomExistingAnswer(null);
+  };
+
+  const handleCancelCustomDateModal = () => {
+    setShowCustomDateModal(false);
+    setCustomValue('');
+    setCustomDate(moment().format('YYYY-MM-DD'));
+    setCustomExistingAnswer(null);
+  };
+
+  const handleRemoveCustomDateAnswer = async () => {
+    if (customExistingAnswer && customExistingAnswer.id) {
+      await deleteNoteById(customExistingAnswer.id);
+      // Refresh UI
+      onToggleDay(tracker.id, customDate, null);
+      setCustomExistingAnswer(null);
+      setCustomValue('');
+    }
   };
 
   const handleRemoveAcknowledgement = async () => {
@@ -506,6 +566,28 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               title="Show all recorded values"
             >
               <ClockIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => {
+                const today = moment().format('YYYY-MM-DD');
+                setCustomDate(today);
+                setCustomValue('');
+                const existing = getAnswerForDate(today);
+                setCustomExistingAnswer(existing);
+                if (existing) {
+                  const type = tracker.type ? tracker.type.toLowerCase() : '';
+                  if (type === 'value') {
+                    setCustomValue(existing.value || existing.answer || '');
+                  } else if (type === 'yes,no' || type === 'yesno' || type === 'yes/no') {
+                    setCustomValue(existing.answer || '');
+                  }
+                }
+                setShowCustomDateModal(true);
+              }}
+              className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+              title="Enter value for custom date"
+            >
+              <PlusIcon className="h-5 w-5" />
             </button>
           </div>
         )}
@@ -879,6 +961,133 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+      {/* Custom Date Modal */}
+      {showCustomDateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-semibold mb-2">Enter Value for Custom Date</h2>
+            {tracker.question && (
+              <div className="mb-4 text-sm text-gray-700 font-medium">{tracker.question}</div>
+            )}
+            
+            {/* Date Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Date:</label>
+              <input
+                type="date"
+                value={customDate}
+                onChange={(e) => {
+                  setCustomDate(e.target.value);
+                  const existing = getAnswerForDate(e.target.value);
+                  setCustomExistingAnswer(existing);
+                  if (existing) {
+                    const type = tracker.type ? tracker.type.toLowerCase() : '';
+                    if (type === 'value') {
+                      setCustomValue(existing.value || existing.answer || '');
+                    } else if (type === 'yes,no' || type === 'yesno' || type === 'yes/no') {
+                      setCustomValue(existing.answer || '');
+                    }
+                  } else {
+                    setCustomValue('');
+                  }
+                }}
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                max={moment().format('YYYY-MM-DD')}
+              />
+            </div>
+            
+            {/* Yes/No or Value Input based on tracker type */}
+            {(() => {
+              const type = tracker.type ? tracker.type.toLowerCase() : '';
+              const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+              const isValueTracker = type === 'value';
+              
+              if (isYesNoTracker) {
+                return (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Answer:</label>
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => setCustomValue('yes')}
+                        className={`px-4 py-2 rounded-lg transition-colors ${
+                          customValue === 'yes'
+                            ? 'bg-green-500 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-green-100'
+                        }`}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        onClick={() => setCustomValue('no')}
+                        className={`px-4 py-2 rounded-lg transition-colors ${
+                          customValue === 'no'
+                            ? 'bg-red-500 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-red-100'
+                        }`}
+                      >
+                        No
+                      </button>
+                    </div>
+                    {customExistingAnswer && (
+                      <p className="mt-2 text-xs text-gray-500">
+                        Existing answer: {customExistingAnswer.answer}
+                      </p>
+                    )}
+                  </div>
+                );
+              } else if (isValueTracker) {
+                return (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Value:</label>
+                    <input
+                      type="text"
+                      value={customValue}
+                      onChange={(e) => setCustomValue(e.target.value)}
+                      placeholder="Enter value"
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                    {customExistingAnswer && (
+                      <p className="mt-2 text-xs text-gray-500">
+                        Existing value: {customExistingAnswer.value || customExistingAnswer.answer}
+                      </p>
+                    )}
+                  </div>
+                );
+              } else {
+                // Default tracker type
+                return null;
+              }
+            })()}
+            
+            <div className="flex justify-between items-center mt-4">
+              <div>
+                {customExistingAnswer && (
+                  <button
+                    onClick={handleRemoveCustomDateAnswer}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    Remove Answer
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-4">
+                <button
+                  onClick={handleCancelCustomDateModal}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCustomDateSubmit}
+                  className="px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-colors"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

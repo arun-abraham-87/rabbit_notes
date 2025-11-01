@@ -49,7 +49,12 @@ const TrackerListing = () => {
   const [trackers, setTrackers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Load search term from localStorage on mount
+  const [searchTerm, setSearchTerm] = useState(() => {
+    const savedSearchTerm = localStorage.getItem('trackerPageSearchTerm');
+    return savedSearchTerm || '';
+  });
   const [showAddTracker, setShowAddTracker] = useState(false);
   const [editingTracker, setEditingTracker] = useState(null);
   const [filterCadence, setFilterCadence] = useState('all');
@@ -70,6 +75,16 @@ const TrackerListing = () => {
   useEffect(() => {
     loadTrackers();
   }, []);
+
+  // Save search term to localStorage whenever it changes
+  useEffect(() => {
+    if (searchTerm) {
+      localStorage.setItem('trackerPageSearchTerm', searchTerm);
+    } else {
+      // Remove from localStorage if search is cleared
+      localStorage.removeItem('trackerPageSearchTerm');
+    }
+  }, [searchTerm]);
 
   const loadTrackers = async () => {
     try {

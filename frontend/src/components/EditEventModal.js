@@ -3,7 +3,7 @@ import { getAllUniqueTags } from '../utils/EventUtils';
 import { deleteNoteById, updateNoteById, getNoteById } from '../utils/ApiUtils';
 import ConfirmationModal from './ConfirmationModal';
 
-const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '', onTimelineUpdated }) => {
+const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '', onTimelineUpdated, initialTimelineId = null }) => {
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -132,8 +132,16 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       });
       
       setTimelines(timelineList);
+      
+      // Pre-select timeline if initialTimelineId is provided (for adding events from timelines page)
+      if (initialTimelineId && !note) {
+        setSelectedTimeline(initialTimelineId);
+      } else if (!initialTimelineId && !note) {
+        // Reset timeline selection if no initial timeline provided (for new events)
+        setSelectedTimeline('');
+      }
     }
-  }, [isOpen, notes]);
+  }, [isOpen, notes, initialTimelineId, note]);
 
   const formatDateWithNoonTime = (dateStr) => {
     if (!dateStr) return '';

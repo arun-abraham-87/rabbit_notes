@@ -3,8 +3,11 @@ import moment from 'moment';
 import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon, LinkIcon } from '@heroicons/react/24/solid';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+import EditEventModal from '../components/EditEventModal';
+import { createNote } from '../utils/ApiUtils';
+import { addNoteToIndex } from '../utils/SearchUtils';
 
-const Timelines = ({ notes, updateNote, addNote }) => {
+const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const navigate = useNavigate();
   const location = useLocation();
   // localStorage key for timeline collapse states
@@ -27,6 +30,8 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   // Initialize state with saved collapse states
   const [timelineNotes, setTimelineNotes] = useState([]);
   const [showAddEventForm, setShowAddEventForm] = useState(null);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
+  const [editingTimelineId, setEditingTimelineId] = useState(null);
   const [newEventText, setNewEventText] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -853,7 +858,38 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     setCollapsedTimelines(emptySet);
   };
 
-  // Handle adding a new event
+  // Handle adding a new event via EditEventModal (like EventsPage)
+  const handleAddEventFromTimeline = async (content) => {
+    try {
+      const response = await createNote(content);
+      console.log('[Timelines] handleAddEventFromTimeline response:', response);
+      
+      // Add the new event to notes via setAllNotes (which updates App's allNotes)
+      if (setAllNotes) {
+        setAllNotes(prevNotes => [...prevNotes, response]);
+      }
+      
+      // Add to search index
+      if (response && response.content) {
+        addNoteToIndex(response);
+      }
+      
+      return response; // Return the note object with id for timeline linking
+    } catch (error) {
+      console.error('Error adding event:', error);
+      throw error;
+    }
+  };
+
+  // Handle timeline updated callback (when event is linked to timeline)
+  const handleTimelineUpdated = (timelineId, updatedContent) => {
+    // Update the timeline note in the notes array
+    if (updateNote) {
+      updateNote(timelineId, updatedContent);
+    }
+  };
+
+  // Handle adding a new event (old method - keeping for backward compatibility, but won't be used)
   const handleAddEvent = async (noteId) => {
     if (!newEventText.trim() || !newEventDate) {
       alert('Please enter both event text and date');
@@ -1283,14 +1319,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                               <div className="flex items-center space-x-2">
                                 {!timelineData.isClosed && (
                                   <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      // Open timeline if it's collapsed
-                                      if (collapsedTimelines.has(note.id)) {
-                                        toggleTimelineCollapse(note.id);
-                                      }
-                                      setShowAddEventForm(note.id);
-                                    }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Open timeline if it's collapsed
+                                        if (collapsedTimelines.has(note.id)) {
+                                          toggleTimelineCollapse(note.id);
+                                        }
+                                        setEditingTimelineId(note.id);
+                                        setShowEditEventModal(true);
+                                      }}
                                     className="px-2 py-1 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 text-indigo-700 rounded-md transition-all flex items-center space-x-1 border border-indigo-200 shadow-sm hover:shadow"
                                     title="Add new event"
                                   >
@@ -1405,54 +1442,6 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                           {/* Timeline Events */}
                           {!collapsedTimelines.has(note.id) && (
                             <div className="p-6">
-                              {/* Add Event Form */}
-                              {showAddEventForm === note.id && (
-                                <div className="mb-6 pb-6 border-b border-slate-200">
-                                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-4 rounded-lg border border-indigo-200 shadow-sm">
-                                    <h4 className="text-sm font-medium text-slate-700 mb-3">Add New Event</h4>
-                                    <div className="space-y-3">
-                                      <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                                          Event Description
-                                        </label>
-                                        <input
-                                          type="text"
-                                          value={newEventText}
-                                          onChange={(e) => setNewEventText(e.target.value)}
-                                          placeholder="e.g., Project milestone reached"
-                                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-white shadow-sm transition-all"
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                                          Date
-                                        </label>
-                                        <input
-                                          type="date"
-                                          value={newEventDate}
-                                          onChange={(e) => setNewEventDate(e.target.value)}
-                                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-white shadow-sm transition-all"
-                                        />
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <button
-                                          onClick={() => handleAddEvent(note.id)}
-                                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md"
-                                        >
-                                          Add Event
-                                        </button>
-                                        <button
-                                          onClick={() => setShowAddEventForm(null)}
-                                          className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-all shadow-sm hover:shadow-md"
-                                        >
-                                          Cancel
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
                               {eventsWithDiffs.length === 0 ? (
                                 <div className="text-gray-500 italic">No events found in this timeline</div>
                               ) : (() => {
@@ -2098,14 +2087,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                       <div className="flex items-center space-x-2">
                         {!timelineData.isClosed && (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Open timeline if it's collapsed
-                              if (collapsedTimelines.has(note.id)) {
-                                toggleTimelineCollapse(note.id);
-                              }
-                              setShowAddEventForm(note.id);
-                            }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Open timeline if it's collapsed
+                                        if (collapsedTimelines.has(note.id)) {
+                                          toggleTimelineCollapse(note.id);
+                                        }
+                                        setEditingTimelineId(note.id);
+                                        setShowEditEventModal(true);
+                                      }}
                             className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors flex items-center space-x-1.5 border border-blue-200"
                             title="Add new event"
                           >
@@ -2220,54 +2210,6 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                           {/* Timeline Events */}
                           {!collapsedTimelines.has(note.id) && (
                             <div className="p-6">
-                              {/* Add Event Form */}
-                              {showAddEventForm === note.id && (
-                                <div className="mb-6 pb-6 border-b border-slate-200">
-                                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-4 rounded-lg border border-indigo-200 shadow-sm">
-                                    <h4 className="text-sm font-medium text-slate-700 mb-3">Add New Event</h4>
-                                    <div className="space-y-3">
-                                      <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                                          Event Description
-                                        </label>
-                                        <input
-                                          type="text"
-                                          value={newEventText}
-                                          onChange={(e) => setNewEventText(e.target.value)}
-                                          placeholder="e.g., Project milestone reached"
-                                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-white shadow-sm transition-all"
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                                          Date
-                                        </label>
-                                        <input
-                                          type="date"
-                                          value={newEventDate}
-                                          onChange={(e) => setNewEventDate(e.target.value)}
-                                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-white shadow-sm transition-all"
-                                        />
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <button
-                                          onClick={() => handleAddEvent(note.id)}
-                                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md"
-                                        >
-                                          Add Event
-                                        </button>
-                                        <button
-                                          onClick={() => setShowAddEventForm(null)}
-                                          className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-all shadow-sm hover:shadow-md"
-                                        >
-                                          Cancel
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
                               {eventsWithDiffs.length === 0 ? (
                                 <div className="text-gray-500 italic">No events found in this timeline</div>
                               ) : (() => {
@@ -3413,6 +3355,44 @@ const Timelines = ({ notes, updateNote, addNote }) => {
           title="Unlink Event"
           message="Are you sure you want to unlink this event from the timeline?"
           confirmButtonText="Unlink"
+        />
+
+        {/* Add Event Modal */}
+        <EditEventModal
+          isOpen={showEditEventModal}
+          note={null}
+          onSave={async (content) => {
+            const timelineId = editingTimelineId; // Capture before reset
+            const result = await handleAddEventFromTimeline(content);
+            setShowEditEventModal(false);
+            
+            // Ensure timeline stays open after adding event
+            if (timelineId) {
+              setCollapsedTimelines(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(timelineId);
+                saveCollapseStates(newSet);
+                return newSet;
+              });
+            }
+            
+            setEditingTimelineId(null);
+            return result;
+          }}
+          onTimelineUpdated={handleTimelineUpdated}
+          onCancel={() => {
+            setShowEditEventModal(false);
+            setEditingTimelineId(null);
+          }}
+          onSwitchToNormalEdit={() => {
+            setShowEditEventModal(false);
+            setEditingTimelineId(null);
+          }}
+          onDelete={() => {
+            // Delete not applicable for new events
+          }}
+          notes={notes}
+          initialTimelineId={editingTimelineId}
         />
 
         {/* Add Link Modal */}

@@ -128,6 +128,8 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [customDate, setCustomDate] = useState(moment().format('YYYY-MM-DD'));
   const [customValue, setCustomValue] = useState('');
   const [customExistingAnswer, setCustomExistingAnswer] = useState(null);
+  // State for monthly modal pending changes (date -> answer value: 'yes', 'no', or null for remove)
+  const [monthlyModalPendingChanges, setMonthlyModalPendingChanges] = useState({});
 
   const handleDateClick = (date, dateStr) => {
     console.log('[TrackerCard.handleDateClick] START', { 
@@ -859,7 +861,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           <div className="bg-white rounded-lg p-6 max-w-lg w-full shadow-lg relative">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-              onClick={() => setShowMonthlyModal(false)}
+              onClick={() => {
+                // Clear pending changes when closing
+                setMonthlyModalPendingChanges({});
+                setShowMonthlyModal(false);
+              }}
               aria-label="Close"
             >
               &times;
@@ -867,7 +873,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             <div className="flex items-center justify-center mb-4 gap-4">
               <button
                 className="p-2 rounded-full hover:bg-gray-200"
-                onClick={() => setMonthlyModalMonth(prev => prev.subtract(1, 'months').startOf('month'))}
+                onClick={() => {
+                  setMonthlyModalMonth(prev => prev.subtract(1, 'months').startOf('month'));
+                  // Clear pending changes when changing months
+                  setMonthlyModalPendingChanges({});
+                }}
                 aria-label="Previous Month"
               >
                 <span className="text-xl">&#8592;</span>
@@ -877,7 +887,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               </h2>
               <button
                 className="p-2 rounded-full hover:bg-gray-200"
-                onClick={() => setMonthlyModalMonth(prev => prev.add(1, 'months').startOf('month'))}
+                onClick={() => {
+                  setMonthlyModalMonth(prev => prev.add(1, 'months').startOf('month'));
+                  // Clear pending changes when changing months
+                  setMonthlyModalPendingChanges({});
+                }}
                 aria-label="Next Month"
               >
                 <span className="text-xl">&#8594;</span>
@@ -887,31 +901,131 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               {getAllDatesInMonth(monthlyModalMonth).map(dateObj => {
                 const dateStr = dateObj.format('YYYY-MM-DD');
                 const answerObj = answers.find(ans => ans.date === dateStr);
+                
+                // Check if there's a pending change for this date, otherwise use existing answer
+                const pendingValue = monthlyModalPendingChanges[dateStr];
+                let displayValue = null;
+                if (pendingValue !== undefined) {
+                  displayValue = pendingValue; // Use pending change
+                } else if (answerObj && answerObj.answer) {
+                  displayValue = answerObj.answer.toLowerCase();
+                }
+                
                 let color = '';
-                if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
-                  if (answerObj && typeof answerObj.answer === 'string' && answerObj.answer.toLowerCase() === 'yes') {
+                let isYesNoTracker = tracker.type && tracker.type.toLowerCase().includes('yes');
+                
+                if (isYesNoTracker) {
+                  if (displayValue === 'yes') {
                     color = 'bg-green-300';
-                  } else if (answerObj && typeof answerObj.answer === 'string' && answerObj.answer.toLowerCase() === 'no') {
+                  } else if (displayValue === 'no') {
                     color = 'bg-red-300';
                   }
                 } else if (tracker.type && tracker.type.toLowerCase() === 'value') {
-                  color = answerObj ? 'bg-green-300' : '';
+                  color = displayValue ? 'bg-green-300' : '';
                 } else {
-                  color = answerObj ? 'bg-green-300' : '';
+                  color = displayValue ? 'bg-green-300' : '';
                 }
+                
+                const handleMonthlyDateClick = () => {
+                  if (!isYesNoTracker) return; // Only allow clicking for yes/no trackers
+                  
+                  // Get current state (pending change or existing answer)
+                  const currentState = pendingValue !== undefined 
+                    ? pendingValue 
+                    : (answerObj && answerObj.answer ? answerObj.answer.toLowerCase() : null);
+                  
+                  // Toggle: null -> yes -> no -> null
+                  let newValue = null;
+                  if (currentState === null || currentState === '') {
+                    newValue = 'yes';
+                  } else if (currentState === 'yes') {
+                    newValue = 'no';
+                  } else if (currentState === 'no') {
+                    newValue = null; // Remove
+                  }
+                  
+                  console.log('[TrackerCard] Monthly date click', { 
+                    dateStr, 
+                    currentState, 
+                    newValue 
+                  });
+                  
+                  setMonthlyModalPendingChanges(prev => ({
+                    ...prev,
+                    [dateStr]: newValue
+                  }));
+                };
+                
                 return (
                   <div key={dateStr} className={`flex flex-col items-center w-10`}>
                     <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{dateObj.format('ddd')}</span>
-                    <div
-                      className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm ${color} border-gray-300`}
-                      title={dateObj.format('MMM D, YYYY')}
+                    <button
+                      onClick={handleMonthlyDateClick}
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm ${color} border-gray-300 ${
+                        isYesNoTracker ? 'cursor-pointer hover:ring-2 hover:ring-blue-400' : 'cursor-default'
+                      }`}
+                      title={dateObj.format('MMM D, YYYY') + (isYesNoTracker ? ' - Click to toggle yes/no/remove' : '')}
+                      disabled={!isYesNoTracker}
                     >
                       {dateObj.date()}
-                    </div>
+                    </button>
                   </div>
                 );
               })}
             </div>
+            {/* Save button for yes/no trackers */}
+            {tracker.type && tracker.type.toLowerCase().includes('yes') && Object.keys(monthlyModalPendingChanges).length > 0 && (
+              <div className="mt-4 flex justify-center gap-4">
+                <button
+                  onClick={async () => {
+                    console.log('[TrackerCard] Saving monthly modal changes', { 
+                      changes: monthlyModalPendingChanges 
+                    });
+                    
+                    // Apply each change
+                    for (const [dateStr, value] of Object.entries(monthlyModalPendingChanges)) {
+                      if (value === null) {
+                        // Remove: find existing answer and delete it
+                        const existingAnswer = answers.find(ans => ans.date === dateStr);
+                        if (existingAnswer && existingAnswer.id) {
+                          try {
+                            await deleteNoteById(existingAnswer.id);
+                            console.log('[TrackerCard] Removed answer', { dateStr, noteId: existingAnswer.id });
+                            // Update UI by calling onToggleDay with null
+                            onToggleDay(tracker.id, dateStr, null);
+                          } catch (error) {
+                            console.error('[TrackerCard] ERROR removing answer', { dateStr, error });
+                          }
+                        } else {
+                          // No existing answer, just update state
+                          onToggleDay(tracker.id, dateStr, null);
+                        }
+                      } else {
+                        // Update or create: use onToggleDay which handles both cases
+                        console.log('[TrackerCard] Setting answer', { dateStr, value });
+                        onToggleDay(tracker.id, dateStr, value);
+                      }
+                    }
+                    
+                    // Clear pending changes
+                    setMonthlyModalPendingChanges({});
+                    console.log('[TrackerCard] Monthly modal changes saved');
+                  }}
+                  className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Save Changes ({Object.keys(monthlyModalPendingChanges).length} changes)
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('[TrackerCard] Cancelling monthly modal changes');
+                    setMonthlyModalPendingChanges({});
+                  }}
+                  className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -63,6 +63,7 @@ const TrackerListing = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [completedCollapsed, setCompletedCollapsed] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isDevMode, setIsDevMode] = useState(false);
 
   useEffect(() => {
     loadTrackers();
@@ -520,6 +521,7 @@ const TrackerListing = () => {
               trackerAnswers={trackerAnswers} 
               onEdit={handleEditTracker}
               isFocusMode={isFocusMode}
+              isDevMode={isDevMode}
             />
           </div>
         )}
@@ -575,6 +577,7 @@ const TrackerListing = () => {
           trackerAnswers={trackerAnswers} 
           onEdit={handleEditTracker}
           isFocusMode={isFocusMode}
+          isDevMode={isDevMode}
         />
       </div>
     );
@@ -585,6 +588,15 @@ const TrackerListing = () => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Trackers</h1>
         <div className="flex gap-3">
+          <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={isDevMode}
+              onChange={(e) => setIsDevMode(e.target.checked)}
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-700">Dev mode</span>
+          </label>
           <button
             className={`px-4 py-2 rounded-lg transition-colors ${
               isFocusMode 

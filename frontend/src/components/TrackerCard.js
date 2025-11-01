@@ -71,7 +71,7 @@ function formatMonthDateString(date) {
   return moment(date).format('YYYY-MM-01');
 }
 
-export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode }) {
+export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode }) {
   // Determine cadence
   const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
   let buttons = [];
@@ -739,29 +739,31 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           </div>
         </div>
       )}
-      <div className="mt-4 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-        <div className="flex items-center gap-1">
-          <span>ID:</span>
-          <code className="font-mono bg-gray-50 px-1 py-0.5 rounded">{tracker.id}</code>
+      {isDevMode && (
+        <div className="mt-4 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+          <div className="flex items-center gap-1">
+            <span>ID:</span>
+            <code className="font-mono bg-gray-50 px-1 py-0.5 rounded">{tracker.id}</code>
+          </div>
+          <button
+            onClick={handleCopyToClipboard}
+            className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+            title="Copy ID to clipboard"
+          >
+            {copied ? (
+              <>
+                <ClipboardDocumentCheckIcon className="h-4 w-4 text-green-500" />
+                <span>Copied!</span>
+              </>
+            ) : (
+              <>
+                <ClipboardIcon className="h-4 w-4" />
+                <span>Copy</span>
+              </>
+            )}
+          </button>
         </div>
-        <button
-          onClick={handleCopyToClipboard}
-          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
-          title="Copy ID to clipboard"
-        >
-          {copied ? (
-            <>
-              <ClipboardDocumentCheckIcon className="h-4 w-4 text-green-500" />
-              <span>Copied!</span>
-            </>
-          ) : (
-            <>
-              <ClipboardIcon className="h-4 w-4" />
-              <span>Copy</span>
-            </>
-          )}
-        </button>
-      </div>
+      )}
     </div>
   );
 }

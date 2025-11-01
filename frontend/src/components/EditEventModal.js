@@ -428,7 +428,9 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
         >
           <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">{normalEditMode ? 'Normal Edit Mode' : 'Edit Event'}</h2>
+              <h2 className="text-xl font-semibold">
+                {normalEditMode ? 'Normal Edit Mode' : (note ? 'Edit Event' : 'Add Event')}
+              </h2>
               {!normalEditMode && (
                 <button
                   onClick={handleSwitchToNormalEdit}
@@ -687,12 +689,15 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
             </div>
 
             <div className="mt-6 flex justify-between">
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100"
-              >
-                Delete Event
-              </button>
+              {note && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100"
+                >
+                  Delete Event
+                </button>
+              )}
+              {!note && <div></div>}
               <div className="flex space-x-3">
                 <button
                   onClick={handleCancel}
@@ -705,7 +710,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                   disabled={!description.trim() || !eventDate}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Save Changes
+                  {note ? 'Save Changes' : 'Add Event'}
                 </button>
               </div>
             </div>

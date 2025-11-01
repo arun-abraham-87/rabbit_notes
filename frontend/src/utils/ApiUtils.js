@@ -17,47 +17,106 @@ export const addNewNoteCommon = async (content, tags, noteDate) => {
 };
 
 export const getNoteById = async (id) => {
+    const fetchDebugPrefix = `[📥 GET NOTE] [${new Date().toISOString()}]`;
+    console.log(`${fetchDebugPrefix} ========== GET NOTE BY ID ==========`);
+    console.log(`${fetchDebugPrefix} Note ID: ${id}`);
     console.log('[ApiUtils] getNoteById called:', id);
+    const fetchStartTime = Date.now();
     const response = await fetch(`${API_BASE_URL}/notes/${id}`);
+    const fetchDuration = Date.now() - fetchStartTime;
+    console.log(`${fetchDebugPrefix} Fetch completed in ${fetchDuration}ms`);
     console.log('[ApiUtils] getNoteById response status:', response.status);
     console.log('[ApiUtils] getNoteById response ok:', response.ok);
     if (!response.ok) {
+        console.error(`${fetchDebugPrefix} ❌ ERROR: Fetch failed`, { status: response.status, id });
         console.error('[ApiUtils] getNoteById failed:', { status: response.status, id });
         throw new Error('Failed to fetch note');
     }
     const result = await response.json();
+    console.log(`${fetchDebugPrefix} ✅ Fetch successful`);
+    console.log(`${fetchDebugPrefix} Returned note ID: ${result?.id}`);
+    console.log(`${fetchDebugPrefix} Returned note content length: ${result?.content?.length}`);
+    
+    // Count linked events in fetched content
+    const fetchedLinkedEventLines = result?.content?.split('\n').filter(line => line.trim().startsWith('meta::linked_from_events::')) || [];
+    console.log(`${fetchDebugPrefix} Linked event lines in fetched content: ${fetchedLinkedEventLines.length}`);
+    console.log(`${fetchDebugPrefix} Linked event lines:`, fetchedLinkedEventLines);
+    console.log(`${fetchDebugPrefix} Content preview (last 500 chars):`, result?.content?.substring(Math.max(0, result.content.length - 500)));
+    console.log(`${fetchDebugPrefix} ========== GET NOTE COMPLETE ==========`);
     console.log('[ApiUtils] getNoteById success:', { id, hasContent: !!result?.content, contentLength: result?.content?.length });
     console.log('[ApiUtils] getNoteById - content preview (last 200 chars):', result?.content?.substring(Math.max(0, result.content.length - 200)));
     return result;
 };
 
 export const updateNoteById = async (id, updatedContent) => {
-    console.log('[ApiUtils] updateNoteById called:', { id, contentLength: updatedContent?.length });
-    console.log('[ApiUtils] updateNoteById - content preview (first 200 chars):', updatedContent?.substring(0, 200));
-    console.log('[ApiUtils] updateNoteById - content preview (last 200 chars):', updatedContent?.substring(Math.max(0, updatedContent.length - 200)));
+    const apiDebugPrefix = `[🌐 API UPDATE] [${new Date().toISOString()}]`;
+    console.log(`${apiDebugPrefix} ========== API UPDATE CALLED ==========`);
+    console.log(`${apiDebugPrefix} Note ID: ${id}`);
+    console.log(`${apiDebugPrefix} Content length: ${updatedContent?.length}`);
+    console.log(`${apiDebugPrefix} Content preview (first 300 chars):`, updatedContent?.substring(0, 300));
+    console.log(`${apiDebugPrefix} Content preview (last 300 chars):`, updatedContent?.substring(Math.max(0, updatedContent.length - 300)));
+    
+    // Count linked events in the content being sent
+    const linkedEventLines = updatedContent.split('\n').filter(line => line.trim().startsWith('meta::linked_from_events::'));
+    console.log(`${apiDebugPrefix} Linked event lines in content being sent: ${linkedEventLines.length}`);
+    console.log(`${apiDebugPrefix} Linked event lines:`, linkedEventLines);
     
     const reorderedContent = reorderMetaTags(updatedContent);
-    console.log('[ApiUtils] updateNoteById - after reorderMetaTags, content length:', reorderedContent?.length);
-    console.log('[ApiUtils] updateNoteById - reordered content preview (last 200 chars):', reorderedContent?.substring(Math.max(0, reorderedContent.length - 200)));
+    console.log(`${apiDebugPrefix} After reorderMetaTags, content length: ${reorderedContent?.length}`);
     
+    // Count linked events after reordering
+    const reorderedLinkedEventLines = reorderedContent.split('\n').filter(line => line.trim().startsWith('meta::linked_from_events::'));
+    console.log(`${apiDebugPrefix} Linked event lines after reorderMetaTags: ${reorderedLinkedEventLines.length}`);
+    console.log(`${apiDebugPrefix} Linked event lines after reorder:`, reorderedLinkedEventLines);
+    
+    if (linkedEventLines.length !== reorderedLinkedEventLines.length) {
+      console.error(`${apiDebugPrefix} ⚠️ WARNING: Linked event line count changed after reorderMetaTags!`);
+      console.error(`${apiDebugPrefix}   Before: ${linkedEventLines.length} lines`);
+      console.error(`${apiDebugPrefix}   After: ${reorderedLinkedEventLines.length} lines`);
+      console.error(`${apiDebugPrefix}   Before lines:`, linkedEventLines);
+      console.error(`${apiDebugPrefix}   After lines:`, reorderedLinkedEventLines);
+    }
+    
+    console.log(`${apiDebugPrefix} Content preview after reorder (last 500 chars):`, reorderedContent?.substring(Math.max(0, reorderedContent.length - 500)));
+    
+    const requestStartTime = Date.now();
     const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: reorderedContent }),
     });
     
-    console.log('[ApiUtils] updateNoteById response status:', response.status);
-    console.log('[ApiUtils] updateNoteById response ok:', response.ok);
+    const requestDuration = Date.now() - requestStartTime;
+    console.log(`${apiDebugPrefix} Request completed in ${requestDuration}ms`);
+    console.log(`${apiDebugPrefix} Response status: ${response.status}`);
+    console.log(`${apiDebugPrefix} Response ok: ${response.ok}`);
     
     if (!response.ok) {
         const errorText = await response.text();
-        console.error('[ApiUtils] updateNoteById failed:', { status: response.status, errorText });
+        console.error(`${apiDebugPrefix} ❌ ERROR: Update failed`, { status: response.status, errorText });
         throw new Error('Failed to update note');
     }
     
     const result = await response.json();
-    console.log('[ApiUtils] updateNoteById success:', result);
-    console.log('[ApiUtils] updateNoteById - returned note content preview (last 200 chars):', result?.content?.substring(Math.max(0, result.content.length - 200)));
+    console.log(`${apiDebugPrefix} ✅ Update successful`);
+    console.log(`${apiDebugPrefix} Returned note ID: ${result?.id}`);
+    console.log(`${apiDebugPrefix} Returned note content length: ${result?.content?.length}`);
+    
+    // Count linked events in the returned content
+    const returnedLinkedEventLines = result?.content?.split('\n').filter(line => line.trim().startsWith('meta::linked_from_events::')) || [];
+    console.log(`${apiDebugPrefix} Linked event lines in returned content: ${returnedLinkedEventLines.length}`);
+    console.log(`${apiDebugPrefix} Linked event lines returned:`, returnedLinkedEventLines);
+    
+    if (reorderedLinkedEventLines.length !== returnedLinkedEventLines.length) {
+      console.error(`${apiDebugPrefix} ⚠️ WARNING: Linked event line count changed after backend update!`);
+      console.error(`${apiDebugPrefix}   Sent: ${reorderedLinkedEventLines.length} lines`);
+      console.error(`${apiDebugPrefix}   Returned: ${returnedLinkedEventLines.length} lines`);
+      console.error(`${apiDebugPrefix}   Sent lines:`, reorderedLinkedEventLines);
+      console.error(`${apiDebugPrefix}   Returned lines:`, returnedLinkedEventLines);
+    }
+    
+    console.log(`${apiDebugPrefix} Returned content preview (last 500 chars):`, result?.content?.substring(Math.max(0, result.content.length - 500)));
+    console.log(`${apiDebugPrefix} ========== API UPDATE COMPLETE ==========`);
     
     return result;
 };

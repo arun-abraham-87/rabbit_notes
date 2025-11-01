@@ -1380,8 +1380,8 @@ event_tags:${expense.tag.join(',')}`;
     }
   };
 
-  const handleEventUpdated = (eventId, updatedContent) => {
-    updateNoteById(eventId, updatedContent);
+  const handleEventUpdated = async (eventId, updatedContent) => {
+    await updateNoteById(eventId, updatedContent);
     setAllNotes(prevNotes => prevNotes.map(note => 
       note.id === eventId ? { ...note, content: updatedContent } : note
     ));
@@ -1742,7 +1742,7 @@ event_tags:${expense.tag.join(',')}`;
         onSave={async (content) => {
           let result;
           if (editingEvent) {
-            handleEventUpdated(editingEvent.id, content);
+            await handleEventUpdated(editingEvent.id, content);
             result = editingEvent; // Return the event for timeline linking
           } else {
             result = await handleAddEvent(content);

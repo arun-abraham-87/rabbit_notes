@@ -221,21 +221,45 @@ export const extractMetaTags = (content) => {
  * @returns {string} - The content with meta tags reordered to the bottom
  */
 export const reorderMetaTags = (content) => {
-  if (!content) return content;
+  const reorderDebugPrefix = `[🔀 REORDER META] [${new Date().toISOString()}]`;
+  console.log(`${reorderDebugPrefix} ========== REORDER META TAGS ==========`);
+  
+  if (!content) {
+    console.log(`${reorderDebugPrefix} Content is null/empty, returning as-is`);
+    return content;
+  }
+
+  console.log(`${reorderDebugPrefix} Input content length: ${content.length}`);
+  
+  // Count linked events before reordering
+  const inputLinkedEventLines = content.split('\n').filter(line => line.trim().startsWith('meta::linked_from_events::'));
+  console.log(`${reorderDebugPrefix} Linked event lines in input: ${inputLinkedEventLines.length}`);
+  console.log(`${reorderDebugPrefix} Linked event lines in input:`, inputLinkedEventLines);
 
   const lines = content.split('\n');
   const metaLines = [];
   const nonMetaLines = [];
 
   // Separate meta tags from regular content
-  lines.forEach(line => {
+  lines.forEach((line, index) => {
     const trimmedLine = line.trim();
     if (trimmedLine.startsWith('meta::') || trimmedLine.startsWith('meta_detail::')) {
       metaLines.push(line);
+      if (trimmedLine.startsWith('meta::linked_from_events::')) {
+        console.log(`${reorderDebugPrefix}   Found linked event line at index ${index}: "${line}"`);
+      }
     } else {
       nonMetaLines.push(line);
     }
   });
+
+  console.log(`${reorderDebugPrefix} Total meta lines found: ${metaLines.length}`);
+  console.log(`${reorderDebugPrefix} Total non-meta lines: ${nonMetaLines.length}`);
+  
+  // Count linked events in metaLines
+  const metaLinkedEventLines = metaLines.filter(line => line.trim().startsWith('meta::linked_from_events::'));
+  console.log(`${reorderDebugPrefix} Linked event lines in metaLines: ${metaLinkedEventLines.length}`);
+  console.log(`${reorderDebugPrefix} Linked event lines in metaLines:`, metaLinkedEventLines);
 
   // Sort meta tags in a consistent order
   const metaOrder = [
@@ -258,17 +282,49 @@ export const reorderMetaTags = (content) => {
     return metaOrder.indexOf(aPrefix) - metaOrder.indexOf(bPrefix);
   });
 
+  console.log(`${reorderDebugPrefix} After sorting, meta lines count: ${metaLines.length}`);
+  
+  // Count linked events after sorting
+  const sortedLinkedEventLines = metaLines.filter(line => line.trim().startsWith('meta::linked_from_events::'));
+  console.log(`${reorderDebugPrefix} Linked event lines after sorting: ${sortedLinkedEventLines.length}`);
+  console.log(`${reorderDebugPrefix} Linked event lines after sorting:`, sortedLinkedEventLines);
+  
+  if (metaLinkedEventLines.length !== sortedLinkedEventLines.length) {
+    console.error(`${reorderDebugPrefix} ❌ CRITICAL ERROR: Linked event line count changed after sorting!`);
+    console.error(`${reorderDebugPrefix}   Before sorting: ${metaLinkedEventLines.length} lines`);
+    console.error(`${reorderDebugPrefix}   After sorting: ${sortedLinkedEventLines.length} lines`);
+  }
+
   // Remove empty lines at the end of non-meta content
   while (nonMetaLines.length > 0 && !nonMetaLines[nonMetaLines.length - 1].trim()) {
     nonMetaLines.pop();
   }
 
   // Combine content with meta tags at the bottom
+  let result;
   if (nonMetaLines.length > 0 && metaLines.length > 0) {
-    return [...nonMetaLines, ...metaLines].join('\n').trim();
+    result = [...nonMetaLines, ...metaLines].join('\n').trim();
   } else if (metaLines.length > 0) {
-    return metaLines.join('\n').trim();
+    result = metaLines.join('\n').trim();
   } else {
-    return nonMetaLines.join('\n').trim();
+    result = nonMetaLines.join('\n').trim();
   }
+  
+  // Count linked events in result
+  const resultLinkedEventLines = result.split('\n').filter(line => line.trim().startsWith('meta::linked_from_events::'));
+  console.log(`${reorderDebugPrefix} Linked event lines in result: ${resultLinkedEventLines.length}`);
+  console.log(`${reorderDebugPrefix} Linked event lines in result:`, resultLinkedEventLines);
+  
+  if (inputLinkedEventLines.length !== resultLinkedEventLines.length) {
+    console.error(`${reorderDebugPrefix} ❌ CRITICAL ERROR: Linked event line count changed in reorderMetaTags!`);
+    console.error(`${reorderDebugPrefix}   Input: ${inputLinkedEventLines.length} lines`);
+    console.error(`${reorderDebugPrefix}   Result: ${resultLinkedEventLines.length} lines`);
+    console.error(`${reorderDebugPrefix}   Input lines:`, inputLinkedEventLines);
+    console.error(`${reorderDebugPrefix}   Result lines:`, resultLinkedEventLines);
+  }
+  
+  console.log(`${reorderDebugPrefix} Output content length: ${result.length}`);
+  console.log(`${reorderDebugPrefix} ========== REORDER COMPLETE ==========`);
+  
+  return result;
 }; 

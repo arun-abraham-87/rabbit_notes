@@ -235,8 +235,8 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
     setShowEditEventModal(true);
   };
 
-  const handleEventUpdated = (updatedEvent) => {
-    onEventUpdated(editingEvent.id, updatedEvent);
+  const handleEventUpdated = async (updatedEvent) => {
+    await onEventUpdated(editingEvent.id, updatedEvent);
     setEditingEvent(null);
   };
 
@@ -257,7 +257,7 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
     }
     
     // Update the event
-    onEventUpdated(event.id,updatedContent);
+    await onEventUpdated(event.id,updatedContent);
   };
 
   const handleToggleHidden = async (event) => {
@@ -665,24 +665,41 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
         <EditEventModal
           isOpen={showEditEventModal}
           note={editingEvent}
-          onSave={(content) => {
+          onSave={async (content) => {
             if (editingEvent) {
               // Update existing event
               const note = notes.find(n => n.id === editingEvent.id);
               if (note) {
-                // Preserve the original meta tags
-                const originalLines = note.content.split('\n');
-                const metaTags = originalLines.filter(line => 
-                  line.startsWith('meta::') && 
-                  !line.startsWith('meta::event::')
-                );
+                // Detect if content is from form edit mode vs normal edit mode
+                // Form edit mode always generates structured content with event_description/event_date
+                // but may not include meta tags (they get preserved separately)
+                // Normal edit mode can have any content structure
+                const isFormEditMode = content.includes('event_description:') && 
+                                      content.includes('event_date:') &&
+                                      !content.split('\n').some(line => 
+                                        line.trim().startsWith('meta::') || 
+                                        line.trim().startsWith('meta_detail::')
+                                      );
                 
-                // Combine new content with preserved meta tags
-                const updatedContent = content + '\n' + metaTags.join('\n');
+                let updatedContent;
+                if (isFormEditMode) {
+                  // Content from form edit mode - preserve original meta tags
+                  const originalLines = note.content.split('\n');
+                  const metaTags = originalLines.filter(line => 
+                    line.trim().startsWith('meta::') && 
+                    !line.trim().startsWith('meta::event::')
+                  );
+                  
+                  // Combine new content with preserved meta tags
+                  updatedContent = content + '\n' + metaTags.join('\n');
+                } else {
+                  // Content from normal edit mode - use as-is (user may have removed meta tags)
+                  updatedContent = content;
+                }
                 
                 // Update the note
                 const updatedNote = { ...note, content: updatedContent };
-                onEventUpdated(editingEvent.id, updatedContent);
+                await onEventUpdated(editingEvent.id, updatedContent);
               }
             } else {
               // Add new event

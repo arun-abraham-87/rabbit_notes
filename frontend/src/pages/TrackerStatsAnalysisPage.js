@@ -120,35 +120,31 @@ function EnhancedStats({ answers, tracker }) {
     );
   }
 
-  // Normalize and deduplicate dates
-  const dateSet = new Set(filteredAnswers.map(a => moment(a.date).format('YYYY-MM-DD')));
-  const sortedDates = Array.from(dateSet).sort();
-
-  // Longest streak calculation (robust)
-  let longest = 0, current = 0;
-  let prev = null;
-  sortedDates.forEach(dateStr => {
-    if (!prev) {
-      current = 1;
-    } else {
-      const prevDate = moment(prev);
-      const currDate = moment(dateStr);
-      const diff = currDate.diff(prevDate, 'days');
-      if (diff === 1) {
-        current++;
-      } else {
-        current = 1;
-      }
-    }
-    if (current > longest) longest = current;
-    prev = dateStr;
-  });
-
   // Sort answers by date ascending
   const sorted = [...filteredAnswers].sort((a, b) => new Date(a.date) - new Date(b.date));
   const firstDate = sorted[0]?.date;
   const lastDate = sorted[sorted.length - 1]?.date;
   const total = sorted.length;
+
+  // Calculate ages
+  const firstDateAge = firstDate ? getAgeInStringFmt(new Date(firstDate)) : null;
+  const lastDateAge = lastDate ? getAgeInStringFmt(new Date(lastDate)) : null;
+  
+  // Calculate total duration from first check-in to today
+  let totalDuration = null;
+  if (firstDate) {
+    const firstMoment = moment(firstDate);
+    const todayMoment = moment();
+    const years = todayMoment.diff(firstMoment, 'years');
+    const months = moment(todayMoment).subtract(years, 'years').diff(firstMoment, 'months');
+    const days = moment(todayMoment).subtract(years, 'years').subtract(months, 'months').diff(firstMoment, 'days');
+    
+    const parts = [];
+    if (years > 0) parts.push(`${years} ${years === 1 ? 'year' : 'years'}`);
+    if (months > 0) parts.push(`${months} ${months === 1 ? 'month' : 'months'}`);
+    if (days > 0 || parts.length === 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+    totalDuration = parts.join(', ');
+  }
 
   // Yes/No breakdown
   let yes = 0, no = 0, valueCount = 0;
@@ -161,6 +157,34 @@ function EnhancedStats({ answers, tracker }) {
       valueCount++;
     }
   });
+
+  // Check if this is a value-based tracker
+  const isValueTracker = tracker.type && tracker.type.toLowerCase() === 'value';
+  
+  // Calculate total range for value-based trackers
+  let firstValue = null;
+  let lastValue = null;
+  let valueDifference = null;
+  
+  if (isValueTracker && sorted.length > 0) {
+    // Extract numeric values from answers
+    const values = sorted
+      .map(ans => {
+        if (ans.value !== undefined) {
+          return parseFloat(ans.value);
+        } else if (typeof ans.answer === 'string') {
+          return parseFloat(ans.answer);
+        }
+        return null;
+      })
+      .filter(val => val !== null && !isNaN(val));
+    
+    if (values.length > 0) {
+      firstValue = values[0];
+      lastValue = values[values.length - 1];
+      valueDifference = lastValue - firstValue;
+    }
+  }
 
   // Completion rate (for daily trackers)
   let completionRate = null;
@@ -266,27 +290,46 @@ function EnhancedStats({ answers, tracker }) {
         ))}
       </div>
       
+      {/* Stats Section */}
+      <div className="text-sm mb-4 space-y-1">
+        <div><span className="font-semibold">Total Check-ins:</span> {total}</div>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div>
+            <span className="font-semibold">First Check-in:</span> {firstDate ? new Date(firstDate).toLocaleDateString() : 'N/A'}
+            {firstDateAge && <span className="text-gray-500"> ({firstDateAge})</span>}
+          </div>
+          <div>
+            <span className="font-semibold">Last Check-in:</span> {lastDate ? new Date(lastDate).toLocaleDateString() : 'N/A'}
+            {lastDateAge && <span className="text-gray-500"> ({lastDateAge})</span>}
+          </div>
+        </div>
+        {totalDuration && (
+          <div>
+            <span className="font-semibold">Total Duration:</span> {totalDuration} (from first check-in to today)
+          </div>
+        )}
+        {isValueTracker && firstValue !== null && lastValue !== null && (
+          <div>
+            <span className="font-semibold">Total Range:</span> {firstValue} to {lastValue} ({valueDifference >= 0 ? '+' : ''}{valueDifference.toFixed(2)})
+          </div>
+        )}
+        {tracker.type && tracker.type.toLowerCase().includes('yes') && (
+          <div className="flex items-center gap-4">
+            <div><span className="font-semibold">Yes:</span> {yes}</div>
+            <div><span className="font-semibold">No:</span> {no}</div>
+          </div>
+        )}
+        {completionRate !== null && (
+          <div><span className="font-semibold">Completion Rate:</span> {completionRate.toFixed(1)}%</div>
+        )}
+      </div>
+      
+      {/* Chart */}
       <div className="mb-4">
         {isYesNoTracker ? (
           <Bar data={chartData} options={chartOptions} height={120} />
         ) : (
           <Line data={chartData} options={chartOptions} height={120} />
-        )}
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-sm mb-2">
-        <div><span className="font-semibold">Total Check-ins:</span> {total}</div>
-        {tracker.type && tracker.type.toLowerCase().includes('yes') && (
-          <>
-            <div><span className="font-semibold">Yes:</span> {yes}</div>
-            <div><span className="font-semibold">No:</span> {no}</div>
-          </>
-        )}
-        <div><span className="font-semibold">First Check-in:</span> {firstDate && new Date(firstDate).toLocaleDateString()}</div>
-        <div><span className="font-semibold">Last Check-in:</span> {lastDate && new Date(lastDate).toLocaleDateString()}</div>
-        <div><span className="font-semibold">Current Streak:</span> {longest}</div>
-        <div><span className="font-semibold">Longest Streak:</span> {longest}</div>
-        {completionRate !== null && (
-          <div className="col-span-2"><span className="font-semibold">Completion Rate:</span> {completionRate.toFixed(1)}%</div>
         )}
       </div>
     </div>
@@ -577,10 +620,7 @@ const TrackerStatsAnalysisPage = () => {
         <div className="space-y-8">
           {selectedTrackersList.map(tracker => (
             <div key={tracker.id} className="bg-white rounded-lg shadow-sm p-6 border">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">{tracker.title}</h2>
-              {tracker.question && (
-                <p className="text-sm text-gray-600 mb-4">{tracker.question}</p>
-              )}
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">{tracker.title}</h2>
               <EnhancedStats 
                 answers={trackerAnswers[tracker.id] || []} 
                 tracker={tracker} 

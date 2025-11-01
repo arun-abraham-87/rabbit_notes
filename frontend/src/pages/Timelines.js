@@ -1243,10 +1243,25 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                         durationText = durationText_formatted;
                                       }
                                       
-                                      // Show total amount if it exists
-                                      const totalAmount = timelineData.totalDollarAmount && timelineData.totalDollarAmount > 0
-                                        ? `$${timelineData.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                        : null;
+                                      // Calculate total amount - use filtered events if search is active
+                                      const searchQuery = timelineSearchQueries[note.id] || '';
+                                      let totalAmount = null;
+                                      
+                                      if (searchQuery) {
+                                        // Filter events and calculate sum of filtered events (exclude virtual/total events)
+                                        const filteredEvents = filterEventsBySearch(eventsWithDiffs, searchQuery);
+                                        const filteredSum = filteredEvents
+                                          .filter(event => !event.isVirtual && !event.isTotal)
+                                          .reduce((sum, event) => sum + (event.dollarAmount || 0), 0);
+                                        if (filteredSum > 0) {
+                                          totalAmount = `$${filteredSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                        }
+                                      } else {
+                                        // Use total from all events
+                                        if (timelineData.totalDollarAmount && timelineData.totalDollarAmount > 0) {
+                                          totalAmount = `$${timelineData.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                        }
+                                      }
                                       
                                       return (
                                         <>
@@ -2043,10 +2058,25 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                 durationText = durationText_formatted;
                               }
                               
-                              // Show total amount if it exists
-                              const totalAmount = timelineData.totalDollarAmount && timelineData.totalDollarAmount > 0
-                                ? `$${timelineData.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                : null;
+                              // Calculate total amount - use filtered events if search is active
+                              const searchQuery = timelineSearchQueries[note.id] || '';
+                              let totalAmount = null;
+                              
+                              if (searchQuery) {
+                                // Filter events and calculate sum of filtered events (exclude virtual/total events)
+                                const filteredEvents = filterEventsBySearch(eventsWithDiffs, searchQuery);
+                                const filteredSum = filteredEvents
+                                  .filter(event => !event.isVirtual && !event.isTotal)
+                                  .reduce((sum, event) => sum + (event.dollarAmount || 0), 0);
+                                if (filteredSum > 0) {
+                                  totalAmount = `$${filteredSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                }
+                              } else {
+                                // Use total from all events
+                                if (timelineData.totalDollarAmount && timelineData.totalDollarAmount > 0) {
+                                  totalAmount = `$${timelineData.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                }
+                              }
                               
                               return (
                                 <>
@@ -2903,10 +2933,25 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                         durationText = durationText_formatted;
                                       }
                                       
-                                      // Show total amount if it exists
-                                      const totalAmount = timelineData.totalDollarAmount && timelineData.totalDollarAmount > 0
-                                        ? `$${timelineData.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                        : null;
+                                      // Calculate total amount - use filtered events if search is active
+                                      const searchQuery = timelineSearchQueries[note.id] || '';
+                                      let totalAmount = null;
+                                      
+                                      if (searchQuery) {
+                                        // Filter events and calculate sum of filtered events (exclude virtual/total events)
+                                        const filteredEvents = filterEventsBySearch(eventsWithDiffs, searchQuery);
+                                        const filteredSum = filteredEvents
+                                          .filter(event => !event.isVirtual && !event.isTotal)
+                                          .reduce((sum, event) => sum + (event.dollarAmount || 0), 0);
+                                        if (filteredSum > 0) {
+                                          totalAmount = `$${filteredSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                        }
+                                      } else {
+                                        // Use total from all events
+                                        if (timelineData.totalDollarAmount && timelineData.totalDollarAmount > 0) {
+                                          totalAmount = `$${timelineData.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                        }
+                                      }
                                       
                                       return (
                                         <>

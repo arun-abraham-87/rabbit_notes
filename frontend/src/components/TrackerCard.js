@@ -874,7 +874,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               <button
                 className="p-2 rounded-full hover:bg-gray-200"
                 onClick={() => {
-                  setMonthlyModalMonth(prev => prev.subtract(1, 'months').startOf('month'));
+                  setMonthlyModalMonth(prev => {
+                    // Clone the moment object before mutating to avoid skipping months
+                    return moment(prev).subtract(1, 'months').startOf('month');
+                  });
                   // Clear pending changes when changing months
                   setMonthlyModalPendingChanges({});
                 }}
@@ -888,7 +891,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               <button
                 className="p-2 rounded-full hover:bg-gray-200"
                 onClick={() => {
-                  setMonthlyModalMonth(prev => prev.add(1, 'months').startOf('month'));
+                  setMonthlyModalMonth(prev => {
+                    // Clone the moment object before mutating to avoid skipping months
+                    return moment(prev).add(1, 'months').startOf('month');
+                  });
                   // Clear pending changes when changing months
                   setMonthlyModalPendingChanges({});
                 }}

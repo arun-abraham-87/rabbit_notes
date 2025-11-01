@@ -445,11 +445,36 @@ const TrackerListing = () => {
       answer = 'no';
     }
 
-    console.log('[handleToggleDay] Creating new answer', { trackerId, dateStr, answer });
+    console.log('[handleToggleDay] Creating/updating answer', { trackerId, dateStr, answer });
+
+    // Check if answer already exists
+    const existingAnswer = trackerAnswers[trackerId]?.find(a => a.date === dateStr);
+    console.log('[handleToggleDay] Existing answer check', { 
+      trackerId, 
+      dateStr, 
+      hasExistingAnswer: !!existingAnswer,
+      existingAnswerId: existingAnswer?.id 
+    });
 
     try {
-      const response = await createTrackerAnswerNote(trackerId, answer, dateStr);
-      console.log('[handleToggleDay] createTrackerAnswerNote response', { response });
+      let response;
+      if (existingAnswer && existingAnswer.id) {
+        // Update existing note
+        console.log('[handleToggleDay] Updating existing note', { 
+          noteId: existingAnswer.id, 
+          newAnswer: answer 
+        });
+        await updateNoteById(existingAnswer.id, answer);
+        response = { id: existingAnswer.id }; // Use existing ID
+        console.log('[handleToggleDay] Note updated successfully', { 
+          noteId: existingAnswer.id 
+        });
+      } else {
+        // Create new note
+        console.log('[handleToggleDay] Creating new note', { trackerId, dateStr, answer });
+        response = await createTrackerAnswerNote(trackerId, answer, dateStr);
+        console.log('[handleToggleDay] createTrackerAnswerNote response', { response });
+      }
       
       if (response && response.id) {
         setTrackers(prev => prev.map(t => {
@@ -487,7 +512,7 @@ const TrackerListing = () => {
               date: dateStr,
               id: response.id
             };
-            console.log('[handleToggleDay] Updated existing answer', { 
+            console.log('[handleToggleDay] Updated existing answer in state', { 
               trackerId, 
               dateStr, 
               index: idx,
@@ -504,7 +529,7 @@ const TrackerListing = () => {
                 id: response.id
               }
             ];
-            console.log('[handleToggleDay] Added new answer', { 
+            console.log('[handleToggleDay] Added new answer to state', { 
               trackerId, 
               dateStr, 
               newAnswer: newAnswers[newAnswers.length - 1],
@@ -528,7 +553,7 @@ const TrackerListing = () => {
         console.log('[handleToggleDay] Success - Answer recorded', { trackerId, dateStr });
       } else {
         console.log('[handleToggleDay] ERROR: No response ID', { response });
-        throw new Error('Failed to create answer note');
+        throw new Error('Failed to create/update answer note');
       }
     } catch (error) {
       console.error('[handleToggleDay] ERROR:', error);

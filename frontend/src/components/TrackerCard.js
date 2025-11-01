@@ -130,19 +130,47 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [customExistingAnswer, setCustomExistingAnswer] = useState(null);
 
   const handleDateClick = (date, dateStr) => {
+    console.log('[TrackerCard.handleDateClick] START', { 
+      trackerId: tracker.id, 
+      dateStr, 
+      timestamp: new Date().toISOString() 
+    });
+
     const type = tracker.type.toLowerCase();
     const answer = getAnswerForDate(dateStr);
+    
+    console.log('[TrackerCard.handleDateClick] Answer found', { 
+      trackerId: tracker.id, 
+      dateStr, 
+      hasAnswer: !!answer,
+      answerValue: answer?.answer,
+      answerType: answer?.type
+    });
+
     setExistingAnswer(answer);
+    
     if (type === 'value') {
       setSelectedDate(dateStr);
       setValue(answer ? answer.value : '');
       setShowValueModal(true);
     } else if (type === 'yes,no' || type === 'yesno' || type === 'yes/no') {
+      // Always show modal for yes/no trackers so user can toggle or remove
+      console.log('[TrackerCard.handleDateClick] Showing yes/no modal', { 
+        trackerId: tracker.id, 
+        dateStr,
+        hasExistingAnswer: !!answer,
+        existingAnswer: answer?.answer
+      });
       setSelectedDate(dateStr);
       setShowYesNoModal(true);
     } else {
       onToggleDay(tracker.id, dateStr);
     }
+
+    console.log('[TrackerCard.handleDateClick] END', { 
+      trackerId: tracker.id, 
+      dateStr 
+    });
   };
 
   const handleValueSubmit = async () => {
@@ -165,15 +193,66 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   };
 
   const handleYesNo = async (answer) => {
+    console.log('[TrackerCard.handleYesNo] START', { 
+      trackerId: tracker.id, 
+      selectedDate, 
+      answer,
+      hasExistingAnswer: !!existingAnswer,
+      existingAnswerId: existingAnswer?.id,
+      existingAnswerValue: existingAnswer?.answer,
+      timestamp: new Date().toISOString()
+    });
+
+    // Check if we're toggling (clicking the same answer) or switching
+    const isToggle = existingAnswer && existingAnswer.answer && 
+                     existingAnswer.answer.toLowerCase() === answer.toLowerCase();
+    
+    console.log('[TrackerCard.handleYesNo] Is toggle?', { 
+      isToggle, 
+      existingAnswerValue: existingAnswer?.answer,
+      newAnswer: answer
+    });
+
     if (existingAnswer && existingAnswer.id) {
-      // Update existing note
-      await updateNoteById(existingAnswer.id, answer);
+      // Update existing note - this works for both toggling and switching
+      console.log('[TrackerCard.handleYesNo] Updating existing note', { 
+        noteId: existingAnswer.id, 
+        newAnswer: answer 
+      });
+      try {
+        await updateNoteById(existingAnswer.id, answer);
+        console.log('[TrackerCard.handleYesNo] Note updated successfully', { 
+          noteId: existingAnswer.id 
+        });
+        
+        // Update the UI state by calling onToggleDay
+        // handleToggleDay now checks for existing answers and updates them
+        onToggleDay(tracker.id, selectedDate, answer);
+      } catch (error) {
+        console.error('[TrackerCard.handleYesNo] ERROR updating note', { 
+          noteId: existingAnswer.id, 
+          error 
+        });
+      }
     } else {
+      // Create new answer
+      console.log('[TrackerCard.handleYesNo] Creating new answer', { 
+        trackerId: tracker.id, 
+        selectedDate, 
+        answer 
+      });
       onToggleDay(tracker.id, selectedDate, answer);
     }
+    
     setShowYesNoModal(false);
     setSelectedDate(null);
     setExistingAnswer(null);
+    
+    console.log('[TrackerCard.handleYesNo] END', { 
+      trackerId: tracker.id, 
+      selectedDate, 
+      answer 
+    });
   };
 
   const handleCancelYesNoModal = () => {
@@ -753,6 +832,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             </div>
           );
         })}
+        {/* Right chevron for next 7 (move forward towards today) */}
+        {dateOffset > 0 && (
+          <button
+            className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+            onClick={() => setDateOffset(offset => Math.max(0, offset - 1))}
+            aria-label="Show next 7"
+          >
+            <span className="text-xl">&#8594;</span>
+          </button>
+        )}
         {/* Refresh icon to reset to default if offset > 0 */}
         {dateOffset > 0 && (
           <button
@@ -1012,20 +1101,20 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             <div className="flex gap-4">
               <button
                 onClick={() => handleYesNo('yes')}
-                className={`px-4 py-2 rounded-lg transition-colors
-                  ${existingAnswer && existingAnswer.answer === 'yes'
-                    ? 'bg-green-500 text-white'
-                    : (!existingAnswer ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500')}
+                className={`px-4 py-2 rounded-lg transition-colors cursor-pointer
+                  ${existingAnswer && existingAnswer.answer && existingAnswer.answer.toLowerCase() === 'yes'
+                    ? 'bg-green-600 text-white hover:bg-green-700 ring-2 ring-green-300'
+                    : 'bg-green-500 text-white hover:bg-green-600'}
                 `}
               >
                 Yes
               </button>
               <button
                 onClick={() => handleYesNo('no')}
-                className={`px-4 py-2 rounded-lg transition-colors
-                  ${existingAnswer && existingAnswer.answer === 'no'
-                    ? 'bg-red-500 text-white'
-                    : (!existingAnswer ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-gray-300 text-gray-500')}
+                className={`px-4 py-2 rounded-lg transition-colors cursor-pointer
+                  ${existingAnswer && existingAnswer.answer && existingAnswer.answer.toLowerCase() === 'no'
+                    ? 'bg-red-600 text-white hover:bg-red-700 ring-2 ring-red-300'
+                    : 'bg-red-500 text-white hover:bg-red-600'}
                 `}
               >
                 No

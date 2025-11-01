@@ -37,31 +37,41 @@ function EnhancedStats({ answers, tracker }) {
   
   // Filter answers based on time filter
   const getFilteredAnswers = () => {
-    if (timeFilter === 'all') {
-      return answers;
-    }
-    
     const now = moment();
-    let startDate;
+    let filterStartDate = null;
     
-    switch (timeFilter) {
-      case 'lastMonth':
-        startDate = moment().subtract(1, 'months').startOf('month');
-        break;
-      case 'last3Months':
-        startDate = moment().subtract(3, 'months').startOf('month');
-        break;
-      case 'ytd':
-        startDate = moment().startOf('year');
-        break;
-      case 'last365Days':
-        startDate = moment().subtract(365, 'days');
-        break;
-      default:
+    if (timeFilter === 'all') {
+      // When "all" is selected, use tracker's start date or earliest answer date
+      if (tracker.startDate) {
+        filterStartDate = moment(tracker.startDate);
+      } else if (answers.length > 0) {
+        const earliestAnswer = answers.reduce((earliest, ans) => {
+          return moment(ans.date).isBefore(moment(earliest)) ? ans.date : earliest;
+        }, answers[0].date);
+        filterStartDate = moment(earliestAnswer);
+      } else {
         return answers;
+      }
+    } else {
+      switch (timeFilter) {
+        case 'lastMonth':
+          filterStartDate = moment().subtract(1, 'months').startOf('month');
+          break;
+        case 'last3Months':
+          filterStartDate = moment().subtract(3, 'months').startOf('month');
+          break;
+        case 'ytd':
+          filterStartDate = moment().startOf('year');
+          break;
+        case 'last365Days':
+          filterStartDate = moment().subtract(365, 'days');
+          break;
+        default:
+          return answers;
+      }
     }
     
-    return answers.filter(ans => moment(ans.date).isSameOrAfter(startDate));
+    return answers.filter(ans => moment(ans.date).isSameOrAfter(filterStartDate));
   };
   
   const filteredAnswers = getFilteredAnswers();
@@ -126,6 +136,17 @@ function EnhancedStats({ answers, tracker }) {
   const lastDate = sorted[sorted.length - 1]?.date;
   const total = sorted.length;
 
+  // Calculate unmarked count for yes/no trackers
+  // Unmarked = dates between first and last check-in that don't have an answer
+  let unmarkedCount = null;
+  if (isYesNoTracker && firstDate && lastDate) {
+    const firstMoment = moment(firstDate);
+    const lastMoment = moment(lastDate);
+    const totalDays = lastMoment.diff(firstMoment, 'days') + 1;
+    const answeredDates = new Set(sorted.map(ans => moment(ans.date).format('YYYY-MM-DD')));
+    unmarkedCount = totalDays - answeredDates.size;
+  }
+
   // Calculate ages
   const firstDateAge = firstDate ? getAgeInStringFmt(new Date(firstDate)) : null;
   const lastDateAge = lastDate ? getAgeInStringFmt(new Date(lastDate)) : null;
@@ -148,15 +169,45 @@ function EnhancedStats({ answers, tracker }) {
 
   // Yes/No breakdown
   let yes = 0, no = 0, valueCount = 0;
+  const yesAnswers = [];
+  const noAnswers = [];
   sorted.forEach(ans => {
     if (typeof ans.answer === 'string') {
-      if (ans.answer.toLowerCase() === 'yes') yes++;
-      else if (ans.answer.toLowerCase() === 'no') no++;
-      else valueCount++;
+      if (ans.answer.toLowerCase() === 'yes') {
+        yes++;
+        yesAnswers.push(ans);
+      } else if (ans.answer.toLowerCase() === 'no') {
+        no++;
+        noAnswers.push(ans);
+      } else {
+        valueCount++;
+      }
     } else if (ans.value !== undefined) {
       valueCount++;
     }
   });
+
+  // Calculate first and last check-in for yes/no events
+  let firstYesDate = null, lastYesDate = null, firstYesDateAge = null, lastYesDateAge = null;
+  let firstNoDate = null, lastNoDate = null, firstNoDateAge = null, lastNoDateAge = null;
+  
+  if (isYesNoTracker) {
+    if (yesAnswers.length > 0) {
+      const sortedYes = [...yesAnswers].sort((a, b) => new Date(a.date) - new Date(b.date));
+      firstYesDate = sortedYes[0].date;
+      lastYesDate = sortedYes[sortedYes.length - 1].date;
+      firstYesDateAge = firstYesDate ? getAgeInStringFmt(new Date(firstYesDate)) : null;
+      lastYesDateAge = lastYesDate ? getAgeInStringFmt(new Date(lastYesDate)) : null;
+    }
+    
+    if (noAnswers.length > 0) {
+      const sortedNo = [...noAnswers].sort((a, b) => new Date(a.date) - new Date(b.date));
+      firstNoDate = sortedNo[0].date;
+      lastNoDate = sortedNo[sortedNo.length - 1].date;
+      firstNoDateAge = firstNoDate ? getAgeInStringFmt(new Date(firstNoDate)) : null;
+      lastNoDateAge = lastNoDate ? getAgeInStringFmt(new Date(lastNoDate)) : null;
+    }
+  }
 
   // Check if this is a value-based tracker
   const isValueTracker = tracker.type && tracker.type.toLowerCase() === 'value';
@@ -193,36 +244,74 @@ function EnhancedStats({ answers, tracker }) {
     completionRate = (total / daysBetween) * 100;
   }
 
-  // Prepare chart data (show last 30 check-ins)
-  const last30Answers = sorted.slice(-30);
+  // Prepare chart data - include all dates from start date to last check-in (or today)
+  const chartStartDate = timeFilter === 'all' && tracker.startDate 
+    ? moment(tracker.startDate)
+    : (sorted.length > 0 ? moment(sorted[0].date) : moment());
+  const chartEndDate = sorted.length > 0 ? moment(sorted[sorted.length - 1].date) : moment();
+  
+  // Generate all dates in range
+  const allDates = [];
+  const currentDate = moment(chartStartDate);
+  while (currentDate.isSameOrBefore(chartEndDate)) {
+    allDates.push(currentDate.format('YYYY-MM-DD'));
+    currentDate.add(1, 'day');
+  }
+  
+  // Create a map of answered dates
+  const answeredDatesMap = new Map();
+  sorted.forEach(ans => {
+    const dateKey = moment(ans.date).format('YYYY-MM-DD');
+    answeredDatesMap.set(dateKey, ans);
+  });
+  
+  // Prepare chart data with all dates
+  // For "All Events", show all dates; for other filters, limit to last 200 days if too many
+  const maxDaysToShow = timeFilter === 'all' ? Infinity : 200;
+  const datesToShow = allDates.length > maxDaysToShow ? allDates.slice(-maxDaysToShow) : allDates;
+  const chartLabels = datesToShow.map(date => moment(date).format('DD MMM YYYY'));
+  
   const chartData = {
-    labels: last30Answers.map(a => new Date(a.date).toLocaleDateString()),
+    labels: chartLabels,
     datasets: [
       {
         label: isYesNoTracker ? 'Yes' : 'Value',
-        data: last30Answers.map(a => {
-          if (typeof a.answer === 'string') {
-            // For yes/no: yes = 1 (above), no = -1 (below)
-            if (a.answer.toLowerCase() === 'yes') return 1;
-            if (a.answer.toLowerCase() === 'no') return -1;
-            return parseFloat(a.answer) || 0;
+        data: datesToShow.map(date => {
+          const answer = answeredDatesMap.get(date);
+          if (answer) {
+            if (typeof answer.answer === 'string') {
+              // For yes/no: yes = 1 (above), no = -1 (below)
+              if (answer.answer.toLowerCase() === 'yes') return 1;
+              if (answer.answer.toLowerCase() === 'no') return -1;
+              return parseFloat(answer.answer) || 0;
+            }
+            if (answer.value !== undefined) return parseFloat(answer.value) || 0;
           }
-          if (a.value !== undefined) return parseFloat(a.value) || 0;
-          return 0;
+          // For unmarked dates in yes/no trackers, show as 0 (yellow indicator)
+          // For other trackers, show as null (gap in line)
+          return isYesNoTracker ? 0 : null;
         }),
         // For yes/no trackers, use conditional colors per bar
         backgroundColor: isYesNoTracker
-          ? last30Answers.map(a => {
-              const answer = typeof a.answer === 'string' ? a.answer.toLowerCase() : '';
-              return answer === 'yes' ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)';
+          ? datesToShow.map(date => {
+              const answer = answeredDatesMap.get(date);
+              if (!answer) return 'rgba(234, 179, 8, 0.3)'; // Yellow for unmarked
+              const answerValue = typeof answer.answer === 'string' ? answer.answer.toLowerCase() : '';
+              return answerValue === 'yes' ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)';
             })
-          : 'rgba(34, 197, 94, 0.2)',
+          : datesToShow.map(date => {
+              return answeredDatesMap.has(date) ? 'rgba(34, 197, 94, 0.2)' : 'rgba(234, 179, 8, 0.3)';
+            }),
         borderColor: isYesNoTracker
-          ? last30Answers.map(a => {
-              const answer = typeof a.answer === 'string' ? a.answer.toLowerCase() : '';
-              return answer === 'yes' ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)';
+          ? datesToShow.map(date => {
+              const answer = answeredDatesMap.get(date);
+              if (!answer) return 'rgba(234, 179, 8, 0.8)'; // Yellow border for unmarked
+              const answerValue = typeof answer.answer === 'string' ? answer.answer.toLowerCase() : '';
+              return answerValue === 'yes' ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)';
             })
-          : 'rgb(34, 197, 94)',
+          : datesToShow.map(date => {
+              return answeredDatesMap.has(date) ? 'rgb(34, 197, 94)' : 'rgba(234, 179, 8, 0.8)';
+            }),
         borderWidth: isYesNoTracker ? 1 : 1,
         // Line chart specific properties
         tension: isYesNoTracker ? undefined : 0.2,
@@ -239,8 +328,12 @@ function EnhancedStats({ answers, tracker }) {
         callbacks: {
           label: function(context) {
             if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
-              return context.parsed.y === 1 ? 'Yes' : context.parsed.y === -1 ? 'No' : '';
+              if (context.parsed.y === 1) return 'Yes';
+              if (context.parsed.y === -1) return 'No';
+              if (context.parsed.y === 0 || context.parsed.y === null) return 'Unmarked';
+              return '';
             }
+            if (context.parsed.y === null) return 'Unmarked';
             return context.parsed.y;
           }
         }
@@ -292,17 +385,66 @@ function EnhancedStats({ answers, tracker }) {
       
       {/* Stats Section */}
       <div className="text-sm mb-4 space-y-1">
-        <div><span className="font-semibold">Total Check-ins:</span> {total}</div>
         <div className="flex items-center gap-4 flex-wrap">
-          <div>
-            <span className="font-semibold">First Check-in:</span> {firstDate ? new Date(firstDate).toLocaleDateString() : 'N/A'}
-            {firstDateAge && <span className="text-gray-500"> ({firstDateAge})</span>}
-          </div>
-          <div>
-            <span className="font-semibold">Last Check-in:</span> {lastDate ? new Date(lastDate).toLocaleDateString() : 'N/A'}
-            {lastDateAge && <span className="text-gray-500"> ({lastDateAge})</span>}
-          </div>
+          {tracker.type && (
+            <div><span className="font-semibold">Type:</span> {tracker.type}</div>
+          )}
+          {tracker.cadence && (
+            <div><span className="font-semibold">Cadence:</span> {tracker.cadence}</div>
+          )}
+          {tracker.startDate && (
+            <div>
+              <span className="font-semibold">Start Date:</span> {moment(tracker.startDate).format('DD MMM YYYY')}
+            </div>
+          )}
         </div>
+        <div><span className="font-semibold">Total Check-ins:</span> {total}</div>
+        {!isYesNoTracker && (
+          <div className="flex items-center gap-4 flex-wrap">
+            <div>
+              <span className="font-semibold">First Check-in:</span> {firstDate ? new Date(firstDate).toLocaleDateString() : 'N/A'}
+              {firstDateAge && <span className="text-gray-500"> ({firstDateAge})</span>}
+            </div>
+            <div>
+              <span className="font-semibold">Last Check-in:</span> {lastDate ? new Date(lastDate).toLocaleDateString() : 'N/A'}
+              {lastDateAge && <span className="text-gray-500"> ({lastDateAge})</span>}
+            </div>
+          </div>
+        )}
+        {isYesNoTracker && (
+          <>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div>
+                <span className="font-semibold">First Check-in:</span> {firstDate ? new Date(firstDate).toLocaleDateString() : 'N/A'}
+                {firstDateAge && <span className="text-gray-500"> ({firstDateAge})</span>}
+              </div>
+              <div>
+                <span className="font-semibold">Last Check-in:</span> {lastDate ? new Date(lastDate).toLocaleDateString() : 'N/A'}
+                {lastDateAge && <span className="text-gray-500"> ({lastDateAge})</span>}
+              </div>
+            </div>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div>
+                <span className="font-semibold">First Yes:</span> {firstYesDate ? new Date(firstYesDate).toLocaleDateString() : 'N/A'}
+                {firstYesDateAge && <span className="text-gray-500"> ({firstYesDateAge})</span>}
+              </div>
+              <div>
+                <span className="font-semibold">Last Yes:</span> {lastYesDate ? new Date(lastYesDate).toLocaleDateString() : 'N/A'}
+                {lastYesDateAge && <span className="text-gray-500"> ({lastYesDateAge})</span>}
+              </div>
+            </div>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div>
+                <span className="font-semibold">First No:</span> {firstNoDate ? new Date(firstNoDate).toLocaleDateString() : 'N/A'}
+                {firstNoDateAge && <span className="text-gray-500"> ({firstNoDateAge})</span>}
+              </div>
+              <div>
+                <span className="font-semibold">Last No:</span> {lastNoDate ? new Date(lastNoDate).toLocaleDateString() : 'N/A'}
+                {lastNoDateAge && <span className="text-gray-500"> ({lastNoDateAge})</span>}
+              </div>
+            </div>
+          </>
+        )}
         {totalDuration && (
           <div>
             <span className="font-semibold">Total Duration:</span> {totalDuration} (from first check-in to today)
@@ -314,9 +456,12 @@ function EnhancedStats({ answers, tracker }) {
           </div>
         )}
         {tracker.type && tracker.type.toLowerCase().includes('yes') && (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <div><span className="font-semibold">Yes:</span> {yes}</div>
             <div><span className="font-semibold">No:</span> {no}</div>
+            {unmarkedCount !== null && (
+              <div><span className="font-semibold">Unmarked:</span> {unmarkedCount}</div>
+            )}
           </div>
         )}
         {completionRate !== null && (

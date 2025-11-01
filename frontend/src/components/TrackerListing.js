@@ -59,6 +59,7 @@ const TrackerListing = () => {
   const [editingTracker, setEditingTracker] = useState(null);
   const [filterCadence, setFilterCadence] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [groupBy, setGroupBy] = useState('cadence'); // 'cadence' or 'type'
   const [trackerStats, setTrackerStats] = useState({});
   const [showAnswers, setShowAnswers] = useState(null);
   const [trackerAnswers, setTrackerAnswers] = useState({});
@@ -535,8 +536,9 @@ const TrackerListing = () => {
       if (cadence === 'yearly') groups.yearly.push(tracker);
       else if (cadence === 'monthly') groups.monthly.push(tracker);
       else if (cadence === 'weekly') {
-        // If you want to distinguish custom, you can add logic here
         groups.weekly.push(tracker);
+      } else if (cadence === 'custom') {
+        groups.custom.push(tracker);
       } else {
         groups.daily.push(tracker);
       }
@@ -544,84 +546,158 @@ const TrackerListing = () => {
     return groups;
   };
 
-  const pendingGroups = groupByCadence(pendingTrackers);
-  const completedGroups = groupByCadence(completedTrackers);
+  // Helper to group trackers by type
+  const groupByType = (trackers) => {
+    const groups = {};
+    trackers.forEach(tracker => {
+      const type = tracker.type ? tracker.type.toLowerCase() : 'other';
+      if (!groups[type]) {
+        groups[type] = [];
+      }
+      groups[type].push(tracker);
+    });
+    return groups;
+  };
+
+  // Use the selected grouping option
+  const getPendingGroups = () => {
+    return groupBy === 'type' ? groupByType(pendingTrackers) : groupByCadence(pendingTrackers);
+  };
+
+  const getCompletedGroups = () => {
+    return groupBy === 'type' ? groupByType(completedTrackers) : groupByCadence(completedTrackers);
+  };
+
+  const pendingGroups = getPendingGroups();
+  const completedGroups = getCompletedGroups();
 
   const renderGroupedTrackers = (groups, sectionType) => {
     // sectionType: 'pending' or 'completed' for different shades
     const sectionBg = sectionType === 'pending' ? 'bg-blue-50' : 'bg-green-50';
+    
+    // Format group title for display
+    const formatGroupTitle = (key) => {
+      if (groupBy === 'type') {
+        // Capitalize first letter and handle common types
+        const typeMap = {
+          'value': 'Value',
+          'yes/no': 'Yes/No',
+          'yes,no': 'Yes/No',
+          'yesno': 'Yes/No',
+          'other': 'Other'
+        };
+        return typeMap[key] || key.charAt(0).toUpperCase() + key.slice(1);
+      } else {
+        // Cadence-based grouping
+        const cadenceMap = {
+          'yearly': 'Yearly',
+          'monthly': 'Monthly',
+          'weekly': 'Weekly',
+          'daily': 'Daily',
+          'custom': 'Custom'
+        };
+        return cadenceMap[key] || key.charAt(0).toUpperCase() + key.slice(1);
+      }
+    };
+    
     return (
       <div className={`${sectionBg} rounded-lg p-4 mb-6`}>
-        {groups.yearly.length > 0 && (
-          <div className="ml-8">
-            <h3 className="text-lg font-semibold mt-4 mb-2">Yearly</h3>
-            <TrackerGrid 
-              trackers={groups.yearly} 
-              onToggleDay={handleToggleDay} 
-              trackerAnswers={trackerAnswers} 
-              onEdit={handleEditTracker}
-              isFocusMode={isFocusMode}
-              isDevMode={isDevMode}
-            />
-          </div>
-        )}
-        {groups.monthly.length > 0 && (
-          <div className="ml-8">
-            <h3 className="text-lg font-semibold mt-4 mb-2">Monthly</h3>
-            <TrackerGrid 
-              trackers={groups.monthly} 
-              onToggleDay={handleToggleDay} 
-              trackerAnswers={trackerAnswers} 
-              onEdit={handleEditTracker}
-              isFocusMode={isFocusMode}
-            />
-          </div>
-        )}
-        {groups.weekly.length > 0 && (
-          <div className="ml-8">
-            <h3 className="text-lg font-semibold mt-4 mb-2">Weekly</h3>
-            <TrackerGrid 
-              trackers={groups.weekly} 
-              onToggleDay={handleToggleDay} 
-              trackerAnswers={trackerAnswers} 
-              onEdit={handleEditTracker}
-              isFocusMode={isFocusMode}
-            />
-          </div>
-        )}
-        {groups.daily.length > 0 && (
-          <div className="ml-8">
-            <h3 className="text-lg font-semibold mt-4 mb-2">Daily</h3>
-            <TrackerGrid 
-              trackers={groups.daily} 
-              onToggleDay={handleToggleDay} 
-              trackerAnswers={trackerAnswers} 
-              onEdit={handleEditTracker}
-              isFocusMode={isFocusMode}
-            />
-        </div>
+        {groupBy === 'cadence' ? (
+          // Render cadence-based groups
+          <>
+            {groups.yearly && groups.yearly.length > 0 && (
+              <div className="ml-8">
+                <h3 className="text-lg font-semibold mt-4 mb-2">Yearly</h3>
+                <TrackerGrid 
+                  trackers={groups.yearly} 
+                  onToggleDay={handleToggleDay} 
+                  trackerAnswers={trackerAnswers} 
+                  onEdit={handleEditTracker}
+                  isFocusMode={isFocusMode}
+                  isDevMode={isDevMode}
+                />
+              </div>
+            )}
+            {groups.monthly && groups.monthly.length > 0 && (
+              <div className="ml-8">
+                <h3 className="text-lg font-semibold mt-4 mb-2">Monthly</h3>
+                <TrackerGrid 
+                  trackers={groups.monthly} 
+                  onToggleDay={handleToggleDay} 
+                  trackerAnswers={trackerAnswers} 
+                  onEdit={handleEditTracker}
+                  isFocusMode={isFocusMode}
+                  isDevMode={isDevMode}
+                />
+              </div>
+            )}
+            {groups.weekly && groups.weekly.length > 0 && (
+              <div className="ml-8">
+                <h3 className="text-lg font-semibold mt-4 mb-2">Weekly</h3>
+                <TrackerGrid 
+                  trackers={groups.weekly} 
+                  onToggleDay={handleToggleDay} 
+                  trackerAnswers={trackerAnswers} 
+                  onEdit={handleEditTracker}
+                  isFocusMode={isFocusMode}
+                  isDevMode={isDevMode}
+                />
+              </div>
+            )}
+            {groups.daily && groups.daily.length > 0 && (
+              <div className="ml-8">
+                <h3 className="text-lg font-semibold mt-4 mb-2">Daily</h3>
+                <TrackerGrid 
+                  trackers={groups.daily} 
+                  onToggleDay={handleToggleDay} 
+                  trackerAnswers={trackerAnswers} 
+                  onEdit={handleEditTracker}
+                  isFocusMode={isFocusMode}
+                  isDevMode={isDevMode}
+                />
+              </div>
+            )}
+            {groups.custom && groups.custom.length > 0 && (
+              <div className="ml-8">
+                <h3 className="text-lg font-semibold mt-4 mb-2">Custom</h3>
+                <TrackerGrid 
+                  trackers={groups.custom} 
+                  onToggleDay={handleToggleDay} 
+                  trackerAnswers={trackerAnswers} 
+                  onEdit={handleEditTracker}
+                  isFocusMode={isFocusMode}
+                  isDevMode={isDevMode}
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          // Render type-based groups
+          Object.keys(groups).sort().map(typeKey => {
+            const typeTrackers = groups[typeKey];
+            if (typeTrackers && typeTrackers.length > 0) {
+              return (
+                <div key={typeKey} className="ml-8">
+                  <h3 className="text-lg font-semibold mt-4 mb-2">{formatGroupTitle(typeKey)}</h3>
+                  <TrackerGrid 
+                    trackers={typeTrackers} 
+                    onToggleDay={handleToggleDay} 
+                    trackerAnswers={trackerAnswers} 
+                    onEdit={handleEditTracker}
+                    isFocusMode={isFocusMode}
+                    isDevMode={isDevMode}
+                  />
+                </div>
+              );
+            }
+            return null;
+          })
         )}
       </div>
     );
   };
 
   const totalCount = pendingTrackers.length + completedTrackers.length;
-
-  // Remove grouping for pending section
-  const renderPendingTrackers = () => {
-    return (
-      <div className={`bg-blue-50 rounded-lg p-4 mb-6`}>
-        <TrackerGrid 
-          trackers={pendingTrackers} 
-          onToggleDay={handleToggleDay} 
-          trackerAnswers={trackerAnswers} 
-          onEdit={handleEditTracker}
-          isFocusMode={isFocusMode}
-          isDevMode={isDevMode}
-        />
-      </div>
-    );
-  };
 
   return (
     <div className="p-8">
@@ -662,8 +738,8 @@ const TrackerListing = () => {
         </div>
       </div>
       
-      {/* Search Box */}
-      <div className="mb-6">
+      {/* Search Box and Grouping Option */}
+      <div className="mb-6 flex items-center gap-4 flex-wrap">
         <div className="relative max-w-md">
           <input
             type="text"
@@ -686,13 +762,26 @@ const TrackerListing = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
+        
+        {/* Group By Selector */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Group by:</label>
+          <select
+            value={groupBy}
+            onChange={(e) => setGroupBy(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+          >
+            <option value="cadence">Cadence</option>
+            <option value="type">Type</option>
+          </select>
+        </div>
       </div>
       <div className="bg-blue-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-blue-200">
         <h2 className="text-xl font-semibold">
           Check-in Pending ({pendingTrackers.length}/{totalCount})
         </h2>
       </div>
-      {renderPendingTrackers()}
+      {renderGroupedTrackers(pendingGroups, 'pending')}
       <div className="bg-green-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-green-200 mt-8 flex items-center justify-between cursor-pointer" onClick={() => setCompletedCollapsed(c => !c)}>
         <h2 className="text-xl font-semibold">
           Check-in Completed ({completedTrackers.length}/{totalCount})

@@ -1696,16 +1696,20 @@ event_tags:${expense.tag.join(',')}`;
       <EditEventModal
         isOpen={showEditEventModal}
         note={editingEvent}
-        onSave={(content) => {
+        onSave={async (content) => {
+          let result;
           if (editingEvent) {
             handleEventUpdated(editingEvent.id, content);
+            result = editingEvent; // Return the event for timeline linking
           } else {
-            handleAddEvent(content);
+            result = await handleAddEvent(content);
           }
           setShowEditEventModal(false);
           setEditingEvent(null);
           setSelectedDate(null);
+          return result; // Return the event for timeline linking
         }}
+        onTimelineUpdated={handleTimelineUpdated}
         onCancel={() => {
           setShowEditEventModal(false);
           setEditingEvent(null);

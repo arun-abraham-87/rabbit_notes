@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUniqueTags } from '../utils/EventUtils';
-import { deleteNoteById } from '../utils/ApiUtils';
+import { deleteNoteById, updateNoteById, getNoteById } from '../utils/ApiUtils';
 import ConfirmationModal from './ConfirmationModal';
 
-const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '' }) => {
+const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '', onTimelineUpdated }) => {
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -20,6 +20,8 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [price, setPrice] = useState('');
   const [normalEditMode, setNormalEditMode] = useState(false);
   const [normalEditContent, setNormalEditContent] = useState('');
+  const [selectedTimeline, setSelectedTimeline] = useState('');
+  const [timelines, setTimelines] = useState([]);
 
   const existingTags = getAllUniqueTags(notes || []);
 
@@ -104,7 +106,39 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     if (priceLine) {
       setPrice(priceLine.replace('event_$:', '').trim());
     }
+
+    // Parse timeline link if exists
+    const timelineLinkLine = lines.find(line => line.startsWith('meta::linked_to_timeline::'));
+    if (timelineLinkLine) {
+      const timelineId = timelineLinkLine.replace('meta::linked_to_timeline::', '').trim();
+      setSelectedTimeline(timelineId);
+    }
   }, [note]);
+
+  // Load timelines when modal opens
+  useEffect(() => {
+    if (isOpen && notes) {
+      // Filter notes that contain meta::timeline tag
+      const timelineNotes = notes.filter(note => 
+        note.content && note.content.includes('meta::timeline')
+      );
+      
+      // Extract timeline titles (first line of each note)
+      const timelineList = timelineNotes.map(note => {
+        const lines = note.content.split('\n');
+        const firstLine = lines.find(line => 
+          line.trim() && !line.trim().startsWith('meta::') && line.trim() !== 'Closed'
+        );
+        return {
+          id: note.id,
+          title: firstLine || 'Untitled Timeline',
+          content: note.content
+        };
+      });
+      
+      setTimelines(timelineList);
+    }
+  }, [isOpen, notes]);
 
   const formatDateWithNoonTime = (dateStr) => {
     if (!dateStr) return '';
@@ -133,7 +167,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!description.trim() || !eventDate) return;
 
     let content = `event_description:${description.trim()}\n`;
@@ -164,9 +198,21 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       content += `\nevent_tags:${finalTags}`;
     }
 
-    // Add price if it exists and purchase tag is present
-    if (price && finalTags.toLowerCase().includes('purchase')) {
-      content += `\nevent_$:${price}`;
+    // Add price if it exists (always, not just for purchases)
+    if (price && price.trim()) {
+      content += `\nevent_$:${price.trim()}`;
+    }
+
+    // Track timeline link changes
+    const isNewTimelineLink = selectedTimeline && (!note || !note.content || !note.content.includes(`meta::linked_to_timeline::${selectedTimeline}`));
+    const previousTimelineLink = note && note.content 
+      ? note.content.split('\n').find(line => line.startsWith('meta::linked_to_timeline::'))
+      : null;
+    const previousTimelineId = previousTimelineLink ? previousTimelineLink.replace('meta::linked_to_timeline::', '').trim() : null;
+
+    // Add timeline link if selected
+    if (selectedTimeline) {
+      content += `\nmeta::linked_to_timeline::${selectedTimeline}`;
     }
 
     // Add meta information as the last lines
@@ -175,7 +221,104 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       content += `\nmeta::event_deadline:true`;
     }
 
-    onSave(content);
+    // Save the event and get the result
+    const savedEvent = await onSave(content);
+    const eventId = savedEvent?.id || note?.id;
+
+    // If timeline link changed, update the timeline note
+    if (selectedTimeline && isNewTimelineLink && eventId) {
+      try {
+        // Get the latest timeline note
+        const timelineNote = await getNoteById(selectedTimeline);
+        if (timelineNote && timelineNote.content) {
+          const lines = timelineNote.content.split('\n');
+          const otherLines = [];
+          const allLinkedEventIds = new Set();
+          
+          // Process existing linked events
+          lines.forEach((line) => {
+            if (line.trim().startsWith('meta::linked_from_events::')) {
+              const eventIdsString = line.replace('meta::linked_from_events::', '').trim();
+              const eventIds = eventIdsString.split(',').map(id => id.trim()).filter(id => id);
+              eventIds.forEach(id => allLinkedEventIds.add(id));
+            } else {
+              otherLines.push(line);
+            }
+          });
+          
+          // Check if event is already linked
+          if (!allLinkedEventIds.has(eventId)) {
+            allLinkedEventIds.add(eventId);
+            
+            // Build updated content with each event on its own line
+            let updatedTimelineContent = otherLines.join('\n').trim();
+            if (allLinkedEventIds.size > 0) {
+              const linkedEventLines = Array.from(allLinkedEventIds).map(eId => 
+                `meta::linked_from_events::${eId}`
+              );
+              updatedTimelineContent = updatedTimelineContent + '\n' + linkedEventLines.join('\n');
+            }
+            
+            await updateNoteById(selectedTimeline, updatedTimelineContent);
+            
+            // Notify parent component that timeline was updated
+            if (onTimelineUpdated) {
+              const updatedTimeline = await getNoteById(selectedTimeline);
+              onTimelineUpdated(selectedTimeline, updatedTimeline.content || updatedTimelineContent);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[EditEventModal] Error updating timeline note:', error);
+        // Don't fail the save if timeline update fails
+      }
+    }
+
+    // If timeline link was removed, update the timeline note
+    if (previousTimelineId && previousTimelineId !== selectedTimeline && eventId) {
+      try {
+        const timelineNote = await getNoteById(previousTimelineId);
+        if (timelineNote && timelineNote.content) {
+          const lines = timelineNote.content.split('\n');
+          const otherLines = [];
+          const allLinkedEventIds = new Set();
+          
+          // Process existing linked events
+          lines.forEach((line) => {
+            if (line.trim().startsWith('meta::linked_from_events::')) {
+              const eventIdsString = line.replace('meta::linked_from_events::', '').trim();
+              const eventIds = eventIdsString.split(',').map(id => id.trim()).filter(id => id);
+              eventIds.forEach(id => allLinkedEventIds.add(id));
+            } else {
+              otherLines.push(line);
+            }
+          });
+          
+          // Remove the event ID
+          allLinkedEventIds.delete(eventId);
+          
+          // Build updated content
+          let updatedTimelineContent = otherLines.join('\n').trim();
+          if (allLinkedEventIds.size > 0) {
+            const linkedEventLines = Array.from(allLinkedEventIds).map(eId => 
+              `meta::linked_from_events::${eId}`
+            );
+            updatedTimelineContent = updatedTimelineContent + '\n' + linkedEventLines.join('\n');
+          }
+          
+          await updateNoteById(previousTimelineId, updatedTimelineContent);
+          
+          // Notify parent component that timeline was updated
+          if (onTimelineUpdated) {
+            const updatedTimeline = await getNoteById(previousTimelineId);
+            onTimelineUpdated(previousTimelineId, updatedTimeline.content || updatedTimelineContent);
+          }
+        }
+      } catch (error) {
+        console.error('[EditEventModal] Error removing event from timeline:', error);
+        // Don't fail the save if timeline update fails
+      }
+    }
 
     // Reset form
     setDescription('');
@@ -191,6 +334,9 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setEventNotes('');
     setIsDeadline(false);
     setPrice('');
+    setSelectedTimeline('');
+    setNormalEditMode(false);
+    setNormalEditContent('');
   };
 
   const handleDelete = async () => {
@@ -244,6 +390,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setEventNotes('');
     setIsDeadline(false);
     setPrice('');
+    setSelectedTimeline('');
     setNormalEditMode(false);
     setNormalEditContent('');
 
@@ -539,22 +686,43 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                 </label>
               </div>
 
-              {tags.toLowerCase().includes('purchase') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Price ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter price..."
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Price ($) (optional)
+                </label>
+                <input
+                  type="number"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter price..."
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Link to Timeline (optional)
+                </label>
+                <select
+                  value={selectedTimeline}
+                  onChange={(e) => setSelectedTimeline(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">No timeline</option>
+                  {timelines.map(timeline => (
+                    <option key={timeline.id} value={timeline.id}>
+                      {timeline.title}
+                    </option>
+                  ))}
+                </select>
+                {timelines.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    No timelines found. Create a timeline by adding <code className="bg-gray-200 px-1 rounded">meta::timeline</code> to a note.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="mt-6 flex justify-between">

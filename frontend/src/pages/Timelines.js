@@ -32,7 +32,13 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewTimelineForm, setShowNewTimelineForm] = useState(false);
   const [newTimelineTitle, setNewTimelineTitle] = useState('');
-  const [collapsedTimelines, setCollapsedTimelines] = useState(() => loadCollapseStates());
+  // Initialize with saved states from localStorage
+  // Use a function to ensure it loads on mount
+  const [collapsedTimelines, setCollapsedTimelines] = useState(() => {
+    const saved = loadCollapseStates();
+    console.log('[Timelines] Initial state from localStorage:', Array.from(saved));
+    return saved;
+  });
   const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
   const [unlinkConfirmation, setUnlinkConfirmation] = useState({ isOpen: false, timelineId: null, eventId: null });
   const [addLinkModal, setAddLinkModal] = useState({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' });
@@ -48,10 +54,15 @@ const Timelines = ({ notes, updateNote, addNote }) => {
   };
 
   // Restore collapse states when navigating to timelines page
+  // This effect runs when navigating back to /timelines to restore saved states
   useEffect(() => {
     if (location.pathname === '/timelines') {
       const savedStates = loadCollapseStates();
+      console.log('[Timelines] Pathname changed to /timelines, saved states:', Array.from(savedStates));
+      // Always restore from localStorage when navigating to /timelines
+      // This ensures the state is persisted across page navigation
       setCollapsedTimelines(savedStates);
+      console.log('[Timelines] Restored collapse states from localStorage:', Array.from(savedStates));
     }
   }, [location.pathname]);
 
@@ -65,34 +76,28 @@ const Timelines = ({ notes, updateNote, addNote }) => {
       // This is important when notes are updated (e.g., when events are linked)
       setTimelineNotes(filteredNotes);
       
-      // When notes change, update collapse states to remove deleted timelines
-      const savedStates = loadCollapseStates();
+      // When notes change, ONLY remove references to deleted timelines
+      // Do NOT merge with localStorage - that would overwrite current user interactions
+      // The state is already initialized from localStorage on mount
+      // And restored from localStorage when navigating back to /timelines
       const currentNoteIds = filteredNotes.map(note => note.id);
       
-      // Merge saved states with current timelines
-      // Keep saved states for existing timelines, default new timelines to expanded (not in collapsed set)
-      const mergedStates = new Set();
-      
-      // Add saved states for timelines that still exist
-      savedStates.forEach(noteId => {
-        if (currentNoteIds.includes(noteId)) {
-          mergedStates.add(noteId);
-        }
-      });
-      
-      // Update collapse states to remove references to deleted timelines
-      // Only update if there are actual changes to avoid unnecessary re-renders
+      // Only clean up: remove any collapsed IDs that no longer exist in current notes
       setCollapsedTimelines(prev => {
-        const prevArray = Array.from(prev).sort();
-        const mergedArray = Array.from(mergedStates).sort();
+        // Filter out any timeline IDs that no longer exist
+        const validCollapsedIds = Array.from(prev).filter(id => currentNoteIds.includes(id));
         
-        // Check if they're different
-        if (prevArray.length !== mergedArray.length) {
-          return mergedStates;
+        // Only update if we actually removed some IDs (deleted timelines)
+        if (validCollapsedIds.length !== prev.size) {
+          const cleanedSet = new Set(validCollapsedIds);
+          console.log('[Timelines] Removed deleted timeline IDs from collapse state:', Array.from(prev), '->', Array.from(cleanedSet));
+          // Save the cleaned state
+          saveCollapseStates(cleanedSet);
+          return cleanedSet;
         }
         
-        const hasChanges = prevArray.some((id, index) => id !== mergedArray[index]);
-        return hasChanges ? mergedStates : prev;
+        // No changes needed - preserve current state
+        return prev;
       });
     } else if (notes && notes.length === 0) {
       // Handle empty notes array

@@ -16,6 +16,12 @@ export const addNewNoteCommon = async (content, tags, noteDate) => {
     return await response.json();
 };
 
+export const getNoteById = async (id) => {
+    const response = await fetch(`${API_BASE_URL}/notes/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch note');
+    return await response.json();
+};
+
 export const updateNoteById = async (id, updatedContent) => {
     
     const reorderedContent = reorderMetaTags(updatedContent);

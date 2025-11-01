@@ -1344,6 +1344,14 @@ event_tags:${expense.tag.join(',')}`;
     ));
   };
 
+  const handleTimelineUpdated = (timelineId, updatedContent) => {
+    // Update the timeline note in allNotes to reflect the linked events
+    setAllNotes(prevNotes => prevNotes.map(note => 
+      note.id === timelineId ? { ...note, content: updatedContent } : note
+    ));
+    console.log('[EventsPage] Timeline note updated in allNotes:', timelineId);
+  };
+
   // Helper function to check if any filters are active
   const hasActiveFilters = () => {
     return searchQuery || selectedTags.length > 0 || selectedYear || selectedMonth || selectedDay;
@@ -1666,6 +1674,7 @@ event_tags:${expense.tag.join(',')}`;
           events={calendarEvents}
           onAcknowledgeEvent={handleAcknowledgeEvent}
           onEventUpdated={handleEventUpdated}
+          onTimelineUpdated={handleTimelineUpdated}
           onDateClick={handleDateClick}
           notes={allNotes}
           onDelete={handleDelete}

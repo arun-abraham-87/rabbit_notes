@@ -252,7 +252,7 @@ const MainContentArea = ({
           <Route path="/purchases" element={
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                <Purchases allNotes={allNotes} onCreateNote={handleCreatePurchaseNote} />
+                <Purchases allNotes={allNotes} onCreateNote={handleCreatePurchaseNote} setAllNotes={setAllNotes} />
               </div>
             </div>
           } />

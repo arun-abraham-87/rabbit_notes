@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MagnifyingGlassIcon, XMarkIcon, ChevronDownIcon, ChevronRightIcon, DocumentTextIcon, PlusIcon } from '@heroicons/react/24/outline';
+import EditEventModal from '../components/EditEventModal';
+import { createNote } from '../utils/ApiUtils';
+import { addNoteToIndex } from '../utils/SearchUtils';
 
 // Function to extract event details from note content
 const getEventDetails = (content) => {
@@ -147,84 +150,40 @@ const formatDateWithAge = (dateString) => {
   return `${dayOfWeek} ${formattedDate} (${age})`;
 };
 
-const Purchases = ({ allNotes, onCreateNote }) => {
+const Purchases = ({ allNotes, onCreateNote, setAllNotes }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedYears, setCollapsedYears] = useState(new Set());
   const [collapsedMonths, setCollapsedMonths] = useState(new Set());
   const [filterByAmount, setFilterByAmount] = useState(null);
-  const [showAddPurchaseModal, setShowAddPurchaseModal] = useState(false);
-  const [newPurchases, setNewPurchases] = useState([{
-    description: '',
-    date: '',
-    tags: '',
-    notes: '',
-    amount: ''
-  }]);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
 
   const handleViewNote = (eventId) => {
     // Navigate to notes page and filter by note ID
     navigate(`/notes?note=${eventId}`);
   };
 
-  const handleAddPurchase = async () => {
-    // Validate all purchases
-    const validPurchases = newPurchases.filter(p => p.description && p.date && p.amount);
-    
-    if (validPurchases.length === 0) {
-      alert('Please fill in description, date, and amount for at least one purchase');
-      return;
-    }
-
-    // Create all purchases
-    for (const purchase of validPurchases) {
-      // Add time 12:00 if only date is provided (format: YYYY-MM-DD)
-      let dateTime = purchase.date;
-      if (dateTime && !dateTime.includes('T')) {
-        dateTime = `${purchase.date}T12:00`;
+  // Handle adding a new purchase via EditEventModal (like EventsPage and Timelines)
+  const handleAddPurchase = async (content) => {
+    try {
+      const response = await createNote(content);
+      console.log('[Purchases] handleAddPurchase response:', response);
+      
+      // Add the new purchase to notes via setAllNotes (which updates App's allNotes)
+      if (setAllNotes) {
+        setAllNotes(prevNotes => [...prevNotes, response]);
       }
-
-      const noteContent = `event_description: ${purchase.description}
-event_date: ${dateTime}
-event_tags: ${purchase.tags || 'purchase'}
-event_notes: ${purchase.notes || ''}
-event_$: ${purchase.amount}
-meta::event`;
-
-      if (onCreateNote) {
-        await onCreateNote(noteContent);
+      
+      // Add to search index
+      if (response && response.content) {
+        addNoteToIndex(response);
       }
+      
+      return response; // Return the note object with id
+    } catch (error) {
+      console.error('Error adding purchase:', error);
+      throw error;
     }
-
-    // Reset form and close modal
-    setNewPurchases([{
-      description: '',
-      date: '',
-      tags: '',
-      notes: '',
-      amount: ''
-    }]);
-    setShowAddPurchaseModal(false);
-  };
-
-  const handleInputChange = (index, field, value) => {
-    setNewPurchases(prev => prev.map((purchase, i) => 
-      i === index ? { ...purchase, [field]: value } : purchase
-    ));
-  };
-
-  const handleAddAnother = () => {
-    setNewPurchases(prev => [...prev, {
-      description: '',
-      date: '',
-      tags: '',
-      notes: '',
-      amount: ''
-    }]);
-  };
-
-  const handleRemovePurchase = (index) => {
-    setNewPurchases(prev => prev.filter((_, i) => i !== index));
   };
 
   const toggleYear = (year) => {
@@ -395,7 +354,7 @@ meta::event`;
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Purchases</h1>
         <button
-          onClick={() => setShowAddPurchaseModal(true)}
+          onClick={() => setShowEditEventModal(true)}
           className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
         >
           <PlusIcon className="h-5 w-5" />
@@ -632,150 +591,27 @@ meta::event`;
         </div>
       )}
 
-      {/* Add Purchase Modal */}
-      {showAddPurchaseModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-10">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 my-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Add Purchases ({newPurchases.length})</h2>
-              <button
-                onClick={() => {
-                  setShowAddPurchaseModal(false);
-                  setNewPurchases([{
-                    description: '',
-                    date: '',
-                    tags: '',
-                    notes: '',
-                    amount: ''
-                  }]);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-              {newPurchases.map((purchase, index) => (
-                <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-semibold text-gray-700">Purchase {index + 1}</h3>
-                    {newPurchases.length > 1 && (
-                      <button
-                        onClick={() => handleRemovePurchase(index)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Description *
-                      </label>
-                      <input
-                        type="text"
-                        value={purchase.description}
-                        onChange={(e) => handleInputChange(index, 'description', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="What did you buy?"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Date *
-                        </label>
-                        <input
-                          type="date"
-                          value={purchase.date}
-                          onChange={(e) => handleInputChange(index, 'date', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Amount *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={purchase.amount}
-                          onChange={(e) => handleInputChange(index, 'amount', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tags
-                      </label>
-                      <input
-                        type="text"
-                        value={purchase.tags}
-                        onChange={(e) => handleInputChange(index, 'tags', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="purchase, food, etc."
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Notes
-                      </label>
-                      <textarea
-                        value={purchase.notes}
-                        onChange={(e) => handleInputChange(index, 'notes', e.target.value)}
-                        rows={2}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="Additional notes..."
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-between items-center mt-6">
-              <button
-                onClick={handleAddAnother}
-                className="px-4 py-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-              >
-                + Add Another Purchase
-              </button>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowAddPurchaseModal(false);
-                    setNewPurchases([{
-                      description: '',
-                      date: '',
-                      tags: '',
-                      notes: '',
-                      amount: ''
-                    }]);
-                  }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddPurchase}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Add {newPurchases.filter(p => p.description && p.date && p.amount).length} Purchase(s)
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* EditEventModal for adding purchases */}
+      <EditEventModal
+        isOpen={showEditEventModal}
+        note={null} // Always null for adding new purchases
+        onSave={async (content) => {
+          const result = await handleAddPurchase(content);
+          setShowEditEventModal(false);
+          return result;
+        }}
+        onCancel={() => {
+          setShowEditEventModal(false);
+        }}
+        onSwitchToNormalEdit={() => {
+          setShowEditEventModal(false);
+        }}
+        onDelete={() => {
+          // Delete not applicable for new purchases
+        }}
+        notes={allNotes}
+        prePopulatedTags="purchase"
+      />
     </div>
   );
 };

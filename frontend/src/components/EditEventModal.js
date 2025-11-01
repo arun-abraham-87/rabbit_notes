@@ -9,9 +9,6 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [endDate, setEndDate] = useState('');
   const [location, setLocation] = useState('');
   const [showEndDate, setShowEndDate] = useState(false);
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrenceType, setRecurrenceType] = useState('daily');
-  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [tags, setTags] = useState(prePopulatedTags);
   const [tagInput, setTagInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -61,7 +58,6 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     if (endDateLine) {
       const dateStr = endDateLine.replace('event_end_date:', '').trim();
       setEndDate(dateStr.split('T')[0]);
-      setShowEndDate(true);
     }
 
     // Parse location
@@ -74,19 +70,6 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     const tagsLine = lines.find(line => line.startsWith('event_tags:'));
     if (tagsLine) {
       setTags(tagsLine.replace('event_tags:', '').trim());
-    }
-
-    // Parse recurring info
-    const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
-    if (recurringLine) {
-      setIsRecurring(true);
-      setRecurrenceType(recurringLine.replace('event_recurring_type:', '').trim());
-    }
-
-    // Parse recurring end date
-    const recurringEndLine = lines.find(line => line.startsWith('event_recurring_end:'));
-    if (recurringEndLine) {
-      setRecurrenceEndDate(recurringEndLine.replace('event_recurring_end:', '').trim());
     }
 
     // Parse notes
@@ -173,7 +156,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     let content = `event_description:${description.trim()}\n`;
     content += `event_date:${formatDateWithNoonTime(eventDate)}`;
 
-    if (showEndDate && endDate) {
+    if (endDate) {
       content += `\nevent_end_date:${formatDateWithNoonTime(endDate)}`;
     }
     if (location) {
@@ -181,12 +164,6 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     }
     if (eventNotes) {
       content += `\nevent_notes:${eventNotes}`;
-    }
-    if (isRecurring) {
-      content += `\nevent_recurring_type:${recurrenceType}`;
-      if (recurrenceEndDate) {
-        content += `\nevent_recurring_end:${recurrenceEndDate}`;
-      }
     }
 
     // Add tags if any (including deadline tag if needed)
@@ -326,9 +303,6 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setEndDate('');
     setLocation('');
     setShowEndDate(false);
-    setIsRecurring(false);
-    setRecurrenceType('daily');
-    setRecurrenceEndDate('');
     setTags('');
     setTagInput('');
     setEventNotes('');
@@ -369,9 +343,6 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     if (new Date(endDate) <= new Date(e.target.value)) {
       setEndDate(e.target.value);
     }
-    if (new Date(recurrenceEndDate) <= new Date(e.target.value)) {
-      setRecurrenceEndDate(e.target.value);
-    }
   };
 
   // Handle cancel button click
@@ -382,9 +353,6 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setEndDate('');
     setLocation('');
     setShowEndDate(false);
-    setIsRecurring(false);
-    setRecurrenceType('daily');
-    setRecurrenceEndDate('');
     setTags('');
     setTagInput('');
     setEventNotes('');
@@ -481,6 +449,19 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
               // Form edit mode: show structured form
               <>
             <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isDeadline"
+                  checked={isDeadline}
+                  onChange={(e) => setIsDeadline(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="isDeadline" className="text-sm text-gray-600">
+                  Mark as deadline
+                </label>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description
@@ -520,84 +501,56 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="showEndDate"
-                  checked={showEndDate}
-                  onChange={(e) => {
-                    setShowEndDate(e.target.checked);
-                    if (!e.target.checked) {
-                      setEndDate('');
-                    }
-                  }}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="showEndDate" className="text-sm text-gray-600">
-                  Add end date
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Date (optional)
                 </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={eventDate}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
-              {showEndDate && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    min={eventDate}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isRecurring"
-                  checked={isRecurring}
-                  onChange={(e) => setIsRecurring(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="isRecurring" className="text-sm text-gray-600">
-                  Recurring event
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Price ($) (optional)
                 </label>
+                <input
+                  type="number"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter price..."
+                  min="0"
+                  step="0.01"
+                />
               </div>
 
-              {isRecurring && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Recurrence Type
-                    </label>
-                    <select
-                      value={recurrenceType}
-                      onChange={(e) => setRecurrenceType(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="yearly">Yearly</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Recurrence End Date (optional)
-                    </label>
-                    <input
-                      type="date"
-                      value={recurrenceEndDate}
-                      onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                      min={eventDate}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Link to Timeline (optional)
+                </label>
+                <select
+                  value={selectedTimeline}
+                  onChange={(e) => setSelectedTimeline(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">No timeline</option>
+                  {timelines.map(timeline => (
+                    <option key={timeline.id} value={timeline.id}>
+                      {timeline.title}
+                    </option>
+                  ))}
+                </select>
+                {timelines.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    No timelines found. Create a timeline by adding <code className="bg-gray-200 px-1 rounded">meta::timeline</code> to a note.
+                  </p>
+                )}
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -670,57 +623,6 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                       </span>
                     ))}
                   </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isDeadline"
-                  checked={isDeadline}
-                  onChange={(e) => setIsDeadline(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="isDeadline" className="text-sm text-gray-600">
-                  Mark as deadline
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Price ($) (optional)
-                </label>
-                <input
-                  type="number"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter price..."
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Link to Timeline (optional)
-                </label>
-                <select
-                  value={selectedTimeline}
-                  onChange={(e) => setSelectedTimeline(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">No timeline</option>
-                  {timelines.map(timeline => (
-                    <option key={timeline.id} value={timeline.id}>
-                      {timeline.title}
-                    </option>
-                  ))}
-                </select>
-                {timelines.length === 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    No timelines found. Create a timeline by adding <code className="bg-gray-200 px-1 rounded">meta::timeline</code> to a note.
-                  </p>
                 )}
               </div>
             </div>

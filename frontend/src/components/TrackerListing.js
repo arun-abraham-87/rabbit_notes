@@ -360,9 +360,82 @@ const TrackerListing = () => {
 
   // Toggle completion for a tracker on a given date
   const handleToggleDay = async (trackerId, dateStr, value = null) => {
+    console.log('[handleToggleDay] START', { trackerId, dateStr, value, timestamp: new Date().toISOString() });
+    
     const tracker = trackers.find(t => t.id === trackerId);
-    if (!tracker) return;
+    if (!tracker) {
+      console.log('[handleToggleDay] ERROR: Tracker not found', { trackerId });
+      return;
+    }
 
+    console.log('[handleToggleDay] Tracker found', { trackerId, trackerTitle: tracker.title });
+
+    // Check if this is a removal (value is null)
+    const isRemoval = value === null;
+    console.log('[handleToggleDay] Is removal?', { isRemoval, value });
+
+    if (isRemoval) {
+      // Handle removal - update state to remove the answer
+      console.log('[handleToggleDay] Handling removal', { trackerId, dateStr });
+      
+      setTrackers(prev => {
+        const currentTracker = prev.find(t => t.id === trackerId);
+        console.log('[handleToggleDay] Current tracker completions before removal', { 
+          trackerId, 
+          dateStr, 
+          hasCompletion: !!(currentTracker?.completions?.[dateStr]),
+          allCompletions: currentTracker?.completions 
+        });
+        
+        return prev.map(t => {
+          if (t.id !== trackerId) return t;
+          const completions = { ...t.completions };
+          delete completions[dateStr]; // Remove the completion
+          console.log('[handleToggleDay] Removed completion from tracker state', { 
+            trackerId, 
+            dateStr, 
+            completionsAfter: completions 
+          });
+          return { ...t, completions };
+        });
+      });
+
+      // Update trackerAnswers to remove the answer
+      setTrackerAnswers(prev => {
+        const prevAnswers = prev[trackerId] || [];
+        console.log('[handleToggleDay] Current trackerAnswers before removal', { 
+          trackerId, 
+          dateStr, 
+          prevAnswersCount: prevAnswers.length,
+          hasAnswer: prevAnswers.some(a => a.date === dateStr),
+          allAnswers: prevAnswers.map(a => ({ date: a.date, answer: a.answer }))
+        });
+
+        const filteredAnswers = prevAnswers.filter(a => a.date !== dateStr);
+        console.log('[handleToggleDay] Filtered answers after removal', { 
+          trackerId, 
+          dateStr, 
+          filteredAnswersCount: filteredAnswers.length,
+          filteredAnswers: filteredAnswers.map(a => ({ date: a.date, answer: a.answer }))
+        });
+
+        const newState = { ...prev, [trackerId]: filteredAnswers };
+        console.log('[handleToggleDay] New trackerAnswers state', { 
+          trackerId, 
+          newState: Object.keys(newState).map(k => ({ 
+            key: k, 
+            count: newState[k]?.length || 0 
+          }))
+        });
+
+        return newState;
+      });
+
+      console.log('[handleToggleDay] Removal complete', { trackerId, dateStr });
+      return; // Exit early for removals
+    }
+
+    // Handle addition/update
     let answer;
     if (tracker.type.toLowerCase() === 'value') {
       answer = value;
@@ -371,18 +444,36 @@ const TrackerListing = () => {
     } else {
       answer = 'no';
     }
+
+    console.log('[handleToggleDay] Creating new answer', { trackerId, dateStr, answer });
+
     try {
       const response = await createTrackerAnswerNote(trackerId, answer, dateStr);
+      console.log('[handleToggleDay] createTrackerAnswerNote response', { response });
+      
       if (response && response.id) {
         setTrackers(prev => prev.map(t => {
           if (t.id !== trackerId) return t;
           const completions = { ...t.completions };
           completions[dateStr] = !completions[dateStr];
+          console.log('[handleToggleDay] Updated tracker completions', { 
+            trackerId, 
+            dateStr, 
+            completionValue: completions[dateStr] 
+          });
           return { ...t, completions };
         }));
+        
         // Update trackerAnswers for immediate UI feedback
         setTrackerAnswers(prev => {
           const prevAnswers = prev[trackerId] || [];
+          console.log('[handleToggleDay] Current trackerAnswers before update', { 
+            trackerId, 
+            dateStr, 
+            prevAnswersCount: prevAnswers.length,
+            existingAnswerIndex: prevAnswers.findIndex(a => a.date === dateStr)
+          });
+
           // Check if answer for this date already exists
           const idx = prevAnswers.findIndex(a => a.date === dateStr);
           let newAnswers;
@@ -396,6 +487,12 @@ const TrackerListing = () => {
               date: dateStr,
               id: response.id
             };
+            console.log('[handleToggleDay] Updated existing answer', { 
+              trackerId, 
+              dateStr, 
+              index: idx,
+              updatedAnswer: newAnswers[idx]
+            });
           } else {
             // Add new answer
             newAnswers = [
@@ -407,17 +504,38 @@ const TrackerListing = () => {
                 id: response.id
               }
             ];
+            console.log('[handleToggleDay] Added new answer', { 
+              trackerId, 
+              dateStr, 
+              newAnswer: newAnswers[newAnswers.length - 1],
+              totalAnswers: newAnswers.length
+            });
           }
-          return { ...prev, [trackerId]: newAnswers };
+          
+          const newState = { ...prev, [trackerId]: newAnswers };
+          console.log('[handleToggleDay] New trackerAnswers state after update', { 
+            trackerId, 
+            newAnswersCount: newAnswers.length,
+            newState: Object.keys(newState).map(k => ({ 
+              key: k, 
+              count: newState[k]?.length || 0 
+            }))
+          });
+
+          return newState;
         });
         toast.success('Answer recorded successfully');
+        console.log('[handleToggleDay] Success - Answer recorded', { trackerId, dateStr });
       } else {
+        console.log('[handleToggleDay] ERROR: No response ID', { response });
         throw new Error('Failed to create answer note');
       }
     } catch (error) {
-      console.error('Error recording answer:', error);
+      console.error('[handleToggleDay] ERROR:', error);
       toast.error('Failed to record answer: ' + error.message);
     }
+    
+    console.log('[handleToggleDay] END', { trackerId, dateStr, value });
   };
 
   if (isLoading) return <div className="p-8">Loading...</div>;

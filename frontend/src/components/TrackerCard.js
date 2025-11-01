@@ -229,25 +229,109 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   };
 
   const handleRemoveCustomDateAnswer = async () => {
+    console.log('[TrackerCard.handleRemoveCustomDateAnswer] START', { 
+      trackerId: tracker.id, 
+      customDate, 
+      customExistingAnswer,
+      timestamp: new Date().toISOString()
+    });
+
     if (customExistingAnswer && customExistingAnswer.id) {
-      await deleteNoteById(customExistingAnswer.id);
+      console.log('[TrackerCard.handleRemoveCustomDateAnswer] Deleting note', { 
+        noteId: customExistingAnswer.id,
+        date: customExistingAnswer.date,
+        answer: customExistingAnswer.answer
+      });
+
+      try {
+        await deleteNoteById(customExistingAnswer.id);
+        console.log('[TrackerCard.handleRemoveCustomDateAnswer] Note deleted successfully', { 
+          noteId: customExistingAnswer.id 
+        });
+      } catch (error) {
+        console.error('[TrackerCard.handleRemoveCustomDateAnswer] ERROR deleting note', { 
+          noteId: customExistingAnswer.id, 
+          error 
+        });
+      }
+
       // Refresh UI
+      console.log('[TrackerCard.handleRemoveCustomDateAnswer] Calling onToggleDay with null', { 
+        trackerId: tracker.id, 
+        customDate 
+      });
       onToggleDay(tracker.id, customDate, null);
+      console.log('[TrackerCard.handleRemoveCustomDateAnswer] onToggleDay called', { 
+        trackerId: tracker.id, 
+        customDate 
+      });
+      
       setCustomExistingAnswer(null);
       setCustomValue('');
+    } else {
+      console.log('[TrackerCard.handleRemoveCustomDateAnswer] No existing answer to remove', { 
+        hasCustomExistingAnswer: !!customExistingAnswer 
+      });
     }
+
+    console.log('[TrackerCard.handleRemoveCustomDateAnswer] END', { 
+      trackerId: tracker.id, 
+      customDate 
+    });
   };
 
   const handleRemoveAcknowledgement = async () => {
+    console.log('[TrackerCard.handleRemoveAcknowledgement] START', { 
+      trackerId: tracker.id, 
+      selectedDate, 
+      existingAnswer,
+      timestamp: new Date().toISOString()
+    });
+
     if (existingAnswer && existingAnswer.id) {
-      await deleteNoteById(existingAnswer.id);
+      console.log('[TrackerCard.handleRemoveAcknowledgement] Deleting note', { 
+        noteId: existingAnswer.id,
+        date: existingAnswer.date,
+        answer: existingAnswer.answer
+      });
+
+      try {
+        await deleteNoteById(existingAnswer.id);
+        console.log('[TrackerCard.handleRemoveAcknowledgement] Note deleted successfully', { 
+          noteId: existingAnswer.id 
+        });
+      } catch (error) {
+        console.error('[TrackerCard.handleRemoveAcknowledgement] ERROR deleting note', { 
+          noteId: existingAnswer.id, 
+          error 
+        });
+      }
+
       // Refresh UI by toggling the day (removes completion)
+      console.log('[TrackerCard.handleRemoveAcknowledgement] Calling onToggleDay with null', { 
+        trackerId: tracker.id, 
+        selectedDate 
+      });
       onToggleDay(tracker.id, selectedDate, null);
+      console.log('[TrackerCard.handleRemoveAcknowledgement] onToggleDay called', { 
+        trackerId: tracker.id, 
+        selectedDate 
+      });
+    } else {
+      console.log('[TrackerCard.handleRemoveAcknowledgement] No existing answer to remove', { 
+        hasExistingAnswer: !!existingAnswer 
+      });
     }
+
     setShowValueModal(false);
     setShowYesNoModal(false);
     setValue('');
     setExistingAnswer(null);
+
+    console.log('[TrackerCard.handleRemoveAcknowledgement] END', { 
+      trackerId: tracker.id, 
+      selectedDate 
+    });
   };
 
   // Month stats

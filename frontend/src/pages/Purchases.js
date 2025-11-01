@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MagnifyingGlassIcon, XMarkIcon, ChevronDownIcon, ChevronRightIcon, DocumentTextIcon, PlusIcon } from '@heroicons/react/24/outline';
 import EditEventModal from '../components/EditEventModal';
@@ -157,6 +157,7 @@ const Purchases = ({ allNotes, onCreateNote, setAllNotes }) => {
   const [collapsedMonths, setCollapsedMonths] = useState(new Set());
   const [filterByAmount, setFilterByAmount] = useState(null);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const handleViewNote = (eventId) => {
     // Navigate to notes page and filter by note ID
@@ -333,6 +334,32 @@ const Purchases = ({ allNotes, onCreateNote, setAllNotes }) => {
 
     return sortedGrouped;
   }, [filteredPurchaseEvents]);
+
+  // Initialize collapsed states with all years and months collapsed by default (only once)
+  useEffect(() => {
+    if (!isInitialized && Object.keys(groupedPurchases).length > 0) {
+      const allYears = new Set();
+      const allMonths = new Set();
+      
+      Object.keys(groupedPurchases).forEach(yearKey => {
+        if (yearKey !== 'No Date') {
+          const year = parseInt(yearKey);
+          allYears.add(year);
+          
+          // Add all months for this year
+          const months = groupedPurchases[year];
+          Object.keys(months).forEach(monthNum => {
+            const monthKey = `${year}-${monthNum}`;
+            allMonths.add(monthKey);
+          });
+        }
+      });
+      
+      setCollapsedYears(allYears);
+      setCollapsedMonths(allMonths);
+      setIsInitialized(true);
+    }
+  }, [groupedPurchases, isInitialized]);
 
   // Calculate statistics
   const statistics = useMemo(() => {

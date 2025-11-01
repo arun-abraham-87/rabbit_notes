@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { loadNotes } from '../utils/ApiUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { Line, Bar } from 'react-chartjs-2';
@@ -295,16 +295,121 @@ function EnhancedStats({ answers, tracker }) {
 
 const TrackerStatsAnalysisPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [trackers, setTrackers] = useState([]);
   const [trackerAnswers, setTrackerAnswers] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTrackers, setSelectedTrackers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [pendingTrackerId, setPendingTrackerId] = useState(null);
+
+  // Store tracker ID from URL when component mounts or URL changes
+  useEffect(() => {
+    let trackerId = null;
+    
+    // Try location.search first
+    if (location.search) {
+      const searchParams = new URLSearchParams(location.search);
+      trackerId = searchParams.get('tracker');
+      console.log('[TrackerStatsAnalysis] Storing tracker ID from location.search:', trackerId);
+    }
+    
+    // If not in search, try location.hash (HashRouter uses hash for query params)
+    if (!trackerId && location.hash) {
+      console.log('[TrackerStatsAnalysis] Checking location.hash for tracker ID:', location.hash);
+      const hashParts = location.hash.split('?');
+      if (hashParts.length > 1) {
+        const searchParams = new URLSearchParams(hashParts[1]);
+        trackerId = searchParams.get('tracker');
+        console.log('[TrackerStatsAnalysis] Storing tracker ID from location.hash:', trackerId);
+      }
+    }
+    
+    if (trackerId) {
+      console.log('[TrackerStatsAnalysis] Setting pending tracker ID:', trackerId);
+      setPendingTrackerId(trackerId);
+    }
+  }, [location.search, location.hash]);
 
   useEffect(() => {
     loadTrackers();
   }, []);
+
+  // Auto-select tracker from URL parameter once trackers are loaded
+  useEffect(() => {
+    console.log('[TrackerStatsAnalysis] Auto-select useEffect triggered', {
+      trackersLength: trackers.length,
+      pendingTrackerId: pendingTrackerId,
+      currentSelectedTrackers: selectedTrackers
+    });
+    
+    if (!pendingTrackerId) {
+      console.log('[TrackerStatsAnalysis] No pending tracker ID');
+      return;
+    }
+    
+    if (trackers.length === 0) {
+      console.log('[TrackerStatsAnalysis] Trackers not loaded yet, returning');
+      return;
+    }
+    
+    const trackerId = pendingTrackerId;
+    console.log('[TrackerStatsAnalysis] Looking for tracker with ID:', trackerId);
+    console.log('[TrackerStatsAnalysis] Available tracker IDs:', trackers.map(t => ({ id: t.id, type: typeof t.id, title: t.title })));
+    
+    // Check if tracker exists (handle both string and number IDs)
+    const trackerExists = trackers.find(t => {
+      // Try exact match first
+      if (String(t.id) === String(trackerId)) {
+        console.log('[TrackerStatsAnalysis] Found exact match:', t.id, '===', trackerId);
+        return true;
+      }
+      // Try numeric comparison
+      const tId = typeof t.id === 'number' ? t.id : parseInt(t.id);
+      const urlId = parseInt(trackerId);
+      if (!isNaN(tId) && !isNaN(urlId)) {
+        if (tId === urlId) {
+          console.log('[TrackerStatsAnalysis] Found numeric match:', tId, '===', urlId);
+          return true;
+        }
+      }
+      return false;
+    });
+    
+    if (!trackerExists) {
+      console.log('[TrackerStatsAnalysis] Tracker not found with ID:', trackerId);
+      return;
+    }
+    
+    console.log('[TrackerStatsAnalysis] Tracker found:', {
+      trackerId: trackerExists.id,
+      trackerTitle: trackerExists.title,
+      trackerIdType: typeof trackerExists.id
+    });
+    
+    const idToUse = trackerExists.id;
+    console.log('[TrackerStatsAnalysis] ID to use:', idToUse, 'Type:', typeof idToUse);
+    
+    // Check if already selected (compare as strings to avoid type issues)
+    const isAlreadySelected = selectedTrackers.some(selectedId => {
+      const match = String(selectedId) === String(idToUse);
+      if (match) {
+        console.log('[TrackerStatsAnalysis] Already selected:', selectedId, '===', idToUse);
+      }
+      return match;
+    });
+    
+    if (isAlreadySelected) {
+      console.log('[TrackerStatsAnalysis] Tracker already selected, skipping');
+      return;
+    }
+    
+    console.log('[TrackerStatsAnalysis] Setting selected trackers to:', [idToUse]);
+    setSelectedTrackers([idToUse]);
+    // Clear pending tracker ID after successful selection
+    setPendingTrackerId(null);
+  }, [pendingTrackerId, trackers, selectedTrackers]);
 
   const loadTrackers = async () => {
     try {
@@ -384,7 +489,11 @@ const TrackerStatsAnalysisPage = () => {
     });
   };
 
-  const selectedTrackersList = trackers.filter(t => selectedTrackers.includes(t.id));
+  const selectedTrackersList = trackers.filter(t => {
+    return selectedTrackers.some(selectedId => 
+      String(selectedId) === String(t.id) || selectedId === t.id
+    );
+  });
   
   // Filter trackers based on search query
   const filteredTrackers = trackers.filter(tracker => 
@@ -437,7 +546,9 @@ const TrackerStatsAnalysisPage = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           {filteredTrackers.map(tracker => {
-            const isSelected = selectedTrackers.includes(tracker.id);
+            const isSelected = selectedTrackers.some(selectedId => 
+              String(selectedId) === String(tracker.id) || selectedId === tracker.id
+            );
             return (
               <button
                 key={tracker.id}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import { Line } from 'react-chartjs-2';
@@ -72,6 +73,7 @@ function formatMonthDateString(date) {
 }
 
 export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode }) {
+  const navigate = useNavigate();
   // Determine cadence
   const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
   let buttons = [];
@@ -485,7 +487,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
               <PencilIcon className="h-5 w-5" />
             </button>
             <button
-              onClick={() => setShowStatsModal(true)}
+              onClick={() => navigate(`/tracker-stats-analysis?tracker=${tracker.id}`)}
               className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
               title="Show stats"
             >

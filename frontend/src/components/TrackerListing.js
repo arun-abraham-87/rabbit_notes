@@ -342,15 +342,6 @@ const TrackerListing = () => {
     return patternIndex === patternLower.length;
   };
 
-  const filteredTrackers = trackers.filter(tracker => {
-    // Fuzzy search on title and question
-    const matchesSearch = fuzzyMatch(tracker.title || '', searchTerm) ||
-                         fuzzyMatch(tracker.question || '', searchTerm);
-    const matchesCadence = filterCadence === 'all' || tracker.cadence === filterCadence;
-    const matchesType = filterType === 'all' || tracker.type === filterType;
-    return matchesSearch && matchesCadence && matchesType;
-  });
-
   // Toggle completion for a tracker on a given date
   const handleToggleDay = async (trackerId, dateStr, value = null) => {
     const tracker = trackers.find(t => t.id === trackerId);
@@ -467,7 +458,17 @@ const TrackerListing = () => {
     return relevantDateStr >= tracker.startDate;
   }
 
-  const pendingTrackers = trackers.filter(tracker => {
+  // Filter trackers based on search term, cadence, and type
+  const filteredTrackers = trackers.filter(tracker => {
+    // Fuzzy search on title and question
+    const matchesSearch = fuzzyMatch(tracker.title || '', searchTerm) ||
+                         fuzzyMatch(tracker.question || '', searchTerm);
+    const matchesCadence = filterCadence === 'all' || tracker.cadence === filterCadence;
+    const matchesType = filterType === 'all' || tracker.type === filterType;
+    return matchesSearch && matchesCadence && matchesType;
+  });
+
+  const pendingTrackers = filteredTrackers.filter(tracker => {
     let relevantDateStr = todayStr;
     if (tracker.cadence && tracker.cadence.toLowerCase() === 'monthly') {
       relevantDateStr = currentMonthStr + '-01';
@@ -489,7 +490,7 @@ const TrackerListing = () => {
     return !(tracker.completions && tracker.completions[todayStr]);
   });
 
-  const completedTrackers = trackers.filter(tracker => {
+  const completedTrackers = filteredTrackers.filter(tracker => {
     let relevantDateStr = todayStr;
     if (tracker.cadence && tracker.cadence.toLowerCase() === 'monthly') {
       relevantDateStr = currentMonthStr + '-01';

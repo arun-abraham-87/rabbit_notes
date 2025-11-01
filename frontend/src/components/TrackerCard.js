@@ -121,6 +121,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [showLastValuesModal, setShowLastValuesModal] = useState(false);
   const [dateOffset, setDateOffset] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [yesNoFilter, setYesNoFilter] = useState('both'); // 'yes', 'no', 'both'
 
   const handleDateClick = (date, dateStr) => {
     const type = tracker.type.toLowerCase();
@@ -396,6 +397,60 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   }
   const currentStreak = getCadenceStreak(tracker, answers);
 
+  // Calculate age in years, months, and days
+  const calculateAge = (date) => {
+    const today = moment();
+    const targetDate = moment(date);
+    
+    let years = today.year() - targetDate.year();
+    let months = today.month() - targetDate.month();
+    let days = today.date() - targetDate.date();
+
+    // Adjust for negative days
+    if (days < 0) {
+      months--;
+      const lastMonth = moment(today).subtract(1, 'months');
+      lastMonth.date(targetDate.date());
+      days = today.diff(lastMonth, 'days');
+    }
+
+    // Adjust for negative months
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    const parts = [];
+    if (years > 0) parts.push(`${years} year${years !== 1 ? 's' : ''}`);
+    if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+    if (days > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+
+    return parts.join(', ') || '0 days';
+  };
+
+  // Get last recorded date
+  const getLastRecordedDate = () => {
+    if (!answers || answers.length === 0) return null;
+    
+    // For yes/no trackers, get the last "yes" answer
+    const type = tracker.type ? tracker.type.toLowerCase() : '';
+    const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+    
+    let relevantAnswers = answers;
+    if (isYesNoTracker) {
+      // Filter to only "yes" answers
+      relevantAnswers = answers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes');
+      if (relevantAnswers.length === 0) return null; // No "yes" answers found
+    }
+    
+    // Sort by date (most recent first) and return the most recent
+    const sortedAnswers = [...relevantAnswers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
+    return sortedAnswers[0].date;
+  };
+
+  const lastRecordedDate = getLastRecordedDate();
+  const lastRecordedAge = lastRecordedDate ? calculateAge(lastRecordedDate) : null;
+
   const handleCopyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(tracker.id);
@@ -446,7 +501,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             <button
               onClick={() => setShowLastValuesModal(true)}
               className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-              title="Show last 7 values"
+              title="Show all recorded values"
             >
               <ClockIcon className="h-5 w-5" />
             </button>
@@ -619,10 +674,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           </div>
         </div>
       )}
-      {/* Last 7 Values Modal */}
+      {/* All Recorded Values Modal */}
       {showLastValuesModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg relative">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg relative max-h-[80vh] overflow-y-auto">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
               onClick={() => setShowLastValuesModal(false)}
@@ -630,12 +685,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             >
               &times;
             </button>
-            <h2 className="text-lg font-semibold mb-4 text-center">Last 7 Values</h2>
+            <h2 className="text-lg font-semibold mb-4 text-center">All Recorded Values</h2>
             <div className="mt-2 text-xs text-gray-600 text-center w-full">
               {(answers || [])
                 .filter(ans => ans.value !== undefined || ans.answer !== undefined)
                 .sort((a, b) => new Date(b.date) - new Date(a.date))
-                .slice(0, 7)
                 .map(ans => (
                   <div key={ans.id || ans.date} className="flex justify-between px-2 py-1 border-b last:border-b-0">
                     <span className="text-[11px] text-gray-500">{new Date(ans.date).toLocaleDateString()}</span>
@@ -736,6 +790,20 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+      {!isDevMode && lastRecordedDate && (
+        <div className="mt-4 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <span className="font-medium">Last recorded:</span>
+              <span>{moment(lastRecordedDate).format('DD-MM-YYYY')}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="font-medium">Age:</span>
+              <span>{lastRecordedAge}</span>
+            </div>
           </div>
         </div>
       )}

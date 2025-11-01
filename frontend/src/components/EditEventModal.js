@@ -18,6 +18,8 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   const [eventNotes, setEventNotes] = useState('');
   const [isDeadline, setIsDeadline] = useState(isAddDeadline);
   const [price, setPrice] = useState('');
+  const [normalEditMode, setNormalEditMode] = useState(false);
+  const [normalEditContent, setNormalEditContent] = useState('');
 
   const existingTags = getAllUniqueTags(notes || []);
 
@@ -27,8 +29,15 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       setIsDeadline(isAddDeadline);
       // Set pre-populated tags for new events
       setTags(prePopulatedTags);
+      // Reset normal edit mode
+      setNormalEditMode(false);
+      setNormalEditContent('');
       return;
     }
+    
+    // Reset normal edit mode when note changes
+    setNormalEditMode(false);
+    setNormalEditContent('');
     
     const lines = note.content.split('\n');
 
@@ -235,11 +244,39 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     setEventNotes('');
     setIsDeadline(false);
     setPrice('');
+    setNormalEditMode(false);
+    setNormalEditContent('');
 
     // Call the onCancel prop
     if (typeof onCancel === 'function') {
       onCancel();
     }
+  };
+
+  // Handle switching to normal edit mode
+  const handleSwitchToNormalEdit = () => {
+    if (note && note.content) {
+      setNormalEditContent(note.content);
+      setNormalEditMode(true);
+    } else if (onSwitchToNormalEdit) {
+      // Fallback to navigation if no note content
+      onSwitchToNormalEdit();
+    }
+  };
+
+  // Handle saving in normal edit mode
+  const handleNormalEditSave = () => {
+    if (normalEditContent.trim()) {
+      onSave(normalEditContent.trim());
+      setNormalEditMode(false);
+      setNormalEditContent('');
+    }
+  };
+
+  // Handle canceling normal edit mode
+  const handleNormalEditCancel = () => {
+    setNormalEditMode(false);
+    setNormalEditContent('');
   };
 
   return (
@@ -251,15 +288,51 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
         >
           <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Edit Event</h2>
-              <button
-                onClick={onSwitchToNormalEdit}
-                className="text-sm text-gray-600 hover:text-gray-800 underline"
-              >
-                Switch to Normal Edit
-              </button>
+              <h2 className="text-xl font-semibold">{normalEditMode ? 'Normal Edit Mode' : 'Edit Event'}</h2>
+              {!normalEditMode && (
+                <button
+                  onClick={handleSwitchToNormalEdit}
+                  className="text-sm text-gray-600 hover:text-gray-800 underline"
+                >
+                  Switch to Normal Edit
+                </button>
+              )}
             </div>
 
+            {normalEditMode ? (
+              // Normal edit mode: show textarea with full content
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Event Content
+                  </label>
+                  <textarea
+                    value={normalEditContent}
+                    onChange={(e) => setNormalEditContent(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                    placeholder="Edit event content..."
+                    rows="15"
+                  />
+                </div>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={handleNormalEditCancel}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleNormalEditSave}
+                    disabled={!normalEditContent.trim()}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Form edit mode: show structured form
+              <>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -507,6 +580,8 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                 </button>
               </div>
             </div>
+              </>
+            )}
           </div>
 
           <ConfirmationModal

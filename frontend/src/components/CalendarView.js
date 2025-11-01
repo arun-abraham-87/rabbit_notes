@@ -752,6 +752,8 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
           onEventUpdated={onEventUpdated}
           onDelete={onDelete}
           notes={notes}
+          onEdit={handleEditEvent}
+          onTimelineUpdated={onTimelineUpdated}
         />
       )}
 

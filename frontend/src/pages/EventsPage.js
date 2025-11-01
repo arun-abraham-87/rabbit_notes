@@ -272,7 +272,8 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         showTodaysEventsOnly: filterState.showTodaysEventsOnly || false,
         excludePurchases: filterState.excludePurchases !== undefined ? filterState.excludePurchases : true,
         excludeTimelineLinked: filterState.excludeTimelineLinked !== undefined ? filterState.excludeTimelineLinked : false,
-        showPastEvents: filterState.showPastEvents || false
+        showPastEvents: filterState.showPastEvents || false,
+        negateTags: filterState.negateTags || false
       };
     } catch (error) {
       console.error('Error loading initial state from localStorage:', error);
@@ -286,7 +287,8 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         showTodaysEventsOnly: false,
         excludePurchases: true,
         excludeTimelineLinked: false,
-        showPastEvents: false
+        showPastEvents: false,
+        negateTags: false
       };
     }
   };
@@ -343,7 +345,8 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     showTodaysEventsOnly: false,
     excludePurchases: false,
     excludeTimelineLinked: false,
-    showPastEvents: false
+    showPastEvents: false,
+    negateTags: false
   } : loadInitialState();
   
   const [searchQuery, setSearchQuery] = useState(initialState.searchQuery);
@@ -363,6 +366,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [selectedMonth, setSelectedMonth] = useState(initialState.selectedMonth);
   const [selectedDay, setSelectedDay] = useState(initialState.selectedDay);
   const [selectedYear, setSelectedYear] = useState(initialState.selectedYear);
+  const [negateTags, setNegateTags] = useState(initialState.negateTags);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [total, setTotal] = useState(0);
@@ -435,13 +439,14 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         showTodaysEventsOnly,
         excludePurchases,
         excludeTimelineLinked,
-        showPastEvents
+        showPastEvents,
+        negateTags
       };
       localStorage.setItem(FILTER_STATE_STORAGE_KEY, JSON.stringify(filterState));
     } catch (error) {
       console.error('Error saving filter state to localStorage:', error);
     }
-  }, [selectedTags, selectedMonth, selectedDay, selectedYear, showOnlyDeadlines, showTodaysEventsOnly, excludePurchases, excludeTimelineLinked, showPastEvents, location.search]);
+  }, [selectedTags, selectedMonth, selectedDay, selectedYear, showOnlyDeadlines, showTodaysEventsOnly, excludePurchases, excludeTimelineLinked, showPastEvents, negateTags, location.search]);
   
   // Helper function to save current filter state
   const saveFilterState = () => {
@@ -454,7 +459,8 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       showTodaysEventsOnly,
       excludePurchases,
       excludeTimelineLinked,
-      showPastEvents
+      showPastEvents,
+      negateTags
     };
   };
   
@@ -470,6 +476,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       setExcludePurchases(savedFiltersRef.current.excludePurchases);
       setExcludeTimelineLinked(savedFiltersRef.current.excludeTimelineLinked);
       setShowPastEvents(savedFiltersRef.current.showPastEvents);
+      setNegateTags(savedFiltersRef.current.negateTags);
       savedFiltersRef.current = null; // Clear saved state after restoring
     }
   };
@@ -485,6 +492,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     setExcludePurchases(false);
     setExcludeTimelineLinked(false);
     setShowPastEvents(true);
+    setNegateTags(false);
   };
   
   // Add keyboard navigation for 't' key to show today's events
@@ -769,6 +777,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       setShowTodaysEventsOnly(false);
       setExcludePurchases(false);
       setExcludeTimelineLinked(false);
+      setNegateTags(false);
       if (noteIdParam !== filterByNoteId) {
         console.log('[EventsPage] Updating filterByNoteId from', filterByNoteId, 'to', noteIdParam);
         setFilterByNoteId(noteIdParam);
@@ -861,8 +870,20 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
 
           // Check if event matches current filters
           const matchesSearch = searchQuery === '' || description.toLowerCase().includes(searchQuery.toLowerCase());
-          const matchesTags = selectedTags.length === 0 || 
-            selectedTags.every(tag => tags.includes(tag));
+          let matchesTags = true;
+          if (selectedTags.length > 0) {
+            if (negateTags) {
+              // When negated, event must NOT have ANY of the selected tags (case-insensitive)
+              matchesTags = !selectedTags.some(tag => 
+                tags.some(eventTag => eventTag.toLowerCase() === tag.toLowerCase())
+              );
+            } else {
+              // When not negated, event must have ALL selected tags (case-insensitive)
+              matchesTags = selectedTags.every(tag => 
+                tags.some(eventTag => eventTag.toLowerCase() === tag.toLowerCase())
+              );
+            }
+          }
           
           // Handle purchase filtering
           const isPurchase = tags.some(tag => tag.toLowerCase() === 'purchase');
@@ -890,7 +911,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     } else {
       setPastEventsCount(0);
     }
-  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, excludeTimelineLinked, filterByNoteId, location.search, location.hash]);
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, excludeTimelineLinked, filterByNoteId, location.search, location.hash, negateTags]);
 
   useEffect(() => {
     console.log('[EventsPage] useEffect for getCalendarEvents triggered:', {
@@ -945,8 +966,20 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
 
           // Check if event matches current filters
           const matchesSearch = searchQuery === '' || description.toLowerCase().includes(searchQuery.toLowerCase());
-          const matchesTags = selectedTags.length === 0 || 
-            selectedTags.every(tag => tags.includes(tag));
+          let matchesTags = true;
+          if (selectedTags.length > 0) {
+            if (negateTags) {
+              // When negated, event must NOT have ANY of the selected tags (case-insensitive)
+              matchesTags = !selectedTags.some(tag => 
+                tags.some(eventTag => eventTag.toLowerCase() === tag.toLowerCase())
+              );
+            } else {
+              // When not negated, event must have ALL selected tags (case-insensitive)
+              matchesTags = selectedTags.every(tag => 
+                tags.some(eventTag => eventTag.toLowerCase() === tag.toLowerCase())
+              );
+            }
+          }
           
           // Handle purchase filtering
           const isPurchase = tags.some(tag => tag.toLowerCase() === 'purchase');
@@ -974,7 +1007,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     } else {
       setPastEventsCount(0);
     }
-  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, excludeTimelineLinked, filterByNoteId, location.search, location.hash]);
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, excludeTimelineLinked, filterByNoteId, location.search, location.hash, negateTags]);
 
   const getCalendarEvents = () => {
     console.log('[EventsPage] getCalendarEvents called:', {
@@ -1163,10 +1196,19 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         if (selectedTags.length === 0) {
           return matchesSearch && matchesDeadline && matchesDate && matchesPurchaseFilter && matchesTimelineFilter;
         }
-        // If tags are selected, show only events that have ALL selected tags
-        const matchesTags = selectedTags.every(selectedTag => 
-          tags.some(eventTag => eventTag.toLowerCase() === selectedTag.toLowerCase())
-        );
+        // Tag filtering logic
+        let matchesTags;
+        if (negateTags) {
+          // When negated, event must NOT have ANY of the selected tags
+          matchesTags = !selectedTags.some(selectedTag => 
+            tags.some(eventTag => eventTag.toLowerCase() === selectedTag.toLowerCase())
+          );
+        } else {
+          // When not negated, event must have ALL selected tags
+          matchesTags = selectedTags.every(selectedTag => 
+            tags.some(eventTag => eventTag.toLowerCase() === selectedTag.toLowerCase())
+          );
+        }
         
         // Debug logging for tag filtering
         if (selectedTags.length > 0) {
@@ -1477,45 +1519,17 @@ event_tags:${expense.tag.join(',')}`;
                 placeholder="Search events..."
                 value={searchQuery}
                 onFocus={() => {
-                  // When user focuses on search box with existing text, mark that filters should be cleared if they start typing
-                  // This handles the case when search is already active and user wants to start new search
-                  if (searchQuery.trim() !== '') {
-                    shouldClearFiltersRef.current = true;
-                  }
+                  // Remove the focus handler that was clearing filters
                 }}
                 onChange={(e) => {
-                  const newValue = e.target.value;
-                  const wasEmpty = searchQuery.trim() === '';
-                  const nowHasText = newValue.trim() !== '';
-                  const nowEmpty = newValue.trim() === '';
-                  
-                  // If search is being cleared (had text, now empty), restore saved filters
-                  if (!wasEmpty && nowEmpty && savedFiltersRef.current) {
-                    restoreFilterState();
-                  }
-                  
-                  // Detect if this is a new search:
-                  // 1. Was empty, now has text (starting a new search from empty)
-                  // 2. Search was cleared (flag set) and user is typing again
-                  if ((wasEmpty && nowHasText) || (shouldClearFiltersRef.current && nowHasText)) {
-                    // Save current filter state before clearing
-                    saveFilterState();
-                    clearAllFilters();
-                    shouldClearFiltersRef.current = false; // Reset flag after clearing
-                  }
-                  
-                  setSearchQuery(newValue);
+                  setSearchQuery(e.target.value);
                 }}
                 className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full"
               />
               {searchQuery && (
                 <button
                   onClick={() => {
-                    // Restore filters when clearing search
-                    if (savedFiltersRef.current) {
-                      restoreFilterState();
-                    }
-                    shouldClearFiltersRef.current = true; // Mark that filters should be cleared on next input
+                    // Clear search query only, don't restore filters
                     setSearchQuery('');
                   }}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
@@ -1639,7 +1653,7 @@ event_tags:${expense.tag.join(',')}`;
               )}
               {selectedTags.length > 0 && (
                 <span className="px-2 py-1 bg-white rounded border text-gray-700">
-                  Tags: {selectedTags.map(tag => {
+                  Tags: {negateTags ? 'NOT ' : ''}{selectedTags.map(tag => {
                     // Convert to sentence case for display
                     return tag.length === 0 ? tag : tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase();
                   }).join(', ')}
@@ -1687,6 +1701,7 @@ event_tags:${expense.tag.join(',')}`;
                 setSelectedYear('');
                 setExcludePurchases(true);
                 setExcludeTimelineLinked(false);
+                setNegateTags(false);
               }}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
             >
@@ -1716,6 +1731,30 @@ event_tags:${expense.tag.join(',')}`;
               </button>
             );
           })}
+          
+          {/* Negate Tags Checkbox */}
+          <label 
+            className="flex items-center gap-2 px-4 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 ml-2"
+            onClick={(e) => {
+              // Prevent double-toggling if clicking directly on checkbox
+              if (e.target.type !== 'checkbox') {
+                setNegateTags(!negateTags);
+              }
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={negateTags}
+              onChange={(e) => {
+                e.stopPropagation();
+                setNegateTags(e.target.checked);
+              }}
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+            />
+            <span className={selectedTags.length === 0 ? 'text-gray-400' : 'text-gray-700'}>
+              Exclude Selected Tags
+            </span>
+          </label>
         </div>
       </div>
       )}

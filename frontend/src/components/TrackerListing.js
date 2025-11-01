@@ -62,7 +62,7 @@ const TrackerListing = () => {
   const [deletingAnswerId, setDeletingAnswerId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [completedCollapsed, setCompletedCollapsed] = useState(false);
-  const [isFocusMode, setIsFocusMode] = useState(true);
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   useEffect(() => {
     loadTrackers();

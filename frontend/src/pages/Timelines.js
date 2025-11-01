@@ -137,6 +137,57 @@ const Timelines = ({ notes, updateNote, addNote }) => {
     return text.substring(0, maxLength) + '...';
   };
 
+  // Format event header: extract dollar amounts and align them after 55th character
+  const formatEventHeaderWithAmount = (text) => {
+    if (!text) {
+      return { text: '', description: '', amount: '', hasAmount: false };
+    }
+    
+    // Extract all dollar amounts from the text
+    const dollarRegex = /\$[\d,]+(?:\.\d{2})?/g;
+    const dollarMatches = text.match(dollarRegex) || [];
+    
+    if (dollarMatches.length === 0) {
+      // No dollar amounts, just truncate normally
+      const truncated = truncateText(text, 55);
+      return { text: truncated, description: truncated, amount: '', hasAmount: false };
+    }
+    
+    // Remove dollar amounts from the text for description
+    let description = text;
+    dollarMatches.forEach(match => {
+      description = description.replace(match, '').trim();
+    });
+    // Clean up any extra spaces
+    description = description.replace(/\s+/g, ' ').trim();
+    
+    // Truncate description to 55 characters
+    const truncatedDescription = truncateText(description, 55);
+    
+    // Combine all dollar amounts (in case there are multiple)
+    const totalAmount = dollarMatches.reduce((sum, match) => {
+      const value = parseFloat(match.replace(/[$,]/g, ''));
+      return sum + (isNaN(value) ? 0 : value);
+    }, 0);
+    
+    // Format the total amount
+    const formattedAmount = totalAmount > 0 ? `$${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
+    
+    // Calculate padding to align amounts at the same position (after 55th character)
+    // Use monospace-friendly approach: calculate needed spaces
+    const descriptionLength = truncatedDescription.length;
+    const paddingNeeded = Math.max(0, 55 - descriptionLength);
+    // Use non-breaking spaces for better alignment, or regular spaces
+    const padding = ' '.repeat(paddingNeeded);
+    
+    return {
+      text: truncatedDescription + padding + formattedAmount,
+      description: truncatedDescription,
+      amount: formattedAmount,
+      hasAmount: formattedAmount !== ''
+    };
+  };
+
   // Handle event selection
   const handleEventClick = (timelineId, eventIndex) => {
     setSelectedEvents(prev => {
@@ -1508,14 +1559,20 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                           {truncateText(event.event)}
                                                         </span>
                                                       ) : (
-                                                        <span 
-                                                          title={event.event.length > 50 ? event.event : undefined}
-                                                          dangerouslySetInnerHTML={{
-                                                            __html: highlightDollarValues(
-                                                              truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
-                                                            )
-                                                          }}
-                                                        />
+                                                        (() => {
+                                                          const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                          const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                          return (
+                                                            <span 
+                                                              title={event.event.length > 50 ? event.event : undefined}
+                                                              dangerouslySetInnerHTML={{
+                                                                __html: formatted.hasAmount 
+                                                                  ? highlightDollarValues(displayText)
+                                                                  : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                              }}
+                                                            />
+                                                          );
+                                                        })()
                                                       )}
                                                     </h3>
                                                   </button>
@@ -1536,14 +1593,20 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                         {truncateText(event.event)}
                                                       </span>
                                                     ) : (
-                                                      <span 
-                                                        title={event.event.length > 50 ? event.event : undefined}
-                                                        dangerouslySetInnerHTML={{
-                                                          __html: highlightDollarValues(
-                                                            truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
-                                                          )
-                                                        }}
-                                                      />
+                                                      (() => {
+                                                        const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                        const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                        return (
+                                                          <span 
+                                                            title={event.event.length > 50 ? event.event : undefined}
+                                                            dangerouslySetInnerHTML={{
+                                                              __html: formatted.hasAmount 
+                                                                ? highlightDollarValues(displayText)
+                                                                : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                            }}
+                                                          />
+                                                        );
+                                                      })()
                                                     )}
                                                   </h3>
                                                 )}
@@ -2251,14 +2314,20 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                 {truncateText(event.event)}
                                               </span>
                                             ) : (
-                                              <span 
-                                                title={event.event.length > 50 ? event.event : undefined}
-                                                dangerouslySetInnerHTML={{
-                                                  __html: highlightDollarValues(
-                                                    truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
-                                                  )
-                                                }}
-                                              />
+                                              (() => {
+                                                const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                return (
+                                                  <span 
+                                                    title={event.event.length > 50 ? event.event : undefined}
+                                                    dangerouslySetInnerHTML={{
+                                                      __html: formatted.hasAmount 
+                                                        ? highlightDollarValues(displayText)
+                                                        : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                    }}
+                                                  />
+                                                );
+                                              })()
                                             )}
                                           </h3>
                                         </a>
@@ -2318,14 +2387,20 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                               {truncateText(event.event)}
                                             </span>
                                           ) : (
-                                            <span 
-                                              title={event.event.length > 50 ? event.event : undefined}
-                                              dangerouslySetInnerHTML={{
-                                                __html: highlightDollarValues(
-                                                  truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
-                                                )
-                                              }}
-                                            />
+                                            (() => {
+                                              const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                              const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                              return (
+                                                <span 
+                                                  title={event.event.length > 50 ? event.event : undefined}
+                                                  dangerouslySetInnerHTML={{
+                                                    __html: formatted.hasAmount 
+                                                      ? highlightDollarValues(displayText)
+                                                      : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                  }}
+                                                />
+                                              );
+                                            })()
                                           )}
                                         </h3>
                                       )}
@@ -2859,14 +2934,20 @@ const Timelines = ({ notes, updateNote, addNote }) => {
                                                       {truncateText(event.event)}
                                                     </span>
                                                   ) : (
-                                                    <span 
-                                                      title={event.event.length > 50 ? event.event : undefined}
-                                                      dangerouslySetInnerHTML={{
-                                                        __html: highlightDollarValues(
-                                                          truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
-                                                        )
-                                                      }}
-                                                    />
+                                                    (() => {
+                                                      const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                      const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                      return (
+                                                        <span 
+                                                          title={event.event.length > 50 ? event.event : undefined}
+                                                          dangerouslySetInnerHTML={{
+                                                            __html: formatted.hasAmount 
+                                                              ? highlightDollarValues(displayText)
+                                                              : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                          }}
+                                                        />
+                                                      );
+                                                    })()
                                                   )}
                                                 </h3>
                                                 {event.isLinkedEvent && (

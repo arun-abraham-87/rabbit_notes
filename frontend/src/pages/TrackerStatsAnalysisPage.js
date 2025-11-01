@@ -167,6 +167,7 @@ const TrackerStatsAnalysisPage = () => {
   const [trackerAnswers, setTrackerAnswers] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedTrackers, setSelectedTrackers] = useState([]);
 
   useEffect(() => {
     loadTrackers();
@@ -240,6 +241,18 @@ const TrackerStatsAnalysisPage = () => {
     }
   };
 
+  const handleTrackerClick = (trackerId) => {
+    setSelectedTrackers(prev => {
+      if (prev.includes(trackerId)) {
+        return prev.filter(id => id !== trackerId);
+      } else {
+        return [...prev, trackerId];
+      }
+    });
+  };
+
+  const selectedTrackersList = trackers.filter(t => selectedTrackers.includes(t.id));
+
   if (isLoading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">{error}</div>;
 
@@ -256,26 +269,55 @@ const TrackerStatsAnalysisPage = () => {
         <h1 className="text-2xl font-bold">Tracker Stats Analysis</h1>
       </div>
       
-      <div className="space-y-8">
-        {trackers.map(tracker => (
-          <div key={tracker.id} className="bg-white rounded-lg shadow-sm p-6 border">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">{tracker.title}</h2>
-            {tracker.question && (
-              <p className="text-sm text-gray-600 mb-4">{tracker.question}</p>
-            )}
-            <EnhancedStats 
-              answers={trackerAnswers[tracker.id] || []} 
-              tracker={tracker} 
-            />
-          </div>
-        ))}
-        
+      {/* Tracker Selection Buttons */}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-gray-700 mb-3">Select Trackers:</h2>
+        <div className="flex flex-wrap gap-2">
+          {trackers.map(tracker => {
+            const isSelected = selectedTrackers.includes(tracker.id);
+            return (
+              <button
+                key={tracker.id}
+                onClick={() => handleTrackerClick(tracker.id)}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
+                  isSelected
+                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+                }`}
+              >
+                {tracker.title}
+              </button>
+            );
+          })}
+        </div>
         {trackers.length === 0 && (
-          <div className="text-center text-gray-400 py-8">
-            No trackers found.
-          </div>
+          <div className="text-gray-400 italic">No trackers found.</div>
         )}
       </div>
+
+      {/* Stats Display for Selected Trackers */}
+      {selectedTrackersList.length > 0 && (
+        <div className="space-y-8">
+          {selectedTrackersList.map(tracker => (
+            <div key={tracker.id} className="bg-white rounded-lg shadow-sm p-6 border">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">{tracker.title}</h2>
+              {tracker.question && (
+                <p className="text-sm text-gray-600 mb-4">{tracker.question}</p>
+              )}
+              <EnhancedStats 
+                answers={trackerAnswers[tracker.id] || []} 
+                tracker={tracker} 
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {selectedTrackersList.length === 0 && trackers.length > 0 && (
+        <div className="text-center text-gray-400 py-8 bg-white rounded-lg border">
+          Select trackers above to view their stats.
+        </div>
+      )}
     </div>
   );
 };

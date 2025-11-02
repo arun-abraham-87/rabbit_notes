@@ -699,10 +699,11 @@ const TrackerStatsAnalysisPage = () => {
 
   const handleTrackerClick = (trackerId) => {
     setSelectedTrackers(prev => {
+      // If clicking the same tracker, deselect it. Otherwise, select only the clicked tracker.
       if (prev.includes(trackerId)) {
-        return prev.filter(id => id !== trackerId);
+        return []; // Deselect if clicking the same tracker
       } else {
-        return [...prev, trackerId];
+        return [trackerId]; // Select only one tracker at a time
       }
     });
   };
@@ -912,10 +913,11 @@ const TrackerStatsAnalysisPage = () => {
                     setMonthlyModalMonth(moment().startOf('month'));
                     setMonthlyModalPendingChanges({});
                   }}
-                  className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                  className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
                   title="Add entries for this tracker"
                 >
                   <CalendarIcon className="h-5 w-5" />
+                  <span className="text-sm font-medium">Add</span>
                 </button>
               </div>
               <EnhancedStats 
@@ -1035,10 +1037,10 @@ const TrackerStatsAnalysisPage = () => {
                 const isValueTracker = trackerType.toLowerCase() === 'value';
                 const cadence = monthlyModalTracker.cadence || 'daily';
                 
-                // Check if this date is allowed for weekly trackers
+                // Check if this date is allowed based on cadence
                 let isDateAllowed = true;
                 if (cadence === 'weekly' && monthlyModalTracker.days && monthlyModalTracker.days.length > 0) {
-                  // Get allowed weekday indices
+                  // For weekly trackers: only allow configured days of the week
                   const selectedDays = monthlyModalTracker.days.map(d => {
                     if (typeof d === 'string') {
                       const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
@@ -1050,7 +1052,14 @@ const TrackerStatsAnalysisPage = () => {
                   // Check if this date's weekday is in the allowed days
                   const dateWeekday = dateObj.day(); // 0 = Sunday, 6 = Saturday
                   isDateAllowed = selectedDays.includes(dateWeekday);
+                } else if (cadence === 'monthly') {
+                  // For monthly trackers: only allow the 1st of each month
+                  isDateAllowed = dateObj.date() === 1;
+                } else if (cadence === 'yearly') {
+                  // For yearly trackers: only allow January 1st
+                  isDateAllowed = dateObj.month() === 0 && dateObj.date() === 1; // month() is 0-indexed, 0 = January
                 }
+                // Daily and custom cadences allow all dates
                 
                 if (isYesNoTracker) {
                   if (displayValue === 'yes') {
@@ -1064,13 +1073,13 @@ const TrackerStatsAnalysisPage = () => {
                   color = displayValue ? 'bg-green-300' : '';
                 }
                 
-                // Disable color styling if date is not allowed for weekly trackers
-                const isDisabled = !isDateAllowed && cadence === 'weekly';
+                // Disable date if it's not allowed based on cadence
+                const isDisabled = !isDateAllowed;
                 const isClickable = (isYesNoTracker || isValueTracker) && !isDisabled;
                 
                 const handleMonthlyDateClick = () => {
                   if (!isYesNoTracker && !isValueTracker) return; // Only allow clicking for yes/no or value trackers
-                  if (!isDateAllowed && cadence === 'weekly') return; // Disable clicks for non-allowed dates
+                  if (!isDateAllowed) return; // Disable clicks for non-allowed dates
                   
                   if (isValueTracker) {
                     // Show popup for value entry

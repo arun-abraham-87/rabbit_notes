@@ -59,7 +59,7 @@ const TrackerListing = () => {
   const [editingTracker, setEditingTracker] = useState(null);
   const [filterCadence, setFilterCadence] = useState('all');
   const [filterType, setFilterType] = useState('all');
-  const [groupBy, setGroupBy] = useState('cadence'); // 'cadence' or 'type'
+  const [groupBy, setGroupBy] = useState('none'); // 'none', 'cadence', or 'type'
   const [trackerStats, setTrackerStats] = useState({});
   const [showAnswers, setShowAnswers] = useState(null);
   const [trackerAnswers, setTrackerAnswers] = useState({});
@@ -704,10 +704,12 @@ const TrackerListing = () => {
 
   // Use the selected grouping option
   const getPendingGroups = () => {
+    if (groupBy === 'none') return { _flat: pendingTrackers };
     return groupBy === 'type' ? groupByType(pendingTrackers) : groupByCadence(pendingTrackers);
   };
 
   const getCompletedGroups = () => {
+    if (groupBy === 'none') return { _flat: completedTrackers };
     return groupBy === 'type' ? groupByType(completedTrackers) : groupByCadence(completedTrackers);
   };
 
@@ -745,7 +747,17 @@ const TrackerListing = () => {
     
     return (
       <div className={`${sectionBg} rounded-lg p-4 mb-6`}>
-        {groupBy === 'cadence' ? (
+        {groupBy === 'none' ? (
+          // Render flat list (no grouping)
+          <TrackerGrid 
+            trackers={groups._flat || []} 
+            onToggleDay={handleToggleDay} 
+            trackerAnswers={trackerAnswers} 
+            onEdit={handleEditTracker}
+            isFocusMode={isFocusMode}
+            isDevMode={isDevMode}
+          />
+        ) : groupBy === 'cadence' ? (
           // Render cadence-based groups
           <>
             {groups.yearly && groups.yearly.length > 0 && (
@@ -906,17 +918,41 @@ const TrackerListing = () => {
           </svg>
         </div>
         
-        {/* Group By Selector */}
+        {/* Group By Buttons */}
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-gray-700">Group by:</label>
-          <select
-            value={groupBy}
-            onChange={(e) => setGroupBy(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-          >
-            <option value="cadence">Cadence</option>
-            <option value="type">Type</option>
-          </select>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setGroupBy('none')}
+              className={`px-3 py-2 rounded-lg transition-colors ${
+                groupBy === 'none'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              None
+            </button>
+            <button
+              onClick={() => setGroupBy('cadence')}
+              className={`px-3 py-2 rounded-lg transition-colors ${
+                groupBy === 'cadence'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Cadence
+            </button>
+            <button
+              onClick={() => setGroupBy('type')}
+              className={`px-3 py-2 rounded-lg transition-colors ${
+                groupBy === 'type'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Type
+            </button>
+          </div>
         </div>
       </div>
       <div className="bg-blue-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-blue-200">

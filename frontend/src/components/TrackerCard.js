@@ -128,8 +128,15 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [customDate, setCustomDate] = useState(moment().format('YYYY-MM-DD'));
   const [customValue, setCustomValue] = useState('');
   const [customExistingAnswer, setCustomExistingAnswer] = useState(null);
-  // State for monthly modal pending changes (date -> answer value: 'yes', 'no', or null for remove)
+  // State for monthly modal pending changes (date -> answer value: 'yes', 'no', string value, or null for remove)
   const [monthlyModalPendingChanges, setMonthlyModalPendingChanges] = useState({});
+  // State for value input popup in monthly modal
+  const [monthlyModalValueInput, setMonthlyModalValueInput] = useState({
+    show: false,
+    dateStr: null,
+    value: '',
+    dateObj: null
+  });
 
   const handleDateClick = (date, dateStr) => {
     console.log('[TrackerCard.handleDateClick] START', { 
@@ -862,15 +869,22 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
               onClick={() => {
-                // Clear pending changes when closing
+                // Clear pending changes and value input when closing
                 setMonthlyModalPendingChanges({});
+                setMonthlyModalValueInput({ show: false, dateStr: null, value: '', dateObj: null });
                 setShowMonthlyModal(false);
               }}
               aria-label="Close"
             >
               &times;
             </button>
-            <div className="flex items-center justify-center mb-4 gap-4">
+            {/* Tracker Title */}
+            <div className="text-center mb-2">
+              <h2 className="text-xl font-semibold">{tracker.title}</h2>
+            </div>
+            
+            {/* Month Navigation */}
+            <div className="flex items-center justify-center mb-2 gap-4">
               <button
                 className="p-2 rounded-full hover:bg-gray-200"
                 onClick={() => {
@@ -878,16 +892,17 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     // Clone the moment object before mutating to avoid skipping months
                     return moment(prev).subtract(1, 'months').startOf('month');
                   });
-                  // Clear pending changes when changing months
+                  // Clear pending changes and value input when changing months
                   setMonthlyModalPendingChanges({});
+                  setMonthlyModalValueInput({ show: false, dateStr: null, value: '', dateObj: null });
                 }}
                 aria-label="Previous Month"
               >
                 <span className="text-xl">&#8592;</span>
               </button>
-              <h2 className="text-lg font-semibold text-center">
-                Monthly Check-ins: {monthlyModalMonth.format('MMMM YYYY')}
-              </h2>
+              <h3 className="text-lg font-semibold text-center">
+                {monthlyModalMonth.format('MMMM YYYY')}
+              </h3>
               <button
                 className="p-2 rounded-full hover:bg-gray-200"
                 onClick={() => {
@@ -895,13 +910,32 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     // Clone the moment object before mutating to avoid skipping months
                     return moment(prev).add(1, 'months').startOf('month');
                   });
-                  // Clear pending changes when changing months
+                  // Clear pending changes and value input when changing months
                   setMonthlyModalPendingChanges({});
+                  setMonthlyModalValueInput({ show: false, dateStr: null, value: '', dateObj: null });
                 }}
                 aria-label="Next Month"
               >
                 <span className="text-xl">&#8594;</span>
               </button>
+            </div>
+            
+            {/* Cadence and Events Count */}
+            <div className="text-center mb-4 text-sm text-gray-600">
+              {(() => {
+                // Count events marked in the month
+                const monthStart = moment(monthlyModalMonth).startOf('month').format('YYYY-MM-DD');
+                const monthEnd = moment(monthlyModalMonth).endOf('month').format('YYYY-MM-DD');
+                const eventsInMonth = answers.filter(ans => {
+                  const ansDate = moment(ans.date).format('YYYY-MM-DD');
+                  return ansDate >= monthStart && ansDate <= monthEnd;
+                }).length;
+                
+                // Format cadence for display
+                const cadenceDisplay = cadence.charAt(0).toUpperCase() + cadence.slice(1);
+                
+                return `${cadenceDisplay} • ${eventsInMonth} event${eventsInMonth !== 1 ? 's' : ''} marked`;
+              })()}
             </div>
             <div className="flex flex-wrap gap-2 justify-center bg-blue-50 p-4 rounded-lg">
               {getAllDatesInMonth(monthlyModalMonth).map(dateObj => {
@@ -911,14 +945,19 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 // Check if there's a pending change for this date, otherwise use existing answer
                 const pendingValue = monthlyModalPendingChanges[dateStr];
                 let displayValue = null;
+                let displayValueString = null;
                 if (pendingValue !== undefined) {
                   displayValue = pendingValue; // Use pending change
+                  displayValueString = pendingValue !== null ? String(pendingValue) : null;
                 } else if (answerObj && answerObj.answer) {
-                  displayValue = answerObj.answer.toLowerCase();
+                  const ansValue = answerObj.answer || answerObj.value;
+                  displayValue = ansValue;
+                  displayValueString = String(ansValue);
                 }
                 
                 let color = '';
                 let isYesNoTracker = tracker.type && tracker.type.toLowerCase().includes('yes');
+                let isValueTracker = tracker.type && tracker.type.toLowerCase() === 'value';
                 
                 // Check if this date is allowed for weekly trackers
                 let isDateAllowed = true;
@@ -943,7 +982,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                   } else if (displayValue === 'no') {
                     color = 'bg-red-300';
                   }
-                } else if (tracker.type && tracker.type.toLowerCase() === 'value') {
+                } else if (isValueTracker) {
                   color = displayValue ? 'bg-green-300' : '';
                 } else {
                   color = displayValue ? 'bg-green-300' : '';
@@ -951,57 +990,78 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 
                 // Disable color styling if date is not allowed for weekly trackers
                 const isDisabled = !isDateAllowed && cadence === 'weekly';
+                const isClickable = (isYesNoTracker || isValueTracker) && !isDisabled;
                 
                 const handleMonthlyDateClick = () => {
-                  if (!isYesNoTracker) return; // Only allow clicking for yes/no trackers
+                  if (!isYesNoTracker && !isValueTracker) return; // Only allow clicking for yes/no or value trackers
                   if (!isDateAllowed && cadence === 'weekly') return; // Disable clicks for non-allowed dates
                   
-                  // Get current state (pending change or existing answer)
-                  const currentState = pendingValue !== undefined 
-                    ? pendingValue 
-                    : (answerObj && answerObj.answer ? answerObj.answer.toLowerCase() : null);
-                  
-                  // Toggle: null -> yes -> no -> null
-                  let newValue = null;
-                  if (currentState === null || currentState === '') {
-                    newValue = 'yes';
-                  } else if (currentState === 'yes') {
-                    newValue = 'no';
-                  } else if (currentState === 'no') {
-                    newValue = null; // Remove
+                  if (isValueTracker) {
+                    // Show popup for value entry
+                    const currentValue = pendingValue !== undefined 
+                      ? pendingValue 
+                      : (answerObj && (answerObj.answer || answerObj.value) ? String(answerObj.answer || answerObj.value) : '');
+                    setMonthlyModalValueInput({
+                      show: true,
+                      dateStr,
+                      value: currentValue,
+                      dateObj
+                    });
+                  } else if (isYesNoTracker) {
+                    // Toggle yes/no for yes/no trackers
+                    const currentState = pendingValue !== undefined 
+                      ? pendingValue 
+                      : (answerObj && answerObj.answer ? answerObj.answer.toLowerCase() : null);
+                    
+                    // Toggle: null -> yes -> no -> null
+                    let newValue = null;
+                    if (currentState === null || currentState === '') {
+                      newValue = 'yes';
+                    } else if (currentState === 'yes') {
+                      newValue = 'no';
+                    } else if (currentState === 'no') {
+                      newValue = null; // Remove
+                    }
+                    
+                    console.log('[TrackerCard] Monthly date click', { 
+                      dateStr, 
+                      currentState, 
+                      newValue,
+                      isDateAllowed
+                    });
+                    
+                    setMonthlyModalPendingChanges(prev => ({
+                      ...prev,
+                      [dateStr]: newValue
+                    }));
                   }
-                  
-                  console.log('[TrackerCard] Monthly date click', { 
-                    dateStr, 
-                    currentState, 
-                    newValue,
-                    isDateAllowed
-                  });
-                  
-                  setMonthlyModalPendingChanges(prev => ({
-                    ...prev,
-                    [dateStr]: newValue
-                  }));
                 };
                 
                 return (
                   <div key={dateStr} className={`flex flex-col items-center w-10`}>
                     <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{dateObj.format('ddd')}</span>
+                    {/* Show value above date for value trackers */}
+                    {isValueTracker && displayValueString && (
+                      <span className="text-[9px] text-gray-600 mb-0.5 text-center w-full font-medium" title={`Value: ${displayValueString}`}>
+                        {displayValueString.length > 4 ? displayValueString.substring(0, 4) + '...' : displayValueString}
+                      </span>
+                    )}
                     <button
                       onClick={handleMonthlyDateClick}
                       className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm ${color} ${
                         isDisabled 
                           ? 'border-gray-200 opacity-30 cursor-not-allowed' 
-                          : isYesNoTracker 
+                          : isClickable
                             ? 'border-gray-300 cursor-pointer hover:ring-2 hover:ring-blue-400' 
                             : 'border-gray-300 cursor-default'
                       }`}
                       title={
                         dateObj.format('MMM D, YYYY') + 
                         (isDisabled ? ' - Not available for this tracker' : 
-                         isYesNoTracker ? ' - Click to toggle yes/no/remove' : '')
+                         isYesNoTracker ? ' - Click to toggle yes/no/remove' :
+                         isValueTracker ? ' - Click to add/edit value' : '')
                       }
-                      disabled={!isYesNoTracker || isDisabled}
+                      disabled={!isClickable}
                     >
                       {dateObj.date()}
                     </button>
@@ -1009,8 +1069,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 );
               })}
             </div>
-            {/* Save button for yes/no trackers */}
-            {tracker.type && tracker.type.toLowerCase().includes('yes') && Object.keys(monthlyModalPendingChanges).length > 0 && (
+            {/* Save button for yes/no and value trackers */}
+            {((tracker.type && tracker.type.toLowerCase().includes('yes')) || 
+              (tracker.type && tracker.type.toLowerCase() === 'value')) && 
+              Object.keys(monthlyModalPendingChanges).length > 0 && (
               <div className="mt-4 flex justify-center gap-4">
                 <button
                   onClick={async () => {
@@ -1060,6 +1122,61 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 >
                   Cancel
                 </button>
+              </div>
+            )}
+            {/* Value Input Popup for value trackers */}
+            {monthlyModalValueInput.show && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+                <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-lg">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Enter Value for {monthlyModalValueInput.dateObj?.format('MMM D, YYYY')}
+                  </h3>
+                  <input
+                    type="text"
+                    value={monthlyModalValueInput.value}
+                    onChange={(e) => setMonthlyModalValueInput(prev => ({ ...prev, value: e.target.value }))}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 mb-4"
+                    placeholder="Enter value"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        // Save value to pending changes
+                        const valueToSave = monthlyModalValueInput.value.trim() || null;
+                        setMonthlyModalPendingChanges(prev => ({
+                          ...prev,
+                          [monthlyModalValueInput.dateStr]: valueToSave
+                        }));
+                        setMonthlyModalValueInput({ show: false, dateStr: null, value: '', dateObj: null });
+                      } else if (e.key === 'Escape') {
+                        setMonthlyModalValueInput({ show: false, dateStr: null, value: '', dateObj: null });
+                      }
+                    }}
+                  />
+                  <div className="flex justify-end gap-4">
+                    <button
+                      onClick={() => {
+                        setMonthlyModalValueInput({ show: false, dateStr: null, value: '', dateObj: null });
+                      }}
+                      className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Save value to pending changes
+                        const valueToSave = monthlyModalValueInput.value.trim() || null;
+                        setMonthlyModalPendingChanges(prev => ({
+                          ...prev,
+                          [monthlyModalValueInput.dateStr]: valueToSave
+                        }));
+                        setMonthlyModalValueInput({ show: false, dateStr: null, value: '', dateObj: null });
+                      }}
+                      className="px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-colors"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

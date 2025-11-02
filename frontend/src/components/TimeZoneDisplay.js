@@ -180,15 +180,6 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
   const ZoneCard = ({ label, timeZone }) => {
     const now = new Date();
 
-    // Properly format time in target timezone
-    const formattedTime = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      hour12: true,
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(now);
-    const [timeStr, ampm] = formattedTime.split(' ');
-
     // Determine day vs. night for icon + animation
     const hour = new Intl.DateTimeFormat('en-US', {
       timeZone,
@@ -212,19 +203,28 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     // Determine if this zone's date is before/after base timezone date
     const zoneYMD = formatYMD(now, timeZone);
     const baseYMD = formatYMD(now, baseTimezone);
-    let dayLabel ='Today';
-    let relativeDayText = 'Today';
+    let relativeDayText = 'today';
     if (zoneYMD < baseYMD) {
-      dayLabel = 'Previous Day';
       relativeDayText = 'yesterday';
     } else if (zoneYMD > baseYMD) {
-      dayLabel = 'Next Day';
       relativeDayText = 'tomorrow';
     }
 
-    // Get time-based description
-    const timeDescription = getTimeDescription(hourNum);
-    const enhancedRelativeDayText = `${relativeDayText} ${timeDescription}`;
+    // Format time as HH:mm (24-hour format)
+    const formattedTime24 = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(now);
+
+    // Format time as 12-hour format for display in brackets
+    const formattedTime12 = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour12: true,
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(now);
 
     const formattedDate = new Intl.DateTimeFormat('en-US', {
       timeZone,
@@ -232,37 +232,30 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
       day: 'numeric',
     }).format(now);
 
-    // Color code AM vs. PM
-    const color = ampm === 'AM' ? 'text-green-500' : 'text-orange-500';
+    // Color code based on hour: morning/afternoon green, evening/night orange
+    const color = (hourNum >= 6 && hourNum < 18) ? 'text-green-500' : 'text-orange-500';
 
     return (
-      <div className={`${cardBgClasses} shadow-md rounded-lg p-4 w-auto`}>
-        <div className="flex justify-between items-center mb-2">
-          <div className="text-lg font-bold">
+      <div className={`${cardBgClasses} shadow-md rounded-lg p-2 sm:p-3 w-auto`}>
+        <div className="flex justify-between items-center mb-1">
+          <div className="text-sm sm:text-base font-bold break-words">
             {label} {flagMap[timeZone] || ''}
           </div>
-          <span className={animation}>{icon}</span>
+          <span className={`${animation} text-xs flex-shrink-0 ml-1`}>{icon}</span>
         </div>
 
-        <div className="text-xs text-gray-500">
-        <span className="block italic mb-1">{enhancedRelativeDayText}</span>
+        <div className={`text-base sm:text-lg font-semibold ${color} break-words mb-1`}>
+          {formattedTime24} {relativeDayText} ({formattedTime12})
         </div>
 
-        <div className={`text-lg font-semibold ${color} whitespace-nowrap`}>
-          {timeStr} {ampm}
-        </div>
-
-        <div className="text-xs text-gray-500">
-          {formattedDate}
-          
-        </div>
-        <div className="text-xs text-gray-500">
+        <div className="flex items-center justify-between text-xs text-gray-500 flex-wrap gap-1">
+          <span className="break-words">{formattedDate}</span>
           {diff && (
-            <span className="inline-block mt-0 text-sm text-gray-400 whitespace-nowrap">
+            <span className="text-xs text-gray-400 break-words">
               {diff}
             </span>
           )}
-        </div> 
+        </div>
   
       </div>
     );
@@ -276,7 +269,7 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
       }))
     : defaultTimezones;
 
-  // Enrich with numeric diff, dayLabel, and sort by absolute distance from base timezone (nearest to farthest)
+  // Enrich with numeric diff, dayLabel, and sort by trailing first (most negative), then most forward last (most positive)
   const sortedZones = timezonesToShow
     .map(z => {
       const diffHrs = getTimeDiffHours(z.timeZone);
@@ -291,18 +284,16 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
             : 'Same Day';
       return { ...z, diffHrs, dayLabel };
     })
-    .sort((a, b) => Math.abs(a.diffHrs) - Math.abs(b.diffHrs));
+    .sort((a, b) => {
+      // Sort by diffHrs: most negative (trailing) first, most positive (forward) last
+      return a.diffHrs - b.diffHrs;
+    });
 
   return (
-    <div className="bg-gray-100 p-4 rounded-lg">
-      <div className="flex flex-row space-x-4 overflow-x-auto">
-        {sortedZones.map(({ label, timeZone, dayLabel }, index) => (
-          <React.Fragment key={label}>
-            {index > 0 && sortedZones[index - 1].dayLabel !== dayLabel && (
-              <div className="w-2 h-full bg-black mx-2" />
-            )}
-            <ZoneCard label={label} timeZone={timeZone} />
-          </React.Fragment>
+    <div className="bg-gray-100 p-2 sm:p-3 rounded-lg">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+        {sortedZones.map(({ label, timeZone, dayLabel }) => (
+          <ZoneCard key={label} label={label} timeZone={timeZone} />
         ))}
       </div>
     </div>

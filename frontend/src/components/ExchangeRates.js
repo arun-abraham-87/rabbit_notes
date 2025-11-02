@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { loadAllNotes } from '../utils/ApiUtils';
-import { InformationCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { InformationCircleIcon, ArrowPathIcon, PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
@@ -12,6 +12,9 @@ const ExchangeRates = () => {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [apiCalls, setApiCalls] = useState(0);
+  const [notes, setNotes] = useState({ usd: '', aud: '' });
+  const [editingNote, setEditingNote] = useState(null); // 'usd' or 'aud' or null
+  const [tempNote, setTempNote] = useState('');
 
   // Initialize API call count
   useEffect(() => {
@@ -28,6 +31,23 @@ const ExchangeRates = () => {
 
     setApiCalls(apiCallData.count);
   }, []);
+
+  // Load notes from localStorage on mount
+  useEffect(() => {
+    const savedNotes = localStorage.getItem('exchangeRateNotes');
+    if (savedNotes) {
+      try {
+        setNotes(JSON.parse(savedNotes));
+      } catch (err) {
+        console.error('Error loading exchange rate notes:', err);
+      }
+    }
+  }, []);
+
+  // Save notes to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('exchangeRateNotes', JSON.stringify(notes));
+  }, [notes]);
 
   const getCachedData = () => {
     const cachedData = localStorage.getItem('exchangeRatesData');
@@ -199,6 +219,26 @@ const ExchangeRates = () => {
     );
   }
 
+  const handleEditNote = (rateType) => {
+    setEditingNote(rateType);
+    setTempNote(notes[rateType] || '');
+  };
+
+  const handleSaveNote = (rateType) => {
+    setNotes(prev => ({ ...prev, [rateType]: tempNote.trim() }));
+    setEditingNote(null);
+    setTempNote('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNote(null);
+    setTempNote('');
+  };
+
+  const handleDeleteNote = (rateType) => {
+    setNotes(prev => ({ ...prev, [rateType]: '' }));
+  };
+
   if (loading) {
     return (
       <div className="p-4 rounded-md bg-gray-50 border border-gray-200 shadow-md w-fit">
@@ -209,8 +249,8 @@ const ExchangeRates = () => {
 
   return (
     <div className="space-y-4">
-      <div className="relative w-72 h-44">
-        <div className="absolute w-full h-full p-4 rounded-md bg-gray-100 shadow-md">
+      <div className="relative w-72 min-h-44">
+        <div className="absolute w-full p-4 rounded-md bg-gray-100 shadow-md">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-bold truncate">INR Exchange Rates</h2>
             <button 
@@ -223,13 +263,120 @@ const ExchangeRates = () => {
             </button>
           </div>
           <div className="space-y-3">
-            <div className="flex items-center">
-              <span className="text-gray-600 text-sm">1 USD =</span>
-              <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.usdToInr?.toFixed(2) || '0.00'}</span>
+            {/* USD Rate */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <span className="text-gray-600 text-sm">1 USD =</span>
+                  <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.usdToInr?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {notes.usd && (
+                    <button
+                      onClick={() => handleDeleteNote('usd')}
+                      className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                      title="Delete note"
+                    >
+                      <XMarkIcon className="h-3 w-3 text-gray-500" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleEditNote('usd')}
+                    className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                    title={notes.usd ? 'Edit note' : 'Add note'}
+                  >
+                    <PencilIcon className="h-3 w-3 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+              {editingNote === 'usd' ? (
+                <div className="space-y-1">
+                  <textarea
+                    value={tempNote}
+                    onChange={(e) => setTempNote(e.target.value)}
+                    className="w-full text-xs p-1 border border-gray-300 rounded resize-none"
+                    rows="2"
+                    placeholder="Add a note for USD rate..."
+                    autoFocus
+                  />
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleSaveNote('usd')}
+                      className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-2 py-0.5 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : notes.usd ? (
+                <div className="text-xs text-gray-600 italic bg-gray-50 p-1 rounded border border-gray-200">
+                  {notes.usd}
+                </div>
+              ) : null}
             </div>
-            <div className="flex items-center">
-              <span className="text-gray-600 text-sm">1 AUD =</span>
-              <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.audToInr?.toFixed(2) || '0.00'}</span>
+            
+            {/* AUD Rate */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <span className="text-gray-600 text-sm">1 AUD =</span>
+                  <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.audToInr?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {notes.aud && (
+                    <button
+                      onClick={() => handleDeleteNote('aud')}
+                      className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                      title="Delete note"
+                    >
+                      <XMarkIcon className="h-3 w-3 text-gray-500" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleEditNote('aud')}
+                    className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                    title={notes.aud ? 'Edit note' : 'Add note'}
+                  >
+                    <PencilIcon className="h-3 w-3 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+              {editingNote === 'aud' ? (
+                <div className="space-y-1">
+                  <textarea
+                    value={tempNote}
+                    onChange={(e) => setTempNote(e.target.value)}
+                    className="w-full text-xs p-1 border border-gray-300 rounded resize-none"
+                    rows="2"
+                    placeholder="Add a note for AUD rate..."
+                    autoFocus
+                  />
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleSaveNote('aud')}
+                      className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-2 py-0.5 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : notes.aud ? (
+                <div className="text-xs text-gray-600 italic bg-gray-50 p-1 rounded border border-gray-200">
+                  {notes.aud}
+                </div>
+              ) : null}
             </div>
           </div>
           <div className="mt-4 text-xs text-gray-500 space-y-1">

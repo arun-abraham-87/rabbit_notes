@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MagnifyingGlassIcon, XMarkIcon, ChevronDownIcon, ChevronRightIcon, DocumentTextIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, XMarkIcon, DocumentTextIcon, PlusIcon, CalendarIcon, PencilIcon } from '@heroicons/react/24/outline';
 import EditEventModal from '../components/EditEventModal';
-import { createNote } from '../utils/ApiUtils';
+import { createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import { addNoteToIndex } from '../utils/SearchUtils';
 
 // Function to extract event details from note content
@@ -16,6 +16,10 @@ const getEventDetails = (content) => {
   // Find the event date
   const eventDateLine = lines.find(line => line.startsWith('event_date:'));
   const dateTime = eventDateLine ? eventDateLine.replace('event_date:', '').trim() : '';
+  
+  // Find recurring info
+  const recurringLine = lines.find(line => line.startsWith('event_recurring_type:'));
+  const recurrence = recurringLine ? recurringLine.replace('event_recurring_type:', '').trim() : 'none';
   
   // Find tags
   const tagsLine = lines.find(line => line.startsWith('event_tags:'));
@@ -33,7 +37,7 @@ const getEventDetails = (content) => {
     }
   });
   
-  return { description, dateTime, tags, customFields };
+  return { description, dateTime, tags, customFields, recurrence };
 };
 
 // Helper function to extract dollar amount from event data
@@ -57,111 +61,161 @@ const extractDollarAmount = (description, customFields = {}) => {
   }, 0);
 };
 
-// Helper function to highlight search terms in text
-const highlightSearchTerms = (text, searchQuery) => {
-  if (!searchQuery || !text) return text;
+// Helper function to extract day from date
+const extractDay = (dateTime) => {
+  if (!dateTime) return null;
+  const date = new Date(dateTime);
+  return date.getDate(); // Returns day of month (1-31)
+};
+
+// Helper function to calculate next occurrence for payment events
+// For payments, we use the day of the month from the original date
+const getNextOccurrence = (dateTime, recurrence) => {
+  if (!dateTime) return null;
   
-  const query = searchQuery.trim();
-  if (!query) return text;
+  const eventDate = new Date(dateTime);
+  const dayOfMonth = eventDate.getDate(); // Extract day (1-31)
+  const now = new Date();
   
-  // Escape special regex characters
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escapedQuery})`, 'gi');
+  // For payment tags, we always treat them as monthly recurring based on the day
+  // If recurrence is set to 'none' or not specified, default to monthly for payments
+  const effectiveRecurrence = recurrence === 'none' || !recurrence ? 'monthly' : recurrence;
   
-  const parts = text.split(regex);
-  return parts.map((part, index) => {
-    // Check if part is lowercase version of query (case-insensitive match)
-    if (part.toLowerCase() === query.toLowerCase()) {
-      return (
-        <mark key={index} className="bg-yellow-200 font-semibold">
-          {part}
-        </mark>
-      );
+  if (effectiveRecurrence === 'monthly') {
+    // Use the day of month from the original date
+    // Calculate the next occurrence for this month or next month
+    const todayDay = now.getDate();
+    const currentMonthTry = new Date(now.getFullYear(), now.getMonth(), dayOfMonth);
+    const nextMonthTry = new Date(now.getFullYear(), now.getMonth() + 1, dayOfMonth);
+    
+    // Check if the date rolled over to next month (indicates day doesn't exist in target month)
+    // If month changed, use last day of target month instead
+    let currentMonth;
+    if (currentMonthTry.getMonth() !== now.getMonth()) {
+      // Day doesn't exist in current month, use last day of current month
+      currentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of current month
+    } else {
+      currentMonth = currentMonthTry;
     }
-    return part;
+    
+    let nextMonth;
+    const targetNextMonth = now.getMonth() + 1;
+    if (nextMonthTry.getMonth() !== targetNextMonth % 12) {
+      // Day doesn't exist in next month, use last day of next month
+      nextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0); // Last day of next month
+    } else {
+      nextMonth = nextMonthTry;
+    }
+    
+    // If payment day matches today's day, show it for today
+    if (dayOfMonth === todayDay) {
+      // Return today's date at the start of day
+      const today = new Date(now.getFullYear(), now.getMonth(), todayDay);
+      today.setHours(0, 0, 0, 0);
+      return today;
+    }
+    
+    // Return the next occurrence (this month if day hasn't passed, else next month)
+    if (currentMonth >= now) {
+      return currentMonth;
+    } else {
+      return nextMonth;
+    }
+  } else if (effectiveRecurrence === 'yearly') {
+    // For yearly, use the same day and month each year
+    const thisYear = new Date(now.getFullYear(), eventDate.getMonth(), dayOfMonth);
+    const nextYear = new Date(now.getFullYear() + 1, eventDate.getMonth(), dayOfMonth);
+    
+    // Adjust for invalid dates (e.g., Feb 29 in non-leap year)
+    if (thisYear.getDate() !== dayOfMonth) {
+      thisYear.setDate(0);
+    }
+    if (nextYear.getDate() !== dayOfMonth) {
+      nextYear.setDate(0);
+    }
+    
+    if (thisYear >= now) {
+      return thisYear;
+    } else {
+      return nextYear;
+    }
+  } else if (effectiveRecurrence === 'weekly') {
+    // For weekly, calculate days until next occurrence
+    const daysSinceEvent = Math.floor((now - eventDate) / (1000 * 60 * 60 * 24));
+    const weeksSince = Math.floor(daysSinceEvent / 7);
+    const nextOccurrence = new Date(eventDate);
+    nextOccurrence.setDate(eventDate.getDate() + (weeksSince + 1) * 7);
+    return nextOccurrence >= now ? nextOccurrence : new Date(nextOccurrence.getTime() + 7 * 24 * 60 * 60 * 1000);
+  } else if (effectiveRecurrence === 'daily') {
+    // For daily, next occurrence is tomorrow
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    return tomorrow;
+  }
+  
+  // Fallback: treat as monthly
+  const currentMonthTry = new Date(now.getFullYear(), now.getMonth(), dayOfMonth);
+  const nextMonthTry = new Date(now.getFullYear(), now.getMonth() + 1, dayOfMonth);
+  
+  let currentMonth;
+  if (currentMonthTry.getMonth() !== now.getMonth()) {
+    currentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  } else {
+    currentMonth = currentMonthTry;
+  }
+  
+  let nextMonth;
+  const targetNextMonth = now.getMonth() + 1;
+  if (nextMonthTry.getMonth() !== targetNextMonth % 12) {
+    nextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+  } else {
+    nextMonth = nextMonthTry;
+  }
+  
+  return currentMonth >= now ? currentMonth : nextMonth;
+};
+
+// Helper function to format date
+const formatDate = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toLocaleDateString('en-US', { 
+    weekday: 'short',
+    month: 'short', 
+    day: 'numeric',
+    year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
   });
 };
 
-// Helper function to calculate age in years, months, and days
-const calculateDetailedAge = (dateString) => {
-  if (!dateString) return '';
-  
+// Helper function to calculate days until payment
+const getDaysUntil = (date) => {
+  if (!date) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const eventDate = new Date(dateString);
-  eventDate.setHours(0, 0, 0, 0);
-  
-  let years = today.getFullYear() - eventDate.getFullYear();
-  let months = today.getMonth() - eventDate.getMonth();
-  let days = today.getDate() - eventDate.getDate();
-  
-  // Adjust for negative days
-  if (days < 0) {
-    months--;
-    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, eventDate.getDate());
-    lastMonth.setHours(0, 0, 0, 0);
-    days = Math.floor((today - lastMonth) / (1000 * 60 * 60 * 24));
-  }
-  
-  // Adjust for negative months
-  if (months < 0) {
-    years--;
-    months += 12;
-  }
-  
-  // If future date, calculate days to event
-  if (years < 0 || (years === 0 && months < 0) || (years === 0 && months === 0 && days < 0)) {
-    const diff = Math.abs(Math.floor((today - eventDate) / (1000 * 60 * 60 * 24)));
-    if (diff < 1) return 'today';
-    if (diff < 30) return `in ${diff} day${diff !== 1 ? 's' : ''}`;
-    const futureMonths = Math.floor(diff / 30);
-    const futureDays = diff % 30;
-    if (futureMonths < 12) {
-      return futureDays > 0 
-        ? `in ${futureMonths} month${futureMonths !== 1 ? 's' : ''}, ${futureDays} day${futureDays !== 1 ? 's' : ''}`
-        : `in ${futureMonths} month${futureMonths !== 1 ? 's' : ''}`;
-    }
-    const futureYears = Math.floor(futureMonths / 12);
-    const remainingMonths = futureMonths % 12;
-    return futureYears > 0
-      ? remainingMonths > 0
-        ? `in ${futureYears} year${futureYears !== 1 ? 's' : ''}, ${remainingMonths} month${remainingMonths !== 1 ? 's' : ''}`
-        : `in ${futureYears} year${futureYears !== 1 ? 's' : ''}`
-      : `in ${futureMonths} month${futureMonths !== 1 ? 's' : ''}`;
-  }
-  
-  const parts = [];
-  if (years > 0) parts.push(`${years} year${years !== 1 ? 's' : ''}`);
-  if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
-  if (days > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
-  
-  return parts.length > 0 ? parts.join(', ') + ' ago' : 'today';
-};
-
-// Helper function to format date with detailed age
-const formatDateWithAge = (dateString) => {
-  if (!dateString) return '';
-  
-  const date = new Date(dateString);
-  const formattedDate = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const dayOfWeek = date.toLocaleDateString('en-GB', { weekday: 'short' });
-  const age = calculateDetailedAge(dateString);
-  
-  return `${dayOfWeek} ${formattedDate} (${age})`;
+  const paymentDate = new Date(date);
+  paymentDate.setHours(0, 0, 0, 0);
+  const diff = Math.floor((paymentDate - today) / (1000 * 60 * 60 * 24));
+  return diff;
 };
 
 const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [collapsedYears, setCollapsedYears] = useState(new Set());
-  const [collapsedMonths, setCollapsedMonths] = useState(new Set());
-  const [filterByAmount, setFilterByAmount] = useState(null);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [showPastPayments, setShowPastPayments] = useState(false);
 
   const handleViewNote = (eventId) => {
-    // Navigate to notes page and filter by note ID
     navigate(`/notes?note=${eventId}`);
+  };
+
+  const handleEditEvent = (event) => {
+    // Find the original note by ID
+    const originalNote = allNotes.find(n => n.id === event.note.id);
+    if (originalNote) {
+      setEditingEvent(originalNote);
+      setShowEditEventModal(true);
+    }
   };
 
   // Handle adding a new payment via EditEventModal
@@ -170,74 +224,53 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
       const response = await createNote(content);
       console.log('[PaymentsPage] handleAddPayment response:', response);
       
-      // Add the new payment to notes via setAllNotes (which updates App's allNotes)
       if (setAllNotes) {
         setAllNotes(prevNotes => [...prevNotes, response]);
       }
       
-      // Add to search index
       if (response && response.content) {
         addNoteToIndex(response);
       }
       
-      return response; // Return the note object with id
+      return response;
     } catch (error) {
       console.error('Error adding payment:', error);
       throw error;
     }
   };
 
-  const toggleYear = (year) => {
-    setCollapsedYears(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(year)) {
-        newSet.delete(year);
-      } else {
-        newSet.add(year);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleMonth = (year, monthNum) => {
-    const key = `${year}-${monthNum}`;
-    setCollapsedMonths(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(key)) {
-        newSet.delete(key);
-      } else {
-        newSet.add(key);
-      }
-      return newSet;
-    });
-  };
-
-  // Filter payment events
+  // Get all payment events with their next occurrence
   const paymentEvents = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    
     const events = allNotes
       .filter(note => note?.content && note.content.includes('meta::event'))
       .map(note => {
         const eventDetails = getEventDetails(note.content);
-        return { note, ...eventDetails };
+        const { dateTime, recurrence } = eventDetails;
+        
+        // Get next occurrence for this payment
+        const nextOccurrence = getNextOccurrence(dateTime, recurrence || 'none');
+        
+        return {
+          note,
+          ...eventDetails,
+          nextOccurrence,
+          daysUntil: nextOccurrence ? getDaysUntil(nextOccurrence) : null
+        };
       })
-      .filter(event => event.tags.some(tag => tag.toLowerCase() === 'payment'))
-      .sort((a, b) => {
-        // Sort by date, most recent first
-        if (!a.dateTime && !b.dateTime) return 0;
-        if (!a.dateTime) return 1;
-        if (!b.dateTime) return -1;
-        return new Date(b.dateTime) - new Date(a.dateTime);
-      });
+      .filter(event => event.tags.some(tag => tag.toLowerCase() === 'payment'));
 
-    // Apply fuzzy search if query exists
+    // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       return events.filter(event => {
         const description = event.description.toLowerCase();
         const amount = extractDollarAmount(event.description, event.customFields).toString();
-        const dateStr = event.dateTime ? new Date(event.dateTime).toLocaleDateString().toLowerCase() : '';
+        const dateStr = event.nextOccurrence ? formatDate(event.nextOccurrence).toLowerCase() : '';
         
-        // Check if any part matches
         return description.includes(query) || 
                amount.includes(query) || 
                dateStr.includes(query);
@@ -247,242 +280,144 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
     return events;
   }, [allNotes, searchQuery]);
 
-  // Apply amount filter (min/max)
-  const filteredPaymentEvents = useMemo(() => {
-    if (!filterByAmount) return paymentEvents;
+  // Filter upcoming payments for this month
+  const upcomingThisMonth = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     
-    if (filterByAmount === 'min') {
-      const minAmount = paymentEvents.length > 0 ? Math.min(...paymentEvents.map(e => extractDollarAmount(e.description, e.customFields)).filter(a => a > 0)) : 0;
-      return paymentEvents.filter(event => {
-        const amount = extractDollarAmount(event.description, event.customFields);
-        return amount > 0 && Math.abs(amount - minAmount) < 0.01;
+    return paymentEvents
+      .filter(event => {
+        if (!event.nextOccurrence) return false;
+        const occurrenceDate = new Date(event.nextOccurrence);
+        const occurrenceYear = occurrenceDate.getFullYear();
+        const occurrenceMonth = occurrenceDate.getMonth();
+        
+        // Include payments happening this month or upcoming
+        return (occurrenceYear === currentYear && occurrenceMonth === currentMonth && occurrenceDate.getDate() >= now.getDate()) ||
+               (occurrenceYear === currentYear && occurrenceMonth > currentMonth) ||
+               (occurrenceYear > currentYear);
+      })
+      .sort((a, b) => {
+        // Sort by next occurrence date (earliest first)
+        if (!a.nextOccurrence && !b.nextOccurrence) return 0;
+        if (!a.nextOccurrence) return 1;
+        if (!b.nextOccurrence) return -1;
+        return new Date(a.nextOccurrence) - new Date(b.nextOccurrence);
       });
-    } else if (filterByAmount === 'max') {
-      const maxAmount = paymentEvents.length > 0 ? Math.max(...paymentEvents.map(e => extractDollarAmount(e.description, e.customFields))) : 0;
-      return paymentEvents.filter(event => {
-        const amount = extractDollarAmount(event.description, event.customFields);
-        return Math.abs(amount - maxAmount) < 0.01;
-      });
-    }
-    
-    return paymentEvents;
-  }, [paymentEvents, filterByAmount]);
-
-  // Group events by year and month
-  const groupedPayments = useMemo(() => {
-    const grouped = {};
-    
-    filteredPaymentEvents.forEach(event => {
-      if (!event.dateTime) {
-        // Group events without dates in a special group
-        if (!grouped['No Date']) {
-          grouped['No Date'] = [];
-        }
-        grouped['No Date'].push(event);
-        return;
-      }
-
-      const date = new Date(event.dateTime);
-      const year = date.getFullYear();
-      const month = date.getMonth(); // Get month as number (0-11)
-      const monthName = date.toLocaleString('default', { month: 'long' });
-      
-      if (!grouped[year]) {
-        grouped[year] = {};
-      }
-      if (!grouped[year][month]) {
-        grouped[year][month] = { name: monthName, events: [] };
-      }
-      grouped[year][month].events.push(event);
-      // Keep events sorted by date within each month (newest first)
-      grouped[year][month].events.sort((a, b) => {
-        if (!a.dateTime && !b.dateTime) return 0;
-        if (!a.dateTime) return 1;
-        if (!b.dateTime) return -1;
-        return new Date(b.dateTime) - new Date(a.dateTime);
-      });
-    });
-
-    // Sort years and months properly
-    const sortedKeys = Object.keys(grouped).sort((a, b) => {
-      if (a === 'No Date') return 1;
-      if (b === 'No Date') return -1;
-      // Ensure we're comparing numbers for descending order (latest first)
-      const yearA = parseInt(a);
-      const yearB = parseInt(b);
-      return yearB - yearA; // Latest year first
-    });
-
-    const sortedGrouped = {};
-    sortedKeys.forEach(key => {
-      if (key === 'No Date') {
-        sortedGrouped[key] = grouped[key];
-      } else {
-        const year = parseInt(key);
-        sortedGrouped[key] = {};
-        Object.keys(grouped[year])
-          .sort((a, b) => {
-            const monthA = parseInt(a);
-            const monthB = parseInt(b);
-            return monthB - monthA; // Latest month first (December first)
-          })
-          .forEach(month => {
-            sortedGrouped[key][month] = grouped[year][month];
-          });
-      }
-    });
-
-    return sortedGrouped;
-  }, [filteredPaymentEvents]);
-
-  // Initialize collapsed states with all years and months collapsed by default (only once)
-  useEffect(() => {
-    if (!isInitialized && Object.keys(groupedPayments).length > 0) {
-      const allYears = new Set();
-      const allMonths = new Set();
-      
-      Object.keys(groupedPayments).forEach(yearKey => {
-        if (yearKey !== 'No Date') {
-          const year = parseInt(yearKey);
-          allYears.add(year);
-          
-          // Add all months for this year
-          const months = groupedPayments[year];
-          Object.keys(months).forEach(monthNum => {
-            const monthKey = `${year}-${monthNum}`;
-            allMonths.add(monthKey);
-          });
-        }
-      });
-      
-      setCollapsedYears(allYears);
-      setCollapsedMonths(allMonths);
-      setIsInitialized(true);
-    }
-  }, [groupedPayments, isInitialized]);
-
-  // Expand years and months that contain matching records when searching
-  useEffect(() => {
-    if (!isInitialized) return; // Wait for initial collapse state to be set
-    
-    if (searchQuery.trim()) {
-      // Search is active - expand all years and months that exist in groupedPayments
-      // (since groupedPayments only contains filtered/matching events)
-      const expandedYears = new Set();
-      const expandedMonths = new Set();
-      
-      Object.keys(groupedPayments).forEach(yearKey => {
-        if (yearKey !== 'No Date') {
-          const year = parseInt(yearKey);
-          expandedYears.add(year); // Expand all years with matching events
-          
-          const months = groupedPayments[year];
-          Object.keys(months).forEach(monthNum => {
-            const monthKey = `${year}-${monthNum}`;
-            expandedMonths.add(monthKey); // Expand all months with matching events
-          });
-        }
-      });
-      
-      // Remove matching years/months from collapsed sets (expand them)
-      setCollapsedYears(prev => {
-        const newSet = new Set(prev);
-        expandedYears.forEach(year => newSet.delete(year));
-        return newSet;
-      });
-      
-      setCollapsedMonths(prev => {
-        const newSet = new Set(prev);
-        expandedMonths.forEach(month => newSet.delete(month));
-        return newSet;
-      });
-    } else {
-      // Search is cleared - collapse everything back to default
-      const allYears = new Set();
-      const allMonths = new Set();
-      
-      Object.keys(groupedPayments).forEach(yearKey => {
-        if (yearKey !== 'No Date') {
-          const year = parseInt(yearKey);
-          allYears.add(year);
-          
-          const months = groupedPayments[year];
-          Object.keys(months).forEach(monthNum => {
-            const monthKey = `${year}-${monthNum}`;
-            allMonths.add(monthKey);
-          });
-        }
-      });
-      
-      setCollapsedYears(allYears);
-      setCollapsedMonths(allMonths);
-    }
-  }, [searchQuery, groupedPayments, isInitialized]);
-
-  // Calculate statistics
-  const statistics = useMemo(() => {
-    const amounts = paymentEvents.map(event => extractDollarAmount(event.description, event.customFields));
-    const totalAmount = amounts.reduce((total, amount) => total + amount, 0);
-    const maxAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
-    const minAmount = amounts.length > 0 ? Math.min(...amounts.filter(a => a > 0)) : 0;
-    
-    return {
-      count: paymentEvents.length,
-      totalAmount,
-      maxAmount,
-      minAmount
-    };
   }, [paymentEvents]);
 
+  // Filter past payments
+  const pastPayments = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    return paymentEvents
+      .filter(event => {
+        if (!event.nextOccurrence) return false;
+        const occurrenceDate = new Date(event.nextOccurrence);
+        occurrenceDate.setHours(0, 0, 0, 0);
+        return occurrenceDate < now;
+      })
+      .sort((a, b) => {
+        // Sort by date (most recent first)
+        if (!a.nextOccurrence && !b.nextOccurrence) return 0;
+        if (!a.nextOccurrence) return 1;
+        if (!b.nextOccurrence) return -1;
+        return new Date(b.nextOccurrence) - new Date(a.nextOccurrence);
+      });
+  }, [paymentEvents]);
+
+  // Calculate estimated total for this month
+  const estimatedMonthlyTotal = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    
+    return upcomingThisMonth
+      .filter(event => {
+        if (!event.nextOccurrence) return false;
+        const occurrenceDate = new Date(event.nextOccurrence);
+        return occurrenceDate.getFullYear() === currentYear && occurrenceDate.getMonth() === currentMonth;
+      })
+      .reduce((total, event) => {
+        return total + extractDollarAmount(event.description, event.customFields);
+      }, 0);
+  }, [upcomingThisMonth]);
+
+  // Calculate total for all upcoming payments
+  const totalUpcoming = useMemo(() => {
+    return upcomingThisMonth.reduce((total, event) => {
+      return total + extractDollarAmount(event.description, event.customFields);
+    }, 0);
+  }, [upcomingThisMonth]);
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Payments</h1>
+          <p className="text-gray-600 mt-1">Track your upcoming monthly payments</p>
+        </div>
         <button
-          onClick={() => setShowEditEventModal(true)}
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          onClick={() => {
+            setEditingEvent(null);
+            setShowEditEventModal(true);
+          }}
+          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm"
         >
           <PlusIcon className="h-5 w-5" />
           Add Payment
         </button>
       </div>
 
-      {/* Statistics Tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="text-sm text-blue-700 font-medium mb-1">Total Count</div>
-          <div className="text-2xl font-bold text-blue-900">{statistics.count}</div>
-        </div>
-        
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="text-sm text-green-700 font-medium mb-1">Total Amount</div>
-          <div className="text-2xl font-bold text-green-900">
-            ${statistics.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+          <div className="text-sm text-gray-600 font-medium mb-2">This Month</div>
+          <div className="text-3xl font-bold text-green-600">
+            ${estimatedMonthlyTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            {upcomingThisMonth.filter(e => {
+              if (!e.nextOccurrence) return false;
+              const d = new Date(e.nextOccurrence);
+              return d.getFullYear() === new Date().getFullYear() && d.getMonth() === new Date().getMonth();
+            }).length} payment{upcomingThisMonth.filter(e => {
+              if (!e.nextOccurrence) return false;
+              const d = new Date(e.nextOccurrence);
+              return d.getFullYear() === new Date().getFullYear() && d.getMonth() === new Date().getMonth();
+            }).length !== 1 ? 's' : ''} due
           </div>
         </div>
         
-        <div 
-          onClick={() => setFilterByAmount(filterByAmount === 'max' ? null : 'max')}
-          className="bg-purple-50 border border-purple-200 rounded-lg p-4 cursor-pointer hover:bg-purple-100 transition-colors"
-        >
-          <div className="text-sm text-purple-700 font-medium mb-1">
-            Max Value {filterByAmount === 'max' && <span className="text-xs">(filtered)</span>}
+        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+          <div className="text-sm text-gray-600 font-medium mb-2">Total Upcoming</div>
+          <div className="text-3xl font-bold text-blue-600">
+            ${totalUpcoming.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <div className="text-2xl font-bold text-purple-900">
-            ${statistics.maxAmount > 0 ? statistics.maxAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00'}
+          <div className="text-xs text-gray-500 mt-1">
+            {upcomingThisMonth.length} payment{upcomingThisMonth.length !== 1 ? 's' : ''} scheduled
           </div>
         </div>
         
-        <div 
-          onClick={() => setFilterByAmount(filterByAmount === 'min' ? null : 'min')}
-          className="bg-orange-50 border border-orange-200 rounded-lg p-4 cursor-pointer hover:bg-orange-100 transition-colors"
-        >
-          <div className="text-sm text-orange-700 font-medium mb-1">
-            Min Value {filterByAmount === 'min' && <span className="text-xs">(filtered)</span>}
-          </div>
-          <div className="text-2xl font-bold text-orange-900">
-            ${statistics.minAmount > 0 ? statistics.minAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00'}
-          </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+          <div className="text-sm text-gray-600 font-medium mb-2">Next Payment</div>
+          {upcomingThisMonth.length > 0 && upcomingThisMonth[0].nextOccurrence ? (
+            <>
+              <div className="text-2xl font-bold text-purple-600">
+                {formatDate(upcomingThisMonth[0].nextOccurrence)}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {upcomingThisMonth[0].daysUntil === 0 ? 'Today' : 
+                 upcomingThisMonth[0].daysUntil === 1 ? 'Tomorrow' :
+                 upcomingThisMonth[0].daysUntil > 0 ? `in ${upcomingThisMonth[0].daysUntil} days` : ''}
+              </div>
+            </>
+          ) : (
+            <div className="text-2xl font-bold text-gray-400">No payments</div>
+          )}
         </div>
       </div>
 
@@ -492,10 +427,10 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Search payments by description, amount, or date..."
+            placeholder="Search payments..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
           />
           {searchQuery && (
             <button
@@ -508,204 +443,221 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
         </div>
       </div>
 
-      {/* Results count */}
-      {searchQuery && (
-        <div className="mb-4 text-sm text-gray-600">
-          Showing {filteredPaymentEvents.length} result{filteredPaymentEvents.length !== 1 ? 's' : ''} for "{searchQuery}"
-        </div>
-      )}
-
-      {filteredPaymentEvents.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <p>{searchQuery ? `No payments found matching "${searchQuery}".` : filterByAmount ? 'No payments found with this amount.' : 'No payment events found.'}</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {Object.keys(groupedPayments).sort((a, b) => {
-            if (a === 'No Date') return 1;
-            if (b === 'No Date') return -1;
-            // Sort years in descending order (latest first)
-            const yearA = parseInt(a);
-            const yearB = parseInt(b);
-            return yearB - yearA;
-          }).map(yearKey => {
-            // Handle "No Date" group
-            if (yearKey === 'No Date') {
+      {/* Upcoming Payments This Month */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <CalendarIcon className="h-6 w-6 text-blue-600" />
+          Upcoming Payments This Month
+        </h2>
+        
+        {upcomingThisMonth.length === 0 ? (
+          <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
+            <p>No upcoming payments found.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {upcomingThisMonth.map((event) => {
+              const amount = extractDollarAmount(event.description, event.customFields);
+              const daysUntil = event.daysUntil;
+              
+              // Determine if it's this month or future month
+              const now = new Date();
+              const occurrenceDate = event.nextOccurrence ? new Date(event.nextOccurrence) : null;
+              const isThisMonth = occurrenceDate && 
+                occurrenceDate.getFullYear() === now.getFullYear() && 
+                occurrenceDate.getMonth() === now.getMonth();
+              
               return (
-                <div key="no-date" className="space-y-4">
-                  <h2 className="text-xl font-semibold text-gray-700 border-b border-gray-300 pb-2">
-                    No Date
-                  </h2>
-                  {groupedPayments[yearKey].map((event) => {
-                    const dollarAmount = extractDollarAmount(event.description, event.customFields);
-                    return (
-                      <div
-                        key={event.note.id}
-                        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <span className={`text-lg font-semibold ${dollarAmount > 0 ? 'text-green-700' : 'text-gray-400'}`}>
-                              ${dollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                            <h3 className="text-lg font-semibold text-gray-900 mt-2">
-                              {highlightSearchTerms(event.description, searchQuery)}
-                            </h3>
-                          </div>
-                          <button
-                            onClick={() => handleViewNote(event.note.id)}
-                            className="flex-shrink-0 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="View in Notes"
-                          >
-                            <DocumentTextIcon className="h-5 w-5" />
-                          </button>
-                        </div>
+                <div
+                  key={event.note.id}
+                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        {occurrenceDate && (
+                          <span className={`text-sm font-medium px-3 py-1 rounded ${
+                            daysUntil === 0 ? 'bg-red-100 text-red-700' :
+                            daysUntil !== null && daysUntil <= 3 ? 'bg-orange-100 text-orange-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {formatDate(occurrenceDate)}
+                          </span>
+                        )}
+                        {daysUntil !== null && (
+                          <span className="text-sm text-gray-600">
+                            {daysUntil === 0 ? 'Due today' : 
+                             daysUntil === 1 ? 'Due tomorrow' :
+                             daysUntil > 0 ? `${daysUntil} days away` : ''}
+                          </span>
+                        )}
+                        {!isThisMonth && occurrenceDate && (
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                            {occurrenceDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                          </span>
+                        )}
                       </div>
-                    );
-                  })}
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        {event.description || 'Untitled Payment'}
+                      </h3>
+                      <div className="flex items-center gap-4 mt-2">
+                        <span className={`text-xl font-bold ${amount > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                          ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        {event.recurrence && event.recurrence !== 'none' && (
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                            {event.recurrence === 'monthly' ? 'Monthly' :
+                             event.recurrence === 'weekly' ? 'Weekly' :
+                             event.recurrence === 'daily' ? 'Daily' :
+                             event.recurrence === 'yearly' ? 'Yearly' : event.recurrence}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditEvent(event)}
+                        className="flex-shrink-0 p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Edit Payment"
+                      >
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handleViewNote(event.note.id)}
+                        className="flex-shrink-0 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="View in Notes"
+                      >
+                        <DocumentTextIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
-            }
+            })}
+          </div>
+        )}
+      </div>
 
-            // Handle year groups
-            const year = parseInt(yearKey);
-            const months = groupedPayments[year];
-            
-            // Calculate year total
-            const yearTotal = Object.values(months).reduce((total, monthData) => {
-              return total + monthData.events.reduce((monthTotal, event) => {
-                return monthTotal + extractDollarAmount(event.description, event.customFields);
-              }, 0);
-            }, 0);
-
-            const isYearCollapsed = collapsedYears.has(year);
-
-            return (
-              <div key={year} className="space-y-4">
-                <h2 
-                  onClick={() => toggleYear(year)}
-                  className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 flex items-center justify-between cursor-pointer hover:bg-gray-50 -mx-2 px-2 py-1 rounded transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    {isYearCollapsed ? (
-                      <ChevronRightIcon className="h-6 w-6 text-gray-600" />
-                    ) : (
-                      <ChevronDownIcon className="h-6 w-6 text-gray-600" />
-                    )}
-                    <span>{year}</span>
-                  </div>
-                  <span className={`text-xl font-bold ${yearTotal > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                    ${yearTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </h2>
+      {/* Past Payments (Collapsible) */}
+      {pastPayments.length > 0 && (
+        <div className="mb-8">
+          <button
+            onClick={() => setShowPastPayments(!showPastPayments)}
+            className="flex items-center gap-2 text-lg font-semibold text-gray-700 mb-4 hover:text-gray-900 transition-colors"
+          >
+            <span className={`transform transition-transform ${showPastPayments ? 'rotate-90' : ''}`}>▶</span>
+            Past Payments ({pastPayments.length})
+          </button>
+          
+          {showPastPayments && (
+            <div className="space-y-3">
+              {pastPayments.map((event) => {
+                const amount = extractDollarAmount(event.description, event.customFields);
                 
-                {!isYearCollapsed && Object.entries(months)
-                  .sort(([monthNumA], [monthNumB]) => {
-                    const monthA = parseInt(monthNumA);
-                    const monthB = parseInt(monthNumB);
-                    return monthB - monthA; // Latest month first (December first)
-                  })
-                  .map(([monthNum, monthData]) => {
-                  const events = monthData.events;
-                  const monthTotal = events.reduce((total, event) => {
-                    return total + extractDollarAmount(event.description, event.customFields);
-                  }, 0);
-
-                  const monthKey = `${year}-${monthNum}`;
-                  const isMonthCollapsed = collapsedMonths.has(monthKey);
-
-                  return (
-                    <div key={monthNum} className="space-y-3">
-                      <div 
-                        onClick={() => toggleMonth(year, monthNum)}
-                        className="flex items-center justify-between border-b border-gray-200 pb-2 cursor-pointer hover:bg-gray-50 -mx-2 px-2 py-1 rounded transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          {isMonthCollapsed ? (
-                            <ChevronRightIcon className="h-5 w-5 text-gray-600" />
-                          ) : (
-                            <ChevronDownIcon className="h-5 w-5 text-gray-600" />
+                return (
+                  <div
+                    key={event.note.id}
+                    className="bg-white border border-gray-200 rounded-lg p-4 opacity-75 hover:opacity-100 transition-opacity"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          {event.nextOccurrence && (
+                            <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded font-medium">
+                              {formatDate(event.nextOccurrence)}
+                            </span>
                           )}
-                          <h3 className="text-lg font-semibold text-gray-700">
-                            {monthData.name}
-                          </h3>
                         </div>
-                        <span className={`text-base font-semibold ${monthTotal > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                          ${monthTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <h3 className="text-lg font-semibold text-gray-700 mb-1">
+                          {event.description || 'Untitled Payment'}
+                        </h3>
+                        <span className={`text-xl font-bold ${amount > 0 ? 'text-gray-600' : 'text-gray-400'}`}>
+                          ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
-                      
-                      {!isMonthCollapsed && (
-                        <div className="space-y-3 ml-4">
-                        {events.map((event) => {
-                          const dollarAmount = extractDollarAmount(event.description, event.customFields);
-                          return (
-                            <div
-                              key={event.note.id}
-                              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                            >
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-3 mb-2">
-                                    {event.dateTime && (
-                                      <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded font-medium">
-                                        {formatDateWithAge(event.dateTime)}
-                                      </span>
-                                    )}
-                                    <span className={`text-lg font-semibold ${dollarAmount > 0 ? 'text-green-700' : 'text-gray-400'}`}>
-                                      ${dollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </span>
-                                  </div>
-                                  <h3 className="text-lg font-semibold text-gray-900">
-                                    {highlightSearchTerms(event.description, searchQuery)}
-                                  </h3>
-                                </div>
-                                <button
-                                  onClick={() => handleViewNote(event.note.id)}
-                                  className="flex-shrink-0 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                  title="View in Notes"
-                                >
-                                  <DocumentTextIcon className="h-5 w-5" />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditEvent(event)}
+                          className="flex-shrink-0 p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Edit Payment"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleViewNote(event.note.id)}
+                          className="flex-shrink-0 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="View in Notes"
+                        >
+                          <DocumentTextIcon className="h-5 w-5" />
+                        </button>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {/* EditEventModal for adding payments */}
+      {/* EditEventModal for adding/editing payments */}
       <EditEventModal
         isOpen={showEditEventModal}
-        note={null} // Always null for adding new payments
+        note={editingEvent}
         onSave={async (content) => {
-          const result = await handleAddPayment(content);
-          setShowEditEventModal(false);
-          return result;
+          if (editingEvent) {
+            // Update existing event
+            try {
+              const updatedNote = await updateNoteById(editingEvent.id, content);
+              if (setAllNotes) {
+                setAllNotes(prevNotes => prevNotes.map(note => 
+                  note.id === editingEvent.id ? updatedNote : note
+                ));
+              }
+              setShowEditEventModal(false);
+              setEditingEvent(null);
+              return updatedNote;
+            } catch (error) {
+              console.error('Error updating payment:', error);
+              throw error;
+            }
+          } else {
+            // Create new payment
+            const result = await handleAddPayment(content);
+            setShowEditEventModal(false);
+            setEditingEvent(null);
+            return result;
+          }
         }}
         onCancel={() => {
           setShowEditEventModal(false);
+          setEditingEvent(null);
         }}
         onSwitchToNormalEdit={() => {
+          if (editingEvent) {
+            navigate(`/notes?note=${editingEvent.id}`);
+          }
           setShowEditEventModal(false);
+          setEditingEvent(null);
         }}
-        onDelete={() => {
-          // Delete not applicable for new payments
+        onDelete={async (eventId) => {
+          // Handle deletion if needed
+          try {
+            await deleteNoteById(eventId);
+            if (setAllNotes) {
+              setAllNotes(prevNotes => prevNotes.filter(note => note.id !== eventId));
+            }
+            setShowEditEventModal(false);
+            setEditingEvent(null);
+          } catch (error) {
+            console.error('Error deleting payment:', error);
+          }
         }}
         notes={allNotes}
-        prePopulatedTags="payment"
+        prePopulatedTags={editingEvent ? undefined : "payment"}
       />
     </div>
   );
 };
 
 export default PaymentsPage;
-

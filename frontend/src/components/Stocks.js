@@ -315,11 +315,11 @@ const StockPrice = () => {
 
   return (
     <div className="space-y-4">
-      <div className="relative w-64 h-40">
+      <div className="relative w-64 min-h-[160px]">
         {/* Front of card */}
         <div 
-          className={`absolute w-full h-full p-4 rounded-md bg-gray-100 shadow-md transition-all duration-500 ${
-            isFlipped ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          className={`w-full p-4 rounded-md bg-gray-100 shadow-md transition-all duration-500 ${
+            isFlipped ? 'opacity-0 pointer-events-none absolute' : 'opacity-100 relative'
           }`}
         >
           <div className="mb-2">
@@ -356,8 +356,8 @@ const StockPrice = () => {
 
         {/* Back of card */}
         <div 
-          className={`absolute w-full h-full p-4 rounded-md bg-gray-100 shadow-md transition-all duration-500 ${
-            isFlipped ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          className={`w-full p-4 rounded-md bg-gray-100 shadow-md transition-all duration-500 ${
+            isFlipped ? 'opacity-100 relative' : 'opacity-0 pointer-events-none absolute'
           }`}
         >
           <div className="flex justify-between items-center mb-4">

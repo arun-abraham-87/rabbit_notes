@@ -713,17 +713,17 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                     <TimeZoneDisplay selectedTimezones={selectedTimezones} />
                   </div>
                   <div className="flex-shrink-0 w-full sm:w-auto">
-                    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-2 sm:p-3 min-h-0">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                        <div className="space-y-1 sm:space-y-2 min-h-0 flex flex-col">
+                    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-2 sm:p-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 items-start">
+                        <div className="space-y-1 sm:space-y-2 flex flex-col">
                           <h3 className="text-sm sm:text-base font-semibold text-gray-900">Stock Information</h3>
-                          <div className="flex-1 min-h-0 overflow-visible">
+                          <div className="w-full">
                             <StockPrice />
                           </div>
                         </div>
-                        <div className="space-y-1 sm:space-y-2 min-h-0 flex flex-col">
+                        <div className="space-y-1 sm:space-y-2 flex flex-col">
                           <h3 className="text-sm sm:text-base font-semibold text-gray-900">Exchange Rates</h3>
-                          <div className="flex-1 min-h-0 overflow-visible">
+                          <div className="w-full">
                             <ExchangeRates />
                           </div>
                         </div>

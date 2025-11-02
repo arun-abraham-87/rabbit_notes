@@ -249,8 +249,8 @@ const ExchangeRates = () => {
 
   return (
     <div className="space-y-4">
-      <div className="relative w-72 min-h-44">
-        <div className="absolute w-full p-4 rounded-md bg-gray-100 shadow-md">
+      <div className="w-72">
+        <div className="w-full p-4 rounded-md bg-gray-100 shadow-md">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-lg font-bold truncate">INR Exchange Rates</h2>
             <button 

@@ -158,7 +158,6 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [timezones, setTimezones] = useState([]);
   const [showTimezones, setShowTimezones] = useState(true);
   const [selectedTimezones, setSelectedTimezones] = useState([]);
-  const [isEventManagerCollapsed, setIsEventManagerCollapsed] = useState(false);
   const [eventScrollPosition, setEventScrollPosition] = useState(0);
   const [notesScrollPosition, setNotesScrollPosition] = useState(0);
   const [eventsHasOverflow, setEventsHasOverflow] = useState(false);
@@ -744,25 +743,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setIsEventManagerCollapsed(!isEventManagerCollapsed)}
-                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  {isEventManagerCollapsed ? (
-                    <>
-                      <ChevronDownIcon className="h-4 w-4" />
-                      Show Events
-                    </>
-                  ) : (
-                    <>
-                      <ChevronUpIcon className="h-4 w-4" />
-                      Hide Events
-                    </>
-                  )}
-                </button>
-                
-                {!isEventManagerCollapsed && (
-                  <div className="flex gap-1 items-center">
+                <div className="flex gap-1 items-center">
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => setEventFilter('all')}
@@ -894,11 +875,9 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                       <ArrowPathIcon className="h-3 w-3" />
                     </button>
                   </div>
-                )}
               </div>
               
-              {!isEventManagerCollapsed && (
-                <div className="flex gap-2">
+              <div className="flex gap-2">
                   <button
                     onClick={() => {
                       // This will trigger the add event functionality
@@ -922,11 +901,8 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                     Add Event
                   </button>
                 </div>
-              )}
             </div>
-            {!isEventManagerCollapsed && (
-              <>
-                {/* Event Notes Row */}
+            {/* Event Notes Row */}
                 <div className="flex items-center gap-2 mb-6">
                   {/* Left Arrow */}
                   <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
@@ -1021,10 +997,6 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                     )}
                   </div>
                 </div>
-
-
-              </>
-            )}
           </div>
 
 

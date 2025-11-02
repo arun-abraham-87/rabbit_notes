@@ -12,9 +12,28 @@ const ExchangeRates = () => {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [apiCalls, setApiCalls] = useState(0);
-  const [notes, setNotes] = useState({ usd: '', aud: '' });
+  // Initialize notes from localStorage directly
+  const getInitialNotes = () => {
+    try {
+      const savedNotes = localStorage.getItem('exchangeRateNotes');
+      if (savedNotes) {
+        const parsed = JSON.parse(savedNotes);
+        // Ensure we have both usd and aud properties
+        return {
+          usd: parsed.usd || '',
+          aud: parsed.aud || ''
+        };
+      }
+    } catch (err) {
+      console.error('Error loading exchange rate notes:', err);
+    }
+    return { usd: '', aud: '' };
+  };
+
+  const [notes, setNotes] = useState(getInitialNotes);
   const [editingNote, setEditingNote] = useState(null); // 'usd' or 'aud' or null
   const [tempNote, setTempNote] = useState('');
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Initialize API call count
   useEffect(() => {
@@ -32,22 +51,17 @@ const ExchangeRates = () => {
     setApiCalls(apiCallData.count);
   }, []);
 
-  // Load notes from localStorage on mount
+  // Mark as loaded after initial render
   useEffect(() => {
-    const savedNotes = localStorage.getItem('exchangeRateNotes');
-    if (savedNotes) {
-      try {
-        setNotes(JSON.parse(savedNotes));
-      } catch (err) {
-        console.error('Error loading exchange rate notes:', err);
-      }
-    }
+    setIsLoaded(true);
   }, []);
 
-  // Save notes to localStorage whenever they change
+  // Save notes to localStorage whenever they change (but only after initial load)
   useEffect(() => {
-    localStorage.setItem('exchangeRateNotes', JSON.stringify(notes));
-  }, [notes]);
+    if (isLoaded) {
+      localStorage.setItem('exchangeRateNotes', JSON.stringify(notes));
+    }
+  }, [notes, isLoaded]);
 
   const getCachedData = () => {
     const cachedData = localStorage.getItem('exchangeRatesData');

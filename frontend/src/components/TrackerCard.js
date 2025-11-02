@@ -163,15 +163,52 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       setValue(answer ? answer.value : '');
       setShowValueModal(true);
     } else if (type === 'yes,no' || type === 'yesno' || type === 'yes/no') {
-      // Always show modal for yes/no trackers so user can toggle or remove
-      console.log('[TrackerCard.handleDateClick] Showing yes/no modal', { 
+      // Cycle through yes -> no -> not selected (null) -> yes
+      const currentAnswer = answer && answer.answer ? answer.answer.toLowerCase() : null;
+      let newAnswer = null;
+      
+      if (currentAnswer === null || currentAnswer === '') {
+        // No answer -> yes
+        newAnswer = 'yes';
+      } else if (currentAnswer === 'yes') {
+        // Yes -> no
+        newAnswer = 'no';
+      } else if (currentAnswer === 'no') {
+        // No -> remove (null)
+        newAnswer = null;
+      }
+      
+      console.log('[TrackerCard.handleDateClick] Cycling yes/no', { 
         trackerId: tracker.id, 
         dateStr,
-        hasExistingAnswer: !!answer,
-        existingAnswer: answer?.answer
+        currentAnswer,
+        newAnswer
       });
-      setSelectedDate(dateStr);
-      setShowYesNoModal(true);
+      
+      // If removing (null), delete the note if it exists
+      if (newAnswer === null && answer && answer.id) {
+        deleteNoteById(answer.id).then(() => {
+          console.log('[TrackerCard.handleDateClick] Removed answer', { dateStr, noteId: answer.id });
+          onToggleDay(tracker.id, dateStr, null);
+        }).catch(error => {
+          console.error('[TrackerCard.handleDateClick] ERROR removing answer', { dateStr, error });
+        });
+      } else {
+        // Update or create answer
+        if (answer && answer.id) {
+          // Update existing answer
+          updateNoteById(answer.id, newAnswer).then(() => {
+            console.log('[TrackerCard.handleDateClick] Updated answer', { dateStr, noteId: answer.id, newAnswer });
+            onToggleDay(tracker.id, dateStr, newAnswer);
+          }).catch(error => {
+            console.error('[TrackerCard.handleDateClick] ERROR updating answer', { dateStr, error });
+          });
+        } else {
+          // Create new answer
+          console.log('[TrackerCard.handleDateClick] Creating new answer', { dateStr, newAnswer });
+          onToggleDay(tracker.id, dateStr, newAnswer);
+        }
+      }
     } else {
       onToggleDay(tracker.id, dateStr);
     }

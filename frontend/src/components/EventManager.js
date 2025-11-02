@@ -810,6 +810,14 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
               eventDate.setHours(0, 0, 0, 0);
               const totalDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
               
+              // Format the event date
+              const formattedDate = eventDate.toLocaleDateString(undefined, { 
+                weekday: 'short', 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+              });
+              
               return (
                 <div
                   key={`pinned-${note.id}`}
@@ -818,7 +826,7 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   title={note.description}
                 >
                   <div className="text-xs font-medium text-gray-700">
-                    {totalDays} {totalDays === 1 ? 'day' : 'days'} to
+                    {totalDays} {totalDays === 1 ? 'day' : 'days'} to {formattedDate}
                   </div>
                   <div className="text-sm font-semibold text-gray-900 truncate">
                     {note.description}

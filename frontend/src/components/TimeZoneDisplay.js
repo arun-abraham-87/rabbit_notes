@@ -236,22 +236,24 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     const color = (hourNum >= 6 && hourNum < 18) ? 'text-green-500' : 'text-orange-500';
 
     return (
-      <div className={`${cardBgClasses} shadow-md rounded-lg p-2 sm:p-3 w-auto`}>
-        <div className="flex justify-between items-center mb-1">
-          <div className="text-sm sm:text-base font-bold break-words">
-            {label} {flagMap[timeZone] || ''}
+      <div className={`${cardBgClasses} shadow-md rounded-lg p-2 sm:p-3 w-fit overflow-hidden`}>
+        <div className="flex justify-between items-center mb-1 gap-3">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-xs sm:text-sm font-bold whitespace-nowrap">
+              {label}
+            </span>
+            <span className="text-sm whitespace-nowrap">{flagMap[timeZone] || ''}</span>
+            <span className={`${animation} text-xs flex-shrink-0`}>{icon}</span>
           </div>
-          <span className={`${animation} text-xs flex-shrink-0 ml-1`}>{icon}</span>
+          <div className={`text-sm sm:text-base font-semibold ${color} whitespace-nowrap flex-shrink-0`}>
+            {formattedTime12}
+          </div>
         </div>
 
-        <div className={`text-base sm:text-lg font-semibold ${color} break-words mb-1`}>
-          {formattedTime24} {relativeDayText} ({formattedTime12})
-        </div>
-
-        <div className="flex items-center justify-between text-xs text-gray-500 flex-wrap gap-1">
-          <span className="break-words">{formattedDate}</span>
+        <div className="flex items-center justify-between text-[10px] sm:text-xs text-gray-500 flex-wrap gap-1">
+          <span className="whitespace-nowrap">{formattedDate}</span>
           {diff && (
-            <span className="text-xs text-gray-400 break-words">
+            <span className="text-[10px] sm:text-xs text-gray-400 whitespace-nowrap ml-2">
               {diff}
             </span>
           )}
@@ -269,8 +271,16 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
       }))
     : defaultTimezones;
 
-  // Enrich with numeric diff, dayLabel, and sort by trailing first (most negative), then most forward last (most positive)
-  const sortedZones = timezonesToShow
+  // Function to get time tier based on hour (morning, afternoon, late night, early morning)
+  const getTimeTier = (hour) => {
+    if (hour >= 6 && hour < 12) return 'morning';
+    if (hour >= 12 && hour < 18) return 'afternoon';
+    if (hour >= 18 && hour < 24) return 'lateNight'; // 6 PM - midnight
+    return 'earlyMorning'; // midnight - 6 AM
+  };
+
+  // Enrich with numeric diff, dayLabel, hour, and tier
+  const enrichedZones = timezonesToShow
     .map(z => {
       const diffHrs = getTimeDiffHours(z.timeZone);
       const now = new Date();
@@ -282,20 +292,60 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
           : zoneYMD > baseYMD
             ? 'Next Day'
             : 'Same Day';
-      return { ...z, diffHrs, dayLabel };
+      
+      // Get hour in the timezone
+      const hour = new Intl.DateTimeFormat('en-US', {
+        timeZone: z.timeZone,
+        hour12: false,
+        hour: 'numeric',
+      }).format(now);
+      const hourNum = parseInt(hour, 10);
+      const tier = getTimeTier(hourNum);
+      
+      return { ...z, diffHrs, dayLabel, hourNum, tier };
     })
     .sort((a, b) => {
       // Sort by diffHrs: most negative (trailing) first, most positive (forward) last
       return a.diffHrs - b.diffHrs;
     });
 
+  // Group zones by tier
+  const zonesByTier = {
+    morning: enrichedZones.filter(z => z.tier === 'morning'),
+    afternoon: enrichedZones.filter(z => z.tier === 'afternoon'),
+    lateNight: enrichedZones.filter(z => z.tier === 'lateNight'),
+    earlyMorning: enrichedZones.filter(z => z.tier === 'earlyMorning'),
+  };
+
+  const tierLabels = {
+    morning: 'Morning (6 AM - 12 PM)',
+    afternoon: 'Afternoon (12 PM - 6 PM)',
+    lateNight: 'Late Night (6 PM - 12 AM)',
+    earlyMorning: 'Early Morning (12 AM - 6 AM)',
+  };
+
+  // Order: earlyMorning, morning, afternoon, lateNight (chronological order throughout the day)
+  const tierOrder = ['earlyMorning', 'morning', 'afternoon', 'lateNight'];
+
   return (
-    <div className="bg-gray-100 p-2 sm:p-3 rounded-lg">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
-        {sortedZones.map(({ label, timeZone, dayLabel }) => (
-          <ZoneCard key={label} label={label} timeZone={timeZone} />
-        ))}
-      </div>
+    <div className="bg-gray-100 p-2 sm:p-3 rounded-lg space-y-4">
+      {tierOrder.map(tier => {
+        const zones = zonesByTier[tier];
+        if (zones.length === 0) return null;
+        
+        return (
+          <div key={tier} className="space-y-2">
+            <h3 className="text-sm font-semibold text-gray-700 px-1">
+              {tierLabels[tier]}
+            </h3>
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+              {zones.map(({ label, timeZone, dayLabel }) => (
+                <ZoneCard key={label} label={label} timeZone={timeZone} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

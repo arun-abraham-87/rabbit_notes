@@ -36,6 +36,7 @@ const NAVBAR_PAGES = [
   { id: 'events', label: 'Events' },
   { id: 'timelines', label: 'Timelines' },
   { id: 'purchases', label: 'Purchases' },
+  { id: 'payments', label: 'Payments' },
   { id: 'countdowns', label: 'Countdowns' },
   { id: 'people', label: 'People' },
   { id: 'news', label: 'News' },

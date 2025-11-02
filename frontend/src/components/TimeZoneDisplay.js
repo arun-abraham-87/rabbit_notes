@@ -305,7 +305,12 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
       return { ...z, diffHrs, dayLabel, hourNum, tier };
     })
     .sort((a, b) => {
-      // Sort by diffHrs: most negative (trailing) first, most positive (forward) last
+      // First sort by day: Previous Day first, then Same Day, then Next Day
+      const dayOrder = { 'Previous Day': 0, 'Same Day': 1, 'Next Day': 2 };
+      const dayDiff = dayOrder[a.dayLabel] - dayOrder[b.dayLabel];
+      if (dayDiff !== 0) return dayDiff;
+      
+      // Then sort by diffHrs: most negative (trailing) first, most positive (forward) last
       return a.diffHrs - b.diffHrs;
     });
 

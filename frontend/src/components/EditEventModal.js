@@ -85,10 +85,30 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       setTags(tagsLine.replace('event_tags:', '').trim());
     }
 
-    // Parse notes
-    const notesLine = lines.find(line => line.startsWith('event_notes:'));
-    if (notesLine) {
-      setEventNotes(notesLine.replace('event_notes:', '').trim());
+    // Parse notes - handle multi-line content
+    const notesLineIndex = lines.findIndex(line => line.startsWith('event_notes:'));
+    if (notesLineIndex !== -1) {
+      const notesParts = [];
+      // Get the content after 'event_notes:' on the first line
+      const firstLine = lines[notesLineIndex];
+      const firstLineContent = firstLine.replace('event_notes:', '').trim();
+      if (firstLineContent) {
+        notesParts.push(firstLineContent);
+      }
+      
+      // Collect subsequent lines until we hit another field
+      for (let i = notesLineIndex + 1; i < lines.length; i++) {
+        const line = lines[i];
+        // Stop if we hit another field (event_* or meta::)
+        if (line.startsWith('event_') || line.startsWith('meta::')) {
+          break;
+        }
+        // Add the line to notes (even if it's empty, preserve structure)
+        notesParts.push(line);
+      }
+      
+      // Join all lines, preserving newlines
+      setEventNotes(notesParts.join('\n'));
     }
 
     // Parse deadline status

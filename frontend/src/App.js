@@ -34,6 +34,7 @@ import CountdownsPage from './pages/CountdownsPage';
 import Timelines from './pages/Timelines';
 import Purchases from './pages/Purchases';
 import PaymentsPage from './pages/PaymentsPage';
+import InformationPage from './pages/InformationPage';
 import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceHelpUtils';
 import StockVesting from './components/StockVesting';
 import Pomodoro from './components/Pomodoro';
@@ -271,6 +272,13 @@ const MainContentArea = ({
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                 <PaymentsPage allNotes={allNotes} onCreateNote={handleCreatePurchaseNote} setAllNotes={setAllNotes} />
+              </div>
+            </div>
+          } />
+          <Route path="/information" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <InformationPage notes={allNotes} setAllNotes={setAllNotes} allNotes={allNotes} />
               </div>
             </div>
           } />

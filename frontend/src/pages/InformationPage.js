@@ -83,6 +83,68 @@ const parseEventNotes = (notes) => {
     });
 };
 
+// Function to render text with clickable URLs
+const renderTextWithLinks = (text) => {
+  if (!text) return null;
+  
+  // URL regex pattern - matches http://, https://, www., and common domains
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+[^\s]*)/gi;
+  
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  
+  // Find all URLs and split text around them
+  while ((match = urlRegex.exec(text)) !== null) {
+    // Add text before the URL
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', content: text.substring(lastIndex, match.index) });
+    }
+    
+    // Add the URL as a link
+    let url = match[0];
+    // Add https:// if it starts with www.
+    if (url.startsWith('www.')) {
+      url = 'https://' + url;
+    }
+    
+    parts.push({ type: 'link', url, text: match[0] });
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // Add remaining text after the last URL
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', content: text.substring(lastIndex) });
+  }
+  
+  // If no URLs found, return original text
+  if (parts.length === 0) {
+    return text;
+  }
+  
+  // Render with React elements
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (part.type === 'link') {
+          return (
+            <a
+              key={index}
+              href={part.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 underline break-all"
+            >
+              {part.text}
+            </a>
+          );
+        }
+        return <span key={index}>{part.content}</span>;
+      })}
+    </>
+  );
+};
+
 export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingEvent, setEditingEvent] = useState(null);
@@ -110,7 +172,13 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
 
   // Handle add event
   const handleAddEvent = () => {
-    setEditingEvent(null);
+    // Create a dummy note with default date of 1/1/2100
+    const defaultDate = '2100-01-01';
+    const dummyNote = {
+      id: null,
+      content: `event_date:${defaultDate}T12:00\nevent_tags:life_info`
+    };
+    setEditingEvent(dummyNote);
     setIsAddModalOpen(true);
   };
 
@@ -118,8 +186,8 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
   const handleSaveEvent = async (content) => {
     try {
       let result;
-      if (editingEvent) {
-        // Update existing event
+      if (editingEvent && editingEvent.id) {
+        // Update existing event (has an ID)
         await updateNoteById(editingEvent.id, content);
         result = { ...editingEvent, content };
         setAllNotes(allNotes.map(note => note.id === editingEvent.id ? result : note));
@@ -214,35 +282,34 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
               key={event.id}
               className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col"
             >
-              {/* Title */}
-              <h3 className="text-lg font-semibold mb-3 text-gray-900 line-clamp-2">
-                {event.title || 'Untitled'}
-              </h3>
+              {/* Title with Edit Icon */}
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 flex-1">
+                  {event.title || 'Untitled'}
+                </h3>
+                <button
+                  onClick={() => handleEditEvent(event)}
+                  className="flex-shrink-0 p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  title="Edit Event"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                </button>
+              </div>
               
               {/* Content */}
               <div className="flex-1 mb-4 text-gray-700 text-sm overflow-hidden" style={{ maxHeight: '144px', overflowY: 'auto' }}>
                 {event.content ? (
-                  <div className="whitespace-pre-wrap break-words">{event.content}</div>
+                  <div className="whitespace-pre-wrap break-words">
+                    {event.content.split('\n').map((line, lineIndex) => (
+                      <div key={lineIndex} className="mb-1">
+                        {renderTextWithLinks(line)}
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className="text-gray-400 italic">No content</div>
                 )}
               </div>
-              
-              {/* Date */}
-              {event.date && (
-                <div className="text-xs text-gray-500 mb-4">
-                  {new Date(event.date).toLocaleDateString()}
-                </div>
-              )}
-              
-              {/* Edit Button */}
-              <button
-                onClick={() => handleEditEvent(event)}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors w-full"
-              >
-                <PencilIcon className="h-4 w-4" />
-                Edit Event
-              </button>
             </div>
           ))}
         </div>

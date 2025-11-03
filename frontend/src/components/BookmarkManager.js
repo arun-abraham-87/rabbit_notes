@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon, PencilIcon, TrashIcon, BellIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon, PencilIcon, TrashIcon, BellIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
 const WebsitePreview = ({ url, isVisible }) => {
@@ -2031,24 +2031,76 @@ const BookmarkManager = ({ allNotes }) => {
     }
   };
 
+  const [activeTab, setActiveTab] = useState('all');
+  const [selectedBookmarks, setSelectedBookmarks] = useState(new Set());
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
+
+  // Calculate statistics for summary cards
+  const stats = useMemo(() => {
+    const visibleBookmarks = showHidden ? bookmarks : bookmarks.filter(b => !b.isHidden);
+    return {
+      all: bookmarks.length,
+      visible: visibleBookmarks.length,
+      hidden: bookmarks.filter(b => b.isHidden).length,
+      withVisits: bookmarks.filter(b => (bookmarkCounts[b.url] || 0) > 0).length
+    };
+  }, [bookmarks, showHidden, bookmarkCounts]);
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-700">Bookmarks</h2>
-        <div className="flex gap-2">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header Section */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-gray-900">Bookmarks</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsLoadTextModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
+            >
+              <DocumentTextIcon className="h-4 w-4" />
+              Load (Text)
+            </button>
+            <button
+              onClick={() => setIsLoadModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
+            >
+              <ArrowUpTrayIcon className="h-4 w-4" />
+              Import
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-6 border-b border-gray-200 -mb-px">
           <button
-            onClick={() => setIsLoadTextModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            onClick={() => setActiveTab('all')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'all'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
           >
-            <DocumentTextIcon className="h-5 w-5" />
-            Load Bookmarks (Text)
+            All Bookmarks
           </button>
           <button
-            onClick={() => setIsLoadModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            onClick={() => setActiveTab('archived')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'archived'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
           >
-            <ArrowUpTrayIcon className="h-5 w-5" />
-            Load Bookmarks
+            Archived
+          </button>
+          <button
+            onClick={() => setActiveTab('favorites')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'favorites'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Favorites
           </button>
         </div>
       </div>
@@ -2066,323 +2118,371 @@ const BookmarkManager = ({ allNotes }) => {
         </div>
       )}
 
-      {isLoading ? (
-        <div className="flex items-center justify-center h-48">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        </div>
-      ) : bookmarks.length > 0 ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <BookmarkIcon className="h-5 w-5 text-blue-500" />
-                <h3 className="text-md font-medium text-gray-700">Total Bookmarks</h3>
-              </div>
-              <p className="text-2xl font-semibold text-gray-900">{bookmarks.length}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <FolderIcon className="h-5 w-5 text-green-500" />
-                <h3 className="text-md font-medium text-gray-700">Total Folders</h3>
-              </div>
-              <p className="text-2xl font-semibold text-gray-900">{folderStats.length}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <ChartBarIcon className="h-5 w-5 text-purple-500" />
-                <h3 className="text-md font-medium text-gray-700">Unique Websites</h3>
-              </div>
-              <p className="text-2xl font-semibold text-gray-900">{hostnameStats.length}</p>
-            </div>
-            <div 
-              className={`bg-white rounded-lg shadow-sm p-4 cursor-pointer transition-colors ${
-                showDuplicates ? 'bg-red-50 border-2 border-red-500' : 'hover:bg-gray-50'
-              }`}
-              onClick={() => setShowDuplicates(!showDuplicates)}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
-                <h3 className="text-md font-medium text-gray-700">Duplicate Bookmarks</h3>
-              </div>
-              <p className="text-2xl font-semibold text-gray-900">{duplicateStats.totalDuplicates}</p>
-              {duplicateStats.totalDuplicates > 0 && (
-                <div className="mt-2 text-sm text-gray-500">
-                  {duplicateStats.urlDuplicates.length} URL duplicates
-                  {duplicateStats.titleDuplicates.length > 0 && (
-                    <span>, {duplicateStats.titleDuplicates.length} title duplicates</span>
-                  )}
-                </div>
-              )}
-            </div>
+      <div className="px-6 py-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-48">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
           </div>
-
-          {yearlyStats.length > 0 && (
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div 
-                className="flex items-center justify-between mb-3 cursor-pointer"
-                onClick={() => setIsYearlyStatsExpanded(!isYearlyStatsExpanded)}
-              >
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-orange-500" />
-                  <h3 className="text-md font-medium text-gray-700">Bookmarks by Year</h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  {(selectedYear || selectedMonth !== null) && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        clearFilters();
-                      }}
-                      className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                    >
-                      <XMarkIcon className="h-4 w-4" />
-                      Clear filters
-                    </button>
-                  )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setGroupByMonth(!groupByMonth);
-                    }}
-                    className={`text-sm px-3 py-1 rounded-lg transition-colors ${
-                      groupByMonth 
-                        ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {groupByMonth ? 'Show by Year' : 'Show by Month'}
-                  </button>
-                  <ChevronRightIcon 
-                    className={`h-5 w-5 text-gray-500 transition-transform ${
-                      isYearlyStatsExpanded ? 'transform rotate-90' : ''
-                    }`} 
-                  />
-                </div>
+        ) : bookmarks.length > 0 ? (
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="text-sm text-gray-600 mb-1">All</div>
+                <div className="text-3xl font-bold text-gray-900">{stats.all}</div>
               </div>
-              {isYearlyStatsExpanded && (
-                <div className="space-y-4">
-                  {yearlyStats.map(({ year, count, months }) => (
-                    <div key={year} className="space-y-2">
-                      <div
-                        onClick={() => setSelectedYear(selectedYear === year ? null : year)}
-                        className={`bg-gray-50 rounded-lg p-3 cursor-pointer transition-colors ${
-                          selectedYear === year
-                            ? 'bg-orange-100 border-2 border-orange-500'
-                            : 'hover:bg-gray-100'
-                        }`}
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="text-sm text-gray-600 mb-1">Visible</div>
+                <div className="text-3xl font-bold text-green-600">{stats.visible}</div>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="text-sm text-gray-600 mb-1">Hidden</div>
+                <div className="text-3xl font-bold text-gray-600">{stats.hidden}</div>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="text-sm text-gray-600 mb-1">Visited</div>
+                <div className="text-3xl font-bold text-blue-600">{stats.withVisits}</div>
+              </div>
+            </div>
+
+            {/* Yearly Stats - Collapsed by default, can be expanded */}
+            {yearlyStats.length > 0 && isYearlyStatsExpanded && (
+              <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+                <div 
+                  className="flex items-center justify-between mb-3 cursor-pointer"
+                  onClick={() => setIsYearlyStatsExpanded(!isYearlyStatsExpanded)}
+                >
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5 text-orange-500" />
+                    <h3 className="text-sm font-medium text-gray-700">Bookmarks by Year</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {(selectedYear || selectedMonth !== null) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearFilters();
+                        }}
+                        className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
                       >
-                        <div className="text-sm font-medium text-gray-500">{year}</div>
-                        <div className="text-xl font-semibold text-gray-900">{count}</div>
-                      </div>
-                      {groupByMonth && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pl-4">
-                          {Object.entries(months)
-                            .sort(([a], [b]) => b - a)
-                            .map(([month, monthCount]) => (
-                              <div
-                                key={month}
-                                onClick={() => setSelectedMonth(selectedMonth === parseInt(month) ? null : parseInt(month))}
-                                className={`bg-gray-50 rounded-lg p-2 cursor-pointer transition-colors ${
-                                  selectedMonth === parseInt(month)
-                                    ? 'bg-orange-100 border-2 border-orange-500'
-                                    : 'hover:bg-gray-100'
-                                }`}
-                              >
-                                <div className="text-xs font-medium text-gray-500">
-                                  {new Date(2000, month, 1).toLocaleString('default', { month: 'short' })}
-                                </div>
-                                <div className="text-lg font-semibold text-gray-900">{monthCount}</div>
-                              </div>
-                            ))}
+                        <XMarkIcon className="h-3 w-3" />
+                        Clear filters
+                      </button>
+                    )}
+                    <ChevronRightIcon 
+                      className={`h-4 w-4 text-gray-500 transition-transform ${
+                        isYearlyStatsExpanded ? 'transform rotate-90' : ''
+                      }`} 
+                    />
+                  </div>
+                </div>
+                {isYearlyStatsExpanded && (
+                  <div className="space-y-4">
+                    {yearlyStats.map(({ year, count, months }) => (
+                      <div key={year} className="space-y-2">
+                        <div
+                          onClick={() => setSelectedYear(selectedYear === year ? null : year)}
+                          className={`bg-gray-50 rounded-lg p-3 cursor-pointer transition-colors border ${
+                            selectedYear === year
+                              ? 'bg-orange-50 border-orange-300'
+                              : 'border-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
+                          <div className="text-sm font-medium text-gray-500">{year}</div>
+                          <div className="text-xl font-semibold text-gray-900">{count}</div>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div 
-              className="flex items-center justify-between mb-3 cursor-pointer"
-              onClick={() => setIsWebStatsExpanded(!isWebStatsExpanded)}
-            >
-              <div className="flex items-center gap-2">
-                <ChartBarIcon className="h-5 w-5 text-gray-500" />
-                <h3 className="text-md font-medium text-gray-700">Website Statistics</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">{hostnameStats.length} unique websites</span>
-                <ChevronRightIcon 
-                  className={`h-5 w-5 text-gray-500 transition-transform ${
-                    isWebStatsExpanded ? 'transform rotate-90' : ''
-                  }`} 
-                />
-              </div>
-            </div>
-            {isWebStatsExpanded && (
-              <div className="max-h-[300px] overflow-y-auto">
-                <div className="space-y-2">
-                  {hostnameStats.map(({ hostname, count }, index) => (
-                    <div
-                      key={hostname}
-                      onClick={() => setSelectedHostname(hostname)}
-                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
-                        selectedHostname === hostname
-                          ? 'bg-blue-50 hover:bg-blue-100'
-                          : 'hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-500">{index + 1}.</span>
-                        <span className="text-sm text-gray-700">{hostname}</span>
                       </div>
-                      <span className="text-sm text-gray-500">{count} bookmarks</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4">
-            <div className="mb-4">
-              <div className="relative">
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowDown') {
-                      e.preventDefault();
-                      if (filteredBookmarks.length > 0) {
-                        setFocusedBookmarkIndex(0);
-                        // Remove focus from search input
-                        searchInputRef.current?.blur();
-                      }
-                    } else if (e.key === 'Escape') {
-                      e.preventDefault();
-                      // Clear search and move focus out of search input
-                      setSearchQuery('');
-                      setFocusedBookmarkIndex(-1);
-                      searchInputRef.current?.blur();
-                    }
-                  }}
-                  placeholder="Search bookmarks (space-separated words)..."
-                  className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-                    title="Clear search"
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                  </button>
+                    ))}
+                  </div>
                 )}
               </div>
-              {searchQuery.trim() && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Searching for: {searchQuery.split(/\s+/).filter(word => word.length > 0).join(', ')}
-                </p>
-              )}
-            </div>
+            )}
 
-            {(selectedHostname || selectedYear || selectedMonth) && (
-              <div className="mb-4 flex items-center justify-between bg-blue-50 p-3 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-700">Showing bookmarks:</span>
-                  {selectedHostname && (
-                    <span className="text-sm font-medium text-blue-700">from {selectedHostname}</span>
-                  )}
-                  {selectedHostname && selectedYear && (
-                    <span className="text-sm text-gray-700">and</span>
-                  )}
-                  {selectedYear && (
-                    <span className="text-sm font-medium text-blue-700">from {selectedYear}</span>
-                  )}
-                  {selectedHostname && selectedMonth !== null && (
-                    <span className="text-sm text-gray-700">and</span>
-                  )}
-                  {selectedMonth !== null && (
-                    <span className="text-sm font-medium text-blue-700">from {selectedMonth}</span>
+            {/* Search and Filters */}
+            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="relative flex-1">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (filteredBookmarks.length > 0) {
+                          setFocusedBookmarkIndex(0);
+                          searchInputRef.current?.blur();
+                        }
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        setSearchQuery('');
+                        setFocusedBookmarkIndex(-1);
+                        searchInputRef.current?.blur();
+                      }
+                    }}
+                    placeholder="Search bookmarks..."
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      title="Clear search"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
                   )}
                 </div>
                 <button
-                  onClick={() => {
-                    clearFilters();
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
+                  onClick={handleShowHiddenClick}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
                 >
-                  <XMarkIcon className="h-5 w-5" />
+                  {showHidden ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                  {showHidden ? 'Hide Hidden' : 'Show Hidden'}
                 </button>
               </div>
-            )}
 
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-md font-medium text-gray-700">
-                {filteredBookmarks.length === bookmarks.length 
-                  ? `All Bookmarks (${bookmarks.length})`
-                  : `Filtered Bookmarks (${filteredBookmarks.length} of ${bookmarks.length})`
-                }
-                {hiddenBookmarksCount > 0 && (
-                  <span className="text-sm text-gray-500 ml-2">
-                    - {hiddenBookmarksCount} hidden found
-                  </span>
-                )}
-                {!searchQuery.trim() && !selectedHostname && !selectedYear && selectedMonth === null && (
-                  <span className="text-sm text-gray-500 ml-2">
-                    (showing most recent 100)
-                  </span>
-                )}
-              </h3>
-              <button
-                onClick={handleShowHiddenClick}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                {showHidden ? (
-                  <>
-                    <EyeSlashIcon className="h-5 w-5" />
-                    Hide Hidden Bookmarks
-                  </>
-                ) : (
-                  <>
-                    <EyeIcon className="h-5 w-5" />
-                    Show Hidden Bookmarks
-                  </>
-                )}
-              </button>
+              {/* Filter Buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-200">
+                  <PlusIcon className="h-3 w-3" />
+                  Date
+                  <ChevronRightIcon className="h-3 w-3 rotate-90" />
+                </button>
+                <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-200">
+                  <PlusIcon className="h-3 w-3" />
+                  Website
+                  <ChevronRightIcon className="h-3 w-3 rotate-90" />
+                </button>
+                <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-200">
+                  <PlusIcon className="h-3 w-3" />
+                  Status
+                  <ChevronRightIcon className="h-3 w-3 rotate-90" />
+                </button>
+                <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-200">
+                  <PlusIcon className="h-3 w-3" />
+                  Folder
+                  <ChevronRightIcon className="h-3 w-3 rotate-90" />
+                </button>
+                <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-200">
+                  <PlusIcon className="h-3 w-3" />
+                  More filters
+                  <ChevronRightIcon className="h-3 w-3 rotate-90" />
+                </button>
+              </div>
             </div>
-            
-            <div className="space-y-6">
-              {renderBookmarkList()}
+
+            {/* Bookmarks Table */}
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              {/* Table Header */}
+              <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-600 uppercase tracking-wider">
+                <div className="col-span-1 flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedBookmarks.size === filteredBookmarks.length && filteredBookmarks.length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedBookmarks(new Set(filteredBookmarks.map((_, i) => i)));
+                      } else {
+                        setSelectedBookmarks(new Set());
+                      }
+                    }}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                </div>
+                <div className="col-span-1">Preview</div>
+                <div className="col-span-4">Description</div>
+                <div className="col-span-2">Website</div>
+                <div className="col-span-1">Status</div>
+                <div className="col-span-2">Date Added</div>
+                <div className="col-span-1">Actions</div>
+              </div>
+
+              {/* Table Body */}
+              <div className="divide-y divide-gray-200">
+                {filteredBookmarks.map((bookmark, index) => (
+                  <div
+                    key={bookmark.id || index}
+                    data-bookmark-index={index}
+                    className={`grid grid-cols-12 gap-4 px-4 py-3 hover:bg-gray-50 transition-colors ${
+                      focusedBookmarkIndex === index ? 'bg-blue-50' : ''
+                    }`}
+                    tabIndex={focusedBookmarkIndex === index ? 0 : -1}
+                  >
+                    {/* Checkbox */}
+                    <div className="col-span-1 flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedBookmarks.has(index)}
+                        onChange={(e) => {
+                          const newSelected = new Set(selectedBookmarks);
+                          if (e.target.checked) {
+                            newSelected.add(index);
+                          } else {
+                            newSelected.delete(index);
+                          }
+                          setSelectedBookmarks(newSelected);
+                        }}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                    </div>
+
+                    {/* Preview */}
+                    <div className="col-span-1 flex items-center">
+                      {isPreviewableUrl(bookmark.url) && !(bookmark.isHidden && !showHidden) ? (
+                        <div
+                          className="w-12 h-12 rounded border border-gray-200 overflow-hidden bg-gray-100 cursor-pointer hover:border-blue-500 transition-colors relative group"
+                          onMouseEnter={(e) => handleMouseEnter(e, bookmark.url)}
+                          onMouseLeave={handleMouseLeave}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewState({
+                              isVisible: !previewState.isVisible || previewState.url !== bookmark.url,
+                              url: bookmark.url,
+                              position: { x: e.clientX, y: e.clientY }
+                            });
+                          }}
+                        >
+                          {/* Website Preview Thumbnail - Using screenshot API or favicon */}
+                          <img
+                            src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(new URL(bookmark.url).hostname)}&sz=64`}
+                            alt="Favicon"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to gradient background with globe icon
+                              e.target.style.display = 'none';
+                              const fallback = document.createElement('div');
+                              fallback.className = 'w-full h-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center';
+                              fallback.innerHTML = '<svg class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                              e.target.parentElement.appendChild(fallback);
+                            }}
+                          />
+                          {/* Hover overlay with play icon */}
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity flex items-center justify-center">
+                            <PlayIcon className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded border border-gray-200 bg-gray-100 flex items-center justify-center">
+                          <BookmarkIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    <div className="col-span-4 flex items-center">
+                      {bookmark.isHidden && !showHidden ? (
+                        <div className="text-gray-400 truncate">••••••••••••••••</div>
+                      ) : (
+                        <a
+                          href={bookmark.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 font-medium truncate"
+                          onClick={() => incrementCount(bookmark.url)}
+                        >
+                          {bookmark.title || bookmark.url}
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Website */}
+                    <div className="col-span-2 flex items-center text-sm text-gray-600">
+                      {bookmark.isHidden && !showHidden ? (
+                        <span className="text-gray-400">••••••••</span>
+                      ) : (
+                        <span className="truncate">
+                          {(() => {
+                            try {
+                              return new URL(bookmark.url).hostname.replace(/^www\./, '');
+                            } catch {
+                              return bookmark.url;
+                            }
+                          })()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Status */}
+                    <div className="col-span-1 flex items-center">
+                      {bookmark.isHidden && !showHidden ? (
+                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-500 rounded">Hidden</span>
+                      ) : (bookmarkCounts[bookmark.url] || 0) > 0 ? (
+                        <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded flex items-center gap-1">
+                          <span>✓</span>
+                          Visited
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">New</span>
+                      )}
+                    </div>
+
+                    {/* Date Added */}
+                    <div className="col-span-2 flex items-center text-sm text-gray-500">
+                      {bookmark.dateAdded ? bookmark.dateAdded.toLocaleDateString() : 'N/A'}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="col-span-1 flex items-center gap-1">
+                      <button
+                        onClick={() => setEditingBookmark(bookmark)}
+                        className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                        title="Edit"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeletingBookmark(bookmark)}
+                        className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {filteredBookmarks.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No bookmarks match your search
+              <div className="text-center py-12 text-gray-500">
+                <BookmarkIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+                <p className="text-lg font-medium text-gray-600">No bookmarks found</p>
+                <p className="text-sm text-gray-500 mt-2">Try adjusting your search or filters</p>
               </div>
             )}
+          </>
+        ) : (
+          <div
+            className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors bg-white ${
+              isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <BookmarkIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+            <p className="text-lg font-medium text-gray-600 mb-2">No bookmarks found</p>
+            <p className="text-sm text-gray-500 mb-6">Drag and drop your Chrome bookmarks file here to import them</p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => setIsLoadTextModalOpen(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                Load Bookmarks (Text)
+              </button>
+              <button
+                onClick={() => setIsLoadModalOpen(true)}
+                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                Import Bookmarks
+              </button>
+            </div>
           </div>
-        </>
-      ) : (
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <BookmarkIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600 mb-2">No bookmarks found in notes</p>
-          <p className="text-sm text-gray-500 mb-4">Drag and drop your Chrome bookmarks file here to import them</p>
-          <p className="text-sm text-gray-500">The file should be named "bookmarks.html"</p>
-        </div>
-      )}
+        )}
+      </div>
 
       <LoadBookmarksModal
         isOpen={isLoadModalOpen}

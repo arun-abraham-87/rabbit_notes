@@ -6,18 +6,25 @@ import { useLeftPanel } from '../contexts/LeftPanelContext';
 
 const Navbar = ({ activePage, setActivePage }) => {
   const [navbarPagesVisibility, setNavbarPagesVisibility] = useState({});
+  const [navbarMainBarPages, setNavbarMainBarPages] = useState({});
   const [showDropdown, setShowDropdown] = useState(false);
   const { isVisible } = useLeftPanel();
 
   useEffect(() => {
     const saved = localStorage.getItem('navbarPagesVisibility');
+    const savedMainBar = localStorage.getItem('navbarMainBarPages');
+    
     if (saved) {
       setNavbarPagesVisibility(JSON.parse(saved));
     } else {
-        // Default: all true
-        setNavbarPagesVisibility({
-          dashboard: true, notes: true, todos: true, watch: true, tags: true, journals: true, events: true, countdowns: true, people: true, news: true, expense: true, trackers: true, calendar: true, bookmarks: true, assets: true, 'stock-vesting': true, pomodoro: true, timelines: true, purchases: true, payments: true, information: true
+      // Default: all true
+      setNavbarPagesVisibility({
+        dashboard: true, notes: true, todos: true, watch: true, tags: true, journals: true, events: true, countdowns: true, people: true, news: true, expense: true, trackers: true, calendar: true, bookmarks: true, assets: true, 'stock-vesting': true, pomodoro: true, timelines: true, purchases: true, payments: true, information: true
         });
+    }
+    
+    if (savedMainBar) {
+      setNavbarMainBarPages(JSON.parse(savedMainBar));
     }
   }, []);
 
@@ -45,9 +52,27 @@ const Navbar = ({ activePage, setActivePage }) => {
     { id: 'information', label: 'Information' },
   ].filter(button => navbarPagesVisibility[button.id]);
 
-  // Split navigation buttons: first 10 in main menu, rest in dropdown
-  const mainMenuButtons = navigationButtons.slice(0, 10);
-  const dropdownButtons = navigationButtons.slice(10);
+  // Split navigation buttons based on main bar preference
+  // Pages marked for main bar go first, then rest in dropdown
+  const mainBarButtonIds = new Set(Object.keys(navbarMainBarPages).filter(id => navbarMainBarPages[id]));
+  
+  // Sort: main bar pages first (in their original order), then others
+  const sortedButtons = navigationButtons.sort((a, b) => {
+    const aOnMainBar = mainBarButtonIds.has(a.id);
+    const bOnMainBar = mainBarButtonIds.has(b.id);
+    
+    if (aOnMainBar && !bOnMainBar) return -1;
+    if (!aOnMainBar && bOnMainBar) return 1;
+    return 0; // Keep original order within groups
+  });
+  
+  // If main bar pages are defined, use them; otherwise fall back to first 10
+  const mainMenuButtons = mainBarButtonIds.size > 0
+    ? sortedButtons.filter(btn => mainBarButtonIds.has(btn.id)).slice(0, 10)
+    : sortedButtons.slice(0, 10);
+  const dropdownButtons = mainBarButtonIds.size > 0
+    ? sortedButtons.filter(btn => !mainBarButtonIds.has(btn.id))
+    : sortedButtons.slice(10);
 
   const NavButton = ({ id, label }) => (
     <button

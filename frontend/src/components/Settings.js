@@ -46,6 +46,7 @@ const NAVBAR_PAGES = [
   { id: 'bookmarks', label: 'Bookmarks' },
   { id: 'assets', label: 'Assets' },
   { id: 'stock-vesting', label: 'Stock Vesting' },
+  { id: 'pomodoro', label: 'Pomodoro' },
   { id: 'information', label: 'Information' },
 ];
 
@@ -53,6 +54,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
   const [selectedTimezones, setSelectedTimezones] = useState([]);
   const [baseTimezone, setBaseTimezone] = useState('');
   const [navbarPagesVisibility, setNavbarPagesVisibility] = useState({});
+  const [navbarMainBarPages, setNavbarMainBarPages] = useState({});
   const [quickPasteEnabled, setQuickPasteEnabled] = useState(true);
   const [developerMode, setDeveloperMode] = useState(false);
 
@@ -67,6 +69,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
         const savedTimezones = localStorage.getItem('selectedTimezones');
         const savedBaseTimezone = localStorage.getItem('baseTimezone');
         const savedNavbarPages = localStorage.getItem('navbarPagesVisibility');
+        const savedMainBarPages = localStorage.getItem('navbarMainBarPages');
         const savedQuickPaste = localStorage.getItem('quickPasteEnabled');
         
         if (savedTimezones) {
@@ -82,6 +85,14 @@ const Settings = ({ onClose, settings, setSettings }) => {
           const defaultVis = {};
           NAVBAR_PAGES.forEach(page => { defaultVis[page.id] = true; });
           setNavbarPagesVisibility(defaultVis);
+        }
+        if (savedMainBarPages) {
+          setNavbarMainBarPages(JSON.parse(savedMainBarPages));
+        } else {
+          // Default: first 10 visible pages on main bar
+          const defaultMainBar = {};
+          NAVBAR_PAGES.slice(0, 10).forEach(page => { defaultMainBar[page.id] = true; });
+          setNavbarMainBarPages(defaultMainBar);
         }
         if (savedQuickPaste !== null) {
           setQuickPasteEnabled(savedQuickPaste === 'true');
@@ -126,16 +137,51 @@ const Settings = ({ onClose, settings, setSettings }) => {
 
   const handleNavbarPageChange = (id, checked) => {
     setNavbarPagesVisibility(prev => ({ ...prev, [id]: checked }));
+    // If page is hidden, also remove from main bar
+    if (!checked) {
+      setNavbarMainBarPages(prev => {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      });
+    }
+  };
+
+  const handleMainBarPageChange = (id, checked) => {
+    // Count how many pages are currently on main bar
+    const currentMainBarCount = Object.values(navbarMainBarPages).filter(v => v === true).length;
+    
+    // Only allow if page is visible
+    if (!navbarPagesVisibility[id]) {
+      return;
+    }
+    
+    // If checking and already have 10, don't allow
+    if (checked && currentMainBarCount >= 10) {
+      alert('You can only have up to 10 pages on the main bar. Please uncheck another page first.');
+      return;
+    }
+    
+    setNavbarMainBarPages(prev => {
+      if (checked) {
+        return { ...prev, [id]: true };
+      } else {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      }
+    });
   };
 
   const handleSave = async () => {
     try {
       
       
-      // Save selected timezones, base timezone, navbar pages visibility, and quick paste to localStorage
+      // Save selected timezones, base timezone, navbar pages visibility, main bar pages, and quick paste to localStorage
       localStorage.setItem('selectedTimezones', JSON.stringify(selectedTimezones));
       localStorage.setItem('baseTimezone', baseTimezone);
       localStorage.setItem('navbarPagesVisibility', JSON.stringify(navbarPagesVisibility));
+      localStorage.setItem('navbarMainBarPages', JSON.stringify(navbarMainBarPages));
       localStorage.setItem('quickPasteEnabled', quickPasteEnabled);
       
       // Update settings with developer mode
@@ -156,8 +202,8 @@ const Settings = ({ onClose, settings, setSettings }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 m-4">
-        <div className="flex justify-between items-center mb-6">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl p-6 m-4 max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center mb-6 flex-shrink-0">
           <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
           <button
             onClick={onClose}
@@ -169,7 +215,9 @@ const Settings = ({ onClose, settings, setSettings }) => {
           </button>
         </div>
 
-        <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-6 overflow-y-auto flex-1 pr-2">
+          {/* Left Section: Other Settings */}
+          <div className="space-y-6 overflow-y-auto pr-4">
           {/* Quick Paste Toggle */}
           <div className="border-b pb-4">
             <h3 className="text-lg font-semibold mb-3 text-gray-700">Quick Paste</h3>
@@ -330,27 +378,87 @@ const Settings = ({ onClose, settings, setSettings }) => {
               </div>
             </div>
           </div>
+          </div>
 
+          {/* Right Section: Navbar Pages */}
+          <div className="flex flex-col pl-4 border-l border-gray-200 h-full">
           {/* Navbar Pages Visibility */}
-          <div className="border-b pb-4">
+          <div className="flex flex-col h-full">
             <h3 className="text-lg font-semibold mb-3 text-gray-700">Navbar Pages</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {NAVBAR_PAGES.map(page => (
-                <label key={page.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={!!navbarPagesVisibility[page.id]}
-                    onChange={e => handleNavbarPageChange(page.id, e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-gray-700">{page.label}</span>
-                </label>
-              ))}
+            <p className="text-sm text-gray-600 mb-3">
+              Select pages to show in navbar. You can choose up to 10 pages to display on the main bar (rest will go to "More" dropdown).
+            </p>
+            <div className="grid grid-cols-2 gap-4 flex-1 overflow-y-auto pr-2">
+              {(() => {
+                // Split pages into Main Bar and More sections
+                const mainBarPages = NAVBAR_PAGES.filter(page => !!navbarMainBarPages[page.id]);
+                const morePages = NAVBAR_PAGES.filter(page => !navbarMainBarPages[page.id]);
+                
+                const renderPageItem = (page) => {
+                  const mainBarCount = Object.values(navbarMainBarPages).filter(v => v === true).length;
+                  const isVisible = !!navbarPagesVisibility[page.id];
+                  const isOnMainBar = !!navbarMainBarPages[page.id];
+                  const canCheckMainBar = isVisible && (isOnMainBar || mainBarCount < 10);
+                
+                  return (
+                    <div key={page.id} className={`flex items-center justify-between gap-2 p-2 rounded hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${isOnMainBar ? 'bg-blue-50' : ''}`}>
+                      <label className="flex items-center gap-2 flex-1 cursor-pointer min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isVisible}
+                          onChange={e => handleNavbarPageChange(page.id, e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 flex-shrink-0"
+                        />
+                        <span className={`text-gray-700 font-medium text-sm truncate ${isOnMainBar ? 'text-blue-700 font-semibold' : ''}`}>{page.label}</span>
+                      </label>
+                      {isVisible && (
+                        <label className="flex items-center gap-1 text-sm cursor-pointer flex-shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={isOnMainBar}
+                            onChange={e => handleMainBarPageChange(page.id, e.target.checked)}
+                            disabled={!canCheckMainBar && !isOnMainBar}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed w-4 h-4"
+                          />
+                          <span className={`text-xs font-medium whitespace-nowrap ${isOnMainBar ? 'text-blue-600' : 'text-gray-500'}`}>
+                            Main
+                          </span>
+                        </label>
+                      )}
+                    </div>
+                  );
+                };
+                
+                return (
+                  <>
+                    <div className="space-y-2 border border-gray-200 rounded p-2">
+                      <h4 className="text-sm font-semibold text-blue-600 mb-2 px-2">Main Bar ({mainBarPages.length})</h4>
+                      {mainBarPages.length > 0 ? (
+                        mainBarPages.map(renderPageItem)
+                      ) : (
+                        <p className="text-sm text-gray-400 px-2 py-4 text-center">No pages on main bar</p>
+                      )}
+                    </div>
+                    <div className="space-y-2 border border-gray-200 rounded p-2">
+                      <h4 className="text-sm font-semibold text-gray-600 mb-2 px-2">More ({morePages.length})</h4>
+                      {morePages.length > 0 ? (
+                        morePages.map(renderPageItem)
+                      ) : (
+                        <p className="text-sm text-gray-400 px-2 py-4 text-center">All pages on main bar</p>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
+            <p className="text-xs text-gray-500 mt-2 flex-shrink-0">
+              Main Bar: {Object.values(navbarMainBarPages).filter(v => v === true).length} / 10 selected
+            </p>
+          </div>
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end space-x-3">
+        <div className="mt-6 flex justify-end space-x-3 flex-shrink-0 border-t border-gray-200 pt-4">
           <button
             onClick={onClose}
             className="px-4 py-2 text-gray-600 hover:text-gray-800"

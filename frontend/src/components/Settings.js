@@ -55,8 +55,10 @@ const Settings = ({ onClose, settings, setSettings }) => {
   const [baseTimezone, setBaseTimezone] = useState('');
   const [navbarPagesVisibility, setNavbarPagesVisibility] = useState({});
   const [navbarMainBarPages, setNavbarMainBarPages] = useState({});
+  const [navbarPagesOrder, setNavbarPagesOrder] = useState([]);
   const [quickPasteEnabled, setQuickPasteEnabled] = useState(true);
   const [developerMode, setDeveloperMode] = useState(false);
+  const [draggedItem, setDraggedItem] = useState(null);
 
   // Load settings on component mount
   useEffect(() => {
@@ -70,6 +72,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
         const savedBaseTimezone = localStorage.getItem('baseTimezone');
         const savedNavbarPages = localStorage.getItem('navbarPagesVisibility');
         const savedMainBarPages = localStorage.getItem('navbarMainBarPages');
+        const savedPagesOrder = localStorage.getItem('navbarPagesOrder');
         const savedQuickPaste = localStorage.getItem('quickPasteEnabled');
         
         if (savedTimezones) {
@@ -93,6 +96,12 @@ const Settings = ({ onClose, settings, setSettings }) => {
           const defaultMainBar = {};
           NAVBAR_PAGES.slice(0, 10).forEach(page => { defaultMainBar[page.id] = true; });
           setNavbarMainBarPages(defaultMainBar);
+        }
+        if (savedPagesOrder) {
+          setNavbarPagesOrder(JSON.parse(savedPagesOrder));
+        } else {
+          // Default: use original NAVBAR_PAGES order
+          setNavbarPagesOrder(NAVBAR_PAGES.map(p => p.id));
         }
         if (savedQuickPaste !== null) {
           setQuickPasteEnabled(savedQuickPaste === 'true');
@@ -173,15 +182,125 @@ const Settings = ({ onClose, settings, setSettings }) => {
     });
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (e, pageId) => {
+    setDraggedItem(pageId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', pageId);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetPageId, isMainBar) => {
+    e.preventDefault();
+    
+    if (!draggedItem || draggedItem === targetPageId) {
+      setDraggedItem(null);
+      return;
+    }
+
+    // Get current order or use default
+    let currentOrder = navbarPagesOrder.length > 0 
+      ? [...navbarPagesOrder]
+      : NAVBAR_PAGES.map(p => p.id);
+    
+    // Ensure both items are in the order
+    if (!currentOrder.includes(draggedItem)) {
+      currentOrder.push(draggedItem);
+    }
+    if (!currentOrder.includes(targetPageId)) {
+      currentOrder.push(targetPageId);
+    }
+    
+    // Find indices
+    const draggedIndex = currentOrder.indexOf(draggedItem);
+    const targetIndex = currentOrder.indexOf(targetPageId);
+    
+    // Check if dragging within same section or between sections
+    const draggedIsMainBar = !!navbarMainBarPages[draggedItem];
+    const targetIsMainBar = isMainBar;
+    
+    if (draggedIsMainBar === targetIsMainBar) {
+      // Same section: reorder within section
+      // Get all pages in current section (main bar or more)
+      const sectionPages = currentOrder.filter(id => 
+        isMainBar ? !!navbarMainBarPages[id] : !navbarMainBarPages[id]
+      );
+      
+      // Get other section pages
+      const otherSectionPages = currentOrder.filter(id => 
+        isMainBar ? !navbarMainBarPages[id] : !!navbarMainBarPages[id]
+      );
+      
+      // Find indices within section
+      const sectionDraggedIndex = sectionPages.indexOf(draggedItem);
+      const sectionTargetIndex = sectionPages.indexOf(targetPageId);
+      
+      if (sectionDraggedIndex === -1 || sectionTargetIndex === -1) {
+        setDraggedItem(null);
+        return;
+      }
+      
+      // Reorder within section
+      sectionPages.splice(sectionDraggedIndex, 1);
+      sectionPages.splice(sectionTargetIndex, 0, draggedItem);
+      
+      // Rebuild full order: main bar pages first, then more pages
+      const newOrder = isMainBar 
+        ? [...sectionPages, ...otherSectionPages]
+        : [...otherSectionPages, ...sectionPages];
+      
+      setNavbarPagesOrder(newOrder);
+    } else {
+      // Different sections: move item to new section and reorder
+      // Remove from old position
+      currentOrder.splice(draggedIndex, 1);
+      
+      // Find new position in target section
+      const targetSectionPages = currentOrder.filter(id => 
+        isMainBar ? !!navbarMainBarPages[id] : !navbarMainBarPages[id]
+      );
+      const newTargetIndex = targetSectionPages.indexOf(targetPageId);
+      
+      if (newTargetIndex === -1) {
+        // If target not found in section, append to section
+        targetSectionPages.push(draggedItem);
+      } else {
+        targetSectionPages.splice(newTargetIndex, 0, draggedItem);
+      }
+      
+      // Rebuild order with new section arrangement
+      const otherSectionPages = currentOrder.filter(id => 
+        isMainBar ? !navbarMainBarPages[id] : !!navbarMainBarPages[id]
+      );
+      
+      const newOrder = isMainBar 
+        ? [...targetSectionPages, ...otherSectionPages]
+        : [...otherSectionPages, ...targetSectionPages];
+      
+      setNavbarPagesOrder(newOrder);
+    }
+    
+    setDraggedItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+  };
+
   const handleSave = async () => {
     try {
       
       
-      // Save selected timezones, base timezone, navbar pages visibility, main bar pages, and quick paste to localStorage
+      // Save selected timezones, base timezone, navbar pages visibility, main bar pages, pages order, and quick paste to localStorage
       localStorage.setItem('selectedTimezones', JSON.stringify(selectedTimezones));
       localStorage.setItem('baseTimezone', baseTimezone);
       localStorage.setItem('navbarPagesVisibility', JSON.stringify(navbarPagesVisibility));
       localStorage.setItem('navbarMainBarPages', JSON.stringify(navbarMainBarPages));
+      localStorage.setItem('navbarPagesOrder', JSON.stringify(navbarPagesOrder));
       localStorage.setItem('quickPasteEnabled', quickPasteEnabled);
       
       // Update settings with developer mode
@@ -390,29 +509,60 @@ const Settings = ({ onClose, settings, setSettings }) => {
             </p>
             <div className="grid grid-cols-2 gap-4 flex-1 overflow-y-auto pr-2">
               {(() => {
-                // Split pages into Main Bar and More sections
-                const mainBarPages = NAVBAR_PAGES.filter(page => !!navbarMainBarPages[page.id]);
-                const morePages = NAVBAR_PAGES.filter(page => !navbarMainBarPages[page.id]);
+                // Create a map for quick lookup
+                const pageMap = {};
+                NAVBAR_PAGES.forEach(page => { pageMap[page.id] = page; });
                 
-                const renderPageItem = (page) => {
+                // Get ordered pages based on stored order
+                const orderedPages = navbarPagesOrder
+                  .map(id => pageMap[id])
+                  .filter(page => page); // Filter out any undefined
+                
+                // Add any pages not in the order list (for backward compatibility)
+                NAVBAR_PAGES.forEach(page => {
+                  if (!navbarPagesOrder.includes(page.id)) {
+                    orderedPages.push(page);
+                  }
+                });
+                
+                // Split pages into Main Bar and More sections based on stored order
+                const mainBarPages = orderedPages.filter(page => !!navbarMainBarPages[page.id]);
+                const morePages = orderedPages.filter(page => !navbarMainBarPages[page.id]);
+                
+                const renderPageItem = (page, index, isMainBar) => {
                   const mainBarCount = Object.values(navbarMainBarPages).filter(v => v === true).length;
                   const isVisible = !!navbarPagesVisibility[page.id];
                   const isOnMainBar = !!navbarMainBarPages[page.id];
                   const canCheckMainBar = isVisible && (isOnMainBar || mainBarCount < 10);
+                  const isDragging = draggedItem === page.id;
                 
                   return (
-                    <div key={page.id} className={`flex items-center justify-between gap-2 p-2 rounded hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${isOnMainBar ? 'bg-blue-50' : ''}`}>
-                      <label className="flex items-center gap-2 flex-1 cursor-pointer min-w-0">
-                        <input
-                          type="checkbox"
-                          checked={isVisible}
-                          onChange={e => handleNavbarPageChange(page.id, e.target.checked)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 flex-shrink-0"
-                        />
-                        <span className={`text-gray-700 font-medium text-sm truncate ${isOnMainBar ? 'text-blue-700 font-semibold' : ''}`}>{page.label}</span>
-                      </label>
+                    <div
+                      key={page.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, page.id)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, page.id, isMainBar)}
+                      onDragEnd={handleDragEnd}
+                      className={`flex items-center justify-between gap-2 p-2 rounded hover:bg-gray-50 border-b border-gray-100 last:border-b-0 cursor-move transition-all ${isOnMainBar ? 'bg-blue-50' : ''} ${isDragging ? 'opacity-50' : ''}`}
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                        </svg>
+                        <label className="flex items-center gap-2 flex-1 cursor-pointer min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isVisible}
+                            onChange={e => handleNavbarPageChange(page.id, e.target.checked)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 flex-shrink-0"
+                          />
+                          <span className={`text-gray-700 font-medium text-sm truncate ${isOnMainBar ? 'text-blue-700 font-semibold' : ''}`}>{page.label}</span>
+                        </label>
+                      </div>
                       {isVisible && (
-                        <label className="flex items-center gap-1 text-sm cursor-pointer flex-shrink-0">
+                        <label className="flex items-center gap-1 text-sm cursor-pointer flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={isOnMainBar}
@@ -434,7 +584,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
                     <div className="space-y-2 border border-gray-200 rounded p-2">
                       <h4 className="text-sm font-semibold text-blue-600 mb-2 px-2">Main Bar ({mainBarPages.length})</h4>
                       {mainBarPages.length > 0 ? (
-                        mainBarPages.map(renderPageItem)
+                        mainBarPages.map((page, index) => renderPageItem(page, index, true))
                       ) : (
                         <p className="text-sm text-gray-400 px-2 py-4 text-center">No pages on main bar</p>
                       )}
@@ -442,7 +592,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
                     <div className="space-y-2 border border-gray-200 rounded p-2">
                       <h4 className="text-sm font-semibold text-gray-600 mb-2 px-2">More ({morePages.length})</h4>
                       {morePages.length > 0 ? (
-                        morePages.map(renderPageItem)
+                        morePages.map((page, index) => renderPageItem(page, index, false))
                       ) : (
                         <p className="text-sm text-gray-400 px-2 py-4 text-center">All pages on main bar</p>
                       )}

@@ -793,8 +793,9 @@ const NotesMainContainer = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
-                <div className="mt-4">
+            <div className="container mx-auto px-6 py-6 max-w-7xl">
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm w-full p-6">
+                    <div className="mt-4">
                     <div className="relative">
                         <textarea
                             ref={searchInputRef}
@@ -1015,9 +1016,10 @@ const NotesMainContainer = ({
                             const clearFocusedNoteEvent = new CustomEvent('clearFocusedNote');
                             document.dispatchEvent(clearFocusedNoteEvent);
                             
-                        }}
-                    />
-                </div>
+                         }}
+                     />
+                 </div>
+            </div>
             </div>
         </div>
     );

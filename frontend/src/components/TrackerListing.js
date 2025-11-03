@@ -69,7 +69,6 @@ const TrackerListing = () => {
   const [graphData, setGraphData] = useState({});
   const [deletingAnswerId, setDeletingAnswerId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [completedCollapsed, setCompletedCollapsed] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
 
@@ -625,51 +624,14 @@ const TrackerListing = () => {
     const matchesCadence = filterCadence === 'all' || tracker.cadence === filterCadence;
     const matchesType = filterType === 'all' || tracker.type === filterType;
     return matchesSearch && matchesCadence && matchesType;
+  }).sort((a, b) => {
+    // Sort by name (title)
+    const nameA = (a.title || '').toLowerCase();
+    const nameB = (b.title || '').toLowerCase();
+    return nameA.localeCompare(nameB);
   });
 
-  const pendingTrackers = filteredTrackers.filter(tracker => {
-    let relevantDateStr = todayStr;
-    if (tracker.cadence && tracker.cadence.toLowerCase() === 'monthly') {
-      relevantDateStr = currentMonthStr + '-01';
-      if (!isOnOrAfterStartDate(tracker, relevantDateStr)) return false;
-      return !isMonthlyCompleted(tracker);
-    }
-    if (tracker.cadence && tracker.cadence.toLowerCase() === 'yearly') {
-      relevantDateStr = currentYearStr + '-01-01';
-      if (!isOnOrAfterStartDate(tracker, relevantDateStr)) return false;
-      return !isYearlyCompleted(tracker);
-    }
-    if (tracker.cadence && tracker.cadence.toLowerCase() === 'weekly') {
-      const lastRelevant = getLastRelevantWeeklyDate(tracker);
-      if (!lastRelevant || !isOnOrAfterStartDate(tracker, lastRelevant)) return false;
-      return !isWeeklyCompleted(tracker);
-    }
-    // Daily or default
-    if (!isOnOrAfterStartDate(tracker, todayStr)) return false;
-    return !(tracker.completions && tracker.completions[todayStr]);
-  });
-
-  const completedTrackers = filteredTrackers.filter(tracker => {
-    let relevantDateStr = todayStr;
-    if (tracker.cadence && tracker.cadence.toLowerCase() === 'monthly') {
-      relevantDateStr = currentMonthStr + '-01';
-      if (!isOnOrAfterStartDate(tracker, relevantDateStr)) return false;
-      return isMonthlyCompleted(tracker);
-    }
-    if (tracker.cadence && tracker.cadence.toLowerCase() === 'yearly') {
-      relevantDateStr = currentYearStr + '-01-01';
-      if (!isOnOrAfterStartDate(tracker, relevantDateStr)) return false;
-      return isYearlyCompleted(tracker);
-    }
-    if (tracker.cadence && tracker.cadence.toLowerCase() === 'weekly') {
-      const lastRelevant = getLastRelevantWeeklyDate(tracker);
-      if (!lastRelevant || !isOnOrAfterStartDate(tracker, lastRelevant)) return false;
-      return isWeeklyCompleted(tracker);
-    }
-    // Daily or default
-    if (!isOnOrAfterStartDate(tracker, todayStr)) return false;
-    return tracker.completions && tracker.completions[todayStr];
-  });
+  // Show all trackers in one unified section - removed pending/completed separation
 
   // Helper to group trackers by cadence
   const groupByCadence = (trackers) => {
@@ -686,6 +648,14 @@ const TrackerListing = () => {
         groups.daily.push(tracker);
       }
     });
+    // Sort each group by name
+    Object.keys(groups).forEach(key => {
+      groups[key].sort((a, b) => {
+        const nameA = (a.title || '').toLowerCase();
+        const nameB = (b.title || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+    });
     return groups;
   };
 
@@ -699,26 +669,28 @@ const TrackerListing = () => {
       }
       groups[type].push(tracker);
     });
+    // Sort each group by name
+    Object.keys(groups).forEach(key => {
+      groups[key].sort((a, b) => {
+        const nameA = (a.title || '').toLowerCase();
+        const nameB = (b.title || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+    });
     return groups;
   };
 
-  // Use the selected grouping option
-  const getPendingGroups = () => {
-    if (groupBy === 'none') return { _flat: pendingTrackers };
-    return groupBy === 'type' ? groupByType(pendingTrackers) : groupByCadence(pendingTrackers);
+  // Use the selected grouping option for all trackers
+  const getGroups = () => {
+    if (groupBy === 'none') return { _flat: filteredTrackers };
+    return groupBy === 'type' ? groupByType(filteredTrackers) : groupByCadence(filteredTrackers);
   };
 
-  const getCompletedGroups = () => {
-    if (groupBy === 'none') return { _flat: completedTrackers };
-    return groupBy === 'type' ? groupByType(completedTrackers) : groupByCadence(completedTrackers);
-  };
+  const groups = getGroups();
 
-  const pendingGroups = getPendingGroups();
-  const completedGroups = getCompletedGroups();
-
-  const renderGroupedTrackers = (groups, sectionType) => {
-    // sectionType: 'pending' or 'completed' for different shades
-    const sectionBg = sectionType === 'pending' ? 'bg-blue-50' : 'bg-green-50';
+  const renderGroupedTrackers = (groups) => {
+    // Unified section styling
+    const sectionBg = 'bg-blue-50';
     
     // Format group title for display
     const formatGroupTitle = (key) => {
@@ -852,7 +824,7 @@ const TrackerListing = () => {
     );
   };
 
-  const totalCount = pendingTrackers.length + completedTrackers.length;
+  const totalCount = filteredTrackers.length;
 
   return (
     <div className="p-8">
@@ -957,19 +929,10 @@ const TrackerListing = () => {
       </div>
       <div className="bg-blue-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-blue-200">
         <h2 className="text-xl font-semibold">
-          Check-in Pending ({pendingTrackers.length}/{totalCount})
+          Trackers ({totalCount})
         </h2>
       </div>
-      {renderGroupedTrackers(pendingGroups, 'pending')}
-      <div className="bg-green-50 rounded-t-lg px-4 pt-4 pb-2 border-b-2 border-green-200 mt-8 flex items-center justify-between cursor-pointer" onClick={() => setCompletedCollapsed(c => !c)}>
-        <h2 className="text-xl font-semibold">
-          Check-in Completed ({completedTrackers.length}/{totalCount})
-        </h2>
-        <button className="ml-2 text-lg focus:outline-none" aria-label="Toggle Completed Section">
-          {completedCollapsed ? '▼' : '▲'}
-        </button>
-      </div>
-      {!completedCollapsed && renderGroupedTrackers(completedGroups, 'completed')}
+      {renderGroupedTrackers(groups)}
       {showAddTracker && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">

@@ -40,38 +40,27 @@ function EnhancedStats({ answers, tracker }) {
   
   // Filter answers based on time filter
   const getFilteredAnswers = () => {
-    const now = moment();
-    let filterStartDate = null;
-    
+    // When "all" is selected, return all answers without date filtering
     if (timeFilter === 'all') {
-      // When "all" is selected, use tracker's start date or earliest answer date
-      if (tracker.startDate) {
-        filterStartDate = moment(tracker.startDate);
-      } else if (answers.length > 0) {
-        const earliestAnswer = answers.reduce((earliest, ans) => {
-          return moment(ans.date).isBefore(moment(earliest)) ? ans.date : earliest;
-        }, answers[0].date);
-        filterStartDate = moment(earliestAnswer);
-      } else {
+      return answers;
+    }
+    
+    let filterStartDate = null;
+    switch (timeFilter) {
+      case 'lastMonth':
+        filterStartDate = moment().subtract(1, 'months').startOf('month');
+        break;
+      case 'last3Months':
+        filterStartDate = moment().subtract(3, 'months').startOf('month');
+        break;
+      case 'ytd':
+        filterStartDate = moment().startOf('year');
+        break;
+      case 'last365Days':
+        filterStartDate = moment().subtract(365, 'days');
+        break;
+      default:
         return answers;
-      }
-    } else {
-      switch (timeFilter) {
-        case 'lastMonth':
-          filterStartDate = moment().subtract(1, 'months').startOf('month');
-          break;
-        case 'last3Months':
-          filterStartDate = moment().subtract(3, 'months').startOf('month');
-          break;
-        case 'ytd':
-          filterStartDate = moment().startOf('year');
-          break;
-        case 'last365Days':
-          filterStartDate = moment().subtract(365, 'days');
-          break;
-        default:
-          return answers;
-      }
     }
     
     return answers.filter(ans => moment(ans.date).isSameOrAfter(filterStartDate));
@@ -247,10 +236,8 @@ function EnhancedStats({ answers, tracker }) {
     completionRate = (total / daysBetween) * 100;
   }
 
-  // Prepare chart data - include all dates from start date to last check-in (or today)
-  const chartStartDate = timeFilter === 'all' && tracker.startDate 
-    ? moment(tracker.startDate)
-    : (sorted.length > 0 ? moment(sorted[0].date) : moment());
+  // Prepare chart data - include all dates from first check-in to last check-in (or today)
+  const chartStartDate = sorted.length > 0 ? moment(sorted[0].date) : moment();
   const chartEndDate = sorted.length > 0 ? moment(sorted[sorted.length - 1].date) : moment();
   
   // Generate all dates in range

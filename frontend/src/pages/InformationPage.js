@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { PencilIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { MapPinIcon } from '@heroicons/react/24/solid';
 import EditEventModal from '../components/EditEventModal';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
 
@@ -149,6 +150,15 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingEvent, setEditingEvent] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [pinnedCards, setPinnedCards] = useState(() => {
+    try {
+      const stored = localStorage.getItem('pinnedInformationCards');
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error loading pinned cards:', error);
+      return [];
+    }
+  });
 
   // Parse and filter events
   const allEvents = useMemo(() => parseEventNotes(notes), [notes]);
@@ -162,6 +172,30 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
       return fuzzySearch(searchableText, searchQuery);
     });
   }, [allEvents, searchQuery]);
+
+  // Functions to handle pinning/unpinning
+  const togglePinCard = (cardId) => {
+    setPinnedCards(prev => {
+      const isPinned = prev.includes(cardId);
+      const newPinned = isPinned 
+        ? prev.filter(id => id !== cardId)
+        : [...prev, cardId];
+      
+      try {
+        localStorage.setItem('pinnedInformationCards', JSON.stringify(newPinned));
+      } catch (error) {
+        console.error('Error saving pinned cards:', error);
+      }
+      
+      return newPinned;
+    });
+  };
+
+  const isCardPinned = (cardId) => pinnedCards.includes(cardId);
+
+  // Separate pinned and unpinned events
+  const pinnedEvents = filteredEvents.filter(event => isCardPinned(event.id));
+  const unpinnedEvents = filteredEvents.filter(event => !isCardPinned(event.id));
 
   // Handle edit event
   const handleEditEvent = (event) => {
@@ -270,48 +304,118 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
         )}
       </div>
 
-      {/* Grid of Cards */}
-      {filteredEvents.length === 0 ? (
+      {/* Pinned Cards Section */}
+      {pinnedEvents.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4 text-blue-600 flex items-center gap-2">
+            <MapPinIcon className="h-5 w-5" />
+            Pinned Information
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {pinnedEvents.map((event) => (
+              <div
+                key={event.id}
+                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col border-2 border-blue-200"
+              >
+                {/* Title with Edit and Pin Icons */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 flex-1">
+                    {event.title || 'Untitled'}
+                  </h3>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => togglePinCard(event.id)}
+                      className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                      title="Unpin"
+                    >
+                      <MapPinIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleEditEvent(event)}
+                      className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      title="Edit Event"
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Content */}
+                <div className="flex-1 mb-4 text-gray-700 text-sm overflow-hidden" style={{ maxHeight: '144px', overflowY: 'auto' }}>
+                  {event.content ? (
+                    <div className="whitespace-pre-wrap break-words">
+                      {event.content.split('\n').map((line, lineIndex) => (
+                        <div key={lineIndex} className="mb-1">
+                          {renderTextWithLinks(line)}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-gray-400 italic">No content</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Unpinned Cards Section */}
+      {unpinnedEvents.length === 0 && pinnedEvents.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
           {searchQuery ? 'No events found matching your search.' : 'No information events found. Add one to get started!'}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredEvents.map((event) => (
-            <div
-              key={event.id}
-              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col"
-            >
-              {/* Title with Edit Icon */}
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 flex-1">
-                  {event.title || 'Untitled'}
-                </h3>
-                <button
-                  onClick={() => handleEditEvent(event)}
-                  className="flex-shrink-0 p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                  title="Edit Event"
-                >
-                  <PencilIcon className="h-4 w-4" />
-                </button>
-              </div>
-              
-              {/* Content */}
-              <div className="flex-1 mb-4 text-gray-700 text-sm overflow-hidden" style={{ maxHeight: '144px', overflowY: 'auto' }}>
-                {event.content ? (
-                  <div className="whitespace-pre-wrap break-words">
-                    {event.content.split('\n').map((line, lineIndex) => (
-                      <div key={lineIndex} className="mb-1">
-                        {renderTextWithLinks(line)}
-                      </div>
-                    ))}
+      ) : unpinnedEvents.length > 0 && (
+        <div>
+          {pinnedEvents.length > 0 && (
+            <h2 className="text-xl font-semibold mb-4 text-gray-700">All Information</h2>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {unpinnedEvents.map((event) => (
+              <div
+                key={event.id}
+                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col"
+              >
+                {/* Title with Edit and Pin Icons */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 flex-1">
+                    {event.title || 'Untitled'}
+                  </h3>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => togglePinCard(event.id)}
+                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      title="Pin"
+                    >
+                      <MapPinIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleEditEvent(event)}
+                      className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      title="Edit Event"
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                    </button>
                   </div>
-                ) : (
-                  <div className="text-gray-400 italic">No content</div>
-                )}
+                </div>
+                
+                {/* Content */}
+                <div className="flex-1 mb-4 text-gray-700 text-sm overflow-hidden" style={{ maxHeight: '144px', overflowY: 'auto' }}>
+                  {event.content ? (
+                    <div className="whitespace-pre-wrap break-words">
+                      {event.content.split('\n').map((line, lineIndex) => (
+                        <div key={lineIndex} className="mb-1">
+                          {renderTextWithLinks(line)}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-gray-400 italic">No content</div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 

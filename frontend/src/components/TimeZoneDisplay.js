@@ -279,7 +279,7 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     return 'earlyMorning'; // midnight - 6 AM
   };
 
-  // Enrich with numeric diff, dayLabel, hour, and tier
+  // Enrich with numeric diff, dayLabel, hour, tier, and formatted date
   const enrichedZones = timezonesToShow
     .map(z => {
       const diffHrs = getTimeDiffHours(z.timeZone);
@@ -293,6 +293,13 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
             ? 'Next Day'
             : 'Same Day';
       
+      // Get formatted date for grouping
+      const formattedDate = new Intl.DateTimeFormat('en-US', {
+        timeZone: z.timeZone,
+        month: 'short',
+        day: 'numeric',
+      }).format(now);
+      
       // Get hour in the timezone
       const hour = new Intl.DateTimeFormat('en-US', {
         timeZone: z.timeZone,
@@ -302,25 +309,47 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
       const hourNum = parseInt(hour, 10);
       const tier = getTimeTier(hourNum);
       
-      return { ...z, diffHrs, dayLabel, hourNum, tier };
+      return { ...z, diffHrs, dayLabel, hourNum, tier, zoneYMD, formattedDate };
     })
     .sort((a, b) => {
-      // First sort by day: Previous Day first, then Same Day, then Next Day
-      const dayOrder = { 'Previous Day': 0, 'Same Day': 1, 'Next Day': 2 };
-      const dayDiff = dayOrder[a.dayLabel] - dayOrder[b.dayLabel];
-      if (dayDiff !== 0) return dayDiff;
+      // First sort by date (YMD): earlier dates first
+      const dateDiff = a.zoneYMD.localeCompare(b.zoneYMD);
+      if (dateDiff !== 0) return dateDiff;
+      
+      // Then sort by tier order within same date
+      const tierOrder = { earlyMorning: 0, morning: 1, afternoon: 2, lateNight: 3 };
+      const tierDiff = tierOrder[a.tier] - tierOrder[b.tier];
+      if (tierDiff !== 0) return tierDiff;
       
       // Then sort by diffHrs: most negative (trailing) first, most positive (forward) last
       return a.diffHrs - b.diffHrs;
     });
 
-  // Group zones by tier
-  const zonesByTier = {
-    morning: enrichedZones.filter(z => z.tier === 'morning'),
-    afternoon: enrichedZones.filter(z => z.tier === 'afternoon'),
-    lateNight: enrichedZones.filter(z => z.tier === 'lateNight'),
-    earlyMorning: enrichedZones.filter(z => z.tier === 'earlyMorning'),
-  };
+  // Group zones by date and tier
+  const zonesByDateAndTier = {};
+  enrichedZones.forEach(z => {
+    const key = `${z.zoneYMD}-${z.tier}`;
+    if (!zonesByDateAndTier[key]) {
+      zonesByDateAndTier[key] = {
+        date: z.zoneYMD,
+        formattedDate: z.formattedDate,
+        tier: z.tier,
+        zones: []
+      };
+    }
+    zonesByDateAndTier[key].zones.push(z);
+  });
+
+  // Convert to array and sort by date, then tier
+  const groupedSections = Object.values(zonesByDateAndTier).sort((a, b) => {
+    // Sort by date first
+    const dateDiff = a.date.localeCompare(b.date);
+    if (dateDiff !== 0) return dateDiff;
+    
+    // Then by tier order
+    const tierOrder = { earlyMorning: 0, morning: 1, afternoon: 2, lateNight: 3 };
+    return tierOrder[a.tier] - tierOrder[b.tier];
+  });
 
   const tierLabels = {
     morning: 'Morning (6 AM - 12 PM)',
@@ -329,22 +358,32 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     earlyMorning: 'Early Morning (12 AM - 6 AM)',
   };
 
-  // Order: earlyMorning, morning, afternoon, lateNight (chronological order throughout the day)
-  const tierOrder = ['earlyMorning', 'morning', 'afternoon', 'lateNight'];
+  // Get base date for comparison
+  const now = new Date();
+  const baseYMD = formatYMD(now, baseTimezone);
+  const baseFormattedDate = new Intl.DateTimeFormat('en-US', {
+    timeZone: baseTimezone,
+    month: 'short',
+    day: 'numeric',
+  }).format(now);
 
   return (
     <div className="bg-gray-100 p-2 sm:p-3 rounded-lg space-y-4">
-      {tierOrder.map(tier => {
-        const zones = zonesByTier[tier];
-        if (zones.length === 0) return null;
+      {groupedSections.map((section, index) => {
+        const isToday = section.date === baseYMD;
+        const dateLabel = isToday 
+          ? section.formattedDate 
+          : section.date < baseYMD 
+            ? `${section.formattedDate} (Yesterday)`
+            : `${section.formattedDate} (Tomorrow)`;
         
         return (
-          <div key={tier} className="space-y-2">
+          <div key={`${section.date}-${section.tier}-${index}`} className="space-y-2">
             <h3 className="text-sm font-semibold text-gray-700 px-1">
-              {tierLabels[tier]}
+              {tierLabels[section.tier]} - {dateLabel}
             </h3>
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {zones.map(({ label, timeZone, dayLabel }) => (
+              {section.zones.map(({ label, timeZone }) => (
                 <ZoneCard key={label} label={label} timeZone={timeZone} />
               ))}
             </div>

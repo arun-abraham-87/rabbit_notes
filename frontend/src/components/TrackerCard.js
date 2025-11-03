@@ -74,6 +74,18 @@ function formatMonthDateString(date) {
 
 export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode }) {
   const navigate = useNavigate();
+  
+  // Debug: Log answers received
+  React.useEffect(() => {
+    console.log('[TrackerCard] Answers received', {
+      trackerId: tracker.id,
+      trackerTitle: tracker.title,
+      answersCount: answers.length,
+      sampleAnswer: answers[0],
+      answersByDate: answers.map(a => ({ date: a.date, answer: a.answer, hasAnswer: !!a.answer }))
+    });
+  }, [tracker.id, answers.length]);
+  
   // Determine cadence
   const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
   let buttons = [];
@@ -194,20 +206,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           console.error('[TrackerCard.handleDateClick] ERROR removing answer', { dateStr, error });
         });
       } else {
-        // Update or create answer
-        if (answer && answer.id) {
-          // Update existing answer
-          updateNoteById(answer.id, newAnswer).then(() => {
-            console.log('[TrackerCard.handleDateClick] Updated answer', { dateStr, noteId: answer.id, newAnswer });
-            onToggleDay(tracker.id, dateStr, newAnswer);
-          }).catch(error => {
-            console.error('[TrackerCard.handleDateClick] ERROR updating answer', { dateStr, error });
-          });
-        } else {
-          // Create new answer
-          console.log('[TrackerCard.handleDateClick] Creating new answer', { dateStr, newAnswer });
-          onToggleDay(tracker.id, dateStr, newAnswer);
-        }
+        // Update or create answer - let handleToggleDay handle the backend operations
+        // Just pass the value to onToggleDay, which will handle both create and update
+        console.log('[TrackerCard.handleDateClick] Creating/updating answer via onToggleDay', { dateStr, newAnswer, hasExistingAnswer: !!answer });
+        // Call onToggleDay which will handle the backend operation and state update
+        onToggleDay(tracker.id, dateStr, newAnswer).catch(error => {
+          console.error('[TrackerCard.handleDateClick] ERROR in onToggleDay', { dateStr, error });
+        });
       }
     } else {
       onToggleDay(tracker.id, dateStr);
@@ -820,9 +825,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             const answerObj = answers.find(ans => ans.date === dateStr);
             if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
               // Yes/No tracker
-              if (answerObj && typeof answerObj.answer === 'string' && answerObj.answer.toLowerCase() === 'yes') {
+              const answerValue = answerObj?.answer || answerObj?.value;
+              if (answerObj && typeof answerValue === 'string' && answerValue.toLowerCase() === 'yes') {
                 done = 'green';
-              } else if (answerObj && typeof answerObj.answer === 'string' && answerObj.answer.toLowerCase() === 'no') {
+              } else if (answerObj && typeof answerValue === 'string' && answerValue.toLowerCase() === 'no') {
                 done = 'red';
               } else {
                 done = false;

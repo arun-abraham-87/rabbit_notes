@@ -135,48 +135,90 @@ const TrackerListing = () => {
         const date = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
         
         if (link && answerValue && date) {
-          if (!stats[link]) {
-            stats[link] = { yes: 0, no: 0, total: 0 };
-          }
-          if (answerValue.toLowerCase() === 'yes') {
-            stats[link].yes++;
-          } else if (answerValue.toLowerCase() === 'no') {
-            stats[link].no++;
-          }
-          stats[link].total++;
-
-          if (!answersByTracker[link]) {
-            answersByTracker[link] = [];
-          }
-          answersByTracker[link].push({
-            id: answer.id,
-            date,
-            answer: answerValue,
-            age: getAgeInStringFmt(new Date(date))
+          // Find the tracker by ID, handling type mismatches (string vs number)
+          const tracker = trackerNotes.find(t => {
+            const tId = String(t.id);
+            const linkId = String(link);
+            return tId === linkId;
           });
-          rawNotesByAnswer[answer.id] = answer.content;
-
-          // Set completions for the tracker
-          const tracker = trackerNotes.find(t => t.id === link);
+          
+          if (!tracker) {
+            // Check if the link ID matches any tracker ID (case-insensitive)
+            const normalizedLinkId = String(link).toLowerCase();
+            const matchingTracker = trackerNotes.find(t => {
+              const normalizedTrackerId = String(t.id).toLowerCase();
+              return normalizedTrackerId === normalizedLinkId;
+            });
+            
+            if (matchingTracker) {
+              // Use the matching tracker found with normalization
+              tracker = matchingTracker;
+              console.log('[loadTrackers] Found tracker with normalization', {
+                linkId: String(link),
+                trackerId: String(matchingTracker.id),
+                trackerTitle: matchingTracker.title
+              });
+            } else {
+              console.log('[loadTrackers] Tracker not found for answer', { 
+                linkId: String(link), 
+                linkIdType: typeof link,
+                normalizedLinkId,
+                trackerCount: trackerNotes.length,
+                sampleTrackerIds: trackerNotes.slice(0, 5).map(t => ({ 
+                  id: String(t.id), 
+                  idType: typeof t.id, 
+                  normalizedId: String(t.id).toLowerCase(),
+                  title: t.title 
+                }))
+              });
+            }
+          }
+          
           if (tracker) {
-            tracker.completions[date] = true; // Mark as completed if there's an answer
-          }
+            // Use tracker.id for consistent key usage (handle type conversion)
+            const trackerId = String(tracker.id);
+            
+            if (!stats[trackerId]) {
+              stats[trackerId] = { yes: 0, no: 0, total: 0 };
+            }
+            if (answerValue.toLowerCase() === 'yes') {
+              stats[trackerId].yes++;
+            } else if (answerValue.toLowerCase() === 'no') {
+              stats[trackerId].no++;
+            }
+            stats[trackerId].total++;
 
-          // Prepare graph data
-          if (!graphDataByTracker[link]) {
-            graphDataByTracker[link] = {
-              dates: [],
-              yesCounts: [],
-              noCounts: []
-            };
+            if (!answersByTracker[trackerId]) {
+              answersByTracker[trackerId] = [];
+            }
+            answersByTracker[trackerId].push({
+              id: answer.id,
+              date,
+              answer: answerValue,
+              value: answerValue, // Also set value for consistency
+              age: getAgeInStringFmt(new Date(date))
+            });
+            rawNotesByAnswer[answer.id] = answer.content;
+
+            // Set completions for the tracker
+            tracker.completions[date] = true; // Mark as completed if there's an answer
+
+            // Prepare graph data (only if tracker was found)
+            if (!graphDataByTracker[trackerId]) {
+              graphDataByTracker[trackerId] = {
+                dates: [],
+                yesCounts: [],
+                noCounts: []
+              };
+            }
+            graphDataByTracker[trackerId].dates.push(date);
+            graphDataByTracker[trackerId].yesCounts.push(
+              answerValue.toLowerCase() === 'yes' ? 1 : 0
+            );
+            graphDataByTracker[trackerId].noCounts.push(
+              answerValue.toLowerCase() === 'no' ? 1 : 0
+            );
           }
-          graphDataByTracker[link].dates.push(date);
-          graphDataByTracker[link].yesCounts.push(
-            answerValue.toLowerCase() === 'yes' ? 1 : 0
-          );
-          graphDataByTracker[link].noCounts.push(
-            answerValue.toLowerCase() === 'no' ? 1 : 0
-          );
         }
       });
 
@@ -197,6 +239,49 @@ const TrackerListing = () => {
       setTrackerAnswers(answersByTracker);
       setRawNotes(rawNotesByAnswer);
       setGraphData(graphDataByTracker);
+      
+      // Debug: Log loaded answers for verification
+      console.log('[loadTrackers] Loaded answers summary', {
+        totalAnswers: answers.length,
+        answersByTracker: Object.keys(answersByTracker).map(k => ({
+          trackerId: k,
+          count: answersByTracker[k].length,
+          sampleAnswer: answersByTracker[k][0],
+          allDates: answersByTracker[k].map(a => a.date).sort()
+        }))
+      });
+      
+      // Debug: Specifically check "Merlin Go for Work" tracker
+      const merlinTracker = trackerNotes.find(t => t.title === 'Merlin Go for Work');
+      if (merlinTracker) {
+        const merlinId = String(merlinTracker.id);
+        const merlinAnswers = answersByTracker[merlinId] || [];
+        
+        // Also check all answers in the backend to see if any have the merlin tracker ID
+        const allMerlinAnswersInBackend = answers.filter(answer => {
+          const lines = answer.content.split('\n');
+          const link = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
+          return String(link) === merlinId;
+        });
+        
+        console.log('[loadTrackers] Merlin Go for Work tracker details', {
+          trackerId: merlinId,
+          trackerIdType: typeof merlinTracker.id,
+          answersCount: merlinAnswers.length,
+          backendAnswersCount: allMerlinAnswersInBackend.length,
+          answers: merlinAnswers.map(a => ({ date: a.date, answer: a.answer, id: a.id })).sort((a, b) => a.date.localeCompare(b.date)),
+          hasNov2: merlinAnswers.some(a => a.date === '2025-11-02'),
+          nov2Answer: merlinAnswers.find(a => a.date === '2025-11-02'),
+          recentDates: merlinAnswers.slice(-10).map(a => a.date),
+          allBackendAnswersDates: allMerlinAnswersInBackend.map(answer => {
+            const lines = answer.content.split('\n');
+            const date = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
+            const answerValue = lines.find(line => line.startsWith('Answer:'))?.replace('Answer:', '').trim();
+            const link = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
+            return { id: answer.id, date, answer: answerValue, linkId: String(link), linkMatches: String(link) === merlinId };
+          }).filter(a => a.date && a.date >= '2025-11-01').sort((a, b) => a.date.localeCompare(b.date))
+        });
+      }
     } catch (err) {
       setError('Failed to load trackers. Please try again.');
       console.error('Error loading trackers:', err);
@@ -361,13 +446,16 @@ const TrackerListing = () => {
   const handleToggleDay = async (trackerId, dateStr, value = null) => {
     console.log('[handleToggleDay] START', { trackerId, dateStr, value, timestamp: new Date().toISOString() });
     
-    const tracker = trackers.find(t => t.id === trackerId);
+    // Normalize trackerId to string for consistent key usage
+    const trackerIdStr = String(trackerId);
+    
+    const tracker = trackers.find(t => String(t.id) === trackerIdStr);
     if (!tracker) {
-      console.log('[handleToggleDay] ERROR: Tracker not found', { trackerId });
+      console.log('[handleToggleDay] ERROR: Tracker not found', { trackerId, trackerIdStr });
       return;
     }
 
-    console.log('[handleToggleDay] Tracker found', { trackerId, trackerTitle: tracker.title });
+    console.log('[handleToggleDay] Tracker found', { trackerId: trackerIdStr, trackerTitle: tracker.title });
 
     // Check if this is a removal (value is null)
     const isRemoval = value === null;
@@ -401,7 +489,7 @@ const TrackerListing = () => {
 
       // Update trackerAnswers to remove the answer
       setTrackerAnswers(prev => {
-        const prevAnswers = prev[trackerId] || [];
+        const prevAnswers = prev[trackerIdStr] || [];
         console.log('[handleToggleDay] Current trackerAnswers before removal', { 
           trackerId, 
           dateStr, 
@@ -418,7 +506,7 @@ const TrackerListing = () => {
           filteredAnswers: filteredAnswers.map(a => ({ date: a.date, answer: a.answer }))
         });
 
-        const newState = { ...prev, [trackerId]: filteredAnswers };
+        const newState = { ...prev, [trackerIdStr]: filteredAnswers };
         console.log('[handleToggleDay] New trackerAnswers state', { 
           trackerId, 
           newState: Object.keys(newState).map(k => ({ 
@@ -447,7 +535,7 @@ const TrackerListing = () => {
     console.log('[handleToggleDay] Creating/updating answer', { trackerId, dateStr, answer });
 
     // Check if answer already exists
-    const existingAnswer = trackerAnswers[trackerId]?.find(a => a.date === dateStr);
+    const existingAnswer = trackerAnswers[trackerIdStr]?.find(a => a.date === dateStr);
     console.log('[handleToggleDay] Existing answer check', { 
       trackerId, 
       dateStr, 
@@ -463,11 +551,47 @@ const TrackerListing = () => {
           noteId: existingAnswer.id, 
           newAnswer: answer 
         });
-        await updateNoteById(existingAnswer.id, answer);
-        response = { id: existingAnswer.id }; // Use existing ID
-        console.log('[handleToggleDay] Note updated successfully', { 
-          noteId: existingAnswer.id 
-        });
+        
+        // Get the existing note content from rawNotes
+        const existingContent = rawNotes[existingAnswer.id];
+        if (!existingContent) {
+          console.error('[handleToggleDay] ERROR: Cannot find existing note content', { 
+            answerId: existingAnswer.id,
+            availableIds: Object.keys(rawNotes).slice(0, 5)
+          });
+          // Fallback: try to create a new note instead
+          response = await createTrackerAnswerNote(trackerId, answer, dateStr);
+          console.log('[handleToggleDay] Created new note as fallback', { response });
+        } else {
+          // Update the Answer line in the existing content
+          const lines = existingContent.split('\n');
+          const updatedLines = lines.map(line => {
+            if (line.startsWith('Answer:')) {
+              return `Answer: ${answer}`;
+            }
+            return line;
+          });
+          const updatedContent = updatedLines.join('\n');
+          
+          console.log('[handleToggleDay] Updating note with full content', { 
+            noteId: existingAnswer.id,
+            oldContentPreview: existingContent.substring(0, 100),
+            newContentPreview: updatedContent.substring(0, 100)
+          });
+          
+          await updateNoteById(existingAnswer.id, updatedContent);
+          response = { id: existingAnswer.id }; // Use existing ID
+          
+          // Update rawNotes to reflect the new content immediately
+          setRawNotes(prev => ({
+            ...prev,
+            [existingAnswer.id]: updatedContent
+          }));
+          
+          console.log('[handleToggleDay] Note updated successfully', { 
+            noteId: existingAnswer.id 
+          });
+        }
       } else {
         // Create new note
         console.log('[handleToggleDay] Creating new note', { trackerId, dateStr, answer });
@@ -490,7 +614,7 @@ const TrackerListing = () => {
         
         // Update trackerAnswers for immediate UI feedback
         setTrackerAnswers(prev => {
-          const prevAnswers = prev[trackerId] || [];
+          const prevAnswers = prev[trackerIdStr] || [];
           console.log('[handleToggleDay] Current trackerAnswers before update', { 
             trackerId, 
             dateStr, 
@@ -536,7 +660,7 @@ const TrackerListing = () => {
             });
           }
           
-          const newState = { ...prev, [trackerId]: newAnswers };
+          const newState = { ...prev, [trackerIdStr]: newAnswers };
           console.log('[handleToggleDay] New trackerAnswers state after update', { 
             trackerId, 
             newAnswersCount: newAnswers.length,

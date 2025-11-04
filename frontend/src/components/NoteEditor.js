@@ -1443,15 +1443,25 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           {lines.filter(line => line.text.trim().startsWith('meta::')).length > 0 && (
             <>
               <div className="border-t-2 border-gray-300 bg-gray-50 px-3 py-2">
-                <div className="text-xs font-medium text-gray-600 mb-2">Meta Tags (Read-only)</div>
-                {lines.filter(line => line.text.trim().startsWith('meta::')).map((line, index) => (
-                  <div key={line.id} className="flex items-center py-1">
-                    <span className="text-gray-400 text-xs mr-2">☰</span>
-                    <div className="flex-1 text-sm text-gray-700 font-mono bg-gray-100 px-2 py-1 rounded">
-                      {line.text}
-              </div>
-            </div>
-          ))}
+                <div className="text-xs font-medium text-gray-600 mb-2">Meta Tags</div>
+                {lines.filter(line => line.text.trim().startsWith('meta::')).map((line, index) => {
+                  const originalIndex = lines.findIndex(l => l.id === line.id);
+                  return (
+                    <div key={line.id} className="flex items-center py-1 group">
+                      <span className="text-gray-400 text-xs mr-2">☰</span>
+                      <div className="flex-1 text-sm text-gray-700 font-mono bg-gray-100 px-2 py-1 rounded">
+                        {line.text}
+                      </div>
+                      <button
+                        onClick={() => handleDeleteLine(originalIndex)}
+                        className="ml-2 text-red-400 text-xs hover:text-red-600 px-2 py-1 rounded transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete meta tag"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

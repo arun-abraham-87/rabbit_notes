@@ -176,14 +176,14 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
         const content = note.content.toLowerCase();
         if (content.includes('purchase')) return false;
         
-        // Exclude notes with "life_info" or "recurring_payment" tags
+        // Exclude notes with "life_info", "recurring_payment", or "non_recurring" tags
         const lines = note.content.split('\n');
         const tagsLine = lines.find(line => line.startsWith('event_tags:'));
         if (tagsLine) {
           const tags = tagsLine.replace('event_tags:', '').trim().split(',').map(tag => tag.trim());
           if (tags.some(tag => {
             const lowerTag = tag.toLowerCase();
-            return lowerTag === 'life_info' || lowerTag === 'recurring_payment';
+            return lowerTag === 'life_info' || lowerTag === 'recurring_payment' || lowerTag === 'non_recurring';
           })) return false;
         }
         

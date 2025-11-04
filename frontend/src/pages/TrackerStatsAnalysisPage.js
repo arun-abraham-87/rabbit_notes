@@ -42,25 +42,25 @@ function EnhancedStats({ answers, tracker }) {
   const getFilteredAnswers = () => {
     // When "all" is selected, return all answers without date filtering
     if (timeFilter === 'all') {
-      return answers;
-    }
+        return answers;
+      }
     
     let filterStartDate = null;
-    switch (timeFilter) {
-      case 'lastMonth':
-        filterStartDate = moment().subtract(1, 'months').startOf('month');
-        break;
-      case 'last3Months':
-        filterStartDate = moment().subtract(3, 'months').startOf('month');
-        break;
-      case 'ytd':
-        filterStartDate = moment().startOf('year');
-        break;
-      case 'last365Days':
-        filterStartDate = moment().subtract(365, 'days');
-        break;
-      default:
-        return answers;
+      switch (timeFilter) {
+        case 'lastMonth':
+          filterStartDate = moment().subtract(1, 'months').startOf('month');
+          break;
+        case 'last3Months':
+          filterStartDate = moment().subtract(3, 'months').startOf('month');
+          break;
+        case 'ytd':
+          filterStartDate = moment().startOf('year');
+          break;
+        case 'last365Days':
+          filterStartDate = moment().subtract(365, 'days');
+          break;
+        default:
+          return answers;
     }
     
     return answers.filter(ans => moment(ans.date).isSameOrAfter(filterStartDate));

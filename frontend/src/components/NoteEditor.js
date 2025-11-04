@@ -127,15 +127,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   const popupRef = useRef(null);
   const [showTextSelection, setShowTextSelection] = useState(false);
 
-  // Vim-like mode system (disabled in modal)
-  const [mode, setMode] = useState(isModal ? 'edit' : initialMode); // 'view' or 'edit'
-  const [cursorLine, setCursorLine] = useState(0); // Current line in view mode
-  
-  // Initialize cursor line to first non-empty line or 0
-  useEffect(() => {
-    const firstNonEmptyIndex = lines.findIndex(line => line.text.trim() !== '');
-    setCursorLine(firstNonEmptyIndex >= 0 ? firstNonEmptyIndex : 0);
-  }, [lines]);
+  // Removed vim-like mode system - always in edit mode
   
   // Focus the note editor container when it opens
   useEffect(() => {
@@ -148,19 +140,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     }
   }, []);
 
-  // Focus when in modal context
-  useEffect(() => {
-    const modalContainer = document.querySelector('[data-modal="true"]');
-    if (modalContainer && mode === 'view') {
-      const noteEditorContainer = document.querySelector('.note-editor-container');
-      if (noteEditorContainer) {
-        setTimeout(() => {
-          
-          noteEditorContainer.focus();
-        }, 100); // Slightly longer delay for modal context
-      }
-    }
-  }, [mode]);
+  // Removed modal focus logic for view mode
   
   // Function to find the best cursor position for edit mode
   const findBestCursorPosition = () => {
@@ -192,49 +172,31 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     return lastContentIndex >= 0 ? lastContentIndex + 1 : firstMetaIndex;
   };
 
-  // Focus when mode changes
+  // Focus on the best position when component mounts
   useEffect(() => {
-    if (mode === 'view') {
-      const container = document.querySelector('.note-editor-container');
-      if (container) {
-        setTimeout(() => {
-          container.focus();
-        }, 0);
-      }
-    } else if (mode === 'edit') {
-      // Focus on the best position when in edit mode
-      setTimeout(() => {
-        const bestIndex = findBestCursorPosition();
-        
-        
-        // Try multiple times to find the textarea
-        const tryFocus = (attempts = 0) => {
-          
-          
-          
-          if (textareasRef.current[bestIndex]) {
-            const textarea = textareasRef.current[bestIndex];
-            textarea.focus();
-            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-            
-          } else if (textareasRef.current[0]) {
-            // Fallback to first textarea if best position not found
-            const textarea = textareasRef.current[0];
-            textarea.focus();
-            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-            
-          } else if (attempts < 5) {
-            // Try again after a short delay
-            setTimeout(() => tryFocus(attempts + 1), 50);
-          } else {
-            
-          }
-        };
-        
-        tryFocus();
-      }, 50);
-    }
-  }, [mode]);
+    setTimeout(() => {
+      const bestIndex = findBestCursorPosition();
+      
+      // Try multiple times to find the textarea
+      const tryFocus = (attempts = 0) => {
+        if (textareasRef.current[bestIndex]) {
+          const textarea = textareasRef.current[bestIndex];
+          textarea.focus();
+          textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        } else if (textareasRef.current[0]) {
+          // Fallback to first textarea if best position not found
+          const textarea = textareasRef.current[0];
+          textarea.focus();
+          textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        } else if (attempts < 5) {
+          // Try again after a short delay
+          setTimeout(() => tryFocus(attempts + 1), 50);
+        }
+      };
+      
+      tryFocus();
+    }, 50);
+  }, []); // Only run on mount
 
   const replaceLastWord = (tag) => {
     
@@ -500,8 +462,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       newLines.splice(index + 1, 0, ...pastedLines);
       setLines(newLines);
       
-      // Update cursor line to point to the first pasted line for view mode navigation
-      setCursorLine(index + 1);
+      // Removed cursor line update
       
       return;
     }
@@ -536,15 +497,12 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       e.preventDefault();
       e.stopPropagation();
       if (showPopup || contextMenu.visible) {
-      setShowPopup(false);
-      setSelectedTagIndex(-1);
-      setContextMenu({ visible: false, x: 0, y: 0, index: null });
-      if (focusedLineIndex !== null && textareasRef.current[focusedLineIndex]) {
-        textareasRef.current[focusedLineIndex].focus();
+        setShowPopup(false);
+        setSelectedTagIndex(-1);
+        setContextMenu({ visible: false, x: 0, y: 0, index: null });
+        if (focusedLineIndex !== null && textareasRef.current[focusedLineIndex]) {
+          textareasRef.current[focusedLineIndex].focus();
         }
-      } else if (mode === 'edit') {
-        // Switch to view mode
-        setMode('view');
       } else {
         // Cancel the note editor popup
         onCancel();
@@ -672,8 +630,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       newLines.splice(index + 1, 0, newLine);
       setLines(newLines);
       
-      // Update cursor line to point to the new line for view mode navigation
-      setCursorLine(index + 1);
+      // Removed cursor line update
 
       setTimeout(() => {
         const nextTextarea = textareasRef.current[index + 1];
@@ -788,17 +745,9 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
       const newLines = [...lines];
       newLines[0].text = '';
       setLines(newLines);
-      setCursorLine(0);
     } else {
       const newLines = lines.filter((_, i) => i !== index);
       setLines(newLines);
-      
-      // Update cursor line after deletion
-      if (cursorLine >= index) {
-        // If cursor was at or after the deleted line, move it up
-        setCursorLine(Math.max(0, cursorLine - 1));
-      }
-      // If cursor was before the deleted line, it stays the same
     }
   };
 
@@ -859,236 +808,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
     saveNote();
   };
 
-  useEffect(() => {
-    // Disable Vim-like global key handling inside modal
-    if (isModal) return;
-    const handleGlobalKey = (e) => {
-      
-      // Check if we're in the note editor context or modal
-      const noteEditorContainer = document.querySelector('.note-editor-container');
-      const modalContainer = document.querySelector('[data-modal="true"]');
-      const isInNoteEditor = noteEditorContainer?.contains(document.activeElement) || 
-                            document.activeElement?.closest('.note-editor-container') ||
-                            document.activeElement?.closest('[data-modal]') ||
-                            (modalContainer && modalContainer.contains(document.activeElement));
-      
-      
-      
-      // Always handle navigation keys if we're in the note editor context and in view mode
-      if (isInNoteEditor && mode === 'view') {
-        
-        if (e.key === 'j' || e.key === 'ArrowDown') {
-          e.preventDefault();
-          e.stopPropagation();
-          setCursorLine(prev => Math.min(prev + 1, lines.length - 1));
-          return;
-        }
-        if (e.key === 'k' || e.key === 'ArrowUp') {
-          e.preventDefault();
-          e.stopPropagation();
-          setCursorLine(prev => Math.max(prev - 1, 0));
-          return;
-        }
-        if (e.key === 'gg') {
-          e.preventDefault();
-          e.stopPropagation();
-          setCursorLine(0);
-          return;
-        }
-        if (e.key === 'G' && e.shiftKey) {
-          e.preventDefault();
-          e.stopPropagation();
-          setCursorLine(lines.length - 1);
-          return;
-        }
-      }
-      
-      // Handle navigation keys in edit mode
-      if (isInNoteEditor && mode === 'edit') {
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-          // Only handle if we're not in a textarea (to avoid interfering with text editing)
-          if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            if (e.key === 'ArrowDown') {
-              setCursorLine(prev => Math.min(prev + 1, lines.length - 1));
-            } else if (e.key === 'ArrowUp') {
-              setCursorLine(prev => Math.max(prev - 1, 0));
-            }
-            
-            // Focus on the new cursor line
-            setTimeout(() => {
-              if (textareasRef.current[cursorLine]) {
-                const textarea = textareasRef.current[cursorLine];
-                textarea.focus();
-                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-              }
-            }, 50);
-            return;
-          }
-        }
-      }
-      
-      // Handle header formatting in view mode
-      
-      if (isInNoteEditor && mode === 'view' && (e.key === '1' || e.key === '2' || e.key === '0')) {
-        
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const newLines = [...lines];
-        const currentLine = newLines[cursorLine];
-        
-        if (e.key === '1') {
-          // Make h1 by wrapping in ###
-          if (!currentLine.text.startsWith('###') && !currentLine.text.endsWith('###')) {
-            currentLine.text = `###${currentLine.text}###`;
-            
-          }
-        } else if (e.key === '2') {
-          // Make h2 by wrapping in ##
-          if (!currentLine.text.startsWith('##') && !currentLine.text.endsWith('##')) {
-            currentLine.text = `##${currentLine.text}##`;
-            
-          }
-        } else if (e.key === '0') {
-          // Clear all #'s wrapping from start and end
-          currentLine.text = currentLine.text.replace(/^#+/, '').replace(/#+$/, '');
-          
-        }
-        
-        setLines(newLines);
-        
-        // Keep focus on the same line after header formatting
-        setTimeout(() => {
-          if (textareasRef.current[cursorLine]) {
-            const textarea = textareasRef.current[cursorLine];
-            textarea.focus();
-            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-          }
-        }, 50);
-        return;
-      }
-      
-      // Handle line deletion in view mode
-      if (isInNoteEditor && mode === 'view' && e.key === 'x') {
-        
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Don't delete if it's the last line and it's empty
-        if (lines.length === 1 && lines[0].text.trim() === '') {
-          
-          return;
-        }
-        
-        // Delete the current line
-        const newLines = lines.filter((_, index) => index !== cursorLine);
-        setLines(newLines);
-        
-        // Move focus to next line if present, otherwise to previous line
-        let newCursorLine = cursorLine;
-        if (cursorLine < newLines.length) {
-          // Move to next line (same position)
-          newCursorLine = cursorLine;
-        } else {
-          // Move to previous line (last line)
-          newCursorLine = Math.max(0, newLines.length - 1);
-        }
-        
-        setCursorLine(newCursorLine);
-        
-        // Focus on the new line
-        setTimeout(() => {
-          if (textareasRef.current[newCursorLine]) {
-            const textarea = textareasRef.current[newCursorLine];
-            textarea.focus();
-            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-          }
-        }, 50);
-        
-        
-        return;
-      }
-      
-      // Only handle other keys when the note editor is focused
-      if (!isInNoteEditor) {
-        return;
-      }
-      
-      // Mode switching
-      if (e.key === 'i' && mode === 'view') {
-        e.preventDefault();
-        e.stopPropagation();
-        setMode('edit');
-        // Focus on the current cursor line and place cursor at the end
-        setTimeout(() => {
-          if (textareasRef.current[cursorLine]) {
-            const textarea = textareasRef.current[cursorLine];
-            textarea.focus();
-            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-          }
-        }, 50);
-        return;
-      }
-      
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (mode === 'edit') {
-          setMode('view');
-        } else if (mode === 'view') {
-          onCancel();
-        }
-        return;
-      }
-      
-      if (e.key === 'Enter' && mode === 'view') {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Check if the current line contains just a URL
-        const currentLine = lines[cursorLine];
-        const urlPattern = /^https?:\/\/[^\s]+$/;
-        if (currentLine && urlPattern.test(currentLine.text.trim())) {
-          // Open URL edit popup
-          setPendingUrlIndex(cursorLine);
-          setCustomLabel(new URL(currentLine.text.trim()).hostname);
-          return;
-        }
-        
-        // Otherwise, enter edit mode
-        setMode('edit');
-        // Focus on the current cursor line and place cursor at the end
-        setTimeout(() => {
-          if (textareasRef.current[cursorLine]) {
-            const textarea = textareasRef.current[cursorLine];
-            textarea.focus();
-            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-          }
-        }, 50);
-        return;
-      }
-      
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Check if all lines are empty
-        const hasContent = lines.some(line => line.text.trim() !== '');
-        if (!hasContent) {
-          return; // Don't do anything if all lines are empty
-        }
-       
-        saveNote();
-      }
-    };
-    document.addEventListener('keydown', handleGlobalKey);
-    return () => {
-      document.removeEventListener('keydown', handleGlobalKey);
-    };
-  }, [lines, isAddMode, note, addNote, onSave, onCancel, mode, cursorLine, isModal]);
+  // Removed vim-like global key handling useEffect
 
   useEffect(() => {
     const hideContext = () => setContextMenu({ visible: false, x: 0, y: 0, index: null });
@@ -1223,191 +943,11 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
         onClick={(e) => {
           // Focus the container when clicked
           if (e.target === e.currentTarget) {
-            
             e.currentTarget.focus();
           }
         }}
-      onKeyDown={(e) => {
-        // Disable Vim-like direct key handling inside modal
-        if (isModal) {
-          return;
-        }
-        
-        // Direct keyboard handling for view mode navigation
-        if (mode === 'view') {
-          
-          if (e.key === 'j' || e.key === 'ArrowDown') {
-            e.preventDefault();
-            e.stopPropagation();
-            setCursorLine(prev => Math.min(prev + 1, lines.length - 1));
-            return;
-          }
-          if (e.key === 'k' || e.key === 'ArrowUp') {
-            e.preventDefault();
-            e.stopPropagation();
-            setCursorLine(prev => Math.max(prev - 1, 0));
-            return;
-          }
-          if (e.key === 'gg') {
-            e.preventDefault();
-            e.stopPropagation();
-            setCursorLine(0);
-            return;
-          }
-          if (e.key === 'G' && e.shiftKey) {
-            e.preventDefault();
-            e.stopPropagation();
-            setCursorLine(lines.length - 1);
-            return;
-          }
-          if (e.key === 'i') {
-            e.preventDefault();
-            e.stopPropagation();
-            setMode('edit');
-            // Focus on the current cursor line and place cursor at the end
-            setTimeout(() => {
-              if (textareasRef.current[cursorLine]) {
-                const textarea = textareasRef.current[cursorLine];
-                textarea.focus();
-                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-              }
-            }, 50);
-            return;
-          }
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            e.stopPropagation();
-            onCancel();
-            return;
-          }
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Check if the current line contains just a URL
-            const currentLine = lines[cursorLine];
-            const urlPattern = /^https?:\/\/[^\s]+$/;
-            if (currentLine && urlPattern.test(currentLine.text.trim())) {
-              // Open URL edit popup
-              setPendingUrlIndex(cursorLine);
-              setCustomLabel(new URL(currentLine.text.trim()).hostname);
-              return;
-            }
-            
-            // Otherwise, enter edit mode
-            setMode('edit');
-            // Focus on the current cursor line and place cursor at the end
-            setTimeout(() => {
-              if (textareasRef.current[cursorLine]) {
-                const textarea = textareasRef.current[cursorLine];
-                textarea.focus();
-                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-              }
-            }, 50);
-            return;
-          }
-          
-          // Handle header formatting in view mode
-          
-          if (e.key === '1' || e.key === '2' || e.key === '0') {
-            
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const newLines = [...lines];
-            const currentLine = newLines[cursorLine];
-            
-            if (e.key === '1') {
-              // Make h1 by wrapping in ###
-              if (!currentLine.text.startsWith('###') && !currentLine.text.endsWith('###')) {
-                currentLine.text = `###${currentLine.text}###`;
-                
-              }
-            } else if (e.key === '2') {
-              // Make h2 by wrapping in ##
-              if (!currentLine.text.startsWith('##') && !currentLine.text.endsWith('##')) {
-                currentLine.text = `##${currentLine.text}##`;
-                
-              }
-            } else if (e.key === '0') {
-              // Clear all #'s wrapping from start and end
-              currentLine.text = currentLine.text.replace(/^#+/, '').replace(/#+$/, '');
-              
-            }
-            
-            setLines(newLines);
-            
-            // Keep focus on the same line after header formatting
-            setTimeout(() => {
-              if (textareasRef.current[cursorLine]) {
-                const textarea = textareasRef.current[cursorLine];
-                textarea.focus();
-                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-              }
-            }, 50);
-            return;
-          }
-          
-          // Handle line deletion in view mode
-          if (e.key === 'x') {
-            
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Don't delete if it's the last line and it's empty
-            if (lines.length === 1 && lines[0].text.trim() === '') {
-              
-              return;
-            }
-            
-            // Delete the current line
-            const newLines = lines.filter((_, index) => index !== cursorLine);
-            setLines(newLines);
-            
-            // Move focus to next line if present, otherwise to previous line
-            let newCursorLine = cursorLine;
-            if (cursorLine < newLines.length) {
-              // Move to next line (same position)
-              newCursorLine = cursorLine;
-            } else {
-              // Move to previous line (last line)
-              newCursorLine = Math.max(0, newLines.length - 1);
-            }
-            
-            setCursorLine(newCursorLine);
-            
-            // Focus on the new line
-            setTimeout(() => {
-              if (textareasRef.current[newCursorLine]) {
-                const textarea = textareasRef.current[newCursorLine];
-                textarea.focus();
-                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-              }
-            }, 50);
-            
-            
-            return;
-          }
-        }
-      }}
-    >
-      {/* Mode indicator (hidden in modal) */}
-      {!isModal && (
-      <div className="mb-4 flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <div className={`px-3 py-1 rounded text-sm font-mono ${
-            mode === 'view' 
-              ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-              : 'bg-green-100 text-green-800 border border-green-300'
-          }`}>
-            {mode === 'view' ? 'VIEW' : 'EDIT'}
-          </div>
-          <div className="text-xs text-gray-500">
-            {mode === 'view' ? 'Press i to enter edit mode' : 'Press Esc to return to view mode'}
-          </div>
-        </div>
-      </div>
-      )}
+      >
+      {/* Removed mode indicator */}
       
       {/* Text Mode Toggle Button - shown in both modal and non-modal contexts */}
       {(!isAddMode || isModal) && (
@@ -1637,7 +1177,6 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
           {/* Regular content lines */}
           {lines.filter(line => !line.text.trim().startsWith('meta::')).map((line, index) => {
             const originalIndex = lines.findIndex(l => l.id === line.id);
-            const isCursorLine = mode === 'view' && cursorLine === originalIndex;
             return (
             <div
               key={line.id}
@@ -1648,13 +1187,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                 handleDragOver(originalIndex);
               }}
               onDrop={(e) => handleDrop(e, originalIndex)}
-                              className={`relative group transition border-l-4 border-transparent ${
-                mode === 'view' 
-                  ? isCursorLine 
-                    ? 'bg-blue-50 border-blue-400' 
-                    : 'bg-gray-50 hover:bg-gray-100'
-                  : 'bg-gray-50 hover:bg-white hover:border-blue-400'
-              } ${dropTargetIndex === originalIndex ? 'border-blue-500' : ''}`}
+              className={`relative group transition border-l-4 border-transparent bg-gray-50 hover:bg-white hover:border-blue-400 ${dropTargetIndex === originalIndex ? 'border-blue-500' : ''}`}
             >
               {dropTargetIndex === originalIndex && draggedId !== lines[originalIndex].id && (
                 <div className="h-1 bg-blue-500 rounded my-1"></div>
@@ -1754,22 +1287,11 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                       x
                     </button>
                   </div>
-                ) : mode === 'view' ? (
-                  <div 
-                    className={`w-full pl-6 pr-28 text-sm cursor-pointer ${
-                      line.isTitle ? 'font-bold text-lg text-gray-800' : 'text-gray-700'
-                    } ${isCursorLine ? 'bg-blue-100' : ''}`}
-                    onClick={() => setCursorLine(originalIndex)}
-                  >
-                    {isCursorLine && <span className="text-blue-600 mr-1">▶</span>}
-                    {line.text || ' '}
-                  </div>
                 ) : (
                   <textarea
                     ref={(el) => (textareasRef.current[originalIndex] = el)}
                     value={line.text}
                     onFocus={() => {
-                      
                       setFocusedLineIndex(originalIndex);
                     }}
                     onChange={(e) => {
@@ -1792,7 +1314,7 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
                     rows={1}
                   />
                 )}
-                {!isTextMode && mode === 'edit' && (
+                {!isTextMode && (
                   <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-row justify-center gap-0.5 h-full items-center opacity-0 group-hover:opacity-100 transition-opacity">
                     {line.text && (
                       <>

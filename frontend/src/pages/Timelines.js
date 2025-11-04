@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import moment from 'moment';
-import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon, LinkIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon, LinkIcon, MagnifyingGlassIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import EditEventModal from '../components/EditEventModal';
@@ -1257,85 +1257,136 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     }
   }, [searchQuery, searchTitlesOnly, timelineNotes, notes]);
 
+  const [activeTab, setActiveTab] = useState('all');
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Timelines
-          </h1>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleExpandAll}
-                className="flex items-center space-x-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md"
-                title="Expand all timelines"
-              >
-                <span>Expand All</span>
-              </button>
-              <button
-                onClick={handleCollapseAll}
-                className="flex items-center space-x-2 px-4 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md"
-                title="Collapse all timelines"
-              >
-                <span>Collapse All</span>
-              </button>
-              <button
-                onClick={() => setShowNewTimelineForm(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:from-emerald-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md"
-              >
-                <PlusIcon className="h-5 w-5" />
-                <span>New Timeline</span>
-              </button>
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header Section */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-gray-900">Timelines</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExpandAll}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
+              title="Expand all timelines"
+            >
+              Expand All
+            </button>
+            <button
+              onClick={handleCollapseAll}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
+              title="Collapse all timelines"
+            >
+              Collapse All
+            </button>
+            <button
+              onClick={() => setShowNewTimelineForm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
+            >
+              <PlusIcon className="h-4 w-4" />
+              New Timeline
+            </button>
           </div>
-          
-          {/* Search Box */}
-          <div className="flex flex-col gap-4">
-            <div className="flex-1 max-w-md">
-              <label htmlFor="timeline-search" className="block text-sm font-medium text-slate-700 mb-2">
-                Search Timelines
-              </label>
-              <div className="relative">
-                <input
-                  id="timeline-search"
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={searchTitlesOnly ? "Search by timeline title..." : "Search by timeline title or events..."}
-                  className="w-full px-4 py-2 pl-10 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 bg-white shadow-sm transition-all"
-                />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-              <div className="mt-2">
-                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={searchTitlesOnly}
-                    onChange={(e) => setSearchTitlesOnly(e.target.checked)}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                  />
-                  <span>Search only titles</span>
-                </label>
-              </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-6 border-b border-gray-200 -mb-px">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'all'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            All Timelines
+          </button>
+          <button
+            onClick={() => setActiveTab('flagged')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'flagged'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Flagged
+          </button>
+          <button
+            onClick={() => setActiveTab('closed')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'closed'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Closed
+          </button>
+        </div>
+      </div>
+
+      <div className="px-6 py-6">
+        {/* Search and Filters */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="relative flex-1">
+              <input
+                id="timeline-search"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={searchTitlesOnly ? "Search by timeline title..." : "Search by timeline title or events..."}
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              />
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  title="Clear search"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+              )}
             </div>
+            <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={searchTitlesOnly}
+                onChange={(e) => setSearchTitlesOnly(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <span>Search only titles</span>
+            </label>
+          </div>
+
+          {/* Filter Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-200">
+              <PlusIcon className="h-3 w-3" />
+              Status
+              <ChevronRightIcon className="h-3 w-3 rotate-90" />
+            </button>
+            <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-200">
+              <PlusIcon className="h-3 w-3" />
+              Date
+              <ChevronRightIcon className="h-3 w-3 rotate-90" />
+            </button>
+            <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-200">
+              <PlusIcon className="h-3 w-3" />
+              Events
+              <ChevronRightIcon className="h-3 w-3 rotate-90" />
+            </button>
+            <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-200">
+              <PlusIcon className="h-3 w-3" />
+              More filters
+              <ChevronRightIcon className="h-3 w-3 rotate-90" />
+            </button>
           </div>
         </div>
 
         {timelineNotes.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <div className="text-gray-500 text-lg mb-4">
               No timeline notes found
             </div>
@@ -1348,7 +1399,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             </div>
           </div>
         ) : filteredAndSortedTimelineNotes.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <div className="text-gray-500 text-lg mb-4">
               No timelines match your search
             </div>
@@ -1357,7 +1408,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="space-y-6 p-6">
             {/* Flagged Timelines */}
             {(() => {
               const flaggedTimelines = filteredAndSortedTimelineNotes.filter(note => {
@@ -3498,6 +3550,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             }
             return null;
           })()}
+          </div>
           </div>
         )}
 

@@ -495,8 +495,8 @@ const Settings = ({ onClose, settings, setSettings }) => {
                 <span className="text-gray-600">Toggle Sidebar</span>
                 <kbd className="px-2 py-1 bg-gray-100 rounded">⌘ + B</kbd>
               </div>
+              </div>
             </div>
-          </div>
           </div>
 
           {/* Right Section: Navbar Pages */}
@@ -551,13 +551,13 @@ const Settings = ({ onClose, settings, setSettings }) => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
                         </svg>
                         <label className="flex items-center gap-2 flex-1 cursor-pointer min-w-0">
-                          <input
-                            type="checkbox"
+                  <input
+                    type="checkbox"
                             checked={isVisible}
-                            onChange={e => handleNavbarPageChange(page.id, e.target.checked)}
+                    onChange={e => handleNavbarPageChange(page.id, e.target.checked)}
                             onClick={(e) => e.stopPropagation()}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 flex-shrink-0"
-                          />
+                  />
                           <span className={`text-gray-700 font-medium text-sm truncate ${isOnMainBar ? 'text-blue-700 font-semibold' : ''}`}>{page.label}</span>
                         </label>
                       </div>
@@ -573,7 +573,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
                           <span className={`text-xs font-medium whitespace-nowrap ${isOnMainBar ? 'text-blue-600' : 'text-gray-500'}`}>
                             Main
                           </span>
-                        </label>
+                </label>
                       )}
                     </div>
                   );
@@ -604,7 +604,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
             <p className="text-xs text-gray-500 mt-2 flex-shrink-0">
               Main Bar: {Object.values(navbarMainBarPages).filter(v => v === true).length} / 10 selected
             </p>
-          </div>
+            </div>
           </div>
         </div>
 

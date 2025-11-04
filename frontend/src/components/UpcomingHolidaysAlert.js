@@ -206,8 +206,8 @@ const UpcomingHolidaysAlert = ({ notes, expanded: initialExpanded = true, setNot
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        // Only include holidays for the current year
-        if (holidayDate.getFullYear() === currentYear) {
+        // Only include holidays for the current year that are today or in the future
+        if (holidayDate.getFullYear() === currentYear && holidayDate >= today) {
           // Check if holiday is today or tomorrow for indicators
           if (holidayDate.getTime() === today.getTime()) {
             hasTodayHoliday = true;

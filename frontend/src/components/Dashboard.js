@@ -178,6 +178,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   });
   const [eventTextFilter, setEventTextFilter] = useState(''); // Text filter for events
   const eventSearchInputRef = useRef(null); // <-- Add ref for search input
+  const [lastLoginTime, setLastLoginTime] = useState(null);
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -197,6 +198,24 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
       setSelectedTimezones(JSON.parse(savedTimezones));
     }
   }, []);
+
+  // Track last login time
+  useEffect(() => {
+    // Get previous login time from localStorage
+    const previousLogin = localStorage.getItem('dashboardLastLogin');
+    if (previousLogin) {
+      try {
+        const loginDate = new Date(previousLogin);
+        setLastLoginTime(loginDate);
+      } catch (error) {
+        console.error('Error parsing last login time:', error);
+      }
+    }
+    
+    // Update current login time
+    const currentLoginTime = new Date().toISOString();
+    localStorage.setItem('dashboardLastLogin', currentLoginTime);
+  }, []); // Run only once on mount
 
   const formattedTime = time.toLocaleTimeString(undefined, {
     hour12: true,
@@ -658,6 +677,21 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
           {/* First Row: Date and Timezone Display (Full Width) */}
           <div className={`mb-8 ${isPinned ? 'pt-8' : ''}`}>
             <div className="flex flex-col items-center">
+              {/* Last Login Info */}
+              {lastLoginTime && (
+                <div className="mb-4 text-sm text-gray-500">
+                  You last logged in on {lastLoginTime.toLocaleString('en-US', {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  })}
+                </div>
+              )}
+              
               {/* First Row: Date and Current Time */}
               <div className="flex items-center gap-6 mb-4">
                 <h1 className="text-3xl font-bold">{formattedDate}</h1>

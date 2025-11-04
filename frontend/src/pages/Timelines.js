@@ -1258,6 +1258,19 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   }, [searchQuery, searchTitlesOnly, timelineNotes, notes]);
 
   const [activeTab, setActiveTab] = useState('all');
+  const timelineRefs = useRef({});
+
+  // Function to scroll to a timeline
+  const scrollToTimeline = (timelineId) => {
+    const timelineElement = timelineRefs.current[timelineId];
+    if (timelineElement) {
+      timelineElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Expand the timeline if it's collapsed
+      if (collapsedTimelines.has(timelineId)) {
+        toggleTimelineCollapse(timelineId);
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1324,6 +1337,117 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           </button>
         </div>
       </div>
+
+      {/* Timeline Buttons Section */}
+      {timelineNotes.length > 0 && (() => {
+        // Group timelines by status
+        const flaggedTimelines = [];
+        const openTimelines = [];
+        const closedTimelines = [];
+        
+        timelineNotes.forEach((note) => {
+          const timelineData = parseTimelineData(note.content, notes);
+          const isFlagged = note.content && note.content.includes('meta::flagged_timeline');
+          const isClosed = timelineData.isClosed;
+          
+          if (isFlagged) {
+            flaggedTimelines.push(note);
+          } else if (isClosed) {
+            closedTimelines.push(note);
+          } else {
+            openTimelines.push(note);
+          }
+        });
+        
+        // Sort each group by timeline name
+        const sortByTimelineName = (a, b) => {
+          const aData = parseTimelineData(a.content, notes);
+          const bData = parseTimelineData(b.content, notes);
+          const aName = aData.timeline || 'Untitled Timeline';
+          const bName = bData.timeline || 'Untitled Timeline';
+          return aName.localeCompare(bName);
+        };
+        
+        flaggedTimelines.sort(sortByTimelineName);
+        openTimelines.sort(sortByTimelineName);
+        closedTimelines.sort(sortByTimelineName);
+        
+        return (
+          <div className="bg-white border-b border-gray-200 px-6 py-4">
+            {/* Flagged Timelines */}
+            {flaggedTimelines.length > 0 && (
+              <div className="mb-4">
+                <div className="text-xs font-semibold text-red-600 mb-2">Flagged</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {flaggedTimelines.map((note) => {
+                    const timelineData = parseTimelineData(note.content, notes);
+                    const timelineTitle = timelineData.timeline || 'Untitled Timeline';
+                    
+                    return (
+                      <button
+                        key={note.id}
+                        onClick={() => scrollToTimeline(note.id)}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                        title={`Scroll to ${timelineTitle}`}
+                      >
+                        {timelineTitle}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Open Timelines */}
+            {openTimelines.length > 0 && (
+              <div className="mb-4">
+                <div className="text-xs font-semibold text-blue-600 mb-2">Open</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {openTimelines.map((note) => {
+                    const timelineData = parseTimelineData(note.content, notes);
+                    const timelineTitle = timelineData.timeline || 'Untitled Timeline';
+                    
+                    return (
+                      <button
+                        key={note.id}
+                        onClick={() => scrollToTimeline(note.id)}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                        title={`Scroll to ${timelineTitle}`}
+                      >
+                        {timelineTitle}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Closed Timelines */}
+            {closedTimelines.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold text-gray-600 mb-2">Closed</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {closedTimelines.map((note) => {
+                    const timelineData = parseTimelineData(note.content, notes);
+                    const timelineTitle = timelineData.timeline || 'Untitled Timeline';
+                    
+                    return (
+                      <button
+                        key={note.id}
+                        onClick={() => scrollToTimeline(note.id)}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-300"
+                        title={`Scroll to ${timelineTitle}`}
+                      >
+                        {timelineTitle}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="px-6 py-6">
         {/* Search and Filters */}
@@ -1444,7 +1568,11 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                       const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
                       return (
-                        <div key={note.id} className="bg-white rounded-xl shadow-md border-l-4 border-rose-400 overflow-hidden hover:shadow-lg transition-shadow">
+                        <div 
+                          key={note.id} 
+                          ref={(el) => (timelineRefs.current[note.id] = el)}
+                          className="bg-white rounded-xl shadow-md border-l-4 border-rose-400 overflow-hidden hover:shadow-lg transition-shadow"
+                        >
                           {/* Timeline Header */}
                           <div 
                             className="bg-gradient-to-r from-rose-50 to-pink-50 px-6 py-4 cursor-pointer hover:from-rose-100 hover:to-pink-100 border-b border-rose-200/50 transition-all"
@@ -2226,7 +2354,11 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
               const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
               return (
-                <div key={note.id} className="bg-white rounded-xl shadow-md border-l-4 border-indigo-400 overflow-hidden hover:shadow-lg transition-shadow">
+                <div 
+                  key={note.id}
+                  ref={(el) => (timelineRefs.current[note.id] = el)}
+                  className="bg-white rounded-xl shadow-md border-l-4 border-indigo-400 overflow-hidden hover:shadow-lg transition-shadow"
+                >
                   {/* Timeline Header */}
                   <div 
                     className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 cursor-pointer hover:from-indigo-100 hover:to-blue-100 border-b border-indigo-200/50 transition-all"
@@ -3068,7 +3200,11 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                       const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
                       return (
-                        <div key={note.id} className="bg-white rounded-xl shadow-md border-l-4 border-slate-300 overflow-hidden opacity-80 hover:opacity-100 hover:shadow-lg transition-all">
+                        <div 
+                          key={note.id}
+                          ref={(el) => (timelineRefs.current[note.id] = el)}
+                          className="bg-white rounded-xl shadow-md border-l-4 border-slate-300 overflow-hidden opacity-80 hover:opacity-100 hover:shadow-lg transition-all"
+                        >
                           {/* Timeline Header */}
                           <div 
                             className="bg-gradient-to-r from-slate-50 to-gray-50 px-6 py-4 cursor-pointer hover:from-slate-100 hover:to-gray-100 border-b border-slate-200/50 transition-all"

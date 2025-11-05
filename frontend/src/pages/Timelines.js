@@ -107,6 +107,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
   const [unlinkConfirmation, setUnlinkConfirmation] = useState({ isOpen: false, timelineId: null, eventId: null });
   const [addLinkModal, setAddLinkModal] = useState({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' });
+  const [linkEventModal, setLinkEventModal] = useState({ isOpen: false, timelineId: null, searchQuery: '' });
   const [timelineSearchQueries, setTimelineSearchQueries] = useState(() => loadTimelineSearchQueries()); // { timelineId: searchQuery }
   const [collapsedSections, setCollapsedSections] = useState(() => loadSectionCollapseStates()); // Set of collapsed section names: 'flagged', 'open', 'closed'
 
@@ -2229,22 +2230,35 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                               </div>
                               <div className="flex items-center space-x-2">
                                 {!timelineData.isClosed && (
-                                  <button
+                                  <>
+                                    <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          // Open timeline if it's collapsed
+                                          if (collapsedTimelines.has(note.id)) {
+                                            toggleTimelineCollapse(note.id);
+                                          }
+                                          setEditingTimelineId(note.id);
+                                          setShowEditEventModal(true);
+                                        }}
+                                      className="px-2 py-1 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 text-indigo-700 rounded-md transition-all flex items-center space-x-1 border border-indigo-200 shadow-sm hover:shadow"
+                                      title="Add new event"
+                                    >
+                                      <PlusIcon className="h-3 w-3" />
+                                      <span className="text-xs font-medium">Add Event</span>
+                                    </button>
+                                    <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        // Open timeline if it's collapsed
-                                        if (collapsedTimelines.has(note.id)) {
-                                          toggleTimelineCollapse(note.id);
-                                        }
-                                        setEditingTimelineId(note.id);
-                                        setShowEditEventModal(true);
+                                        setLinkEventModal({ isOpen: true, timelineId: note.id, searchQuery: '' });
                                       }}
-                                    className="px-2 py-1 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 text-indigo-700 rounded-md transition-all flex items-center space-x-1 border border-indigo-200 shadow-sm hover:shadow"
-                                    title="Add new event"
-                                  >
-                                    <PlusIcon className="h-3 w-3" />
-                                    <span className="text-xs font-medium">Add Event</span>
-                                  </button>
+                                      className="px-2 py-1 bg-gradient-to-r from-purple-50 to-violet-50 hover:from-purple-100 hover:to-violet-100 text-purple-700 rounded-md transition-all flex items-center space-x-1 border border-purple-200 shadow-sm hover:shadow"
+                                      title="Link existing event"
+                                    >
+                                      <LinkIcon className="h-3 w-3" />
+                                      <span className="text-xs font-medium">Link Event</span>
+                                    </button>
+                                  </>
                                 )}
                                 {!timelineData.isClosed && (
                                   <button
@@ -3045,7 +3059,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                       </div>
                       <div className="flex items-center space-x-2">
                         {!timelineData.isClosed && (
-                          <button
+                          <>
+                            <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         // Open timeline if it's collapsed
@@ -3055,12 +3070,24 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                         setEditingTimelineId(note.id);
                                         setShowEditEventModal(true);
                                       }}
-                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors flex items-center space-x-1.5 border border-blue-200"
-                            title="Add new event"
-                          >
-                            <PlusIcon className="h-4 w-4" />
-                            <span className="text-sm font-medium">Add Event</span>
-                          </button>
+                              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors flex items-center space-x-1.5 border border-blue-200"
+                              title="Add new event"
+                            >
+                              <PlusIcon className="h-4 w-4" />
+                              <span className="text-sm font-medium">Add Event</span>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLinkEventModal({ isOpen: true, timelineId: note.id, searchQuery: '' });
+                              }}
+                              className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-md transition-colors flex items-center space-x-1.5 border border-purple-200"
+                              title="Link existing event"
+                            >
+                              <LinkIcon className="h-4 w-4" />
+                              <span className="text-sm font-medium">Link Event</span>
+                            </button>
+                          </>
                         )}
                         {!timelineData.isClosed && (
                           <button
@@ -4451,6 +4478,122 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           notes={notes}
           initialTimelineId={editingTimelineId}
         />
+
+        {/* Link Event Modal */}
+        {linkEventModal.isOpen && (() => {
+          // Get all event notes (exclude timeline notes)
+          const allEventNotes = notes.filter(note => 
+            note.content && 
+            note.content.includes('event_description:') && 
+            !note.content.includes('meta::timeline')
+          );
+
+          // Parse events
+          const parsedEvents = allEventNotes.map(note => {
+            const lines = note.content.split('\n');
+            const descriptionLine = lines.find(line => line.startsWith('event_description:'));
+            const dateLine = lines.find(line => line.startsWith('event_date:'));
+            const description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+            const eventDate = dateLine ? dateLine.replace('event_date:', '').trim() : '';
+            
+            return {
+              id: note.id,
+              description,
+              date: eventDate,
+              content: note.content
+            };
+          });
+
+          // Filter events based on search query
+          const filteredEvents = linkEventModal.searchQuery.trim() === ''
+            ? parsedEvents
+            : parsedEvents.filter(event => {
+                const query = linkEventModal.searchQuery.toLowerCase();
+                return event.description.toLowerCase().includes(query) ||
+                       (event.date && event.date.toLowerCase().includes(query));
+              });
+
+          return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Link Event to Timeline</h3>
+                  <button
+                    onClick={() => setLinkEventModal({ isOpen: false, timelineId: null, searchQuery: '' })}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+                
+                <div className="mb-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={linkEventModal.searchQuery}
+                      onChange={(e) => setLinkEventModal({ ...linkEventModal, searchQuery: e.target.value })}
+                      placeholder="Search events..."
+                      className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      autoFocus
+                    />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto mb-4 border border-gray-200 rounded-md">
+                  {filteredEvents.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                      {linkEventModal.searchQuery.trim() === '' 
+                        ? 'No events found' 
+                        : `No events found matching "${linkEventModal.searchQuery}"`}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-200">
+                      {filteredEvents.map((event) => (
+                        <div
+                          key={event.id}
+                          className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                        >
+                          <div className="font-medium text-gray-900">{event.description || 'Untitled Event'}</div>
+                          {event.date && (
+                            <div className="text-sm text-gray-500 mt-1">
+                              {new Date(event.date).toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => setLinkEventModal({ isOpen: false, timelineId: null, searchQuery: '' })}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Do nothing for now as requested
+                      console.log('Link button clicked (no action yet)');
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                  >
+                    Link
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Add Link Modal */}
         {addLinkModal.isOpen && (

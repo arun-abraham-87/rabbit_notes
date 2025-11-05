@@ -135,6 +135,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [collapsedSections, setCollapsedSections] = useState(() => loadSectionCollapseStates()); // Set of collapsed section names: 'flagged', 'open', 'closed'
   const [showMasterTimelineModal, setShowMasterTimelineModal] = useState(false);
   const [masterTimelineModalSearchQuery, setMasterTimelineModalSearchQuery] = useState('');
+  const [showTimelineDropdown, setShowTimelineDropdown] = useState(false);
 
   // Save timeline collapse states to localStorage
   const saveCollapseStates = (collapsedSet) => {
@@ -1614,6 +1615,20 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     return createMasterTimeline();
   }, [createMasterTimeline]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showTimelineDropdown && !event.target.closest('.timeline-dropdown-container')) {
+        setShowTimelineDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTimelineDropdown]);
+
   // Function to scroll to a timeline
   const scrollToTimeline = (timelineId) => {
     const timelineElement = timelineRefs.current[timelineId];
@@ -1699,133 +1714,6 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         </div>
       </div>
 
-      {/* Timeline Buttons Section */}
-      {timelineNotes.length > 0 && (() => {
-        // Create master timeline
-        // Use memoized master timeline
-        
-        // Group timelines by status
-        const flaggedTimelines = [];
-        const openTimelines = [];
-        const closedTimelines = [];
-        
-        timelineNotes.forEach((note) => {
-          // Note: timelineNotes now come from API with timeline, isClosed, isFlagged properties
-          const isFlagged = note.isFlagged || false;
-          const isClosed = note.isClosed || false;
-          
-          if (isFlagged) {
-            flaggedTimelines.push(note);
-          } else if (isClosed) {
-            closedTimelines.push(note);
-          } else {
-            openTimelines.push(note);
-          }
-        });
-        
-        // Sort each group by timeline name
-        const sortByTimelineName = (a, b) => {
-          const aName = a.timeline || 'Untitled Timeline';
-          const bName = b.timeline || 'Untitled Timeline';
-          return aName.localeCompare(bName);
-        };
-        
-        flaggedTimelines.sort(sortByTimelineName);
-        openTimelines.sort(sortByTimelineName);
-        closedTimelines.sort(sortByTimelineName);
-        
-        return (
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
-            {/* Master Timeline Button */}
-            {masterTimeline.events.length > 0 && (
-              <div className="mb-4 pb-4 border-b border-gray-300">
-                <div className="text-xs font-semibold text-purple-600 mb-2">Master Timeline</div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    onClick={() => setShowMasterTimelineModal(true)}
-                    className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 font-bold"
-                    title={`View Master Timeline - All events from ${masterTimeline.timeline}`}
-                  >
-                    {masterTimeline.timeline} ({masterTimeline.events.length} events)
-                  </button>
-                </div>
-              </div>
-            )}
-            
-            {/* Flagged Timelines */}
-            {flaggedTimelines.length > 0 && (
-              <div className="mb-4">
-                <div className="text-xs font-semibold text-red-600 mb-2">Flagged</div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {flaggedTimelines.map((note) => {
-                    // Use timeline property directly from API response
-                    const timelineTitle = note.timeline || 'Untitled Timeline';
-                    
-                    return (
-                      <button
-                        key={note.id}
-                        onClick={() => scrollToTimeline(note.id)}
-                        className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-                        title={`Scroll to ${timelineTitle}`}
-                      >
-                        {timelineTitle}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            
-            {/* Open Timelines */}
-            {openTimelines.length > 0 && (
-              <div className="mb-4">
-                <div className="text-xs font-semibold text-blue-600 mb-2">Open</div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {openTimelines.map((note) => {
-                    // Use timeline property directly from API response
-                    const timelineTitle = note.timeline || 'Untitled Timeline';
-                    
-                    return (
-                      <button
-                        key={note.id}
-                        onClick={() => scrollToTimeline(note.id)}
-                        className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                        title={`Scroll to ${timelineTitle}`}
-                      >
-                        {timelineTitle}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            
-            {/* Closed Timelines */}
-            {closedTimelines.length > 0 && (
-              <div>
-                <div className="text-xs font-semibold text-gray-600 mb-2">Closed</div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {closedTimelines.map((note) => {
-                    // Use timeline property directly from API response
-                    const timelineTitle = note.timeline || 'Untitled Timeline';
-                    
-                    return (
-                      <button
-                        key={note.id}
-                        onClick={() => scrollToTimeline(note.id)}
-                        className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-300"
-                        title={`Scroll to ${timelineTitle}`}
-                      >
-                        {timelineTitle}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })()}
 
       <div className="px-6 py-6">
         {/* Search and Filters */}
@@ -1864,6 +1752,140 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
 
           {/* Filter Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Timeline Dropdown */}
+            <div className="relative timeline-dropdown-container">
+              <button 
+                onClick={() => setShowTimelineDropdown(!showTimelineDropdown)}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-200"
+              >
+                <PlusIcon className="h-3 w-3" />
+                Timeline
+                <ChevronRightIcon className={`h-3 w-3 transition-transform ${showTimelineDropdown ? 'rotate-90' : ''}`} />
+              </button>
+              
+              {showTimelineDropdown && timelineNotes.length > 0 && (
+                <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                  <div className="p-2">
+                    {/* Master Timeline */}
+                    {masterTimeline.events.length > 0 && (
+                      <div className="mb-2 pb-2 border-b border-gray-200">
+                        <div className="text-xs font-semibold text-purple-600 mb-1 px-2">Master Timeline</div>
+                        <button
+                          onClick={() => {
+                            setShowMasterTimelineModal(true);
+                            setShowTimelineDropdown(false);
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-purple-50 text-purple-700"
+                        >
+                          {masterTimeline.timeline} ({masterTimeline.events.length} events)
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Group timelines by status */}
+                    {(() => {
+                      const flaggedTimelines = [];
+                      const openTimelines = [];
+                      const closedTimelines = [];
+                      
+                      timelineNotes.forEach((note) => {
+                        const isFlagged = note.isFlagged || false;
+                        const isClosed = note.isClosed || false;
+                        
+                        if (isFlagged) {
+                          flaggedTimelines.push(note);
+                        } else if (isClosed) {
+                          closedTimelines.push(note);
+                        } else {
+                          openTimelines.push(note);
+                        }
+                      });
+                      
+                      const sortByTimelineName = (a, b) => {
+                        const aName = a.timeline || 'Untitled Timeline';
+                        const bName = b.timeline || 'Untitled Timeline';
+                        return aName.localeCompare(bName);
+                      };
+                      
+                      flaggedTimelines.sort(sortByTimelineName);
+                      openTimelines.sort(sortByTimelineName);
+                      closedTimelines.sort(sortByTimelineName);
+                      
+                      return (
+                        <>
+                          {/* Flagged Timelines */}
+                          {flaggedTimelines.length > 0 && (
+                            <div className="mb-2 pb-2 border-b border-gray-200">
+                              <div className="text-xs font-semibold text-red-600 mb-1 px-2">Flagged</div>
+                              {flaggedTimelines.map((note) => {
+                                const timelineTitle = note.timeline || 'Untitled Timeline';
+                                return (
+                                  <button
+                                    key={note.id}
+                                    onClick={() => {
+                                      scrollToTimeline(note.id);
+                                      setShowTimelineDropdown(false);
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-red-50 text-red-700"
+                                  >
+                                    {timelineTitle}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                          
+                          {/* Open Timelines */}
+                          {openTimelines.length > 0 && (
+                            <div className="mb-2 pb-2 border-b border-gray-200">
+                              <div className="text-xs font-semibold text-blue-600 mb-1 px-2">Open</div>
+                              {openTimelines.map((note) => {
+                                const timelineTitle = note.timeline || 'Untitled Timeline';
+                                return (
+                                  <button
+                                    key={note.id}
+                                    onClick={() => {
+                                      scrollToTimeline(note.id);
+                                      setShowTimelineDropdown(false);
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-blue-50 text-blue-700"
+                                  >
+                                    {timelineTitle}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                          
+                          {/* Closed Timelines */}
+                          {closedTimelines.length > 0 && (
+                            <div>
+                              <div className="text-xs font-semibold text-gray-600 mb-1 px-2">Closed</div>
+                              {closedTimelines.map((note) => {
+                                const timelineTitle = note.timeline || 'Untitled Timeline';
+                                return (
+                                  <button
+                                    key={note.id}
+                                    onClick={() => {
+                                      scrollToTimeline(note.id);
+                                      setShowTimelineDropdown(false);
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-gray-50 text-gray-600"
+                                  >
+                                    {timelineTitle}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-200">
               <PlusIcon className="h-3 w-3" />
               Status

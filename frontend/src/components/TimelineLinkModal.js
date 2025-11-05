@@ -138,10 +138,29 @@ const TimelineLinkModal = ({ isOpen, onClose, event, allNotes, onEventUpdated, o
 
         const updatedTimelineResponse = await updateNoteById(selectedTimeline, updatedTimelineContent);
         console.log('[TimelineLinkModal] Timeline updated with', allLinkedEventIds.size, 'linked events');
+        console.log('[TimelineLinkModal] updateNoteById response:', {
+          hasResponse: !!updatedTimelineResponse,
+          responseType: typeof updatedTimelineResponse,
+          responseKeys: updatedTimelineResponse ? Object.keys(updatedTimelineResponse) : [],
+          responseContent: updatedTimelineResponse?.content ? updatedTimelineResponse.content.substring(0, 200) : 'No content',
+          updatedTimelineContentPreview: updatedTimelineContent.substring(0, 200)
+        });
+        
+        // Ensure we have the updated content
+        const finalTimelineContent = updatedTimelineResponse?.content || updatedTimelineResponse || updatedTimelineContent;
+        console.log('[TimelineLinkModal] Final timeline content to use:', finalTimelineContent.substring(0, 200));
+        console.log('[TimelineLinkModal] Final timeline content includes meta::linked_from_events:', finalTimelineContent.includes('meta::linked_from_events'));
         
         // Notify parent component that timeline was updated
-        if (onTimelineUpdated && updatedTimelineResponse) {
-          onTimelineUpdated(selectedTimeline, updatedTimelineResponse.content || updatedTimelineContent);
+        if (onTimelineUpdated) {
+          console.log('[TimelineLinkModal] Calling onTimelineUpdated callback with:', {
+            timelineId: selectedTimeline,
+            contentLength: finalTimelineContent.length,
+            includesLinkedEvents: finalTimelineContent.includes('meta::linked_from_events')
+          });
+          onTimelineUpdated(selectedTimeline, finalTimelineContent);
+        } else {
+          console.warn('[TimelineLinkModal] onTimelineUpdated callback not provided!');
         }
 
         console.log('Successfully linked event to timeline');

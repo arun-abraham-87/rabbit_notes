@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import moment from 'moment';
-import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon, LinkIcon, MagnifyingGlassIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon, LinkIcon, MagnifyingGlassIcon, ChevronRightIcon, PhotoIcon } from '@heroicons/react/24/solid';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import EditEventModal from '../components/EditEventModal';
@@ -11,6 +11,23 @@ import { updateNoteById, getNoteById } from '../utils/ApiUtils';
 const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Development-only logging helper
+  const devLog = useCallback((...args) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(...args);
+    }
+  }, []);
+  
+  const devWarn = useCallback((...args) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(...args);
+    }
+  }, []);
+  
+  // Cache for parsed timeline data
+  const parseTimelineCache = useRef(new Map());
+  
   // localStorage keys
   const TIMELINE_COLLAPSE_STORAGE_KEY = 'timeline_collapse_states';
   const TIMELINE_MAIN_SEARCH_KEY = 'timeline_main_search';
@@ -86,6 +103,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [showAddEventForm, setShowAddEventForm] = useState(null);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [editingTimelineId, setEditingTimelineId] = useState(null);
+  const [editingEventId, setEditingEventId] = useState(null);
+  const [convertingEvent, setConvertingEvent] = useState(null); // { event, timelineId, timelineNote }
   const [newEventText, setNewEventText] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
   const [searchQuery, setSearchQuery] = useState(() => loadMainSearchQuery());
@@ -107,6 +126,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   });
   const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
   const [unlinkConfirmation, setUnlinkConfirmation] = useState({ isOpen: false, timelineId: null, eventId: null });
+  const [deleteEventConfirmation, setDeleteEventConfirmation] = useState({ isOpen: false, timelineId: null, eventIndex: null, eventName: null });
   const [addLinkModal, setAddLinkModal] = useState({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' });
   const [linkEventModal, setLinkEventModal] = useState({ isOpen: false, timelineId: null, searchQuery: '', selectedEventId: null });
   const [timelineSearchQueries, setTimelineSearchQueries] = useState(() => loadTimelineSearchQueries()); // { timelineId: searchQuery }
@@ -137,16 +157,16 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   useEffect(() => {
     if (location.pathname === '/timelines') {
       const savedStates = loadCollapseStates();
-      console.log('[Timelines] Pathname changed to /timelines, saved states:', Array.from(savedStates));
+      devLog('[Timelines] Pathname changed to /timelines, saved states:', Array.from(savedStates));
       // Always restore from localStorage when navigating to /timelines
       // This ensures the state is persisted across page navigation
       setCollapsedTimelines(savedStates);
-      console.log('[Timelines] Restored collapse states from localStorage:', Array.from(savedStates));
+      devLog('[Timelines] Restored collapse states from localStorage:', Array.from(savedStates));
       
       // Restore section collapse states
       const savedSectionStates = loadSectionCollapseStates();
       setCollapsedSections(savedSectionStates);
-      console.log('[Timelines] Restored section collapse states from localStorage:', Array.from(savedSectionStates));
+      devLog('[Timelines] Restored section collapse states from localStorage:', Array.from(savedSectionStates));
       
       // Restore search queries
       const savedMainSearch = loadMainSearchQuery();
@@ -155,12 +175,24 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       setSearchQuery(savedMainSearch);
       setTimelineSearchQueries(savedTimelineSearches);
       setSearchTitlesOnly(savedSearchTitlesOnly);
-      console.log('[Timelines] Restored search queries from localStorage:', { main: savedMainSearch, timeline: savedTimelineSearches, titlesOnly: savedSearchTitlesOnly });
+      devLog('[Timelines] Restored search queries from localStorage:', { main: savedMainSearch, timeline: savedTimelineSearches, titlesOnly: savedSearchTitlesOnly });
     }
   }, [location.pathname]);
 
   useEffect(() => {
-    console.log('[Timelines] useEffect[notes] triggered, notes length:', notes?.length);
+    devLog('[Timelines] useEffect[notes] triggered, notes length:', notes?.length);
+    
+    // Clear cache when notes change significantly
+    if (notes && notes.length > 0) {
+      const notesKey = notes.map(n => `${n.id}:${n.content?.substring(0, 50) || ''}`).join('|');
+      const cacheKey = `notes_${notesKey}`;
+      if (!parseTimelineCache.current.has(`_notes_key_${cacheKey}`)) {
+        // Notes changed significantly, clear cache
+        parseTimelineCache.current.clear();
+        parseTimelineCache.current.set(`_notes_key_${cacheKey}`, true);
+      }
+    }
+    
     if (notes && notes.length > 0) {
       // Use getNotesWithNewEvent() to get the latest notes including the new event
       const notesToUse = getNotesWithNewEvent();
@@ -168,15 +200,15 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       const newEventNoteFromRef = newEventNoteRef.current;
       const newEventNoteFromState = pendingNewEventNote;
       const newEventNote = newEventNoteFromRef || newEventNoteFromState;
-      console.log('[Timelines] New event note in ref (useEffect):', newEventNoteFromRef?.id, 'in state:', newEventNoteFromState?.id);
-      console.log('[Timelines] Notes to use in useEffect:', notesToUse.length, 'includes new event:', notesToUse.find(n => n.id === newEventNote?.id) ? 'YES' : 'NO');
+      devLog('[Timelines] New event note in ref (useEffect):', newEventNoteFromRef?.id, 'in state:', newEventNoteFromState?.id);
+      devLog('[Timelines] Notes to use in useEffect:', notesToUse.length, 'includes new event:', notesToUse.find(n => n.id === newEventNote?.id) ? 'YES' : 'NO');
       
       // Filter notes that contain meta::timeline tag
       const filteredNotes = notesToUse.filter(note => 
         note.content && note.content.includes('meta::timeline')
       );
       
-      console.log('[Timelines] Filtered timeline notes count (useEffect):', filteredNotes.length);
+      devLog('[Timelines] Filtered timeline notes count (useEffect):', filteredNotes.length);
       
       // Always update timelineNotes to ensure it reflects the latest notes
       // This is important when notes are updated (e.g., when events are linked)
@@ -266,7 +298,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     if (newEventNote && !notes.find(n => n.id === newEventNote.id)) {
       // Only log occasionally to avoid spam
       if (Math.random() < 0.01) {
-        console.log('[Timelines] getNotesWithNewEvent: Including new event note:', newEventNote.id, 'from:', newEventNoteFromRef ? 'ref' : 'state');
+        devLog('[Timelines] getNotesWithNewEvent: Including new event note:', newEventNote.id, 'from:', newEventNoteFromRef ? 'ref' : 'state');
       }
       return [...notes, newEventNote];
     }
@@ -459,15 +491,15 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     if (timelineNotes.length > 0) {
       try {
         saveCollapseStates(collapsedTimelines);
-        console.log('[Timelines] Saved collapse states to localStorage:', Array.from(collapsedTimelines));
+        devLog('[Timelines] Saved collapse states to localStorage:', Array.from(collapsedTimelines));
       } catch (error) {
         console.error('Error saving collapse states:', error);
       }
     }
   }, [collapsedTimelines, timelineNotes.length]);
 
-  // Parse timeline data from note content
-  const parseTimelineData = (content, allNotes = []) => {
+  // Parse timeline data from note content (with caching)
+  const parseTimelineData = useCallback((content, allNotes = []) => {
     if (!content || typeof content !== 'string') {
       return {
         timeline: '',
@@ -475,6 +507,15 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         isClosed: false,
         totalDollarAmount: 0
       };
+    }
+    
+    // Create cache key based on content and note IDs
+    const notesKey = allNotes.map(n => `${n.id}:${n.content?.substring(0, 50) || ''}`).join('|');
+    const cacheKey = `${content}_${notesKey}`;
+    
+    // Check cache first
+    if (parseTimelineCache.current.has(cacheKey)) {
+      return parseTimelineCache.current.get(cacheKey);
     }
     
     const lines = content.split('\n');
@@ -595,48 +636,93 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     if (allLinkedEventIds.size > 0 && allNotes.length > 0) {
       Array.from(allLinkedEventIds).forEach(eventId => {
         const linkedEventNote = allNotes.find(note => note.id === eventId);
-        if (linkedEventNote && linkedEventNote.content) {
-          const eventLines = linkedEventNote.content.split('\n');
+        if (!linkedEventNote) {
+          devWarn(`[Timelines] Linked event note not found: ${eventId}`, {
+            eventId,
+            allNotesLength: allNotes.length,
+            allNotesIds: allNotes.map(n => n.id).slice(0, 10)
+          });
+          return;
+        }
+        if (!linkedEventNote.content) {
+          devWarn(`[Timelines] Linked event note has no content: ${eventId}`);
+          return;
+        }
+        const eventLines = linkedEventNote.content.split('\n');
+        
+        // Extract event description
+        const descriptionLine = eventLines.find(line => line.startsWith('event_description:'));
+        let description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
+        
+        // Extract event date
+        const dateLine = eventLines.find(line => line.startsWith('event_date:'));
+        const eventDate = dateLine ? dateLine.replace('event_date:', '').trim() : '';
+        
+        // Check if this is a purchase (has event_$: line)
+        const priceLine = eventLines.find(line => line.trim().startsWith('event_$:'));
+        if (priceLine) {
+          const priceValue = priceLine.replace('event_$:', '').trim();
+          // Append the price to the description header
+          if (priceValue) {
+            description = description ? `${description} $${priceValue}` : `$${priceValue}`;
+          }
+        }
+        
+        if (!description) {
+          devWarn(`[Timelines] Linked event has no description: ${eventId}`, {
+            eventId,
+            contentPreview: linkedEventNote.content.substring(0, 200)
+          });
+        }
+        if (!eventDate) {
+          devWarn(`[Timelines] Linked event has no date: ${eventId}`, {
+            eventId,
+            contentPreview: linkedEventNote.content.substring(0, 200)
+          });
+        }
+        
+        if (description && eventDate) {
+          // Parse the event date (ISO format)
+          const parsedEventDate = moment(eventDate);
           
-          // Extract event description
-          const descriptionLine = eventLines.find(line => line.startsWith('event_description:'));
-          let description = descriptionLine ? descriptionLine.replace('event_description:', '').trim() : '';
-          
-          // Extract event date
-          const dateLine = eventLines.find(line => line.startsWith('event_date:'));
-          const eventDate = dateLine ? dateLine.replace('event_date:', '').trim() : '';
-          
-          // Check if this is a purchase (has event_$: line)
-          const priceLine = eventLines.find(line => line.trim().startsWith('event_$:'));
-          if (priceLine) {
-            const priceValue = priceLine.replace('event_$:', '').trim();
-            // Append the price to the description header
-            if (priceValue) {
-              description = description ? `${description} $${priceValue}` : `$${priceValue}`;
-            }
+          if (!parsedEventDate.isValid()) {
+            devWarn(`[Timelines] Linked event has invalid date: ${eventId}`, {
+              eventId,
+              eventDate,
+              parsedDate: parsedEventDate
+            });
+            return;
           }
           
-          if (description && eventDate) {
-            // Parse the event date (ISO format)
-            const parsedEventDate = moment(eventDate);
-            
-            if (parsedEventDate.isValid()) {
-              // Extract dollar values from the event description
-              const dollarValues = extractDollarValues(description);
-              const eventDollarAmount = dollarValues.reduce((sum, value) => sum + value, 0);
-              
-              timelineData.events.push({
-                event: description,
-                date: parsedEventDate,
-                dateStr: parsedEventDate.format('DD/MM/YYYY'),
-                lineIndex: -1, // Virtual event from linked note
-                dollarAmount: eventDollarAmount,
-                isLinkedEvent: true,
-                linkedEventId: eventId,
-                link: null // Linked events don't have links in timeline format
-              });
-            }
-          }
+          // Extract dollar values from the event description
+          const dollarValues = extractDollarValues(description);
+          const eventDollarAmount = dollarValues.reduce((sum, value) => sum + value, 0);
+          
+          devLog(`[Timelines] Adding linked event to timeline: ${eventId}`, {
+            eventId,
+            description,
+            eventDate,
+            parsedDate: parsedEventDate.format('YYYY-MM-DD'),
+            dollarAmount: eventDollarAmount
+          });
+          
+          timelineData.events.push({
+            event: description,
+            date: parsedEventDate,
+            dateStr: parsedEventDate.format('DD/MM/YYYY'),
+            lineIndex: -1, // Virtual event from linked note
+            dollarAmount: eventDollarAmount,
+            isLinkedEvent: true,
+            linkedEventId: eventId,
+            link: null // Linked events don't have links in timeline format
+          });
+        } else {
+          devWarn(`[Timelines] Linked event missing required fields: ${eventId}`, {
+            eventId,
+            hasDescription: !!description,
+            hasDate: !!eventDate,
+            contentPreview: linkedEventNote.content.substring(0, 300)
+          });
         }
       });
     }
@@ -644,8 +730,17 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     // Calculate total dollar amount
     timelineData.totalDollarAmount = timelineData.events.reduce((sum, event) => sum + (event.dollarAmount || 0), 0);
     
+    // Cache the result
+    parseTimelineCache.current.set(cacheKey, timelineData);
+    
+    // Limit cache size to prevent memory issues
+    if (parseTimelineCache.current.size > 100) {
+      const firstKey = parseTimelineCache.current.keys().next().value;
+      parseTimelineCache.current.delete(firstKey);
+    }
+    
     return timelineData;
-  };
+  }, [devLog, devWarn]);
 
   // Calculate time differences between events
   const calculateTimeDifferences = (events, isClosed = false, totalDollarAmount = 0) => {
@@ -992,6 +1087,64 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     }
   };
 
+  // Handle deleting an event from a timeline
+  const handleDeleteEvent = async (timelineId, eventIndex) => {
+    try {
+      const timelineNote = timelineNotes.find(n => n.id === timelineId);
+      if (!timelineNote) return;
+
+      const notesToUse = getNotesWithNewEvent();
+      const timelineData = parseTimelineData(timelineNote.content, notesToUse);
+      const event = timelineData.events[eventIndex];
+      
+      if (!event || event.lineIndex === -1) {
+        // Can't delete linked events or virtual events
+        alert('Cannot delete this type of event');
+        return;
+      }
+
+      const lines = timelineNote.content.split('\n');
+      
+      // Get content lines (non-meta lines, excluding 'Closed')
+      const contentLines = lines.filter(line => 
+        !line.trim().startsWith('meta::') && line.trim() !== '' && line.trim() !== 'Closed'
+      );
+      
+      // Remove the event at lineIndex (lineIndex is 1-based, 1 = first event after title)
+      const updatedContentLines = contentLines.filter((line, index) => {
+        // Keep title (index 0) and all events except the one we're deleting
+        return index === 0 || index !== event.lineIndex;
+      });
+      
+      // Rebuild content with meta lines
+      const metaLines = lines.filter(line => 
+        line.trim().startsWith('meta::') || line.trim() === 'Closed'
+      );
+      
+      const updatedContent = [...updatedContentLines, ...metaLines].join('\n');
+      
+      // Update the note
+      if (updateNote) {
+        await updateNote(timelineId, updatedContent);
+      }
+
+      // Refresh timeline notes
+      const updatedNotes = notesToUse.map(n => 
+        n.id === timelineId ? { ...n, content: updatedContent } : n
+      );
+      const filteredNotes = updatedNotes.filter(note => 
+        note.content && note.content.includes('meta::timeline')
+      );
+      setTimelineNotes(filteredNotes);
+      
+      // Close confirmation modal
+      setDeleteEventConfirmation({ isOpen: false, timelineId: null, eventIndex: null, eventName: null });
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      alert('Failed to delete event. Please try again.');
+    }
+  };
+
   // Handle creating a new timeline
   const handleCreateTimeline = async () => {
     if (!newTimelineTitle.trim()) {
@@ -1066,21 +1219,21 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   // Handle adding a new event via EditEventModal (like EventsPage)
   const handleAddEventFromTimeline = async (content) => {
     try {
-      console.log('[Timelines] handleAddEventFromTimeline: Creating event with content:', content);
+      devLog('[Timelines] handleAddEventFromTimeline: Creating event with content:', content);
       const response = await createNote(content);
-      console.log('[Timelines] handleAddEventFromTimeline response:', response);
+      devLog('[Timelines] handleAddEventFromTimeline response:', response);
       
       // Store the new event note in ref AND state for immediate use
       newEventNoteRef.current = response;
       setPendingNewEventNote(response);
       newEventSeenCountRef.current = 0; // Reset counter for new event
-      console.log('[Timelines] Stored new event note in ref and state:', response.id, response);
+      devLog('[Timelines] Stored new event note in ref and state:', response.id, response);
       
       // Add the new event to notes via setAllNotes (which updates App's allNotes)
       if (setAllNotes) {
         setAllNotes(prevNotes => {
           const updated = [...prevNotes, response];
-          console.log('[Timelines] setAllNotes: Updated notes array length:', updated.length);
+          devLog('[Timelines] setAllNotes: Updated notes array length:', updated.length);
           return updated;
         });
       }
@@ -1099,18 +1252,18 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
 
   // Handle timeline updated callback (when event is linked to timeline)
   const handleTimelineUpdated = (timelineId, updatedContent) => {
-    console.log('[Timelines] handleTimelineUpdated called:', { timelineId, updatedContentLength: updatedContent?.length });
-    console.log('[Timelines] Current notes length:', notes.length);
+    devLog('[Timelines] handleTimelineUpdated called:', { timelineId, updatedContentLength: updatedContent?.length });
+    devLog('[Timelines] Current notes length:', notes.length);
     // Check both ref and state for the new event note
     const newEventNoteFromRef = newEventNoteRef.current;
     const newEventNoteFromState = pendingNewEventNote;
     const newEventNote = newEventNoteFromRef || newEventNoteFromState;
-    console.log('[Timelines] New event note in ref:', newEventNoteFromRef?.id, 'in state:', newEventNoteFromState?.id);
+    devLog('[Timelines] New event note in ref:', newEventNoteFromRef?.id, 'in state:', newEventNoteFromState?.id);
     
     // Update the timeline note in the notes array
     if (updateNote) {
       updateNote(timelineId, updatedContent);
-      console.log('[Timelines] Called updateNote for timeline:', timelineId);
+      devLog('[Timelines] Called updateNote for timeline:', timelineId);
     }
     
     // Use getNotesWithNewEvent() to get the latest notes including the new event
@@ -1123,20 +1276,20 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     // If ref is cleared but notes prop doesn't have the new event yet, we need to restore it
     // This can happen if useEffect cleared the ref before handleTimelineUpdated ran
     if (!newEventNote && newEventNoteId && !notes.find(n => n.id === newEventNoteId)) {
-      console.log('[Timelines] WARNING: Ref was cleared but notes prop does not have new event yet');
+      devLog('[Timelines] WARNING: Ref was cleared but notes prop does not have new event yet');
       // Try to get the new event from the result that was passed to onSave
       // But we don't have access to it here, so we'll need to work around this
       // For now, we'll trigger a re-render after a delay to ensure the notes prop is updated
     }
     
-    console.log('[Timelines] Notes to use length (from getNotesWithNewEvent):', notesToUse.length, 'includes new event:', notesToUse.find(n => n.id === newEventNoteId) ? 'YES' : 'NO');
+    devLog('[Timelines] Notes to use length (from getNotesWithNewEvent):', notesToUse.length, 'includes new event:', notesToUse.find(n => n.id === newEventNoteId) ? 'YES' : 'NO');
     
     // Update the timeline note in the notes array
     const updatedNotes = notesToUse.map(n => 
       n.id === timelineId ? { ...n, content: updatedContent } : n
     );
     
-    console.log('[Timelines] Updated timeline note in array:', updatedNotes.find(n => n.id === timelineId)?.content?.substring(0, 100));
+    devLog('[Timelines] Updated timeline note in array:', updatedNotes.find(n => n.id === timelineId)?.content?.substring(0, 100));
     
     // Update timelineNotes with filtered note objects (not parsed data)
     // This matches how useEffect sets timelineNotes
@@ -1144,24 +1297,24 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       note.content && note.content.includes('meta::timeline')
     );
     
-    console.log('[Timelines] Filtered timeline notes count:', filteredNotes.length);
-    console.log('[Timelines] Setting timelineNotes with:', filteredNotes.map(n => ({ id: n.id, timeline: n.content.split('\n')[0] })));
+    devLog('[Timelines] Filtered timeline notes count:', filteredNotes.length);
+    devLog('[Timelines] Setting timelineNotes with:', filteredNotes.map(n => ({ id: n.id, timeline: n.content.split('\n')[0] })));
     
     setTimelineNotes(filteredNotes);
     
     // Force a re-render after a delay to ensure the new event is included
     // This is a workaround for the race condition where useEffect clears the ref too early
     setTimeout(() => {
-      console.log('[Timelines] Delayed refresh: Checking if new event is now in notes prop');
+      devLog('[Timelines] Delayed refresh: Checking if new event is now in notes prop');
       const delayedNotesToUse = getNotesWithNewEvent();
       const delayedFilteredNotes = delayedNotesToUse
         .map(n => n.id === timelineId ? { ...n, content: updatedContent } : n)
         .filter(note => note.content && note.content.includes('meta::timeline'));
       
-      console.log('[Timelines] Delayed refresh: Notes length:', delayedNotesToUse.length, 'includes new event:', delayedNotesToUse.find(n => n.id === newEventNoteId) ? 'YES' : 'NO');
+      devLog('[Timelines] Delayed refresh: Notes length:', delayedNotesToUse.length, 'includes new event:', delayedNotesToUse.find(n => n.id === newEventNoteId) ? 'YES' : 'NO');
       
       if (delayedNotesToUse.find(n => n.id === newEventNoteId)) {
-        console.log('[Timelines] Delayed refresh: New event found, updating timelineNotes');
+        devLog('[Timelines] Delayed refresh: New event found, updating timelineNotes');
         setTimelineNotes(delayedFilteredNotes);
       }
     }, 300);
@@ -1288,48 +1441,50 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     }
   };
 
-  // Filter and sort timeline notes
-  const filteredAndSortedTimelineNotes = timelineNotes
-    .filter(note => {
-      // Safety check: ensure note has valid content
-      if (!note || !note.content) return false;
-      if (!searchQuery.trim()) return true;
-      
-      const notesToUse = getNotesWithNewEvent();
-      const timelineData = parseTimelineData(note.content, notesToUse);
-      const query = searchQuery.toLowerCase();
-      
-      // Search in timeline title
-      if (timelineData.timeline.toLowerCase().includes(query)) {
-        return true;
-      }
-      
-      // If "search only titles" is checked, don't search in events
-      if (searchTitlesOnly) {
-        return false;
-      }
-      
-      // Search in events (both regular and linked events)
-      const hasMatchingEvent = timelineData.events.some(event => {
-        if (event.event && typeof event.event === 'string') {
-          return event.event.toLowerCase().includes(query);
+  // Filter and sort timeline notes (memoized for performance)
+  const filteredAndSortedTimelineNotes = useMemo(() => {
+    const notesToUse = getNotesWithNewEvent();
+    
+    return timelineNotes
+      .filter(note => {
+        // Safety check: ensure note has valid content
+        if (!note || !note.content) return false;
+        if (!searchQuery.trim()) return true;
+        
+        const timelineData = parseTimelineData(note.content, notesToUse);
+        const query = searchQuery.toLowerCase();
+        
+        // Search in timeline title
+        if (timelineData.timeline.toLowerCase().includes(query)) {
+          return true;
         }
-        return false;
+        
+        // If "search only titles" is checked, don't search in events
+        if (searchTitlesOnly) {
+          return false;
+        }
+        
+        // Search in events (both regular and linked events)
+        const hasMatchingEvent = timelineData.events.some(event => {
+          if (event.event && typeof event.event === 'string') {
+            return event.event.toLowerCase().includes(query);
+          }
+          return false;
+        });
+        
+        return hasMatchingEvent;
+      })
+      .sort((a, b) => {
+        const aData = parseTimelineData(a.content, notesToUse);
+        const bData = parseTimelineData(b.content, notesToUse);
+        
+        if (!aData.timeline && !bData.timeline) return 0;
+        if (!aData.timeline) return 1;
+        if (!bData.timeline) return -1;
+        
+        return aData.timeline.localeCompare(bData.timeline);
       });
-      
-      return hasMatchingEvent;
-    })
-    .sort((a, b) => {
-      const notesToUse = getNotesWithNewEvent();
-      const aData = parseTimelineData(a.content, notesToUse);
-      const bData = parseTimelineData(b.content, notesToUse);
-      
-      if (!aData.timeline && !bData.timeline) return 0;
-      if (!aData.timeline) return 1;
-      if (!bData.timeline) return -1;
-      
-      return aData.timeline.localeCompare(bData.timeline);
-    });
+  }, [timelineNotes, searchQuery, searchTitlesOnly, getNotesWithNewEvent, parseTimelineData]);
 
   // Track previous search query to detect when user actively clears search
   const prevSearchQueryRef = useRef(searchQuery);
@@ -1410,7 +1565,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const timelineRefs = useRef({});
 
   // Function to create master timeline with all events from current year
-  const createMasterTimeline = () => {
+  const createMasterTimeline = useCallback(() => {
     const currentYear = new Date().getFullYear();
     const masterTimelineId = `master-timeline-${currentYear}`;
     
@@ -1452,7 +1607,12 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       isMasterTimeline: true,
       content: '' // Master timeline doesn't have actual note content
     };
-  };
+  }, [timelineNotes, getNotesWithNewEvent, parseTimelineData]);
+
+  // Memoize master timeline for performance
+  const masterTimeline = useMemo(() => {
+    return createMasterTimeline();
+  }, [createMasterTimeline]);
 
   // Function to scroll to a timeline
   const scrollToTimeline = (timelineId) => {
@@ -1473,30 +1633,30 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold text-gray-900">Timelines</h1>
           <div className="flex gap-2">
-            <button
-              onClick={handleExpandAll}
+              <button
+                onClick={handleExpandAll}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
-              title="Expand all timelines"
-            >
+                title="Expand all timelines"
+              >
               Expand All
-            </button>
-            <button
-              onClick={handleCollapseAll}
+              </button>
+              <button
+                onClick={handleCollapseAll}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
-              title="Collapse all timelines"
-            >
+                title="Collapse all timelines"
+              >
               Collapse All
-            </button>
-            <button
-              onClick={() => setShowNewTimelineForm(true)}
+              </button>
+              <button
+                onClick={() => setShowNewTimelineForm(true)}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
-            >
+              >
               <PlusIcon className="h-4 w-4" />
               New Timeline
-            </button>
+              </button>
+            </div>
           </div>
-        </div>
-
+          
         {/* Tabs */}
         <div className="flex items-center gap-6 border-b border-gray-200 -mb-px">
           <button
@@ -1535,7 +1695,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       {/* Timeline Buttons Section */}
       {timelineNotes.length > 0 && (() => {
         // Create master timeline
-        const masterTimeline = createMasterTimeline();
+        // Use memoized master timeline
         
         // Group timelines by status
         const flaggedTimelines = [];
@@ -1670,35 +1830,35 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
           <div className="flex items-center gap-4 mb-4">
             <div className="relative flex-1">
-              <input
-                id="timeline-search"
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={searchTitlesOnly ? "Search by timeline title..." : "Search by timeline title or events..."}
+                <input
+                  id="timeline-search"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={searchTitlesOnly ? "Search by timeline title..." : "Search by timeline title or events..."}
                 className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               />
               <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   title="Clear search"
-                >
+                  >
                   <XMarkIcon className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+                  </button>
+                )}
+              </div>
             <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={searchTitlesOnly}
-                onChange={(e) => setSearchTitlesOnly(e.target.checked)}
+                  <input
+                    type="checkbox"
+                    checked={searchTitlesOnly}
+                    onChange={(e) => setSearchTitlesOnly(e.target.checked)}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <span>Search only titles</span>
-            </label>
-          </div>
+                  />
+                  <span>Search only titles</span>
+                </label>
+              </div>
 
           {/* Filter Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -1752,8 +1912,6 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             <div className="space-y-6 p-6">
             {/* Master Timeline */}
             {(() => {
-              const masterTimeline = createMasterTimeline();
-              
               if (masterTimeline.events.length > 0) {
                 const isSectionCollapsed = collapsedSections.has('master');
                 const eventsWithDiffs = calculateTimeDifferences(masterTimeline.events, false, masterTimeline.totalDollarAmount);
@@ -1949,54 +2107,204 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                             </span>
                                           )}
                                           <div className="flex items-center gap-2">
-                                            <h3 className={`text-lg font-semibold ${
-                                              event.isToday
-                                                ? 'text-emerald-700 font-bold'
-                                                : event.isTotal
-                                                ? 'text-emerald-700 font-bold'
-                                                : event.isDuration
-                                                  ? 'text-orange-600 font-bold'
-                                                  : event.isVirtual 
-                                                    ? 'text-violet-600' 
-                                                    : 'text-slate-800'
-                                            }`}>
-                                              {(() => {
-                                                // Format event name as "Timeline Name - Event Name"
-                                                const eventName = event.isTotal || event.isDuration ? (
-                                                  <span title={event.event.length > 50 ? event.event : undefined}>
-                                                    {truncateText(event.event)}
-                                                  </span>
-                                                ) : (
-                                                  (() => {
-                                                    const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
-                                                    const displayText = formatted.hasAmount ? formatted.text : formatted.description;
-                                                    return (
-                                                      <span 
-                                                        title={event.event.length > 50 ? event.event : undefined}
-                                                        dangerouslySetInnerHTML={{
-                                                          __html: formatted.hasAmount 
-                                                            ? highlightDollarValues(displayText)
-                                                            : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
-                                                        }}
-                                                      />
+                                            {event.isLinkedEvent ? (
+                                              <div className="flex items-center gap-2 flex-1">
+                                                <h3 className={`text-lg font-semibold flex-1 ${
+                                                  event.isToday
+                                                    ? 'text-emerald-700 font-bold'
+                                                    : event.isTotal
+                                                    ? 'text-emerald-700 font-bold'
+                                                    : event.isDuration
+                                                      ? 'text-orange-600 font-bold'
+                                                      : 'text-indigo-600 font-semibold'
+                                                }`}>
+                                                  {(() => {
+                                                    // Format event name as "Timeline Name - Event Name"
+                                                    const eventName = event.isTotal || event.isDuration ? (
+                                                      <span title={event.event.length > 50 ? event.event : undefined}>
+                                                        {truncateText(event.event)}
+                                                      </span>
+                                                    ) : (
+                                                      (() => {
+                                                        const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                        const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                        return (
+                                                          <span 
+                                                            title={event.event.length > 50 ? event.event : undefined}
+                                                            dangerouslySetInnerHTML={{
+                                                              __html: formatted.hasAmount 
+                                                                ? highlightDollarValues(displayText)
+                                                                : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                            }}
+                                                          />
+                                                        );
+                                                      })()
                                                     );
-                                                  })()
-                                                );
-                                                
-                                                // Prepend timeline name if available
-                                                if (event.sourceTimelineName) {
-                                                  return (
-                                                    <>
-                                                      <span className="font-medium text-purple-600">{event.sourceTimelineName}</span>
-                                                      <span className="text-gray-500 mx-1">-</span>
-                                                      {eventName}
-                                                    </>
-                                                  );
-                                                }
-                                                
-                                                return eventName;
-                                              })()}
-                                            </h3>
+                                                    
+                                                    // Prepend timeline name if available
+                                                    if (event.sourceTimelineName) {
+                                                      return (
+                                                        <>
+                                                          <span className="font-medium text-purple-600">{event.sourceTimelineName}</span>
+                                                          <span className="text-gray-500 mx-1">-</span>
+                                                          {eventName}
+                                                        </>
+                                                      );
+                                                    }
+                                                    
+                                                    return eventName;
+                                                  })()}
+                                                </h3>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const eventNote = notes.find(n => n.id === event.linkedEventId);
+                                                    if (eventNote) {
+                                                      setEditingEventId(event.linkedEventId);
+                                                      setEditingTimelineId(masterTimeline.id);
+                                                      setShowEditEventModal(true);
+                                                    }
+                                                  }}
+                                                  className="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded transition-colors whitespace-nowrap"
+                                                  title="Edit event"
+                                                >
+                                                  edit
+                                                </button>
+                                                {eventDate && (
+                                                  <a
+                                                    href={`https://photos.google.com/search/${eventDate.format('YYYY-MM-DD')}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
+                                                    title="View photos"
+                                                  >
+                                                    <PhotoIcon className="h-4 w-4" />
+                                                  </a>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <div className="flex items-center gap-2">
+                                                <h3 className={`text-lg font-semibold ${
+                                                  event.isToday
+                                                    ? 'text-emerald-700 font-bold'
+                                                    : event.isTotal
+                                                    ? 'text-emerald-700 font-bold'
+                                                    : event.isDuration
+                                                      ? 'text-orange-600 font-bold'
+                                                      : event.isVirtual 
+                                                        ? 'text-violet-600' 
+                                                        : 'text-slate-800'
+                                                }`}>
+                                                  {(() => {
+                                                    // Format event name as "Timeline Name - Event Name"
+                                                    const eventName = event.isTotal || event.isDuration ? (
+                                                      <span title={event.event.length > 50 ? event.event : undefined}>
+                                                        {truncateText(event.event)}
+                                                      </span>
+                                                    ) : (
+                                                      (() => {
+                                                        const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                        const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                        return (
+                                                          <span 
+                                                            title={event.event.length > 50 ? event.event : undefined}
+                                                            dangerouslySetInnerHTML={{
+                                                              __html: formatted.hasAmount 
+                                                                ? highlightDollarValues(displayText)
+                                                                : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                            }}
+                                                          />
+                                                        );
+                                                      })()
+                                                    );
+                                                    
+                                                    // Prepend timeline name if available
+                                                    if (event.sourceTimelineName) {
+                                                      return (
+                                                        <>
+                                                          <span className="font-medium text-purple-600">{event.sourceTimelineName}</span>
+                                                          <span className="text-gray-500 mx-1">-</span>
+                                                          {eventName}
+                                                        </>
+                                                      );
+                                                    }
+                                                    
+                                                    return eventName;
+                                                  })()}
+                                                </h3>
+                                                {eventDate && (
+                                                  <a
+                                                    href={`https://photos.google.com/search/${eventDate.format('YYYY-MM-DD')}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
+                                                    title="View photos"
+                                                  >
+                                                    <PhotoIcon className="h-4 w-4" />
+                                                  </a>
+                                                )}
+                                              </div>
+                                            )}
+                                            
+                                            {/* Convert to Event button for non-linked events */}
+                                            {!event.isLinkedEvent && !event.isTotal && !event.isDuration && !event.isVirtual && event.date && (
+                                              <div className="mt-2 flex items-center gap-2">
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    // Create a temporary note object with pre-filled content
+                                                    const eventDateStr = event.date.format('YYYY-MM-DD');
+                                                    const tempNote = {
+                                                      id: null,
+                                                      content: `event_description: ${event.event}\nevent_date: ${eventDateStr}\nmeta::linked_to_timeline::${masterTimeline.id}`
+                                                    };
+                                                    setConvertingEvent({
+                                                      event: event,
+                                                      timelineId: masterTimeline.id,
+                                                      timelineNote: null
+                                                    });
+                                                    setEditingEventId(null);
+                                                    setEditingTimelineId(masterTimeline.id);
+                                                    setShowEditEventModal(true);
+                                                  }}
+                                                  className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded transition-colors"
+                                                  title="Convert to Event"
+                                                >
+                                                  Convert to Event
+                                                </button>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    // Find the event index in the filtered events
+                                                    const searchQuery = timelineSearchQueries[masterTimeline.id] || '';
+                                                    const filteredEvents = filterEventsBySearch(eventsWithDiffs, searchQuery);
+                                                    const eventIndexInFiltered = filteredEvents.findIndex(e => 
+                                                      e.event === event.event && 
+                                                      e.date && event.date && 
+                                                      e.date.format('YYYY-MM-DD') === event.date.format('YYYY-MM-DD')
+                                                    );
+                                                    // Find the actual index in eventsWithDiffs
+                                                    const actualIndex = eventsWithDiffs.findIndex(e => 
+                                                      e.event === event.event && 
+                                                      e.date && event.date && 
+                                                      e.date.format('YYYY-MM-DD') === event.date.format('YYYY-MM-DD')
+                                                    );
+                                                    setDeleteEventConfirmation({ 
+                                                      isOpen: true, 
+                                                      timelineId: masterTimeline.id, 
+                                                      eventIndex: actualIndex >= 0 ? actualIndex : index,
+                                                      eventName: event.event
+                                                    });
+                                                  }}
+                                                  className="text-xs text-red-600 hover:text-red-800 hover:underline px-2 py-1 rounded transition-colors"
+                                                  title="Delete Event"
+                                                >
+                                                  Delete
+                                                </button>
+                                              </div>
+                                            )}
                                           </div>
                                         </div>
                                         
@@ -2044,16 +2352,6 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                               className="text-sm text-blue-600 hover:text-blue-800 block"
                                             >
                                               {event.link}
-                                            </a>
-                                          )}
-                                          {eventDate && (
-                                            <a 
-                                              href={`https://photos.google.com/search/${eventDate.format('YYYY-MM-DD')}`}
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              className="text-sm text-purple-600 hover:text-purple-800 block"
-                                            >
-                                              photos
                                             </a>
                                           )}
                                           {(event.dollarAmount !== null && event.dollarAmount !== undefined && event.dollarAmount > 0) && (
@@ -2232,22 +2530,22 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                               <div className="flex items-center space-x-2">
                                 {!timelineData.isClosed && (
                                   <>
-                                    <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          // Open timeline if it's collapsed
-                                          if (collapsedTimelines.has(note.id)) {
-                                            toggleTimelineCollapse(note.id);
-                                          }
-                                          setEditingTimelineId(note.id);
-                                          setShowEditEventModal(true);
-                                        }}
-                                      className="px-2 py-1 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 text-indigo-700 rounded-md transition-all flex items-center space-x-1 border border-indigo-200 shadow-sm hover:shadow"
-                                      title="Add new event"
-                                    >
-                                      <PlusIcon className="h-3 w-3" />
-                                      <span className="text-xs font-medium">Add Event</span>
-                                    </button>
+                                  <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Open timeline if it's collapsed
+                                        if (collapsedTimelines.has(note.id)) {
+                                          toggleTimelineCollapse(note.id);
+                                        }
+                                        setEditingTimelineId(note.id);
+                                        setShowEditEventModal(true);
+                                      }}
+                                    className="px-2 py-1 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 text-indigo-700 rounded-md transition-all flex items-center space-x-1 border border-indigo-200 shadow-sm hover:shadow"
+                                    title="Add new event"
+                                  >
+                                    <PlusIcon className="h-3 w-3" />
+                                    <span className="text-xs font-medium">Add Event</span>
+                                  </button>
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -2559,17 +2857,81 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                               )}
                                               <div className="flex items-center gap-2">
                                                 {event.isLinkedEvent ? (
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      navigate(`/events?note=${event.linkedEventId}`, { replace: false });
-                                                    }}
-                                                    className="text-left hover:underline cursor-pointer"
-                                                  >
+                                                  <div className="flex items-center gap-2 flex-1">
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/events?note=${event.linkedEventId}`, { replace: false });
+                                                      }}
+                                                      className="text-left hover:underline cursor-pointer flex-1"
+                                                    >
+                                                      <h3 className={`text-lg font-semibold ${
+                                                        event.isToday
+                                                          ? 'text-emerald-700 font-bold'
+                                                          : 'text-indigo-600 font-semibold'
+                                                      }`}>
+                                                        {event.isTotal || event.isDuration ? (
+                                                          <span title={event.event.length > 50 ? event.event : undefined}>
+                                                            {truncateText(event.event)}
+                                                          </span>
+                                                        ) : (
+                                                          (() => {
+                                                            const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                            const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                            return (
+                                                              <span 
+                                                                title={event.event.length > 50 ? event.event : undefined}
+                                                                dangerouslySetInnerHTML={{
+                                                                  __html: formatted.hasAmount 
+                                                                    ? highlightDollarValues(displayText)
+                                                                    : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                                }}
+                                                              />
+                                                            );
+                                                          })()
+                                                        )}
+                                                      </h3>
+                                                    </button>
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const eventNote = notes.find(n => n.id === event.linkedEventId);
+                                                        if (eventNote) {
+                                                          setEditingEventId(event.linkedEventId);
+                                                          setEditingTimelineId(note.id);
+                                                          setShowEditEventModal(true);
+                                                        }
+                                                      }}
+                                                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded transition-colors whitespace-nowrap"
+                                                      title="Edit event"
+                                                    >
+                                                      edit
+                                                    </button>
+                                                    {event.date && (
+                                                      <a
+                                                        href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
+                                                        title="View photos"
+                                                      >
+                                                        <PhotoIcon className="h-4 w-4" />
+                                                      </a>
+                                                    )}
+                                                  </div>
+                                                ) : (
+                                                  <div className="flex items-center gap-2">
                                                     <h3 className={`text-lg font-semibold ${
                                                       event.isToday
                                                         ? 'text-emerald-700 font-bold'
-                                                        : 'text-indigo-600 font-semibold'
+                                                        : event.isTotal
+                                                        ? 'text-emerald-700 font-bold'
+                                                        : event.isDuration
+                                                          ? 'text-orange-600 font-bold'
+                                                          : event.isVirtual 
+                                                            ? 'text-violet-600' 
+                                                            : 'text-slate-800'
                                                     }`}>
                                                       {event.isTotal || event.isDuration ? (
                                                         <span title={event.event.length > 50 ? event.event : undefined}>
@@ -2592,40 +2954,19 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                         })()
                                                       )}
                                                     </h3>
-                                                  </button>
-                                                ) : (
-                                                  <h3 className={`text-lg font-semibold ${
-                                                    event.isToday
-                                                      ? 'text-emerald-700 font-bold'
-                                                      : event.isTotal
-                                                      ? 'text-emerald-700 font-bold'
-                                                      : event.isDuration
-                                                        ? 'text-orange-600 font-bold'
-                                                        : event.isVirtual 
-                                                          ? 'text-violet-600' 
-                                                          : 'text-slate-800'
-                                                  }`}>
-                                                    {event.isTotal || event.isDuration ? (
-                                                      <span title={event.event.length > 50 ? event.event : undefined}>
-                                                        {truncateText(event.event)}
-                                                      </span>
-                                                    ) : (
-                                                      (() => {
-                                                        const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
-                                                        const displayText = formatted.hasAmount ? formatted.text : formatted.description;
-                                                        return (
-                                                          <span 
-                                                            title={event.event.length > 50 ? event.event : undefined}
-                                                            dangerouslySetInnerHTML={{
-                                                              __html: formatted.hasAmount 
-                                                                ? highlightDollarValues(displayText)
-                                                                : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
-                                                            }}
-                                                          />
-                                                        );
-                                                      })()
+                                                    {event.date && (
+                                                      <a
+                                                        href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
+                                                        title="View photos"
+                                                      >
+                                                        <PhotoIcon className="h-4 w-4" />
+                                                      </a>
                                                     )}
-                                                  </h3>
+                                                  </div>
                                                 )}
                                               </div>
                                             </div>
@@ -2796,16 +3137,44 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                     {event.link}
                                                   </a>
                                                 )}
-                                                {event.date && (
-                                                  <a 
-                                                    href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className="text-sm text-purple-600 hover:text-purple-800 block"
-                                                  >
-                                                    photos
-                                                  </a>
+                                                
+                                                {/* Convert to Event button for non-linked events */}
+                                                {!event.isLinkedEvent && event.date && (
+                                                  <div className="flex items-center gap-2">
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const eventDateStr = event.date.format('YYYY-MM-DD');
+                                                        setConvertingEvent({
+                                                          event: event,
+                                                          timelineId: note.id,
+                                                          timelineNote: note
+                                                        });
+                                                        setEditingEventId(null);
+                                                        setEditingTimelineId(note.id);
+                                                        setShowEditEventModal(true);
+                                                      }}
+                                                      className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded transition-colors"
+                                                      title="Convert to Event"
+                                                    >
+                                                      Convert to Event
+                                                    </button>
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeleteEventConfirmation({ 
+                                                          isOpen: true, 
+                                                          timelineId: note.id, 
+                                                          eventIndex: index,
+                                                          eventName: event.event
+                                                        });
+                                                      }}
+                                                      className="text-xs text-red-600 hover:text-red-800 hover:underline px-2 py-1 rounded transition-colors"
+                                                      title="Delete Event"
+                                                    >
+                                                      Delete
+                                                    </button>
+                                                  </div>
                                                 )}
                                               </div>
                                             )}
@@ -3061,7 +3430,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                       <div className="flex items-center space-x-2">
                         {!timelineData.isClosed && (
                           <>
-                            <button
+                          <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         // Open timeline if it's collapsed
@@ -3071,12 +3440,12 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                         setEditingTimelineId(note.id);
                                         setShowEditEventModal(true);
                                       }}
-                              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors flex items-center space-x-1.5 border border-blue-200"
-                              title="Add new event"
-                            >
-                              <PlusIcon className="h-4 w-4" />
-                              <span className="text-sm font-medium">Add Event</span>
-                            </button>
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors flex items-center space-x-1.5 border border-blue-200"
+                            title="Add new event"
+                          >
+                            <PlusIcon className="h-4 w-4" />
+                            <span className="text-sm font-medium">Add Event</span>
+                          </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -3424,77 +3793,120 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                           </h3>
                                         </a>
                                       ) : event.isLinkedEvent ? (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            console.log('[Timelines] Clicked linked event (open/closed section):', {
-                                              linkedEventId: event.linkedEventId,
-                                              event: event.event,
-                                              fullEvent: event
-                                            });
-                                            // For HashRouter, we need to use hash with query params
-                                            const targetUrl = `/events?note=${event.linkedEventId}`;
-                                            console.log('[Timelines] Navigating to:', targetUrl);
-                                            console.log('[Timelines] Current window location:', window.location.href);
-                                            navigate(targetUrl, { replace: false });
-                                            console.log('[Timelines] After navigate, window location:', window.location.href);
-                                          }}
-                                          className="text-left hover:underline cursor-pointer"
-                                        >
+                                        <div className="flex items-center gap-2 flex-1">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              console.log('[Timelines] Clicked linked event (open/closed section):', {
+                                                linkedEventId: event.linkedEventId,
+                                                event: event.event,
+                                                fullEvent: event
+                                              });
+                                              // For HashRouter, we need to use hash with query params
+                                              const targetUrl = `/events?note=${event.linkedEventId}`;
+                                              console.log('[Timelines] Navigating to:', targetUrl);
+                                              console.log('[Timelines] Current window location:', window.location.href);
+                                              navigate(targetUrl, { replace: false });
+                                              console.log('[Timelines] After navigate, window location:', window.location.href);
+                                            }}
+                                            className="text-left hover:underline cursor-pointer flex-1"
+                                          >
+                                            <h3 className={`text-lg font-semibold ${
+                                              event.isToday
+                                                ? 'text-emerald-700 font-bold'
+                                                : 'text-indigo-600 font-semibold'
+                                            }`}>
+                                              {event.isTotal || event.isDuration ? (
+                                                <span title={event.event.length > 50 ? event.event : undefined}>
+                                                  {truncateText(event.event)}
+                                                </span>
+                                              ) : (
+                                                <span 
+                                                  title={event.event.length > 50 ? event.event : undefined}
+                                                  dangerouslySetInnerHTML={{
+                                                    __html: highlightDollarValues(
+                                                      truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
+                                                    )
+                                                  }}
+                                                />
+                                              )}
+                                            </h3>
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const eventNote = notes.find(n => n.id === event.linkedEventId);
+                                              if (eventNote) {
+                                                setEditingEventId(event.linkedEventId);
+                                                setEditingTimelineId(note.id);
+                                                setShowEditEventModal(true);
+                                              }
+                                            }}
+                                            className="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded transition-colors whitespace-nowrap"
+                                            title="Edit event"
+                                          >
+                                            edit
+                                          </button>
+                                          {event.date && (
+                                            <a
+                                              href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
+                                              title="View photos"
+                                            >
+                                              <PhotoIcon className="h-4 w-4" />
+                                            </a>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-2">
                                           <h3 className={`text-lg font-semibold ${
                                             event.isToday
                                               ? 'text-emerald-700 font-bold'
-                                              : 'text-indigo-600 font-semibold'
+                                              : event.isTotal
+                                              ? 'text-green-700 font-bold'
+                                              : event.isDuration
+                                                ? 'text-orange-600 font-bold'
+                                                : event.isVirtual 
+                                                  ? 'text-purple-600' 
+                                                  : 'text-gray-900'
                                           }`}>
                                             {event.isTotal || event.isDuration ? (
                                               <span title={event.event.length > 50 ? event.event : undefined}>
                                                 {truncateText(event.event)}
                                               </span>
                                             ) : (
-                                              <span 
-                                                title={event.event.length > 50 ? event.event : undefined}
-                                                dangerouslySetInnerHTML={{
-                                                  __html: highlightDollarValues(
-                                                    truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1))
-                                                  )
-                                                }}
-                                              />
+                                              (() => {
+                                                const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                return (
+                                                  <span 
+                                                    title={event.event.length > 50 ? event.event : undefined}
+                                                    dangerouslySetInnerHTML={{
+                                                      __html: formatted.hasAmount 
+                                                        ? highlightDollarValues(displayText)
+                                                        : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                    }}
+                                                  />
+                                                );
+                                              })()
                                             )}
                                           </h3>
-                                        </button>
-                                      ) : (
-                                        <h3 className={`text-lg font-semibold ${
-                                          event.isToday
-                                            ? 'text-emerald-700 font-bold'
-                                            : event.isTotal
-                                            ? 'text-green-700 font-bold'
-                                            : event.isDuration
-                                              ? 'text-orange-600 font-bold'
-                                              : event.isVirtual 
-                                                ? 'text-purple-600' 
-                                                : 'text-gray-900'
-                                        }`}>
-                                          {event.isTotal || event.isDuration ? (
-                                            <span title={event.event.length > 50 ? event.event : undefined}>
-                                              {truncateText(event.event)}
-                                            </span>
-                                          ) : (
-                                            (() => {
-                                              const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
-                                              const displayText = formatted.hasAmount ? formatted.text : formatted.description;
-                                              return (
-                                                <span 
-                                                  title={event.event.length > 50 ? event.event : undefined}
-                                                  dangerouslySetInnerHTML={{
-                                                    __html: formatted.hasAmount 
-                                                      ? highlightDollarValues(displayText)
-                                                      : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
-                                                  }}
-                                                />
-                                              );
-                                            })()
+                                          {event.date && (
+                                            <a
+                                              href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
+                                              title="View photos"
+                                            >
+                                              <PhotoIcon className="h-4 w-4" />
+                                            </a>
                                           )}
-                                        </h3>
+                                        </div>
                                       )}
                                       {!event.isLinkedEvent && !event.isTotal && !event.isDuration && !event.isVirtual && (
                                         <button
@@ -3514,6 +3926,42 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                         >
                                           <LinkIcon className="h-3 w-3 mr-1" />
                                           {event.link ? 'Edit' : 'Add'} Link
+                                        </button>
+                                      )}
+                                      {!event.isLinkedEvent && !event.isTotal && !event.isDuration && !event.isVirtual && event.date && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setConvertingEvent({
+                                              event: event,
+                                              timelineId: note.id,
+                                              timelineNote: note
+                                            });
+                                            setEditingEventId(null);
+                                            setEditingTimelineId(note.id);
+                                            setShowEditEventModal(true);
+                                          }}
+                                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors ml-2"
+                                          title="Convert to Event"
+                                        >
+                                          Convert to Event
+                                        </button>
+                                      )}
+                                      {!event.isLinkedEvent && !event.isTotal && !event.isDuration && !event.isVirtual && event.date && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDeleteEventConfirmation({ 
+                                              isOpen: true, 
+                                              timelineId: note.id, 
+                                              eventIndex: index,
+                                              eventName: event.event
+                                            });
+                                          }}
+                                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors ml-2"
+                                          title="Delete Event"
+                                        >
+                                          Delete
                                         </button>
                                       )}
                                     </div>
@@ -3683,17 +4131,6 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                           className="text-sm text-blue-600 hover:text-blue-800 block"
                                         >
                                           {event.link}
-                                        </a>
-                                      )}
-                                      {event.date && (
-                                        <a 
-                                          href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="text-sm text-purple-600 hover:text-purple-800 block"
-                                        >
-                                          photos
                                         </a>
                                       )}
                                     </div>
@@ -4116,40 +4553,118 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                 </span>
                                               )}
                                               <div className="flex items-center gap-2">
-                                                <h3 className={`text-lg font-semibold ${
-                                                  event.isToday
-                                                    ? 'text-emerald-700 font-bold'
-                                                    : event.isTotal
-                                                      ? 'text-green-700 font-bold'
-                                                      : event.isDuration
-                                                        ? 'text-orange-600 font-bold'
-                                                        : event.isLinkedEvent
-                                                          ? 'text-indigo-600 font-semibold'
+                                                {event.isLinkedEvent ? (
+                                                  <div className="flex items-center gap-2 flex-1">
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/events?note=${event.linkedEventId}`, { replace: false });
+                                                      }}
+                                                      className="text-left hover:underline cursor-pointer flex-1"
+                                                    >
+                                                      <h3 className={`text-lg font-semibold ${
+                                                        event.isToday
+                                                          ? 'text-emerald-700 font-bold'
+                                                          : 'text-indigo-600 font-semibold'
+                                                      }`}>
+                                                        {event.isTotal || event.isDuration ? (
+                                                          <span title={event.event.length > 50 ? event.event : undefined}>
+                                                            {truncateText(event.event)}
+                                                          </span>
+                                                        ) : (
+                                                          (() => {
+                                                            const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                            const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                            return (
+                                                              <span 
+                                                                title={event.event.length > 50 ? event.event : undefined}
+                                                                dangerouslySetInnerHTML={{
+                                                                  __html: formatted.hasAmount 
+                                                                    ? highlightDollarValues(displayText)
+                                                                    : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                                }}
+                                                              />
+                                                            );
+                                                          })()
+                                                        )}
+                                                      </h3>
+                                                    </button>
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const eventNote = notes.find(n => n.id === event.linkedEventId);
+                                                        if (eventNote) {
+                                                          setEditingEventId(event.linkedEventId);
+                                                          setEditingTimelineId(note.id);
+                                                          setShowEditEventModal(true);
+                                                        }
+                                                      }}
+                                                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded transition-colors whitespace-nowrap"
+                                                      title="Edit event"
+                                                    >
+                                                      edit
+                                                    </button>
+                                                    {event.date && (
+                                                      <a
+                                                        href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
+                                                        title="View photos"
+                                                      >
+                                                        <PhotoIcon className="h-4 w-4" />
+                                                      </a>
+                                                    )}
+                                                  </div>
+                                                ) : (
+                                                  <div className="flex items-center gap-2">
+                                                    <h3 className={`text-lg font-semibold ${
+                                                      event.isToday
+                                                        ? 'text-emerald-700 font-bold'
+                                                        : event.isTotal
+                                                        ? 'text-green-700 font-bold'
+                                                        : event.isDuration
+                                                          ? 'text-orange-600 font-bold'
                                                           : event.isVirtual 
                                                             ? 'text-purple-600' 
                                                             : 'text-gray-900'
-                                                }`}>
-                                                  {event.isTotal || event.isDuration ? (
-                                                    <span title={event.event.length > 50 ? event.event : undefined}>
-                                                      {truncateText(event.event)}
-                                                    </span>
-                                                  ) : (
-                                                    (() => {
-                                                      const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
-                                                      const displayText = formatted.hasAmount ? formatted.text : formatted.description;
-                                                      return (
-                                                        <span 
-                                                          title={event.event.length > 50 ? event.event : undefined}
-                                                          dangerouslySetInnerHTML={{
-                                                            __html: formatted.hasAmount 
-                                                              ? highlightDollarValues(displayText)
-                                                              : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
-                                                          }}
-                                                        />
-                                                      );
-                                                    })()
-                                                  )}
-                                                </h3>
+                                                    }`}>
+                                                      {event.isTotal || event.isDuration ? (
+                                                        <span title={event.event.length > 50 ? event.event : undefined}>
+                                                          {truncateText(event.event)}
+                                                        </span>
+                                                      ) : (
+                                                        (() => {
+                                                          const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                          const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                          return (
+                                                            <span 
+                                                              title={event.event.length > 50 ? event.event : undefined}
+                                                              dangerouslySetInnerHTML={{
+                                                                __html: formatted.hasAmount 
+                                                                  ? highlightDollarValues(displayText)
+                                                                  : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                              }}
+                                                            />
+                                                          );
+                                                        })()
+                                                      )}
+                                                    </h3>
+                                                    {event.date && (
+                                                      <a
+                                                        href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
+                                                        title="View photos"
+                                                      >
+                                                        <PhotoIcon className="h-4 w-4" />
+                                                      </a>
+                                                    )}
+                                                  </div>
+                                                )}
                                               </div>
                                             </div>
                                             
@@ -4272,16 +4787,44 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                     {event.link}
                                                   </a>
                                                 )}
-                                                {event.date && (
-                                                  <a 
-                                                    href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className="text-sm text-purple-600 hover:text-purple-800 block"
-                                                  >
-                                                    photos
-                                                  </a>
+                                                
+                                                {/* Convert to Event button for non-linked events */}
+                                                {!event.isLinkedEvent && event.date && (
+                                                  <div className="flex items-center gap-2">
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const eventDateStr = event.date.format('YYYY-MM-DD');
+                                                        setConvertingEvent({
+                                                          event: event,
+                                                          timelineId: note.id,
+                                                          timelineNote: note
+                                                        });
+                                                        setEditingEventId(null);
+                                                        setEditingTimelineId(note.id);
+                                                        setShowEditEventModal(true);
+                                                      }}
+                                                      className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded transition-colors"
+                                                      title="Convert to Event"
+                                                    >
+                                                      Convert to Event
+                                                    </button>
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeleteEventConfirmation({ 
+                                                          isOpen: true, 
+                                                          timelineId: note.id, 
+                                                          eventIndex: index,
+                                                          eventName: event.event
+                                                        });
+                                                      }}
+                                                      className="text-xs text-red-600 hover:text-red-800 hover:underline px-2 py-1 rounded transition-colors"
+                                                      title="Delete Event"
+                                                    >
+                                                      Delete
+                                                    </button>
+                                                  </div>
                                                 )}
                                               </div>
                                             )}
@@ -4388,6 +4931,20 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           </div>
         )}
 
+        {/* Delete Event Confirmation Modal */}
+        <DeleteConfirmationModal
+          isOpen={deleteEventConfirmation.isOpen}
+          onClose={() => setDeleteEventConfirmation({ isOpen: false, timelineId: null, eventIndex: null, eventName: null })}
+          onConfirm={() => {
+            if (deleteEventConfirmation.timelineId !== null && deleteEventConfirmation.eventIndex !== null) {
+              handleDeleteEvent(deleteEventConfirmation.timelineId, deleteEventConfirmation.eventIndex);
+            }
+          }}
+          title="Delete Event"
+          message={`Are you sure you want to delete "${deleteEventConfirmation.eventName || 'this event'}" from the timeline? This action cannot be undone.`}
+          confirmButtonText="Delete"
+        />
+
         {/* Unlink Confirmation Modal */}
         <DeleteConfirmationModal
           isOpen={unlinkConfirmation.isOpen}
@@ -4406,56 +4963,119 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         {/* Add Event Modal */}
         <EditEventModal
           isOpen={showEditEventModal}
-          note={null}
+          note={editingEventId ? notes.find(n => n.id === editingEventId) : (convertingEvent ? {
+            id: null,
+            content: `event_description: ${convertingEvent.event.event}\nevent_date: ${convertingEvent.event.date.format('YYYY-MM-DD')}${convertingEvent.event.dollarAmount && convertingEvent.event.dollarAmount > 0 ? `\nevent_$: ${convertingEvent.event.dollarAmount.toFixed(2)}` : ''}\nmeta::linked_to_timeline::${convertingEvent.timelineId}`
+          } : null)}
           onSave={async (content) => {
-            console.log('[Timelines] onSave called with content:', content.substring(0, 100));
+            devLog('[Timelines] onSave called with content:', content.substring(0, 100));
             const timelineId = editingTimelineId; // Capture before reset
-            console.log('[Timelines] Editing timeline ID:', timelineId);
+            const eventId = editingEventId; // Capture before reset
+            const isConverting = !!convertingEvent; // Capture before reset
+            devLog('[Timelines] Editing timeline ID:', timelineId, 'Event ID:', eventId, 'Is Converting:', isConverting);
             
-            const result = await handleAddEventFromTimeline(content);
-            console.log('[Timelines] Event created, result:', result?.id);
-            
-            setShowEditEventModal(false);
-            console.log('[Timelines] Closed edit modal');
-            
-            // Ensure timeline stays open after adding event
-            if (timelineId) {
-              setCollapsedTimelines(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(timelineId);
-                saveCollapseStates(newSet);
-                console.log('[Timelines] Expanded timeline:', timelineId);
-                return newSet;
-              });
+            if (eventId) {
+              // Editing existing event
+              try {
+                await updateNoteById(eventId, content);
+                // Update the note in the notes array
+                if (updateNote) {
+                  updateNote(eventId, content);
+                }
+                devLog('[Timelines] Event updated:', eventId);
+                setShowEditEventModal(false);
+                setEditingEventId(null);
+                setEditingTimelineId(null);
+                setConvertingEvent(null);
+              } catch (error) {
+                console.error('[Timelines] Error updating event:', error);
+                alert('Failed to update event. Please try again.');
+              }
+            } else {
+              // Creating new event (either from Add Event or Convert to Event)
+              // Ensure timeline link is added if converting
+              let finalContent = content;
+              if (isConverting && timelineId && !content.includes(`meta::linked_to_timeline::${timelineId}`)) {
+                finalContent = content + `\nmeta::linked_to_timeline::${timelineId}`;
+              }
+              
+              const result = await handleAddEventFromTimeline(finalContent);
+              devLog('[Timelines] Event created, result:', result?.id);
+              
+              // If converting, also update the timeline note to link the event
+              if (isConverting && timelineId && result?.id) {
+                try {
+                  const timelineNote = timelineNotes.find(n => n.id === timelineId);
+                  if (timelineNote) {
+                    const timelineContent = timelineNote.content;
+                    const linkedEventsLine = timelineContent.split('\n').find(line => line.startsWith('meta::linked_from_events::'));
+                    
+                    let updatedContent = timelineContent;
+                    if (linkedEventsLine) {
+                      // Append to existing linked events
+                      const existingIds = linkedEventsLine.replace('meta::linked_from_events::', '').trim().split(',').map(id => id.trim()).filter(id => id);
+                      if (!existingIds.includes(result.id)) {
+                        updatedContent = timelineContent.replace(
+                          linkedEventsLine,
+                          `${linkedEventsLine}, ${result.id}`
+                        );
+                      }
+                    } else {
+                      // Add new linked events line
+                      updatedContent = timelineContent + `\nmeta::linked_from_events::${result.id}`;
+                    }
+                    
+                    await updateNoteById(timelineId, updatedContent);
+                    handleTimelineUpdated(timelineId, updatedContent);
+                  }
+                } catch (error) {
+                  console.error('[Timelines] Error linking converted event to timeline:', error);
+                }
+              }
+              
+              setShowEditEventModal(false);
+              devLog('[Timelines] Closed edit modal');
+              
+              // Ensure timeline stays open after adding event
+              if (timelineId) {
+                setCollapsedTimelines(prev => {
+                  const newSet = new Set(prev);
+                  newSet.delete(timelineId);
+                  saveCollapseStates(newSet);
+                  devLog('[Timelines] Expanded timeline:', timelineId);
+                  return newSet;
+                });
+              }
+              
+              setEditingTimelineId(null);
+              setConvertingEvent(null);
+              devLog('[Timelines] Reset editing timeline ID');
+              
+              // The handleTimelineUpdated callback will refresh timelineNotes
+              // But we also refresh here as a fallback after a delay
+              // Include the new event note in the notes array
+              setTimeout(() => {
+                devLog('[Timelines] setTimeout fallback refresh triggered');
+                devLog('[Timelines] Result:', result);
+                devLog('[Timelines] Current notes length:', notes.length);
+                devLog('[Timelines] Notes includes result:', notes.find(n => n.id === result?.id) ? 'YES' : 'NO');
+                
+                const updatedNotes = result && !notes.find(n => n.id === result.id)
+                  ? [...notes, result]
+                  : notes;
+                
+                devLog('[Timelines] Updated notes length:', updatedNotes.length);
+                
+                const filteredNotes = updatedNotes.filter(note => 
+                  note.content && note.content.includes('meta::timeline')
+                );
+                
+                devLog('[Timelines] Filtered timeline notes count:', filteredNotes.length);
+                setTimelineNotes(filteredNotes);
+              }, 500);
+              
+              return result;
             }
-            
-            setEditingTimelineId(null);
-            console.log('[Timelines] Reset editing timeline ID');
-            
-            // The handleTimelineUpdated callback will refresh timelineNotes
-            // But we also refresh here as a fallback after a delay
-            // Include the new event note in the notes array
-            setTimeout(() => {
-              console.log('[Timelines] setTimeout fallback refresh triggered');
-              console.log('[Timelines] Result:', result);
-              console.log('[Timelines] Current notes length:', notes.length);
-              console.log('[Timelines] Notes includes result:', notes.find(n => n.id === result?.id) ? 'YES' : 'NO');
-              
-              const updatedNotes = result && !notes.find(n => n.id === result.id)
-                ? [...notes, result]
-                : notes;
-              
-              console.log('[Timelines] Updated notes length:', updatedNotes.length);
-              
-              const filteredNotes = updatedNotes.filter(note => 
-                note.content && note.content.includes('meta::timeline')
-              );
-              
-              console.log('[Timelines] Filtered timeline notes count:', filteredNotes.length);
-              setTimelineNotes(filteredNotes);
-            }, 500);
-            
-            return result;
           }}
           onTimelineUpdated={(timelineId, updatedContent) => {
             console.log('[Timelines] onTimelineUpdated callback invoked:', { timelineId, updatedContentLength: updatedContent?.length });
@@ -4467,11 +5087,15 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           }}
           onCancel={() => {
             setShowEditEventModal(false);
+            setEditingEventId(null);
             setEditingTimelineId(null);
+            setConvertingEvent(null);
           }}
           onSwitchToNormalEdit={() => {
             setShowEditEventModal(false);
             setEditingTimelineId(null);
+            setEditingEventId(null);
+            setConvertingEvent(null);
           }}
           onDelete={() => {
             // Delete not applicable for new events

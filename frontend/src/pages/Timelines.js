@@ -6,7 +6,7 @@ import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import EditEventModal from '../components/EditEventModal';
 import { createNote } from '../utils/ApiUtils';
 import { addNoteToIndex } from '../utils/SearchUtils';
-import { updateNoteById, getNoteById } from '../utils/ApiUtils';
+import { updateNoteById, getNoteById, getTimelines, getTimelineById, getTimelineEvents, getMasterTimelineEvents } from '../utils/ApiUtils';
 
 const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   // Development-only logging helper
   const devLog = useCallback((...args) => {
     if (process.env.NODE_ENV === 'development') {
-      console.log(...args);
+      //console.log(...args);
     }
   }, []);
   
@@ -100,6 +100,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
 
   // Initialize state with saved collapse states
   const [timelineNotes, setTimelineNotes] = useState([]);
+  const [loadingTimelines, setLoadingTimelines] = useState(true);
+  const [timelineEventsCache, setTimelineEventsCache] = useState({}); // { timelineId: { events, timelineData } }
   const [showAddEventForm, setShowAddEventForm] = useState(null);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [editingTimelineId, setEditingTimelineId] = useState(null);
@@ -121,7 +123,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   // Use a function to ensure it loads on mount
   const [collapsedTimelines, setCollapsedTimelines] = useState(() => {
     const saved = loadCollapseStates();
-    console.log('[Timelines] Initial state from localStorage:', Array.from(saved));
+    //console.log('[Timelines] Initial state from localStorage:', Array.from(saved));
     return saved;
   });
   const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
@@ -181,100 +183,91 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     }
   }, [location.pathname]);
 
+  // Load timelines from API
   useEffect(() => {
-    devLog('[Timelines] useEffect[notes] triggered, notes length:', notes?.length);
-    
-    // Clear cache when notes change significantly
-    if (notes && notes.length > 0) {
-      const notesKey = notes.map(n => `${n.id}:${n.content?.substring(0, 50) || ''}`).join('|');
-      const cacheKey = `notes_${notesKey}`;
-      if (!parseTimelineCache.current.has(`_notes_key_${cacheKey}`)) {
-        // Notes changed significantly, clear cache
-        parseTimelineCache.current.clear();
-        parseTimelineCache.current.set(`_notes_key_${cacheKey}`, true);
+    const loadTimelines = async () => {
+      try {
+        setLoadingTimelines(true);
+        const params = {
+          search: searchQuery || undefined,
+          searchTitlesOnly: searchTitlesOnly ? 'true' : undefined
+        };
+        const response = await getTimelines(params);
+        setTimelineNotes(response.timelines || []);
+      } catch (error) {
+        console.error('Error loading timelines:', error);
+      } finally {
+        setLoadingTimelines(false);
       }
+    };
+    
+    loadTimelines();
+  }, [searchQuery, searchTitlesOnly]);
+
+  // Load timeline events when a timeline is expanded
+  const loadTimelineEvents = useCallback(async (timelineId) => {
+    // Check if already cached
+    if (timelineEventsCache[timelineId]) {
+      return timelineEventsCache[timelineId];
     }
     
-    if (notes && notes.length > 0) {
-      // Use getNotesWithNewEvent() to get the latest notes including the new event
-      const notesToUse = getNotesWithNewEvent();
-      // Check both ref and state for the new event note
-      const newEventNoteFromRef = newEventNoteRef.current;
-      const newEventNoteFromState = pendingNewEventNote;
-      const newEventNote = newEventNoteFromRef || newEventNoteFromState;
-      devLog('[Timelines] New event note in ref (useEffect):', newEventNoteFromRef?.id, 'in state:', newEventNoteFromState?.id);
-      devLog('[Timelines] Notes to use in useEffect:', notesToUse.length, 'includes new event:', notesToUse.find(n => n.id === newEventNote?.id) ? 'YES' : 'NO');
+    try {
+      // Fetch timeline details and events
+      const [timelineData, eventsData] = await Promise.all([
+        getTimelineById(timelineId),
+        getTimelineEvents(timelineId, timelineSearchQueries[timelineId] || '')
+      ]);
       
-      // Filter notes that contain meta::timeline tag
-      const filteredNotes = notesToUse.filter(note => 
-        note.content && note.content.includes('meta::timeline')
-      );
+      // Convert dates to moment objects for compatibility
+      const eventsWithMoments = eventsData.events.map(event => ({
+        ...event,
+        date: event.date ? moment(event.date) : null
+      }));
       
-      devLog('[Timelines] Filtered timeline notes count (useEffect):', filteredNotes.length);
+      const cachedData = {
+        timelineData,
+        events: eventsWithMoments
+      };
       
-      // Always update timelineNotes to ensure it reflects the latest notes
-      // This is important when notes are updated (e.g., when events are linked)
-      setTimelineNotes(filteredNotes);
+      setTimelineEventsCache(prev => ({
+        ...prev,
+        [timelineId]: cachedData
+      }));
       
-      // When notes change, ONLY remove references to deleted timelines
-      // Do NOT merge with localStorage - that would overwrite current user interactions
-      // The state is already initialized from localStorage on mount
-      // And restored from localStorage when navigating back to /timelines
-      const currentNoteIds = filteredNotes.map(note => note.id);
-      
-      // Only clean up: remove any collapsed IDs that no longer exist in current notes
-      setCollapsedTimelines(prev => {
-        // Filter out any timeline IDs that no longer exist
-        const validCollapsedIds = Array.from(prev).filter(id => currentNoteIds.includes(id));
-        
-        // Only update if we actually removed some IDs (deleted timelines)
-        if (validCollapsedIds.length !== prev.size) {
-          const cleanedSet = new Set(validCollapsedIds);
-          console.log('[Timelines] Removed deleted timeline IDs from collapse state:', Array.from(prev), '->', Array.from(cleanedSet));
-          // Save the cleaned state
-          saveCollapseStates(cleanedSet);
-          return cleanedSet;
-        }
-        
-        // No changes needed - preserve current state
-        return prev;
-      });
-      
-      // Clear the ref and state only if the notes prop now includes the new event
-      // IMPORTANT: We need to be careful - only clear when we're sure rendering has completed
-      // The new event note must stay available until parseTimelineData has used it
-      if (newEventNote) {
-        const notesIncludesNewEvent = notes.find(n => n.id === newEventNote.id);
-        if (notesIncludesNewEvent) {
-          // Notes prop includes the new event - increment the counter
-          newEventSeenCountRef.current = (newEventSeenCountRef.current || 0) + 1;
-          console.log('[Timelines] Notes prop includes new event, seen count:', newEventSeenCountRef.current);
-          
-          // Only clear after we've seen it multiple times (ensures rendering has completed)
-          // This gives parseTimelineData multiple chances to use the new event
-          if (newEventSeenCountRef.current >= 3) {
-            console.log('[Timelines] Event seen multiple times in notes prop, clearing ref and state');
-            newEventNoteRef.current = null;
-            setPendingNewEventNote(null);
-            newEventSeenCountRef.current = 0;
-          }
-        } else {
-          console.log('[Timelines] Notes prop does not include new event yet, keeping ref and state');
-          newEventSeenCountRef.current = 0; // Reset counter if event not found
-        }
-      }
-    } else if (notes && notes.length === 0) {
-      // Handle empty notes array
-      console.log('[Timelines] Notes array is empty, clearing timelineNotes');
-      setTimelineNotes([]);
-      // Clear ref and state if notes array is empty
-      if (newEventNoteRef.current || pendingNewEventNote) {
-        console.log('[Timelines] Clearing ref and state because notes array is empty');
-        newEventNoteRef.current = null;
-        setPendingNewEventNote(null);
-      }
+      return cachedData;
+    } catch (error) {
+      console.error(`Error loading timeline events for ${timelineId}:`, error);
+      return null;
     }
-  }, [notes]);
+  }, [timelineEventsCache, timelineSearchQueries]);
+
+  // Clear cache when timeline search changes
+  useEffect(() => {
+    // Clear cache when search queries change
+    setTimelineEventsCache({});
+  }, [Object.keys(timelineSearchQueries).join(',')]);
+
+  // Clear cache when a timeline is updated
+  const refreshTimeline = useCallback(async (timelineId) => {
+    // Remove from cache to force reload
+    setTimelineEventsCache(prev => {
+      const updated = { ...prev };
+      delete updated[timelineId];
+      return updated;
+    });
+    
+    // Reload timeline list
+    try {
+      const params = {
+        search: searchQuery || undefined,
+        searchTitlesOnly: searchTitlesOnly ? 'true' : undefined
+      };
+      const response = await getTimelines(params);
+      setTimelineNotes(response.timelines || []);
+    } catch (error) {
+      console.error('Error refreshing timelines:', error);
+    }
+  }, [searchQuery, searchTitlesOnly]);
 
   // Extract dollar values from text
   const extractDollarValues = (text) => {
@@ -1445,19 +1438,20 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
 
   // Filter and sort timeline notes (memoized for performance)
   const filteredAndSortedTimelineNotes = useMemo(() => {
-    const notesToUse = getNotesWithNewEvent();
+    // Note: timelineNotes now come from API with simplified format (timeline, isClosed, isFlagged, etc.)
+    // Search filtering is done on the server side, but we can apply additional client-side filtering here if needed
     
     return timelineNotes
       .filter(note => {
-        // Safety check: ensure note has valid content
-        if (!note || !note.content) return false;
+        if (!note || !note.timeline) return false;
+        
+        // Client-side search filtering (if not already done by server)
         if (!searchQuery.trim()) return true;
         
-        const timelineData = parseTimelineData(note.content, notesToUse);
         const query = searchQuery.toLowerCase();
         
         // Search in timeline title
-        if (timelineData.timeline.toLowerCase().includes(query)) {
+        if (note.timeline.toLowerCase().includes(query)) {
           return true;
         }
         
@@ -1466,27 +1460,31 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           return false;
         }
         
-        // Search in events (both regular and linked events)
-        const hasMatchingEvent = timelineData.events.some(event => {
-          if (event.event && typeof event.event === 'string') {
-            return event.event.toLowerCase().includes(query);
-          }
-          return false;
-        });
-        
-        return hasMatchingEvent;
+        // For event search, we'd need to check cached events
+        // This is a simplified version - full event search should be done server-side
+        return false;
       })
       .sort((a, b) => {
-        const aData = parseTimelineData(a.content, notesToUse);
-        const bData = parseTimelineData(b.content, notesToUse);
-        
-        if (!aData.timeline && !bData.timeline) return 0;
-        if (!aData.timeline) return 1;
-        if (!bData.timeline) return -1;
-        
-        return aData.timeline.localeCompare(bData.timeline);
+        const aName = a.timeline || 'Untitled Timeline';
+        const bName = b.timeline || 'Untitled Timeline';
+        return aName.localeCompare(bName);
       });
-  }, [timelineNotes, searchQuery, searchTitlesOnly, getNotesWithNewEvent, parseTimelineData]);
+  }, [timelineNotes, searchQuery, searchTitlesOnly]);
+
+  // Load timeline events when timelines are expanded
+  useEffect(() => {
+    // Get all visible timeline IDs (not collapsed)
+    const visibleTimelineIds = filteredAndSortedTimelineNotes
+      .filter(note => note && !collapsedTimelines.has(note.id))
+      .map(note => note.id);
+    
+    // Load events for visible timelines that aren't cached yet
+    visibleTimelineIds.forEach(timelineId => {
+      if (!timelineEventsCache[timelineId]) {
+        loadTimelineEvents(timelineId);
+      }
+    });
+  }, [filteredAndSortedTimelineNotes, collapsedTimelines, timelineEventsCache, loadTimelineEvents]);
 
   // Track previous search query to detect when user actively clears search
   const prevSearchQueryRef = useRef(searchQuery);
@@ -1522,28 +1520,28 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       const matchingTimelineIds = new Set();
       
       timelineNotes.forEach(note => {
-        if (!note || !note.content) return;
-        
-        const notesToUse = getNotesWithNewEvent();
-        const timelineData = parseTimelineData(note.content, notesToUse);
+        if (!note) return;
         
         // Check if timeline title matches
-        if (timelineData.timeline.toLowerCase().includes(query)) {
+        if (note.timeline && note.timeline.toLowerCase().includes(query)) {
           matchingTimelineIds.add(note.id);
         }
         
         // Only check events if "search only titles" is not checked
         if (!searchTitlesOnly) {
-          // Check if any event matches
-          const hasMatchingEvent = timelineData.events.some(event => {
-            if (event.event && typeof event.event === 'string') {
-              return event.event.toLowerCase().includes(query);
+          // Check cached events for matches
+          const cachedData = timelineEventsCache[note.id];
+          if (cachedData && cachedData.events) {
+            const hasMatchingEvent = cachedData.events.some(event => {
+              if (event.event && typeof event.event === 'string') {
+                return event.event.toLowerCase().includes(query);
+              }
+              return false;
+            });
+            
+            if (hasMatchingEvent) {
+              matchingTimelineIds.add(note.id);
             }
-            return false;
-          });
-          
-          if (hasMatchingEvent) {
-            matchingTimelineIds.add(note.id);
           }
         }
       });
@@ -1561,7 +1559,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         });
       }
     }
-  }, [searchQuery, searchTitlesOnly, timelineNotes, notes]);
+  }, [searchQuery, searchTitlesOnly, timelineNotes, timelineEventsCache]);
 
   const [activeTab, setActiveTab] = useState('all');
   const timelineRefs = useRef({});
@@ -1712,10 +1710,9 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         const closedTimelines = [];
         
         timelineNotes.forEach((note) => {
-          const notesToUse = getNotesWithNewEvent();
-          const timelineData = parseTimelineData(note.content, notesToUse);
-          const isFlagged = note.content && note.content.includes('meta::flagged_timeline');
-          const isClosed = timelineData.isClosed;
+          // Note: timelineNotes now come from API with timeline, isClosed, isFlagged properties
+          const isFlagged = note.isFlagged || false;
+          const isClosed = note.isClosed || false;
           
           if (isFlagged) {
             flaggedTimelines.push(note);
@@ -1728,11 +1725,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         
         // Sort each group by timeline name
         const sortByTimelineName = (a, b) => {
-          const notesToUse = getNotesWithNewEvent();
-          const aData = parseTimelineData(a.content, notesToUse);
-          const bData = parseTimelineData(b.content, notesToUse);
-          const aName = aData.timeline || 'Untitled Timeline';
-          const bName = bData.timeline || 'Untitled Timeline';
+          const aName = a.timeline || 'Untitled Timeline';
+          const bName = b.timeline || 'Untitled Timeline';
           return aName.localeCompare(bName);
         };
         
@@ -1764,8 +1758,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                 <div className="text-xs font-semibold text-red-600 mb-2">Flagged</div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {flaggedTimelines.map((note) => {
-                    const timelineData = parseTimelineData(note.content, notes);
-                    const timelineTitle = timelineData.timeline || 'Untitled Timeline';
+                    // Use timeline property directly from API response
+                    const timelineTitle = note.timeline || 'Untitled Timeline';
                     
                     return (
                       <button
@@ -1788,8 +1782,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                 <div className="text-xs font-semibold text-blue-600 mb-2">Open</div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {openTimelines.map((note) => {
-                    const timelineData = parseTimelineData(note.content, notes);
-                    const timelineTitle = timelineData.timeline || 'Untitled Timeline';
+                    // Use timeline property directly from API response
+                    const timelineTitle = note.timeline || 'Untitled Timeline';
                     
                     return (
                       <button
@@ -1812,8 +1806,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                 <div className="text-xs font-semibold text-gray-600 mb-2">Closed</div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {closedTimelines.map((note) => {
-                    const timelineData = parseTimelineData(note.content, notes);
-                    const timelineTitle = timelineData.timeline || 'Untitled Timeline';
+                    // Use timeline property directly from API response
+                    const timelineTitle = note.timeline || 'Untitled Timeline';
                     
                     return (
                       <button
@@ -1921,8 +1915,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             {/* Flagged Timelines */}
             {(() => {
               const flaggedTimelines = filteredAndSortedTimelineNotes.filter(note => {
-                if (!note || !note.content) return false;
-                return note.content.includes('meta::flagged_timeline');
+                if (!note) return false;
+                return note.isFlagged === true;
               });
               
               if (flaggedTimelines.length > 0) {
@@ -1947,10 +1941,36 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                       </span>
                     </h2>
                     {!isSectionCollapsed && flaggedTimelines.map((note) => {
-                      if (!note || !note.content) return null;
-                      const notesToUse = getNotesWithNewEvent();
-                      const timelineData = parseTimelineData(note.content, notesToUse);
-                      const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
+                      if (!note) return null;
+                      
+                      // Get timeline data from cache or use simplified data from API
+                      const cachedData = timelineEventsCache[note.id];
+                      let timelineData;
+                      let eventsWithDiffs;
+                      
+                      if (cachedData && cachedData.timelineData) {
+                        // Use cached full timeline data
+                        timelineData = {
+                          timeline: cachedData.timelineData.timeline || note.timeline || 'Untitled Timeline',
+                          events: cachedData.events || [],
+                          isClosed: cachedData.timelineData.isClosed || note.isClosed || false,
+                          totalDollarAmount: cachedData.timelineData.totalDollarAmount || 0
+                        };
+                        eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
+                      } else {
+                        // Use simplified data from API response
+                        timelineData = {
+                          timeline: note.timeline || 'Untitled Timeline',
+                          events: [],
+                          isClosed: note.isClosed || false,
+                          totalDollarAmount: note.totalDollarAmount || 0
+                        };
+                        eventsWithDiffs = [];
+                        // Trigger loading if not cached
+                        if (!collapsedTimelines.has(note.id)) {
+                          loadTimelineEvents(note.id);
+                        }
+                      }
 
                       return (
                         <div 
@@ -2131,18 +2151,18 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                     handleToggleFlagged(note.id);
                                   }}
                                   className={`px-2 py-1 rounded-md transition-all flex items-center space-x-1 border shadow-sm hover:shadow ${
-                                    note.content.includes('meta::flagged_timeline')
+                                    note.isFlagged
                                       ? 'bg-gradient-to-r from-rose-50 to-pink-50 hover:from-rose-100 hover:to-pink-100 text-rose-700 border-rose-200'
                                       : 'bg-slate-50 hover:bg-slate-100 text-slate-500 border-slate-300'
                                   }`}
-                                  title={note.content.includes('meta::flagged_timeline') ? 'Unflag timeline' : 'Flag timeline (needs attention)'}
+                                  title={note.isFlagged ? 'Unflag timeline' : 'Flag timeline (needs attention)'}
                                 >
                                   <FlagIcon className="h-3 w-3" />
                                   <span className="text-xs font-medium">Flag</span>
                                 </button>
                                 <label 
                                   className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-md transition-all cursor-pointer flex items-center space-x-1 border border-slate-300 shadow-sm hover:shadow"
-                                  title={note.content.includes('meta::tracked') ? 'Untrack timeline' : 'Track timeline'}
+                                  title={note.isTracked ? 'Untrack timeline' : 'Track timeline'}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleToggleTracked(note.id);
@@ -2150,7 +2170,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                 >
                                   <input
                                     type="checkbox"
-                                    checked={note.content.includes('meta::tracked')}
+                                    checked={note.isTracked || false}
                                     onChange={() => {}}
                                     className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded cursor-pointer"
                                   />
@@ -2818,12 +2838,10 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             {/* Open Timelines */}
             {(() => {
               const openTimelines = filteredAndSortedTimelineNotes.filter(note => {
-                if (!note || !note.content) return false;
+                if (!note) return false;
                 // Exclude flagged timelines (they appear in Flagged section)
-                if (note.content.includes('meta::flagged_timeline')) return false;
-                const notesToUse = getNotesWithNewEvent();
-                const timelineData = parseTimelineData(note.content, notesToUse);
-                return !timelineData.isClosed;
+                if (note.isFlagged === true) return false;
+                return note.isClosed !== true;
               });
               
               if (openTimelines.length > 0) {
@@ -2847,10 +2865,36 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                       </span>
                     </h2>
                     {!isSectionCollapsed && openTimelines.map((note) => {
-              if (!note || !note.content) return null;
-              const notesToUse = getNotesWithNewEvent();
-              const timelineData = parseTimelineData(note.content, notesToUse);
-              const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
+                      if (!note) return null;
+                      
+                      // Get timeline data from cache or use simplified data from API
+                      const cachedData = timelineEventsCache[note.id];
+                      let timelineData;
+                      let eventsWithDiffs;
+                      
+                      if (cachedData && cachedData.timelineData) {
+                        // Use cached full timeline data
+                        timelineData = {
+                          timeline: cachedData.timelineData.timeline || note.timeline || 'Untitled Timeline',
+                          events: cachedData.events || [],
+                          isClosed: cachedData.timelineData.isClosed || note.isClosed || false,
+                          totalDollarAmount: cachedData.timelineData.totalDollarAmount || 0
+                        };
+                        eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
+                      } else {
+                        // Use simplified data from API response
+                        timelineData = {
+                          timeline: note.timeline || 'Untitled Timeline',
+                          events: [],
+                          isClosed: note.isClosed || false,
+                          totalDollarAmount: note.totalDollarAmount || 0
+                        };
+                        eventsWithDiffs = [];
+                        // Trigger loading if not cached
+                        if (!collapsedTimelines.has(note.id)) {
+                          loadTimelineEvents(note.id);
+                        }
+                      }
 
               return (
                 <div 
@@ -3031,18 +3075,18 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                             handleToggleFlagged(note.id);
                           }}
                           className={`px-3 py-1.5 rounded-md transition-colors flex items-center space-x-1.5 border ${
-                            note.content.includes('meta::flagged_timeline')
+                            note.isFlagged
                               ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
                               : 'bg-gray-50 hover:bg-gray-100 text-gray-500 border-gray-300'
                           }`}
-                          title={note.content.includes('meta::flagged_timeline') ? 'Unflag timeline' : 'Flag timeline (needs attention)'}
+                          title={note.isFlagged ? 'Unflag timeline' : 'Flag timeline (needs attention)'}
                         >
                           <FlagIcon className="h-4 w-4" />
                           <span className="text-sm font-medium">Flag</span>
                         </button>
                         <label 
                           className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors cursor-pointer flex items-center space-x-1.5 border border-gray-300"
-                          title={note.content.includes('meta::tracked') ? 'Untrack timeline' : 'Track timeline'}
+                          title={note.isTracked ? 'Untrack timeline' : 'Track timeline'}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleToggleTracked(note.id);
@@ -3050,7 +3094,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                         >
                           <input
                             type="checkbox"
-                            checked={note.content.includes('meta::tracked')}
+                            checked={note.isTracked || false}
                             onChange={() => {}}
                             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
                           />
@@ -3337,17 +3381,17 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              console.log('[Timelines] Clicked linked event (open/closed section):', {
-                                                linkedEventId: event.linkedEventId,
-                                                event: event.event,
-                                                fullEvent: event
-                                              });
+                                              // console.log('[Timelines] Clicked linked event (open/closed section):', {
+                                              //   linkedEventId: event.linkedEventId,
+                                              //   event: event.event,
+                                              //   fullEvent: event
+                                              // });
                                               // For HashRouter, we need to use hash with query params
                                               const targetUrl = `/events?note=${event.linkedEventId}`;
-                                              console.log('[Timelines] Navigating to:', targetUrl);
-                                              console.log('[Timelines] Current window location:', window.location.href);
+                                              //console.log('[Timelines] Navigating to:', targetUrl);
+                                              ////console.log('[Timelines] Current window location:', window.location.href);
                                               navigate(targetUrl, { replace: false });
-                                              console.log('[Timelines] After navigate, window location:', window.location.href);
+                                              //console.log('[Timelines] After navigate, window location:', window.location.href);
                                             }}
                                             className="text-left hover:underline cursor-pointer flex-1"
                                           >
@@ -3775,11 +3819,10 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             {/* Closed Timelines */}
             {(() => {
               const closedTimelines = filteredAndSortedTimelineNotes.filter(note => {
-                if (!note || !note.content) return false;
+                if (!note) return false;
                 // Exclude flagged timelines (they appear in Flagged section)
-                if (note.content.includes('meta::flagged_timeline')) return false;
-                const timelineData = parseTimelineData(note.content, notes);
-                return timelineData.isClosed;
+                if (note.isFlagged === true) return false;
+                return note.isClosed === true;
               });
               
               if (closedTimelines.length > 0) {
@@ -3803,10 +3846,36 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                       </span>
                     </h2>
                     {!isSectionCollapsed && closedTimelines.map((note) => {
-                      if (!note || !note.content) return null;
-                      const notesToUse = getNotesWithNewEvent();
-                      const timelineData = parseTimelineData(note.content, notesToUse);
-                      const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
+                      if (!note) return null;
+                      
+                      // Get timeline data from cache or use simplified data from API
+                      const cachedData = timelineEventsCache[note.id];
+                      let timelineData;
+                      let eventsWithDiffs;
+                      
+                      if (cachedData && cachedData.timelineData) {
+                        // Use cached full timeline data
+                        timelineData = {
+                          timeline: cachedData.timelineData.timeline || note.timeline || 'Untitled Timeline',
+                          events: cachedData.events || [],
+                          isClosed: cachedData.timelineData.isClosed || note.isClosed || false,
+                          totalDollarAmount: cachedData.timelineData.totalDollarAmount || 0
+                        };
+                        eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
+                      } else {
+                        // Use simplified data from API response
+                        timelineData = {
+                          timeline: note.timeline || 'Untitled Timeline',
+                          events: [],
+                          isClosed: note.isClosed || false,
+                          totalDollarAmount: note.totalDollarAmount || 0
+                        };
+                        eventsWithDiffs = [];
+                        // Trigger loading if not cached
+                        if (!collapsedTimelines.has(note.id)) {
+                          loadTimelineEvents(note.id);
+                        }
+                      }
 
                       return (
                         <div 
@@ -3943,18 +4012,18 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                     handleToggleFlagged(note.id);
                                   }}
                                   className={`px-3 py-1.5 rounded-md transition-colors flex items-center space-x-1.5 border ${
-                                    note.content.includes('meta::flagged_timeline')
+                                    note.isFlagged
                                       ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
                                       : 'bg-gray-50 hover:bg-gray-100 text-gray-500 border-gray-300'
                                   }`}
-                                  title={note.content.includes('meta::flagged_timeline') ? 'Unflag timeline' : 'Flag timeline (needs attention)'}
+                                  title={note.isFlagged ? 'Unflag timeline' : 'Flag timeline (needs attention)'}
                                 >
                                   <FlagIcon className="h-4 w-4" />
                                   <span className="text-sm font-medium">Flag</span>
                                 </button>
                                 <label 
                                   className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-colors cursor-pointer flex items-center space-x-1.5 border border-gray-300"
-                                  title={note.content.includes('meta::tracked') ? 'Untrack timeline' : 'Track timeline'}
+                                  title={note.isTracked ? 'Untrack timeline' : 'Track timeline'}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleToggleTracked(note.id);
@@ -3962,7 +4031,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                 >
                                   <input
                                     type="checkbox"
-                                    checked={note.content.includes('meta::tracked')}
+                                    checked={note.isTracked || false}
                                     onChange={() => {}}
                                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
                                   />
@@ -4618,8 +4687,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             }
           }}
           onTimelineUpdated={(timelineId, updatedContent) => {
-            console.log('[Timelines] onTimelineUpdated callback invoked:', { timelineId, updatedContentLength: updatedContent?.length });
-            console.log('[Timelines] Updated content preview:', updatedContent?.substring(0, 200));
+            //console.log('[Timelines] onTimelineUpdated callback invoked:', { timelineId, updatedContentLength: updatedContent?.length });
+            //console.log('[Timelines] Updated content preview:', updatedContent?.substring(0, 200));
             // Pass the new event note to handleTimelineUpdated
             // We need to get it from the onSave result, but we can't access it here
             // So we'll refresh in onSave instead
@@ -5200,7 +5269,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                           updateNote(timelineId, updatedTimelineResponse.content || updatedTimelineContent);
                         }
 
-                        console.log('Successfully linked event to timeline');
+                        //console.log('Successfully linked event to timeline');
                         setLinkEventModal({ isOpen: false, timelineId: null, searchQuery: '', selectedEventId: null });
                       } catch (error) {
                         console.error('[Timelines] Error linking event to timeline:', error);

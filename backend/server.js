@@ -5,6 +5,7 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const settingsRouter = require('./routes/settings');
 const journalsRouter = require('./routes/journals');
+const timelinesRouter = require('./routes/timelines');
 
 const app = express();
 app.use(express.json());
@@ -18,6 +19,7 @@ app.use(cors({
 // Mount routers
 app.use('/api/settings', settingsRouter);
 app.use('/api/journals', journalsRouter);
+app.use('/api/timelines', timelinesRouter);
 
 const NOTES_DIR = './notes';
 if (!fs.existsSync(NOTES_DIR)) fs.mkdirSync(NOTES_DIR);

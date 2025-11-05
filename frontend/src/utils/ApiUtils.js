@@ -505,3 +505,47 @@ export const exportAllNotes = async () => {
     throw new Error('Error during export: ' + error.message);
   }
 };
+
+// Timeline API functions
+export const getTimelines = async (params = {}) => {
+  const { status, search, searchTitlesOnly } = params;
+  const queryParams = new URLSearchParams();
+  if (status) queryParams.append('status', status);
+  if (search) queryParams.append('search', search);
+  if (searchTitlesOnly) queryParams.append('searchTitlesOnly', searchTitlesOnly);
+  
+  const queryString = queryParams.toString();
+  const url = `${API_BASE_URL}/timelines${queryString ? `?${queryString}` : ''}`;
+  
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Failed to fetch timelines');
+  return await response.json();
+};
+
+export const getTimelineById = async (id) => {
+  const response = await fetch(`${API_BASE_URL}/timelines/${id}`);
+  if (!response.ok) throw new Error('Failed to fetch timeline');
+  return await response.json();
+};
+
+export const getTimelineEvents = async (id, search = '') => {
+  const queryParams = new URLSearchParams();
+  if (search) queryParams.append('search', search);
+  const queryString = queryParams.toString();
+  const url = `${API_BASE_URL}/timelines/${id}/events${queryString ? `?${queryString}` : ''}`;
+  
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Failed to fetch timeline events');
+  return await response.json();
+};
+
+export const getMasterTimelineEvents = async (year) => {
+  const queryParams = new URLSearchParams();
+  if (year) queryParams.append('year', year);
+  const queryString = queryParams.toString();
+  const url = `${API_BASE_URL}/timelines/master/events${queryString ? `?${queryString}` : ''}`;
+  
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Failed to fetch master timeline events');
+  return await response.json();
+};

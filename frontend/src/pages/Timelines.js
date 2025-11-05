@@ -131,6 +131,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [linkEventModal, setLinkEventModal] = useState({ isOpen: false, timelineId: null, searchQuery: '', selectedEventId: null });
   const [timelineSearchQueries, setTimelineSearchQueries] = useState(() => loadTimelineSearchQueries()); // { timelineId: searchQuery }
   const [collapsedSections, setCollapsedSections] = useState(() => loadSectionCollapseStates()); // Set of collapsed section names: 'flagged', 'open', 'closed'
+  const [showMasterTimelineModal, setShowMasterTimelineModal] = useState(false);
+  const [masterTimelineModalSearchQuery, setMasterTimelineModalSearchQuery] = useState('');
 
   // Save timeline collapse states to localStorage
   const saveCollapseStates = (collapsedSet) => {
@@ -1634,6 +1636,13 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           <h1 className="text-2xl font-bold text-gray-900">Timelines</h1>
           <div className="flex gap-2">
               <button
+                onClick={() => setShowMasterTimelineModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                title="View Master Timeline"
+              >
+                📅 Master Timeline
+              </button>
+              <button
                 onClick={handleExpandAll}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
                 title="Expand all timelines"
@@ -1733,16 +1742,15 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         
         return (
           <div className="bg-white border-b border-gray-200 px-6 py-4">
-            {/* Master Timeline */}
+            {/* Master Timeline Button */}
             {masterTimeline.events.length > 0 && (
               <div className="mb-4 pb-4 border-b border-gray-300">
                 <div className="text-xs font-semibold text-purple-600 mb-2">Master Timeline</div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
-                    key={masterTimeline.id}
-                    onClick={() => scrollToTimeline(masterTimeline.id)}
+                    onClick={() => setShowMasterTimelineModal(true)}
                     className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 font-bold"
-                    title={`Scroll to ${masterTimeline.timeline} - All events from current year`}
+                    title={`View Master Timeline - All events from ${masterTimeline.timeline}`}
                   >
                     {masterTimeline.timeline} ({masterTimeline.events.length} events)
                   </button>
@@ -1910,474 +1918,6 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         ) : (
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             <div className="space-y-6 p-6">
-            {/* Master Timeline */}
-            {(() => {
-              if (masterTimeline.events.length > 0) {
-                const isSectionCollapsed = collapsedSections.has('master');
-                const eventsWithDiffs = calculateTimeDifferences(masterTimeline.events, false, masterTimeline.totalDollarAmount);
-                
-                return (
-                  <div className="space-y-4">
-                    <h2 
-                      onClick={() => toggleSectionCollapse('master')}
-                      className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-                    >
-                      <span className="text-2xl">📅</span>
-                      <span className="flex items-center gap-2">
-                        <svg 
-                          className={`w-5 h-5 text-purple-600 transition-transform ${isSectionCollapsed ? '' : 'rotate-90'}`} 
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                        Master Timeline ({masterTimeline.timeline}) <span className="font-normal text-slate-500">({masterTimeline.events.length} events)</span>
-                      </span>
-                    </h2>
-                    {!isSectionCollapsed && (
-                      <div 
-                        key={masterTimeline.id} 
-                        ref={(el) => (timelineRefs.current[masterTimeline.id] = el)}
-                        className="bg-white rounded-xl shadow-md border-l-4 border-purple-400 overflow-hidden hover:shadow-lg transition-shadow"
-                      >
-                        {/* Timeline Header */}
-                        <div 
-                          className="bg-gradient-to-r from-purple-50 to-indigo-50 px-6 py-4 cursor-pointer hover:from-purple-100 hover:to-indigo-100 border-b border-purple-200/50 transition-all"
-                          onClick={() => toggleTimelineCollapse(masterTimeline.id)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="text-purple-600">
-                                {collapsedTimelines.has(masterTimeline.id) ? (
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                  </svg>
-                                ) : (
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                  </svg>
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <h2 className="text-xl font-semibold text-gray-900">
-                                  {masterTimeline.timeline} - All Events
-                                </h2>
-                                {(() => {
-                                  const eventsWithDates = masterTimeline.events
-                                    .filter(event => event.date)
-                                    .sort((a, b) => a.date.diff(b.date));
-                                  
-                                  if (eventsWithDates.length > 0) {
-                                    const startDate = eventsWithDates[0].date;
-                                    const lastEvent = eventsWithDates[eventsWithDates.length - 1];
-                                    const eventCount = masterTimeline.events.length;
-                                    
-                                    return (
-                                      <>
-                                        <div className="text-sm font-normal text-gray-600 mt-1">
-                                          {startDate.format('DD/MMM/YYYY')} - {lastEvent.date.format('DD/MMM/YYYY')} | {eventCount} events
-                                        </div>
-                                        {masterTimeline.totalDollarAmount > 0 && (
-                                          <div className="text-sm font-semibold text-emerald-600 mt-1">
-                                            ${masterTimeline.totalDollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                          </div>
-                                        )}
-                                      </>
-                                    );
-                                  }
-                                  return null;
-                                })()}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Timeline Search */}
-                        {!collapsedTimelines.has(masterTimeline.id) && (
-                          <div className="px-6 py-3 bg-gray-50 border-b border-purple-200/50">
-                            <div className="relative">
-                              <input
-                                type="text"
-                                value={timelineSearchQueries[masterTimeline.id] || ''}
-                                onChange={(e) => handleTimelineSearchChange(masterTimeline.id, e.target.value)}
-                                onClick={(e) => e.stopPropagation()}
-                                placeholder="Search events in this timeline..."
-                                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 bg-white text-sm"
-                              />
-                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                              </div>
-                              {timelineSearchQueries[masterTimeline.id] && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleTimelineSearchChange(masterTimeline.id, '');
-                                  }}
-                                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                                >
-                                  <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Timeline Events */}
-                        {!collapsedTimelines.has(masterTimeline.id) && (
-                          <div className="p-6">
-                            {eventsWithDiffs.length === 0 ? (
-                              <div className="text-gray-500 italic">No events found in this timeline</div>
-                            ) : (() => {
-                              const searchQuery = timelineSearchQueries[masterTimeline.id] || '';
-                              const filteredEvents = filterEventsBySearch(eventsWithDiffs, searchQuery);
-                              
-                              if (filteredEvents.length === 0 && searchQuery) {
-                                return (
-                                  <div className="text-center py-8 text-gray-500">
-                                    <p>No events found matching "{searchQuery}"</p>
-                                  </div>
-                                );
-                              }
-                              
-                              return (
-                                <div className="space-y-4">
-                              {filteredEvents.map((event, index) => {
-                                const eventDate = event.date;
-                                const previousEvent = index > 0 ? filteredEvents[index - 1] : null;
-                                const previousEventDate = previousEvent && previousEvent.date ? previousEvent.date : null;
-                                
-                                // Check for month change
-                                const currentMonth = eventDate ? eventDate.month() : null;
-                                const currentYear = eventDate ? eventDate.year() : null;
-                                const previousMonth = previousEventDate ? previousEventDate.month() : null;
-                                const previousYear = previousEventDate ? previousEventDate.year() : null;
-                                const showMonthHeader = currentMonth !== null && (currentMonth !== previousMonth || currentYear !== previousYear);
-                                
-                                return (
-                                  <React.Fragment key={`${event.event}-${index}`}>
-                                    {/* Month Header */}
-                                    {showMonthHeader && (
-                                      <div className="flex items-center space-x-4 mb-4">
-                                        <div className="w-4 h-4"></div>
-                                        <div className="flex-1">
-                                          <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent border-b-2 border-purple-300 pb-2">
-                                            {eventDate ? eventDate.format('MMMM YYYY') : ''}
-                                          </h2>
-                                        </div>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Event */}
-                                    <div className="flex items-start space-x-4">
-                                      {/* Timeline connector */}
-                                      <div className="flex flex-col items-center">
-                                        <div className={`w-4 h-4 rounded-full border-2 ${
-                                          event.isToday
-                                            ? 'bg-emerald-500 border-emerald-600'
-                                            : event.isTotal
-                                            ? 'bg-emerald-600 border-emerald-600'
-                                            : event.isDuration
-                                              ? 'bg-orange-500 border-orange-500'
-                                              : event.isLinkedEvent
-                                                ? 'bg-indigo-500 border-indigo-500'
-                                                : event.isVirtual
-                                                  ? 'bg-purple-500 border-purple-500'
-                                                  : index === 0 
-                                                    ? 'bg-emerald-500 border-emerald-500' 
-                                                    : 'bg-blue-500 border-blue-500'
-                                        }`}></div>
-                                        {index < filteredEvents.length - 1 && (
-                                          <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
-                                        )}
-                                      </div>
-                                      
-                                      {/* Event content */}
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center space-x-3 mb-1">
-                                          {eventDate && (
-                                            <span className={`text-sm px-2 py-1 rounded font-medium ${
-                                              event.isToday 
-                                                ? 'text-emerald-800 bg-emerald-100 border border-emerald-200' 
-                                                : 'text-slate-600 bg-slate-100 border border-slate-200'
-                                            }`}>
-                                              {eventDate.format('DD/MMM/YYYY (ddd)')}
-                                            </span>
-                                          )}
-                                          <div className="flex items-center gap-2">
-                                            {event.isLinkedEvent ? (
-                                              <div className="flex items-center gap-2 flex-1">
-                                                <h3 className={`text-lg font-semibold flex-1 ${
-                                                  event.isToday
-                                                    ? 'text-emerald-700 font-bold'
-                                                    : event.isTotal
-                                                    ? 'text-emerald-700 font-bold'
-                                                    : event.isDuration
-                                                      ? 'text-orange-600 font-bold'
-                                                      : 'text-indigo-600 font-semibold'
-                                                }`}>
-                                                  {(() => {
-                                                    // Format event name as "Timeline Name - Event Name"
-                                                    const eventName = event.isTotal || event.isDuration ? (
-                                                      <span title={event.event.length > 50 ? event.event : undefined}>
-                                                        {truncateText(event.event)}
-                                                      </span>
-                                                    ) : (
-                                                      (() => {
-                                                        const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
-                                                        const displayText = formatted.hasAmount ? formatted.text : formatted.description;
-                                                        return (
-                                                          <span 
-                                                            title={event.event.length > 50 ? event.event : undefined}
-                                                            dangerouslySetInnerHTML={{
-                                                              __html: formatted.hasAmount 
-                                                                ? highlightDollarValues(displayText)
-                                                                : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
-                                                            }}
-                                                          />
-                                                        );
-                                                      })()
-                                                    );
-                                                    
-                                                    // Prepend timeline name if available
-                                                    if (event.sourceTimelineName) {
-                                                      return (
-                                                        <>
-                                                          <span className="font-medium text-purple-600">{event.sourceTimelineName}</span>
-                                                          <span className="text-gray-500 mx-1">-</span>
-                                                          {eventName}
-                                                        </>
-                                                      );
-                                                    }
-                                                    
-                                                    return eventName;
-                                                  })()}
-                                                </h3>
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const eventNote = notes.find(n => n.id === event.linkedEventId);
-                                                    if (eventNote) {
-                                                      setEditingEventId(event.linkedEventId);
-                                                      setEditingTimelineId(masterTimeline.id);
-                                                      setShowEditEventModal(true);
-                                                    }
-                                                  }}
-                                                  className="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded transition-colors whitespace-nowrap"
-                                                  title="Edit event"
-                                                >
-                                                  edit
-                                                </button>
-                                                {eventDate && (
-                                                  <a
-                                                    href={`https://photos.google.com/search/${eventDate.format('YYYY-MM-DD')}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
-                                                    title="View photos"
-                                                  >
-                                                    <PhotoIcon className="h-4 w-4" />
-                                                  </a>
-                                                )}
-                                              </div>
-                                            ) : (
-                                              <div className="flex items-center gap-2">
-                                                <h3 className={`text-lg font-semibold ${
-                                                  event.isToday
-                                                    ? 'text-emerald-700 font-bold'
-                                                    : event.isTotal
-                                                    ? 'text-emerald-700 font-bold'
-                                                    : event.isDuration
-                                                      ? 'text-orange-600 font-bold'
-                                                      : event.isVirtual 
-                                                        ? 'text-violet-600' 
-                                                        : 'text-slate-800'
-                                                }`}>
-                                                  {(() => {
-                                                    // Format event name as "Timeline Name - Event Name"
-                                                    const eventName = event.isTotal || event.isDuration ? (
-                                                      <span title={event.event.length > 50 ? event.event : undefined}>
-                                                        {truncateText(event.event)}
-                                                      </span>
-                                                    ) : (
-                                                      (() => {
-                                                        const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
-                                                        const displayText = formatted.hasAmount ? formatted.text : formatted.description;
-                                                        return (
-                                                          <span 
-                                                            title={event.event.length > 50 ? event.event : undefined}
-                                                            dangerouslySetInnerHTML={{
-                                                              __html: formatted.hasAmount 
-                                                                ? highlightDollarValues(displayText)
-                                                                : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
-                                                            }}
-                                                          />
-                                                        );
-                                                      })()
-                                                    );
-                                                    
-                                                    // Prepend timeline name if available
-                                                    if (event.sourceTimelineName) {
-                                                      return (
-                                                        <>
-                                                          <span className="font-medium text-purple-600">{event.sourceTimelineName}</span>
-                                                          <span className="text-gray-500 mx-1">-</span>
-                                                          {eventName}
-                                                        </>
-                                                      );
-                                                    }
-                                                    
-                                                    return eventName;
-                                                  })()}
-                                                </h3>
-                                                {eventDate && (
-                                                  <a
-                                                    href={`https://photos.google.com/search/${eventDate.format('YYYY-MM-DD')}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
-                                                    title="View photos"
-                                                  >
-                                                    <PhotoIcon className="h-4 w-4" />
-                                                  </a>
-                                                )}
-                                              </div>
-                                            )}
-                                            
-                                            {/* Convert to Event button for non-linked events */}
-                                            {!event.isLinkedEvent && !event.isTotal && !event.isDuration && !event.isVirtual && event.date && (
-                                              <div className="mt-2 flex items-center gap-2">
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    // Create a temporary note object with pre-filled content
-                                                    const eventDateStr = event.date.format('YYYY-MM-DD');
-                                                    const tempNote = {
-                                                      id: null,
-                                                      content: `event_description: ${event.event}\nevent_date: ${eventDateStr}\nmeta::linked_to_timeline::${masterTimeline.id}`
-                                                    };
-                                                    setConvertingEvent({
-                                                      event: event,
-                                                      timelineId: masterTimeline.id,
-                                                      timelineNote: null
-                                                    });
-                                                    setEditingEventId(null);
-                                                    setEditingTimelineId(masterTimeline.id);
-                                                    setShowEditEventModal(true);
-                                                  }}
-                                                  className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded transition-colors"
-                                                  title="Convert to Event"
-                                                >
-                                                  Convert to Event
-                                                </button>
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    // Find the event index in the filtered events
-                                                    const searchQuery = timelineSearchQueries[masterTimeline.id] || '';
-                                                    const filteredEvents = filterEventsBySearch(eventsWithDiffs, searchQuery);
-                                                    const eventIndexInFiltered = filteredEvents.findIndex(e => 
-                                                      e.event === event.event && 
-                                                      e.date && event.date && 
-                                                      e.date.format('YYYY-MM-DD') === event.date.format('YYYY-MM-DD')
-                                                    );
-                                                    // Find the actual index in eventsWithDiffs
-                                                    const actualIndex = eventsWithDiffs.findIndex(e => 
-                                                      e.event === event.event && 
-                                                      e.date && event.date && 
-                                                      e.date.format('YYYY-MM-DD') === event.date.format('YYYY-MM-DD')
-                                                    );
-                                                    setDeleteEventConfirmation({ 
-                                                      isOpen: true, 
-                                                      timelineId: masterTimeline.id, 
-                                                      eventIndex: actualIndex >= 0 ? actualIndex : index,
-                                                      eventName: event.event
-                                                    });
-                                                  }}
-                                                  className="text-xs text-red-600 hover:text-red-800 hover:underline px-2 py-1 rounded transition-colors"
-                                                  title="Delete Event"
-                                                >
-                                                  Delete
-                                                </button>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Second line with age and time differences */}
-                                        {(!event.isVirtual || event.isToday) && !event.isTotal && !event.isDuration && (
-                                          <div className="flex items-center space-x-2 mb-1">
-                                            {eventDate && (
-                                              <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
-                                                {calculateAge(eventDate)}
-                                              </span>
-                                            )}
-                                            {(() => {
-                                              const today = moment();
-                                              const isFuture = eventDate && eventDate.isAfter(today);
-                                              
-                                              if (isFuture && eventDate) {
-                                                const daysToEvent = eventDate.diff(today, 'days');
-                                                return (
-                                                  <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
-                                                    {daysToEvent === 0 ? 'Today' : daysToEvent === 1 ? 'Tomorrow' : `In ${daysToEvent} days`}
-                                                  </span>
-                                                );
-                                              }
-                                              
-                                              if (event.timeDiff) {
-                                                return (
-                                                  <span className="text-xs px-2 py-1 rounded font-medium text-slate-600 bg-slate-100">
-                                                    {event.timeDiff}
-                                                  </span>
-                                                );
-                                              }
-                                              
-                                              return null;
-                                            })()}
-                                          </div>
-                                        )}
-                                        
-                                        {/* Event details */}
-                                        <div className="ml-0 mt-2 space-y-1">
-                                          {event.link && (
-                                            <a 
-                                              href={event.link} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              className="text-sm text-blue-600 hover:text-blue-800 block"
-                                            >
-                                              {event.link}
-                                            </a>
-                                          )}
-                                          {(event.dollarAmount !== null && event.dollarAmount !== undefined && event.dollarAmount > 0) && (
-                                            <div className="text-sm font-semibold text-emerald-600">
-                                              ${event.dollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </React.Fragment>
-                                );
-                              })}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-              return null;
-            })()}
-            
             {/* Flagged Timelines */}
             {(() => {
               const flaggedTimelines = filteredAndSortedTimelineNotes.filter(note => {
@@ -5103,6 +4643,358 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           notes={notes}
           initialTimelineId={editingTimelineId}
         />
+
+        {/* Master Timeline Modal */}
+        {showMasterTimelineModal && (() => {
+          // Dynamically calculate master timeline when modal opens
+          const currentYear = new Date().getFullYear();
+          const masterTimelineId = `master-timeline-${currentYear}`;
+          
+          // Collect all events from all timelines for the current year
+          const allEvents = [];
+          
+          timelineNotes.forEach((note) => {
+            const notesToUse = getNotesWithNewEvent();
+            const timelineData = parseTimelineData(note.content, notesToUse);
+            const timelineName = timelineData.timeline || 'Untitled Timeline';
+            
+            timelineData.events.forEach((event) => {
+              if (event.date && event.date.year() === currentYear) {
+                allEvents.push({
+                  ...event,
+                  sourceTimelineName: timelineName
+                });
+              }
+            });
+          });
+          
+          // Sort events by date
+          allEvents.sort((a, b) => {
+            if (!a.date && !b.date) return 0;
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            return a.date.diff(b.date);
+          });
+          
+          // Calculate total dollar amount
+          const totalDollarAmount = allEvents.reduce((sum, event) => {
+            return sum + (event.dollarAmount || 0);
+          }, 0);
+          
+          const eventsWithDiffs = calculateTimeDifferences(allEvents, false, totalDollarAmount);
+          const filteredEvents = filterEventsBySearch(eventsWithDiffs, masterTimelineModalSearchQuery);
+          
+          return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Master Timeline - {currentYear} ({allEvents.length} events)
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowMasterTimelineModal(false);
+                      setMasterTimelineModalSearchQuery('');
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+                
+                {/* Search */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={masterTimelineModalSearchQuery}
+                      onChange={(e) => setMasterTimelineModalSearchQuery(e.target.value)}
+                      placeholder="Search events in master timeline..."
+                      className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 bg-white text-sm"
+                    />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    {masterTimelineModalSearchQuery && (
+                      <button
+                        onClick={() => setMasterTimelineModalSearchQuery('')}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      >
+                        <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Timeline Content */}
+                <div className="flex-1 overflow-y-auto">
+                  {filteredEvents.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      {masterTimelineModalSearchQuery ? (
+                        <p>No events found matching "{masterTimelineModalSearchQuery}"</p>
+                      ) : (
+                        <p>No events found for {currentYear}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredEvents.map((event, index) => {
+                        const eventDate = event.date;
+                        const previousEvent = index > 0 ? filteredEvents[index - 1] : null;
+                        const previousEventDate = previousEvent && previousEvent.date ? previousEvent.date : null;
+                        
+                        // Check for month change
+                        const currentMonth = eventDate ? eventDate.month() : null;
+                        const currentYear = eventDate ? eventDate.year() : null;
+                        const previousMonth = previousEventDate ? previousEventDate.month() : null;
+                        const previousYear = previousEventDate ? previousEventDate.year() : null;
+                        const showMonthHeader = currentMonth !== null && (currentMonth !== previousMonth || currentYear !== previousYear);
+                        
+                        return (
+                          <React.Fragment key={`${event.event}-${index}`}>
+                            {/* Month Header */}
+                            {showMonthHeader && (
+                              <div className="flex items-center space-x-4 mb-4">
+                                <div className="w-4 h-4"></div>
+                                <div className="flex-1">
+                                  <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent border-b-2 border-purple-300 pb-2">
+                                    {eventDate ? eventDate.format('MMMM YYYY') : ''}
+                                  </h2>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Event */}
+                            <div className="flex items-start space-x-4">
+                              {/* Timeline connector */}
+                              <div className="flex flex-col items-center">
+                                <div className={`w-4 h-4 rounded-full border-2 ${
+                                  event.isToday
+                                    ? 'bg-emerald-500 border-emerald-600'
+                                    : event.isTotal
+                                    ? 'bg-emerald-600 border-emerald-600'
+                                    : event.isDuration
+                                      ? 'bg-orange-500 border-orange-500'
+                                      : event.isLinkedEvent
+                                        ? 'bg-indigo-500 border-indigo-500'
+                                        : event.isVirtual
+                                          ? 'bg-purple-500 border-purple-500'
+                                          : index === 0 
+                                            ? 'bg-emerald-500 border-emerald-500' 
+                                            : 'bg-blue-500 border-blue-500'
+                                }`}></div>
+                                {index < filteredEvents.length - 1 && (
+                                  <div className="w-0.5 h-8 bg-gray-300 mt-2"></div>
+                                )}
+                              </div>
+                              
+                              {/* Event content */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center space-x-3 mb-1">
+                                  {eventDate && (
+                                    <span className={`text-sm px-2 py-1 rounded font-medium ${
+                                      event.isToday 
+                                        ? 'text-emerald-800 bg-emerald-100 border border-emerald-200' 
+                                        : 'text-slate-600 bg-slate-100 border border-slate-200'
+                                    }`}>
+                                      {eventDate.format('DD/MMM/YYYY (ddd)')}
+                                    </span>
+                                  )}
+                                  <div className="flex items-center gap-2 flex-1">
+                                    {event.isLinkedEvent ? (
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <h3 className={`text-lg font-semibold flex-1 ${
+                                          event.isToday
+                                            ? 'text-emerald-700 font-bold'
+                                            : event.isTotal
+                                            ? 'text-emerald-700 font-bold'
+                                            : event.isDuration
+                                              ? 'text-orange-600 font-bold'
+                                              : 'text-indigo-600 font-semibold'
+                                        }`}>
+                                          {(() => {
+                                            const eventName = event.isTotal || event.isDuration ? (
+                                              <span title={event.event.length > 50 ? event.event : undefined}>
+                                                {truncateText(event.event)}
+                                              </span>
+                                            ) : (
+                                              (() => {
+                                                const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                return (
+                                                  <span 
+                                                    title={event.event.length > 50 ? event.event : undefined}
+                                                    dangerouslySetInnerHTML={{
+                                                      __html: formatted.hasAmount 
+                                                        ? highlightDollarValues(displayText)
+                                                        : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                    }}
+                                                  />
+                                                );
+                                              })()
+                                            );
+                                            
+                                            if (event.sourceTimelineName) {
+                                              return (
+                                                <>
+                                                  <span className="font-medium text-purple-600">{event.sourceTimelineName}</span>
+                                                  <span className="text-gray-500 mx-1">-</span>
+                                                  {eventName}
+                                                </>
+                                              );
+                                            }
+                                            
+                                            return eventName;
+                                          })()}
+                                        </h3>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const eventNote = notes.find(n => n.id === event.linkedEventId);
+                                            if (eventNote) {
+                                              setEditingEventId(event.linkedEventId);
+                                              setEditingTimelineId(null);
+                                              setShowEditEventModal(true);
+                                              setShowMasterTimelineModal(false);
+                                            }
+                                          }}
+                                          className="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded transition-colors whitespace-nowrap"
+                                          title="Edit event"
+                                        >
+                                          edit
+                                        </button>
+                                        {eventDate && (
+                                          <a
+                                            href={`https://photos.google.com/search/${eventDate.format('YYYY-MM-DD')}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
+                                            title="View photos"
+                                          >
+                                            <PhotoIcon className="h-4 w-4" />
+                                          </a>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <h3 className={`text-lg font-semibold flex-1 ${
+                                          event.isToday
+                                            ? 'text-emerald-700 font-bold'
+                                            : event.isTotal
+                                            ? 'text-emerald-700 font-bold'
+                                            : event.isDuration
+                                              ? 'text-orange-600 font-bold'
+                                              : event.isVirtual 
+                                                ? 'text-violet-600' 
+                                                : 'text-slate-800'
+                                        }`}>
+                                          {(() => {
+                                            const eventName = event.isTotal || event.isDuration ? (
+                                              <span title={event.event.length > 50 ? event.event : undefined}>
+                                                {truncateText(event.event)}
+                                              </span>
+                                            ) : (
+                                              (() => {
+                                                const formatted = formatEventHeaderWithAmount(event.event.charAt(0).toUpperCase() + event.event.slice(1));
+                                                const displayText = formatted.hasAmount ? formatted.text : formatted.description;
+                                                return (
+                                                  <span 
+                                                    title={event.event.length > 50 ? event.event : undefined}
+                                                    dangerouslySetInnerHTML={{
+                                                      __html: formatted.hasAmount 
+                                                        ? highlightDollarValues(displayText)
+                                                        : highlightDollarValues(truncateText(event.event.charAt(0).toUpperCase() + event.event.slice(1)))
+                                                    }}
+                                                  />
+                                                );
+                                              })()
+                                            );
+                                            
+                                            if (event.sourceTimelineName) {
+                                              return (
+                                                <>
+                                                  <span className="font-medium text-purple-600">{event.sourceTimelineName}</span>
+                                                  <span className="text-gray-500 mx-1">-</span>
+                                                  {eventName}
+                                                </>
+                                              );
+                                            }
+                                            
+                                            return eventName;
+                                          })()}
+                                        </h3>
+                                        {eventDate && (
+                                          <a
+                                            href={`https://photos.google.com/search/${eventDate.format('YYYY-MM-DD')}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="text-purple-600 hover:text-purple-800 p-1 rounded transition-colors"
+                                            title="View photos"
+                                          >
+                                            <PhotoIcon className="h-4 w-4" />
+                                          </a>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* Second line with age and time differences */}
+                                {(!event.isVirtual || event.isToday) && !event.isTotal && !event.isDuration && (
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    {eventDate && (
+                                      <span className="text-xs px-2 py-1 rounded font-medium text-gray-600 bg-gray-100">
+                                        {calculateAge(eventDate)}
+                                      </span>
+                                    )}
+                                    {(() => {
+                                      const today = moment();
+                                      const isFuture = eventDate && eventDate.isAfter(today);
+                                      
+                                      if (isFuture && eventDate) {
+                                        const daysToEvent = eventDate.diff(today, 'days');
+                                        return (
+                                          <span className="text-xs px-2 py-1 rounded font-medium text-blue-600 bg-blue-100">
+                                            {daysToEvent === 0 ? 'Today' : daysToEvent === 1 ? 'Tomorrow' : `In ${daysToEvent} days`}
+                                          </span>
+                                        );
+                                      }
+                                      
+                                      if (event.timeDiff) {
+                                        return (
+                                          <span className="text-xs px-2 py-1 rounded font-medium text-slate-600 bg-slate-100">
+                                            {event.timeDiff}
+                                          </span>
+                                        );
+                                      }
+                                      
+                                      return null;
+                                    })()}
+                                  </div>
+                                )}
+                                
+                                {/* Dollar amount */}
+                                {(event.dollarAmount !== null && event.dollarAmount !== undefined && event.dollarAmount > 0) && (
+                                  <div className="text-sm font-semibold text-emerald-600">
+                                    ${event.dollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Link Event Modal */}
         {linkEventModal.isOpen && (() => {

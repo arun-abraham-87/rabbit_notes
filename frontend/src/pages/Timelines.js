@@ -914,7 +914,15 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       // Refresh the timeline notes by re-parsing all notes
       const timelineNotes = notes
         .filter(note => note.content && note.content.includes('meta::timeline'))
-        .map(note => parseTimelineData(note.content, notes));
+        .map(note => {
+          const timelineData = parseTimelineData(note.content, notes);
+          return {
+            ...note,
+            ...timelineData,
+            isFlagged: note.content.includes('meta::flagged_timeline'),
+            isTracked: note.content.includes('meta::tracked')
+          };
+        });
       setTimelineNotes(timelineNotes);
     } catch (error) {
       console.error('Error closing timeline:', error);
@@ -934,7 +942,15 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       // Refresh the timeline notes by re-parsing all notes
       const timelineNotes = notes
         .filter(note => note.content && note.content.includes('meta::timeline'))
-        .map(note => parseTimelineData(note.content, notes));
+        .map(note => {
+          const timelineData = parseTimelineData(note.content, notes);
+          return {
+            ...note,
+            ...timelineData,
+            isFlagged: note.content.includes('meta::flagged_timeline'),
+            isTracked: note.content.includes('meta::tracked')
+          };
+        });
       setTimelineNotes(timelineNotes);
     } catch (error) {
       console.error('Error reopening timeline:', error);
@@ -963,7 +979,15 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       // Refresh the timeline notes by re-parsing all notes
       const timelineNotes = notes
         .filter(note => note.content && note.content.includes('meta::timeline'))
-        .map(note => parseTimelineData(note.content, notes));
+        .map(note => {
+          const timelineData = parseTimelineData(note.content, notes);
+          return {
+            ...note,
+            ...timelineData,
+            isFlagged: note.content.includes('meta::flagged_timeline'),
+            isTracked: note.content.includes('meta::tracked')
+          };
+        });
       setTimelineNotes(timelineNotes);
     } catch (error) {
       console.error('Error toggling tracked status:', error);
@@ -995,9 +1019,17 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       const updatedNotes = notes.map(n => 
         n.id === noteId ? { ...n, content: newContent } : n
       );
-      const filteredNotes = updatedNotes.filter(note => 
-        note.content && note.content.includes('meta::timeline')
-      );
+      const filteredNotes = updatedNotes
+        .filter(note => note.content && note.content.includes('meta::timeline'))
+        .map(note => {
+          const timelineData = parseTimelineData(note.content, updatedNotes);
+          return {
+            ...note,
+            ...timelineData,
+            isFlagged: note.content.includes('meta::flagged_timeline'),
+            isTracked: note.content.includes('meta::tracked')
+          };
+        });
       setTimelineNotes(filteredNotes);
     } catch (error) {
       console.error('Error toggling flagged status:', error);
@@ -1075,7 +1107,15 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       // Refresh the timeline notes
       const timelineNotes = updatedNotes
         .filter(note => note.content && note.content.includes('meta::timeline'))
-        .map(note => parseTimelineData(note.content, updatedNotes));
+        .map(note => {
+          const timelineData = parseTimelineData(note.content, updatedNotes);
+          return {
+            ...note,
+            ...timelineData,
+            isFlagged: note.content.includes('meta::flagged_timeline'),
+            isTracked: note.content.includes('meta::tracked')
+          };
+        });
       setTimelineNotes(timelineNotes);
     } catch (error) {
       console.error('Error unlinking event from timeline:', error);
@@ -1128,9 +1168,17 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       const updatedNotes = notesToUse.map(n => 
         n.id === timelineId ? { ...n, content: updatedContent } : n
       );
-      const filteredNotes = updatedNotes.filter(note => 
-        note.content && note.content.includes('meta::timeline')
-      );
+      const filteredNotes = updatedNotes
+        .filter(note => note.content && note.content.includes('meta::timeline'))
+        .map(note => {
+          const timelineData = parseTimelineData(note.content, updatedNotes);
+          return {
+            ...note,
+            ...timelineData,
+            isFlagged: note.content.includes('meta::flagged_timeline'),
+            isTracked: note.content.includes('meta::tracked')
+          };
+        });
       setTimelineNotes(filteredNotes);
       
       // Close confirmation modal
@@ -1287,14 +1335,22 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     
     devLog('[Timelines] Updated timeline note in array:', updatedNotes.find(n => n.id === timelineId)?.content?.substring(0, 100));
     
-    // Update timelineNotes with filtered note objects (not parsed data)
-    // This matches how useEffect sets timelineNotes
-    const filteredNotes = updatedNotes.filter(note => 
-      note.content && note.content.includes('meta::timeline')
-    );
+    // Update timelineNotes with PARSED timeline data merged with original note properties
+    // This is critical - timelineNotes must contain both original note data AND parsed timeline data
+    const filteredNotes = updatedNotes
+      .filter(note => note.content && note.content.includes('meta::timeline'))
+      .map(note => {
+        const timelineData = parseTimelineData(note.content, updatedNotes);
+        return {
+          ...note,
+          ...timelineData,
+          isFlagged: note.content.includes('meta::flagged_timeline'),
+          isTracked: note.content.includes('meta::tracked')
+        };
+      });
     
     devLog('[Timelines] Filtered timeline notes count:', filteredNotes.length);
-    devLog('[Timelines] Setting timelineNotes with:', filteredNotes.map(n => ({ id: n.id, timeline: n.content.split('\n')[0] })));
+    devLog('[Timelines] Setting timelineNotes with:', filteredNotes.map(n => ({ id: n.id, timeline: n.timeline })));
     
     setTimelineNotes(filteredNotes);
     
@@ -1303,9 +1359,19 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     setTimeout(() => {
       devLog('[Timelines] Delayed refresh: Checking if new event is now in notes prop');
       const delayedNotesToUse = getNotesWithNewEvent();
-      const delayedFilteredNotes = delayedNotesToUse
-        .map(n => n.id === timelineId ? { ...n, content: updatedContent } : n)
-        .filter(note => note.content && note.content.includes('meta::timeline'));
+      const delayedUpdatedNotes = delayedNotesToUse
+        .map(n => n.id === timelineId ? { ...n, content: updatedContent } : n);
+      const delayedFilteredNotes = delayedUpdatedNotes
+        .filter(note => note.content && note.content.includes('meta::timeline'))
+        .map(note => {
+          const timelineData = parseTimelineData(note.content, delayedUpdatedNotes);
+          return {
+            ...note,
+            ...timelineData,
+            isFlagged: note.content.includes('meta::flagged_timeline'),
+            isTracked: note.content.includes('meta::tracked')
+          };
+        });
       
       devLog('[Timelines] Delayed refresh: Notes length:', delayedNotesToUse.length, 'includes new event:', delayedNotesToUse.find(n => n.id === newEventNoteId) ? 'YES' : 'NO');
       
@@ -2071,21 +2137,45 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                               <LinkIcon className="h-4 w-4" />
                               <span className="text-sm font-medium">Link Event</span>
                             </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                refreshTimeline(note.id);
+                              }}
+                              className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors flex items-center space-x-1.5 border border-green-200"
+                              title="Refresh timeline"
+                            >
+                              <ArrowPathIcon className="h-4 w-4" />
+                              <span className="text-sm font-medium">Refresh</span>
+                            </button>
                           </>
                         )}
                 
                         {timelineData.isClosed && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleReopenTimeline(note.id);
-                            }}
-                            className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-700 rounded-lg transition-all flex items-center space-x-1.5 border border-emerald-200 shadow-sm hover:shadow-md"
-                            title="Reopen timeline"
-                          >
-                            <ArrowPathIcon className="h-4 w-4" />
-                            <span className="text-sm font-medium">Reopen</span>
-                          </button>
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReopenTimeline(note.id);
+                              }}
+                              className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-700 rounded-lg transition-all flex items-center space-x-1.5 border border-emerald-200 shadow-sm hover:shadow-md"
+                              title="Reopen timeline"
+                            >
+                              <ArrowPathIcon className="h-4 w-4" />
+                              <span className="text-sm font-medium">Reopen</span>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                refreshTimeline(note.id);
+                              }}
+                              className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors flex items-center space-x-1.5 border border-green-200"
+                              title="Refresh timeline"
+                            >
+                              <ArrowPathIcon className="h-4 w-4" />
+                              <span className="text-sm font-medium">Refresh</span>
+                            </button>
+                          </>
                         )}
                         <button
                           onClick={(e) => {
@@ -3029,9 +3119,17 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                 
                 devLog('[Timelines] Updated notes length:', updatedNotes.length);
                 
-                const filteredNotes = updatedNotes.filter(note => 
-                  note.content && note.content.includes('meta::timeline')
-                );
+                const filteredNotes = updatedNotes
+                  .filter(note => note.content && note.content.includes('meta::timeline'))
+                  .map(note => {
+                    const timelineData = parseTimelineData(note.content, updatedNotes);
+                    return {
+                      ...note,
+                      ...timelineData,
+                      isFlagged: note.content.includes('meta::flagged_timeline'),
+                      isTracked: note.content.includes('meta::tracked')
+                    };
+                  });
                 
                 devLog('[Timelines] Filtered timeline notes count:', filteredNotes.length);
                 setTimelineNotes(filteredNotes);

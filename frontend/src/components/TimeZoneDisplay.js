@@ -368,28 +368,12 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
   }).format(now);
 
   return (
-    <div className="bg-gray-100 p-2 sm:p-3 rounded-lg space-y-4">
-      {groupedSections.map((section, index) => {
-        const isToday = section.date === baseYMD;
-        const dateLabel = isToday 
-          ? section.formattedDate 
-          : section.date < baseYMD 
-            ? `${section.formattedDate} (Yesterday)`
-            : `${section.formattedDate} (Tomorrow)`;
-        
-        return (
-          <div key={`${section.date}-${section.tier}-${index}`} className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700 px-1">
-              {tierLabels[section.tier]} - {dateLabel}
-            </h3>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {section.zones.map(({ label, timeZone }) => (
-                <ZoneCard key={label} label={label} timeZone={timeZone} />
-              ))}
-            </div>
-          </div>
-        );
-      })}
+    <div className="bg-gray-100 p-2 sm:p-3 rounded-lg">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+        {enrichedZones.map(({ label, timeZone }) => (
+          <ZoneCard key={label} label={label} timeZone={timeZone} />
+        ))}
+      </div>
     </div>
   );
 };

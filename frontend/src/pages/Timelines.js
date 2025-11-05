@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import moment from 'moment';
 import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon, LinkIcon, MagnifyingGlassIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -91,6 +91,12 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [searchTitlesOnly, setSearchTitlesOnly] = useState(() => loadSearchTitlesOnly());
   const [showNewTimelineForm, setShowNewTimelineForm] = useState(false);
   const [newTimelineTitle, setNewTimelineTitle] = useState('');
+  // Ref to store newly created event note for immediate refresh
+  const newEventNoteRef = useRef(null);
+  // State to store newly created event note - persists across renders
+  const [pendingNewEventNote, setPendingNewEventNote] = useState(null);
+  // Ref to track how many times we've seen the new event in notes prop
+  const newEventSeenCountRef = useRef(0);
   // Initialize with saved states from localStorage
   // Use a function to ensure it loads on mount
   const [collapsedTimelines, setCollapsedTimelines] = useState(() => {
@@ -152,11 +158,24 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   }, [location.pathname]);
 
   useEffect(() => {
+    console.log('[Timelines] useEffect[notes] triggered, notes length:', notes?.length);
     if (notes && notes.length > 0) {
+      // Use getNotesWithNewEvent() to get the latest notes including the new event
+      const notesToUse = getNotesWithNewEvent();
+      // Check both ref and state for the new event note
+      const newEventNoteFromRef = newEventNoteRef.current;
+      const newEventNoteFromState = pendingNewEventNote;
+      const newEventNote = newEventNoteFromRef || newEventNoteFromState;
+      console.log('[Timelines] New event note in ref (useEffect):', newEventNoteFromRef?.id, 'in state:', newEventNoteFromState?.id);
+      console.log('[Timelines] Notes to use in useEffect:', notesToUse.length, 'includes new event:', notesToUse.find(n => n.id === newEventNote?.id) ? 'YES' : 'NO');
+      
       // Filter notes that contain meta::timeline tag
-      const filteredNotes = notes.filter(note => 
+      const filteredNotes = notesToUse.filter(note => 
         note.content && note.content.includes('meta::timeline')
       );
+      
+      console.log('[Timelines] Filtered timeline notes count (useEffect):', filteredNotes.length);
+      
       // Always update timelineNotes to ensure it reflects the latest notes
       // This is important when notes are updated (e.g., when events are linked)
       setTimelineNotes(filteredNotes);
@@ -184,9 +203,40 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         // No changes needed - preserve current state
         return prev;
       });
+      
+      // Clear the ref and state only if the notes prop now includes the new event
+      // IMPORTANT: We need to be careful - only clear when we're sure rendering has completed
+      // The new event note must stay available until parseTimelineData has used it
+      if (newEventNote) {
+        const notesIncludesNewEvent = notes.find(n => n.id === newEventNote.id);
+        if (notesIncludesNewEvent) {
+          // Notes prop includes the new event - increment the counter
+          newEventSeenCountRef.current = (newEventSeenCountRef.current || 0) + 1;
+          console.log('[Timelines] Notes prop includes new event, seen count:', newEventSeenCountRef.current);
+          
+          // Only clear after we've seen it multiple times (ensures rendering has completed)
+          // This gives parseTimelineData multiple chances to use the new event
+          if (newEventSeenCountRef.current >= 3) {
+            console.log('[Timelines] Event seen multiple times in notes prop, clearing ref and state');
+            newEventNoteRef.current = null;
+            setPendingNewEventNote(null);
+            newEventSeenCountRef.current = 0;
+          }
+        } else {
+          console.log('[Timelines] Notes prop does not include new event yet, keeping ref and state');
+          newEventSeenCountRef.current = 0; // Reset counter if event not found
+        }
+      }
     } else if (notes && notes.length === 0) {
       // Handle empty notes array
+      console.log('[Timelines] Notes array is empty, clearing timelineNotes');
       setTimelineNotes([]);
+      // Clear ref and state if notes array is empty
+      if (newEventNoteRef.current || pendingNewEventNote) {
+        console.log('[Timelines] Clearing ref and state because notes array is empty');
+        newEventNoteRef.current = null;
+        setPendingNewEventNote(null);
+      }
     }
   }, [notes]);
 
@@ -203,6 +253,23 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       return isNaN(value) ? 0 : value;
     });
   };
+
+  // Helper function to get notes array including any new event note from ref or state
+  const getNotesWithNewEvent = useCallback(() => {
+    // Check ref first (most up-to-date)
+    const newEventNoteFromRef = newEventNoteRef.current;
+    // Fall back to state if ref is cleared
+    const newEventNote = newEventNoteFromRef || pendingNewEventNote;
+    
+    if (newEventNote && !notes.find(n => n.id === newEventNote.id)) {
+      // Only log occasionally to avoid spam
+      if (Math.random() < 0.01) {
+        console.log('[Timelines] getNotesWithNewEvent: Including new event note:', newEventNote.id, 'from:', newEventNoteFromRef ? 'ref' : 'state');
+      }
+      return [...notes, newEventNote];
+    }
+    return notes;
+  }, [notes, pendingNewEventNote]);
 
   // Highlight dollar values in text with green color
   const highlightDollarValues = (text) => {
@@ -997,12 +1064,23 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   // Handle adding a new event via EditEventModal (like EventsPage)
   const handleAddEventFromTimeline = async (content) => {
     try {
+      console.log('[Timelines] handleAddEventFromTimeline: Creating event with content:', content);
       const response = await createNote(content);
       console.log('[Timelines] handleAddEventFromTimeline response:', response);
       
+      // Store the new event note in ref AND state for immediate use
+      newEventNoteRef.current = response;
+      setPendingNewEventNote(response);
+      newEventSeenCountRef.current = 0; // Reset counter for new event
+      console.log('[Timelines] Stored new event note in ref and state:', response.id, response);
+      
       // Add the new event to notes via setAllNotes (which updates App's allNotes)
       if (setAllNotes) {
-        setAllNotes(prevNotes => [...prevNotes, response]);
+        setAllNotes(prevNotes => {
+          const updated = [...prevNotes, response];
+          console.log('[Timelines] setAllNotes: Updated notes array length:', updated.length);
+          return updated;
+        });
       }
       
       // Add to search index
@@ -1019,10 +1097,75 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
 
   // Handle timeline updated callback (when event is linked to timeline)
   const handleTimelineUpdated = (timelineId, updatedContent) => {
+    console.log('[Timelines] handleTimelineUpdated called:', { timelineId, updatedContentLength: updatedContent?.length });
+    console.log('[Timelines] Current notes length:', notes.length);
+    // Check both ref and state for the new event note
+    const newEventNoteFromRef = newEventNoteRef.current;
+    const newEventNoteFromState = pendingNewEventNote;
+    const newEventNote = newEventNoteFromRef || newEventNoteFromState;
+    console.log('[Timelines] New event note in ref:', newEventNoteFromRef?.id, 'in state:', newEventNoteFromState?.id);
+    
     // Update the timeline note in the notes array
     if (updateNote) {
       updateNote(timelineId, updatedContent);
+      console.log('[Timelines] Called updateNote for timeline:', timelineId);
     }
+    
+    // Use getNotesWithNewEvent() to get the latest notes including the new event
+    // This ensures we have the most up-to-date notes array
+    // IMPORTANT: Even if the ref was cleared, we need to check if the notes prop has the new event
+    // If not, we need to restore the ref temporarily so parseTimelineData can find it
+    let notesToUse = getNotesWithNewEvent();
+    const newEventNoteId = newEventNote?.id;
+    
+    // If ref is cleared but notes prop doesn't have the new event yet, we need to restore it
+    // This can happen if useEffect cleared the ref before handleTimelineUpdated ran
+    if (!newEventNote && newEventNoteId && !notes.find(n => n.id === newEventNoteId)) {
+      console.log('[Timelines] WARNING: Ref was cleared but notes prop does not have new event yet');
+      // Try to get the new event from the result that was passed to onSave
+      // But we don't have access to it here, so we'll need to work around this
+      // For now, we'll trigger a re-render after a delay to ensure the notes prop is updated
+    }
+    
+    console.log('[Timelines] Notes to use length (from getNotesWithNewEvent):', notesToUse.length, 'includes new event:', notesToUse.find(n => n.id === newEventNoteId) ? 'YES' : 'NO');
+    
+    // Update the timeline note in the notes array
+    const updatedNotes = notesToUse.map(n => 
+      n.id === timelineId ? { ...n, content: updatedContent } : n
+    );
+    
+    console.log('[Timelines] Updated timeline note in array:', updatedNotes.find(n => n.id === timelineId)?.content?.substring(0, 100));
+    
+    // Update timelineNotes with filtered note objects (not parsed data)
+    // This matches how useEffect sets timelineNotes
+    const filteredNotes = updatedNotes.filter(note => 
+      note.content && note.content.includes('meta::timeline')
+    );
+    
+    console.log('[Timelines] Filtered timeline notes count:', filteredNotes.length);
+    console.log('[Timelines] Setting timelineNotes with:', filteredNotes.map(n => ({ id: n.id, timeline: n.content.split('\n')[0] })));
+    
+    setTimelineNotes(filteredNotes);
+    
+    // Force a re-render after a delay to ensure the new event is included
+    // This is a workaround for the race condition where useEffect clears the ref too early
+    setTimeout(() => {
+      console.log('[Timelines] Delayed refresh: Checking if new event is now in notes prop');
+      const delayedNotesToUse = getNotesWithNewEvent();
+      const delayedFilteredNotes = delayedNotesToUse
+        .map(n => n.id === timelineId ? { ...n, content: updatedContent } : n)
+        .filter(note => note.content && note.content.includes('meta::timeline'));
+      
+      console.log('[Timelines] Delayed refresh: Notes length:', delayedNotesToUse.length, 'includes new event:', delayedNotesToUse.find(n => n.id === newEventNoteId) ? 'YES' : 'NO');
+      
+      if (delayedNotesToUse.find(n => n.id === newEventNoteId)) {
+        console.log('[Timelines] Delayed refresh: New event found, updating timelineNotes');
+        setTimelineNotes(delayedFilteredNotes);
+      }
+    }, 300);
+    
+    // Don't clear the ref here - let the useEffect clear it once the notes prop is updated
+    // The useEffect will check if the notes prop includes the new event and clear the ref accordingly
   };
 
   // Handle adding a new event (old method - keeping for backward compatibility, but won't be used)
@@ -1081,7 +1224,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       const note = timelineNotes.find(n => n.id === timelineId);
       if (!note) return;
 
-      const timelineData = parseTimelineData(note.content, notes);
+      const notesToUse = getNotesWithNewEvent();
+      const timelineData = parseTimelineData(note.content, notesToUse);
       const event = timelineData.events[eventIndex];
       
       if (!event || event.lineIndex === -1) {
@@ -1149,7 +1293,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       if (!note || !note.content) return false;
       if (!searchQuery.trim()) return true;
       
-      const timelineData = parseTimelineData(note.content, notes);
+      const notesToUse = getNotesWithNewEvent();
+      const timelineData = parseTimelineData(note.content, notesToUse);
       const query = searchQuery.toLowerCase();
       
       // Search in timeline title
@@ -1173,8 +1318,9 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       return hasMatchingEvent;
     })
     .sort((a, b) => {
-      const aData = parseTimelineData(a.content, notes);
-      const bData = parseTimelineData(b.content, notes);
+      const notesToUse = getNotesWithNewEvent();
+      const aData = parseTimelineData(a.content, notesToUse);
+      const bData = parseTimelineData(b.content, notesToUse);
       
       if (!aData.timeline && !bData.timeline) return 0;
       if (!aData.timeline) return 1;
@@ -1219,7 +1365,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       timelineNotes.forEach(note => {
         if (!note || !note.content) return;
         
-        const timelineData = parseTimelineData(note.content, notes);
+        const notesToUse = getNotesWithNewEvent();
+        const timelineData = parseTimelineData(note.content, notesToUse);
         
         // Check if timeline title matches
         if (timelineData.timeline.toLowerCase().includes(query)) {
@@ -1269,7 +1416,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     const allEvents = [];
     
     timelineNotes.forEach((note) => {
-      const timelineData = parseTimelineData(note.content, notes);
+      const notesToUse = getNotesWithNewEvent();
+      const timelineData = parseTimelineData(note.content, notesToUse);
       
       timelineData.events.forEach((event) => {
         if (event.date && event.date.year() === currentYear) {
@@ -1393,7 +1541,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         const closedTimelines = [];
         
         timelineNotes.forEach((note) => {
-          const timelineData = parseTimelineData(note.content, notes);
+          const notesToUse = getNotesWithNewEvent();
+          const timelineData = parseTimelineData(note.content, notesToUse);
           const isFlagged = note.content && note.content.includes('meta::flagged_timeline');
           const isClosed = timelineData.isClosed;
           
@@ -1408,8 +1557,9 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         
         // Sort each group by timeline name
         const sortByTimelineName = (a, b) => {
-          const aData = parseTimelineData(a.content, notes);
-          const bData = parseTimelineData(b.content, notes);
+          const notesToUse = getNotesWithNewEvent();
+          const aData = parseTimelineData(a.content, notesToUse);
+          const bData = parseTimelineData(b.content, notesToUse);
           const aName = aData.timeline || 'Untitled Timeline';
           const bName = bData.timeline || 'Untitled Timeline';
           return aName.localeCompare(bName);
@@ -1793,7 +1943,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                 ? 'text-emerald-800 bg-emerald-100 border border-emerald-200' 
                                                 : 'text-slate-600 bg-slate-100 border border-slate-200'
                                             }`}>
-                                              {eventDate.format('DD/MMM/YYYY')}
+                                              {eventDate.format('DD/MMM/YYYY (ddd)')}
                                             </span>
                                           )}
                                           <div className="flex items-center gap-2">
@@ -1958,7 +2108,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                     </h2>
                     {!isSectionCollapsed && flaggedTimelines.map((note) => {
                       if (!note || !note.content) return null;
-                      const timelineData = parseTimelineData(note.content, notes);
+                      const notesToUse = getNotesWithNewEvent();
+                      const timelineData = parseTimelineData(note.content, notesToUse);
                       const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
                       return (
@@ -2388,7 +2539,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                           ? 'text-emerald-800 bg-emerald-100 border border-emerald-200' 
                                           : 'text-slate-600 bg-slate-100 border border-slate-200'
                                       }`}>
-                                                  {event.date.format('DD/MMM/YYYY')}
+                                                  {event.date.format('DD/MMM/YYYY (ddd)')}
                                                 </span>
                                               )}
                                               <div className="flex items-center gap-2">
@@ -2746,7 +2897,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                 if (!note || !note.content) return false;
                 // Exclude flagged timelines (they appear in Flagged section)
                 if (note.content.includes('meta::flagged_timeline')) return false;
-                const timelineData = parseTimelineData(note.content, notes);
+                const notesToUse = getNotesWithNewEvent();
+                const timelineData = parseTimelineData(note.content, notesToUse);
                 return !timelineData.isClosed;
               });
               
@@ -2772,7 +2924,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                     </h2>
                     {!isSectionCollapsed && openTimelines.map((note) => {
               if (!note || !note.content) return null;
-              const timelineData = parseTimelineData(note.content, notes);
+              const notesToUse = getNotesWithNewEvent();
+              const timelineData = parseTimelineData(note.content, notesToUse);
               const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
               return (
@@ -3202,7 +3355,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                           ? 'text-emerald-800 bg-emerald-100 border border-emerald-200' 
                                           : 'text-slate-600 bg-slate-100 border border-slate-200'
                                       }`}>
-                                        {event.date.format('DD/MMM/YYYY')}
+                                        {event.date.format('DD/MMM/YYYY (ddd)')}
                                       </span>
                                     )}
                                     <div className="flex items-center gap-2 flex-1">
@@ -3646,7 +3799,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                     </h2>
                     {!isSectionCollapsed && closedTimelines.map((note) => {
                       if (!note || !note.content) return null;
-                      const timelineData = parseTimelineData(note.content, notes);
+                      const notesToUse = getNotesWithNewEvent();
+                      const timelineData = parseTimelineData(note.content, notesToUse);
                       const eventsWithDiffs = calculateTimeDifferences(timelineData.events, timelineData.isClosed, timelineData.totalDollarAmount);
 
                       return (
@@ -3930,7 +4084,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                           ? 'text-emerald-800 bg-emerald-100 border border-emerald-200' 
                                           : 'text-slate-600 bg-slate-100 border border-slate-200'
                                       }`}>
-                                                  {event.date.format('DD/MMM/YYYY')}
+                                                  {event.date.format('DD/MMM/YYYY (ddd)')}
                                                 </span>
                                               )}
                                               <div className="flex items-center gap-2">
@@ -4244,9 +4398,15 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           isOpen={showEditEventModal}
           note={null}
           onSave={async (content) => {
+            console.log('[Timelines] onSave called with content:', content.substring(0, 100));
             const timelineId = editingTimelineId; // Capture before reset
+            console.log('[Timelines] Editing timeline ID:', timelineId);
+            
             const result = await handleAddEventFromTimeline(content);
+            console.log('[Timelines] Event created, result:', result?.id);
+            
             setShowEditEventModal(false);
+            console.log('[Timelines] Closed edit modal');
             
             // Ensure timeline stays open after adding event
             if (timelineId) {
@@ -4254,14 +4414,47 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                 const newSet = new Set(prev);
                 newSet.delete(timelineId);
                 saveCollapseStates(newSet);
+                console.log('[Timelines] Expanded timeline:', timelineId);
                 return newSet;
               });
             }
             
             setEditingTimelineId(null);
+            console.log('[Timelines] Reset editing timeline ID');
+            
+            // The handleTimelineUpdated callback will refresh timelineNotes
+            // But we also refresh here as a fallback after a delay
+            // Include the new event note in the notes array
+            setTimeout(() => {
+              console.log('[Timelines] setTimeout fallback refresh triggered');
+              console.log('[Timelines] Result:', result);
+              console.log('[Timelines] Current notes length:', notes.length);
+              console.log('[Timelines] Notes includes result:', notes.find(n => n.id === result?.id) ? 'YES' : 'NO');
+              
+              const updatedNotes = result && !notes.find(n => n.id === result.id)
+                ? [...notes, result]
+                : notes;
+              
+              console.log('[Timelines] Updated notes length:', updatedNotes.length);
+              
+              const filteredNotes = updatedNotes.filter(note => 
+                note.content && note.content.includes('meta::timeline')
+              );
+              
+              console.log('[Timelines] Filtered timeline notes count:', filteredNotes.length);
+              setTimelineNotes(filteredNotes);
+            }, 500);
+            
             return result;
           }}
-          onTimelineUpdated={handleTimelineUpdated}
+          onTimelineUpdated={(timelineId, updatedContent) => {
+            console.log('[Timelines] onTimelineUpdated callback invoked:', { timelineId, updatedContentLength: updatedContent?.length });
+            console.log('[Timelines] Updated content preview:', updatedContent?.substring(0, 200));
+            // Pass the new event note to handleTimelineUpdated
+            // We need to get it from the onSave result, but we can't access it here
+            // So we'll refresh in onSave instead
+            handleTimelineUpdated(timelineId, updatedContent);
+          }}
           onCancel={() => {
             setShowEditEventModal(false);
             setEditingTimelineId(null);

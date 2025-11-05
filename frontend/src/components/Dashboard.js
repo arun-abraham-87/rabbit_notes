@@ -741,24 +741,26 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
               
               {/* Timezone Cards Display */}
               {showTimezones && (
-                <div className="mb-6 flex items-start gap-4 flex-wrap">
-                  <div className="flex-1 min-w-0">
-                    <TimeZoneDisplay selectedTimezones={selectedTimezones} />
-                  </div>
-                  <div className="flex-shrink-0 w-full sm:w-auto">
-                    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-2 sm:p-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 items-start">
-                        <div className="space-y-1 sm:space-y-2 flex flex-col">
-                          <h3 className="text-sm sm:text-base font-semibold text-gray-900">Stock Information</h3>
-                          <div className="w-full">
-                            <StockPrice />
-                          </div>
+                <div className="mb-6 w-full">
+                  <TimeZoneDisplay selectedTimezones={selectedTimezones} />
+                </div>
+              )}
+              
+              {/* Stock Information Row */}
+              {showTimezones && (
+                <div className="mb-6 w-full">
+                  <div className="bg-white rounded-lg shadow-md border border-gray-200 p-2 sm:p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 items-start">
+                      <div className="space-y-1 sm:space-y-2 flex flex-col">
+                        <h3 className="text-sm sm:text-base font-semibold text-gray-900">Stock Information</h3>
+                        <div className="w-full">
+                          <StockPrice />
                         </div>
-                        <div className="space-y-1 sm:space-y-2 flex flex-col">
-                          <h3 className="text-sm sm:text-base font-semibold text-gray-900">Exchange Rates</h3>
-                          <div className="w-full">
-                            <ExchangeRates />
-                          </div>
+                      </div>
+                      <div className="space-y-1 sm:space-y-2 flex flex-col">
+                        <h3 className="text-sm sm:text-base font-semibold text-gray-900">Exchange Rates</h3>
+                        <div className="w-full">
+                          <ExchangeRates />
                         </div>
                       </div>
                     </div>

@@ -6,6 +6,7 @@ import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import EditEventModal from '../components/EditEventModal';
 import { createNote } from '../utils/ApiUtils';
 import { addNoteToIndex } from '../utils/SearchUtils';
+import { updateNoteById, getNoteById } from '../utils/ApiUtils';
 
 const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const navigate = useNavigate();
@@ -107,7 +108,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [selectedEvents, setSelectedEvents] = useState({}); // { timelineId: [event1, event2] }
   const [unlinkConfirmation, setUnlinkConfirmation] = useState({ isOpen: false, timelineId: null, eventId: null });
   const [addLinkModal, setAddLinkModal] = useState({ isOpen: false, timelineId: null, eventIndex: null, currentLink: '' });
-  const [linkEventModal, setLinkEventModal] = useState({ isOpen: false, timelineId: null, searchQuery: '' });
+  const [linkEventModal, setLinkEventModal] = useState({ isOpen: false, timelineId: null, searchQuery: '', selectedEventId: null });
   const [timelineSearchQueries, setTimelineSearchQueries] = useState(() => loadTimelineSearchQueries()); // { timelineId: searchQuery }
   const [collapsedSections, setCollapsedSections] = useState(() => loadSectionCollapseStates()); // Set of collapsed section names: 'flagged', 'open', 'closed'
 
@@ -2250,7 +2251,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setLinkEventModal({ isOpen: true, timelineId: note.id, searchQuery: '' });
+                                        setLinkEventModal({ isOpen: true, timelineId: note.id, searchQuery: '', selectedEventId: null });
                                       }}
                                       className="px-2 py-1 bg-gradient-to-r from-purple-50 to-violet-50 hover:from-purple-100 hover:to-violet-100 text-purple-700 rounded-md transition-all flex items-center space-x-1 border border-purple-200 shadow-sm hover:shadow"
                                       title="Link existing event"
@@ -3079,7 +3080,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setLinkEventModal({ isOpen: true, timelineId: note.id, searchQuery: '' });
+                                setLinkEventModal({ isOpen: true, timelineId: note.id, searchQuery: '', selectedEventId: null });
                               }}
                               className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-md transition-colors flex items-center space-x-1.5 border border-purple-200"
                               title="Link existing event"
@@ -4519,7 +4520,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Link Event to Timeline</h3>
                   <button
-                    onClick={() => setLinkEventModal({ isOpen: false, timelineId: null, searchQuery: '' })}
+                    onClick={() => setLinkEventModal({ isOpen: false, timelineId: null, searchQuery: '', selectedEventId: null })}
                     className="text-gray-400 hover:text-gray-600"
                   >
                     <XMarkIcon className="h-6 w-6" />
@@ -4531,7 +4532,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                     <input
                       type="text"
                       value={linkEventModal.searchQuery}
-                      onChange={(e) => setLinkEventModal({ ...linkEventModal, searchQuery: e.target.value })}
+                      onChange={(e) => setLinkEventModal({ ...linkEventModal, searchQuery: e.target.value, selectedEventId: null })}
                       placeholder="Search events..."
                       className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                       autoFocus
@@ -4554,7 +4555,10 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                       {filteredEvents.map((event) => (
                         <div
                           key={event.id}
-                          className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                          onClick={() => setLinkEventModal({ ...linkEventModal, selectedEventId: event.id })}
+                          className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                            linkEventModal.selectedEventId === event.id ? 'bg-purple-50 border-l-4 border-purple-500' : ''
+                          }`}
                         >
                           <div className="font-medium text-gray-900">{event.description || 'Untitled Event'}</div>
                           {event.date && (
@@ -4575,17 +4579,120 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
 
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
                   <button
-                    onClick={() => setLinkEventModal({ isOpen: false, timelineId: null, searchQuery: '' })}
+                    onClick={() => setLinkEventModal({ isOpen: false, timelineId: null, searchQuery: '', selectedEventId: null })}
                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                   >
                     Cancel
                   </button>
                   <button
-                    onClick={() => {
-                      // Do nothing for now as requested
-                      console.log('Link button clicked (no action yet)');
+                    onClick={async () => {
+                      if (!linkEventModal.selectedEventId || !linkEventModal.timelineId) {
+                        alert('Please select an event to link');
+                        return;
+                      }
+
+                      try {
+                        const eventId = linkEventModal.selectedEventId;
+                        const timelineId = linkEventModal.timelineId;
+
+                        // Find the event note
+                        const eventNote = notes.find(note => note.id === eventId);
+                        if (!eventNote) {
+                          alert('Event note not found. Please try again.');
+                          return;
+                        }
+
+                        // Find the timeline note
+                        const timelineNote = notes.find(note => note.id === timelineId);
+                        if (!timelineNote) {
+                          alert('Timeline note not found. Please try again.');
+                          return;
+                        }
+
+                        // Check if already linked to avoid duplicates
+                        const existingEventLink = `meta::linked_to_timeline::${timelineId}`;
+                        if (eventNote.content.includes(existingEventLink)) {
+                          alert('Event is already linked to this timeline');
+                          setLinkEventModal({ isOpen: false, timelineId: null, searchQuery: '', selectedEventId: null });
+                          return;
+                        }
+
+                        // 1. Add meta::linked_to_timeline::<timeline_id> to the event note
+                        const updatedEventContent = eventNote.content.trim() + '\n' + existingEventLink;
+                        const updatedEventResponse = await updateNoteById(eventId, updatedEventContent);
+                        
+                        // Notify parent component that event was updated
+                        if (updateNote && updatedEventResponse) {
+                          updateNote(eventId, updatedEventResponse.content || updatedEventContent);
+                        }
+
+                        // 2. Add meta::linked_from_events::<event_id> to the timeline note
+                        // Fetch the latest timeline note from server to avoid stale data
+                        let latestTimelineNote;
+                        try {
+                          latestTimelineNote = await getNoteById(timelineId);
+                        } catch (fetchError) {
+                          console.error('[Timelines] Error fetching latest timeline note:', fetchError);
+                          latestTimelineNote = timelineNote;
+                        }
+                        
+                        const latestTimelineContent = latestTimelineNote?.content || timelineNote.content;
+                        const lines = latestTimelineContent.split('\n');
+                        
+                        // Process all lines: split comma-separated linked_from_events lines and collect unique event IDs
+                        const otherLines = [];
+                        const allLinkedEventIds = new Set();
+                        
+                        lines.forEach((line) => {
+                          if (line.trim().startsWith('meta::linked_from_events::')) {
+                            const eventIdsString = line.replace('meta::linked_from_events::', '').trim();
+                            const eventIds = eventIdsString.split(',').map(id => id.trim()).filter(id => id);
+                            eventIds.forEach(id => allLinkedEventIds.add(id));
+                          } else {
+                            otherLines.push(line);
+                          }
+                        });
+                        
+                        // Check if this event is already linked
+                        if (allLinkedEventIds.has(eventId)) {
+                          alert('Event is already linked to this timeline');
+                          setLinkEventModal({ isOpen: false, timelineId: null, searchQuery: '', selectedEventId: null });
+                          return;
+                        }
+                        
+                        // Add the new event ID
+                        allLinkedEventIds.add(eventId);
+                        
+                        // Build the updated content with each event ID on its own line
+                        let updatedTimelineContent = otherLines.join('\n').trim();
+                        if (allLinkedEventIds.size > 0) {
+                          const linkedEventLines = Array.from(allLinkedEventIds).map(eventId => 
+                            `meta::linked_from_events::${eventId}`
+                          );
+                          updatedTimelineContent = updatedTimelineContent + '\n' + linkedEventLines.join('\n');
+                        }
+
+                        const updatedTimelineResponse = await updateNoteById(timelineId, updatedTimelineContent);
+                        
+                        // Notify parent component that timeline was updated
+                        if (handleTimelineUpdated && updatedTimelineResponse) {
+                          handleTimelineUpdated(timelineId, updatedTimelineResponse.content || updatedTimelineContent);
+                        }
+
+                        // Update the notes array
+                        if (updateNote && updatedTimelineResponse) {
+                          updateNote(timelineId, updatedTimelineResponse.content || updatedTimelineContent);
+                        }
+
+                        console.log('Successfully linked event to timeline');
+                        setLinkEventModal({ isOpen: false, timelineId: null, searchQuery: '', selectedEventId: null });
+                      } catch (error) {
+                        console.error('[Timelines] Error linking event to timeline:', error);
+                        alert(`Failed to link event to timeline: ${error.message || 'Unknown error'}. Please check the console for details.`);
+                      }
                     }}
-                    className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                    disabled={!linkEventModal.selectedEventId}
+                    className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Link
                   </button>

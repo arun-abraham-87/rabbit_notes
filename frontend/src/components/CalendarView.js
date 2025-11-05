@@ -114,12 +114,17 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
     return occurrences;
   };
 
-  // Helper function to get timeline info from event content
+  // Helper function to get all timeline info from event content
   const getTimelineInfo = (eventContent) => {
     const lines = eventContent.split('\n');
-    const timelineLinkLine = lines.find(line => line.trim().startsWith('meta::linked_to_timeline::'));
+    const timelineLinkLines = lines.filter(line => line.trim().startsWith('meta::linked_to_timeline::'));
     
-    if (timelineLinkLine) {
+    if (timelineLinkLines.length === 0) {
+      return [];
+    }
+    
+    const timelines = [];
+    timelineLinkLines.forEach(timelineLinkLine => {
       const timelineId = timelineLinkLine.replace('meta::linked_to_timeline::', '').trim();
       const timelineNote = notes.find(note => note.id === timelineId);
       
@@ -129,13 +134,14 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
         const firstLine = timelineLines.find(line => 
           line.trim() && !line.trim().startsWith('meta::') && line.trim() !== 'Closed'
         );
-        return {
+        timelines.push({
           id: timelineId,
           title: firstLine || 'Untitled Timeline'
-        };
+        });
       }
-    }
-    return null;
+    });
+    
+    return timelines;
   };
 
   // Handler to unlink event from timeline
@@ -631,30 +637,46 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                         ))}
                                       </div>
                                       {/* Tags display */}
-                                      {((occurrence.event.tags && occurrence.event.tags.length > 0) || getTimelineInfo(occurrence.event.content)) && (
-                                        <div className="mt-2 flex flex-wrap gap-1">
-                                          {occurrence.event.tags && occurrence.event.tags.map(tag => (
-                                            <span
-                                              key={tag}
-                                              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                occurrence.isToday 
-                                                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                                                  : 'bg-gray-100 text-gray-600 border border-gray-200'
-                                              }`}
-                                            >
-                                              {tag}
-                                            </span>
-                                          ))}
-                                          {(() => {
-                                            const timelineInfo = getTimelineInfo(occurrence.event.content);
-                                            return timelineInfo && (
-                                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                occurrence.isToday 
-                                                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                                                  : 'bg-gray-100 text-gray-600 border border-gray-200'
-                                              }`}>
+                                      {(() => {
+                                        const timelines = getTimelineInfo(occurrence.event.content);
+                                        const hasTags = occurrence.event.tags && occurrence.event.tags.length > 0;
+                                        const hasTimelines = timelines.length > 0;
+                                        
+                                        if (!hasTags && !hasTimelines) {
+                                          return null;
+                                        }
+                                        
+                                        return (
+                                          <div className="mt-2 flex flex-wrap gap-1">
+                                            {occurrence.event.tags && occurrence.event.tags.map(tag => (
+                                              <span
+                                                key={tag}
+                                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                  occurrence.isToday 
+                                                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                                    : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                                }`}
+                                              >
+                                                {tag}
+                                              </span>
+                                            ))}
+                                            {timelines.map((timelineInfo) => (
+                                              <button
+                                                key={timelineInfo.id}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  // Navigate to timelines page with this timeline selected
+                                                  window.location.href = `/#/timelines?timeline=${timelineInfo.id}`;
+                                                }}
+                                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                                                  occurrence.isToday 
+                                                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-200 hover:bg-indigo-200'
+                                                    : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                                                }`}
+                                                title={`View timeline: ${timelineInfo.title}`}
+                                              >
                                                 <LinkIcon className="h-3 w-3" />
-                                                <span>Timeline: {timelineInfo.title}</span>
+                                                <span>{timelineInfo.title}</span>
                                                 <button
                                                   onClick={(e) => {
                                                     e.stopPropagation();
@@ -665,11 +687,11 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                                 >
                                                   <XMarkIcon className="h-3 w-3 text-gray-600 hover:text-red-600" />
                                                 </button>
-                                              </span>
-                                            );
-                                          })()}
-                                        </div>
-                                      )}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                   <div className="flex items-start gap-2">

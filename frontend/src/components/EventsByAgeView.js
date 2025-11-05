@@ -24,12 +24,17 @@ const EventsByAgeView = ({ events, onEventUpdated, onDelete, notes, onEdit, onTi
   const [unlinkTimelineId, setUnlinkTimelineId] = useState(null);
   const [unlinkTimelineTitle, setUnlinkTimelineTitle] = useState('');
 
-  // Helper function to get timeline info from event content
+  // Helper function to get all timeline info from event content
   const getTimelineInfo = (eventContent) => {
     const lines = eventContent.split('\n');
-    const timelineLinkLine = lines.find(line => line.trim().startsWith('meta::linked_to_timeline::'));
+    const timelineLinkLines = lines.filter(line => line.trim().startsWith('meta::linked_to_timeline::'));
     
-    if (timelineLinkLine) {
+    if (timelineLinkLines.length === 0) {
+      return [];
+    }
+    
+    const timelines = [];
+    timelineLinkLines.forEach(timelineLinkLine => {
       const timelineId = timelineLinkLine.replace('meta::linked_to_timeline::', '').trim();
       const timelineNote = notes.find(note => note.id === timelineId);
       
@@ -39,13 +44,14 @@ const EventsByAgeView = ({ events, onEventUpdated, onDelete, notes, onEdit, onTi
         const firstLine = timelineLines.find(line => 
           line.trim() && !line.trim().startsWith('meta::') && line.trim() !== 'Closed'
         );
-        return {
+        timelines.push({
           id: timelineId,
           title: firstLine || 'Untitled Timeline'
-        };
+        });
       }
-    }
-    return null;
+    });
+    
+    return timelines;
   };
 
   // Function to calculate age in years, months, and days
@@ -363,20 +369,34 @@ const EventsByAgeView = ({ events, onEventUpdated, onDelete, notes, onEdit, onTi
 
                             {/* Timeline Info */}
                             {(() => {
-                              const timelineInfo = getTimelineInfo(event.content);
-                              return timelineInfo && (
-                                <div className="flex items-center gap-2 mt-2">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                              const timelines = getTimelineInfo(event.content);
+                              return timelines.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {timelines.map((timelineInfo) => (
+                                  <button
+                                    key={timelineInfo.id}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // Navigate to timelines page with this timeline selected
+                                      window.location.href = `/#/timelines?timeline=${timelineInfo.id}`;
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200 hover:bg-indigo-200 transition-colors"
+                                    title={`View timeline: ${timelineInfo.title}`}
+                                  >
                                     <LinkIcon className="h-3 w-3" />
-                                    <span>Timeline: {timelineInfo.title}</span>
+                                    <span>{timelineInfo.title}</span>
                                     <button
-                                      onClick={() => handleInitiateUnlink(event.id, timelineInfo.id, timelineInfo.title)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleInitiateUnlink(event.id, timelineInfo.id, timelineInfo.title);
+                                      }}
                                       className="ml-1 hover:bg-red-200 rounded-full p-0.5 transition-colors flex items-center justify-center"
                                       title="Unlink from timeline"
                                     >
                                       <XMarkIcon className="h-3 w-3 text-gray-600 hover:text-red-600" />
                                     </button>
-                                  </span>
+                                  </button>
+                                  ))}
                                 </div>
                               );
                             })()}

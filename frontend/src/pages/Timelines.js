@@ -1894,6 +1894,16 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                               {event.link}
                                             </a>
                                           )}
+                                          {eventDate && (
+                                            <a 
+                                              href={`https://photos.google.com/search/${eventDate.format('YYYY-MM-DD')}`}
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="text-sm text-purple-600 hover:text-purple-800 block"
+                                            >
+                                              photos
+                                            </a>
+                                          )}
                                           {(event.dollarAmount !== null && event.dollarAmount !== undefined && event.dollarAmount > 0) && (
                                             <div className="text-sm font-semibold text-emerald-600">
                                               ${event.dollarAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -2602,6 +2612,34 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                       Unlink
                                                     </button>
                                                   </>
+                                                )}
+                                              </div>
+                                            )}
+                                            
+                                            {/* Event details - links and photos for closed timelines */}
+                                            {(!event.isVirtual || event.isToday) && !event.isTotal && !event.isDuration && (
+                                              <div className="ml-0 mt-2 space-y-1">
+                                                {event.link && (
+                                                  <a 
+                                                    href={event.link} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-sm text-blue-600 hover:text-blue-800 block"
+                                                  >
+                                                    {event.link}
+                                                  </a>
+                                                )}
+                                                {event.date && (
+                                                  <a 
+                                                    href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-sm text-purple-600 hover:text-purple-800 block"
+                                                  >
+                                                    photos
+                                                  </a>
                                                 )}
                                               </div>
                                             )}
@@ -3452,6 +3490,34 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                     </div>
                                   )}
                                   
+                                  {/* Event details - links and photos */}
+                                  {(!event.isVirtual || event.isToday) && !event.isTotal && !event.isDuration && (
+                                    <div className="ml-0 mt-2 space-y-1">
+                                      {event.link && (
+                                        <a 
+                                          href={event.link} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="text-sm text-blue-600 hover:text-blue-800 block"
+                                        >
+                                          {event.link}
+                                        </a>
+                                      )}
+                                      {event.date && (
+                                        <a 
+                                          href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="text-sm text-purple-600 hover:text-purple-800 block"
+                                        >
+                                          photos
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+                                  
                                 </div>
                               </div>
                             </React.Fragment>
@@ -4027,6 +4093,35 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                 )}
                                               </div>
                                             )}
+                                            
+                                            {/* Event details - links and photos for closed timelines */}
+                                            {(!event.isVirtual || event.isToday) && !event.isTotal && !event.isDuration && (
+                                              <div className="ml-0 mt-2 space-y-1">
+                                                {event.link && (
+                                                  <a 
+                                                    href={event.link} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-sm text-blue-600 hover:text-blue-800 block"
+                                                  >
+                                                    {event.link}
+                                                  </a>
+                                                )}
+                                                {event.date && (
+                                                  <a 
+                                                    href={`https://photos.google.com/search/${event.date.format('YYYY-MM-DD')}`}
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-sm text-purple-600 hover:text-purple-800 block"
+                                                  >
+                                                    photos
+                                                  </a>
+                                                )}
+                                              </div>
+                                            )}
+                                            
                                           </div>
                                         </div>
                                       </div>

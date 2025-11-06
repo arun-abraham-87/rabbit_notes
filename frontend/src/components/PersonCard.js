@@ -1,9 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserIcon, XMarkIcon, CodeBracketIcon, PencilIcon, PhotoIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 
 const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag }) => {
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showImageModal) {
+        setShowImageModal(false);
+        setSelectedImage(null);
+      }
+    };
+
+    if (showImageModal) {
+      window.addEventListener('keydown', handleEscape);
+      return () => {
+        window.removeEventListener('keydown', handleEscape);
+      };
+    }
+  }, [showImageModal]);
   const getPersonInfo = (content) => {
     const lines = content.split('\n');
     const name = lines[0];
@@ -42,13 +61,15 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag }) => {
       <div className="flex items-start gap-3 flex-grow">
         <div className="flex-shrink-0">
           {photos && photos.length > 0 ? (
-            <a
-              href={photos[0]}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block h-32 w-32 rounded-full overflow-hidden border-2 border-indigo-200 bg-indigo-100 flex items-center justify-center hover:border-indigo-400 transition-colors"
+            <button
+              type="button"
+              className="block h-32 w-32 rounded-full overflow-hidden border-2 border-indigo-200 bg-indigo-100 flex items-center justify-center hover:border-indigo-400 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
               title="View photo"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedImage(photos[0]);
+                setShowImageModal(true);
+              }}
             >
               <img
                 src={photos[0]}
@@ -64,7 +85,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag }) => {
               <div className="hidden h-32 w-32 bg-indigo-100 items-center justify-center">
                 <UserIcon className="h-16 w-16 text-indigo-600" />
               </div>
-            </a>
+            </button>
           ) : (
             <div className="h-32 w-32 rounded-full bg-indigo-100 flex items-center justify-center">
               <UserIcon className="h-16 w-16 text-indigo-600" />
@@ -94,14 +115,16 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag }) => {
             <div className="mt-3">
               <div className="flex flex-wrap gap-2">
                 {photos.slice(1).map((photo, index) => (
-                  <a
+                  <button
                     key={index + 1}
-                    href={photo}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="relative group"
+                    type="button"
+                    className="relative group focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded"
                     title={photo}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedImage(photo);
+                      setShowImageModal(true);
+                    }}
                   >
                     <img
                       src={photo}
@@ -117,7 +140,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag }) => {
                     <div className="hidden h-16 w-16 bg-gray-100 border border-gray-200 rounded items-center justify-center">
                       <PhotoIcon className="h-6 w-6 text-gray-400" />
                     </div>
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
@@ -157,6 +180,39 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag }) => {
               </button>
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Image Modal */}
+      {showImageModal && selectedImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowImageModal(false);
+            setSelectedImage(null);
+          }}
+        >
+          <div className="relative max-w-7xl max-h-full">
+            <button
+              onClick={() => {
+                setShowImageModal(false);
+                setSelectedImage(null);
+              }}
+              className="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-2 z-10 transition-colors"
+              title="Close"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+            <img
+              src={selectedImage}
+              alt="Full size photo"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+          </div>
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import moment from 'moment';
-import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon, LinkIcon, MagnifyingGlassIcon, ChevronRightIcon, PhotoIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon, XCircleIcon, ArrowPathIcon, FlagIcon, LinkIcon, MagnifyingGlassIcon, ChevronRightIcon, PhotoIcon, PencilIcon } from '@heroicons/react/24/solid';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import EditEventModal from '../components/EditEventModal';
@@ -1161,16 +1161,36 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   // Handle deleting an event from a timeline
   const handleDeleteEvent = async (timelineId, eventIndex) => {
     try {
-      const timelineNote = timelineNotes.find(n => n.id === timelineId);
-      if (!timelineNote) return;
-
       const notesToUse = getNotesWithNewEvent();
-      const timelineData = parseTimelineData(timelineNote.content, notesToUse);
-      const event = timelineData.events[eventIndex];
+      // Get the full note with content from notes prop, not from timelineNotes API response
+      const timelineNote = notesToUse.find(n => n.id === timelineId);
+      if (!timelineNote || !timelineNote.content) {
+        alert('Timeline not found');
+        return;
+      }
+
+      // Get the cached events to find the event by index
+      const cachedData = timelineEventsCache[timelineId];
+      if (!cachedData || !cachedData.events) {
+        alert('Timeline events not loaded');
+        return;
+      }
+
+      const event = cachedData.events[eventIndex];
+      if (!event) {
+        alert('Event not found');
+        return;
+      }
+
+      // Can't delete linked events (they have lineIndex === -1)
+      if (event.lineIndex === -1) {
+        alert('Cannot delete linked events. Please unlink the event first.');
+        return;
+      }
       
-      if (!event || event.lineIndex === -1) {
-        // Can't delete linked events or virtual events
-        alert('Cannot delete this type of event');
+      // Can't delete virtual events
+      if (event.isVirtual) {
+        alert('Cannot delete virtual events');
         return;
       }
 
@@ -1182,6 +1202,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
       );
       
       // Remove the event at lineIndex (lineIndex is 1-based, 1 = first event after title)
+      // lineIndex 1 = contentLines[1], lineIndex 2 = contentLines[2], etc.
       const updatedContentLines = contentLines.filter((line, index) => {
         // Keep title (index 0) and all events except the one we're deleting
         return index === 0 || index !== event.lineIndex;
@@ -1199,22 +1220,24 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         await updateNote(timelineId, updatedContent);
       }
 
-      // Refresh timeline notes
-      const updatedNotes = notesToUse.map(n => 
-        n.id === timelineId ? { ...n, content: updatedContent } : n
-      );
-      const filteredNotes = updatedNotes
-        .filter(note => note.content && note.content.includes('meta::timeline'))
-        .map(note => {
-          const timelineData = parseTimelineData(note.content, updatedNotes);
-          return {
-            ...note,
-            ...timelineData,
-            isFlagged: note.content.includes('meta::flagged_timeline'),
-            isTracked: note.content.includes('meta::tracked')
-          };
-        });
-      setTimelineNotes(filteredNotes);
+      // Clear cache for this timeline to force reload
+      setTimelineEventsCache(prev => {
+        const updated = { ...prev };
+        delete updated[timelineId];
+        return updated;
+      });
+
+      // Refresh timeline notes from API
+      try {
+        const params = {
+          search: searchQuery || undefined,
+          searchTitlesOnly: searchTitlesOnly ? 'true' : undefined
+        };
+        const response = await getTimelines(params);
+        setTimelineNotes(response.timelines || []);
+      } catch (error) {
+        console.error('Error refreshing timelines:', error);
+      }
       
       // Close confirmation modal
       setDeleteEventConfirmation({ isOpen: false, timelineId: null, eventIndex: null, eventName: null });
@@ -2585,10 +2608,10 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                 setShowEditEventModal(true);
                                               }
                                             }}
-                                            className="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded transition-colors whitespace-nowrap"
+                                            className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded transition-colors"
                                             title="Edit event"
                                           >
-                                            edit
+                                            <PencilIcon className="h-4 w-4" />
                                           </button>
                                           {event.date && (
                                             <a

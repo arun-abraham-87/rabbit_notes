@@ -138,6 +138,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [showTimelineDropdown, setShowTimelineDropdown] = useState(false);
   const [compareModal, setCompareModal] = useState({ isOpen: false, sourceEvent: null, sourceTimelineId: null, filterQuery: '' });
   const [focusOnNotesField, setFocusOnNotesField] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Save timeline collapse states to localStorage
   const saveCollapseStates = (collapsedSet) => {
@@ -1739,6 +1740,22 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
     }
   };
 
+  // Function to scroll to top
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Show/hide scroll to top button based on scroll position
+  useEffect(() => {
+    const handleScroll = () => {
+      // Show button when scrolled down more than 300px
+      setShowScrollTop(window.scrollY > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header Section */}
@@ -3289,10 +3306,16 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           // Collect all events from all timelines for the current year
           const allEvents = [];
           
+          // Use the full notes array to get content
+          const notesToUse = getNotesWithNewEvent();
+          
           timelineNotes.forEach((note) => {
-            const notesToUse = getNotesWithNewEvent();
-            const timelineData = parseTimelineData(note.content, notesToUse);
-            const timelineName = timelineData.timeline || 'Untitled Timeline';
+            // Find the full note with content
+            const fullNote = notesToUse.find(n => n.id === note.id);
+            if (!fullNote || !fullNote.content) return;
+            
+            const timelineData = parseTimelineData(fullNote.content, notesToUse);
+            const timelineName = timelineData.timeline || note.timeline || 'Untitled Timeline';
             
             timelineData.events.forEach((event) => {
               if (event.date && event.date.year() === currentYear) {
@@ -4088,6 +4111,29 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           </div>
         )}
       </div>
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 z-50 p-4 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          title="Scroll to top"
+        >
+          <svg 
+            className="w-6 h-6" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M5 10l7-7m0 0l7 7m-7-7v18" 
+            />
+          </svg>
+        </button>
+      )}
     </div>
   );
 };

@@ -891,9 +891,44 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Event Date
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium text-gray-700">
+                    Event Date
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const today = new Date();
+                        const formattedDate = today.toISOString().split('T')[0];
+                        setEventDate(formattedDate);
+                        if (validationErrors.eventDate) {
+                          setValidationErrors(prev => ({ ...prev, eventDate: false }));
+                        }
+                      }}
+                      className="px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded hover:bg-blue-100 border border-blue-200 transition-colors"
+                      title="Set to today's date"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        const formattedDate = yesterday.toISOString().split('T')[0];
+                        setEventDate(formattedDate);
+                        if (validationErrors.eventDate) {
+                          setValidationErrors(prev => ({ ...prev, eventDate: false }));
+                        }
+                      }}
+                      className="px-2 py-1 text-xs font-medium bg-gray-50 text-gray-700 rounded hover:bg-gray-100 border border-gray-200 transition-colors"
+                      title="Set to yesterday's date"
+                    >
+                      Yesterday
+                    </button>
+                  </div>
+                </div>
                 <input
                   type="date"
                   value={eventDate}

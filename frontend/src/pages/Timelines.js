@@ -135,6 +135,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [collapsedSections, setCollapsedSections] = useState(() => loadSectionCollapseStates()); // Set of collapsed section names: 'flagged', 'open', 'closed'
   const [showMasterTimelineModal, setShowMasterTimelineModal] = useState(false);
   const [masterTimelineModalSearchQuery, setMasterTimelineModalSearchQuery] = useState('');
+  const [masterTimelineYear, setMasterTimelineYear] = useState(new Date().getFullYear());
+  const [masterTimelineMonth, setMasterTimelineMonth] = useState('all');
   const [showTimelineDropdown, setShowTimelineDropdown] = useState(false);
   const [compareModal, setCompareModal] = useState({ isOpen: false, sourceEvent: null, sourceTimelineId: null, filterQuery: '' });
   const [focusOnNotesField, setFocusOnNotesField] = useState(false);
@@ -3300,10 +3302,11 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         {/* Master Timeline Modal */}
         {showMasterTimelineModal && (() => {
           // Dynamically calculate master timeline when modal opens
-          const currentYear = new Date().getFullYear();
-          const masterTimelineId = `master-timeline-${currentYear}`;
+          const selectedYear = masterTimelineYear;
+          const selectedMonth = masterTimelineMonth;
+          const masterTimelineId = `master-timeline-${selectedYear}`;
           
-          // Collect all events from all timelines for the current year
+          // Collect all events from all timelines for the selected year
           const allEvents = [];
           
           // Use the full notes array to get content
@@ -3318,11 +3321,14 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             const timelineName = timelineData.timeline || note.timeline || 'Untitled Timeline';
             
             timelineData.events.forEach((event) => {
-              if (event.date && event.date.year() === currentYear) {
-                allEvents.push({
-                  ...event,
-                  sourceTimelineName: timelineName
-                });
+              if (event.date && event.date.year() === selectedYear) {
+                // Apply month filter if not 'all'
+                if (selectedMonth === 'all' || event.date.month() === parseInt(selectedMonth)) {
+                  allEvents.push({
+                    ...event,
+                    sourceTimelineName: timelineName
+                  });
+                }
               }
             });
           });
@@ -3348,17 +3354,57 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
               <div className="bg-white rounded-lg p-6 w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-semibold text-gray-900">
-                    Master Timeline - {currentYear} ({allEvents.length} events)
+                    Master Timeline - {selectedYear} ({allEvents.length} events)
                   </h3>
                   <button
                     onClick={() => {
                       setShowMasterTimelineModal(false);
                       setMasterTimelineModalSearchQuery('');
+                      setMasterTimelineYear(new Date().getFullYear());
+                      setMasterTimelineMonth('all');
                     }}
                     className="text-gray-400 hover:text-gray-600"
                   >
                     <XMarkIcon className="h-6 w-6" />
                   </button>
+                </div>
+                
+                {/* Year and Month Filters */}
+                <div className="mb-4 flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setMasterTimelineYear(parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 bg-white text-sm"
+                    >
+                      {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Month</label>
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setMasterTimelineMonth(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 bg-white text-sm"
+                    >
+                      <option value="all">All Months</option>
+                      <option value="0">January</option>
+                      <option value="1">February</option>
+                      <option value="2">March</option>
+                      <option value="3">April</option>
+                      <option value="4">May</option>
+                      <option value="5">June</option>
+                      <option value="6">July</option>
+                      <option value="7">August</option>
+                      <option value="8">September</option>
+                      <option value="9">October</option>
+                      <option value="10">November</option>
+                      <option value="11">December</option>
+                    </select>
+                  </div>
                 </div>
                 
                 {/* Search */}
@@ -3394,7 +3440,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                       {masterTimelineModalSearchQuery ? (
                         <p>No events found matching "{masterTimelineModalSearchQuery}"</p>
                       ) : (
-                        <p>No events found for {currentYear}</p>
+                        <p>No events found for {selectedMonth === 'all' ? selectedYear : `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][parseInt(selectedMonth)]} ${selectedYear}`}</p>
                       )}
                     </div>
                   ) : (

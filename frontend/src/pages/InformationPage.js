@@ -157,7 +157,7 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
   const [editingEvent, setEditingEvent] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTags, setEditingTags] = useState({ eventId: null, tags: '' });
-  const [groupByTag, setGroupByTag] = useState(false);
+  const [groupByTag, setGroupByTag] = useState(true);
   const [pinnedCards, setPinnedCards] = useState(() => {
     try {
       const stored = localStorage.getItem('pinnedInformationCards');
@@ -552,12 +552,17 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                       {event.tags && event.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {event.tags.map((tag, index) => (
-                            <span
+                            <button
                               key={index}
-                              className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenTagEditor(event);
+                              }}
+                              className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 hover:text-purple-800 transition-colors cursor-pointer"
+                              title="Click to edit tags"
                             >
                               {tag}
-                            </span>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -639,12 +644,17 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                   {event.tags && event.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {event.tags.map((tag, index) => (
-                        <span
+                        <button
                           key={index}
-                          className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenTagEditor(event);
+                          }}
+                          className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 hover:text-purple-800 transition-colors cursor-pointer"
+                          title="Click to edit tags"
                         >
                           {tag}
-                        </span>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -723,12 +733,17 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                   {event.tags && event.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {event.tags.map((tag, index) => (
-                        <span
+                        <button
                           key={index}
-                          className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenTagEditor(event);
+                          }}
+                          className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 hover:text-purple-800 transition-colors cursor-pointer"
+                          title="Click to edit tags"
                         >
                           {tag}
-                        </span>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -774,6 +789,13 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
           }
         };
         
+        // Function to remove tag from current tags
+        const handleRemoveTag = (tagToRemove) => {
+          const updatedTagsArray = currentTagsArray.filter(tag => tag !== tagToRemove);
+          const updatedTags = updatedTagsArray.join(', ');
+          setEditingTags({ ...editingTags, tags: updatedTags });
+        };
+        
         return (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
@@ -814,9 +836,16 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                     {currentTagsArray.map((tag, index) => (
                       <span
                         key={index}
-                        className="px-3 py-1 text-sm font-medium bg-purple-100 text-purple-700 rounded-full"
+                        className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium bg-purple-100 text-purple-700 rounded-full"
                       >
                         {tag}
+                        <button
+                          onClick={() => handleRemoveTag(tag)}
+                          className="ml-1 text-purple-700 hover:text-red-600 hover:bg-purple-200 rounded-full p-0.5 transition-colors"
+                          title={`Remove "${tag}"`}
+                        >
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
                       </span>
                     ))}
                   </div>

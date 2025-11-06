@@ -17,12 +17,22 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const [addPersonModal, setAddPersonModal] = useState({ open: false });
   const [deleteModal, setDeleteModal] = useState({ open: false, noteId: null, personName: '' });
 
+  // Deduplicate notes by ID - single source of truth
+  const uniqueNotes = useMemo(() => {
+    const uniqueNotesMap = new Map();
+    allNotes.forEach(note => {
+      if (note.id && !uniqueNotesMap.has(note.id)) {
+        uniqueNotesMap.set(note.id, note);
+      }
+    });
+    return Array.from(uniqueNotesMap.values());
+  }, [allNotes]);
 
-  // Get all unique tags from person allNotes
+  // Get all unique tags from person notes
   const allTags = useMemo(() => {
     const tagSet = new Set();
-    allNotes
-      .filter(note => note.content.includes('meta::person::'))
+    uniqueNotes
+      .filter(note => note.content && note.content.includes('meta::person::'))
       .forEach(note => {
         const tagLines = note.content
           .split('\n')
@@ -31,11 +41,11 @@ const PeopleList = ({allNotes, setAllNotes}) => {
         tagLines.forEach(tag => tagSet.add(tag));
       });
     return Array.from(tagSet).sort();
-  }, [allNotes]);
+  }, [uniqueNotes]);
 
-  // Filter person allNotes based on selected filters
+  // Filter person notes based on selected filters
   const filteredallNotes = useMemo(() => {
-    let filtered = allNotes.filter(note => note.content.includes('meta::person::'));
+    let filtered = uniqueNotes.filter(note => note.content && note.content.includes('meta::person::'));
 
     // Apply tag filter
     if (selectedTags.length > 0) {
@@ -65,7 +75,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
     }
 
     return filtered;
-  }, [allNotes, selectedTags, localSearchQuery]);
+  }, [uniqueNotes, selectedTags, localSearchQuery]);
 
   // Group allNotes by tags for tag view
   const allNotesByTag = useMemo(() => {
@@ -84,18 +94,18 @@ const PeopleList = ({allNotes, setAllNotes}) => {
 
   // Add a function to count people without tags
   const getPeopleWithoutTags = useMemo(() => {
-    return allNotes.filter(note => {
-      if (!note.content.includes('meta::person::')) return false;
+    return uniqueNotes.filter(note => {
+      if (!note.content || !note.content.includes('meta::person::')) return false;
       return !note.content.split('\n').some(line => line.startsWith('meta::tag::'));
     }).length;
-  }, [allNotes]);
+  }, [uniqueNotes]);
 
   const clearFilters = () => {
     setSelectedTags([]);
     setLocalSearchQuery('');
   };
 
-  if (!allNotes || allNotes.length === 0) {
+  if (!uniqueNotes || uniqueNotes.length === 0) {
     return (
       <div className="p-6 space-y-6">
         <h1 className="text-2xl font-semibold text-gray-900">People</h1>
@@ -107,7 +117,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   }
 
   // Summary counts
-  const totalPeople = allNotes.filter(note => note.content.includes('meta::person::')).length;
+  const totalPeople = uniqueNotes.filter(note => note.content && note.content.includes('meta::person::')).length;
   const totalTags = allTags.length;
 
   // Handler for editing a person
@@ -140,8 +150,8 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const handleAddPerson = async (content) => {
     try {
       const response = await createNote(content);
-
-      setAllNotes([...allNotes, response.content]);
+      // response is the full note object, not { content: ... }
+      setAllNotes([...allNotes, response]);
       return response;
     } catch (error) {
       console.error('Error adding person:', error);

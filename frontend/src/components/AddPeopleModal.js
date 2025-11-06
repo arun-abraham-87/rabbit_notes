@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { XMarkIcon, PlusIcon, PhotoIcon } from '@heroicons/react/24/solid';
-import { createNote, updateNoteById } from '../utils/ApiUtils';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { getDateInDDMMYYYYFormat } from '../utils/DateUtils';
 
@@ -374,9 +373,8 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       if (personNote) {
         await onEdit(personNote.id, content);
       } else {
-        const newNote = await createNote(content);
         if (onAdd) {
-          onAdd(newNote);
+          await onAdd(content);
         }
       }
       // Reset form

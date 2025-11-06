@@ -1961,7 +1961,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg border border-gray-200">
             <div className="space-y-6 p-6">
       
             
@@ -2028,11 +2028,11 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                 <div 
                   key={note.id}
                   ref={(el) => (timelineRefs.current[note.id] = el)}
-                  className="bg-white rounded-xl shadow-md border-l-4 border-indigo-400 overflow-hidden hover:shadow-lg transition-shadow"
+                  className="bg-white rounded-xl shadow-md border-l-4 border-indigo-400 hover:shadow-lg transition-shadow"
                 >
                   {/* Timeline Header */}
                   <div 
-                    className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 cursor-pointer hover:from-indigo-100 hover:to-blue-100 border-b border-indigo-200/50 transition-all"
+                    className="sticky top-0 z-40 bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 cursor-pointer hover:from-indigo-100 hover:to-blue-100 border-b border-indigo-200/50 transition-all rounded-t-xl shadow-sm"
                     onClick={() => toggleTimelineCollapse(note.id)}
                   >
                     <div className="flex items-center justify-between">

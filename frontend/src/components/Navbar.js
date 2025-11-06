@@ -119,7 +119,7 @@ const Navbar = ({ activePage, setActivePage }) => {
   );
 
   return (
-    <nav className={`border-b py-4 px-8 bg-background hover:shadow-sm transition-all duration-300 ease-in-out ${
+    <nav className={`sticky top-0 z-50 border-b py-4 px-8 bg-background hover:shadow-sm transition-all duration-300 ease-in-out ${
       isVisible ? 'ml-80' : 'ml-0'
     }`}>
       <div className="w-full mx-auto flex justify-between items-center">

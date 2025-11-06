@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PencilIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon, TagIcon } from '@heroicons/react/24/outline';
 import { MapPinIcon } from '@heroicons/react/24/solid';
 import EditEventModal from '../components/EditEventModal';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
@@ -74,11 +74,17 @@ const parseEventNotes = (notes) => {
       const dateLine = lines.find(line => line.startsWith('event_date:'));
       const date = dateLine ? dateLine.replace('event_date:', '').trim() : '';
       
+      // Extract event_info_tags
+      const tagsLine = lines.find(line => line.startsWith('event_info_tags:'));
+      const tags = tagsLine ? tagsLine.replace('event_info_tags:', '').trim() : '';
+      const tagsArray = tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+      
       return {
         id: note.id,
         title,
         content,
         date,
+        tags: tagsArray,
         fullContent: note.content
       };
     });
@@ -150,6 +156,8 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingEvent, setEditingEvent] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingTags, setEditingTags] = useState({ eventId: null, tags: '' });
+  const [groupByTag, setGroupByTag] = useState(false);
   const [pinnedCards, setPinnedCards] = useState(() => {
     try {
       const stored = localStorage.getItem('pinnedInformationCards');
@@ -193,9 +201,98 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
 
   const isCardPinned = (cardId) => pinnedCards.includes(cardId);
 
-  // Separate pinned and unpinned events
-  const pinnedEvents = filteredEvents.filter(event => isCardPinned(event.id));
-  const unpinnedEvents = filteredEvents.filter(event => !isCardPinned(event.id));
+  // Group events by tags
+  const groupedEventsByTag = useMemo(() => {
+    if (!groupByTag) return null;
+
+    const groups = {};
+    const untagged = [];
+
+    filteredEvents.forEach(event => {
+      if (event.tags && event.tags.length > 0) {
+        event.tags.forEach(tag => {
+          if (!groups[tag]) {
+            groups[tag] = [];
+          }
+          // Only add event once per tag group (avoid duplicates)
+          if (!groups[tag].find(e => e.id === event.id)) {
+            groups[tag].push(event);
+          }
+        });
+      } else {
+        untagged.push(event);
+      }
+    });
+
+    // Sort groups by tag name
+    const sortedGroups = Object.keys(groups)
+      .sort()
+      .map(tag => ({ tag, events: groups[tag] }));
+
+    // Add untagged group at the end if it has events
+    if (untagged.length > 0) {
+      sortedGroups.push({ tag: 'Untagged', events: untagged });
+    }
+
+    return sortedGroups;
+  }, [filteredEvents, groupByTag]);
+
+  // Get all unique tags from all events
+  const allTags = useMemo(() => {
+    const tagSet = new Set();
+    allEvents.forEach(event => {
+      if (event.tags && event.tags.length > 0) {
+        event.tags.forEach(tag => tagSet.add(tag));
+      }
+    });
+    return Array.from(tagSet).sort();
+  }, [allEvents]);
+
+  // Handle adding a tag to an event
+  const handleAddTagToEvent = async (eventId, tagToAdd) => {
+    try {
+      const eventNote = notes.find(n => n.id === eventId);
+      if (!eventNote) {
+        alert('Event not found');
+        return;
+      }
+
+      const lines = eventNote.content.split('\n');
+      const tagsLineIndex = lines.findIndex(line => line.startsWith('event_info_tags:'));
+      
+      let updatedContent;
+      if (tagsLineIndex !== -1) {
+        // Update existing tags line
+        const tagLine = lines[tagsLineIndex];
+        const existingTags = tagLine.replace('event_info_tags:', '').trim();
+        const tagsArray = existingTags ? existingTags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+        
+        // Add new tag if not already present
+        if (!tagsArray.includes(tagToAdd)) {
+          tagsArray.push(tagToAdd);
+          lines[tagsLineIndex] = `event_info_tags:${tagsArray.join(',')}`;
+        }
+        updatedContent = lines.join('\n');
+      } else {
+        // Add new tags line
+        updatedContent = eventNote.content.trim() + '\nevent_info_tags:' + tagToAdd;
+      }
+
+      // Update the note
+      await updateNoteById(eventId, updatedContent);
+      
+      // Update the notes array
+      const updatedNote = { ...eventNote, content: updatedContent };
+      setAllNotes(allNotes.map(note => note.id === eventId ? updatedNote : note));
+    } catch (error) {
+      console.error('Error adding tag to event:', error);
+      alert('Failed to add tag. Please try again.');
+    }
+  };
+
+  // Separate pinned and unpinned events (only when not grouping by tag)
+  const pinnedEvents = groupByTag ? [] : filteredEvents.filter(event => isCardPinned(event.id));
+  const unpinnedEvents = groupByTag ? [] : filteredEvents.filter(event => !isCardPinned(event.id));
 
   // Handle edit event
   const handleEditEvent = (event) => {
@@ -264,6 +361,72 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
     setIsAddModalOpen(false);
   };
 
+  // Handle open tag editor
+  const handleOpenTagEditor = (event) => {
+    const currentTags = event.tags ? event.tags.join(', ') : '';
+    setEditingTags({ eventId: event.id, tags: currentTags });
+  };
+
+  // Handle save tags
+  const handleSaveTags = async () => {
+    if (!editingTags.eventId) return;
+
+    try {
+      const eventNote = notes.find(n => n.id === editingTags.eventId);
+      if (!eventNote) {
+        alert('Event not found');
+        return;
+      }
+
+      const lines = eventNote.content.split('\n');
+      const tagsLineIndex = lines.findIndex(line => line.startsWith('event_info_tags:'));
+      
+      // Clean and format tags (remove empty tags, trim spaces)
+      const tagsArray = editingTags.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag);
+      const tagsString = tagsArray.join(',');
+
+      let updatedContent;
+      if (tagsLineIndex !== -1) {
+        // Update existing tags line
+        if (tagsString) {
+          lines[tagsLineIndex] = `event_info_tags:${tagsString}`;
+        } else {
+          // Remove tags line if empty
+          lines.splice(tagsLineIndex, 1);
+        }
+        updatedContent = lines.join('\n');
+      } else {
+        // Add new tags line
+        if (tagsString) {
+          updatedContent = eventNote.content.trim() + '\nevent_info_tags:' + tagsString;
+        } else {
+          updatedContent = eventNote.content;
+        }
+      }
+
+      // Update the note
+      await updateNoteById(editingTags.eventId, updatedContent);
+      
+      // Update the notes array
+      const updatedNote = { ...eventNote, content: updatedContent };
+      setAllNotes(allNotes.map(note => note.id === editingTags.eventId ? updatedNote : note));
+      
+      // Close tag editor
+      setEditingTags({ eventId: null, tags: '' });
+    } catch (error) {
+      console.error('Error saving tags:', error);
+      alert('Failed to save tags. Please try again.');
+    }
+  };
+
+  // Handle cancel tag editing
+  const handleCancelTagEditing = () => {
+    setEditingTags({ eventId: null, tags: '' });
+  };
+
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -277,25 +440,39 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
         </button>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar and Filters */}
       <div className="mb-6">
-        <div className="relative max-w-md">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search information (fuzzy search)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
-          )}
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="relative max-w-md flex-1 min-w-[200px]">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search information (fuzzy search)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setGroupByTag(!groupByTag)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              groupByTag
+                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+            title="Group events by tags"
+          >
+            <TagIcon className="h-5 w-5" />
+            <span className="text-sm font-medium">Group by Tag</span>
+          </button>
         </div>
         {searchQuery && (
           <p className="mt-2 text-sm text-gray-600">
@@ -304,8 +481,103 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
         )}
       </div>
 
+      {/* Grouped by Tag Section */}
+      {groupByTag && (
+        <>
+          {groupedEventsByTag && groupedEventsByTag.length > 0 ? (
+        <div className="mb-8">
+          {groupedEventsByTag.map((group) => (
+            <div key={group.tag} className="mb-8">
+              <h2 className="text-xl font-semibold mb-4 text-purple-600 flex items-center gap-2">
+                <TagIcon className="h-5 w-5" />
+                {group.tag} ({group.events.length})
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {group.events.map((event) => (
+                  <div
+                    key={event.id}
+                    className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col"
+                  >
+                    {/* Title with Edit and Pin Icons */}
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 flex-1">
+                        {event.title || 'Untitled'}
+                      </h3>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => togglePinCard(event.id)}
+                          className={`p-1.5 rounded transition-colors ${
+                            isCardPinned(event.id)
+                              ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                          }`}
+                          title={isCardPinned(event.id) ? 'Unpin' : 'Pin'}
+                        >
+                          <MapPinIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenTagEditor(event)}
+                          className="p-1.5 text-purple-500 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
+                          title="Edit Tags"
+                        >
+                          <TagIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEditEvent(event)}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Edit Event"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="flex-1 mb-4 text-gray-700 text-sm overflow-hidden" style={{ maxHeight: '144px', overflowY: 'auto' }}>
+                      {event.content ? (
+                        <div className="whitespace-pre-wrap break-words">
+                          {event.content.split('\n').map((line, lineIndex) => (
+                            <div key={lineIndex} className="mb-1">
+                              {renderTextWithLinks(line)}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 italic">No content</div>
+                      )}
+                    </div>
+                    
+                    {/* Tags Footer */}
+                    <div className="mt-auto pt-3 border-t border-gray-200">
+                      {event.tags && event.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {event.tags.map((tag, index) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              {searchQuery ? 'No events found matching your search.' : 'No information events found. Add one to get started!'}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Pinned Cards Section */}
-      {pinnedEvents.length > 0 && (
+      {!groupByTag && pinnedEvents.length > 0 && (
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4 text-blue-600 flex items-center gap-2">
             <MapPinIcon className="h-5 w-5" />
@@ -331,6 +603,13 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                       <MapPinIcon className="h-4 w-4" />
                     </button>
                     <button
+                      onClick={() => handleOpenTagEditor(event)}
+                      className="p-1.5 text-purple-500 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
+                      title="Edit Tags"
+                    >
+                      <TagIcon className="h-4 w-4" />
+                    </button>
+                    <button
                       onClick={() => handleEditEvent(event)}
                       className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                       title="Edit Event"
@@ -354,6 +633,22 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                     <div className="text-gray-400 italic">No content</div>
                   )}
                 </div>
+                
+                {/* Tags Footer */}
+                <div className="mt-auto pt-3 border-t border-gray-200">
+                  {event.tags && event.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {event.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -361,11 +656,13 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
       )}
 
       {/* Unpinned Cards Section */}
-      {unpinnedEvents.length === 0 && pinnedEvents.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          {searchQuery ? 'No events found matching your search.' : 'No information events found. Add one to get started!'}
-        </div>
-      ) : unpinnedEvents.length > 0 && (
+      {!groupByTag && (
+        <>
+          {unpinnedEvents.length === 0 && pinnedEvents.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              {searchQuery ? 'No events found matching your search.' : 'No information events found. Add one to get started!'}
+            </div>
+          ) : unpinnedEvents.length > 0 && (
         <div>
           {pinnedEvents.length > 0 && (
             <h2 className="text-xl font-semibold mb-4 text-gray-700">All Information</h2>
@@ -390,6 +687,13 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                       <MapPinIcon className="h-4 w-4" />
                     </button>
                     <button
+                      onClick={() => handleOpenTagEditor(event)}
+                      className="p-1.5 text-purple-500 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
+                      title="Edit Tags"
+                    >
+                      <TagIcon className="h-4 w-4" />
+                    </button>
+                    <button
                       onClick={() => handleEditEvent(event)}
                       className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                       title="Edit Event"
@@ -413,10 +717,28 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
                     <div className="text-gray-400 italic">No content</div>
                   )}
                 </div>
+                
+                {/* Tags Footer */}
+                <div className="mt-auto pt-3 border-t border-gray-200">
+                  {event.tags && event.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {event.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Edit/Add Event Modal */}
@@ -430,6 +752,116 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
           prePopulatedTags="life_info"
         />
       )}
+
+      {/* Tag Editing Modal */}
+      {editingTags.eventId && (() => {
+        // Get current event to check existing tags
+        const currentEvent = allEvents.find(e => e.id === editingTags.eventId);
+        const currentTagsArray = editingTags.tags 
+          ? editingTags.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+          : [];
+        
+        // Get tags from other cards (exclude current card's tags)
+        const otherTags = allTags.filter(tag => !currentTagsArray.includes(tag));
+        
+        // Function to add tag to current tags
+        const handleAddTag = (tagToAdd) => {
+          if (!currentTagsArray.includes(tagToAdd)) {
+            const updatedTags = currentTagsArray.length > 0
+              ? [...currentTagsArray, tagToAdd].join(', ')
+              : tagToAdd;
+            setEditingTags({ ...editingTags, tags: updatedTags });
+          }
+        };
+        
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Edit Tags</h3>
+                <button
+                  onClick={handleCancelTagEditing}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={editingTags.tags}
+                  onChange={(e) => setEditingTags({ ...editingTags, tags: e.target.value })}
+                  placeholder="e.g., tag1, tag2, tag3"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400"
+                  autoFocus
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  Enter tags separated by commas. Tags will be saved as <code className="bg-gray-100 px-1 rounded">event_info_tags:tag1,tag2,tag3</code>
+                </p>
+              </div>
+              
+              {/* Current Tags */}
+              {currentTagsArray.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Current Tags
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {currentTagsArray.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 text-sm font-medium bg-purple-100 text-purple-700 rounded-full"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Tags from Other Cards */}
+              {otherTags.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tags from Other Cards (click to add)
+                  </label>
+                  <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50">
+                    {otherTags.map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => handleAddTag(tag)}
+                        className="px-3 py-1 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-full hover:bg-purple-50 hover:border-purple-400 hover:text-purple-700 transition-colors cursor-pointer"
+                        title={`Click to add "${tag}"`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={handleCancelTagEditing}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveTags}
+                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                >
+                  Save Tags
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

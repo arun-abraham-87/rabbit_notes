@@ -2,27 +2,153 @@ import React, { useState, useEffect } from 'react';
 import { UserIcon, XMarkIcon, CodeBracketIcon, PencilIcon, PhotoIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
+import { updateNoteById } from '../utils/ApiUtils';
 
-const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag }) => {
+const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const API_BASE_URL = 'http://localhost:5001';
 
   // Handle ESC key to close modal
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape' && showImageModal) {
-        setShowImageModal(false);
-        setSelectedImage(null);
+      if (e.key === 'Escape') {
+        if (showImageModal) {
+          setShowImageModal(false);
+          setSelectedImage(null);
+        }
+        if (showImageUpload) {
+          setShowImageUpload(false);
+          setIsDragging(false);
+          setUploading(false);
+        }
       }
     };
 
-    if (showImageModal) {
+    if (showImageModal || showImageUpload) {
       window.addEventListener('keydown', handleEscape);
       return () => {
         window.removeEventListener('keydown', handleEscape);
       };
     }
-  }, [showImageModal]);
+  }, [showImageModal, showImageUpload]);
+
+  // Upload image function
+  const uploadImage = async (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      alert('Please select a valid image file');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`${API_BASE_URL}/api/images`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      const imageUrl = `${API_BASE_URL}${data.imageUrl}`;
+      
+      // Update the person's note with the new photo
+      const lines = note.content.split('\n');
+      const photoLines = lines.filter(line => line.startsWith('meta::photo::'));
+      
+      // Add the new photo URL to the content
+      let updatedContent = note.content;
+      if (!photoLines.some(line => line.includes(imageUrl))) {
+        updatedContent += `\nmeta::photo::${imageUrl}`;
+      }
+      
+      // Update the note via API
+      await updateNoteById(note.id, updatedContent);
+      
+      // Call onUpdate callback to update parent state
+      if (onUpdate) {
+        onUpdate({ ...note, content: updatedContent });
+      }
+      
+      setShowImageUpload(false);
+      setUploading(false);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
+      setUploading(false);
+    }
+  };
+
+  // Handle drag and drop
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFile = files.find(file => file.type.startsWith('image/'));
+    
+    if (imageFile) {
+      uploadImage(imageFile);
+    } else {
+      alert('Please drop a valid image file');
+    }
+  };
+
+  // Handle paste
+  useEffect(() => {
+    if (!showImageUpload) return;
+
+    const handlePaste = async (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            await uploadImage(file);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [showImageUpload]);
+
+  // Handle file input change
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadImage(file);
+    }
+  };
   const getPersonInfo = (content) => {
     const lines = content.split('\n');
     const name = lines[0];
@@ -87,9 +213,17 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag }) => {
               </div>
             </button>
           ) : (
-            <div className="h-32 w-32 rounded-full bg-indigo-100 flex items-center justify-center">
+            <button
+              type="button"
+              className="h-32 w-32 rounded-full bg-indigo-100 flex items-center justify-center hover:bg-indigo-200 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 border-2 border-dashed border-indigo-300 hover:border-indigo-400"
+              title="Click to upload photo"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowImageUpload(true);
+              }}
+            >
               <UserIcon className="h-16 w-16 text-indigo-600" />
-            </div>
+            </button>
           )}
         </div>
         <div className="flex-1 min-w-0">
@@ -212,6 +346,73 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag }) => {
                 e.target.style.display = 'none';
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Image Upload Popup */}
+      {showImageUpload && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div 
+            className={`bg-white rounded-lg p-6 w-full max-w-md mx-4 ${
+              isDragging ? 'border-4 border-indigo-500 border-dashed' : ''
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Upload Photo</h3>
+              <button
+                onClick={() => {
+                  setShowImageUpload(false);
+                  setIsDragging(false);
+                  setUploading(false);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            {uploading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                <p className="mt-4 text-sm text-gray-600">Uploading image...</p>
+              </div>
+            ) : (
+              <>
+                <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  isDragging 
+                    ? 'border-indigo-500 bg-indigo-50' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}>
+                  <PhotoIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <p className="text-sm text-gray-600 mb-2">
+                    Drag and drop an image here, or click to select
+                  </p>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Or press Ctrl+V (Cmd+V on Mac) to paste from clipboard
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileInputChange}
+                    className="hidden"
+                    id="image-upload-input-person"
+                  />
+                  <label
+                    htmlFor="image-upload-input-person"
+                    className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer text-sm font-medium"
+                  >
+                    Select Image
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500 mt-4 text-center">
+                  Supported formats: JPG, PNG, GIF, WebP
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}

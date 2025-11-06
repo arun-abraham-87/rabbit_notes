@@ -15,6 +15,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const [rawNoteModal, setRawNoteModal] = useState({ open: false, content: '' });
   const [editPersonModal, setEditPersonModal] = useState({ open: false, personNote: null });
   const [addPersonModal, setAddPersonModal] = useState({ open: false });
+  const [bulkAddModal, setBulkAddModal] = useState({ open: false });
   const [deleteModal, setDeleteModal] = useState({ open: false, noteId: null, personName: '' });
 
   // Deduplicate notes by ID - single source of truth
@@ -127,6 +128,11 @@ const PeopleList = ({allNotes, setAllNotes}) => {
     setEditPersonModal({ open: false, personNote: null });
   };
 
+  // Handler for updating a person (e.g., when photo is uploaded)
+  const handleUpdatePerson = (updatedNote) => {
+    setAllNotes(allNotes.map(note => note.id === updatedNote.id ? updatedNote : note));
+  };
+
   // Handler for deleting a person
   const handleDeletePerson = async (id) => {
     try {
@@ -155,6 +161,49 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       return response;
     } catch (error) {
       console.error('Error adding person:', error);
+      throw error;
+    }
+  };
+
+  // Handler for bulk adding people
+  const handleBulkAddPeople = async (namesText, tagsText) => {
+    try {
+      // Parse names (one per line, trim whitespace, filter empty lines)
+      const names = namesText
+        .split('\n')
+        .map(name => name.trim())
+        .filter(name => name.length > 0);
+
+      // Parse tags (comma-separated or one per line, trim whitespace, filter empty)
+      const tags = tagsText
+        .split(/[,\n]/)
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0);
+
+      if (names.length === 0) {
+        throw new Error('Please enter at least one name');
+      }
+
+      // Create all people
+      const createdPeople = [];
+      for (const name of names) {
+        let content = `${name}\nmeta::person::${new Date().toISOString()}`;
+        
+        // Add tags
+        tags.forEach(tag => {
+          content += `\nmeta::tag::${tag}`;
+        });
+
+        const response = await createNote(content);
+        createdPeople.push(response);
+      }
+
+      // Update state with all created people
+      setAllNotes([...allNotes, ...createdPeople]);
+      
+      return createdPeople;
+    } catch (error) {
+      console.error('Error bulk adding people:', error);
       throw error;
     }
   };
@@ -193,6 +242,13 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           >
             <PlusIcon className="h-5 w-5" />
             <span>Add People</span>
+          </button>
+          <button
+            onClick={() => setBulkAddModal({ open: true })}
+            className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <PlusIcon className="h-5 w-5" />
+            <span>Bulk Add</span>
           </button>
           <button
             onClick={() => setViewMode('grid')}
@@ -354,6 +410,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
                       onShowRaw={(content) => setRawNoteModal({ open: true, content })}
                       onEdit={(note) => setEditPersonModal({ open: true, personNote: note })}
                       onRemoveTag={handleRemoveTag}
+                      onUpdate={handleUpdatePerson}
                     />
                   ))}
                 </div>
@@ -371,6 +428,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
               onEdit={(note) => setEditPersonModal({ open: true, personNote: note })}
               onRemoveTag={handleRemoveTag}
               onDelete={handleDeletePerson}
+              onUpdate={handleUpdatePerson}
             />
           ))}
         </div>
@@ -407,7 +465,143 @@ const PeopleList = ({allNotes, setAllNotes}) => {
         />
       )}
 
+      {/* Bulk Add Modal */}
+      {bulkAddModal.open && (
+        <BulkAddPeopleModal
+          isOpen={bulkAddModal.open}
+          onClose={() => setBulkAddModal({ open: false })}
+          onBulkAdd={handleBulkAddPeople}
+        />
+      )}
 
+    </div>
+  );
+};
+
+// Bulk Add People Modal Component
+const BulkAddPeopleModal = ({ isOpen, onClose, onBulkAdd }) => {
+  const [namesText, setNamesText] = useState('');
+  const [tagsText, setTagsText] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    if (!namesText.trim()) {
+      setError('Please enter at least one name');
+      return;
+    }
+
+    setIsSaving(true);
+    setError('');
+
+    try {
+      await onBulkAdd(namesText, tagsText);
+      // Reset form
+      setNamesText('');
+      setTagsText('');
+      setError('');
+      onClose();
+    } catch (error) {
+      setError(error.message || 'Failed to add people. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setNamesText('');
+    setTagsText('');
+    setError('');
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Bulk Add People</h2>
+          <button
+            onClick={handleCancel}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {/* Names Textarea */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Names (one per line)
+            </label>
+            <textarea
+              value={namesText}
+              onChange={(e) => {
+                setNamesText(e.target.value);
+                setError('');
+              }}
+              placeholder="Enter names, one per line&#10;John Doe&#10;Jane Smith&#10;Bob Johnson"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              rows={8}
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Enter one name per line. Empty lines will be ignored.
+            </p>
+          </div>
+
+          {/* Tags Textarea */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tags (comma-separated or one per line)
+            </label>
+            <textarea
+              value={tagsText}
+              onChange={(e) => setTagsText(e.target.value)}
+              placeholder="Enter tags separated by commas or one per line&#10;family, friends&#10;colleague"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              rows={4}
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Tags can be separated by commas or entered one per line. All tags will be applied to all people.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            onClick={handleCancel}
+            disabled={isSaving}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isSaving || !namesText.trim()}
+            className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isSaving ? (
+              <>
+                <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <PlusIcon className="h-4 w-4" />
+                <span>Add People</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

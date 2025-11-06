@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { UserIcon, XMarkIcon, CodeBracketIcon, PencilIcon, PhotoIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { updateNoteById, deleteImageById } from '../utils/ApiUtils';
 
-const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
+const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes = [] }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showImageUpload, setShowImageUpload] = useState(false);
@@ -213,10 +213,156 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
       .filter(line => line.startsWith('meta::photo::'))
       .map(line => line.replace('meta::photo::', '').trim());
 
-    return { name, tags, metaInfo, photos };
+    // Get relationships
+    const relationships = lines
+      .filter(line => line.startsWith('meta::relationship::'))
+      .map(line => {
+        const parts = line.split('::');
+        return {
+          type: parts[2], // e.g., 'father_of'
+          personId: parts[3] // person ID
+        };
+      });
+
+    return { name, tags, metaInfo, photos, relationships };
   };
 
-  const { name, tags, metaInfo, photos } = getPersonInfo(note.content);
+  const { name, tags, metaInfo, photos, relationships } = getPersonInfo(note.content);
+
+  // Helper function to get reverse relationship type
+  const getReverseRelationshipType = (type) => {
+    const reverseMap = {
+      'father_of': 'child_of',
+      'mother_of': 'child_of',
+      'brother_of': 'brother_of',
+      'sister_of': 'sister_of',
+      'spouse_of': 'spouse_of',
+      'uncle_of': 'nephew_of',
+      'aunt_of': 'niece_of',
+      'cousin_of': 'cousin_of',
+      'grandfather_of': 'grandchild_of',
+      'grandmother_of': 'grandchild_of',
+    };
+    return reverseMap[type];
+  };
+
+  // Also get reverse relationships (relationships from other people pointing to this person)
+  const reverseRelationships = useMemo(() => {
+    const reverse = [];
+    allNotes.forEach(otherNote => {
+      if (otherNote.id === note.id) return; // Skip self
+      
+      const otherLines = otherNote.content.split('\n');
+      const otherRelationships = otherLines
+        .filter(line => line.startsWith('meta::relationship::'))
+        .map(line => {
+          const parts = line.split('::');
+          return {
+            type: parts[2],
+            personId: parts[3]
+          };
+        });
+      
+      // Check if any relationship points to this person
+      otherRelationships.forEach(rel => {
+        if (rel.personId === note.id) {
+          // This is a reverse relationship - other person has relationship pointing to this person
+          // Get the reverse type
+          const reverseType = getReverseRelationshipType(rel.type);
+          if (reverseType) {
+            reverse.push({
+              type: reverseType,
+              personId: otherNote.id
+            });
+          }
+        }
+      });
+    });
+    return reverse;
+  }, [allNotes, note.id]);
+
+  // Combine relationships and reverse relationships, removing duplicates
+  const allRelationships = useMemo(() => {
+    const combined = [...relationships];
+    reverseRelationships.forEach(revRel => {
+      // Check if this reverse relationship already exists
+      const exists = relationships.some(rel => 
+        rel.type === revRel.type && rel.personId === revRel.personId
+      );
+      if (!exists) {
+        combined.push(revRel);
+      }
+    });
+    return combined;
+  }, [relationships, reverseRelationships]);
+
+  // Relationship type labels
+  const relationshipLabels = {
+    'father_of': 'Father of',
+    'mother_of': 'Mother of',
+    'brother_of': 'Brother of',
+    'sister_of': 'Sister of',
+    'spouse_of': 'Spouse of',
+    'child_of': 'Child of',
+    'son_of': 'Son of',
+    'daughter_of': 'Daughter of',
+    'uncle_of': 'Uncle of',
+    'aunt_of': 'Aunt of',
+    'cousin_of': 'Cousin of',
+    'grandfather_of': 'Grandfather of',
+    'grandmother_of': 'Grandmother of',
+    'grandchild_of': 'Grandchild of',
+    'nephew_of': 'Nephew of',
+    'niece_of': 'Niece of',
+  };
+
+  // Get reverse relationship label for display
+  const getReverseRelationshipLabel = (relType, otherPersonId) => {
+    const otherPerson = allNotes.find(n => n.id === otherPersonId);
+    if (!otherPerson) return relationshipLabels[relType] || relType;
+    
+    const otherPersonLines = otherPerson.content.split('\n');
+    const thisPersonLines = note.content.split('\n');
+    
+    // If this person has "child_of" relationship, check if other person is father or mother
+    if (relType === 'child_of') {
+      // Check if this person has son_of or daughter_of relationship
+      const hasSonOf = thisPersonLines.some(line => 
+        line.startsWith(`meta::relationship::son_of::${otherPersonId}`)
+      );
+      const hasDaughterOf = thisPersonLines.some(line => 
+        line.startsWith(`meta::relationship::daughter_of::${otherPersonId}`)
+      );
+      
+      if (hasSonOf) return 'Son of';
+      if (hasDaughterOf) return 'Daughter of';
+      
+      // Check if other person has father_of or mother_of pointing to this person
+      const hasFatherOf = otherPersonLines.some(line => 
+        line.startsWith(`meta::relationship::father_of::${note.id}`)
+      );
+      const hasMotherOf = otherPersonLines.some(line => 
+        line.startsWith(`meta::relationship::mother_of::${note.id}`)
+      );
+      
+      if (hasFatherOf || hasMotherOf) {
+        // Show as child_of since we can't determine son/daughter
+        return 'Child of';
+      }
+    }
+    
+    return relationshipLabels[relType] || relType;
+  };
+
+  // Get person name by ID
+  const getPersonName = (personId) => {
+    const personNote = allNotes.find(n => n.id === personId);
+    if (personNote) {
+      const lines = personNote.content.split('\n');
+      return lines[0]; // First line is the name
+    }
+    return personId;
+  };
 
   const renderMetaValue = (info) => {
     if (info.type === 'date') {
@@ -286,6 +432,32 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
                   {info.name}: {renderMetaValue(info)}
                 </p>
               ))}
+            </div>
+          )}
+
+          {/* Relationships Section */}
+          {allRelationships && allRelationships.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {allRelationships.map((rel, index) => {
+                const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                const personName = getPersonName(rel.personId);
+                const relatedPerson = allNotes.find(n => n.id === rel.personId);
+                return (
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (relatedPerson && onEdit) {
+                        onEdit(relatedPerson);
+                      }
+                    }}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline text-left"
+                    title={`Click to view ${personName}`}
+                  >
+                    {relLabel}: {personName}
+                  </button>
+                );
+              })}
             </div>
           )}
           

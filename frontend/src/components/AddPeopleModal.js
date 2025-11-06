@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { XMarkIcon, PlusIcon, PhotoIcon } from '@heroicons/react/24/solid';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { getDateInDDMMYYYYFormat } from '../utils/DateUtils';
+import { updateNoteById } from '../utils/ApiUtils';
 
 const API_BASE_URL = 'http://localhost:5001';
 
 
 
-const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null, onDelete, pastedImageFile = null }) => {
+const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null, onDelete, pastedImageFile = null, setAllNotes = null }) => {
   const nameInputRef = useRef(null);
   const [name, setName] = useState('');
   const [tagInput, setTagInput] = useState('');
@@ -25,6 +26,58 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [relationships, setRelationships] = useState([]);
+
+  // Relationship types
+  const relationshipTypes = [
+    { value: 'father_of', label: 'Father of' },
+    { value: 'mother_of', label: 'Mother of' },
+    { value: 'brother_of', label: 'Brother of' },
+    { value: 'sister_of', label: 'Sister of' },
+    { value: 'spouse_of', label: 'Spouse of' },
+    { value: 'child_of', label: 'Child of' },
+    { value: 'son_of', label: 'Son of' },
+    { value: 'daughter_of', label: 'Daughter of' },
+    { value: 'uncle_of', label: 'Uncle of' },
+    { value: 'aunt_of', label: 'Aunt of' },
+    { value: 'cousin_of', label: 'Cousin of' },
+    { value: 'grandfather_of', label: 'Grandfather of' },
+    { value: 'grandmother_of', label: 'Grandmother of' },
+    { value: 'grandchild_of', label: 'Grandchild of' },
+  ];
+
+  // Reverse relationship mapping
+  const getReverseRelationship = (type) => {
+    const reverseMap = {
+      'father_of': 'child_of',
+      'mother_of': 'child_of',
+      'brother_of': 'brother_of',
+      'sister_of': 'sister_of',
+      'spouse_of': 'spouse_of',
+      'child_of': null, // Need to determine if father_of or mother_of
+      'son_of': null, // Need to determine if father_of or mother_of
+      'daughter_of': null, // Need to determine if father_of or mother_of
+      'uncle_of': 'nephew_of',
+      'aunt_of': 'niece_of',
+      'cousin_of': 'cousin_of',
+      'grandfather_of': 'grandchild_of',
+      'grandmother_of': 'grandchild_of',
+      'grandchild_of': null, // Need to determine if grandfather_of or grandmother_of
+    };
+    return reverseMap[type];
+  };
+
+  // Get all people for relationship selection
+  const allPeople = useMemo(() => {
+    return allNotes
+      .filter(note => note.content && note.content.includes('meta::person::'))
+      .map(note => {
+        const lines = note.content.split('\n');
+        const name = lines[0];
+        return { id: note.id, name };
+      })
+      .filter(person => !personNote || person.id !== personNote.id); // Exclude current person when editing
+  }, [allNotes, personNote]);
 
   // Get all unique info types from all notes
   const suggestedInfoTypes = useMemo(() => {
@@ -72,6 +125,17 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       // Get photos from meta::photo lines
       const photoLines = lines.filter(line => line.startsWith('meta::photo::'));
       setPhotos(photoLines.map(line => line.replace('meta::photo::', '').trim()));
+      
+      // Get relationships from meta::relationship lines
+      const relationshipLines = lines.filter(line => line.startsWith('meta::relationship::'));
+      const parsedRelationships = relationshipLines.map(line => {
+        const parts = line.split('::');
+        return {
+          type: parts[2], // e.g., 'father_of'
+          personId: parts[3] // person ID
+        };
+      });
+      setRelationships(parsedRelationships);
     } else {
       setName('');
       setTagList([]);
@@ -81,6 +145,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       setInfoTypeTypes({});
       setPhotos([]);
       setPhotoInput('');
+      setRelationships([]);
     }
     setTagError('');
     setTagFilter('');
@@ -205,6 +270,21 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       e.preventDefault();
       handleAddPhoto();
     }
+  };
+
+  // Relationship handlers
+  const handleAddRelationship = (type, personId) => {
+    if (type && personId) {
+      // Check if relationship already exists
+      const exists = relationships.some(rel => rel.type === type && rel.personId === personId);
+      if (!exists) {
+        setRelationships([...relationships, { type, personId }]);
+      }
+    }
+  };
+
+  const handleRemoveRelationship = (index) => {
+    setRelationships(relationships.filter((_, i) => i !== index));
   };
 
   // Upload image function
@@ -417,12 +497,113 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       }
     });
 
+    // Add relationships
+    relationships.forEach(rel => {
+      if (rel.type && rel.personId) {
+        content += `\nmeta::relationship::${rel.type}::${rel.personId}`;
+      }
+    });
+
     try {
+      let savedPersonId;
       if (personNote) {
         await onEdit(personNote.id, content);
+        savedPersonId = personNote.id;
       } else {
         if (onAdd) {
-          await onAdd(content);
+          const newNote = await onAdd(content);
+          savedPersonId = newNote.id;
+        }
+      }
+
+      // Auto-create reverse relationships
+      if (savedPersonId) {
+        for (const rel of relationships) {
+          if (rel.type && rel.personId) {
+            const otherPerson = allNotes.find(n => n.id === rel.personId);
+            if (otherPerson) {
+              const otherPersonContent = otherPerson.content;
+              const lines = otherPersonContent.split('\n');
+              
+              // Determine reverse relationship
+              let reverseType = getReverseRelationship(rel.type);
+              
+              // Handle special cases where we need to check the other person's relationships
+              if (rel.type === 'child_of' || rel.type === 'son_of' || rel.type === 'daughter_of') {
+                // Check if the other person is father or mother
+                const hasFatherOf = lines.some(line => 
+                  line.startsWith(`meta::relationship::father_of::${savedPersonId}`)
+                );
+                const hasMotherOf = lines.some(line => 
+                  line.startsWith(`meta::relationship::mother_of::${savedPersonId}`)
+                );
+                
+                if (hasFatherOf) {
+                  reverseType = 'father_of';
+                } else if (hasMotherOf) {
+                  reverseType = 'mother_of';
+                } else {
+                  // Default to child_of if we can't determine
+                  reverseType = 'child_of';
+                }
+              } else if (rel.type === 'grandchild_of') {
+                // Check if the other person is grandfather or grandmother
+                const hasGrandfatherOf = lines.some(line => 
+                  line.startsWith(`meta::relationship::grandfather_of::${savedPersonId}`)
+                );
+                const hasGrandmotherOf = lines.some(line => 
+                  line.startsWith(`meta::relationship::grandmother_of::${savedPersonId}`)
+                );
+                
+                if (hasGrandfatherOf) {
+                  reverseType = 'grandfather_of';
+                } else if (hasGrandmotherOf) {
+                  reverseType = 'grandmother_of';
+                } else {
+                  reverseType = 'grandchild_of';
+                }
+              } else if (rel.type === 'father_of' || rel.type === 'mother_of') {
+                // When A is father_of/mother_of B, B should be child_of A
+                // Check if B (otherPerson) has son_of or daughter_of relationships to A (savedPersonId)
+                const hasSonOf = lines.some(line => 
+                  line.startsWith(`meta::relationship::son_of::${savedPersonId}`)
+                );
+                const hasDaughterOf = lines.some(line => 
+                  line.startsWith(`meta::relationship::daughter_of::${savedPersonId}`)
+                );
+                
+                if (hasSonOf) {
+                  reverseType = 'son_of';
+                } else if (hasDaughterOf) {
+                  reverseType = 'daughter_of';
+                } else {
+                  reverseType = 'child_of';
+                }
+              }
+              
+              // Check if reverse relationship already exists
+              const reverseExists = lines.some(line => 
+                line.startsWith(`meta::relationship::${reverseType}::${savedPersonId}`)
+              );
+              
+              if (reverseType && !reverseExists) {
+                // Add reverse relationship to other person's note
+                const updatedContent = otherPersonContent + `\nmeta::relationship::${reverseType}::${savedPersonId}`;
+                await updateNoteById(rel.personId, updatedContent);
+                
+                // Update parent state if setAllNotes is provided
+                if (setAllNotes) {
+                  setAllNotes(prevNotes => 
+                    prevNotes.map(note => 
+                      note.id === rel.personId 
+                        ? { ...note, content: updatedContent }
+                        : note
+                    )
+                  );
+                }
+              }
+            }
+          }
         }
       }
       // Reset form
@@ -773,6 +954,84 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
             <p className="text-xs text-gray-400 mt-1">
               Enter photo URLs (one per line). Press Enter to add.
             </p>
+          </div>
+
+          {/* Relationships Section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Relationships
+            </label>
+            
+            {/* Add Relationship */}
+            <div className="flex gap-2 mb-3">
+              <select
+                id="relationship-type-select"
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                defaultValue=""
+              >
+                <option value="">Select relationship type</option>
+                {relationshipTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                id="relationship-person-select"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                defaultValue=""
+              >
+                <option value="">Select person</option>
+                {allPeople.map(person => (
+                  <option key={person.id} value={person.id}>
+                    {person.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => {
+                  const typeSelect = document.getElementById('relationship-type-select');
+                  const personSelect = document.getElementById('relationship-person-select');
+                  const type = typeSelect.value;
+                  const personId = personSelect.value;
+                  if (type && personId) {
+                    handleAddRelationship(type, personId);
+                    typeSelect.value = '';
+                    personSelect.value = '';
+                  }
+                }}
+                className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 flex items-center gap-1"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Add
+              </button>
+            </div>
+
+            {/* Display Relationships */}
+            {relationships.length > 0 && (
+              <div className="space-y-2">
+                {relationships.map((rel, index) => {
+                  const relType = relationshipTypes.find(t => t.value === rel.type);
+                  const person = allPeople.find(p => p.id === rel.personId);
+                  return (
+                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                      <span className="text-sm text-gray-700 flex-1">
+                        <span className="font-medium">{relType?.label || rel.type}</span>
+                        {' '}
+                        <span className="text-gray-600">{person?.name || rel.personId}</span>
+                      </span>
+                      <button
+                        onClick={() => handleRemoveRelationship(index)}
+                        className="text-gray-400 hover:text-red-600"
+                        title="Remove relationship"
+                      >
+                        <XMarkIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

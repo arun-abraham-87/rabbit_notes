@@ -450,6 +450,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
                       onEdit={(note) => setEditPersonModal({ open: true, personNote: note })}
                       onRemoveTag={handleRemoveTag}
                       onUpdate={handleUpdatePerson}
+                      allNotes={uniqueNotes}
                     />
                   ))}
                 </div>
@@ -468,6 +469,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
               onRemoveTag={handleRemoveTag}
               onDelete={handleDeletePerson}
               onUpdate={handleUpdatePerson}
+              allNotes={uniqueNotes}
             />
           ))}
         </div>
@@ -488,6 +490,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           allNotes={allNotes}
           onAdd={handleAddPerson}
           pastedImageFile={pastedImageFile}
+          setAllNotes={setAllNotes}
         />
       )}
 
@@ -502,6 +505,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           onEdit={handleEditPerson}
           onDelete={handleDeletePerson}
           personNote={editPersonModal.personNote}
+          setAllNotes={setAllNotes}
         />
       )}
 

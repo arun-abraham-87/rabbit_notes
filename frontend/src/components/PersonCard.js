@@ -118,6 +118,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [hoveredRelationship, setHoveredRelationship] = useState(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   const API_BASE_URL = 'http://localhost:5001';
 
@@ -197,7 +198,50 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
     }
   };
 
-  // Handle drag and drop
+  // Handle drag and drop on card
+  const handleCardDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only show drag over effect if dragging files
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleCardDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only show drag over effect if dragging files
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleCardDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only remove drag over effect if leaving the card
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleCardDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFile = files.find(file => file.type.startsWith('image/'));
+    
+    if (imageFile) {
+      await uploadImage(imageFile);
+    } else {
+      alert('Please drop a valid image file');
+    }
+  };
+
+  // Handle drag and drop (for image upload popup)
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -447,7 +491,15 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
   };
 
   return (
-    <div className="bg-white rounded-lg border p-6 shadow-sm flex flex-col hover:shadow-md transition-shadow h-full">
+    <div 
+      className={`relative bg-white rounded-lg border p-6 shadow-sm flex flex-col hover:shadow-md transition-shadow h-full ${
+        isDraggingOver ? 'border-indigo-500 border-2 bg-indigo-50' : ''
+      }`}
+      onDragOver={handleCardDragOver}
+      onDragEnter={handleCardDragEnter}
+      onDragLeave={handleCardDragLeave}
+      onDrop={handleCardDrop}
+    >
       <div className="flex items-start gap-3 flex-grow">
         {!hidePhotos && (
         <div className="flex-shrink-0">
@@ -781,6 +833,16 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                 </p>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Uploading Overlay */}
+      {uploading && (
+        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg z-10">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>
+            <p className="text-sm text-gray-600">Uploading image...</p>
           </div>
         </div>
       )}

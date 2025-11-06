@@ -3928,6 +3928,30 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                           updateNote(timelineId, updatedTimelineResponse.content || updatedTimelineContent);
                         }
 
+                        // Clear cache for this timeline to force reload
+                        setTimelineEventsCache(prev => {
+                          const updated = { ...prev };
+                          delete updated[timelineId];
+                          return updated;
+                        });
+
+                        // Refresh timeline notes from API
+                        try {
+                          const params = {
+                            search: searchQuery || undefined,
+                            searchTitlesOnly: searchTitlesOnly ? 'true' : undefined
+                          };
+                          const response = await getTimelines(params);
+                          setTimelineNotes(response.timelines || []);
+                        } catch (error) {
+                          console.error('Error refreshing timelines:', error);
+                        }
+
+                        // Reload timeline events if timeline is expanded
+                        if (!collapsedTimelines.has(timelineId)) {
+                          await loadTimelineEvents(timelineId);
+                        }
+
                         //console.log('Successfully linked event to timeline');
                         setLinkEventModal({ isOpen: false, timelineId: null, searchQuery: '', selectedEventId: null });
                       } catch (error) {

@@ -2782,6 +2782,18 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                             <div className="font-medium text-amber-800 text-xs mb-1">Notes:</div>
                                             <div className="whitespace-pre-wrap">
                                               {(() => {
+                                                // Helper function to extract hostname from URL
+                                                const getHostname = (url) => {
+                                                  try {
+                                                    const urlObj = new URL(url);
+                                                    return urlObj.hostname.replace(/^www\./, ''); // Remove www. prefix if present
+                                                  } catch (e) {
+                                                    // If URL parsing fails, try to extract hostname manually
+                                                    const match = url.match(/https?:\/\/(?:www\.)?([^\/\s]+)/);
+                                                    return match ? match[1] : url;
+                                                  }
+                                                };
+                                                
                                                 // Check if notes contain a URL
                                                 const urlRegex = /(https?:\/\/[^\s]+)/g;
                                                 const parts = event.notes.split(urlRegex);
@@ -2789,6 +2801,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                 return parts.map((part, index) => {
                                                   // Check if this part is a URL
                                                   if (part.match(/^https?:\/\//)) {
+                                                    const hostname = getHostname(part);
                                                     return (
                                                       <a
                                                         key={index}
@@ -2797,8 +2810,9 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                                         rel="noopener noreferrer"
                                                         onClick={(e) => e.stopPropagation()}
                                                         className="text-blue-600 hover:text-blue-800 underline break-all"
+                                                        title={part} // Show full URL on hover
                                                       >
-                                                        {part}
+                                                        {hostname}
                                                       </a>
                                                     );
                                                   }

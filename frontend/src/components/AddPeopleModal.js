@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { XMarkIcon, PlusIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, PlusIcon, PhotoIcon } from '@heroicons/react/24/solid';
 import { createNote, updateNoteById } from '../utils/ApiUtils';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { getDateInDDMMYYYYFormat } from '../utils/DateUtils';
+
+const API_BASE_URL = 'http://localhost:5001';
 
 
 
@@ -18,6 +20,11 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
   const [newInfoType, setNewInfoType] = useState('');
   const [newInfoTypeType, setNewInfoTypeType] = useState('text');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [photoInput, setPhotoInput] = useState('');
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Get all unique info types from all notes
   const suggestedInfoTypes = useMemo(() => {
@@ -61,6 +68,10 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       setInfoTypes(Array.from(types));
       setInfoValues(values);
       setInfoTypeTypes(typeTypes);
+      
+      // Get photos from meta::photo lines
+      const photoLines = lines.filter(line => line.startsWith('meta::photo::'));
+      setPhotos(photoLines.map(line => line.replace('meta::photo::', '').trim()));
     } else {
       setName('');
       setTagList([]);
@@ -68,6 +79,8 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       setInfoTypes([]);
       setInfoValues({});
       setInfoTypeTypes({});
+      setPhotos([]);
+      setPhotoInput('');
     }
     setTagError('');
     setTagFilter('');
@@ -167,6 +180,170 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
     setInfoTypeTypes(newTypeTypes);
   };
 
+  const handleAddPhoto = () => {
+    const photoUrl = photoInput.trim();
+    if (photoUrl && !photos.includes(photoUrl)) {
+      // Validate URL
+      try {
+        new URL(photoUrl);
+        setPhotos([...photos, photoUrl]);
+        setPhotoInput('');
+      } catch (e) {
+        // If not a valid URL, still allow it (might be a local path or other format)
+        setPhotos([...photos, photoUrl]);
+        setPhotoInput('');
+      }
+    }
+  };
+
+  const handleRemovePhoto = (photoToRemove) => {
+    setPhotos(photos.filter(photo => photo !== photoToRemove));
+  };
+
+  const handlePhotoInputKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddPhoto();
+    }
+  };
+
+  // Upload image function
+  const uploadImage = async (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      alert('Please select a valid image file');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`${API_BASE_URL}/api/images`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      const imageUrl = `${API_BASE_URL}${data.imageUrl}`;
+      
+      // Add the uploaded image URL to photos
+      if (!photos.includes(imageUrl)) {
+        setPhotos([...photos, imageUrl]);
+      }
+      
+      setShowImageUpload(false);
+      setUploading(false);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
+      setUploading(false);
+    }
+  };
+
+  // Handle drag and drop
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFile = files.find(file => file.type.startsWith('image/'));
+    
+    if (imageFile) {
+      uploadImage(imageFile);
+    } else {
+      alert('Please drop a valid image file');
+    }
+  };
+
+  // Handle paste
+  useEffect(() => {
+    if (!showImageUpload) return;
+
+    const handlePaste = async (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            // Upload the pasted image
+            if (!file.type.startsWith('image/')) {
+              alert('Please paste a valid image file');
+              return;
+            }
+
+            setUploading(true);
+            try {
+              const formData = new FormData();
+              formData.append('image', file);
+
+              const response = await fetch(`${API_BASE_URL}/api/images`, {
+                method: 'POST',
+                body: formData
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to upload image');
+              }
+
+              const data = await response.json();
+              const imageUrl = `${API_BASE_URL}${data.imageUrl}`;
+              
+              // Add the uploaded image URL to photos
+              setPhotos(prev => {
+                if (!prev.includes(imageUrl)) {
+                  return [...prev, imageUrl];
+                }
+                return prev;
+              });
+              
+              setShowImageUpload(false);
+              setUploading(false);
+            } catch (error) {
+              console.error('Error uploading image:', error);
+              alert('Failed to upload image. Please try again.');
+              setUploading(false);
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [showImageUpload, photos]);
+
+  // Handle file input change
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadImage(file);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!name.trim()) return;
 
@@ -183,6 +360,13 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
         const typeType = infoTypeTypes[type];
         let value = infoValues[type].trim();
         content += `\nmeta::info::${type}::${typeType}::${value}`;
+      }
+    });
+
+    // Add photos
+    photos.forEach(photo => {
+      if (photo.trim()) {
+        content += `\nmeta::photo::${photo.trim()}`;
       }
     });
 
@@ -206,6 +390,8 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       setInfoTypeTypes({});
       setNewInfoType('');
       setNewInfoTypeType('text');
+      setPhotos([]);
+      setPhotoInput('');
       onClose();
     } catch (error) {
       console.error('Error saving person:', error);
@@ -467,6 +653,80 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
               </div>
             )}
           </div>
+
+          {/* Photos Section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Photos
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={photoInput}
+                onChange={(e) => setPhotoInput(e.target.value)}
+                onKeyDown={handlePhotoInputKeyDown}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter photo URL and press Enter"
+              />
+              <button
+                onClick={handleAddPhoto}
+                disabled={!photoInput.trim()}
+                className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                <PhotoIcon className="h-4 w-4" />
+                Add
+              </button>
+              <button
+                onClick={() => setShowImageUpload(true)}
+                className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 flex items-center gap-1"
+                title="Upload image (drag & drop or paste)"
+              >
+                <PhotoIcon className="h-4 w-4" />
+                Upload
+              </button>
+            </div>
+            {photos.length > 0 && (
+              <div className="space-y-2">
+                {photos.map((photo, index) => (
+                  <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                    <img
+                      src={photo}
+                      alt={`Photo ${index + 1}`}
+                      className="h-12 w-12 object-cover rounded"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="hidden h-12 w-12 bg-gray-200 rounded items-center justify-center">
+                      <PhotoIcon className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <a
+                        href={photo}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:text-blue-800 truncate block"
+                        title={photo}
+                      >
+                        {photo}
+                      </a>
+                    </div>
+                    <button
+                      onClick={() => handleRemovePhoto(photo)}
+                      className="text-gray-400 hover:text-gray-600"
+                      title="Remove photo"
+                    >
+                      <XMarkIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mt-1">
+              Enter photo URLs (one per line). Press Enter to add.
+            </p>
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
@@ -504,6 +764,73 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
         title="Delete Person"
         message="Are you sure you want to delete this person? This action cannot be undone."
       />
+
+      {/* Image Upload Popup */}
+      {showImageUpload && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div 
+            className={`bg-white rounded-lg p-6 w-full max-w-md mx-4 ${
+              isDragging ? 'border-4 border-indigo-500 border-dashed' : ''
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Upload Image</h3>
+              <button
+                onClick={() => {
+                  setShowImageUpload(false);
+                  setIsDragging(false);
+                  setUploading(false);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            {uploading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                <p className="mt-4 text-sm text-gray-600">Uploading image...</p>
+              </div>
+            ) : (
+              <>
+                <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  isDragging 
+                    ? 'border-indigo-500 bg-indigo-50' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}>
+                  <PhotoIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <p className="text-sm text-gray-600 mb-2">
+                    Drag and drop an image here, or click to select
+                  </p>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Or press Ctrl+V (Cmd+V on Mac) to paste from clipboard
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileInputChange}
+                    className="hidden"
+                    id="image-upload-input"
+                  />
+                  <label
+                    htmlFor="image-upload-input"
+                    className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer text-sm font-medium"
+                  >
+                    Select Image
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500 mt-4 text-center">
+                  Supported formats: JPG, PNG, GIF, WebP
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

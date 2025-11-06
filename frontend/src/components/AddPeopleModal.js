@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { XMarkIcon, PlusIcon, PhotoIcon } from '@heroicons/react/24/solid';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { getDateInDDMMYYYYFormat } from '../utils/DateUtils';
@@ -7,7 +7,8 @@ const API_BASE_URL = 'http://localhost:5001';
 
 
 
-const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null, onDelete }) => {
+const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null, onDelete, pastedImageFile = null }) => {
+  const nameInputRef = useRef(null);
   const [name, setName] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tagList, setTagList] = useState([]);
@@ -210,7 +211,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
   const uploadImage = async (file) => {
     if (!file || !file.type.startsWith('image/')) {
       alert('Please select a valid image file');
-      return;
+      return Promise.reject(new Error('Invalid file type'));
     }
 
     setUploading(true);
@@ -224,23 +225,47 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       });
 
       if (!response.ok) {
-        throw new Error('Failed to upload image');
+        const errorText = await response.text();
+        console.error('Upload failed:', response.status, errorText);
+        throw new Error(`Failed to upload image: ${response.status}`);
       }
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (jsonError) {
+        console.error('Failed to parse response as JSON:', jsonError);
+        console.log('Response text:', responseText);
+        throw new Error('Failed to parse server response');
+      }
+
+      if (!data || !data.imageUrl) {
+        console.error('Invalid response data:', data);
+        throw new Error('Invalid response from server');
+      }
+
       const imageUrl = `${API_BASE_URL}${data.imageUrl}`;
       
       // Add the uploaded image URL to photos
-      if (!photos.includes(imageUrl)) {
-        setPhotos([...photos, imageUrl]);
-      }
+      setPhotos(prev => {
+        if (!prev.includes(imageUrl)) {
+          return [...prev, imageUrl];
+        }
+        return prev;
+      });
       
       setShowImageUpload(false);
       setUploading(false);
+      return Promise.resolve(imageUrl);
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Failed to upload image. Please try again.');
       setUploading(false);
+      // Only show alert if not called from auto-upload (pasted image)
+      if (!pastedImageFile) {
+        alert('Failed to upload image. Please try again.');
+      }
+      return Promise.reject(error);
     }
   };
 
@@ -342,6 +367,29 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       uploadImage(file);
     }
   };
+
+  // Auto-upload pasted image when modal opens
+  useEffect(() => {
+    if (isOpen && pastedImageFile && !personNote) {
+      // Upload the pasted image
+      const uploadAndFocus = async () => {
+        try {
+          await uploadImage(pastedImageFile);
+          // Focus the name input after image is uploaded
+          setTimeout(() => {
+            if (nameInputRef.current) {
+              nameInputRef.current.focus();
+            }
+          }, 100);
+        } catch (error) {
+          // Error is already handled in uploadImage function
+          console.error('Failed to upload pasted image:', error);
+        }
+      };
+      uploadAndFocus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, pastedImageFile, personNote]);
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
@@ -466,6 +514,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
               Name *
             </label>
             <input
+              ref={nameInputRef}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}

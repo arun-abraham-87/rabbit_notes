@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { UserIcon, XMarkIcon, CodeBracketIcon, PencilIcon, PhotoIcon } from '@heroicons/react/24/solid';
+import { UserIcon, XMarkIcon, CodeBracketIcon, PencilIcon, PhotoIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
-import { updateNoteById } from '../utils/ApiUtils';
+import { updateNoteById, deleteImageById } from '../utils/ApiUtils';
 
 const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
   const [showImageModal, setShowImageModal] = useState(false);
@@ -10,6 +10,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
 
   const API_BASE_URL = 'http://localhost:5001';
 
@@ -20,6 +21,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
         if (showImageModal) {
           setShowImageModal(false);
           setSelectedImage(null);
+          setImageSize({ width: 0, height: 0 });
         }
         if (showImageUpload) {
           setShowImageUpload(false);
@@ -149,6 +151,48 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
       uploadImage(file);
     }
   };
+
+  // Delete image function
+  const handleDeleteImage = async (imageUrl) => {
+    if (!window.confirm('Are you sure you want to delete this photo?')) {
+      return;
+    }
+
+    try {
+      // Extract image ID from URL
+      // URL format: http://localhost:5001/api/images/{imageId}.{ext}
+      const urlParts = imageUrl.split('/');
+      const filename = urlParts[urlParts.length - 1];
+      const imageId = filename.split('.')[0]; // Remove extension
+
+      // Delete image from backend
+      await deleteImageById(imageId);
+
+      // Remove the photo line from note content
+      const lines = note.content.split('\n');
+      const updatedLines = lines.filter(line => {
+        // Remove the line that contains this image URL
+        return !line.startsWith('meta::photo::') || !line.includes(imageUrl);
+      });
+      const updatedContent = updatedLines.join('\n');
+
+      // Update the note via API
+      await updateNoteById(note.id, updatedContent);
+
+      // Call onUpdate callback to update parent state
+      if (onUpdate) {
+        onUpdate({ ...note, content: updatedContent });
+      }
+
+      // Close the modal
+      setShowImageModal(false);
+      setSelectedImage(null);
+      setImageSize({ width: 0, height: 0 });
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      alert('Failed to delete image. Please try again.');
+    }
+  };
   const getPersonInfo = (content) => {
     const lines = content.split('\n');
     const name = lines[0];
@@ -194,6 +238,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedImage(photos[0]);
+                setImageSize({ width: 0, height: 0 });
                 setShowImageModal(true);
               }}
             >
@@ -257,6 +302,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedImage(photo);
+                      setImageSize({ width: 0, height: 0 });
                       setShowImageModal(true);
                     }}
                   >
@@ -324,19 +370,34 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
           onClick={() => {
             setShowImageModal(false);
             setSelectedImage(null);
+            setImageSize({ width: 0, height: 0 });
           }}
         >
           <div className="relative max-w-7xl max-h-full">
-            <button
-              onClick={() => {
-                setShowImageModal(false);
-                setSelectedImage(null);
-              }}
-              className="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-2 z-10 transition-colors"
-              title="Close"
-            >
-              <XMarkIcon className="h-6 w-6" />
-            </button>
+            <div className="absolute top-4 right-4 flex gap-2 z-10">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteImage(selectedImage);
+                }}
+                className="text-white hover:text-red-300 bg-black bg-opacity-50 rounded-full p-2 transition-colors"
+                title="Delete photo"
+              >
+                <TrashIcon className="h-6 w-6" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowImageModal(false);
+                  setSelectedImage(null);
+                  setImageSize({ width: 0, height: 0 });
+                }}
+                className="text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-2 transition-colors"
+                title="Close"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
             <img
               src={selectedImage}
               alt="Full size photo"
@@ -344,6 +405,31 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate }) => {
               onClick={(e) => e.stopPropagation()}
               onError={(e) => {
                 e.target.style.display = 'none';
+              }}
+              onLoad={(e) => {
+                const img = e.target;
+                const naturalWidth = img.naturalWidth;
+                const naturalHeight = img.naturalHeight;
+                setImageSize({ width: naturalWidth, height: naturalHeight });
+              }}
+              style={{
+                transform: (() => {
+                  if (imageSize.width === 0 || imageSize.height === 0) return 'scale(1)';
+                  
+                  const maxDimension = Math.max(imageSize.width, imageSize.height);
+                  
+                  // Small images (< 400px): scale 1.8x
+                  if (maxDimension < 400) {
+                    return 'scale(1.8)';
+                  }
+                  // Medium images (400px - 1000px): scale 1.5x
+                  else if (maxDimension < 1000) {
+                    return 'scale(1.5)';
+                  }
+                  // Large images: no scaling
+                  return 'scale(1)';
+                })(),
+                transition: 'transform 0.2s ease-in-out'
               }}
             />
           </div>

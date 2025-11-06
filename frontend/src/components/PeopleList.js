@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UserIcon, ViewColumnsIcon, Squares2X2Icon, XMarkIcon, MagnifyingGlassIcon, PencilIcon, PlusIcon, TagIcon } from '@heroicons/react/24/solid';
 import { CodeBracketIcon } from '@heroicons/react/24/outline';
 import { parseNoteContent } from '../utils/TextUtils';
@@ -17,6 +17,44 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const [addPersonModal, setAddPersonModal] = useState({ open: false });
   const [bulkAddModal, setBulkAddModal] = useState({ open: false });
   const [deleteModal, setDeleteModal] = useState({ open: false, noteId: null, personName: '' });
+  const [pastedImageFile, setPastedImageFile] = useState(null);
+
+  // Handle Cmd+V to paste image and open Add People modal
+  useEffect(() => {
+    const handlePaste = async (e) => {
+      // Only handle if not in an input/textarea and Cmd+V or Ctrl+V
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        try {
+          const clipboardItems = await navigator.clipboard.read();
+          const imageItem = clipboardItems.find(item => 
+            item.types.some(type => type.startsWith('image/'))
+          );
+
+          if (imageItem) {
+            e.preventDefault();
+            const imageType = imageItem.types.find(type => type.startsWith('image/'));
+            const blob = await imageItem.getType(imageType);
+            const file = new File([blob], 'pasted-image.png', { type: imageType });
+            
+            setPastedImageFile(file);
+            setAddPersonModal({ open: true });
+          }
+        } catch (error) {
+          // Clipboard API might not be available or user denied permission
+          console.log('Could not read clipboard:', error);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handlePaste);
+    return () => {
+      window.removeEventListener('keydown', handlePaste);
+    };
+  }, []);
 
   // Deduplicate notes by ID - single source of truth
   const uniqueNotes = useMemo(() => {
@@ -211,6 +249,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   // Handler for closing the add person modal
   const handleCloseAddModal = () => {
     setAddPersonModal({ open: false });
+    setPastedImageFile(null);
   };
 
   // Handler for removing a tag from a person
@@ -448,6 +487,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           onClose={handleCloseAddModal}
           allNotes={allNotes}
           onAdd={handleAddPerson}
+          pastedImageFile={pastedImageFile}
         />
       )}
 
@@ -471,6 +511,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           isOpen={bulkAddModal.open}
           onClose={() => setBulkAddModal({ open: false })}
           onBulkAdd={handleBulkAddPeople}
+          allNotes={uniqueNotes}
         />
       )}
 
@@ -479,11 +520,59 @@ const PeopleList = ({allNotes, setAllNotes}) => {
 };
 
 // Bulk Add People Modal Component
-const BulkAddPeopleModal = ({ isOpen, onClose, onBulkAdd }) => {
+const BulkAddPeopleModal = ({ isOpen, onClose, onBulkAdd, allNotes = [] }) => {
   const [namesText, setNamesText] = useState('');
   const [tagsText, setTagsText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
+
+  // Get all unique tags from all notes
+  const existingTags = useMemo(() => {
+    const tagSet = new Set();
+    allNotes
+      .filter(note => note.content && note.content.includes('meta::person::'))
+      .forEach(note => {
+        const tagLines = note.content
+          .split('\n')
+          .filter(line => line.startsWith('meta::tag::'))
+          .map(line => line.split('::')[2]);
+        tagLines.forEach(tag => tagSet.add(tag));
+      });
+    return Array.from(tagSet).sort();
+  }, [allNotes]);
+
+  // Filter existing tags based on input
+  const filteredExistingTags = useMemo(() => {
+    if (!tagFilter) return existingTags;
+    return existingTags.filter(tag =>
+      tag.toLowerCase().includes(tagFilter.toLowerCase())
+    );
+  }, [existingTags, tagFilter]);
+
+  // Handle tag selection (toggle)
+  const handleTagClick = (tag) => {
+    // Parse current tags
+    const currentTags = tagsText
+      .split(/[,\n]/)
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
+    
+    // Toggle tag: remove if present, add if not
+    if (currentTags.includes(tag)) {
+      // Remove tag
+      const newTags = currentTags
+        .filter(t => t !== tag)
+        .join(', ');
+      setTagsText(newTags);
+    } else {
+      // Add tag
+      const newTags = currentTags.length > 0 
+        ? `${tagsText}, ${tag}`
+        : tag;
+      setTagsText(newTags);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!namesText.trim()) {
@@ -511,6 +600,7 @@ const BulkAddPeopleModal = ({ isOpen, onClose, onBulkAdd }) => {
   const handleCancel = () => {
     setNamesText('');
     setTagsText('');
+    setTagFilter('');
     setError('');
     onClose();
   };
@@ -572,6 +662,59 @@ const BulkAddPeopleModal = ({ isOpen, onClose, onBulkAdd }) => {
             <p className="mt-1 text-xs text-gray-500">
               Tags can be separated by commas or entered one per line. All tags will be applied to all people.
             </p>
+
+            {/* Existing Tags */}
+            {existingTags.length > 0 && (
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-gray-700">Existing tags:</p>
+                  <div className="relative w-32">
+                    <input
+                      type="text"
+                      value={tagFilter}
+                      onChange={(e) => setTagFilter(e.target.value)}
+                      placeholder="Filter tags..."
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                    {tagFilter && (
+                      <button
+                        onClick={() => setTagFilter('')}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <XMarkIcon className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                  {filteredExistingTags.map((tag) => {
+                    const currentTags = tagsText
+                      .split(/[,\n]/)
+                      .map(t => t.trim())
+                      .filter(t => t.length > 0);
+                    const isSelected = currentTags.includes(tag);
+                    
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => handleTagClick(tag)}
+                        className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        title={isSelected ? 'Click to remove' : 'Click to add'}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+                {filteredExistingTags.length === 0 && tagFilter && (
+                  <p className="text-xs text-gray-400 mt-2">No tags found matching "{tagFilter}"</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

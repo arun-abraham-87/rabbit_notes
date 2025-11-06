@@ -323,6 +323,21 @@ const AppContent = () => {
         return;
       }
 
+      // Check if we're on the People page - disable global Cmd+V handler
+      const currentPath = location.pathname;
+      if (currentPath === '/people') {
+        return;
+      }
+
+      // Check if we're inside a modal (image upload modal or any modal)
+      // Modals typically have z-50 class or are within a fixed overlay
+      const isInModal = e.target.closest('.fixed.inset-0') || 
+                        e.target.closest('[role="dialog"]') ||
+                        document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+      if (isInModal) {
+        return;
+      }
+
       // Handle Cmd+V (or Ctrl+V) for quick paste
       if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
         // Check if quick paste is enabled

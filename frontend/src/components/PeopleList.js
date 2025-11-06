@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { UserIcon, ViewColumnsIcon, Squares2X2Icon, XMarkIcon, MagnifyingGlassIcon, PencilIcon, PlusIcon, TagIcon } from '@heroicons/react/24/solid';
+import { UserIcon, ViewColumnsIcon, Squares2X2Icon, XMarkIcon, MagnifyingGlassIcon, PencilIcon, PlusIcon, TagIcon, PhotoIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/solid';
 import { CodeBracketIcon } from '@heroicons/react/24/outline';
 import { parseNoteContent } from '../utils/TextUtils';
 import AddPeopleModal from './AddPeopleModal';
@@ -18,6 +18,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const [bulkAddModal, setBulkAddModal] = useState({ open: false });
   const [deleteModal, setDeleteModal] = useState({ open: false, noteId: null, personName: '' });
   const [pastedImageFile, setPastedImageFile] = useState(null);
+  const [hidePhotos, setHidePhotos] = useState(false);
 
   // Handle Cmd+V to paste image and open Add People modal
   useEffect(() => {
@@ -106,11 +107,25 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       });
     }
 
-    // Apply local search filter
+    // Apply local search filter - treat each word as a separate search
     if (localSearchQuery) {
-      filtered = filtered.filter(note => 
-        note.content.toLowerCase().includes(localSearchQuery.toLowerCase())
-      );
+      const searchWords = localSearchQuery
+        .trim()
+        .split(/\s+/)
+        .filter(word => word.length > 0)
+        .map(word => word.toLowerCase());
+      
+      if (searchWords.length > 0) {
+        filtered = filtered.filter(note => {
+          // Get person name (first line of content)
+          const lines = note.content.split('\n');
+          const personName = lines[0] || '';
+          const nameLower = personName.toLowerCase();
+          
+          // Check if ANY of the search words match the name (OR logic)
+          return searchWords.some(word => nameLower.includes(word));
+        });
+      }
     }
 
     return filtered;
@@ -311,6 +326,21 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           >
             <TagIcon className="h-5 w-5" />
           </button>
+          <button
+            onClick={() => setHidePhotos(!hidePhotos)}
+            className={`p-2 rounded-lg transition-all duration-200 ${
+              hidePhotos
+                ? 'bg-indigo-100 text-indigo-700'
+                : 'hover:bg-gray-100 text-gray-600'
+            }`}
+            title={hidePhotos ? "Show Photos" : "Hide Photos"}
+          >
+            {hidePhotos ? (
+              <EyeSlashIcon className="h-5 w-5" />
+            ) : (
+              <EyeIcon className="h-5 w-5" />
+            )}
+          </button>
         </div>
       </div>
 
@@ -451,6 +481,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
                       onRemoveTag={handleRemoveTag}
                       onUpdate={handleUpdatePerson}
                       allNotes={uniqueNotes}
+                      hidePhotos={hidePhotos}
                     />
                   ))}
                 </div>
@@ -470,6 +501,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
               onDelete={handleDeletePerson}
               onUpdate={handleUpdatePerson}
               allNotes={uniqueNotes}
+              hidePhotos={hidePhotos}
             />
           ))}
         </div>

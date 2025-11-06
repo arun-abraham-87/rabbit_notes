@@ -4,13 +4,120 @@ import { parseNoteContent } from '../utils/TextUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { updateNoteById, deleteImageById } from '../utils/ApiUtils';
 
-const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes = [] }) => {
+// Helper function to get person info
+  const getPersonInfo = (content) => {
+    const lines = content.split('\n');
+    const name = lines[0];
+    const tags = lines
+      .filter(line => line.startsWith('meta::tag::'))
+      .map(line => line.split('::')[2]);
+    
+    const metaInfo = lines
+      .filter(line => line.startsWith('meta::info::'))
+      .map(line => {
+        const [_, __, name, type, value] = line.split('::');
+        return { name, type, value };
+      });
+
+  const photos = lines
+    .filter(line => line.startsWith('meta::photo::'))
+    .map(line => line.replace('meta::photo::', '').trim());
+
+  const relationships = lines
+    .filter(line => line.startsWith('meta::relationship::'))
+    .map(line => {
+      const parts = line.split('::');
+      return {
+        type: parts[2],
+        personId: parts[3]
+      };
+    });
+
+  return { name, tags, metaInfo, photos, relationships };
+};
+
+// Relationship Card Preview Component
+const RelationshipCardPreview = ({ person, allNotes, onEdit, hidePhotos = false }) => {
+  if (!person || !person.content) return null;
+
+  const { name, tags, metaInfo, photos } = getPersonInfo(person.content);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-start gap-3">
+        {!hidePhotos && (
+          <div className="flex-shrink-0">
+            {photos && photos.length > 0 ? (
+              <img
+                src={photos[0]}
+                alt={name}
+                className="h-16 w-16 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center">
+                <UserIcon className="h-8 w-8 text-gray-400" />
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex-grow min-w-0">
+          <h3 className="font-semibold text-gray-900 truncate">{name}</h3>
+          {tags && tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {tags.slice(0, 3).map((tag, idx) => (
+                <span
+                  key={idx}
+                  className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded"
+                >
+                  {tag}
+                </span>
+              ))}
+              {tags.length > 3 && (
+                <span className="px-2 py-0.5 text-xs text-gray-500">
+                  +{tags.length - 3}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {metaInfo && metaInfo.length > 0 && (
+        <div className="space-y-1 pt-2 border-t">
+          {metaInfo.slice(0, 3).map((info, idx) => (
+            <div key={idx} className="text-xs text-gray-600">
+              <span className="font-medium">{info.name}:</span> {info.value}
+            </div>
+          ))}
+          {metaInfo.length > 3 && (
+            <div className="text-xs text-gray-500">
+              +{metaInfo.length - 3} more
+            </div>
+          )}
+        </div>
+      )}
+
+      {onEdit && (
+        <button
+          onClick={() => onEdit(person)}
+          className="w-full mt-2 px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+        >
+          View Full Profile
+        </button>
+      )}
+    </div>
+  );
+};
+
+const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes = [], hidePhotos = false }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [hoveredRelationship, setHoveredRelationship] = useState(null);
+  const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
 
   const API_BASE_URL = 'http://localhost:5001';
 
@@ -193,39 +300,6 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
       alert('Failed to delete image. Please try again.');
     }
   };
-  const getPersonInfo = (content) => {
-    const lines = content.split('\n');
-    const name = lines[0];
-    const tags = lines
-      .filter(line => line.startsWith('meta::tag::'))
-      .map(line => line.split('::')[2]);
-    
-    // Get meta info
-    const metaInfo = lines
-      .filter(line => line.startsWith('meta::info::'))
-      .map(line => {
-        const [_, __, name, type, value] = line.split('::');
-        return { name, type, value };
-      });
-
-    // Get photos
-    const photos = lines
-      .filter(line => line.startsWith('meta::photo::'))
-      .map(line => line.replace('meta::photo::', '').trim());
-
-    // Get relationships
-    const relationships = lines
-      .filter(line => line.startsWith('meta::relationship::'))
-      .map(line => {
-        const parts = line.split('::');
-        return {
-          type: parts[2], // e.g., 'father_of'
-          personId: parts[3] // person ID
-        };
-      });
-
-    return { name, tags, metaInfo, photos, relationships };
-  };
 
   const { name, tags, metaInfo, photos, relationships } = getPersonInfo(note.content);
 
@@ -375,8 +449,9 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
   return (
     <div className="bg-white rounded-lg border p-6 shadow-sm flex flex-col hover:shadow-md transition-shadow h-full">
       <div className="flex items-start gap-3 flex-grow">
+        {!hidePhotos && (
         <div className="flex-shrink-0">
-          {photos && photos.length > 0 ? (
+            {photos && photos.length > 0 ? (
             <button
               type="button"
               className="block h-32 w-32 rounded-full overflow-hidden border-2 border-indigo-200 bg-indigo-100 flex items-center justify-center hover:border-indigo-400 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
@@ -416,7 +491,8 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
               <UserIcon className="h-16 w-16 text-indigo-600" />
             </button>
           )}
-        </div>
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-medium text-gray-900 break-words">
             {parseNoteContent({ content: name, searchQuery: "" }).map((element, idx) => (
@@ -451,6 +527,40 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                         onEdit(relatedPerson);
                       }
                     }}
+                    onMouseEnter={(e) => {
+                      if (relatedPerson) {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const viewportWidth = window.innerWidth;
+                        const viewportHeight = window.innerHeight;
+                        const popupWidth = 320; // w-80 = 320px
+                        const popupHeight = 384; // max-h-96 = 384px
+                        
+                        // Calculate position - prefer right side, but adjust if needed
+                        let x = rect.right + 10;
+                        let y = rect.top;
+                        
+                        // If popup would go off right edge, show on left side
+                        if (x + popupWidth > viewportWidth) {
+                          x = rect.left - popupWidth - 10;
+                        }
+                        
+                        // If popup would go off bottom, adjust y
+                        if (y + popupHeight > viewportHeight) {
+                          y = viewportHeight - popupHeight - 10;
+                        }
+                        
+                        // Ensure popup doesn't go off top
+                        if (y < 10) {
+                          y = 10;
+                        }
+                        
+                        setHoverPosition({ x, y });
+                        setHoveredRelationship(relatedPerson);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredRelationship(null);
+                    }}
                     className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline text-left"
                     title={`Click to view ${personName}`}
                   >
@@ -462,7 +572,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
           )}
           
           {/* Additional Photos Section (skip first photo as it's shown as headshot) */}
-          {photos && photos.length > 1 && (
+          {!hidePhotos && photos && photos.length > 1 && (
             <div className="mt-3">
               <div className="flex flex-wrap gap-2">
                 {photos.slice(1).map((photo, index) => (
@@ -672,6 +782,31 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Relationship Hover Popup */}
+      {hoveredRelationship && (
+        <div
+          className="fixed z-50 bg-white rounded-lg border shadow-xl p-4 w-80 max-h-96 overflow-y-auto"
+          style={{
+            left: `${hoverPosition.x}px`,
+            top: `${hoverPosition.y}px`,
+            transform: 'translateY(0)'
+          }}
+          onMouseEnter={() => {
+            // Keep popup open when hovering over it
+          }}
+          onMouseLeave={() => {
+            setHoveredRelationship(null);
+          }}
+        >
+          <RelationshipCardPreview 
+            person={hoveredRelationship} 
+            allNotes={allNotes}
+            onEdit={onEdit}
+            hidePhotos={hidePhotos}
+          />
         </div>
       )}
     </div>

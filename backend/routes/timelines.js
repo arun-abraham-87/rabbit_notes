@@ -208,6 +208,9 @@ function parseTimelineData(content, allNotes = []) {
           const dateLine = eventLines.find(line => line.startsWith('event_date:'));
           const eventDate = dateLine ? dateLine.replace('event_date:', '').trim() : '';
           
+          const notesLine = eventLines.find(line => line.startsWith('event_notes:'));
+          const eventNotes = notesLine ? notesLine.replace('event_notes:', '').trim() : '';
+          
           const priceLine = eventLines.find(line => line.trim().startsWith('event_$:'));
           if (priceLine) {
             const priceValue = priceLine.replace('event_$:', '').trim();
@@ -230,7 +233,8 @@ function parseTimelineData(content, allNotes = []) {
                 dollarAmount: eventDollarAmount,
                 isLinkedEvent: true,
                 linkedEventId: eventId,
-                link: null
+                link: null,
+                notes: eventNotes || null
               });
             }
           }

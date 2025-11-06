@@ -8,7 +8,7 @@ import ConfirmationModal from './ConfirmationModal';
 const persistentTimelinesRef = { current: [] };
 const persistentTimelineLinkQueues = { current: new Map() };
 
-const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '', onTimelineUpdated, initialTimelineId = null }) => {
+const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '', onTimelineUpdated, initialTimelineId = null, focusOnNotesField = false }) => {
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -29,6 +29,9 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
   // Use module-level refs that persist across component lifecycle
   const timelineLinkQueues = persistentTimelineLinkQueues;
   const timelinesRef = persistentTimelinesRef;
+  
+  // Ref for the notes textarea to enable auto-focus
+  const notesTextareaRef = useRef(null);
 
   const existingTags = getAllUniqueTags(notes || []);
 
@@ -206,6 +209,18 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       }
     }
   }, [isOpen, notes, initialTimelineId, note]);
+
+  // Auto-focus on notes field when focusOnNotesField is true
+  useEffect(() => {
+    if (isOpen && focusOnNotesField && notesTextareaRef.current) {
+      // Use setTimeout to ensure the modal is fully rendered before focusing
+      setTimeout(() => {
+        notesTextareaRef.current?.focus();
+        // Scroll to the notes field
+        notesTextareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [isOpen, focusOnNotesField]);
 
   const formatDateWithNoonTime = (dateStr) => {
     if (!dateStr) return '';
@@ -1010,6 +1025,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                   Notes (optional)
                 </label>
                 <textarea
+                  ref={notesTextareaRef}
                   value={eventNotes}
                   onChange={(e) => setEventNotes(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

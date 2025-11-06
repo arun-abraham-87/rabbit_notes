@@ -136,6 +136,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
   const [showMasterTimelineModal, setShowMasterTimelineModal] = useState(false);
   const [masterTimelineModalSearchQuery, setMasterTimelineModalSearchQuery] = useState('');
   const [showTimelineDropdown, setShowTimelineDropdown] = useState(false);
+  const [compareModal, setCompareModal] = useState({ isOpen: false, sourceEvent: null, sourceTimelineId: null, filterQuery: '' });
+  const [focusOnNotesField, setFocusOnNotesField] = useState(false);
 
   // Save timeline collapse states to localStorage
   const saveCollapseStates = (collapsedSet) => {
@@ -654,6 +656,33 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
         const dateLine = eventLines.find(line => line.startsWith('event_date:'));
         const eventDate = dateLine ? dateLine.replace('event_date:', '').trim() : '';
         
+        // Extract event notes (can be multi-line)
+        const notesLineIndex = eventLines.findIndex(line => line.startsWith('event_notes:'));
+        let eventNotes = '';
+        if (notesLineIndex !== -1) {
+          const notesParts = [];
+          // Get the content after 'event_notes:' on the first line
+          const firstLine = eventLines[notesLineIndex];
+          const firstLineContent = firstLine.replace('event_notes:', '').trim();
+          if (firstLineContent) {
+            notesParts.push(firstLineContent);
+          }
+          
+          // Collect subsequent lines until we hit another field
+          for (let i = notesLineIndex + 1; i < eventLines.length; i++) {
+            const line = eventLines[i];
+            // Stop if we hit another field (event_* or meta::)
+            if (line.startsWith('event_') || line.startsWith('meta::')) {
+              break;
+            }
+            // Add the line to notes (even if it's empty, preserve structure)
+            notesParts.push(line);
+          }
+          
+          // Join all lines, preserving newlines
+          eventNotes = notesParts.join('\n').trim();
+        }
+        
         // Check if this is a purchase (has event_$: line)
         const priceLine = eventLines.find(line => line.trim().startsWith('event_$:'));
         if (priceLine) {
@@ -694,12 +723,14 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           const dollarValues = extractDollarValues(description);
           const eventDollarAmount = dollarValues.reduce((sum, value) => sum + value, 0);
           
-          devLog(`[Timelines] Adding linked event to timeline: ${eventId}`, {
+          console.log(`[Timelines] Adding linked event to timeline: ${eventId}`, {
             eventId,
             description,
             eventDate,
             parsedDate: parsedEventDate.format('YYYY-MM-DD'),
-            dollarAmount: eventDollarAmount
+            dollarAmount: eventDollarAmount,
+            notes: eventNotes,
+            hasNotes: !!eventNotes
           });
           
           timelineData.events.push({
@@ -710,7 +741,8 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             dollarAmount: eventDollarAmount,
             isLinkedEvent: true,
             linkedEventId: eventId,
-            link: null // Linked events don't have links in timeline format
+            link: null, // Linked events don't have links in timeline format
+            notes: eventNotes || null // Include notes if available
           });
         } else {
           devWarn(`[Timelines] Linked event missing required fields: ${eventId}`, {
@@ -2600,24 +2632,52 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                           )}
                                         </div>
                                       )}
-                                      {!event.isLinkedEvent && !event.isTotal && !event.isDuration && !event.isVirtual && (
+                                      {!event.isTotal && !event.isDuration && !event.isVirtual && (
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            const timelineData = parseTimelineData(note.content, notes);
-                                            const eventToLink = timelineData.events[index];
-                                            setAddLinkModal({ 
-                                              isOpen: true, 
-                                              timelineId: note.id, 
-                                              eventIndex: index, 
-                                              currentLink: eventToLink.link || '' 
-                                            });
+                                            if (event.isLinkedEvent && event.linkedEventId) {
+                                              // For linked events, open the event edit modal with focus on notes
+                                              const linkedNote = notes.find(n => n.id === event.linkedEventId);
+                                              if (linkedNote) {
+                                                setFocusOnNotesField(true);
+                                                setEditingEventId(event.linkedEventId);
+                                                setShowEditEventModal(true);
+                                              }
+                                            } else {
+                                              // For regular timeline events, use the add link modal
+                                              const timelineData = parseTimelineData(note.content, notes);
+                                              const eventToLink = timelineData.events[index];
+                                              setAddLinkModal({ 
+                                                isOpen: true, 
+                                                timelineId: note.id, 
+                                                eventIndex: index, 
+                                                currentLink: eventToLink.link || '' 
+                                              });
+                                            }
                                           }}
                                           className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors ml-auto"
                                           title={event.link ? 'Edit link' : 'Add link'}
                                         >
                                           <LinkIcon className="h-3 w-3 mr-1" />
                                           {event.link ? 'Edit' : 'Add'} Link
+                                        </button>
+                                      )}
+                                      {!event.isTotal && !event.isDuration && !event.isVirtual && event.date && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setCompareModal({
+                                              isOpen: true,
+                                              sourceEvent: event,
+                                              sourceTimelineId: note.id,
+                                              filterQuery: ''
+                                            });
+                                          }}
+                                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors ml-2"
+                                          title="Compare with other events"
+                                        >
+                                          Compare
                                         </button>
                                       )}
                                       {!event.isLinkedEvent && !event.isTotal && !event.isDuration && !event.isVirtual && event.date && (
@@ -2658,6 +2718,58 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                       )}
                                     </div>
                                   </div>
+                                  
+                                  {/* Event Notes - Display if available */}
+                                  {(() => {
+                                    // Debug: Log event properties
+                                    if (event.isLinkedEvent) {
+                                      console.log('[Timelines Display] Linked event:', {
+                                        event: event.event,
+                                        hasNotes: !!event.notes,
+                                        notes: event.notes,
+                                        isVirtual: event.isVirtual,
+                                        isTotal: event.isTotal,
+                                        isDuration: event.isDuration
+                                      });
+                                    }
+                                    
+                                    if (event.notes && !event.isVirtual && !event.isTotal && !event.isDuration) {
+                                      return (
+                                        <div className="mt-2 mb-2">
+                                          <div className="text-sm text-gray-700 bg-amber-50 border-l-4 border-amber-400 px-3 py-2 rounded">
+                                            <div className="font-medium text-amber-800 text-xs mb-1">Notes:</div>
+                                            <div className="whitespace-pre-wrap">
+                                              {(() => {
+                                                // Check if notes contain a URL
+                                                const urlRegex = /(https?:\/\/[^\s]+)/g;
+                                                const parts = event.notes.split(urlRegex);
+                                                
+                                                return parts.map((part, index) => {
+                                                  // Check if this part is a URL
+                                                  if (part.match(/^https?:\/\//)) {
+                                                    return (
+                                                      <a
+                                                        key={index}
+                                                        href={part}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="text-blue-600 hover:text-blue-800 underline break-all"
+                                                      >
+                                                        {part}
+                                                      </a>
+                                                    );
+                                                  }
+                                                  return <span key={index}>{part}</span>;
+                                                });
+                                              })()}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                   
                                   {/* Second line with age and time differences */}
                                   {(!event.isVirtual || event.isToday) && !event.isTotal && !event.isDuration && (
@@ -3151,18 +3263,21 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
             setEditingEventId(null);
             setEditingTimelineId(null);
             setConvertingEvent(null);
+            setFocusOnNotesField(false);
           }}
           onSwitchToNormalEdit={() => {
             setShowEditEventModal(false);
             setEditingTimelineId(null);
             setEditingEventId(null);
             setConvertingEvent(null);
+            setFocusOnNotesField(false);
           }}
           onDelete={() => {
             // Delete not applicable for new events
           }}
           notes={notes}
           initialTimelineId={editingTimelineId}
+          focusOnNotesField={focusOnNotesField}
         />
 
         {/* Master Timeline Modal */}
@@ -3788,6 +3903,185 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                 >
                   <LinkIcon className="h-4 w-4" />
                   {addLinkModal.currentLink ? 'Update' : 'Add'} Link
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Compare Events Modal */}
+        {compareModal.isOpen && compareModal.sourceEvent && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Compare Events
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Comparing with: <span className="font-medium text-purple-600">{compareModal.sourceEvent.event}</span>
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Date: {compareModal.sourceEvent.date.format('DD/MM/YYYY')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setCompareModal({ isOpen: false, sourceEvent: null, sourceTimelineId: null, filterQuery: '' })}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Filter Events
+                </label>
+                <input
+                  type="text"
+                  value={compareModal.filterQuery}
+                  onChange={(e) => setCompareModal({ ...compareModal, filterQuery: e.target.value })}
+                  placeholder="Search events..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                {(() => {
+                  // Collect all events from all timelines
+                  const allEvents = [];
+                  const notesToUse = getNotesWithNewEvent();
+                  
+                  // Use notes prop to get all timeline notes if timelineNotes is empty or doesn't have content
+                  const timelinesSource = timelineNotes && timelineNotes.length > 0 && timelineNotes[0].content 
+                    ? timelineNotes 
+                    : notesToUse.filter(note => note.content && note.content.includes('meta::timeline'));
+                  
+                  console.log('[Compare Modal] Timelines source:', timelinesSource.length, 'timelines');
+                  
+                  timelinesSource.forEach((timeline) => {
+                    if (!timeline || !timeline.content) {
+                      console.log('[Compare Modal] Skipping timeline without content:', timeline?.id);
+                      return;
+                    }
+                    
+                    const timelineData = parseTimelineData(timeline.content, notesToUse);
+                    console.log('[Compare Modal] Timeline:', timelineData.timeline, 'Events:', timelineData.events.length);
+                    
+                    timelineData.events.forEach((event) => {
+                      if (event.date && !event.isVirtual && !event.isTotal && !event.isDuration) {
+                        // Don't include the source event itself (compare by date and event text)
+                        const isSameEvent = event.event === compareModal.sourceEvent.event && 
+                                          event.date.isSame(compareModal.sourceEvent.date, 'day');
+                        
+                        if (!isSameEvent) {
+                          allEvents.push({
+                            ...event,
+                            timelineId: timeline.id,
+                            timelineName: timelineData.timeline || 'Untitled Timeline'
+                          });
+                        }
+                      }
+                    });
+                  });
+
+                  console.log('[Compare Modal] Total events collected:', allEvents.length);
+
+                  // Filter events based on search query
+                  const filteredEvents = compareModal.filterQuery
+                    ? allEvents.filter(event => 
+                        event.event.toLowerCase().includes(compareModal.filterQuery.toLowerCase()) ||
+                        event.timelineName.toLowerCase().includes(compareModal.filterQuery.toLowerCase())
+                      )
+                    : allEvents;
+
+                  console.log('[Compare Modal] Filtered events:', filteredEvents.length, 'Filter query:', compareModal.filterQuery);
+
+                  // Sort by date
+                  filteredEvents.sort((a, b) => a.date.diff(b.date));
+
+                  if (filteredEvents.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-gray-500">
+                        <p className="mb-2">No events found</p>
+                        <p className="text-xs">Total timelines: {timelinesSource.length}</p>
+                        <p className="text-xs">Total events before filter: {allEvents.length}</p>
+                      </div>
+                    );
+                  }
+
+                  return filteredEvents.map((event, index) => {
+                    // Calculate difference from source event
+                    const daysDiff = event.date.diff(compareModal.sourceEvent.date, 'days');
+                    const isBefore = daysDiff < 0;
+                    const absDays = Math.abs(daysDiff);
+                    
+                    // Format the difference
+                    let diffText = '';
+                    if (absDays === 0) {
+                      diffText = 'Same day';
+                    } else if (absDays > 365) {
+                      const years = Math.floor(absDays / 365);
+                      const remainingDays = absDays % 365;
+                      const months = Math.floor(remainingDays / 30);
+                      const finalDays = remainingDays % 30;
+                      
+                      let parts = [];
+                      if (years > 0) parts.push(`${years} year${years !== 1 ? 's' : ''}`);
+                      if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+                      if (finalDays > 0) parts.push(`${finalDays} day${finalDays !== 1 ? 's' : ''}`);
+                      
+                      diffText = parts.join(', ') + (isBefore ? ' before' : ' after');
+                    } else if (absDays > 30) {
+                      const months = Math.floor(absDays / 30);
+                      const remainingDays = absDays % 30;
+                      
+                      let parts = [];
+                      if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+                      if (remainingDays > 0) parts.push(`${remainingDays} day${remainingDays !== 1 ? 's' : ''}`);
+                      
+                      diffText = parts.join(', ') + (isBefore ? ' before' : ' after');
+                    } else {
+                      diffText = `${absDays} day${absDays !== 1 ? 's' : ''} ${isBefore ? 'before' : 'after'}`;
+                    }
+
+                    return (
+                      <div 
+                        key={index}
+                        className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{event.event}</h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Timeline: {event.timelineName}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Date: {event.date.format('DD/MM/YYYY')}
+                            </p>
+                          </div>
+                          <div className={`text-right ml-4 ${isBefore ? 'text-blue-600' : 'text-green-600'}`}>
+                            <div className="text-lg font-semibold">
+                              {diffText}
+                            </div>
+                            <div className="text-xs mt-1">
+                              {isBefore ? '← Before' : 'After →'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setCompareModal({ isOpen: false, sourceEvent: null, sourceTimelineId: null, filterQuery: '' })}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                >
+                  Close
                 </button>
               </div>
             </div>

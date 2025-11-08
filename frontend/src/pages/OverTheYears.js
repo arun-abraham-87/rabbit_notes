@@ -57,6 +57,8 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [maxPhotoHeight, setMaxPhotoHeight] = useState(null);
   const [photoDimensions, setPhotoDimensions] = useState(new Map());
+  const [editingDateNoteId, setEditingDateNoteId] = useState(null);
+  const [editingDateValue, setEditingDateValue] = useState('');
 
   // Filter people with meta::overtheyear tag and get photos from linked photo notes
   const peopleWithOverTheYears = useMemo(() => {
@@ -195,6 +197,56 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
     }
     
     return '';
+  };
+
+  // Helper function to format date string to DD/MMM/YYYY format (e.g., 11/oct/2025)
+  const formatDateDisplay = (dateString) => {
+    if (!dateString) return '1/jan/1900';
+    
+    try {
+      // Try to parse as Date first
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        const day = date.getDate();
+        const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        const month = monthNames[date.getMonth()];
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      }
+      
+      // Try to extract YYYY-MM-DD format from string
+      const isoMatch = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (isoMatch) {
+        const year = parseInt(isoMatch[1]);
+        const month = parseInt(isoMatch[2]) - 1;
+        const day = parseInt(isoMatch[3]);
+        const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        return `${day}/${monthNames[month]}/${year}`;
+      }
+      
+      // Try to extract date components from various formats
+      const yearMatch = dateString.match(/\b(19|20)\d{2}\b/);
+      if (yearMatch) {
+        const year = yearMatch[0];
+        const monthMatch = dateString.match(/\b(0?[1-9]|1[0-2])\b/);
+        const dayMatch = dateString.match(/\b(0?[1-9]|[12][0-9]|3[01])\b/);
+        
+        if (monthMatch && dayMatch) {
+          const month = parseInt(monthMatch[0]) - 1;
+          const day = parseInt(dayMatch[0]);
+          const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+          return `${day}/${monthNames[month]}/${year}`;
+        } else if (monthMatch) {
+          const month = parseInt(monthMatch[0]) - 1;
+          const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+          return `1/${monthNames[month]}/${year}`;
+        }
+      }
+    } catch (error) {
+      console.error('Error formatting date:', error);
+    }
+    
+    return dateString; // Return original if can't parse
   };
 
   // Helper function to extract year and month from date
@@ -481,10 +533,10 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
       // Build photo note content with metadata
       let photoNoteContent = `Photo for ${personName}\nmeta::photo::${imageUrl}\nmeta::linked_to_person::${personId}`;
       
-      // Add metadata in note content format
-      if (date && date.trim() !== '') {
-        photoNoteContent += `\ndate:${date.trim()}`;
-      }
+      // Add metadata in note content format - always add date, default to 1900-01-01
+      const finalDate = (date && date.trim() !== '') ? date.trim() : '1900-01-01';
+      photoNoteContent += `\ndate:${finalDate}`;
+      
       if (notes && notes.trim() !== '') {
         photoNoteContent += `\nnotes:${notes.trim()}`;
       }
@@ -537,6 +589,56 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
     }
   }, [allNotes, setAllNotes]);
 
+  // Handle saving dropped image with default date
+  const handleDropImage = useCallback(async (file, personId) => {
+    if (!file || !personId) return;
+
+    try {
+      setUploading(true);
+      const imageUrl = await uploadImage(file);
+      // Save with default date 1/1/1900
+      await handleSavePhoto(imageUrl, personId, '1900-01-01', '');
+    } catch (error) {
+      console.error('Error saving dropped image:', error);
+      alert('Failed to save image. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  }, [uploadImage, handleSavePhoto]);
+
+  // Handle saving date inline edit
+  const handleSaveDateEdit = useCallback(async (noteId, newDate) => {
+    if (!noteId) return;
+
+    try {
+      const photoNote = allNotes.find(n => n.id === noteId);
+      if (!photoNote) return;
+
+      const lines = photoNote.content.split('\n');
+      let updatedContent = lines.filter(line => !line.startsWith('date:')).join('\n');
+      
+      // Always add date, default to 1900-01-01 if empty
+      const finalDate = (newDate && newDate.trim() !== '') ? newDate.trim() : '1900-01-01';
+      updatedContent += `\ndate:${finalDate}`;
+
+      await updateNoteById(noteId, updatedContent);
+
+      if (setAllNotes) {
+        setAllNotes(prevNotes => prevNotes.map(n => 
+          n.id === noteId 
+            ? { ...n, content: updatedContent }
+            : n
+        ));
+      }
+
+      setEditingDateNoteId(null);
+      setEditingDateValue('');
+    } catch (error) {
+      console.error('Error saving date:', error);
+      alert('Failed to save date. Please try again.');
+    }
+  }, [allNotes, setAllNotes]);
+
   // Handle paste for images
   useEffect(() => {
     if (!showImageUploadModal) return;
@@ -576,6 +678,18 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
       window.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [showImageUploadModal, uploadingPerson]);
+
+  // Update selectedPerson when peopleWithOverTheYears changes (e.g., after adding a photo or editing date)
+  useEffect(() => {
+    if (selectedPerson) {
+      const updatedPerson = peopleWithOverTheYears.find(p => p.id === selectedPerson.id);
+      if (updatedPerson) {
+        // Always update to reflect any changes (photos count, dates, etc.)
+        setSelectedPerson(updatedPerson);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [peopleWithOverTheYears]);
 
   // Handle drag and drop
   const handleDragOver = (e) => {
@@ -966,22 +1080,18 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {selectedPerson.photos && selectedPerson.photos.some(photo => {
-                      const photoDate = typeof photo === 'object' ? photo.date : '';
-                      return photoDate && photoDate.trim() !== '';
-                    }) && (
-                      <button
-                        onClick={() => {
-                          setTimelinePerson(selectedPerson);
-                          setShowTimelineModal(true);
-                          setCurrentPhotoIndex(0);
-                        }}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium"
-                        title="View timeline"
-                      >
-                        Timeline
-                      </button>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadingPerson(selectedPerson);
+                        setShowImageUploadModal(true);
+                      }}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center gap-2"
+                      title="Add image"
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                      <span>Add Image</span>
+                    </button>
                     <button
                       onClick={() => {
                         setSelectedPerson(null);
@@ -998,7 +1108,31 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
               </div>
 
               {/* Photos Timeline */}
-              <div className="flex-1 overflow-y-auto p-6">
+              <div 
+                className={`flex-1 overflow-y-auto p-6 ${isDragging ? 'bg-indigo-50 border-2 border-dashed border-indigo-400' : ''}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragging(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragging(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragging(false);
+                  
+                  const files = Array.from(e.dataTransfer.files);
+                  const imageFile = files.find(file => file.type.startsWith('image/'));
+                  
+                  if (imageFile && selectedPerson) {
+                    handleDropImage(imageFile, selectedPerson.id);
+                  }
+                }}
+              >
                 {selectedPerson.photos && selectedPerson.photos.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {selectedPerson.photos.map((photo, index) => {
@@ -1006,6 +1140,7 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                       const photoNoteId = typeof photo === 'object' ? photo.noteId : null;
                       const photoDate = typeof photo === 'object' ? photo.date : '';
                       const photoNotes = typeof photo === 'object' ? photo.notes : '';
+                      const isEditingDate = editingDateNoteId === photoNoteId;
                       
                       return (
                         <div
@@ -1024,9 +1159,59 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                           </div>
                           {/* Display date and notes below photo */}
                           <div className="mt-2 space-y-1">
-                            {photoDate && (
-                              <div className="text-sm text-gray-700">
-                                <span className="font-medium">Date:</span> {photoDate}
+                            {isEditingDate ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="date"
+                                  value={editingDateValue || convertDateToInputFormat(photoDate) || '1900-01-01'}
+                                  onChange={(e) => setEditingDateValue(e.target.value)}
+                                  onBlur={(e) => {
+                                    e.stopPropagation();
+                                    if (photoNoteId) {
+                                      // Always use e.target.value directly as it's the current value of the input
+                                      // Also update editingDateValue to ensure it's in sync
+                                      const currentValue = e.target.value || editingDateValue;
+                                      if (currentValue) {
+                                        setEditingDateValue(currentValue);
+                                        handleSaveDateEdit(photoNoteId, currentValue);
+                                      } else {
+                                        // If no value, use the original date
+                                        const dateToSave = convertDateToInputFormat(photoDate) || '1900-01-01';
+                                        handleSaveDateEdit(photoNoteId, dateToSave);
+                                      }
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && photoNoteId) {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      // Prioritize editingDateValue since it's updated by onChange
+                                      const dateToSave = editingDateValue || e.target.value || convertDateToInputFormat(photoDate) || '1900-01-01';
+                                      handleSaveDateEdit(photoNoteId, dateToSave);
+                                    } else if (e.key === 'Escape') {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setEditingDateNoteId(null);
+                                      setEditingDateValue('');
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  autoFocus
+                                />
+                              </div>
+                            ) : (
+                              <div 
+                                className="text-sm text-gray-700 cursor-pointer hover:text-indigo-600"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (photoNoteId) {
+                                    setEditingDateNoteId(photoNoteId);
+                                    setEditingDateValue(convertDateToInputFormat(photoDate) || '1900-01-01');
+                                  }
+                                }}
+                              >
+                                <span className="font-medium">Date:</span> {formatDateDisplay(photoDate || '1900-01-01')}
                               </div>
                             )}
                             {photoNotes && (
@@ -1642,7 +1827,7 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                         )}
                         {timelinePhotos[currentPhotoIndex].date && (
                           <div className="text-xl text-gray-700">
-                            {timelinePhotos[currentPhotoIndex].date}
+                            {formatDateDisplay(timelinePhotos[currentPhotoIndex].date)}
                             {timelinePerson && timelinePerson.birthDateInfo && (() => {
                               const ageAtPhoto = calculateAgeAtPhotoDate(
                                 timelinePerson.birthDateInfo,

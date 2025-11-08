@@ -818,27 +818,36 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
               return (
                 <div
                   key={person.id}
-                  className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                  className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden relative"
                   onClick={() => setSelectedPerson(person)}
                 >
+                  {/* Photo Background */}
+                  <div className="relative h-64 w-full">
+                    {person.photos && person.photos.length > 0 ? (
+                      <img
+                        src={typeof person.photos[0] === 'string' ? person.photos[0] : person.photos[0].url}
+                        alt={person.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                        <UserIcon className="h-16 w-16 text-gray-400" />
+                      </div>
+                    )}
+                    
+                    {/* Name Overlay - Left side, vertically centered */}
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                      <h3 className="text-4xl font-semibold text-white drop-shadow-lg" style={{ fontFamily: "'Dancing Script', cursive", textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
+                        {person.name}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Bottom Section with Info and Buttons */}
                   <div className="p-4">
-                    {/* Person Header */}
-                    <div className="flex items-start gap-3 mb-4">
-                      {person.photos && person.photos.length > 0 ? (
-                        <img
-                          src={typeof person.photos[0] === 'string' ? person.photos[0] : person.photos[0].url}
-                          alt={person.name}
-                          className="h-16 w-16 rounded-full object-cover border-2 border-indigo-200"
-                        />
-                      ) : (
-                        <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center">
-                          <UserIcon className="h-8 w-8 text-gray-400" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-4xl font-semibold text-gray-900 truncate" style={{ fontFamily: "'Dancing Script', cursive" }}>
-                          {person.name}
-                        </h3>
+                    {/* Age and Birth Date */}
+                    {(age !== null || person.birthDateInfo) && (
+                      <div className="mb-3">
                         {age !== null && (
                           <p className="text-sm text-gray-500">
                             Age: {age} years
@@ -850,10 +859,10 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                           </p>
                         )}
                       </div>
-                    </div>
+                    )}
 
-                    {/* Photo Count */}
-                    <div className="flex items-center justify-between mb-3">
+                    {/* Photo Count and Buttons */}
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <PhotoIcon className="h-4 w-4" />
                         <span>{person.photos.length} photo{person.photos.length !== 1 ? 's' : ''}</span>

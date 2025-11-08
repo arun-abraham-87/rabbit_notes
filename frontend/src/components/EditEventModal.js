@@ -908,8 +908,8 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-sm font-medium text-gray-700">
-                    Event Date
-                  </label>
+                  Event Date
+                </label>
                   <div className="flex gap-2">
                     <button
                       type="button"

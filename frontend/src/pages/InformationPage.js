@@ -444,22 +444,22 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
       <div className="mb-6">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="relative max-w-md flex-1 min-w-[200px]">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search information (fuzzy search)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
-            )}
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search information (fuzzy search)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          )}
           </div>
           <button
             onClick={() => setGroupByTag(!groupByTag)}
@@ -668,11 +668,11 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
       {/* Unpinned Cards Section */}
       {!groupByTag && (
         <>
-          {unpinnedEvents.length === 0 && pinnedEvents.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              {searchQuery ? 'No events found matching your search.' : 'No information events found. Add one to get started!'}
-            </div>
-          ) : unpinnedEvents.length > 0 && (
+      {unpinnedEvents.length === 0 && pinnedEvents.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          {searchQuery ? 'No events found matching your search.' : 'No information events found. Add one to get started!'}
+        </div>
+      ) : unpinnedEvents.length > 0 && (
         <div>
           {pinnedEvents.length > 0 && (
             <h2 className="text-xl font-semibold mb-4 text-gray-700">All Information</h2>

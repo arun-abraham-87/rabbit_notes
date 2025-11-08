@@ -286,7 +286,7 @@ const MainContentArea = ({
           <Route path="/over-the-years" element={
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
-                <OverTheYears allNotes={allNotes} />
+                <OverTheYears allNotes={allNotes} setAllNotes={setAllNotes} />
               </div>
             </div>
           } />
@@ -331,9 +331,9 @@ const AppContent = () => {
         return;
       }
 
-      // Check if we're on the People page - disable global Cmd+V handler
+      // Check if we're on the People or Over the Years page - disable global Cmd+V handler
       const currentPath = location.pathname;
-      if (currentPath === '/people') {
+      if (currentPath === '/people' || currentPath === '/over-the-years') {
         return;
       }
 

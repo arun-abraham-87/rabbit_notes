@@ -2227,17 +2227,17 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                 
                         {timelineData.isClosed && (
                           <>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReopenTimeline(note.id);
-                              }}
-                              className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-700 rounded-lg transition-all flex items-center space-x-1.5 border border-emerald-200 shadow-sm hover:shadow-md"
-                              title="Reopen timeline"
-                            >
-                              <ArrowPathIcon className="h-4 w-4" />
-                              <span className="text-sm font-medium">Reopen</span>
-                            </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReopenTimeline(note.id);
+                            }}
+                            className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-700 rounded-lg transition-all flex items-center space-x-1.5 border border-emerald-200 shadow-sm hover:shadow-md"
+                            title="Reopen timeline"
+                          >
+                            <ArrowPathIcon className="h-4 w-4" />
+                            <span className="text-sm font-medium">Reopen</span>
+                          </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2688,14 +2688,14 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                               }
                                             } else {
                                               // For regular timeline events, use the add link modal
-                                              const timelineData = parseTimelineData(note.content, notes);
-                                              const eventToLink = timelineData.events[index];
-                                              setAddLinkModal({ 
-                                                isOpen: true, 
-                                                timelineId: note.id, 
-                                                eventIndex: index, 
-                                                currentLink: eventToLink.link || '' 
-                                              });
+                                            const timelineData = parseTimelineData(note.content, notes);
+                                            const eventToLink = timelineData.events[index];
+                                            setAddLinkModal({ 
+                                              isOpen: true, 
+                                              timelineId: note.id, 
+                                              eventIndex: index, 
+                                              currentLink: eventToLink.link || '' 
+                                            });
                                             }
                                           }}
                                           className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors ml-auto"
@@ -3347,7 +3347,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
           const allEvents = [];
           
           // Use the full notes array to get content
-          const notesToUse = getNotesWithNewEvent();
+            const notesToUse = getNotesWithNewEvent();
           
           timelineNotes.forEach((note) => {
             // Find the full note with content
@@ -3361,10 +3361,10 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
               if (event.date && event.date.year() === selectedYear) {
                 // Apply month filter if not 'all'
                 if (selectedMonth === 'all' || event.date.month() === parseInt(selectedMonth)) {
-                  allEvents.push({
-                    ...event,
-                    sourceTimelineName: timelineName
-                  });
+                allEvents.push({
+                  ...event,
+                  sourceTimelineName: timelineName
+                });
                 }
               }
             });
@@ -4054,7 +4054,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                   <p className="text-xs text-gray-500">
                     Date: {compareModal.sourceEvent.date.format('DD/MM/YYYY')}
                   </p>
-                </div>
+      </div>
                 <button
                   onClick={() => setCompareModal({ isOpen: false, sourceEvent: null, sourceTimelineId: null, filterQuery: '' })}
                   className="text-gray-400 hover:text-gray-600"

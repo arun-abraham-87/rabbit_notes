@@ -34,7 +34,7 @@ import { updateNoteById, deleteImageById } from '../utils/ApiUtils';
     });
 
   return { name, tags, metaInfo, photos, relationships };
-};
+  };
 
 // Relationship Card Preview Component
 const RelationshipCardPreview = ({ person, allNotes, onEdit, hidePhotos = false }) => {

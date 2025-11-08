@@ -227,17 +227,17 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
                 )}
               </button>
             )}
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-red-600 hover:text-red-700 focus:outline-none"
-              aria-label={isExpanded ? "Collapse events" : "Expand events"}
-            >
-              {isExpanded ? (
-                <ChevronUpIcon className="h-5 w-5" />
-              ) : (
-                <ChevronDownIcon className="h-5 w-5" />
-              )}
-            </button>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-red-600 hover:text-red-700 focus:outline-none"
+            aria-label={isExpanded ? "Collapse events" : "Expand events"}
+          >
+            {isExpanded ? (
+              <ChevronUpIcon className="h-5 w-5" />
+            ) : (
+              <ChevronDownIcon className="h-5 w-5" />
+            )}
+          </button>
           </div>
         </div>
       </div>

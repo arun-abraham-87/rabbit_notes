@@ -941,7 +941,24 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                       <img
                         src={typeof person.photos[0] === 'string' ? person.photos[0] : person.photos[0].url}
                         alt={person.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Check if person has photos with dates
+                          const hasPhotosWithDates = person.photos.some(photo => {
+                            const photoDate = typeof photo === 'object' ? photo.date : '';
+                            return photoDate && photoDate.trim() !== '';
+                          });
+                          
+                          if (hasPhotosWithDates) {
+                            setTimelinePerson(person);
+                            setShowTimelineModal(true);
+                            setCurrentPhotoIndex(0);
+                          } else {
+                            // If no photos with dates, open detail modal
+                            setSelectedPerson(person);
+                          }
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -1003,8 +1020,7 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setUploadingPerson(person);
-                            setShowImageUploadModal(true);
+                            setSelectedPerson(person);
                           }}
                           className="flex items-center gap-1 px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
                           title="Add image"
@@ -1080,18 +1096,6 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setUploadingPerson(selectedPerson);
-                        setShowImageUploadModal(true);
-                      }}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center gap-2"
-                      title="Add image"
-                    >
-                      <PlusIcon className="h-4 w-4" />
-                      <span>Add Image</span>
-                    </button>
                     <button
                       onClick={() => {
                         setSelectedPerson(null);

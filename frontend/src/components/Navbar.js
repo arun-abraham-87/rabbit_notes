@@ -21,7 +21,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     } else {
       // Default: all true
       setNavbarPagesVisibility({
-        dashboard: true, notes: true, todos: true, watch: true, tags: true, journals: true, events: true, countdowns: true, people: true, news: true, expense: true, trackers: true, calendar: true, bookmarks: true, assets: true, 'stock-vesting': true, pomodoro: true, timelines: true, purchases: true, payments: true, information: true
+        dashboard: true, notes: true, todos: true, watch: true, tags: true, journals: true, events: true, countdowns: true, people: true, news: true, expense: true, trackers: true, calendar: true, bookmarks: true, assets: true, 'stock-vesting': true, pomodoro: true, timelines: true, purchases: true, payments: true, information: true, 'over-the-years': true
         });
     }
     
@@ -56,6 +56,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     { id: 'stock-vesting', label: 'Stock Vesting' },
     { id: 'pomodoro', label: 'Pomodoro' },
     { id: 'information', label: 'Information' },
+    { id: 'over-the-years', label: 'Over the Years' },
   ];
 
   // Filter visible pages

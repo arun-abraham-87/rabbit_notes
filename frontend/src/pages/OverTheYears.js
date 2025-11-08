@@ -31,7 +31,11 @@ const getPersonInfo = (content) => {
     info.name.toLowerCase().includes('date of birth')
   );
 
-  return { name, tags, metaInfo, photos, birthDateInfo };
+  // Extract date_of_start from note content
+  const dateOfStartLine = lines.find(line => line.startsWith('date_of_start:'));
+  const dateOfStart = dateOfStartLine ? dateOfStartLine.replace('date_of_start:', '').trim() : '';
+
+  return { name, tags, metaInfo, photos, birthDateInfo, dateOfStart };
 };
 
 const OverTheYears = ({ allNotes = [], setAllNotes }) => {
@@ -59,6 +63,10 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
   const [photoDimensions, setPhotoDimensions] = useState(new Map());
   const [editingDateNoteId, setEditingDateNoteId] = useState(null);
   const [editingDateValue, setEditingDateValue] = useState('');
+  const [editingDateOfStartPersonId, setEditingDateOfStartPersonId] = useState(null);
+  const [editingDateOfStartValue, setEditingDateOfStartValue] = useState('');
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [flipIntervalId, setFlipIntervalId] = useState(null);
 
   // Filter people with meta::overtheyear tag and get photos from linked photo notes
   const peopleWithOverTheYears = useMemo(() => {
@@ -312,42 +320,32 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
     
     if (validPhotos.length === 0) return { months: [], photosByMonth: new Map() };
     
-    // Find earliest and latest dates
-    const timestamps = validPhotos.map(p => p.timestamp).filter(t => t > 0);
-    if (timestamps.length === 0) return { months: [], photosByMonth: new Map() };
-    
-    const earliestTimestamp = Math.min(...timestamps);
-    const latestTimestamp = Math.max(...timestamps);
-    
-    const earliestDate = new Date(earliestTimestamp);
-    const latestDate = new Date(latestTimestamp);
-    
-    // Generate all months between earliest and latest
-    const months = [];
-    const currentDate = new Date(earliestDate.getFullYear(), earliestDate.getMonth(), 1);
-    const endDate = new Date(latestDate.getFullYear(), latestDate.getMonth(), 1);
-    
-    while (currentDate <= endDate) {
-      months.push({
-        year: currentDate.getFullYear(),
-        month: currentDate.getMonth(),
-        timestamp: currentDate.getTime()
-      });
-      currentDate.setMonth(currentDate.getMonth() + 1);
-    }
-    
-    // Reverse months array so latest is on the left
-    months.reverse();
-    
-    // Map photos to their respective months
+    // Map photos to their respective months and get unique months
     const photosByMonth = new Map();
+    const monthSet = new Set();
+    
     validPhotos.forEach((photo, index) => {
       const monthKey = `${photo.year}-${photo.month}`;
       if (!photosByMonth.has(monthKey)) {
         photosByMonth.set(monthKey, []);
+        monthSet.add(monthKey);
       }
       photosByMonth.get(monthKey).push({ ...photo, index });
     });
+    
+    // Only include months that have photos
+    const months = Array.from(monthSet).map(monthKey => {
+      const [year, month] = monthKey.split('-').map(Number);
+      const date = new Date(year, month, 1);
+      return {
+        year,
+        month,
+        timestamp: date.getTime()
+      };
+    });
+    
+    // Sort months by timestamp (latest first) so latest is on the left
+    months.sort((a, b) => b.timestamp - a.timestamp);
     
     return { months, photosByMonth };
   }, [timelinePhotos]);
@@ -371,6 +369,88 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
       
       return age;
     } catch (error) {
+      return null;
+    }
+  };
+
+  // Calculate age from date string (date_of_start) to photo date in years months days format
+  const calculateAgeFromDateOfStart = (dateOfStartString, photoDateString) => {
+    if (!dateOfStartString || !photoDateString) return null;
+    
+    try {
+      // Parse date of start
+      let startDate = new Date(dateOfStartString);
+      if (isNaN(startDate.getTime())) {
+        // Try to extract date from string
+        const yearMatch = dateOfStartString.match(/\b(19|20)\d{2}\b/);
+        const monthMatch = dateOfStartString.match(/\b(0?[1-9]|1[0-2])\b/);
+        const dayMatch = dateOfStartString.match(/\b(0?[1-9]|[12][0-9]|3[01])\b/);
+        
+        if (yearMatch && monthMatch) {
+          const year = parseInt(yearMatch[0]);
+          const month = parseInt(monthMatch[0]) - 1;
+          const day = dayMatch ? parseInt(dayMatch[0]) : 1;
+          startDate = new Date(year, month, day);
+        } else {
+          return null;
+        }
+      }
+      
+      if (isNaN(startDate.getTime())) return null;
+      
+      // Parse photo date
+      let photoDate = new Date(photoDateString);
+      if (isNaN(photoDate.getTime())) {
+        // Try to extract date from string
+        const yearMatch = photoDateString.match(/\b(19|20)\d{2}\b/);
+        const monthMatch = photoDateString.match(/\b(0?[1-9]|1[0-2])\b/);
+        const dayMatch = photoDateString.match(/\b(0?[1-9]|[12][0-9]|3[01])\b/);
+        
+        if (yearMatch && monthMatch) {
+          const year = parseInt(yearMatch[0]);
+          const month = parseInt(monthMatch[0]) - 1;
+          const day = dayMatch ? parseInt(dayMatch[0]) : 1;
+          photoDate = new Date(year, month, day);
+        } else {
+          return null;
+        }
+      }
+      
+      if (isNaN(photoDate.getTime())) return null;
+      
+      // Calculate difference
+      let years = photoDate.getFullYear() - startDate.getFullYear();
+      let months = photoDate.getMonth() - startDate.getMonth();
+      let days = photoDate.getDate() - startDate.getDate();
+      
+      // Adjust for negative days
+      if (days < 0) {
+        months--;
+        const lastDayOfPrevMonth = new Date(photoDate.getFullYear(), photoDate.getMonth(), 0).getDate();
+        days += lastDayOfPrevMonth;
+      }
+      
+      // Adjust for negative months
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+      
+      // Build age string
+      const parts = [];
+      if (years > 0) {
+        parts.push(`${years} year${years !== 1 ? 's' : ''}`);
+      }
+      if (months > 0) {
+        parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+      }
+      if (days > 0) {
+        parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+      }
+      
+      return parts.length > 0 ? parts.join(' ') : '0 days';
+    } catch (error) {
+      console.error('Error calculating age from date_of_start:', error);
       return null;
     }
   };
@@ -639,6 +719,40 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
     }
   }, [allNotes, setAllNotes]);
 
+  // Handle saving date_of_start
+  const handleSaveDateOfStart = useCallback(async (personId, dateOfStart) => {
+    if (!personId) return;
+
+    try {
+      const personNote = allNotes.find(n => n.id === personId);
+      if (!personNote) return;
+
+      const lines = personNote.content.split('\n');
+      let updatedContent = lines.filter(line => !line.startsWith('date_of_start:')).join('\n');
+      
+      // Always add date_of_start, default to empty if not provided
+      if (dateOfStart && dateOfStart.trim() !== '') {
+        updatedContent += `\ndate_of_start:${dateOfStart.trim()}`;
+      }
+
+      await updateNoteById(personId, updatedContent);
+
+      if (setAllNotes) {
+        setAllNotes(prevNotes => prevNotes.map(n => 
+          n.id === personId 
+            ? { ...n, content: updatedContent }
+            : n
+        ));
+      }
+
+      setEditingDateOfStartPersonId(null);
+      setEditingDateOfStartValue('');
+    } catch (error) {
+      console.error('Error saving date_of_start:', error);
+      alert('Failed to save date of start. Please try again.');
+    }
+  }, [allNotes, setAllNotes]);
+
   // Handle paste for images
   useEffect(() => {
     if (!showImageUploadModal) return;
@@ -840,6 +954,50 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
     };
   }, [showTimelineModal, currentPhotoIndex, timelinePhotos.length]);
 
+  // Handle flip functionality
+  const handleFlip = useCallback(() => {
+    if (isFlipping) {
+      // Stop flipping
+      if (flipIntervalId) {
+        clearInterval(flipIntervalId);
+        setFlipIntervalId(null);
+      }
+      setIsFlipping(false);
+    } else {
+      // Start flipping from oldest photo (last index)
+      if (timelinePhotos.length > 0) {
+        setCurrentPhotoIndex(timelinePhotos.length - 1);
+        setIsFlipping(true);
+        
+        const intervalId = setInterval(() => {
+          setCurrentPhotoIndex(prevIndex => {
+            if (prevIndex <= 0) {
+              // Reached the newest photo, stop flipping
+              clearInterval(intervalId);
+              setFlipIntervalId(null);
+              setIsFlipping(false);
+              return 0;
+            }
+            return prevIndex - 1;
+          });
+        }, 1000); // 1 second interval
+        
+        setFlipIntervalId(intervalId);
+      }
+    }
+  }, [isFlipping, flipIntervalId, timelinePhotos.length]);
+
+  // Clean up flip interval when modal closes or component unmounts
+  useEffect(() => {
+    return () => {
+      if (flipIntervalId) {
+        clearInterval(flipIntervalId);
+        setFlipIntervalId(null);
+      }
+      setIsFlipping(false);
+    };
+  }, [flipIntervalId, showTimelineModal]);
+
   // Calculate maximum photo height for scaling
   useEffect(() => {
     if (!showTimelineModal || timelinePhotos.length === 0) {
@@ -991,6 +1149,55 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                         )}
                       </div>
                     )}
+
+                    {/* Date of Start */}
+                    <div className="mb-3">
+                      {editingDateOfStartPersonId === person.id ? (
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-gray-600 whitespace-nowrap">Date of Start:</label>
+                          <input
+                            type="date"
+                            value={editingDateOfStartValue || convertDateToInputFormat(person.dateOfStart) || ''}
+                            onChange={(e) => setEditingDateOfStartValue(e.target.value)}
+                            onBlur={(e) => {
+                              e.stopPropagation();
+                              const dateToSave = e.target.value || editingDateOfStartValue || '';
+                              handleSaveDateOfStart(person.id, dateToSave);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const dateToSave = e.target.value || editingDateOfStartValue || '';
+                                handleSaveDateOfStart(person.id, dateToSave);
+                              } else if (e.key === 'Escape') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditingDateOfStartPersonId(null);
+                                setEditingDateOfStartValue('');
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-1"
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <div 
+                          className="flex items-center gap-2 cursor-pointer hover:text-indigo-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingDateOfStartPersonId(person.id);
+                            setEditingDateOfStartValue(convertDateToInputFormat(person.dateOfStart) || '');
+                          }}
+                        >
+                          <span className="text-xs text-gray-600 whitespace-nowrap">Date of Start:</span>
+                          <span className="text-xs text-gray-700">
+                            {person.dateOfStart ? formatDateDisplay(person.dateOfStart) : 'Click to add'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Photo Count and Buttons */}
                     <div className="flex items-center justify-between">
@@ -1715,6 +1922,12 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
           <div
             className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col items-center justify-center p-4"
             onClick={() => {
+              // Stop flipping if active
+              if (isFlipping && flipIntervalId) {
+                clearInterval(flipIntervalId);
+                setFlipIntervalId(null);
+                setIsFlipping(false);
+              }
               setShowTimelineModal(false);
               setTimelinePerson(null);
               setCurrentPhotoIndex(0);
@@ -1729,16 +1942,38 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                 <h2 className="text-2xl font-bold text-gray-900">
                   Timeline - <span className="text-5xl" style={{ fontFamily: "'Dancing Script', cursive" }}>{timelinePerson.name}</span>
                 </h2>
-                <button
-                  onClick={() => {
-                    setShowTimelineModal(false);
-                    setTimelinePerson(null);
-                    setCurrentPhotoIndex(0);
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFlip();
+                    }}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isFlipping 
+                        ? 'bg-red-600 text-white hover:bg-red-700' 
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    }`}
+                    title={isFlipping ? 'Stop flipping' : 'Start flipping through photos'}
+                  >
+                    {isFlipping ? 'Stop' : 'Flip'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Stop flipping if active
+                      if (isFlipping && flipIntervalId) {
+                        clearInterval(flipIntervalId);
+                        setFlipIntervalId(null);
+                        setIsFlipping(false);
+                      }
+                      setShowTimelineModal(false);
+                      setTimelinePerson(null);
+                      setCurrentPhotoIndex(0);
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
 
               {/* Photo Display Area */}
@@ -1813,14 +2048,29 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                           </div>
                         )}
                         {timelinePhotos[currentPhotoIndex].date && (
-                          <div className="text-xl text-gray-700">
-                            {formatDateDisplay(timelinePhotos[currentPhotoIndex].date)}
-                            {timelinePerson && timelinePerson.birthDateInfo && (() => {
-                              const ageAtPhoto = calculateAgeAtPhotoDate(
-                                timelinePerson.birthDateInfo,
-                                timelinePhotos[currentPhotoIndex].date
-                              );
-                              return ageAtPhoto ? ` (${ageAtPhoto})` : '';
+                          <div className="text-xl text-gray-700 space-y-1">
+                            <div>
+                              Photo on: {formatDateDisplay(timelinePhotos[currentPhotoIndex].date)}
+                            </div>
+                            {timelinePerson && (() => {
+                              // Use date_of_start if available, otherwise use birthDateInfo
+                              let ageAtPhoto = null;
+                              if (timelinePerson.dateOfStart) {
+                                ageAtPhoto = calculateAgeFromDateOfStart(
+                                  timelinePerson.dateOfStart,
+                                  timelinePhotos[currentPhotoIndex].date
+                                );
+                              } else if (timelinePerson.birthDateInfo) {
+                                ageAtPhoto = calculateAgeAtPhotoDate(
+                                  timelinePerson.birthDateInfo,
+                                  timelinePhotos[currentPhotoIndex].date
+                                );
+                              }
+                              return ageAtPhoto ? (
+                                <div>
+                                  Age: ({ageAtPhoto})
+                                </div>
+                              ) : null;
                             })()}
                           </div>
                         )}

@@ -281,6 +281,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
         const item = items[i];
         if (item.type.startsWith('image/')) {
           e.preventDefault();
+          e.stopPropagation();
           const file = item.getAsFile();
           if (file) {
             await uploadImage(file);
@@ -289,9 +290,19 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
       }
     };
 
+    // Also handle keydown to stop propagation when Cmd+V or Ctrl+V is pressed
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        // Stop propagation to prevent global paste handler from running
+        e.stopPropagation();
+      }
+    };
+
     window.addEventListener('paste', handlePaste);
+    window.addEventListener('keydown', handleKeyDown, true); // Use capture phase
     return () => {
       window.removeEventListener('paste', handlePaste);
+      window.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [showImageUpload]);
 

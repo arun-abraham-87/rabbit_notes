@@ -19,6 +19,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const [deleteModal, setDeleteModal] = useState({ open: false, noteId: null, personName: '' });
   const [pastedImageFile, setPastedImageFile] = useState(null);
   const [hidePhotos, setHidePhotos] = useState(false);
+  const [showWithoutPhoto, setShowWithoutPhoto] = useState(false);
 
   // Handle Cmd+V to paste image and open Add People modal
   useEffect(() => {
@@ -26,6 +27,21 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       // Only handle if not in an input/textarea and Cmd+V or Ctrl+V
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
         return;
+      }
+
+      // Check if we're inside a modal (photo upload modal, edit modal, etc.)
+      const target = e.target;
+      // Check if target is inside a modal element
+      const isInsideModal = target.closest('.fixed.inset-0') !== null || 
+                           target.closest('[role="dialog"]') !== null ||
+                           target.closest('.modal') !== null;
+      
+      // Also check if any modal is currently open by checking for modal elements
+      const hasOpenModal = document.querySelector('.fixed.inset-0') !== null ||
+                          document.querySelector('[role="dialog"]') !== null;
+      
+      if (isInsideModal || hasOpenModal) {
+        return; // Don't handle paste if inside a modal or if any modal is open
       }
 
       if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
@@ -128,8 +144,17 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       }
     }
 
+    // Apply "show without photo" filter
+    if (showWithoutPhoto) {
+      filtered = filtered.filter(note => {
+        const lines = note.content.split('\n');
+        const hasPhoto = lines.some(line => line.startsWith('meta::photo::'));
+        return !hasPhoto;
+      });
+    }
+
     return filtered;
-  }, [uniqueNotes, selectedTags, localSearchQuery]);
+  }, [uniqueNotes, selectedTags, localSearchQuery, showWithoutPhoto]);
 
   // Group allNotes by tags for tag view
   const allNotesByTag = useMemo(() => {
@@ -157,6 +182,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const clearFilters = () => {
     setSelectedTags([]);
     setLocalSearchQuery('');
+    setShowWithoutPhoto(false);
   };
 
   if (!uniqueNotes || uniqueNotes.length === 0) {
@@ -443,7 +469,21 @@ const PeopleList = ({allNotes, setAllNotes}) => {
             </button>
           </div>
         </div>
-        {(selectedTags.length > 0 || localSearchQuery) && (
+        <div>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Photo Filter</h4>
+          <button
+            onClick={() => setShowWithoutPhoto(!showWithoutPhoto)}
+            className={`px-3 py-1.5 text-sm rounded-md flex items-center gap-2 ${
+              showWithoutPhoto
+                ? 'bg-indigo-100 text-indigo-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <PhotoIcon className="h-4 w-4" />
+            <span>Without Photo</span>
+          </button>
+        </div>
+        {(selectedTags.length > 0 || localSearchQuery || showWithoutPhoto) && (
           <button
             onClick={clearFilters}
             className="text-sm text-indigo-600 hover:text-indigo-800 ml-2"

@@ -48,6 +48,7 @@ const NAVBAR_PAGES = [
   { id: 'stock-vesting', label: 'Stock Vesting' },
   { id: 'pomodoro', label: 'Pomodoro' },
   { id: 'information', label: 'Information' },
+  { id: 'over-the-years', label: 'Over the Years' },
 ];
 
 const Settings = ({ onClose, settings, setSettings }) => {

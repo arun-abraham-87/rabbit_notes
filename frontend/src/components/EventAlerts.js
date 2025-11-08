@@ -25,6 +25,7 @@ const getEventDetails = (content) => {
 const EventAlerts = ({ events, onAcknowledgeEvent }) => {
   const [acknowledgedEvents, setAcknowledgedEvents] = useState(new Set());
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isAcknowledgingAll, setIsAcknowledgingAll] = useState(false);
 
   // Reset acknowledged events when events prop changes
   useEffect(() => {
@@ -131,6 +132,69 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
 
   const unacknowledgedOccurrences = getUnacknowledgedOccurrences();
 
+  const handleAcknowledgeAll = async () => {
+    if (unacknowledgedOccurrences.length === 0) return;
+    
+    setIsAcknowledgingAll(true);
+    try {
+      // Group occurrences by event ID and year to avoid duplicates
+      const acknowledgmentMap = new Map();
+      unacknowledgedOccurrences.forEach(occurrence => {
+        const eventId = occurrence.event.id;
+        const year = occurrence.date.getFullYear();
+        const key = `${eventId}-${year}`;
+        if (!acknowledgmentMap.has(key)) {
+          acknowledgmentMap.set(key, { eventId, year, event: occurrence.event });
+        }
+      });
+
+      const acknowledgedKeys = new Set();
+      
+      // Process acknowledgments sequentially to avoid race conditions
+      for (const { eventId, year, event } of acknowledgmentMap.values()) {
+        try {
+          const metaTag = `meta::acknowledged::${year}`;
+          
+          // Get the latest event content (in case it was updated)
+          const currentEvent = events.find(e => e.id === eventId);
+          if (!currentEvent) continue;
+          
+          // Check if already acknowledged
+          if (currentEvent.content.includes(metaTag)) {
+            acknowledgedKeys.add(`${eventId}-${year}`);
+            continue;
+          }
+          
+          // Update the note with acknowledgment
+          const updatedContent = currentEvent.content.trim() + `\n${metaTag}`;
+          await updateNoteById(eventId, updatedContent);
+          
+          // Track this acknowledgment
+          acknowledgedKeys.add(`${eventId}-${year}`);
+          
+          // Call the callback if provided
+          if (onAcknowledgeEvent) {
+            onAcknowledgeEvent(eventId, year);
+          }
+        } catch (error) {
+          console.error(`Error acknowledging event ${eventId} for year ${year}:`, error);
+        }
+      }
+      
+      // Update local state once with all acknowledgments
+      setAcknowledgedEvents(prev => {
+        const newSet = new Set(prev);
+        acknowledgedKeys.forEach(key => newSet.add(key));
+        return newSet;
+      });
+    } catch (error) {
+      console.error('Error acknowledging all events:', error);
+      alert('Failed to acknowledge all events. Please try again.');
+    } finally {
+      setIsAcknowledgingAll(false);
+    }
+  };
+
   if (unacknowledgedOccurrences.length === 0) return null;
 
   return (
@@ -143,17 +207,38 @@ const EventAlerts = ({ events, onAcknowledgeEvent }) => {
               Unacknowledged Events ({unacknowledgedOccurrences.length})
             </h3>
           </div>
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="text-red-600 hover:text-red-700 focus:outline-none"
-            aria-label={isExpanded ? "Collapse events" : "Expand events"}
-          >
-            {isExpanded ? (
-              <ChevronUpIcon className="h-5 w-5" />
-            ) : (
-              <ChevronDownIcon className="h-5 w-5" />
+          <div className="flex items-center gap-3">
+            {unacknowledgedOccurrences.length > 0 && (
+              <button
+                onClick={handleAcknowledgeAll}
+                disabled={isAcknowledgingAll}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAcknowledgingAll ? (
+                  <>
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Acknowledging...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircleIcon className="w-5 h-5" />
+                    Acknowledge All
+                  </>
+                )}
+              </button>
             )}
-          </button>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-red-600 hover:text-red-700 focus:outline-none"
+              aria-label={isExpanded ? "Collapse events" : "Expand events"}
+            >
+              {isExpanded ? (
+                <ChevronUpIcon className="h-5 w-5" />
+              ) : (
+                <ChevronDownIcon className="h-5 w-5" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
       {isExpanded && (

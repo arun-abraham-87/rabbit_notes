@@ -12,6 +12,7 @@ import Journals from './pages/Journals';
 import Manage from './pages/Manage';
 import EventsPage from './pages/EventsPage';
 import PeopleList from './components/PeopleList';
+import OverTheYears from './pages/OverTheYears';
 import { createNote, loadAllNotes, updateNoteById, getSettings, defaultSettings, addNewTag, loadTags } from './utils/ApiUtils';
 import { SearchModalProvider } from './contexts/SearchModalContext';
 import { NoteEditorProvider } from './contexts/NoteEditorContext';
@@ -279,6 +280,13 @@ const MainContentArea = ({
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                 <InformationPage notes={allNotes} setAllNotes={setAllNotes} allNotes={allNotes} />
+              </div>
+            </div>
+          } />
+          <Route path="/over-the-years" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <OverTheYears allNotes={allNotes} />
               </div>
             </div>
           } />

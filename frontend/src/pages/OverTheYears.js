@@ -1054,28 +1054,15 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
               {/* Modal Header */}
               <div className="p-6 border-b border-gray-200 flex-shrink-0">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {selectedPerson.photos && selectedPerson.photos.length > 0 ? (
-                      <img
-                        src={selectedPerson.photos[0]}
-                        alt={selectedPerson.name}
-                        className="h-12 w-12 rounded-full object-cover border-2 border-indigo-200"
-                      />
-                    ) : (
-                      <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
-                        <UserIcon className="h-6 w-6 text-gray-400" />
-                      </div>
+                  <div>
+                    <h2 className="text-5xl font-bold text-gray-900" style={{ fontFamily: "'Dancing Script', cursive" }}>
+                      {selectedPerson.name}
+                    </h2>
+                    {calculateAge(selectedPerson.birthDateInfo) !== null && (
+                      <p className="text-sm text-gray-500">
+                        Age: {calculateAge(selectedPerson.birthDateInfo)} years
+                      </p>
                     )}
-                    <div>
-                      <h2 className="text-5xl font-bold text-gray-900" style={{ fontFamily: "'Dancing Script', cursive" }}>
-                        {selectedPerson.name}
-                      </h2>
-                      {calculateAge(selectedPerson.birthDateInfo) !== null && (
-                        <p className="text-sm text-gray-500">
-                          Age: {calculateAge(selectedPerson.birthDateInfo)} years
-                        </p>
-                      )}
-                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button

@@ -46,6 +46,7 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pastedImageFile, setPastedImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null); // Preview URL for pasted/selected image
   const [photoDate, setPhotoDate] = useState('');
   const [photoDateInput, setPhotoDateInput] = useState(''); // For date input (YYYY-MM-DD format)
   const [photoNotes, setPhotoNotes] = useState('');
@@ -68,36 +69,35 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
       .map(note => {
         const personInfo = getPersonInfo(note.content);
         
-        // Get photos from linked photo notes with metadata
-        const linkedPhotoIds = note.content
-          .split('\n')
-          .filter(line => line.startsWith('meta::linked_from_photos::'))
-          .map(line => line.replace('meta::linked_from_photos::', '').trim());
+        // Get photos from notes with meta::linked_to_person::<person_id> tag
+        const personId = note.id;
+        const linkedToPersonNotes = allNotes.filter(n => {
+          if (n.id === personId) return false; // Exclude the person note itself
+          const lines = n.content.split('\n');
+          return lines.some(line => line.startsWith(`meta::linked_to_person::${personId}`));
+        });
         
         const linkedPhotos = [];
-        linkedPhotoIds.forEach(photoNoteId => {
-          const photoNote = allNotes.find(n => n.id === photoNoteId);
-          if (photoNote) {
-            const photoLines = photoNote.content.split('\n');
-            const photoUrl = photoLines
-              .find(line => line.startsWith('meta::photo::'))
-              ?.replace('meta::photo::', '').trim();
+        linkedToPersonNotes.forEach(photoNote => {
+          const photoLines = photoNote.content.split('\n');
+          const photoUrl = photoLines
+            .find(line => line.startsWith('meta::photo::'))
+            ?.replace('meta::photo::', '').trim();
+          
+          if (photoUrl) {
+            // Extract metadata from note content (date: and notes:)
+            const dateLine = photoLines.find(line => line.startsWith('date:'));
+            const date = dateLine ? dateLine.replace('date:', '').trim() : '';
             
-            if (photoUrl) {
-              // Extract metadata from note content (date: and notes:)
-              const dateLine = photoLines.find(line => line.startsWith('date:'));
-              const date = dateLine ? dateLine.replace('date:', '').trim() : '';
-              
-              const notesLine = photoLines.find(line => line.startsWith('notes:'));
-              const notes = notesLine ? notesLine.replace('notes:', '').trim() : '';
-              
-              linkedPhotos.push({
-                url: photoUrl,
-                noteId: photoNoteId,
-                date,
-                notes
-              });
-            }
+            const notesLine = photoLines.find(line => line.startsWith('notes:'));
+            const notes = notesLine ? notesLine.replace('notes:', '').trim() : '';
+            
+            linkedPhotos.push({
+              url: photoUrl,
+              noteId: photoNote.id,
+              date,
+              notes
+            });
           }
         });
         
@@ -284,6 +284,9 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
     
+    // Reverse months array so latest is on the left
+    months.reverse();
+    
     // Map photos to their respective months
     const photosByMonth = new Map();
     validPhotos.forEach((photo, index) => {
@@ -315,6 +318,71 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
       }
       
       return age;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // Calculate age from birth date to photo date in years months days format
+  const calculateAgeAtPhotoDate = (birthDateInfo, photoDateString) => {
+    if (!birthDateInfo || !birthDateInfo.value || !photoDateString) return null;
+    
+    try {
+      // Parse birth date
+      const birthDate = new Date(birthDateInfo.value);
+      if (isNaN(birthDate.getTime())) return null;
+      
+      // Parse photo date
+      let photoDate = new Date(photoDateString);
+      if (isNaN(photoDate.getTime())) {
+        // Try to extract date from string
+        const yearMatch = photoDateString.match(/\b(19|20)\d{2}\b/);
+        const monthMatch = photoDateString.match(/\b(0?[1-9]|1[0-2])\b/);
+        const dayMatch = photoDateString.match(/\b(0?[1-9]|[12][0-9]|3[01])\b/);
+        
+        if (yearMatch && monthMatch) {
+          const year = parseInt(yearMatch[0]);
+          const month = parseInt(monthMatch[0]) - 1;
+          const day = dayMatch ? parseInt(dayMatch[0]) : 1;
+          photoDate = new Date(year, month, day);
+        } else {
+          return null;
+        }
+      }
+      
+      if (isNaN(photoDate.getTime())) return null;
+      
+      // Calculate difference
+      let years = photoDate.getFullYear() - birthDate.getFullYear();
+      let months = photoDate.getMonth() - birthDate.getMonth();
+      let days = photoDate.getDate() - birthDate.getDate();
+      
+      // Adjust for negative days
+      if (days < 0) {
+        months--;
+        const lastDayOfPrevMonth = new Date(photoDate.getFullYear(), photoDate.getMonth(), 0).getDate();
+        days += lastDayOfPrevMonth;
+      }
+      
+      // Adjust for negative months
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+      
+      // Build age string
+      const parts = [];
+      if (years > 0) {
+        parts.push(`${years} year${years !== 1 ? 's' : ''}`);
+      }
+      if (months > 0) {
+        parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+      }
+      if (days > 0) {
+        parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+      }
+      
+      return parts.length > 0 ? parts.join(' ') : null;
     } catch (error) {
       return null;
     }
@@ -400,7 +468,7 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
   }, []);
 
   // Handle saving photo as separate note with bidirectional link
-  const handleSavePhoto = useCallback(async (imageUrl, personId) => {
+  const handleSavePhoto = useCallback(async (imageUrl, personId, date, notes) => {
     if (!imageUrl || !personId) return;
 
     try {
@@ -414,11 +482,11 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
       let photoNoteContent = `Photo for ${personName}\nmeta::photo::${imageUrl}\nmeta::linked_to_person::${personId}`;
       
       // Add metadata in note content format
-      if (photoDate) {
-        photoNoteContent += `\ndate:${photoDate.trim()}`;
+      if (date && date.trim() !== '') {
+        photoNoteContent += `\ndate:${date.trim()}`;
       }
-      if (photoNotes) {
-        photoNoteContent += `\nnotes:${photoNotes.trim()}`;
+      if (notes && notes.trim() !== '') {
+        photoNoteContent += `\nnotes:${notes.trim()}`;
       }
       
       const photoNote = await createNote(photoNoteContent);
@@ -484,13 +552,10 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
           e.stopPropagation();
           const file = item.getAsFile();
           if (file) {
+            // Create preview URL
+            const previewUrl = URL.createObjectURL(file);
             setPastedImageFile(file);
-            try {
-              const imageUrl = await uploadImage(file);
-              await handleSavePhoto(imageUrl, uploadingPerson?.id);
-            } catch (error) {
-              console.error('Error pasting image:', error);
-            }
+            setImagePreview(previewUrl);
           }
         }
       }
@@ -510,7 +575,7 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
       window.removeEventListener('paste', handlePaste);
       window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [showImageUploadModal, uploadingPerson, uploadImage, handleSavePhoto]);
+  }, [showImageUploadModal, uploadingPerson]);
 
   // Handle drag and drop
   const handleDragOver = (e) => {
@@ -525,7 +590,7 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
     setIsDragging(false);
   };
 
-  const handleDrop = async (e) => {
+  const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -534,27 +599,23 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
     const imageFile = files.find(file => file.type.startsWith('image/'));
     
     if (imageFile && uploadingPerson) {
-      try {
-        const imageUrl = await uploadImage(imageFile);
-        await handleSavePhoto(imageUrl, uploadingPerson.id);
-      } catch (error) {
-        console.error('Error dropping image:', error);
-      }
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(imageFile);
+      setPastedImageFile(imageFile);
+      setImagePreview(previewUrl);
     } else {
       alert('Please drop a valid image file');
     }
   };
 
   // Handle file input change
-  const handleFileInputChange = async (e) => {
+  const handleFileInputChange = (e) => {
     const file = e.target.files?.[0];
     if (file && uploadingPerson) {
-      try {
-        const imageUrl = await uploadImage(file);
-        await handleSavePhoto(imageUrl, uploadingPerson.id);
-      } catch (error) {
-        console.error('Error selecting image:', error);
-      }
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setPastedImageFile(file);
+      setImagePreview(previewUrl);
     }
     // Reset file input
     e.target.value = '';
@@ -775,7 +836,7 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate">
+                        <h3 className="text-4xl font-semibold text-gray-900 truncate" style={{ fontFamily: "'Dancing Script', cursive" }}>
                           {person.name}
                         </h3>
                         {age !== null && (
@@ -797,18 +858,38 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                         <PhotoIcon className="h-4 w-4" />
                         <span>{person.photos.length} photo{person.photos.length !== 1 ? 's' : ''}</span>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setUploadingPerson(person);
-                          setShowImageUploadModal(true);
-                        }}
-                        className="flex items-center gap-1 px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
-                        title="Add image"
-                      >
-                        <PlusIcon className="h-3 w-3" />
-                        <span>Add Image</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {person.photos && person.photos.some(photo => {
+                          const photoDate = typeof photo === 'object' ? photo.date : '';
+                          return photoDate && photoDate.trim() !== '';
+                        }) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTimelinePerson(person);
+                              setShowTimelineModal(true);
+                              setCurrentPhotoIndex(0);
+                            }}
+                            className="flex items-center gap-1 px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+                            title="View timeline"
+                          >
+                            <CalendarIcon className="h-3 w-3" />
+                            <span>Timeline</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadingPerson(person);
+                            setShowImageUploadModal(true);
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+                          title="Add image"
+                        >
+                          <PlusIcon className="h-3 w-3" />
+                          <span>Add Image</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Tags */}
@@ -865,7 +946,7 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                       </div>
                     )}
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900">
+                      <h2 className="text-5xl font-bold text-gray-900" style={{ fontFamily: "'Dancing Script', cursive" }}>
                         {selectedPerson.name}
                       </h2>
                       {calculateAge(selectedPerson.birthDateInfo) !== null && (
@@ -1114,15 +1195,19 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                   Add Image for {uploadingPerson.name}
                 </h2>
                 <button
-                  onClick={() => {
-                    setShowImageUploadModal(false);
-                    setUploadingPerson(null);
-                    setIsDragging(false);
-                    setPastedImageFile(null);
-                    setPhotoDate('');
-                    setPhotoDateInput('');
-                    setPhotoNotes('');
-                  }}
+            onClick={() => {
+              if (imagePreview) {
+                URL.revokeObjectURL(imagePreview);
+              }
+              setShowImageUploadModal(false);
+              setUploadingPerson(null);
+              setIsDragging(false);
+              setPastedImageFile(null);
+              setImagePreview(null);
+              setPhotoDate('');
+              setPhotoDateInput('');
+              setPhotoNotes('');
+            }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <XMarkIcon className="h-6 w-6" />
@@ -1136,70 +1221,150 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                 </div>
               ) : (
                 <>
-                  <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                    isDragging 
-                      ? 'border-indigo-500 bg-indigo-50' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}>
-                    <PhotoIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <p className="text-sm text-gray-600 mb-2">
-                      Drag and drop an image here, or click to select
-                    </p>
-                    <p className="text-xs text-gray-500 mb-4">
-                      Or press Ctrl+V (Cmd+V on Mac) to paste from clipboard
-                    </p>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileInputChange}
-                      className="hidden"
-                      id="image-upload-input"
-                    />
-                    <label
-                      htmlFor="image-upload-input"
-                      className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer text-sm font-medium"
-                    >
-                      Select Image
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-4 text-center">
-                    Supported formats: JPG, PNG, GIF, WebP
-                  </p>
-                  
-                  {/* Metadata Fields */}
-                  <div className="mt-6 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Date
-                      </label>
-                      <input
-                        type="date"
-                        value={photoDateInput}
-                        onChange={(e) => {
-                          setPhotoDateInput(e.target.value);
-                          // Convert date input value to text format for saving
-                          if (e.target.value) {
-                            setPhotoDate(e.target.value);
-                          } else {
+                  {imagePreview ? (
+                    <div className="space-y-4">
+                      <div className="relative">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-full max-h-64 object-contain rounded-lg border-2 border-gray-200"
+                        />
+                        <button
+                          onClick={() => {
+                            if (imagePreview) {
+                              URL.revokeObjectURL(imagePreview);
+                            }
+                            setImagePreview(null);
+                            setPastedImageFile(null);
+                          }}
+                          className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1.5 hover:bg-red-700 transition-colors"
+                          title="Remove image"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                      
+                      {/* Metadata Fields */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Date
+                          </label>
+                          <input
+                            type="date"
+                            value={photoDateInput}
+                            onChange={(e) => {
+                              setPhotoDateInput(e.target.value);
+                              // Convert date input value to text format for saving
+                              if (e.target.value) {
+                                setPhotoDate(e.target.value);
+                              } else {
+                                setPhotoDate('');
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Notes
+                          </label>
+                          <textarea
+                            value={photoNotes}
+                            onChange={(e) => setPhotoNotes(e.target.value)}
+                            placeholder="Optional notes"
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Save Button */}
+                      <div className="flex gap-3 mt-6">
+                        <button
+                          onClick={async () => {
+                            if (!pastedImageFile || !uploadingPerson) return;
+                            
+                            try {
+                              setUploading(true);
+                              const imageUrl = await uploadImage(pastedImageFile);
+                              await handleSavePhoto(imageUrl, uploadingPerson.id, photoDate, photoNotes);
+                              
+                              // Clean up preview URL
+                              if (imagePreview) {
+                                URL.revokeObjectURL(imagePreview);
+                              }
+                              setImagePreview(null);
+                              setPastedImageFile(null);
+                            } catch (error) {
+                              console.error('Error saving image:', error);
+                              alert('Failed to save image. Please try again.');
+                            } finally {
+                              setUploading(false);
+                            }
+                          }}
+                          disabled={uploading || !pastedImageFile}
+                          className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {uploading ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              Saving...
+                            </span>
+                          ) : (
+                            'Save Image'
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (imagePreview) {
+                              URL.revokeObjectURL(imagePreview);
+                            }
+                            setImagePreview(null);
+                            setPastedImageFile(null);
                             setPhotoDate('');
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
+                            setPhotoDateInput('');
+                            setPhotoNotes('');
+                          }}
+                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Notes
-                      </label>
-                      <textarea
-                        value={photoNotes}
-                        onChange={(e) => setPhotoNotes(e.target.value)}
-                        placeholder="Optional notes"
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                        isDragging 
+                          ? 'border-indigo-500 bg-indigo-50' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}>
+                        <PhotoIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <p className="text-sm text-gray-600 mb-2">
+                          Drag and drop an image here, or click to select
+                        </p>
+                        <p className="text-xs text-gray-500 mb-4">
+                          Or press Ctrl+V (Cmd+V on Mac) to paste from clipboard
+                        </p>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileInputChange}
+                          className="hidden"
+                          id="image-upload-input"
+                        />
+                        <label
+                          htmlFor="image-upload-input"
+                          className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer text-sm font-medium"
+                        >
+                          Select Image
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-4 text-center">
+                        Supported formats: JPG, PNG, GIF, WebP
+                      </p>
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -1381,7 +1546,7 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Timeline - {timelinePerson.name}
+                  Timeline - <span className="text-5xl" style={{ fontFamily: "'Dancing Script', cursive" }}>{timelinePerson.name}</span>
                 </h2>
                 <button
                   onClick={() => {
@@ -1461,14 +1626,21 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                       
                       {/* Date and Year Below Photo */}
                       <div className="mt-6 text-center space-y-2">
-                        {timelinePhotos[currentPhotoIndex].year && (
-                          <div className="text-3xl font-bold text-gray-900">
-                            {timelinePhotos[currentPhotoIndex].year}
+                        {timelinePhotos[currentPhotoIndex].year && timelinePhotos[currentPhotoIndex].month !== null && (
+                          <div className="text-3xl font-bold text-gray-900 uppercase">
+                            {new Date(2000, timelinePhotos[currentPhotoIndex].month, 1).toLocaleString('default', { month: 'short' })} {timelinePhotos[currentPhotoIndex].year}
                           </div>
                         )}
                         {timelinePhotos[currentPhotoIndex].date && (
                           <div className="text-xl text-gray-700">
                             {timelinePhotos[currentPhotoIndex].date}
+                            {timelinePerson && timelinePerson.birthDateInfo && (() => {
+                              const ageAtPhoto = calculateAgeAtPhotoDate(
+                                timelinePerson.birthDateInfo,
+                                timelinePhotos[currentPhotoIndex].date
+                              );
+                              return ageAtPhoto ? ` (${ageAtPhoto})` : '';
+                            })()}
                           </div>
                         )}
                         {timelinePhotos[currentPhotoIndex].notes && (
@@ -1515,25 +1687,15 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                               ? 40 + (monthIndex / (totalMonths - 1)) * timelineWidth
                               : 40 + timelineWidth / 2; // Center if only one month
                             
-                            // Show year label only for January or first month
-                            const showYear = month.month === 0 || monthIndex === 0;
-                            
                             return (
                               <div
                                 key={monthIndex}
                                 className="absolute top-0 bottom-0 flex flex-col items-center"
                                 style={{ left: `${position}px`, transform: 'translateX(-50%)' }}
                               >
-                                {/* Year Label (only for January or first month) */}
-                                {showYear && (
-                                  <div className="text-xs font-semibold text-gray-700 mb-1 whitespace-nowrap">
-                                    {month.year}
-                                  </div>
-                                )}
-                                
-                                {/* Month Label */}
-                                <div className="text-xs text-gray-500 mb-2 whitespace-nowrap">
-                                  {new Date(2000, month.month, 1).toLocaleString('default', { month: 'short' })}
+                                {/* Month and Year Label */}
+                                <div className="text-xs font-semibold text-gray-700 mb-2 whitespace-nowrap uppercase">
+                                  {new Date(2000, month.month, 1).toLocaleString('default', { month: 'short' })} {month.year}
                                 </div>
                                 
                                 {/* Month Marker on Timeline */}

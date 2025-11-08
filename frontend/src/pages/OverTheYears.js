@@ -999,24 +999,6 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                         <span>{person.photos.length} photo{person.photos.length !== 1 ? 's' : ''}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        {person.photos && person.photos.some(photo => {
-                          const photoDate = typeof photo === 'object' ? photo.date : '';
-                          return photoDate && photoDate.trim() !== '';
-                        }) && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setTimelinePerson(person);
-                              setShowTimelineModal(true);
-                              setCurrentPhotoIndex(0);
-                            }}
-                            className="flex items-center gap-1 px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
-                            title="View timeline"
-                          >
-                            <CalendarIcon className="h-3 w-3" />
-                            <span>Timeline</span>
-                          </button>
-                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

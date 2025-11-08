@@ -1223,6 +1223,20 @@ const OverTheYears = ({ allNotes = [], setAllNotes }) => {
                         </div>
                       );
                     })}
+                    {/* Dummy card with plus icon for adding new image */}
+                    <div
+                      className="relative group border-2 border-dashed border-gray-300 rounded-lg h-48 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadingPerson(selectedPerson);
+                        setShowImageUploadModal(true);
+                      }}
+                    >
+                      <PlusIcon className="h-12 w-12 text-gray-400 group-hover:text-indigo-600 transition-colors mb-2" />
+                      <p className="text-sm text-gray-500 group-hover:text-indigo-600 transition-colors text-center px-2">
+                        Drag and drop here
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-12">

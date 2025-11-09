@@ -16,21 +16,49 @@ const Navbar = ({ activePage, setActivePage }) => {
     const savedMainBar = localStorage.getItem('navbarMainBarPages');
     const savedOrder = localStorage.getItem('navbarPagesOrder');
     
+    // Define all pages (should match NAVBAR_PAGES in Settings.js)
+    const allPages = [
+      'dashboard', 'notes', 'todos', 'watch', 'tags', 'journals', 'events', 
+      'timelines', 'purchases', 'payments', 'countdowns', 'people', 'family-tree',
+      'news', 'expense', 'trackers', 'calendar', 'bookmarks', 'assets', 
+      'stock-vesting', 'pomodoro', 'information', 'over-the-years'
+    ];
+    
     if (saved) {
-      setNavbarPagesVisibility(JSON.parse(saved));
+      const savedObj = JSON.parse(saved);
+      // Merge with new pages (default to true for new pages)
+      const merged = {};
+      allPages.forEach(pageId => {
+        merged[pageId] = savedObj[pageId] !== undefined ? savedObj[pageId] : true;
+      });
+      setNavbarPagesVisibility(merged);
     } else {
       // Default: all true
-      setNavbarPagesVisibility({
-        dashboard: true, notes: true, todos: true, watch: true, tags: true, journals: true, events: true, countdowns: true, people: true, news: true, expense: true, trackers: true, calendar: true, bookmarks: true, assets: true, 'stock-vesting': true, pomodoro: true, timelines: true, purchases: true, payments: true, information: true, 'over-the-years': true
-        });
+      const defaultVis = {};
+      allPages.forEach(pageId => { defaultVis[pageId] = true; });
+      setNavbarPagesVisibility(defaultVis);
     }
     
     if (savedMainBar) {
-      setNavbarMainBarPages(JSON.parse(savedMainBar));
+      const savedObj = JSON.parse(savedMainBar);
+      // Merge with new pages (don't add to main bar by default)
+      const merged = {};
+      allPages.forEach(pageId => {
+        merged[pageId] = savedObj[pageId] !== undefined ? savedObj[pageId] : false;
+      });
+      setNavbarMainBarPages(merged);
     }
     
     if (savedOrder) {
-      setNavbarPagesOrder(JSON.parse(savedOrder));
+      const saved = JSON.parse(savedOrder);
+      // Merge with new pages (add new pages to end)
+      const merged = [...saved];
+      allPages.forEach(pageId => {
+        if (!merged.includes(pageId)) {
+          merged.push(pageId);
+        }
+      });
+      setNavbarPagesOrder(merged);
     }
   }, []);
 
@@ -47,6 +75,7 @@ const Navbar = ({ activePage, setActivePage }) => {
     { id: 'payments', label: 'Payments' },
     { id: 'countdowns', label: 'Countdowns' },
     { id: 'people', label: 'People' },
+    { id: 'family-tree', label: 'Family Tree' },
     { id: 'news', label: 'News' },
     { id: 'expense', label: 'Expense' },
     { id: 'trackers', label: 'Trackers' },

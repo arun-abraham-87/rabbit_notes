@@ -51,10 +51,10 @@ const RelationshipCardPreview = ({ person, allNotes, onEdit, hidePhotos = false 
               <img
                 src={photos[0]}
                 alt={name}
-                className="h-16 w-16 rounded-full object-cover"
+                className="h-16 w-16 rounded-lg object-cover"
               />
             ) : (
-              <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center">
+              <div className="h-16 w-16 rounded-lg bg-gray-200 flex items-center justify-center">
                 <UserIcon className="h-8 w-8 text-gray-400" />
               </div>
             )}
@@ -517,7 +517,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
             {photos && photos.length > 0 ? (
             <button
               type="button"
-              className="block h-32 w-32 rounded-full overflow-hidden border-2 border-indigo-200 bg-indigo-100 flex items-center justify-center hover:border-indigo-400 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="block h-32 w-32 rounded-lg overflow-hidden border-2 border-indigo-200 bg-indigo-100 flex items-center justify-center hover:border-indigo-400 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
               title="View photo"
               onClick={(e) => {
                 e.stopPropagation();
@@ -537,14 +537,14 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                   }
                 }}
               />
-              <div className="hidden h-32 w-32 bg-indigo-100 items-center justify-center">
+              <div className="hidden h-32 w-32 rounded-lg bg-indigo-100 items-center justify-center">
                 <UserIcon className="h-16 w-16 text-indigo-600" />
               </div>
             </button>
           ) : (
             <button
               type="button"
-              className="h-32 w-32 rounded-full bg-indigo-100 flex items-center justify-center hover:bg-indigo-200 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 border-2 border-dashed border-indigo-300 hover:border-indigo-400"
+              className="h-32 w-32 rounded-lg bg-indigo-100 flex items-center justify-center hover:bg-indigo-200 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 border-2 border-dashed border-indigo-300 hover:border-indigo-400"
               title="Click to upload photo"
               onClick={(e) => {
                 e.stopPropagation();
@@ -686,6 +686,18 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
           >
             <PencilIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600" />
           </button>
+          {name && (
+            <a
+              href={`https://www.facebook.com/search/top/?q=${encodeURIComponent(name)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="px-2 py-1 rounded hover:bg-gray-100 text-xs font-medium text-gray-400 hover:text-blue-600"
+              title="Search on Facebook"
+            >
+              FB
+            </a>
+          )}
         </div>
       </div>
       {tags && tags.length > 0 && (

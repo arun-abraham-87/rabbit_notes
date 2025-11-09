@@ -179,6 +179,23 @@ const PeopleList = ({allNotes, setAllNotes}) => {
     }).length;
   }, [uniqueNotes]);
 
+  // Get unique tags from filtered notes only
+  const filteredTags = useMemo(() => {
+    const tagSet = new Set();
+    filteredallNotes.forEach(note => {
+      const tagLines = note.content
+        .split('\n')
+        .filter(line => line.startsWith('meta::tag::'))
+        .map(line => line.split('::')[2]);
+      tagLines.forEach(tag => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+  }, [filteredallNotes]);
+
+  // Summary counts - use filtered results to reflect current filters
+  const totalPeople = filteredallNotes.length;
+  const totalTags = filteredTags.length;
+
   const clearFilters = () => {
     setSelectedTags([]);
     setLocalSearchQuery('');
@@ -195,10 +212,6 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       </div>
     );
   }
-
-  // Summary counts
-  const totalPeople = uniqueNotes.filter(note => note.content && note.content.includes('meta::person::')).length;
-  const totalTags = allTags.length;
 
   // Handler for editing a person
   const handleEditPerson = async (id, content) => {

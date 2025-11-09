@@ -39,6 +39,7 @@ const NAVBAR_PAGES = [
   { id: 'payments', label: 'Payments' },
   { id: 'countdowns', label: 'Countdowns' },
   { id: 'people', label: 'People' },
+  { id: 'family-tree', label: 'Family Tree' },
   { id: 'news', label: 'News' },
   { id: 'expense', label: 'Expense' },
   { id: 'trackers', label: 'Trackers' },
@@ -83,7 +84,13 @@ const Settings = ({ onClose, settings, setSettings }) => {
           setBaseTimezone(savedBaseTimezone);
         }
         if (savedNavbarPages) {
-          setNavbarPagesVisibility(JSON.parse(savedNavbarPages));
+          const saved = JSON.parse(savedNavbarPages);
+          // Merge with new pages from NAVBAR_PAGES (default to true for new pages)
+          const merged = {};
+          NAVBAR_PAGES.forEach(page => {
+            merged[page.id] = saved[page.id] !== undefined ? saved[page.id] : true;
+          });
+          setNavbarPagesVisibility(merged);
         } else {
           // Default: all true
           const defaultVis = {};
@@ -91,7 +98,13 @@ const Settings = ({ onClose, settings, setSettings }) => {
           setNavbarPagesVisibility(defaultVis);
         }
         if (savedMainBarPages) {
-          setNavbarMainBarPages(JSON.parse(savedMainBarPages));
+          const saved = JSON.parse(savedMainBarPages);
+          // Merge with new pages from NAVBAR_PAGES (don't add to main bar by default)
+          const merged = {};
+          NAVBAR_PAGES.forEach(page => {
+            merged[page.id] = saved[page.id] !== undefined ? saved[page.id] : false;
+          });
+          setNavbarMainBarPages(merged);
         } else {
           // Default: first 10 visible pages on main bar
           const defaultMainBar = {};
@@ -99,7 +112,15 @@ const Settings = ({ onClose, settings, setSettings }) => {
           setNavbarMainBarPages(defaultMainBar);
         }
         if (savedPagesOrder) {
-          setNavbarPagesOrder(JSON.parse(savedPagesOrder));
+          const saved = JSON.parse(savedPagesOrder);
+          // Merge with new pages from NAVBAR_PAGES (add new pages to end)
+          const merged = [...saved];
+          NAVBAR_PAGES.forEach(page => {
+            if (!merged.includes(page.id)) {
+              merged.push(page.id);
+            }
+          });
+          setNavbarPagesOrder(merged);
         } else {
           // Default: use original NAVBAR_PAGES order
           setNavbarPagesOrder(NAVBAR_PAGES.map(p => p.id));

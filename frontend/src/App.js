@@ -36,6 +36,7 @@ import Timelines from './pages/Timelines';
 import Purchases from './pages/Purchases';
 import PaymentsPage from './pages/PaymentsPage';
 import InformationPage from './pages/InformationPage';
+import FamilyTree from './pages/FamilyTree';
 import { getDummyCadenceObj, getDummyCadenceLine } from './utils/CadenceHelpUtils';
 import StockVesting from './components/StockVesting';
 import Pomodoro from './components/Pomodoro';
@@ -149,6 +150,18 @@ const MainContentArea = ({
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
                   <PeopleList
+                    allNotes={allNotes}
+                    setAllNotes={setAllNotes}
+                  />
+                </div>
+              </div>
+            </div>
+          } />
+          <Route path="/family-tree" element={
+            <div className="h-full overflow-y-auto">
+              <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full">
+                  <FamilyTree
                     allNotes={allNotes}
                     setAllNotes={setAllNotes}
                   />

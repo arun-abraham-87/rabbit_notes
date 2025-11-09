@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon, PencilIcon, TrashIcon, BellIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, MagnifyingGlassIcon, ChartBarIcon, XMarkIcon, FolderIcon, ExclamationTriangleIcon, GlobeAltIcon, PlayIcon, CalendarIcon, ChevronRightIcon, DocumentPlusIcon, ArrowUpTrayIcon, DocumentTextIcon, EyeIcon, EyeSlashIcon, LockClosedIcon, PencilIcon, TrashIcon, BellIcon, PlusIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import { createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 
 const WebsitePreview = ({ url, isVisible }) => {
@@ -261,7 +261,7 @@ const LoadBookmarksTextModal = ({ isOpen, onClose, allNotes }) => {
 
     // Get existing bookmarks from allNotes
     const existingBookmarks = allNotes
-      .filter(note => note.content.includes('meta::web_bookmark'))
+      .filter(note => note.content.includes('meta::web_bookmark') || note.content.includes('meta::bookmark::'))
       .map(note => {
         const lines = note.content.split('\n');
         const url = lines.find(line => line.startsWith('url:'))?.slice(4) || '';
@@ -749,6 +749,12 @@ const BookmarkEdit = ({ isOpen, onClose, bookmark, onSave }) => {
       setUrl(bookmark.url || '');
       setFolderPath(bookmark.folderPath || '');
       setIsHidden(bookmark.isHidden || false);
+    } else {
+      // Reset form fields when adding a new bookmark
+      setTitle('');
+      setUrl('');
+      setFolderPath('');
+      setIsHidden(false);
     }
   }, [bookmark]);
 
@@ -824,7 +830,7 @@ const BookmarkEdit = ({ isOpen, onClose, bookmark, onSave }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-700">Edit Bookmark</h3>
+          <h3 className="text-lg font-semibold text-gray-700">{bookmark ? 'Edit Bookmark' : 'Add Bookmark'}</h3>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -914,7 +920,7 @@ const BookmarkEdit = ({ isOpen, onClose, bookmark, onSave }) => {
               onFocus={() => setFocusedElement(5)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              Save Changes
+              {bookmark ? 'Save Changes' : 'Add Bookmark'}
             </button>
           </div>
         </form>
@@ -968,7 +974,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, bookmark }) => {
   );
 };
 
-const BookmarkManager = ({ allNotes }) => {
+const BookmarkManager = ({ allNotes, setAllNotes }) => {
   const [bookmarks, setBookmarks] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1001,6 +1007,7 @@ const BookmarkManager = ({ allNotes }) => {
   const [isLoadTextModalOpen, setIsLoadTextModalOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [deletingBookmark, setDeletingBookmark] = useState(null);
   const [keySequence, setKeySequence] = useState('');
   const [isWaitingForS, setIsWaitingForS] = useState(false);
@@ -1019,11 +1026,33 @@ const BookmarkManager = ({ allNotes }) => {
         }
 
         const webBookmarks = allNotes
-          .filter(note => note.content.includes('meta::web_bookmark'))
+          .filter(note => note.content.includes('meta::web_bookmark') || note.content.includes('meta::bookmark::'))
           .map(note => {
             const lines = note.content.split('\n');
-            const title = lines.find(line => line.startsWith('title:'))?.slice(6) || '';
-            const url = lines.find(line => line.startsWith('url:'))?.slice(4) || '';
+            let title = lines.find(line => line.startsWith('title:'))?.slice(6) || '';
+            let url = lines.find(line => line.startsWith('url:'))?.slice(4) || '';
+            
+            // If no title field, use the first non-meta line as title
+            if (!title) {
+              const firstNonMetaLine = lines.find(line => 
+                line.trim() && 
+                !line.startsWith('meta::') && 
+                !line.startsWith('title:') && 
+                !line.startsWith('url:') && 
+                !line.startsWith('create_date:') && 
+                !line.startsWith('Folder:')
+              );
+              title = firstNonMetaLine?.trim() || '';
+            }
+            
+            // If no url field, try to extract from content or leave empty
+            if (!url) {
+              // Try to find a URL pattern in the content
+              const urlPattern = /(https?:\/\/[^\s]+)/;
+              const urlMatch = note.content.match(urlPattern);
+              url = urlMatch ? urlMatch[1] : '';
+            }
+            
             const createDate = lines.find(line => line.startsWith('create_date:'))?.slice(12);
             const folderPath = lines.find(line => line.startsWith('Folder:'))?.slice(7) || 'Uncategorized';
             const isHidden = note.content.includes('meta::bookmark_hidden');
@@ -1483,6 +1512,7 @@ const BookmarkManager = ({ allNotes }) => {
           const bookmark = filteredBookmarks[focusedBookmarkIndex];
           if (bookmark) {
             setEditingBookmark(bookmark);
+            setIsEditModalOpen(true);
           }
         } else if (e.key === 'm') {
           // Start the 'm' + 's' sequence for marking as hidden
@@ -1800,15 +1830,39 @@ const BookmarkManager = ({ allNotes }) => {
         updatedBookmark.folderPath ? `Folder: ${updatedBookmark.folderPath}` : ''
       ].filter(line => line).join('\n');
 
-      // Update the existing note instead of creating a new one
-      await updateNoteById(updatedBookmark.id, content);
-      
-      // Update the bookmarks list
-      setBookmarks(prev => prev.map(b => 
-        b.id === updatedBookmark.id ? updatedBookmark : b
-      ));
+      if (updatedBookmark.id) {
+        // Update the existing note
+        await updateNoteById(updatedBookmark.id, content);
+        
+        // Update the bookmarks list
+        setBookmarks(prev => prev.map(b => 
+          b.id === updatedBookmark.id ? updatedBookmark : b
+        ));
+      } else {
+        // Create a new note
+        const newNote = await createNote(content);
+        
+        // Update allNotes if setAllNotes is provided
+        if (setAllNotes) {
+          setAllNotes(prev => [newNote, ...prev]);
+        }
+        
+        // Add the new bookmark to the list
+        const newBookmark = {
+          id: newNote.id,
+          title: updatedBookmark.title,
+          url: updatedBookmark.url,
+          dateAdded: updatedBookmark.dateAdded ? new Date(updatedBookmark.dateAdded) : new Date(),
+          folderPath: updatedBookmark.folderPath || 'Uncategorized',
+          icon: null,
+          created_datetime: newNote.created_datetime,
+          isHidden: updatedBookmark.isHidden || false
+        };
+        
+        setBookmarks(prev => [newBookmark, ...prev]);
+      }
     } catch (error) {
-      console.error('Error updating bookmark:', error);
+      console.error('Error saving bookmark:', error);
       throw error;
     }
   };
@@ -1823,6 +1877,34 @@ const BookmarkManager = ({ allNotes }) => {
       alert('Failed to delete bookmark. Please try again.');
     }
   };
+
+  const handleFilterByHostname = useCallback((url) => {
+    try {
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname.replace(/^www\./, '');
+      setSearchQuery(hostname);
+      // Focus the search input
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        // Move cursor to end of text
+        const length = hostname.length;
+        searchInputRef.current.setSelectionRange(length, length);
+      }
+    } catch (error) {
+      console.error('Error extracting hostname:', error);
+      // If URL parsing fails, try to extract hostname manually
+      const hostnameMatch = url.match(/https?:\/\/(?:www\.)?([^\/]+)/);
+      if (hostnameMatch) {
+        const hostname = hostnameMatch[1];
+        setSearchQuery(hostname);
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+          const length = hostname.length;
+          searchInputRef.current.setSelectionRange(length, length);
+        }
+      }
+    }
+  }, []);
 
   const renderBookmarkCard = (bookmark, index) => {
     const isPreviewable = isPreviewableUrl(bookmark.url);
@@ -1889,12 +1971,24 @@ const BookmarkManager = ({ allNotes }) => {
             </div>
           )}
           <button
-            onClick={() => setEditingBookmark(bookmark)}
+            onClick={() => {
+              setEditingBookmark(bookmark);
+              setIsEditModalOpen(true);
+            }}
             className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
             title="Edit bookmark"
           >
             <PencilIcon className="h-4 w-4 text-gray-600" />
           </button>
+          {!shouldMask && bookmark.url && (
+            <button
+              onClick={() => handleFilterByHostname(bookmark.url)}
+              className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
+              title="Filter by hostname"
+            >
+              <FunnelIcon className="h-4 w-4 text-blue-600" />
+            </button>
+          )}
           <button
             onClick={() => setDeletingBookmark(bookmark)}
             className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-lg cursor-pointer hover:bg-red-100 transition-colors"
@@ -2053,6 +2147,16 @@ const BookmarkManager = ({ allNotes }) => {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold text-gray-900">Bookmarks</h1>
         <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setEditingBookmark(null);
+              setIsEditModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
+            <PlusIcon className="h-4 w-4" />
+            Add Bookmark
+          </button>
           <button
             onClick={() => setIsLoadTextModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
@@ -2427,12 +2531,24 @@ const BookmarkManager = ({ allNotes }) => {
                     {/* Actions */}
                     <div className="col-span-1 flex items-center gap-1">
               <button
-                        onClick={() => setEditingBookmark(bookmark)}
+                        onClick={() => {
+                          setEditingBookmark(bookmark);
+                          setIsEditModalOpen(true);
+                        }}
                         className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
                         title="Edit"
                       >
                         <PencilIcon className="h-4 w-4" />
                       </button>
+                      {!(bookmark.isHidden && !showHidden) && bookmark.url && (
+                        <button
+                          onClick={() => handleFilterByHostname(bookmark.url)}
+                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Filter by hostname"
+                        >
+                          <FunnelIcon className="h-4 w-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => setDeletingBookmark(bookmark)}
                         className="p-1 text-gray-400 hover:text-red-600 transition-colors"
@@ -2526,10 +2642,17 @@ const BookmarkManager = ({ allNotes }) => {
       />
 
       <BookmarkEdit
-        isOpen={!!editingBookmark}
-        onClose={() => setEditingBookmark(null)}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingBookmark(null);
+        }}
         bookmark={editingBookmark}
-        onSave={handleSaveBookmark}
+        onSave={async (bookmark) => {
+          await handleSaveBookmark(bookmark);
+          setIsEditModalOpen(false);
+          setEditingBookmark(null);
+        }}
       />
 
       <DeleteConfirmationModal

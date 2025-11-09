@@ -1080,6 +1080,13 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   title={note.description}
                   dangerouslySetInnerHTML={{ __html: parseLinks(note.description) }}
                 />
+                {note.notes && (
+                  <div 
+                    className={`text-xs mt-1 w-full truncate ${note.bgColor === '#f3e8ff' ? 'text-purple-700' : 'text-gray-600'}`}
+                    title={note.notes}
+                    dangerouslySetInnerHTML={{ __html: parseLinks(note.notes) }}
+                  />
+                )}
                 <div className={`text-sm ${note.bgColor === '#f3e8ff' ? 'text-purple-600' : 'text-gray-500'}`}>
                   {shouldShowAnniversary ? (
                     (() => {

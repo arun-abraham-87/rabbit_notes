@@ -25,6 +25,33 @@ import TimelineLinkModal from './TimelineLinkModal';
 import { updateNoteById, getNoteById } from '../utils/ApiUtils';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 
+// Helper function to parse and make links clickable
+const parseLinks = (text) => {
+  if (!text) return text;
+  
+  // Regex patterns for different link formats
+  const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  const plainUrlRegex = /(https?:\/\/[^\s]+)/g;
+  
+  // First, replace markdown links
+  let processedText = text.replace(markdownLinkRegex, (match, label, url) => {
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${label}</a>`;
+  });
+  
+  // Then, replace plain URLs
+  processedText = processedText.replace(plainUrlRegex, (match) => {
+    // Skip if this URL is already part of a markdown link
+    if (processedText.includes(`href="${match}"`)) {
+      return match;
+    }
+    
+    const hostname = match.replace(/^https?:\/\//, '').split('/')[0];
+    return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${hostname}</a>`;
+  });
+  
+  return processedText;
+};
+
 const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAddEvent, onDelete, selectedEventIndex, onEventSelect, showPastEvents: showPastEventsProp, onShowPastEventsChange, onTimelineUpdated }) => {
   const [showPastEventsInternal, setShowPastEventsInternal] = useState(false);
   // Use prop if provided, otherwise use internal state
@@ -575,9 +602,10 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                       )}
                                     </h3>
                                     {occurrence.event.notes && (
-                                      <p className="text-xs text-gray-500 mt-1">
-                                        {occurrence.event.notes}
-                                      </p>
+                                      <p 
+                                        className="text-xs text-gray-500 mt-1"
+                                        dangerouslySetInnerHTML={{ __html: parseLinks(occurrence.event.notes) }}
+                                      />
                                     )}
                                     <div className="flex flex-col gap-1">
                                       <div className="grid grid-cols-[120px_1fr] gap-x-2">

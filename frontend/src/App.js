@@ -218,7 +218,7 @@ const MainContentArea = ({
             <div className="h-full overflow-y-auto">
               <div className="w-full 2xl:max-w-[80%] 2xl:mx-auto">
                 <div className="min-h-screen bg-gray-50 p-4">
-                  <BookmarkManager allNotes={allNotes} />
+                  <BookmarkManager allNotes={allNotes} setAllNotes={setAllNotes} />
                 </div>
               </div>
             </div>

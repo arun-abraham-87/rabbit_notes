@@ -2684,6 +2684,7 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                               if (linkedNote) {
                                                 setFocusOnNotesField(true);
                                                 setEditingEventId(event.linkedEventId);
+                                                setEditingTimelineId(note.id);
                                                 setShowEditEventModal(true);
                                               }
                                             } else {
@@ -3203,7 +3204,35 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                 if (updateNote) {
                   updateNote(eventId, content);
                 }
+                // Update setAllNotes if available
+                if (setAllNotes) {
+                  setAllNotes(prev => prev.map(n => n.id === eventId ? { ...n, content } : n));
+                }
                 devLog('[Timelines] Event updated:', eventId);
+                
+                // Refresh timeline cache if editingTimelineId is set
+                if (timelineId) {
+                  // Clear cache for this timeline to force reload
+                  setTimelineEventsCache(prev => {
+                    const updated = { ...prev };
+                    delete updated[timelineId];
+                    return updated;
+                  });
+                  // Reload timeline events if timeline is expanded
+                  if (!collapsedTimelines.has(timelineId)) {
+                    loadTimelineEvents(timelineId);
+                  }
+                } else {
+                  // If no timelineId, clear all timeline caches to force reload
+                  setTimelineEventsCache({});
+                  // Reload all expanded timelines
+                  timelineNotes.forEach(timelineNote => {
+                    if (!collapsedTimelines.has(timelineNote.id)) {
+                      loadTimelineEvents(timelineNote.id);
+                    }
+                  });
+                }
+                
                 setShowEditEventModal(false);
                 setEditingEventId(null);
                 setEditingTimelineId(null);
@@ -3596,8 +3625,13 @@ const Timelines = ({ notes, updateNote, addNote, setAllNotes }) => {
                                             e.stopPropagation();
                                             const eventNote = notes.find(n => n.id === event.linkedEventId);
                                             if (eventNote) {
+                                              // Find which timeline this event belongs to
+                                              const timelineNote = timelineNotes.find(t => {
+                                                const timelineData = parseTimelineData(t.content, notes);
+                                                return timelineData.events.some(e => e.linkedEventId === event.linkedEventId);
+                                              });
                                               setEditingEventId(event.linkedEventId);
-                                              setEditingTimelineId(null);
+                                              setEditingTimelineId(timelineNote ? timelineNote.id : null);
                                               setShowEditEventModal(true);
                                               setShowMasterTimelineModal(false);
                                             }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon } from '@heroicons/react/24/solid';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { useNavigate } from 'react-router-dom';
+import moment from 'moment';
 
 // Add pin icon import
 import { MapPinIcon } from '@heroicons/react/24/outline';
@@ -1155,6 +1156,18 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   >
                     <PencilIcon className="h-4 w-4" />
                   </button>
+                  {eventDate && (
+                    <a
+                      href={`https://photos.google.com/search/${moment(eventDate).format('YYYY-MM-DD')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-purple-500 hover:text-purple-700 p-1 transition-colors"
+                      title="View photos"
+                    >
+                      <PhotoIcon className="h-4 w-4" />
+                    </a>
+                  )}
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();

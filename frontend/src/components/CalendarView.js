@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import moment from 'moment';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { 
   ChevronRightIcon, 
@@ -16,7 +17,8 @@ import {
   FunnelIcon,
   ClockIcon,
   PlusIcon,
-  LinkIcon
+  LinkIcon,
+  PhotoIcon
 } from '@heroicons/react/24/solid';
 import EventAlerts from './EventAlerts';
 import EditEventModal from './EditEventModal';
@@ -773,6 +775,18 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                       >
                                         <PencilIcon className="h-5 w-5" />
                                       </button>
+                                      {occurrence.date && (
+                                        <a
+                                          href={`https://photos.google.com/search/${moment(occurrence.date).format('YYYY-MM-DD')}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="p-2 text-purple-500 hover:text-purple-700 hover:bg-purple-100 rounded-lg transition-colors"
+                                          title="View photos"
+                                        >
+                                          <PhotoIcon className="h-5 w-5" />
+                                        </a>
+                                      )}
                                       <button
                                         onClick={() => handleOpenTimelineModal(occurrence.event)}
                                         className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"

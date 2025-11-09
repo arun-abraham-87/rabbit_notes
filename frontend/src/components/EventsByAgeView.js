@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import moment from 'moment';
 import { getDateInDDMMYYYYFormatWithAgeInParentheses } from '../utils/DateUtils';
 import { updateNoteById, getNoteById } from '../utils/ApiUtils';
 import { 
@@ -10,7 +11,8 @@ import {
   XMarkIcon,
   LinkIcon,
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
+  PhotoIcon
 } from '@heroicons/react/24/solid';
 import TimelineLinkModal from './TimelineLinkModal';
 
@@ -410,6 +412,18 @@ const EventsByAgeView = ({ events, onEventUpdated, onDelete, notes, onEdit, onTi
                             >
                               <PencilIcon className="h-5 w-5" />
                             </button>
+                            {event.dateTime && (
+                              <a
+                                href={`https://photos.google.com/search/${moment(event.dateTime).format('YYYY-MM-DD')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="p-2 text-purple-500 hover:text-purple-700 hover:bg-purple-100 rounded-lg transition-colors"
+                                title="View photos"
+                              >
+                                <PhotoIcon className="h-5 w-5" />
+                              </a>
+                            )}
                             <button
                               onClick={() => handleToggleHidden(event)}
                               className={`p-2 rounded-lg transition-colors ${

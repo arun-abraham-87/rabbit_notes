@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { PlusIcon, XMarkIcon, MagnifyingGlassIcon, UserIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
 import ReactFlow, { 
   Background, 
@@ -216,33 +216,41 @@ function AddRelationshipModal({ isOpen, onClose, currentPersonNote, allNotes, on
 
 // Custom Person Node Component
 function PersonNode({ data }) {
-  const { person, onEdit, onExpand, onAddRelationship, isExpanded, hasChildren, hasSpouse } = data;
+  const { person, onEdit, onExpand, onAddRelationship, isExpanded, hasChildren, hasSpouse, hasParents, isRoot } = data;
   const hasPhoto = person.photos && person.photos.length > 0;
 
   return (
-    <div className="bg-white rounded-lg border-2 border-gray-200 shadow-md p-3 min-w-[180px] relative">
-      {/* Handle for incoming edges (from parents) - left side */}
-      <Handle
-        type="target"
-        position={Position.Left}
-      />
-      
-      {/* Handle for outgoing edges (to children) - right side */}
-      <Handle
-        type="source"
-        position={Position.Right}
-      />
-      
-      {/* Handle for spouse connections - bottom (source) */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-      />
-      
-      {/* Handle for spouse connections - top (target) */}
+    <div className={`rounded-lg border-2 shadow-md p-3 min-w-[180px] relative ${
+      isRoot 
+        ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-400 shadow-lg' 
+        : 'bg-white border-gray-200'
+    }`}>
+      {/* Handle for incoming edges (from parents) - top */}
       <Handle
         type="target"
         position={Position.Top}
+        id="top"
+      />
+      
+      {/* Handle for outgoing edges (to children) - bottom */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+      />
+      
+      {/* Handle for spouse connections - right (source) */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="spouse"
+      />
+      
+      {/* Handle for spouse connections - left (target) */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="spouse"
       />
       
       <div className="flex items-center gap-3">
@@ -259,6 +267,9 @@ function PersonNode({ data }) {
         )}
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm text-gray-900 truncate">{person.name}</p>
+          {isRoot && (
+            <p className="text-xs font-bold text-yellow-700 mt-1">⭐ ROOT</p>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-end gap-2 mt-2">
@@ -269,7 +280,7 @@ function PersonNode({ data }) {
         >
           <PlusIcon className="h-4 w-4" />
         </button>
-        {(hasChildren || hasSpouse) && (
+        {(hasChildren || hasSpouse || data.hasParents) && (
           <button
             onClick={onExpand}
             className="p-1 text-gray-400 hover:text-indigo-600 rounded hover:bg-gray-100"
@@ -311,6 +322,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const lastExpandedTreeIdRef = useRef(null);
 
   // Get all family tree notes
   const familyTreeNotes = useMemo(() => {
@@ -381,12 +393,24 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
 
     // Build tree starting from root
     const buildNode = (personId, visited = new Set(), depth = 0) => {
-      if (visited.has(personId)) return null; // Prevent cycles
-      if (depth > 10) return null; // Prevent infinite recursion
+      console.log(`[TREE BUILD START] Building node for personId=${personId}, depth=${depth}, visited=${Array.from(visited).join(',')}`);
+      if (visited.has(personId)) {
+        console.log(`[TREE BUILD] Person ${personId} already visited, returning null`);
+        return null; // Prevent cycles
+      }
+      if (depth > 10) {
+        console.log(`[TREE BUILD] Depth ${depth} > 10, returning null`);
+        return null; // Prevent infinite recursion
+      }
       visited.add(personId);
 
       const person = personMap.get(personId);
-      if (!person) return null;
+      if (!person) {
+        console.log(`[TREE BUILD] Person ${personId} not found in personMap`);
+        return null;
+      }
+
+      console.log(`[TREE BUILD] Building node for ${person.name} (${personId}), relationships:`, person.relationships.map(r => `${r.type}::${r.personId}`).join(', '));
 
       const node = {
         id: personId,
@@ -405,16 +429,55 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
           const childNode = buildNode(rel.personId, new Set(visited), depth + 1);
           if (childNode) {
             node.children.push({ ...childNode, relationshipType: rel.type });
+            console.log(`[TREE BUILD] ${person.name} (${personId}) -> found child via direct: ${childNode.name} (${rel.personId}) as ${rel.type}`);
           }
         }
+      });
+
+      // Also find children by looking for reverse relationships
+      // If someone has child_of, son_of, or daughter_of to this person, they are a child
+      peopleNotes.forEach(note => {
+        if (note.id === personId) return; // Skip self
+        const otherPerson = personMap.get(note.id);
+        if (!otherPerson) return;
+        
+        // Check if this other person has a child relationship to the current person
+        otherPerson.relationships.forEach(rel => {
+          if ((rel.type === 'child_of' || rel.type === 'son_of' || rel.type === 'daughter_of') && rel.personId === personId) {
+            // This person is a child of the current person
+            // Make sure we don't already have this person as a parent (avoid circular relationships)
+            const isAlreadyParent = node.parents.some(p => p.id === note.id);
+            if (!isAlreadyParent) {
+              const childNode = buildNode(note.id, new Set(visited), depth + 1);
+              if (childNode) {
+                // Keep the original relationship type (daughter_of, son_of, child_of) for the label
+                // The label will show "Daughter", "Son", or "Child" from the parent's perspective
+                // Check if this child is already in the children array
+                if (!node.children.some(c => c.id === childNode.id)) {
+                  node.children.push({ ...childNode, relationshipType: rel.type });
+                  console.log(`[TREE BUILD] ${person.name} (${personId}) -> found child via reverse: ${childNode.name} (${note.id}) as ${rel.type}`);
+                }
+              }
+            } else {
+              console.log(`[TREE BUILD] ${person.name} (${personId}) -> skipping ${otherPerson.name} (${note.id}) as child because already parent`);
+            }
+          }
+        });
       });
 
       // Find parents: relationships where this person is child (child_of, son_of, daughter_of)
       person.relationships.forEach(rel => {
         if (rel.type === 'child_of' || rel.type === 'son_of' || rel.type === 'daughter_of') {
-          const parentNode = buildNode(rel.personId, new Set(visited), depth + 1);
-          if (parentNode) {
-            node.parents.push({ ...parentNode, relationshipType: rel.type });
+          // Make sure this person is not already a child of the current person (avoid circular relationships)
+          const isAlreadyChild = node.children.some(c => c.id === rel.personId);
+          if (!isAlreadyChild) {
+            const parentNode = buildNode(rel.personId, new Set(visited), depth + 1);
+            if (parentNode) {
+              node.parents.push({ ...parentNode, relationshipType: rel.type });
+              console.log(`[TREE BUILD] ${person.name} (${personId}) -> found parent: ${parentNode.name} (${rel.personId}) as ${rel.type}`);
+            }
+          } else {
+            console.log(`[TREE BUILD] ${person.name} (${personId}) -> skipping ${rel.personId} as parent because already child`);
           }
         }
       });
@@ -430,13 +493,29 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
       });
 
       // Find spouse: relationships where this person is spouse (spouse_of)
+      console.log(`[TREE BUILD] ${person.name} (${personId}) checking for spouse relationships...`);
       person.relationships.forEach(rel => {
         if (rel.type === 'spouse_of') {
+          console.log(`[TREE BUILD] ${person.name} (${personId}) found spouse relationship: ${rel.type}::${rel.personId}`);
           const spouseNode = buildNode(rel.personId, new Set(visited), depth + 1);
           if (spouseNode) {
             node.spouse = { ...spouseNode, relationshipType: rel.type };
+            console.log(`[TREE BUILD] ${person.name} (${personId}) -> set spouse: ${spouseNode.name} (${rel.personId})`);
+          } else {
+            console.log(`[TREE BUILD] ${person.name} (${personId}) -> spouse node build returned null for ${rel.personId}`);
           }
         }
+      });
+      
+      if (!node.spouse) {
+        console.log(`[TREE BUILD] ${person.name} (${personId}) has no spouse`);
+      }
+
+      console.log(`[TREE BUILD COMPLETE] ${person.name} (${personId}):`, {
+        children: node.children.map(c => `${c.name} (${c.id}) [${c.relationshipType}]`).join(', '),
+        parents: node.parents.map(p => `${p.name} (${p.id}) [${p.relationshipType}]`).join(', '),
+        spouse: node.spouse ? `${node.spouse.name} (${node.spouse.id}) [${node.spouse.relationshipType}]` : 'none',
+        siblings: node.siblings.map(s => `${s.name} (${s.id}) [${s.relationshipType}]`).join(', ') || 'none'
       });
 
       return node;
@@ -459,6 +538,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     };
     return labels[relationshipType] || relationshipType;
   };
+
 
   // Helper function to collect all node IDs recursively from the tree structure
   const collectAllNodeIds = (node, visited = new Set()) => {
@@ -499,6 +579,19 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     return visited;
   };
 
+  // Expand all nodes when tree changes (separate effect to prevent loops)
+  useEffect(() => {
+    if (buildFamilyTree) {
+      const currentTreeId = selectedTreeId || buildFamilyTree.id;
+      if (lastExpandedTreeIdRef.current !== currentTreeId) {
+        const allNodeIds = collectAllNodeIds(buildFamilyTree);
+        console.log(`[EXPAND ALL] Expanding all nodes on load for tree ${currentTreeId}:`, Array.from(allNodeIds));
+        setExpandedNodes(new Set(allNodeIds));
+        lastExpandedTreeIdRef.current = currentTreeId;
+      }
+    }
+  }, [buildFamilyTree, selectedTreeId]);
+
   // Convert tree structure to React Flow nodes and edges
   useEffect(() => {
     if (!buildFamilyTree) {
@@ -510,20 +603,89 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     const flowNodes = [];
     const flowEdges = [];
     const processedNodes = new Set();
-    const ySpacing = 150;
-    const xSpacing = 300;
+    const ySpacing = 300; // Vertical spacing (top to bottom) - increased to prevent edge overlap and give edges room to curve
+    const nodeWidth = 220; // Approximate node width (min-w-[180px] + padding + border)
+    const nodeHeight = 120; // Approximate node height (to account for edge routing)
+    const xSpacing = nodeWidth + 300; // Horizontal spacing: node width + larger gap (520px total) - increased to prevent edge overlap
+    const rootStartY = 400; // Start root person in the middle of the canvas
 
-    // Build nodes and edges together (left to right)
-    const buildFlowNodes = (node, x = 0, y = 0, visited = new Set(), level = 0, parentId = null) => {
-      if (!node || visited.has(node.id)) return;
-      visited.add(node.id);
+    // Helper function to check and adjust for horizontal overlaps
+    const checkAndAdjustHorizontalOverlap = (x, y, excludeNodeId = null) => {
+      const minDistance = nodeWidth + 50; // Minimum distance between nodes
+      const yTolerance = 10; // Consider nodes at the same y level if within this tolerance
+      
+      // Find all nodes at the same y level
+      const nodesAtSameY = flowNodes.filter(n => {
+        if (excludeNodeId && n.id === excludeNodeId) return false;
+        return Math.abs(n.position.y - y) < yTolerance;
+      });
+      
+      // Check for overlaps and find the best position
+      let adjustedX = x;
+      let hasOverlap = true;
+      
+      while (hasOverlap) {
+        hasOverlap = false;
+        for (const existingNode of nodesAtSameY) {
+          const distance = Math.abs(existingNode.position.x - adjustedX);
+          if (distance < minDistance) {
+            // Overlap detected, adjust position to the right
+            adjustedX = existingNode.position.x + minDistance;
+            hasOverlap = true;
+            console.log(`[OVERLAP] Adjusting x from ${x} to ${adjustedX} to avoid overlap with ${existingNode.data.person.name} at (${existingNode.position.x}, ${existingNode.position.y})`);
+            break; // Re-check all nodes with new position
+          }
+        }
+      }
+      
+      if (adjustedX !== x) {
+        console.log(`[OVERLAP] Final adjusted position: (${adjustedX}, ${y}) from original (${x}, ${y})`);
+      }
+      
+      return adjustedX;
+    };
 
-      const isExpanded = expandedNodes.has(node.id);
+    // Build nodes and edges together (top to bottom)
+    const buildFlowNodes = (node, x = 0, y = rootStartY, visited = new Set(), level = 0, parentId = null, skipVisitedCheck = false) => {
+      console.log(`[FLOW BUILD START] Building flow node for ${node.name} (${node.id}) at (${x}, ${y}), level=${level}, parentId=${parentId}, skipVisitedCheck=${skipVisitedCheck}`);
+      if (!node) {
+        console.log(`[FLOW BUILD] Node is null, returning`);
+        return;
+      }
+      if (!skipVisitedCheck && visited.has(node.id)) {
+        console.log(`[FLOW BUILD] Node ${node.name} (${node.id}) already visited, returning`);
+        return;
+      }
+      if (!visited.has(node.id)) {
+        visited.add(node.id);
+      }
+
+      // Check if this is a spouse node being processed (skipVisitedCheck=true means it's a spouse being processed for its children)
+      const isSpouseBeingProcessed = skipVisitedCheck && processedNodes.has(node.id);
+      // Always treat spouse nodes as expanded when processing their children
+      const isExpanded = isSpouseBeingProcessed || expandedNodes.has(node.id);
       const hasChildren = node.children && node.children.length > 0;
       const hasSpouse = node.spouse !== null && !processedNodes.has(node.spouse.id);
+      const hasParents = node.parents && node.parents.length > 0;
+      const isRoot = node.id === selectedTree.rootPersonId;
+      
+      console.log(`[FLOW BUILD] ${node.name} (${node.id}) state:`, {
+        isExpanded,
+        hasChildren,
+        hasSpouse,
+        hasParents,
+        isRoot,
+        spouse: node.spouse ? `${node.spouse.name} (${node.spouse.id})` : 'none',
+        childrenCount: node.children ? node.children.length : 0,
+        parentsCount: node.parents ? node.parents.length : 0
+      });
 
       // Create node if not already processed
       if (!processedNodes.has(node.id)) {
+        // Check and adjust for horizontal overlaps
+        x = checkAndAdjustHorizontalOverlap(x, y, node.id);
+        
+        console.log(`[POSITION] Creating node: ${node.name} (${node.id}) at position (${x}, ${y}), level=${level}, isRoot=${isRoot}, hasParents=${hasParents}, hasChildren=${hasChildren}`);
         flowNodes.push({
           id: node.id,
           type: 'personNode',
@@ -552,98 +714,59 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
             },
             isExpanded,
             hasChildren,
-            hasSpouse
+            hasSpouse,
+            hasParents,
+            isRoot
           }
         });
         processedNodes.add(node.id);
-      }
-
-      // Handle spouse (render below current node)
-      if (hasSpouse && isExpanded) {
-        const spouseX = x;
-        const spouseY = y + 120; // Spouse below current node
-        
-        if (!processedNodes.has(node.spouse.id)) {
-          flowNodes.push({
-            id: node.spouse.id,
-            type: 'personNode',
-            position: { x: spouseX, y: spouseY },
-            data: {
-              person: {
-                name: node.spouse.name,
-                photos: node.spouse.photos
-              },
-              onEdit: () => {
-                setEditPersonModal({ open: true, personNote: node.spouse.note });
-              },
-              onAddRelationship: () => {
-                setAddRelationshipModal({ open: true, personNote: node.spouse.note });
-              },
-              onExpand: () => {
-                setExpandedNodes(prev => {
-                  const newSet = new Set(prev);
-                  if (newSet.has(node.spouse.id)) {
-                    newSet.delete(node.spouse.id);
-                  } else {
-                    newSet.add(node.spouse.id);
-                  }
-                  return newSet;
-                });
-              },
-              isExpanded: expandedNodes.has(node.spouse.id),
-              hasChildren: node.spouse.children && node.spouse.children.length > 0,
-              hasSpouse: true
-            }
-          });
-          processedNodes.add(node.spouse.id);
+      } else {
+        // Node already exists, log if position is different
+        const existingNode = flowNodes.find(n => n.id === node.id);
+        if (existingNode && (Math.abs(existingNode.position.x - x) > 10 || Math.abs(existingNode.position.y - y) > 10)) {
+          console.log(`[POSITION] Node ${node.name} (${node.id}) already exists at (${existingNode.position.x}, ${existingNode.position.y}), skipping creation at (${x}, ${y})`);
         }
-
-        // Create edge for spouse immediately after creating spouse node
-        const spouseRelationshipType = node.spouse.relationshipType || 'spouse_of';
-        flowEdges.push({
-          id: `edge-spouse-${node.id}-${node.spouse.id}`,
-          source: node.id,
-          target: node.spouse.id,
-          type: 'smoothstep',
-          style: { stroke: '#4b5563', strokeWidth: 3 },
-          animated: false,
-          label: formatRelationshipLabel(spouseRelationshipType),
-          labelStyle: { fill: '#4b5563', fontWeight: 600, fontSize: 12 },
-          labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
-          labelBgPadding: [4, 4],
-          labelBgBorderRadius: 4
-        });
       }
 
-      // Handle children (render to the right)
-      if (hasChildren && isExpanded) {
-        const childrenCount = node.children.length;
-        const childrenStartY = y - ((childrenCount - 1) * ySpacing) / 2;
+      // Handle parents (render above - upstream)
+      if (hasParents && isExpanded) {
+        const parentsCount = node.parents.length;
+        const parentsStartX = x - ((parentsCount - 1) * xSpacing) / 2;
+        const parentsY = y - ySpacing; // Parents above current node
         
-        // If there's a spouse, adjust children position to be centered between both parents
-        const childrenX = x + xSpacing;
-        const childrenYOffset = hasSpouse ? 60 : 0; // Offset if spouse exists
-        
-        node.children.forEach((child, index) => {
-          const childX = childrenX;
-          const childY = childrenStartY + (index * ySpacing) + childrenYOffset;
+        console.log(`[POSITION] ${node.name} (${node.id}) has ${parentsCount} parent(s), positioning above at y=${parentsY} (current y=${y})`);
+        node.parents.forEach((parent, index) => {
+          let parentX = parentsStartX + (index * xSpacing);
+          const parentY = parentsY;
           
-          // Recursively build child nodes first
-          buildFlowNodes(child, childX, childY, new Set(visited), level + 1, node.id);
+          // Check and adjust for horizontal overlaps before positioning parent
+          if (!processedNodes.has(parent.id)) {
+            parentX = checkAndAdjustHorizontalOverlap(parentX, parentY, parent.id);
+          }
+          
+          console.log(`[POSITION] Building parent: ${parent.name} (${parent.id}) at (${parentX}, ${parentY}) for child ${node.name} (${node.id})`);
+          // Recursively build parent nodes first
+          buildFlowNodes(parent, parentX, parentY, new Set(visited), level - 1, node.id);
 
-          // Create edge for child immediately after child node is created
-          // Check if child node exists in flowNodes
-          const childNodeExists = flowNodes.some(n => n.id === child.id);
-          if (childNodeExists) {
-            const childRelationshipType = child.relationshipType || 'child_of';
+          // Create edge for parent immediately after parent node is created
+          const parentNodeExists = flowNodes.some(n => n.id === parent.id);
+          if (parentNodeExists) {
+            // parent.relationshipType is from the child's perspective (e.g., 'daughter_of', 'son_of', 'child_of')
+            // When creating an edge from parent to child, we want to show the relationship from parent's perspective
+            // So 'daughter_of' should show as "Daughter", 'son_of' should show as "Son", etc.
+            const childRelationshipType = parent.relationshipType || 'child_of';
+            const edgeLabel = formatRelationshipLabel(childRelationshipType);
+            console.log(`[EDGE] Creating parent edge: ${parent.name} (${parent.id}) -> ${node.name} (${node.id}), label="${edgeLabel}", type=${childRelationshipType}`);
             flowEdges.push({
-              id: `edge-child-${node.id}-${child.id}`,
-              source: node.id,
-              target: child.id,
-              type: 'smoothstep',
+              id: `edge-parent-${parent.id}-${node.id}`,
+              source: parent.id,
+              target: node.id,
+              sourceHandle: 'bottom',
+              targetHandle: 'top',
+              type: 'bezier',
               style: { stroke: '#4b5563', strokeWidth: 3 },
               animated: false,
-              label: formatRelationshipLabel(childRelationshipType),
+              label: edgeLabel, // This will show "Daughter", "Son", or "Child"
               labelStyle: { fill: '#4b5563', fontWeight: 600, fontSize: 12 },
               labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
               labelBgPadding: [4, 4],
@@ -653,18 +776,351 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
         });
       }
 
-      // Handle siblings (render at same level, to the right)
+      // Handle spouse (render to the right - side by side, close together)
+      // Always display spouse and its hierarchy if spouse has children or downstream relationships
+      console.log(`[FLOW BUILD] ${node.name} (${node.id}) checking spouse: hasSpouse=${hasSpouse}, spouse=${node.spouse ? `${node.spouse.name} (${node.spouse.id})` : 'none'}`);
+      if (hasSpouse) {
+        const spouseHasChildren = node.spouse.children && node.spouse.children.length > 0;
+        const spouseHasDownstream = spouseHasChildren; // Check if spouse has any downstream relationships
+        
+        // Always display spouse if it exists in relationships - spouse should always be visible
+        const shouldDisplaySpouse = true; // Always show spouse if relationship exists
+        
+        if (shouldDisplaySpouse) {
+          const spouseSpacing = nodeWidth + 20; // Spouses close together: node width + small gap (20px)
+          let spouseX = x + spouseSpacing; // Spouse to the right, close
+          const spouseY = y; // Same vertical level
+          
+          // Check and adjust for horizontal overlaps
+          if (!processedNodes.has(node.spouse.id)) {
+            spouseX = checkAndAdjustHorizontalOverlap(spouseX, spouseY, node.spouse.id);
+          }
+          
+          console.log(`[FLOW BUILD] ${node.name} (${node.id}) positioning spouse ${node.spouse.name} (${node.spouse.id}) at (${spouseX}, ${spouseY}), current position (${x}, ${y}), spouseHasDownstream=${spouseHasDownstream}`);
+          
+          if (!processedNodes.has(node.spouse.id)) {
+            console.log(`[FLOW BUILD] Spouse ${node.spouse.name} (${node.spouse.id}) not yet processed, creating node`);
+            flowNodes.push({
+              id: node.spouse.id,
+              type: 'personNode',
+              position: { x: spouseX, y: spouseY },
+              data: {
+                person: {
+                  name: node.spouse.name,
+                  photos: node.spouse.photos
+                },
+                onEdit: () => {
+                  setEditPersonModal({ open: true, personNote: node.spouse.note });
+                },
+                onAddRelationship: () => {
+                  setAddRelationshipModal({ open: true, personNote: node.spouse.note });
+                },
+                onExpand: () => {
+                  setExpandedNodes(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(node.spouse.id)) {
+                      newSet.delete(node.spouse.id);
+                    } else {
+                      newSet.add(node.spouse.id);
+                    }
+                    return newSet;
+                  });
+                },
+                isExpanded: true, // Always expand spouse to show its relations
+                hasChildren: node.spouse.children && node.spouse.children.length > 0,
+                hasSpouse: true,
+                hasParents: node.spouse.parents && node.spouse.parents.length > 0,
+                isRoot: node.spouse.id === selectedTree.rootPersonId
+              }
+            });
+            processedNodes.add(node.spouse.id);
+            
+            // Always process spouse's children and hierarchy - spouse's downward links should always be open
+            // Recursively process spouse's children - skip visited check to allow processing children
+            console.log(`[FLOW BUILD] Spouse ${node.spouse.name} (${node.spouse.id}) - processing children and hierarchy (spouse's downward links always open)`);
+            // Skip visited check and don't create node again (it's already in processedNodes)
+            // This will process the spouse's children and their hierarchy
+            buildFlowNodes(node.spouse, spouseX, spouseY, visited, level, node.id, true);
+          }
+
+          // Create edge for spouse immediately after creating spouse node
+          const spouseRelationshipType = node.spouse.relationshipType || 'spouse_of';
+          console.log(`[FLOW BUILD] ${node.name} (${node.id}) creating spouse edge to ${node.spouse.name} (${node.spouse.id}), type=${spouseRelationshipType}`);
+          flowEdges.push({
+            id: `edge-spouse-${node.id}-${node.spouse.id}`,
+            source: node.id,
+            target: node.spouse.id,
+            sourceHandle: 'spouse',
+            targetHandle: 'spouse',
+            type: 'bezier',
+            style: { stroke: '#4b5563', strokeWidth: 3 },
+            animated: false,
+            label: formatRelationshipLabel(spouseRelationshipType),
+            labelStyle: { fill: '#4b5563', fontWeight: 600, fontSize: 12 },
+            labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
+            labelBgPadding: [4, 4],
+            labelBgBorderRadius: 4
+          });
+          console.log(`[FLOW BUILD] ${node.name} (${node.id}) created spouse edge: ${node.id} -> ${node.spouse.id}`);
+        }
+      }
+
+      // Handle children (render below - downstream)
+      // Always display children if node is a spouse (has spouse relationship) - spouse's downward links should always be open
+      // Check if node is a spouse by checking if it has a spouse relationship in the tree structure
+      const isSpouseNode = node.spouse !== null; // Node has a spouse relationship
+      // Always show children for spouse nodes, regardless of expanded state
+      const shouldShowChildren = isExpanded || isSpouseNode;
+      
+      console.log(`[FLOW BUILD] ${node.name} (${node.id}) checking children: hasChildren=${hasChildren}, isExpanded=${isExpanded}, isSpouseNode=${isSpouseNode}, shouldShowChildren=${shouldShowChildren}, childrenCount=${node.children ? node.children.length : 0}`);
+      if (hasChildren && shouldShowChildren) {
+        const childrenCount = node.children.length;
+        console.log(`[FLOW BUILD] ${node.name} (${node.id}) processing ${childrenCount} children:`, node.children.map(c => `${c.name} (${c.id})`).join(', '));
+        
+        // Check if this node has a spouse (in the tree structure, not just if not processed)
+        const hasSpouseInTree = node.spouse !== null;
+        let spouseX = null;
+        
+        console.log(`[FLOW BUILD] ${node.name} (${node.id}) hasSpouseInTree=${hasSpouseInTree}, spouse=${node.spouse ? `${node.spouse.name} (${node.spouse.id})` : 'none'}`);
+        
+        // If there's a spouse, find its position to center children between both parents
+        if (hasSpouseInTree) {
+          const spouseNode = flowNodes.find(n => n.id === node.spouse.id);
+          if (spouseNode) {
+            spouseX = spouseNode.position.x;
+            console.log(`[FLOW BUILD] ${node.name} (${node.id}) found spouse ${node.spouse.name} (${node.spouse.id}) in flowNodes at x=${spouseX}, current x=${x}`);
+          } else {
+            // Spouse not yet created, calculate expected position (to the right)
+            spouseX = x + xSpacing;
+            console.log(`[FLOW BUILD] ${node.name} (${node.id}) spouse ${node.spouse.name} (${node.spouse.id}) not yet in flowNodes, expected at x=${spouseX}, current x=${x}`);
+          }
+        } else {
+          console.log(`[FLOW BUILD] ${node.name} (${node.id}) has no spouse in tree structure`);
+        }
+        
+        // Calculate children position: center between both parents if spouse exists, otherwise center on current node
+        let childrenCenterX;
+        if (hasSpouseInTree && spouseX !== null) {
+          // Center between current node and spouse - this ensures children are positioned below both parents
+          childrenCenterX = (x + spouseX) / 2;
+          console.log(`[POSITION] ${node.name} (${node.id}) centering children between ${node.name} (x=${x}) and spouse (x=${spouseX}), center=${childrenCenterX}`);
+        } else {
+          // Center on current node
+          childrenCenterX = x;
+          console.log(`[POSITION] ${node.name} (${node.id}) centering children on current node (x=${x})`);
+        }
+        
+        // Calculate children positions: center-aligned with specific pattern
+        // - Even number of children: equally spaced on either side of center
+        // - Odd number of children: middle child aligned with parent, others on either side
+        let childPositions = [];
+        if (childrenCount % 2 === 0) {
+          // Even number: equally spaced on either side of center
+          // For 2 children: positions at -xSpacing/2 and +xSpacing/2 from center
+          // For 4 children: positions at -1.5*xSpacing, -0.5*xSpacing, +0.5*xSpacing, +1.5*xSpacing
+          const halfCount = childrenCount / 2;
+          for (let i = 0; i < childrenCount; i++) {
+            const offset = (i - halfCount + 0.5) * xSpacing;
+            childPositions.push(childrenCenterX + offset);
+          }
+        } else {
+          // Odd number: middle child at center, others on either side
+          // For 1 child: position at center
+          // For 3 children: positions at -xSpacing, 0, +xSpacing from center
+          // For 5 children: positions at -2*xSpacing, -xSpacing, 0, +xSpacing, +2*xSpacing
+          const middleIndex = Math.floor(childrenCount / 2);
+          for (let i = 0; i < childrenCount; i++) {
+            const offset = (i - middleIndex) * xSpacing;
+            childPositions.push(childrenCenterX + offset);
+          }
+        }
+        
+        console.log(`[POSITION] ${node.name} (${node.id}) calculated child positions (${childrenCount} children):`, childPositions.map((pos, idx) => `Child ${idx + 1}: x=${pos}`).join(', '));
+        // Ensure children are always positioned below the parent(s) - use the maximum Y of both parents if spouse exists
+        let parentY = y;
+        if (hasSpouseInTree && spouseX !== null) {
+          const spouseNode = flowNodes.find(n => n.id === node.spouse.id);
+          if (spouseNode) {
+            // Use the maximum Y of both parents to ensure children are below both
+            parentY = Math.max(y, spouseNode.position.y);
+            console.log(`[POSITION] ${node.name} (${node.id}) has spouse, using max Y: ${parentY} (current: ${y}, spouse: ${spouseNode.position.y})`);
+          }
+        }
+        const childrenY = parentY + ySpacing; // Children below parent(s)
+        
+        console.log(`[POSITION] ${node.name} (${node.id}) final children positioning:`, {
+          childrenCount,
+          hasSpouseInTree,
+          spouseX,
+          childrenCenterX,
+          childPositions,
+          parentY,
+          childrenY,
+          x,
+          y
+        });
+        node.children.forEach((child, index) => {
+          const calculatedX = childPositions[index];
+          console.log(`[FLOW BUILD] ${node.name} (${node.id}) processing child ${index + 1}/${childrenCount}: ${child.name} (${child.id}), relationshipType=${child.relationshipType}`);
+          console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> child ${child.name} (${child.id}) positioning context:`, {
+            calculatedX,
+            childrenY,
+            parentY,
+            y,
+            hasSpouseInTree,
+            spouseX,
+            index
+          });
+          
+          // Only position child if it hasn't been processed yet
+          // This prevents duplicate positioning when both parents try to position the same child
+          const childAlreadyProcessed = processedNodes.has(child.id);
+          let childX, childY;
+          
+          console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> child ${child.name} (${child.id}) already processed: ${childAlreadyProcessed}`);
+          
+          if (childAlreadyProcessed) {
+            // Child already positioned, get its current position for edge creation
+            const existingChildNode = flowNodes.find(n => n.id === child.id);
+            if (existingChildNode) {
+              childX = existingChildNode.position.x;
+              childY = existingChildNode.position.y;
+              console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> child ${child.name} (${child.id}) already processed at (${childX}, ${childY}), skipping positioning`);
+              console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> WARNING: Child ${child.name} (${child.id}) already at y=${childY}, but calculated childrenY=${childrenY}. Parent y=${y}, parentY=${parentY}`);
+            } else {
+              // Child in processedNodes but not in flowNodes yet - this shouldn't happen, but handle it
+              childX = calculatedX;
+              childY = childrenY;
+              console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> child ${child.name} (${child.id}) in processedNodes but not in flowNodes, using calculated position (${childX}, ${childY})`);
+            }
+          } else {
+            // Child not yet processed, use pre-calculated position
+            childX = calculatedX;
+            childY = childrenY;
+            
+            // Check if this child is also a child of another child (grandchild)
+            // If so, position it below the grandparent's children, not at the same level
+            // This handles cases where a child is both a child of the current node and a child of one of the current node's children
+            // Check by examining the relationships directly
+            const isGrandchild = node.children.some(otherChild => {
+              if (otherChild.id === child.id) return false; // Skip self
+              // Check if child is also a child of otherChild by checking relationships
+              // Look for father_of, mother_of relationships from otherChild to child
+              // or child_of, son_of, daughter_of relationships from child to otherChild
+              const otherChildNote = peopleNotes.find(n => n.id === otherChild.id);
+              const childNote = peopleNotes.find(n => n.id === child.id);
+              if (!otherChildNote || !childNote) return false;
+              
+              const otherChildInfo = parsePersonInfo(otherChildNote.content);
+              const childInfo = parsePersonInfo(childNote.content);
+              
+              // Check if otherChild has father_of or mother_of to child
+              const otherChildIsParent = otherChildInfo.relationships.some(r => 
+                (r.type === 'father_of' || r.type === 'mother_of') && r.personId === child.id
+              );
+              
+              // Check if child has child_of, son_of, or daughter_of to otherChild
+              const childIsChild = childInfo.relationships.some(r => 
+                (r.type === 'child_of' || r.type === 'son_of' || r.type === 'daughter_of') && r.personId === otherChild.id
+              );
+              
+              return otherChildIsParent || childIsChild;
+            });
+            
+            if (isGrandchild) {
+              // This child is also a grandchild, position it below the grandparent's children
+              // Find the maximum Y of all children at this level
+              const maxChildrenY = Math.max(...flowNodes
+                .filter(n => {
+                  // Find nodes that are children of the current node
+                  return node.children.some(c => c.id === n.id);
+                })
+                .map(n => n.position.y), childrenY);
+              childY = maxChildrenY + ySpacing;
+              console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> child ${child.name} (${child.id}) is also a grandchild, positioning below other children at y=${childY} (maxChildrenY=${maxChildrenY})`);
+            }
+            
+            // Check and adjust for horizontal overlaps before positioning child
+            if (!childAlreadyProcessed) {
+              childX = checkAndAdjustHorizontalOverlap(childX, childY, child.id);
+            }
+            
+            console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> positioning child ${child.name} (${child.id}) at (${childX}, ${childY}), relationshipType=${child.relationshipType}, isGrandchild=${isGrandchild}`);
+            console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> child ${child.name} (${child.id}) will be at y=${childY}, which is ${childY - parentY}px below parent(s) (parentY=${parentY})`);
+            // Recursively build child nodes first
+            buildFlowNodes(child, childX, childY, new Set(visited), level + 1, node.id);
+          }
+
+          // Create edge for child - always create edge from parent to child
+          // Check if child node exists in flowNodes
+          const childNodeExists = flowNodes.some(n => n.id === child.id);
+          console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> child ${child.name} (${child.id}) exists in flowNodes: ${childNodeExists}`);
+          
+          if (childNodeExists) {
+            // child.relationshipType can be:
+            // - From parent's perspective: 'father_of', 'mother_of' (when parent has direct relationship)
+            // - From child's perspective: 'daughter_of', 'son_of', 'child_of' (when found via reverse relationship)
+            // For the label, we want to show from parent's perspective:
+            // - 'father_of' -> "Father", 'mother_of' -> "Mother"
+            // - 'daughter_of' -> "Daughter", 'son_of' -> "Son", 'child_of' -> "Child"
+            const relationshipType = child.relationshipType || 'child_of';
+            const edgeLabel = formatRelationshipLabel(relationshipType);
+            console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> creating child edge to ${child.name} (${child.id}), label="${edgeLabel}", type=${relationshipType}`);
+            flowEdges.push({
+              id: `edge-child-${node.id}-${child.id}`,
+              source: node.id,
+              target: child.id,
+              sourceHandle: 'bottom',
+              targetHandle: 'top',
+              type: 'bezier',
+              style: { stroke: '#4b5563', strokeWidth: 3 },
+              animated: false,
+              label: edgeLabel, // This will show "Father", "Mother", "Daughter", "Son", or "Child"
+              labelStyle: { fill: '#4b5563', fontWeight: 600, fontSize: 12 },
+              labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
+              labelBgPadding: [4, 4],
+              labelBgBorderRadius: 4
+            });
+            console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> created child edge: ${node.id} -> ${child.id}`);
+          } else {
+            console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> child ${child.name} (${child.id}) not in flowNodes yet, skipping edge creation`);
+          }
+        });
+      }
+
+      // Handle siblings (render at same level, side by side)
       if (node.siblings && node.siblings.length > 0 && level === 0 && isExpanded) {
         node.siblings.forEach((sibling, index) => {
-          const siblingX = x;
-          const siblingY = y + (index + 1) * 150;
+          let siblingX = x + (index + 1) * xSpacing;
+          const siblingY = y; // Same vertical level
+          
+          // Check and adjust for horizontal overlaps before positioning sibling
+          if (!processedNodes.has(sibling.id)) {
+            siblingX = checkAndAdjustHorizontalOverlap(siblingX, siblingY, sibling.id);
+          }
+          
           buildFlowNodes(sibling, siblingX, siblingY, new Set(visited), level, parentId);
         });
       }
     };
 
-    // Build all nodes and edges
-    buildFlowNodes(buildFamilyTree, 0, 0);
+    // Build all nodes and edges starting from root person
+    console.log(`[TREE START] ========================================`);
+    console.log(`[TREE START] Building tree from root: ${buildFamilyTree.name} (${buildFamilyTree.id}), rootPersonId=${selectedTree.rootPersonId}`);
+    console.log(`[TREE START] Root person has ${buildFamilyTree.children?.length || 0} children, ${buildFamilyTree.parents?.length || 0} parents`);
+    if (buildFamilyTree.children && buildFamilyTree.children.length > 0) {
+      console.log(`[TREE START] Root children:`, buildFamilyTree.children.map(c => `${c.name} (${c.id}) as ${c.relationshipType}`));
+    }
+    if (buildFamilyTree.parents && buildFamilyTree.parents.length > 0) {
+      console.log(`[TREE START] Root parents:`, buildFamilyTree.parents.map(p => `${p.name} (${p.id}) as ${p.relationshipType}`));
+    }
+    if (buildFamilyTree.spouse) {
+      console.log(`[TREE START] Root spouse: ${buildFamilyTree.spouse.name} (${buildFamilyTree.spouse.id})`);
+    } else {
+      console.log(`[TREE START] Root has no spouse`);
+    }
+    console.log(`[TREE START] ========================================`);
+    buildFlowNodes(buildFamilyTree, 0, rootStartY);
 
     // Verify all edge sources and targets exist in flowNodes
     const validEdges = flowEdges.filter(edge => {
@@ -682,14 +1138,35 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
       return sourceExists && targetExists;
     });
 
-    console.log('Flow Nodes:', flowNodes.length, flowNodes.map(n => ({ id: n.id, name: n.data.person.name })));
-    console.log('Flow Edges (all):', flowEdges.length, flowEdges.map(e => ({ id: e.id, source: e.source, target: e.target })));
-    console.log('Valid Edges:', validEdges.length, validEdges.map(e => ({ id: e.id, source: e.source, target: e.target })));
-    console.log('Expanded Nodes:', Array.from(expandedNodes));
+    console.log(`[FLOW BUILD SUMMARY] ========================================`);
+    console.log(`[FLOW BUILD SUMMARY] Flow Nodes (${flowNodes.length}):`, flowNodes.map(n => ({ 
+      id: n.id, 
+      name: n.data.person.name, 
+      position: n.position,
+      hasSpouse: n.data.hasSpouse,
+      hasChildren: n.data.hasChildren,
+      hasParents: n.data.hasParents,
+      isRoot: n.data.isRoot
+    })));
+    console.log(`[FLOW BUILD SUMMARY] Flow Edges (all) (${flowEdges.length}):`, flowEdges.map(e => ({ 
+      id: e.id, 
+      source: e.source, 
+      target: e.target,
+      label: e.label,
+      type: e.type
+    })));
+    console.log(`[FLOW BUILD SUMMARY] Valid Edges (${validEdges.length}):`, validEdges.map(e => ({ 
+      id: e.id, 
+      source: e.source, 
+      target: e.target,
+      label: e.label
+    })));
+    console.log(`[FLOW BUILD SUMMARY] Expanded Nodes:`, Array.from(expandedNodes));
+    console.log(`[FLOW BUILD SUMMARY] ========================================`);
 
     setNodes(flowNodes);
     setEdges(validEdges);
-  }, [buildFamilyTree, expandedNodes]);
+  }, [buildFamilyTree, expandedNodes, selectedTree]);
 
   // Filter people for search
   const filteredPeople = useMemo(() => {
@@ -1023,11 +1500,11 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
               nodesConnectable={false}
               edgesUpdatable={false}
               defaultEdgeOptions={{
-                type: 'smoothstep',
+                type: 'bezier',
                 style: { stroke: '#4b5563', strokeWidth: 3 },
                 animated: false
               }}
-              connectionLineType="smoothstep"
+              connectionLineType="bezier"
               proOptions={{ hideAttribution: true }}
               deleteKeyCode={null}
               multiSelectionKeyCode={null}
@@ -1252,3 +1729,4 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
 };
 
 export default FamilyTree;
+

@@ -19,9 +19,204 @@ const nodeTypes = {
   personNode: PersonNode
 };
 
+// Add Relationship Modal Component
+function AddRelationshipModal({ isOpen, onClose, currentPersonNote, allNotes, onAdd }) {
+  const [relationshipType, setRelationshipType] = useState('');
+  const [personName, setPersonName] = useState('');
+  const [selectedPersonId, setSelectedPersonId] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isNewPerson, setIsNewPerson] = useState(true);
+
+  const relationshipTypes = [
+    { value: 'father_of', label: 'Father of' },
+    { value: 'mother_of', label: 'Mother of' },
+    { value: 'brother_of', label: 'Brother of' },
+    { value: 'sister_of', label: 'Sister of' },
+    { value: 'spouse_of', label: 'Spouse of' },
+    { value: 'child_of', label: 'Child of' },
+    { value: 'son_of', label: 'Son of' },
+    { value: 'daughter_of', label: 'Daughter of' },
+  ];
+
+  // Get all people for selection (excluding current person)
+  const availablePeople = useMemo(() => {
+    return allNotes
+      .filter(note => note.content && note.content.includes('meta::person::'))
+      .map(note => {
+        const lines = note.content.split('\n');
+        const name = lines[0];
+        return { id: note.id, name };
+      })
+      .filter(person => !currentPersonNote || person.id !== currentPersonNote.id);
+  }, [allNotes, currentPersonNote]);
+
+  // Filter people based on search query
+  const filteredPeople = useMemo(() => {
+    if (!searchQuery) return availablePeople;
+    const query = searchQuery.toLowerCase();
+    return availablePeople.filter(person => person.name.toLowerCase().includes(query));
+  }, [availablePeople, searchQuery]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!relationshipType) return;
+    
+    if (isNewPerson) {
+      if (!personName.trim()) return;
+      await onAdd(currentPersonNote, relationshipType, null, personName.trim());
+    } else {
+      if (!selectedPersonId) return;
+      await onAdd(currentPersonNote, relationshipType, selectedPersonId, null);
+    }
+    
+    // Reset form
+    setRelationshipType('');
+    setPersonName('');
+    setSelectedPersonId('');
+    setSearchQuery('');
+    setIsNewPerson(true);
+  };
+
+  if (!isOpen) return null;
+
+  const currentPersonName = currentPersonNote ? currentPersonNote.content.split('\n')[0] : '';
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Add Relationship</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div className="mb-4">
+          <p className="text-sm text-gray-600">
+            Adding relationship for: <span className="font-semibold">{currentPersonName}</span>
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Relationship Type *
+            </label>
+            <select
+              value={relationshipType}
+              onChange={(e) => setRelationshipType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+            >
+              <option value="">Select relationship type</option>
+              {relationshipTypes.map(type => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Person
+            </label>
+            <div className="flex gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => setIsNewPerson(true)}
+                className={`flex-1 px-3 py-2 text-sm rounded-md ${
+                  isNewPerson
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                New Person
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsNewPerson(false)}
+                className={`flex-1 px-3 py-2 text-sm rounded-md ${
+                  !isNewPerson
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Existing Person
+              </button>
+            </div>
+
+            {isNewPerson ? (
+              <input
+                type="text"
+                value={personName}
+                onChange={(e) => setPersonName(e.target.value)}
+                placeholder="Enter person name"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              />
+            ) : (
+              <div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for person..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2"
+                />
+                {searchQuery && filteredPeople.length > 0 && (
+                  <div className="border border-gray-200 rounded-md max-h-48 overflow-y-auto">
+                    {filteredPeople.map(person => (
+                      <div
+                        key={person.id}
+                        onClick={() => {
+                          setSelectedPersonId(person.id);
+                          setSearchQuery(person.name);
+                        }}
+                        className={`px-3 py-2 cursor-pointer hover:bg-gray-50 ${
+                          selectedPersonId === person.id ? 'bg-indigo-50' : ''
+                        }`}
+                      >
+                        {person.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {searchQuery && filteredPeople.length === 0 && (
+                  <p className="text-sm text-gray-500 mt-2">No people found</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!relationshipType || (isNewPerson ? !personName.trim() : !selectedPersonId)}
+              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add Relationship
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // Custom Person Node Component
 function PersonNode({ data }) {
-  const { person, onEdit, onExpand, isExpanded, hasChildren, hasSpouse } = data;
+  const { person, onEdit, onExpand, onAddRelationship, isExpanded, hasChildren, hasSpouse } = data;
   const hasPhoto = person.photos && person.photos.length > 0;
 
   return (
@@ -67,6 +262,13 @@ function PersonNode({ data }) {
         </div>
       </div>
       <div className="flex items-center justify-end gap-2 mt-2">
+        <button
+          onClick={onAddRelationship}
+          className="p-1 text-gray-400 hover:text-indigo-600 rounded hover:bg-gray-100"
+          title="Add relationship"
+        >
+          <PlusIcon className="h-4 w-4" />
+        </button>
         {(hasChildren || hasSpouse) && (
           <button
             onClick={onExpand}
@@ -100,6 +302,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
   const [selectedPersonId, setSelectedPersonId] = useState(null);
   const [addPersonModal, setAddPersonModal] = useState({ open: false });
   const [editPersonModal, setEditPersonModal] = useState({ open: false, personNote: null });
+  const [addRelationshipModal, setAddRelationshipModal] = useState({ open: false, personNote: null });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTreeId, setSelectedTreeId] = useState(null);
   const [newTreeModal, setNewTreeModal] = useState({ open: false, name: '', rootPersonId: '' });
@@ -333,6 +536,9 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
             onEdit: () => {
               setEditPersonModal({ open: true, personNote: node.note });
             },
+            onAddRelationship: () => {
+              setAddRelationshipModal({ open: true, personNote: node.note });
+            },
             onExpand: () => {
               setExpandedNodes(prev => {
                 const newSet = new Set(prev);
@@ -369,6 +575,9 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
               },
               onEdit: () => {
                 setEditPersonModal({ open: true, personNote: node.spouse.note });
+              },
+              onAddRelationship: () => {
+                setAddRelationshipModal({ open: true, personNote: node.spouse.note });
               },
               onExpand: () => {
                 setExpandedNodes(prev => {
@@ -563,6 +772,101 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
       setDeleteTreeModal({ open: false, treeId: null, treeName: '' });
     } catch (error) {
       console.error('Error deleting family tree:', error);
+    }
+  };
+
+  // Handle adding a relationship
+  const handleAddRelationship = async (currentPersonNote, relationshipType, otherPersonId, otherPersonName) => {
+    try {
+      let targetPersonId = otherPersonId;
+      let newPerson = null;
+      let newPersonCreated = false;
+      
+      // If no person ID provided, create a new person
+      if (!targetPersonId && otherPersonName) {
+        const newPersonContent = `${otherPersonName}\nmeta::person::`;
+        newPerson = await createNote(newPersonContent);
+        targetPersonId = newPerson.id;
+        newPersonCreated = true;
+        // Use functional update to ensure we have the latest state
+        setAllNotes(prevNotes => [...prevNotes, newPerson]);
+      }
+      
+      if (!targetPersonId) {
+        console.error('No person ID or name provided');
+        return;
+      }
+      
+      // Get reverse relationship type
+      const getReverseRelationship = (type) => {
+        const reverseMap = {
+          'father_of': 'child_of',
+          'mother_of': 'child_of',
+          'brother_of': 'brother_of',
+          'sister_of': 'sister_of',
+          'spouse_of': 'spouse_of',
+          'child_of': null, // Need to determine if father_of or mother_of
+          'son_of': null, // Need to determine if father_of or mother_of
+          'daughter_of': null, // Need to determine if father_of or mother_of
+        };
+        return reverseMap[type];
+      };
+      
+      // Add relationship to current person's note
+      const currentPersonContent = currentPersonNote.content;
+      const relationshipLine = `meta::relationship::${relationshipType}::${targetPersonId}`;
+      
+      // Check if relationship already exists
+      if (!currentPersonContent.includes(relationshipLine)) {
+        const updatedCurrentPersonContent = currentPersonContent + `\n${relationshipLine}`;
+        await updateNoteById(currentPersonNote.id, updatedCurrentPersonContent);
+        // Use functional update
+        setAllNotes(prevNotes => prevNotes.map(note => 
+          note.id === currentPersonNote.id 
+            ? { ...note, content: updatedCurrentPersonContent }
+            : note
+        ));
+      }
+      
+      // Add reverse relationship to other person's note
+      // Use the newly created person object if available, otherwise find in state
+      const otherPersonNote = newPerson || allNotes.find(note => note.id === targetPersonId);
+      if (otherPersonNote) {
+        let reverseType = getReverseRelationship(relationshipType);
+        
+        // For child_of, son_of, daughter_of, need to check if current person is male or female
+        // For now, we'll use a simple heuristic or let the user specify
+        if (!reverseType && (relationshipType === 'child_of' || relationshipType === 'son_of' || relationshipType === 'daughter_of')) {
+          // Default to father_of for now - could be improved
+          reverseType = 'father_of';
+        }
+        
+        if (reverseType) {
+          const reverseRelationshipLine = `meta::relationship::${reverseType}::${currentPersonNote.id}`;
+          if (!otherPersonNote.content.includes(reverseRelationshipLine)) {
+            const updatedOtherPersonContent = otherPersonNote.content + `\n${reverseRelationshipLine}`;
+            await updateNoteById(targetPersonId, updatedOtherPersonContent);
+            // Update state after API call completes
+            setAllNotes(prevNotes => prevNotes.map(note => 
+              note.id === targetPersonId 
+                ? { ...note, content: updatedOtherPersonContent }
+                : note
+            ));
+          }
+        }
+      }
+      
+      // If a new person was created, add it to expanded nodes so it shows up immediately
+      if (newPersonCreated) {
+        setExpandedNodes(prev => new Set([...prev, targetPersonId, currentPersonNote.id]));
+      } else {
+        // Ensure both persons are expanded
+        setExpandedNodes(prev => new Set([...prev, currentPersonNote.id]));
+      }
+      
+      setAddRelationshipModal({ open: false, personNote: null });
+    } catch (error) {
+      console.error('Error adding relationship:', error);
     }
   };
 
@@ -921,6 +1225,17 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
           onEdit={handleEditPerson}
           personNote={editPersonModal.personNote}
           setAllNotes={setAllNotes}
+        />
+      )}
+
+      {/* Add Relationship Modal */}
+      {addRelationshipModal.open && addRelationshipModal.personNote && (
+        <AddRelationshipModal
+          isOpen={addRelationshipModal.open}
+          onClose={() => setAddRelationshipModal({ open: false, personNote: null })}
+          currentPersonNote={addRelationshipModal.personNote}
+          allNotes={allNotes}
+          onAdd={handleAddRelationship}
         />
       )}
 

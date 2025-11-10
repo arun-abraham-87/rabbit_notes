@@ -216,15 +216,48 @@ function AddRelationshipModal({ isOpen, onClose, currentPersonNote, allNotes, on
 
 // Custom Person Node Component
 function PersonNode({ data }) {
-  const { person, onEdit, onExpand, onAddRelationship, isExpanded, hasChildren, hasSpouse, hasParents, isRoot } = data;
+  const { person, onEdit, onExpand, onAddRelationship, onSelect, onHover, onHoverEnd, isExpanded, hasChildren, hasSpouse, hasParents, isRoot, isSelected, isHighlighted, isDimmed } = data;
   const hasPhoto = person.photos && person.photos.length > 0;
 
+  const handleClick = (e) => {
+    // Don't trigger selection if clicking on buttons
+    if (e.target.closest('button')) {
+      return;
+    }
+    if (onSelect) {
+      onSelect(person.id);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (onHover) {
+      onHover(person.id);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (onHoverEnd) {
+      onHoverEnd();
+    }
+  };
+
   return (
-    <div className={`rounded-lg border-2 shadow-md p-3 min-w-[180px] relative ${
-      isRoot 
-        ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-400 shadow-lg' 
-        : 'bg-white border-gray-200'
-    }`}>
+    <div 
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={`rounded-lg border-2 shadow-md p-2 min-w-[140px] relative flex flex-col items-center cursor-pointer transition-all duration-200 ${
+        isSelected
+          ? 'bg-gradient-to-br from-blue-100 to-blue-200 border-blue-500 shadow-xl scale-105 z-50'
+          : isHighlighted
+          ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-300 shadow-lg scale-[1.03] z-40'
+          : isDimmed
+          ? 'opacity-30 bg-white border-gray-200'
+          : isRoot 
+          ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-400 shadow-lg' 
+          : 'bg-white border-gray-200'
+      }`}
+    >
       {/* Handle for incoming edges (from parents) - top */}
       <Handle
         type="target"
@@ -253,32 +286,44 @@ function PersonNode({ data }) {
         id="spouse"
       />
       
-      <div className="flex items-center gap-3">
+      {/* Large headshot */}
+      <div className="relative mb-2">
         {hasPhoto ? (
           <img
             src={person.photos[0]}
             alt={person.name}
-            className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+            className="w-24 h-24 rounded-full object-cover border-2 border-gray-300 shadow-sm"
           />
         ) : (
-          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-            <UserIcon className="h-6 w-6 text-gray-400" />
+          <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-300 shadow-sm">
+            <UserIcon className="h-12 w-12 text-gray-400" />
           </div>
         )}
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-gray-900 truncate">{person.name}</p>
-          {isRoot && (
-            <p className="text-xs font-bold text-yellow-700 mt-1">⭐ ROOT</p>
-          )}
-        </div>
+        {isRoot && (
+          <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-1 shadow-md">
+            <svg className="w-4 h-4 text-yellow-900" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+          </div>
+        )}
       </div>
-      <div className="flex items-center justify-end gap-2 mt-2">
+      
+      {/* Name label underneath */}
+      <div className="w-full text-center mb-2">
+        <p className="font-semibold text-sm text-gray-900 truncate px-1">{person.name}</p>
+        {isRoot && (
+          <p className="text-xs font-bold text-yellow-700 mt-0.5">ROOT</p>
+        )}
+      </div>
+      
+      {/* Action buttons */}
+      <div className="flex items-center justify-center gap-1 mt-auto">
         <button
           onClick={onAddRelationship}
           className="p-1 text-gray-400 hover:text-indigo-600 rounded hover:bg-gray-100"
           title="Add relationship"
         >
-          <PlusIcon className="h-4 w-4" />
+          <PlusIcon className="h-3.5 w-3.5" />
         </button>
         {(hasChildren || hasSpouse || data.hasParents) && (
           <button
@@ -287,11 +332,11 @@ function PersonNode({ data }) {
             title={isExpanded ? "Collapse" : "Expand"}
           >
             {isExpanded ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
             )}
@@ -302,7 +347,7 @@ function PersonNode({ data }) {
           className="p-1 text-gray-400 hover:text-indigo-600 rounded hover:bg-gray-100"
           title="Edit person"
         >
-          <PencilIcon className="h-4 w-4" />
+          <PencilIcon className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
@@ -311,6 +356,7 @@ function PersonNode({ data }) {
 
 const FamilyTree = ({ allNotes, setAllNotes }) => {
   const [selectedPersonId, setSelectedPersonId] = useState(null);
+  const [hoveredPersonId, setHoveredPersonId] = useState(null);
   const [addPersonModal, setAddPersonModal] = useState({ open: false });
   const [editPersonModal, setEditPersonModal] = useState({ open: false, personNote: null });
   const [addRelationshipModal, setAddRelationshipModal] = useState({ open: false, personNote: null });
@@ -592,6 +638,17 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     }
   }, [buildFamilyTree, selectedTreeId]);
 
+  // Function to generate unique colors for edges
+  const generateEdgeColor = (index) => {
+    // Use HSL color space to generate distinct colors
+    // Vary hue from 0 to 360, keep saturation and lightness consistent for visibility
+    const hue = (index * 137.508) % 360; // Golden angle approximation for better distribution
+    const saturation = 60 + (index % 3) * 10; // Vary saturation between 60-80%
+    const lightness = 45 + (index % 2) * 10; // Vary lightness between 45-55%
+    
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  };
+
   // Convert tree structure to React Flow nodes and edges
   useEffect(() => {
     if (!buildFamilyTree) {
@@ -603,6 +660,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     const flowNodes = [];
     const flowEdges = [];
     const processedNodes = new Set();
+    let edgeIndex = 0; // Track edge index for unique colors
     const ySpacing = 300; // Vertical spacing (top to bottom) - increased to prevent edge overlap and give edges room to curve
     const nodeWidth = 220; // Approximate node width (min-w-[180px] + padding + border)
     const nodeHeight = 120; // Approximate node height (to account for edge routing)
@@ -662,8 +720,8 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
 
       // Check if this is a spouse node being processed (skipVisitedCheck=true means it's a spouse being processed for its children)
       const isSpouseBeingProcessed = skipVisitedCheck && processedNodes.has(node.id);
-      // Always treat spouse nodes as expanded when processing their children
-      const isExpanded = isSpouseBeingProcessed || expandedNodes.has(node.id);
+      // Always show all relationships - always expanded
+      const isExpanded = true;
       const hasChildren = node.children && node.children.length > 0;
       const hasSpouse = node.spouse !== null && !processedNodes.has(node.spouse.id);
       const hasParents = node.parents && node.parents.length > 0;
@@ -712,11 +770,23 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
                 return newSet;
               });
             },
+            onSelect: (personId) => {
+              setSelectedPersonId(personId === selectedPersonId ? null : personId);
+            },
+            onHover: (personId) => {
+              setHoveredPersonId(personId);
+            },
+            onHoverEnd: () => {
+              setHoveredPersonId(null);
+            },
             isExpanded,
             hasChildren,
             hasSpouse,
             hasParents,
-            isRoot
+            isRoot,
+            isSelected: false,
+            isHighlighted: false,
+            isDimmed: false
           }
         });
         processedNodes.add(node.id);
@@ -729,7 +799,8 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
       }
 
       // Handle parents (render above - upstream)
-      if (hasParents && isExpanded) {
+      // Always show parents - all relationships are always visible
+      if (hasParents) {
         const parentsCount = node.parents.length;
         const parentsStartX = x - ((parentsCount - 1) * xSpacing) / 2;
         const parentsY = y - ySpacing; // Parents above current node
@@ -756,6 +827,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
             // So 'daughter_of' should show as "Daughter", 'son_of' should show as "Son", etc.
             const childRelationshipType = parent.relationshipType || 'child_of';
             const edgeLabel = formatRelationshipLabel(childRelationshipType);
+            const edgeColor = generateEdgeColor(edgeIndex++);
             console.log(`[EDGE] Creating parent edge: ${parent.name} (${parent.id}) -> ${node.name} (${node.id}), label="${edgeLabel}", type=${childRelationshipType}`);
             flowEdges.push({
               id: `edge-parent-${parent.id}-${node.id}`,
@@ -764,10 +836,10 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
               sourceHandle: 'bottom',
               targetHandle: 'top',
               type: 'bezier',
-              style: { stroke: '#4b5563', strokeWidth: 3 },
+              style: { stroke: edgeColor, strokeWidth: 5 },
               animated: false,
               label: edgeLabel, // This will show "Daughter", "Son", or "Child"
-              labelStyle: { fill: '#4b5563', fontWeight: 600, fontSize: 12 },
+              labelStyle: { fill: edgeColor, fontWeight: 600, fontSize: 12 },
               labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
               labelBgPadding: [4, 4],
               labelBgBorderRadius: 4
@@ -826,6 +898,15 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
                     return newSet;
                   });
                 },
+                onSelect: (personId) => {
+                  setSelectedPersonId(personId === selectedPersonId ? null : personId);
+                },
+                onHover: (personId) => {
+                  setHoveredPersonId(personId);
+                },
+                onHoverEnd: () => {
+                  setHoveredPersonId(null);
+                },
                 isExpanded: true, // Always expand spouse to show its relations
                 hasChildren: node.spouse.children && node.spouse.children.length > 0,
                 hasSpouse: true,
@@ -845,6 +926,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
 
           // Create edge for spouse immediately after creating spouse node
           const spouseRelationshipType = node.spouse.relationshipType || 'spouse_of';
+          const spouseEdgeColor = generateEdgeColor(edgeIndex++);
           console.log(`[FLOW BUILD] ${node.name} (${node.id}) creating spouse edge to ${node.spouse.name} (${node.spouse.id}), type=${spouseRelationshipType}`);
           flowEdges.push({
             id: `edge-spouse-${node.id}-${node.spouse.id}`,
@@ -853,10 +935,10 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
             sourceHandle: 'spouse',
             targetHandle: 'spouse',
             type: 'bezier',
-            style: { stroke: '#4b5563', strokeWidth: 3 },
+            style: { stroke: spouseEdgeColor, strokeWidth: 5 },
             animated: false,
             label: formatRelationshipLabel(spouseRelationshipType),
-            labelStyle: { fill: '#4b5563', fontWeight: 600, fontSize: 12 },
+            labelStyle: { fill: spouseEdgeColor, fontWeight: 600, fontSize: 12 },
             labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
             labelBgPadding: [4, 4],
             labelBgBorderRadius: 4
@@ -866,14 +948,9 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
       }
 
       // Handle children (render below - downstream)
-      // Always display children if node is a spouse (has spouse relationship) - spouse's downward links should always be open
-      // Check if node is a spouse by checking if it has a spouse relationship in the tree structure
-      const isSpouseNode = node.spouse !== null; // Node has a spouse relationship
-      // Always show children for spouse nodes, regardless of expanded state
-      const shouldShowChildren = isExpanded || isSpouseNode;
-      
-      console.log(`[FLOW BUILD] ${node.name} (${node.id}) checking children: hasChildren=${hasChildren}, isExpanded=${isExpanded}, isSpouseNode=${isSpouseNode}, shouldShowChildren=${shouldShowChildren}, childrenCount=${node.children ? node.children.length : 0}`);
-      if (hasChildren && shouldShowChildren) {
+      // Always show children - all relationships are always visible
+      console.log(`[FLOW BUILD] ${node.name} (${node.id}) checking children: hasChildren=${hasChildren}, childrenCount=${node.children ? node.children.length : 0}`);
+      if (hasChildren) {
         const childrenCount = node.children.length;
         console.log(`[FLOW BUILD] ${node.name} (${node.id}) processing ${childrenCount} children:`, node.children.map(c => `${c.name} (${c.id})`).join(', '));
         
@@ -1065,6 +1142,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
             // - 'daughter_of' -> "Daughter", 'son_of' -> "Son", 'child_of' -> "Child"
             const relationshipType = child.relationshipType || 'child_of';
             const edgeLabel = formatRelationshipLabel(relationshipType);
+            const childEdgeColor = generateEdgeColor(edgeIndex++);
             console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> creating child edge to ${child.name} (${child.id}), label="${edgeLabel}", type=${relationshipType}`);
             flowEdges.push({
               id: `edge-child-${node.id}-${child.id}`,
@@ -1073,10 +1151,10 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
               sourceHandle: 'bottom',
               targetHandle: 'top',
               type: 'bezier',
-              style: { stroke: '#4b5563', strokeWidth: 3 },
+              style: { stroke: childEdgeColor, strokeWidth: 5 },
               animated: false,
               label: edgeLabel, // This will show "Father", "Mother", "Daughter", "Son", or "Child"
-              labelStyle: { fill: '#4b5563', fontWeight: 600, fontSize: 12 },
+              labelStyle: { fill: childEdgeColor, fontWeight: 600, fontSize: 12 },
               labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
               labelBgPadding: [4, 4],
               labelBgBorderRadius: 4
@@ -1089,7 +1167,8 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
       }
 
       // Handle siblings (render at same level, side by side)
-      if (node.siblings && node.siblings.length > 0 && level === 0 && isExpanded) {
+      // Always show siblings - all relationships are always visible
+      if (node.siblings && node.siblings.length > 0) {
         node.siblings.forEach((sibling, index) => {
           let siblingX = x + (index + 1) * xSpacing;
           const siblingY = y; // Same vertical level
@@ -1100,6 +1179,39 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
           }
           
           buildFlowNodes(sibling, siblingX, siblingY, new Set(visited), level, parentId);
+          
+          // Create edge for sibling relationship
+          const siblingNodeExists = flowNodes.some(n => n.id === sibling.id);
+          // Check if edge already exists (to prevent duplicates since sibling relationships are bidirectional)
+          const edgeAlreadyExists = flowEdges.some(e => 
+            (e.source === node.id && e.target === sibling.id) || 
+            (e.source === sibling.id && e.target === node.id)
+          );
+          
+          if (siblingNodeExists && !edgeAlreadyExists) {
+            const siblingRelationshipType = sibling.relationshipType || 'brother_of';
+            const edgeLabel = formatRelationshipLabel(siblingRelationshipType);
+            const siblingEdgeColor = generateEdgeColor(edgeIndex++);
+            console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> creating sibling edge to ${sibling.name} (${sibling.id}), label="${edgeLabel}", type=${siblingRelationshipType}`);
+            flowEdges.push({
+              id: `edge-sibling-${node.id}-${sibling.id}`,
+              source: node.id,
+              target: sibling.id,
+              sourceHandle: 'spouse', // Use spouse handles for sibling connections (horizontal)
+              targetHandle: 'spouse',
+              type: 'bezier',
+              style: { stroke: siblingEdgeColor, strokeWidth: 5 },
+              animated: false,
+              label: edgeLabel, // This will show "Brother" or "Sister"
+              labelStyle: { fill: siblingEdgeColor, fontWeight: 600, fontSize: 12 },
+              labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
+              labelBgPadding: [4, 4],
+              labelBgBorderRadius: 4
+            });
+            console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> created sibling edge: ${node.id} -> ${sibling.id}`);
+          } else if (edgeAlreadyExists) {
+            console.log(`[FLOW BUILD] ${node.name} (${node.id}) -> sibling edge to ${sibling.name} (${sibling.id}) already exists, skipping`);
+          }
         });
       }
     };
@@ -1167,6 +1279,81 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     setNodes(flowNodes);
     setEdges(validEdges);
   }, [buildFamilyTree, expandedNodes, selectedTree]);
+
+  // Update nodes and edges with selection/hover state
+  useEffect(() => {
+    // Hover takes precedence over selection
+    const activePersonId = hoveredPersonId || selectedPersonId;
+    
+    if (!activePersonId) {
+      // No selection or hover - reset all nodes and edges to normal state
+      setNodes(prevNodes => prevNodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          isSelected: false,
+          isHighlighted: false,
+          isDimmed: false
+        }
+      })));
+      setEdges(prevEdges => prevEdges.map(edge => ({
+        ...edge,
+        style: {
+          ...edge.style,
+          opacity: 1,
+          strokeWidth: 5
+        }
+      })));
+      return;
+    }
+
+    // Find immediate relationships (nodes connected via edges)
+    setEdges(currentEdges => {
+      const immediateRelationships = new Set([activePersonId]);
+      const highlightedEdges = new Set();
+      
+      // Find all immediate relationships
+      currentEdges.forEach(edge => {
+        if (edge.source === activePersonId || edge.target === activePersonId) {
+          immediateRelationships.add(edge.source);
+          immediateRelationships.add(edge.target);
+          highlightedEdges.add(edge.id);
+        }
+      });
+
+      // Update nodes with selection/hover state
+      setNodes(prevNodes => prevNodes.map(node => {
+        const isSelected = node.id === activePersonId;
+        const isHighlighted = immediateRelationships.has(node.id) && !isSelected;
+        const isDimmed = !immediateRelationships.has(node.id);
+        
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            isSelected,
+            isHighlighted,
+            isDimmed
+          }
+        };
+      }));
+
+      // Update edges with highlighting/dimming
+      return currentEdges.map(edge => {
+        const isHighlighted = highlightedEdges.has(edge.id);
+        const isDimmed = !isHighlighted;
+        
+        return {
+          ...edge,
+          style: {
+            ...edge.style,
+            opacity: isDimmed ? 0.2 : 1,
+            strokeWidth: isHighlighted ? 6 : (isDimmed ? 2 : 5)
+          }
+        };
+      });
+    });
+  }, [selectedPersonId, hoveredPersonId]);
 
   // Filter people for search
   const filteredPeople = useMemo(() => {
@@ -1501,7 +1688,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
               edgesUpdatable={false}
               defaultEdgeOptions={{
                 type: 'bezier',
-                style: { stroke: '#4b5563', strokeWidth: 3 },
+                style: { stroke: '#4b5563', strokeWidth: 5 },
                 animated: false
               }}
               connectionLineType="bezier"

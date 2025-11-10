@@ -1,8 +1,100 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { PlusIcon, XMarkIcon, MagnifyingGlassIcon, UserIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
+import ReactFlow, { 
+  Background, 
+  Controls, 
+  MiniMap, 
+  useNodesState, 
+  useEdgesState,
+  MarkerType,
+  Position,
+  Handle
+} from 'reactflow';
+import 'reactflow/dist/style.css';
 import AddPeopleModal from '../components/AddPeopleModal';
 import { createNote, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+
+const nodeTypes = {
+  personNode: PersonNode
+};
+
+// Custom Person Node Component
+function PersonNode({ data }) {
+  const { person, onEdit, onExpand, isExpanded, hasChildren, hasSpouse } = data;
+  const hasPhoto = person.photos && person.photos.length > 0;
+
+  return (
+    <div className="bg-white rounded-lg border-2 border-gray-200 shadow-md p-3 min-w-[180px] relative">
+      {/* Handle for incoming edges (from parents) - left side */}
+      <Handle
+        type="target"
+        position={Position.Left}
+      />
+      
+      {/* Handle for outgoing edges (to children) - right side */}
+      <Handle
+        type="source"
+        position={Position.Right}
+      />
+      
+      {/* Handle for spouse connections - bottom (source) */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+      />
+      
+      {/* Handle for spouse connections - top (target) */}
+      <Handle
+        type="target"
+        position={Position.Top}
+      />
+      
+      <div className="flex items-center gap-3">
+        {hasPhoto ? (
+          <img
+            src={person.photos[0]}
+            alt={person.name}
+            className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+            <UserIcon className="h-6 w-6 text-gray-400" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm text-gray-900 truncate">{person.name}</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-2 mt-2">
+        {(hasChildren || hasSpouse) && (
+          <button
+            onClick={onExpand}
+            className="p-1 text-gray-400 hover:text-indigo-600 rounded hover:bg-gray-100"
+            title={isExpanded ? "Collapse" : "Expand"}
+          >
+            {isExpanded ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            )}
+          </button>
+        )}
+        <button
+          onClick={onEdit}
+          className="p-1 text-gray-400 hover:text-indigo-600 rounded hover:bg-gray-100"
+          title="Edit person"
+        >
+          <PencilIcon className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const FamilyTree = ({ allNotes, setAllNotes }) => {
   const [selectedPersonId, setSelectedPersonId] = useState(null);
@@ -13,6 +105,9 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
   const [newTreeModal, setNewTreeModal] = useState({ open: false, name: '', rootPersonId: '' });
   const [deleteTreeModal, setDeleteTreeModal] = useState({ open: false, treeId: null, treeName: '' });
   const [editTreeModal, setEditTreeModal] = useState({ open: false, treeNote: null, name: '', rootPersonId: '' });
+  const [expandedNodes, setExpandedNodes] = useState(new Set());
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   // Get all family tree notes
   const familyTreeNotes = useMemo(() => {
@@ -147,6 +242,207 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     return buildNode(selectedTree.rootPersonId);
   }, [peopleNotes, selectedTree]);
 
+  // Helper function to format relationship type to readable label
+  const formatRelationshipLabel = (relationshipType) => {
+    const labels = {
+      'spouse_of': 'Spouse',
+      'father_of': 'Father',
+      'mother_of': 'Mother',
+      'child_of': 'Child',
+      'son_of': 'Son',
+      'daughter_of': 'Daughter',
+      'brother_of': 'Brother',
+      'sister_of': 'Sister'
+    };
+    return labels[relationshipType] || relationshipType;
+  };
+
+  // Convert tree structure to React Flow nodes and edges
+  useEffect(() => {
+    if (!buildFamilyTree) {
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
+
+    const flowNodes = [];
+    const flowEdges = [];
+    const processedNodes = new Set();
+    const ySpacing = 150;
+    const xSpacing = 300;
+
+    // Build nodes and edges together (left to right)
+    const buildFlowNodes = (node, x = 0, y = 0, visited = new Set(), level = 0, parentId = null) => {
+      if (!node || visited.has(node.id)) return;
+      visited.add(node.id);
+
+      const isExpanded = expandedNodes.has(node.id);
+      const hasChildren = node.children && node.children.length > 0;
+      const hasSpouse = node.spouse !== null && !processedNodes.has(node.spouse.id);
+
+      // Create node if not already processed
+      if (!processedNodes.has(node.id)) {
+        flowNodes.push({
+          id: node.id,
+          type: 'personNode',
+          position: { x, y },
+          data: {
+            person: {
+              name: node.name,
+              photos: node.photos
+            },
+            onEdit: () => {
+              setEditPersonModal({ open: true, personNote: node.note });
+            },
+            onExpand: () => {
+              setExpandedNodes(prev => {
+                const newSet = new Set(prev);
+                if (newSet.has(node.id)) {
+                  newSet.delete(node.id);
+                } else {
+                  newSet.add(node.id);
+                }
+                return newSet;
+              });
+            },
+            isExpanded,
+            hasChildren,
+            hasSpouse
+          }
+        });
+        processedNodes.add(node.id);
+      }
+
+      // Handle spouse (render below current node)
+      if (hasSpouse && isExpanded) {
+        const spouseX = x;
+        const spouseY = y + 120; // Spouse below current node
+        
+        if (!processedNodes.has(node.spouse.id)) {
+          flowNodes.push({
+            id: node.spouse.id,
+            type: 'personNode',
+            position: { x: spouseX, y: spouseY },
+            data: {
+              person: {
+                name: node.spouse.name,
+                photos: node.spouse.photos
+              },
+              onEdit: () => {
+                setEditPersonModal({ open: true, personNote: node.spouse.note });
+              },
+              onExpand: () => {
+                setExpandedNodes(prev => {
+                  const newSet = new Set(prev);
+                  if (newSet.has(node.spouse.id)) {
+                    newSet.delete(node.spouse.id);
+                  } else {
+                    newSet.add(node.spouse.id);
+                  }
+                  return newSet;
+                });
+              },
+              isExpanded: expandedNodes.has(node.spouse.id),
+              hasChildren: node.spouse.children && node.spouse.children.length > 0,
+              hasSpouse: true
+            }
+          });
+          processedNodes.add(node.spouse.id);
+        }
+
+        // Create edge for spouse immediately after creating spouse node
+        const spouseRelationshipType = node.spouse.relationshipType || 'spouse_of';
+        flowEdges.push({
+          id: `edge-spouse-${node.id}-${node.spouse.id}`,
+          source: node.id,
+          target: node.spouse.id,
+          type: 'smoothstep',
+          style: { stroke: '#4b5563', strokeWidth: 3 },
+          animated: false,
+          label: formatRelationshipLabel(spouseRelationshipType),
+          labelStyle: { fill: '#4b5563', fontWeight: 600, fontSize: 12 },
+          labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
+          labelBgPadding: [4, 4],
+          labelBgBorderRadius: 4
+        });
+      }
+
+      // Handle children (render to the right)
+      if (hasChildren && isExpanded) {
+        const childrenCount = node.children.length;
+        const childrenStartY = y - ((childrenCount - 1) * ySpacing) / 2;
+        
+        // If there's a spouse, adjust children position to be centered between both parents
+        const childrenX = x + xSpacing;
+        const childrenYOffset = hasSpouse ? 60 : 0; // Offset if spouse exists
+        
+        node.children.forEach((child, index) => {
+          const childX = childrenX;
+          const childY = childrenStartY + (index * ySpacing) + childrenYOffset;
+          
+          // Recursively build child nodes first
+          buildFlowNodes(child, childX, childY, new Set(visited), level + 1, node.id);
+
+          // Create edge for child immediately after child node is created
+          // Check if child node exists in flowNodes
+          const childNodeExists = flowNodes.some(n => n.id === child.id);
+          if (childNodeExists) {
+            const childRelationshipType = child.relationshipType || 'child_of';
+            flowEdges.push({
+              id: `edge-child-${node.id}-${child.id}`,
+              source: node.id,
+              target: child.id,
+              type: 'smoothstep',
+              style: { stroke: '#4b5563', strokeWidth: 3 },
+              animated: false,
+              label: formatRelationshipLabel(childRelationshipType),
+              labelStyle: { fill: '#4b5563', fontWeight: 600, fontSize: 12 },
+              labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
+              labelBgPadding: [4, 4],
+              labelBgBorderRadius: 4
+            });
+          }
+        });
+      }
+
+      // Handle siblings (render at same level, to the right)
+      if (node.siblings && node.siblings.length > 0 && level === 0 && isExpanded) {
+        node.siblings.forEach((sibling, index) => {
+          const siblingX = x;
+          const siblingY = y + (index + 1) * 150;
+          buildFlowNodes(sibling, siblingX, siblingY, new Set(visited), level, parentId);
+        });
+      }
+    };
+
+    // Build all nodes and edges
+    buildFlowNodes(buildFamilyTree, 0, 0);
+
+    // Verify all edge sources and targets exist in flowNodes
+    const validEdges = flowEdges.filter(edge => {
+      const sourceExists = flowNodes.some(n => n.id === edge.source);
+      const targetExists = flowNodes.some(n => n.id === edge.target);
+      if (!sourceExists || !targetExists) {
+        console.warn(`Edge ${edge.id} has invalid source or target:`, {
+          source: edge.source,
+          target: edge.target,
+          sourceExists,
+          targetExists,
+          allNodeIds: flowNodes.map(n => n.id)
+        });
+      }
+      return sourceExists && targetExists;
+    });
+
+    console.log('Flow Nodes:', flowNodes.length, flowNodes.map(n => ({ id: n.id, name: n.data.person.name })));
+    console.log('Flow Edges (all):', flowEdges.length, flowEdges.map(e => ({ id: e.id, source: e.source, target: e.target })));
+    console.log('Valid Edges:', validEdges.length, validEdges.map(e => ({ id: e.id, source: e.source, target: e.target })));
+    console.log('Expanded Nodes:', Array.from(expandedNodes));
+
+    setNodes(flowNodes);
+    setEdges(validEdges);
+  }, [buildFamilyTree, expandedNodes]);
+
   // Filter people for search
   const filteredPeople = useMemo(() => {
     if (!searchQuery) return peopleNotes;
@@ -161,6 +457,13 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
   useEffect(() => {
     if (!selectedTreeId && familyTreeNotes.length > 0) {
       setSelectedTreeId(familyTreeNotes[0].id);
+      // Expand root node by default
+      if (familyTreeNotes[0]) {
+        const info = parseFamilyTreeInfo(familyTreeNotes[0].content);
+        if (info.rootPersonId) {
+          setExpandedNodes(new Set([info.rootPersonId]));
+        }
+      }
     }
   }, [familyTreeNotes, selectedTreeId]);
 
@@ -194,6 +497,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
       const response = await createNote(content);
       setAllNotes([...allNotes, response]);
       setSelectedTreeId(response.id);
+      setExpandedNodes(new Set([newTreeModal.rootPersonId]));
       setNewTreeModal({ open: false, name: '', rootPersonId: '' });
     } catch (error) {
       console.error('Error creating family tree:', error);
@@ -220,96 +524,6 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     } catch (error) {
       console.error('Error deleting family tree:', error);
     }
-  };
-
-  // Render tree node
-  const renderTreeNode = (node, level = 0) => {
-    if (!node) return null;
-
-    const isSelected = selectedPersonId === node.id;
-    const hasPhoto = node.photos && node.photos.length > 0;
-
-    return (
-      <div key={node.id} className="flex flex-col items-center">
-        {/* Parents */}
-        {level === 0 && node.parents && node.parents.length > 0 && (
-          <div className="mb-4 flex items-start gap-4">
-            {node.parents.map((parent, index) => (
-              <div key={parent.id} className="flex flex-col items-center">
-                {renderTreeNode(parent, level - 1)}
-                {/* Connection line */}
-                <div className="w-px h-4 bg-gray-300"></div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Person Card */}
-        <div
-          className={`relative bg-white rounded-lg border-2 p-3 shadow-md cursor-pointer transition-all hover:shadow-lg min-w-[150px] ${
-            isSelected ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-200'
-          }`}
-          onClick={() => setSelectedPersonId(node.id)}
-        >
-          {hasPhoto ? (
-            <img
-              src={node.photos[0]}
-              alt={node.name}
-              className="w-20 h-20 rounded-full object-cover mx-auto mb-2"
-            />
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-2">
-              <UserIcon className="h-10 w-10 text-gray-400" />
-            </div>
-          )}
-          <div className="text-center">
-            <p className="font-semibold text-sm text-gray-900 truncate">{node.name}</p>
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditPersonModal({ open: true, personNote: node.note });
-            }}
-            className="absolute top-1 right-1 p-1 text-gray-400 hover:text-indigo-600 rounded"
-            title="Edit person"
-          >
-            <PencilIcon className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Spouse */}
-        {node.spouse && (
-          <div className="mt-4 flex items-center gap-4">
-            <div className="w-8 h-px bg-gray-300"></div>
-            {renderTreeNode(node.spouse, level)}
-          </div>
-        )}
-
-        {/* Children */}
-        {node.children && node.children.length > 0 && (
-          <div className="mt-4 flex items-start gap-4">
-            {node.children.map((child, index) => (
-              <div key={child.id} className="flex flex-col items-center">
-                {/* Connection line */}
-                <div className="w-px h-4 bg-gray-300"></div>
-                {renderTreeNode(child, level + 1)}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Siblings */}
-        {level === 0 && node.siblings && node.siblings.length > 0 && (
-          <div className="mt-4 flex items-start gap-4">
-            {node.siblings.map((sibling, index) => (
-              <div key={sibling.id} className="flex flex-col items-center">
-                {renderTreeNode(sibling, level + 1)}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -341,7 +555,22 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
           <label className="text-sm font-medium text-gray-700">Select Family Tree:</label>
           <select
             value={selectedTreeId || ''}
-            onChange={(e) => setSelectedTreeId(e.target.value)}
+            onChange={(e) => {
+              setSelectedTreeId(e.target.value);
+              if (e.target.value) {
+                const treeNote = familyTreeNotes.find(note => note.id === e.target.value);
+                if (treeNote) {
+                  const info = parseFamilyTreeInfo(treeNote.content);
+                  if (info.rootPersonId) {
+                    setExpandedNodes(new Set([info.rootPersonId]));
+                  } else {
+                    setExpandedNodes(new Set());
+                  }
+                }
+              } else {
+                setExpandedNodes(new Set());
+              }
+            }}
             className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           >
             <option value="">Select a family tree</option>
@@ -445,12 +674,53 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
         </div>
       )}
 
-      {/* Family Tree Visualization */}
+      {/* Family Tree Visualization with React Flow */}
       {buildFamilyTree ? (
-        <div className="bg-white rounded-lg border p-6 overflow-x-auto">
-          <div className="flex justify-center">
-            {renderTreeNode(buildFamilyTree)}
-          </div>
+        <div className="bg-white rounded-lg border p-6" style={{ height: '600px', width: '100%' }}>
+          {nodes.length > 0 && (
+            <ReactFlow
+              key={`flow-${selectedTreeId}-${edges.length}`}
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              nodeTypes={nodeTypes}
+              fitView
+              fitViewOptions={{ padding: 0.2 }}
+              nodesDraggable={true}
+              nodesConnectable={false}
+              edgesUpdatable={false}
+              defaultEdgeOptions={{
+                type: 'smoothstep',
+                style: { stroke: '#4b5563', strokeWidth: 3 },
+                animated: false
+              }}
+              connectionLineType="smoothstep"
+              proOptions={{ hideAttribution: true }}
+              deleteKeyCode={null}
+              multiSelectionKeyCode={null}
+            >
+              <Background color="#e5e7eb" gap={16} />
+              <Controls />
+              <MiniMap 
+                nodeColor={(node) => {
+                  return '#3b82f6';
+                }}
+                maskColor="rgba(0, 0, 0, 0.1)"
+              />
+            </ReactFlow>
+          )}
+          {nodes.length === 0 && (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              <p>No nodes to display. Make sure the root node is expanded.</p>
+            </div>
+          )}
+          {nodes.length > 0 && edges.length === 0 && (
+            <div className="absolute top-2 right-2 bg-yellow-50 border border-yellow-200 rounded p-2 text-xs text-yellow-800">
+              <p>No edges found. Expand nodes to see connections.</p>
+              <p>Nodes: {nodes.length}, Edges: {edges.length}</p>
+            </div>
+          )}
         </div>
       ) : selectedTree ? (
         <div className="bg-white rounded-lg border p-12 text-center">

@@ -11,10 +11,99 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText })
   
   if (!content) return [];
 
+  // First, detect code blocks marked with triple backticks (```)
+  const allLines = content.split('\n');
+  const codeBlockRanges = [];
+  const singleLineCodeBlocks = new Set(); // Track single-line code blocks
+  let inCodeBlock = false;
+  let codeBlockStart = -1;
+  let codeBlockStartLine = null; // Track if opening backticks are on same line as content
+  
+  allLines.forEach((line, index) => {
+    const trimmed = line.trim();
+    
+    // Check for single-line code block: ```text``` (with optional whitespace)
+    const singleLineMatch = trimmed.match(/^```\s*(.+?)\s*```$/);
+    if (singleLineMatch) {
+      singleLineCodeBlocks.add(index);
+      return; // Skip this line for multi-line code block detection
+    }
+    
+    // Check if line starts with ``` (opening delimiter with content on same line)
+    const startsWithBackticks = trimmed.match(/^```\s*(.+)$/);
+    // Check if line ends with ``` (closing delimiter with content on same line)
+    const endsWithBackticks = trimmed.match(/^(.+?)\s*```$/);
+    // Check for standalone ``` delimiter
+    const isStandaloneDelimiter = trimmed === '```';
+    
+    if (!inCodeBlock) {
+      // Not in a code block yet
+      if (startsWithBackticks) {
+        // Opening backticks on same line as content
+        codeBlockStart = index;
+        codeBlockStartLine = startsWithBackticks[1]; // Store the content after ```
+        inCodeBlock = true;
+      } else if (isStandaloneDelimiter) {
+        // Standalone opening delimiter
+        codeBlockStart = index;
+        codeBlockStartLine = null;
+        inCodeBlock = true;
+      }
+    } else {
+      // Already in a code block
+      if (endsWithBackticks) {
+        // Closing backticks on same line as content
+        if (codeBlockStart !== -1) {
+          codeBlockRanges.push({ 
+            start: codeBlockStart, 
+            end: index,
+            startLine: codeBlockStartLine,
+            endLine: endsWithBackticks[1]
+          });
+        }
+        codeBlockStart = -1;
+        codeBlockStartLine = null;
+        inCodeBlock = false;
+      } else if (isStandaloneDelimiter) {
+        // Standalone closing delimiter
+        if (codeBlockStart !== -1) {
+          codeBlockRanges.push({ 
+            start: codeBlockStart, 
+            end: index,
+            startLine: codeBlockStartLine,
+            endLine: null
+          });
+        }
+        codeBlockStart = -1;
+        codeBlockStartLine = null;
+        inCodeBlock = false;
+      }
+    }
+  });
+  
+  // Helper function to check if a line index is inside a code block
+  const isInCodeBlock = (lineIndex) => {
+    return codeBlockRanges.some(range => 
+      (lineIndex > range.start && lineIndex < range.end) ||
+      (lineIndex === range.start && range.startLine !== null) ||
+      (lineIndex === range.end && range.endLine !== null)
+    );
+  };
+  
+  // Helper function to check if a line is a code block delimiter
+  const isCodeBlockDelimiter = (lineIndex) => {
+    return codeBlockRanges.some(range => lineIndex === range.start || lineIndex === range.end);
+  };
+  
+  // Helper function to check if a line is a single-line code block
+  const isSingleLineCodeBlock = (lineIndex) => {
+    return singleLineCodeBlocks.has(lineIndex);
+  };
+
   // Split into lines and process each line
-  const lines = content.split('\n')
-    .filter(line => !line.trim().startsWith('meta::'))
-    .map(line => {
+  // Map first to preserve original index, then filter
+  const lines = allLines
+    .map((line, originalIndex) => {
       
       // First extract any color value wrapped in @$%^ markers
       const colorMatch = line.match(/@\$%\^([^@]+)@\$%\^/);
@@ -23,33 +112,84 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText })
       // Remove the color markers and get clean text
       const cleanLine = line.replace(/@\$%\^[^@]+@\$%\^/, '');
       
-
-      return { line: cleanLine, color };
-    });
+      // Track the original index to check code blocks
+      return { line: cleanLine, color, originalIndex };
+    })
+    .filter(({ line }) => !line.trim().startsWith('meta::'));
 
   // Process lines
   const processedElements = [];
   
-  lines.forEach(({ line, color }, lineIndex) => {
-    // Check if this is an h2 header
+  lines.forEach(({ line, color, originalIndex }, lineIndex) => {
+    // Check if this line is a code block delimiter (```)
     const trimmed = line.trim();
+    const isCodeDelimiter = trimmed === '```';
+    
+    // Check if this line is inside a code block
+    const isCodeBlockLine = isInCodeBlock(originalIndex);
+    
+    // Check if this is a single-line code block
+    const isSingleLineCode = isSingleLineCodeBlock(originalIndex);
+    
+    // Find the code block range this line belongs to (if any)
+    const codeBlockRange = codeBlockRanges.find(range => 
+      originalIndex > range.start && originalIndex < range.end ||
+      originalIndex === range.start || originalIndex === range.end
+    );
+    
+    // Check if this is an h2 header
     const isH2 = trimmed.startsWith('##') && !trimmed.startsWith('###') && trimmed.endsWith('##');
     
-    // Step 1: Parse inline formatting first
+    // Step 1: Parse inline formatting (skip for code blocks and delimiters)
+    let formattedContent;
+    let codeBlockContent = null;
     
-    const formattedContent = parseInlineFormatting({
-      content: line,
-      searchTerm,
-      lineIndex,
-      onAddText,
-      onEditText,
-      noteContent: content
-    });
-    
+    if (isCodeDelimiter && !codeBlockRange) {
+      // Standalone delimiter that's not part of a range (shouldn't happen, but handle it)
+      return;
+    } else if (isSingleLineCode) {
+      // Extract content from single-line code block: ```text``` (with optional whitespace)
+      const match = trimmed.match(/^```\s*(.+?)\s*```$/);
+      if (match) {
+        codeBlockContent = match[1].trim();
+        formattedContent = [codeBlockContent];
+      } else {
+        formattedContent = [line];
+      }
+    } else if (codeBlockRange) {
+      // This line is part of a code block
+      if (originalIndex === codeBlockRange.start && codeBlockRange.startLine) {
+        // First line with opening backticks and content
+        formattedContent = [codeBlockRange.startLine];
+      } else if (originalIndex === codeBlockRange.end && codeBlockRange.endLine) {
+        // Last line with content and closing backticks
+        formattedContent = [codeBlockRange.endLine];
+      } else if (originalIndex === codeBlockRange.start || originalIndex === codeBlockRange.end) {
+        // Standalone delimiter line, don't render
+        return;
+      } else {
+        // Middle line of code block
+        formattedContent = [line];
+      }
+    } else if (isCodeBlockLine) {
+      // For code block lines, render as plain text (no formatting)
+      formattedContent = [line];
+    } else {
+      formattedContent = parseInlineFormatting({
+        content: line,
+        searchTerm,
+        lineIndex,
+        onAddText,
+        onEditText,
+        noteContent: content
+      });
+    }
 
-    // Step 2: Check if this is a heading by looking at the original line
+    // Step 2: Check if this is a heading or code block by looking at the original line
     let type = 'normal';
-    if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
+    if (codeBlockRange || isCodeBlockLine || isSingleLineCode) {
+      type = 'codeblock';
+    } else if (trimmed.startsWith('###') && trimmed.endsWith('###')) {
       type = 'heading1';
     } else if (isH2) {
       type = 'heading2';
@@ -57,11 +197,33 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText })
       type = 'bullet';
     }
 
-    // Step 3: Wrap in appropriate container based on line type
+    // Step 3: Determine if this is the first or last line of a code block
+    let isCodeBlockStart = false;
+    let isCodeBlockEnd = false;
+    
+    if (codeBlockRange) {
+      // Check if this is the first line of the code block
+      if (originalIndex === codeBlockRange.start) {
+        isCodeBlockStart = true;
+      }
+      // Check if this is the last line of the code block
+      if (originalIndex === codeBlockRange.end) {
+        isCodeBlockEnd = true;
+      }
+    } else if (isCodeBlockLine) {
+      // For old-style code blocks (without range tracking)
+      isCodeBlockStart = codeBlockRanges.some(r => originalIndex === r.start + 1);
+      isCodeBlockEnd = codeBlockRanges.some(r => originalIndex === r.end - 1);
+    }
+    
+    // Step 4: Wrap in appropriate container based on line type
     let element = wrapInContainer({
       content: formattedContent,
       type,
-      lineIndex
+      lineIndex,
+      isCodeBlockStart: isCodeBlockStart || isSingleLineCode,
+      isCodeBlockEnd: isCodeBlockEnd || isSingleLineCode,
+      isSingleLineCodeBlock: isSingleLineCode
     });
 
     // Step 4: If we have a color value, wrap the final element in a colored span
@@ -658,7 +820,7 @@ const toSentenceCase = (text) => {
 /**
  * Wrap content in appropriate container based on line type
  */
-const wrapInContainer = ({ content, type, lineIndex }) => {
+const wrapInContainer = ({ content, type, lineIndex, isCodeBlockStart, isCodeBlockEnd, isSingleLineCodeBlock }) => {
   switch (type) {
     case 'heading1':
       return (
@@ -677,6 +839,37 @@ const wrapInContainer = ({ content, type, lineIndex }) => {
         <div key={`bullet-${lineIndex}`} className="flex">
           <span className="mr-2">•</span>
           <div>{content}</div>
+        </div>
+      );
+    case 'codeblock':
+      const codeBlockStyle = {
+        backgroundColor: '#e5e7eb',
+        fontFamily: 'monospace',
+        fontSize: '0.875rem',
+        lineHeight: '1.25rem',
+        paddingLeft: '8px',
+        paddingRight: '8px',
+        paddingTop: (isCodeBlockStart || isSingleLineCodeBlock) ? '8px' : '0',
+        paddingBottom: (isCodeBlockEnd || isSingleLineCodeBlock) ? '8px' : '0',
+        marginLeft: '2rem',
+        // Counteract space-y-1 from parent (0.25rem = 4px) and ensure no gaps between consecutive code block lines
+        marginTop: (isCodeBlockStart || isSingleLineCodeBlock) ? '4px' : '-4px',
+        marginBottom: '0',
+        borderLeft: '1px solid #d1d5db',
+        borderRight: '1px solid #d1d5db',
+        borderTop: (isCodeBlockStart || isSingleLineCodeBlock) ? '1px solid #d1d5db' : 'none',
+        borderBottom: (isCodeBlockEnd || isSingleLineCodeBlock) ? '1px solid #d1d5db' : 'none',
+        borderTopLeftRadius: (isCodeBlockStart || isSingleLineCodeBlock) ? '6px' : '0',
+        borderTopRightRadius: (isCodeBlockStart || isSingleLineCodeBlock) ? '6px' : '0',
+        borderBottomLeftRadius: (isCodeBlockEnd || isSingleLineCodeBlock) ? '6px' : '0',
+        borderBottomRightRadius: (isCodeBlockEnd || isSingleLineCodeBlock) ? '6px' : '0',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-all',
+        display: 'block'
+      };
+      return (
+        <div key={`codeblock-${lineIndex}`} className="code-block-triple-backtick" style={codeBlockStyle}>
+          {content}
         </div>
       );
     default:

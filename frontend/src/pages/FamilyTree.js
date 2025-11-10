@@ -500,9 +500,9 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
                 // The label will show "Daughter", "Son", or "Child" from the parent's perspective
                 // Check if this child is already in the children array
                 if (!node.children.some(c => c.id === childNode.id)) {
-                  node.children.push({ ...childNode, relationshipType: rel.type });
+                node.children.push({ ...childNode, relationshipType: rel.type });
                   console.log(`[TREE BUILD] ${person.name} (${personId}) -> found child via reverse: ${childNode.name} (${note.id}) as ${rel.type}`);
-                }
+              }
               }
             } else {
               console.log(`[TREE BUILD] ${person.name} (${personId}) -> skipping ${otherPerson.name} (${note.id}) as child because already parent`);
@@ -715,7 +715,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
         return;
       }
       if (!visited.has(node.id)) {
-        visited.add(node.id);
+      visited.add(node.id);
       }
 
       // Check if this is a spouse node being processed (skipVisitedCheck=true means it's a spouse being processed for its children)
@@ -750,7 +750,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
           position: { x, y },
           data: {
             person: {
-              name: node.name,
+          name: node.name,
               photos: node.photos
             },
             onEdit: () => {
@@ -783,7 +783,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
             hasChildren,
             hasSpouse,
             hasParents,
-            isRoot,
+          isRoot,
             isSelected: false,
             isHighlighted: false,
             isDimmed: false
@@ -1327,8 +1327,8 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
         const isHighlighted = immediateRelationships.has(node.id) && !isSelected;
         const isDimmed = !immediateRelationships.has(node.id);
         
-        return {
-          ...node,
+              return {
+                ...node,
           data: {
             ...node.data,
             isSelected,
@@ -1343,7 +1343,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
         const isHighlighted = highlightedEdges.has(edge.id);
         const isDimmed = !isHighlighted;
         
-        return {
+            return {
           ...edge,
           style: {
             ...edge.style,

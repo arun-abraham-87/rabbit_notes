@@ -1145,6 +1145,7 @@ export default function NoteContent({
             const elementType = line.type;
             const isH1 = elementType === 'h1';
             const isH2 = elementType === 'h2';
+            const isCodeBlock = line.props?.className?.includes('code-block-triple-backtick') || false;
             const isFirstLine = idx === 0;
             
             return (
@@ -1196,9 +1197,14 @@ export default function NoteContent({
                             className="mr-2"
                         />
                     )}
-                    {shouldIndent && !isH1 && !isH2 && !hasNoBulletsTag() && !isCodeBlockLine(idx) && (
-                        <span className="mr-2 text-3xl self-start leading-none">•</span>
-                    )}
+                    {shouldIndent && !isH1 && !isH2 && !isCodeBlock && !hasNoBulletsTag() && !isCodeBlockLine(idx) && (() => {
+                        // Check if line is blank by checking the raw line content
+                        const rawLines = getRawLines(note.content);
+                        const originalLine = rawLines[idx];
+                        const isBlank = !originalLine || originalLine.trim() === '';
+                        if (isBlank) return null;
+                        return <span className="mr-2 text-3xl self-start leading-none">•</span>;
+                    })()}
                     <div className="flex items-center gap-2">
                         {React.cloneElement(line, {
                             onContextMenu: (e) => handleRightClick(e, idx),
@@ -1331,7 +1337,7 @@ export default function NoteContent({
                     renderInlineEditor(idx, isH1, isH2)
                 ) : (
                     <>
-                        {(indentFlags[idx] || isListItem) && !isH1 && !isH2 && !hasNoBulletsTag() && !isCodeBlockLine(idx) && (
+                        {(indentFlags[idx] || isListItem) && !isH1 && !isH2 && !hasNoBulletsTag() && !isCodeBlockLine(idx) && lineContent.trim() !== '' && (
                             <span className="mr-2 text-3xl self-start leading-none">•</span>
                         )}
                         <div className="flex items-center gap-2">

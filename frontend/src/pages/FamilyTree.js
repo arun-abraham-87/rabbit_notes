@@ -257,6 +257,45 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     return labels[relationshipType] || relationshipType;
   };
 
+  // Helper function to collect all node IDs recursively from the tree structure
+  const collectAllNodeIds = (node, visited = new Set()) => {
+    if (!node || visited.has(node.id)) return visited;
+    visited.add(node.id);
+    
+    // Add spouse
+    if (node.spouse) {
+      visited.add(node.spouse.id);
+      // Recursively collect from spouse's tree
+      collectAllNodeIds(node.spouse, visited);
+    }
+    
+    // Add children
+    if (node.children && node.children.length > 0) {
+      node.children.forEach(child => {
+        visited.add(child.id);
+        collectAllNodeIds(child, visited);
+      });
+    }
+    
+    // Add parents
+    if (node.parents && node.parents.length > 0) {
+      node.parents.forEach(parent => {
+        visited.add(parent.id);
+        collectAllNodeIds(parent, visited);
+      });
+    }
+    
+    // Add siblings
+    if (node.siblings && node.siblings.length > 0) {
+      node.siblings.forEach(sibling => {
+        visited.add(sibling.id);
+        collectAllNodeIds(sibling, visited);
+      });
+    }
+    
+    return visited;
+  };
+
   // Convert tree structure to React Flow nodes and edges
   useEffect(() => {
     if (!buildFamilyTree) {
@@ -453,19 +492,20 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
     });
   }, [peopleNotes, searchQuery]);
 
-  // Set selected tree on mount if not set
+  // Set selected tree on mount if not set and expand all nodes
   useEffect(() => {
     if (!selectedTreeId && familyTreeNotes.length > 0) {
       setSelectedTreeId(familyTreeNotes[0].id);
-      // Expand root node by default
-      if (familyTreeNotes[0]) {
-        const info = parseFamilyTreeInfo(familyTreeNotes[0].content);
-        if (info.rootPersonId) {
-          setExpandedNodes(new Set([info.rootPersonId]));
-        }
-      }
     }
   }, [familyTreeNotes, selectedTreeId]);
+
+  // Expand all nodes when buildFamilyTree changes
+  useEffect(() => {
+    if (buildFamilyTree) {
+      const allNodeIds = collectAllNodeIds(buildFamilyTree);
+      setExpandedNodes(allNodeIds);
+    }
+  }, [buildFamilyTree]);
 
   // Handle adding a new person
   const handleAddPerson = async (content) => {
@@ -497,7 +537,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
       const response = await createNote(content);
       setAllNotes([...allNotes, response]);
       setSelectedTreeId(response.id);
-      setExpandedNodes(new Set([newTreeModal.rootPersonId]));
+      // Expanded nodes will be set automatically by useEffect when buildFamilyTree changes
       setNewTreeModal({ open: false, name: '', rootPersonId: '' });
     } catch (error) {
       console.error('Error creating family tree:', error);
@@ -557,19 +597,7 @@ const FamilyTree = ({ allNotes, setAllNotes }) => {
             value={selectedTreeId || ''}
             onChange={(e) => {
               setSelectedTreeId(e.target.value);
-              if (e.target.value) {
-                const treeNote = familyTreeNotes.find(note => note.id === e.target.value);
-                if (treeNote) {
-                  const info = parseFamilyTreeInfo(treeNote.content);
-                  if (info.rootPersonId) {
-                    setExpandedNodes(new Set([info.rootPersonId]));
-                  } else {
-                    setExpandedNodes(new Set());
-                  }
-                }
-              } else {
-                setExpandedNodes(new Set());
-              }
+              // Expanded nodes will be set automatically by useEffect when buildFamilyTree changes
             }}
             className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           >

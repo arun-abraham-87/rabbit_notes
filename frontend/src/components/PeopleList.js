@@ -153,6 +153,13 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       });
     }
 
+    // Sort alphabetically by person name (first line of content)
+    filtered.sort((a, b) => {
+      const nameA = (a.content.split('\n')[0] || '').trim().toLowerCase();
+      const nameB = (b.content.split('\n')[0] || '').trim().toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
     return filtered;
   }, [uniqueNotes, selectedTags, localSearchQuery, showWithoutPhoto]);
 
@@ -576,6 +583,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           onAdd={handleAddPerson}
           pastedImageFile={pastedImageFile}
           setAllNotes={setAllNotes}
+          selectedTags={selectedTags.filter(tag => tag !== 'no-tags')}
         />
       )}
 

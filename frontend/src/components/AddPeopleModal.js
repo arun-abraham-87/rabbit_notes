@@ -8,7 +8,7 @@ const API_BASE_URL = 'http://localhost:5001';
 
 
 
-const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null, onDelete, pastedImageFile = null, setAllNotes = null }) => {
+const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null, onDelete, pastedImageFile = null, setAllNotes = null, selectedTags = [] }) => {
   const nameInputRef = useRef(null);
   const [name, setName] = useState('');
   const [tagInput, setTagInput] = useState('');
@@ -138,7 +138,8 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
       setRelationships(parsedRelationships);
     } else {
       setName('');
-      setTagList([]);
+      // If selectedTags are provided, add them to tagList when adding a new person
+      setTagList(selectedTags.length > 0 ? [...selectedTags] : []);
       setTagInput('');
       setInfoTypes([]);
       setInfoValues({});
@@ -151,7 +152,7 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
     setTagFilter('');
     setNewInfoType('');
     setNewInfoTypeType('text');
-  }, [personNote, isOpen]);
+  }, [personNote, isOpen, selectedTags]);
 
   // Get all unique tags from all notes
   const existingTags = useMemo(() => {

@@ -704,28 +704,67 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     return parts.join(', ') || '0 days';
   };
 
-  // Get last recorded date
-  const getLastRecordedDate = () => {
+  // Get last recorded date for yes/no trackers
+  const getLastRecordedYes = () => {
     if (!answers || answers.length === 0) return null;
     
-    // For yes/no trackers, get the last "yes" answer
     const type = tracker.type ? tracker.type.toLowerCase() : '';
     const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
     
-    let relevantAnswers = answers;
-    if (isYesNoTracker) {
-      // Filter to only "yes" answers
-      relevantAnswers = answers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes');
-      if (relevantAnswers.length === 0) return null; // No "yes" answers found
-    }
+    if (!isYesNoTracker) return null;
+    
+    // Filter to only "yes" answers
+    const yesAnswers = answers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'yes');
+    if (yesAnswers.length === 0) return null;
     
     // Sort by date (most recent first) and return the most recent
-    const sortedAnswers = [...relevantAnswers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
+    const sortedAnswers = [...yesAnswers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
+    return sortedAnswers[0].date;
+  };
+
+  const getLastRecordedNo = () => {
+    if (!answers || answers.length === 0) return null;
+    
+    const type = tracker.type ? tracker.type.toLowerCase() : '';
+    const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+    
+    if (!isYesNoTracker) return null;
+    
+    // Filter to only "no" answers
+    const noAnswers = answers.filter(ans => ans.answer && ans.answer.toLowerCase() === 'no');
+    if (noAnswers.length === 0) return null;
+    
+    // Sort by date (most recent first) and return the most recent
+    const sortedAnswers = [...noAnswers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
+    return sortedAnswers[0].date;
+  };
+
+  // For backward compatibility with non-yes/no trackers
+  const getLastRecordedDate = () => {
+    if (!answers || answers.length === 0) return null;
+    
+    const type = tracker.type ? tracker.type.toLowerCase() : '';
+    const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+    
+    if (isYesNoTracker) {
+      // For yes/no trackers, prefer "yes" but fall back to any answer
+      const lastYes = getLastRecordedYes();
+      if (lastYes) return lastYes;
+      const lastNo = getLastRecordedNo();
+      if (lastNo) return lastNo;
+    }
+    
+    // For non-yes/no trackers, get the most recent answer
+    const sortedAnswers = [...answers].sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf());
     return sortedAnswers[0].date;
   };
 
   const lastRecordedDate = getLastRecordedDate();
   const lastRecordedAge = lastRecordedDate ? calculateAge(lastRecordedDate) : null;
+  const lastRecordedYesDate = getLastRecordedYes();
+  const lastRecordedYesAge = lastRecordedYesDate ? calculateAge(lastRecordedYesDate) : null;
+  const lastRecordedNoDate = getLastRecordedNo();
+  const lastRecordedNoAge = lastRecordedNoDate ? calculateAge(lastRecordedNoDate) : null;
 
   const handleCopyToClipboard = async () => {
     try {
@@ -1576,18 +1615,48 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       )}
       {/* Footer */}
       <div className="mt-4 pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-        {!isDevMode && lastRecordedDate && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1">
-              <span className="font-medium">Last recorded:</span>
-              <span>{moment(lastRecordedDate).format('DD-MM-YYYY')}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="font-medium">Age:</span>
-              <span>{lastRecordedAge}</span>
-            </div>
-          </div>
-        )}
+        {!isDevMode && (() => {
+          const type = tracker.type ? tracker.type.toLowerCase() : '';
+          const isYesNoTracker = type === 'yes,no' || type === 'yesno' || type === 'yes/no';
+          
+          if (isYesNoTracker) {
+            // For yes/no trackers, show last recorded yes and no separately
+            if (!lastRecordedYesDate && !lastRecordedNoDate) return null;
+            
+            return (
+              <div className="flex flex-col gap-1">
+                {lastRecordedYesDate && (
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">Last recorded yes:</span>
+                    <span>({lastRecordedYesAge})</span>
+                  </div>
+                )}
+                {lastRecordedNoDate && (
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">Last recorded no:</span>
+                    <span>({lastRecordedNoAge})</span>
+                  </div>
+                )}
+              </div>
+            );
+          } else {
+            // For other trackers, show the old format
+            if (!lastRecordedDate) return null;
+            
+            return (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">Last recorded:</span>
+                  <span>{moment(lastRecordedDate).format('DD-MM-YYYY')}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">Age:</span>
+                  <span>{lastRecordedAge}</span>
+                </div>
+              </div>
+            );
+          }
+        })()}
         <div className="flex items-center gap-2 ml-auto">
           <span className="font-medium">Total events: {answers.length}</span>
         </div>

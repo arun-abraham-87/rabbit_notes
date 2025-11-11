@@ -462,8 +462,84 @@ const TrackerListing = () => {
     console.log('[handleToggleDay] Is removal?', { isRemoval, value });
 
     if (isRemoval) {
-      // Handle removal - update state to remove the answer
+      // Handle removal - find and delete ALL notes for this date, then update state
       console.log('[handleToggleDay] Handling removal', { trackerId, dateStr });
+      
+      // Collect all note IDs to delete from state
+      const notesToDeleteFromState = trackerAnswers[trackerIdStr]?.filter(a => a.date === dateStr).map(a => a.id) || [];
+      
+      // Also search rawNotes for all notes with matching date
+      const notesToDeleteFromCache = [];
+      for (const [noteId, content] of Object.entries(rawNotes)) {
+        const lines = content.split('\n');
+        const noteDate = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
+        const noteLink = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
+        if (noteDate === dateStr && String(noteLink) === trackerIdStr) {
+          notesToDeleteFromCache.push(noteId);
+        }
+      }
+      
+      // Combine and deduplicate note IDs
+      const allNotesToDelete = [...new Set([...notesToDeleteFromState, ...notesToDeleteFromCache])];
+      
+      // Also check API for any additional notes
+      try {
+        const response = await loadNotes();
+        const notes = Array.isArray(response) ? response : (response?.notes || []);
+        
+        const matchingNotesFromAPI = notes.filter(note => {
+          if (!note.content) return false;
+          const lines = note.content.split('\n');
+          const hasTrackerAnswer = lines.some(line => line === 'meta::tracker_answer');
+          if (!hasTrackerAnswer) return false;
+          
+          const noteDate = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
+          const noteLink = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
+          return noteDate === dateStr && String(noteLink) === trackerIdStr;
+        });
+        
+        matchingNotesFromAPI.forEach(note => {
+          if (!allNotesToDelete.includes(note.id)) {
+            allNotesToDelete.push(note.id);
+          }
+        });
+      } catch (error) {
+        console.error('[handleToggleDay] Error searching API for notes to delete', { error });
+      }
+      
+      // Delete all matching notes from backend
+      if (allNotesToDelete.length > 0) {
+        console.log('[handleToggleDay] Deleting notes', { count: allNotesToDelete.length, noteIds: allNotesToDelete });
+        
+        // Delete all notes in parallel
+        const deletePromises = allNotesToDelete.map(async (noteId) => {
+          try {
+            await deleteNoteById(noteId);
+            console.log('[handleToggleDay] Deleted note from backend', { noteId, dateStr });
+            return { noteId, success: true };
+          } catch (error) {
+            // Note might already be deleted (e.g., by TrackerCard), which is fine
+            if ((error.message && error.message.includes('404')) || (error.message && error.message.includes('not found'))) {
+              console.log('[handleToggleDay] Note already deleted (expected)', { noteId, dateStr });
+              return { noteId, success: true }; // Consider it successful
+            } else {
+              console.error('[handleToggleDay] ERROR deleting note', { noteId, error });
+              return { noteId, success: false };
+            }
+          }
+        });
+        
+        await Promise.all(deletePromises);
+        
+        // Remove all deleted notes from rawNotes
+        setRawNotes(prev => {
+          const updated = { ...prev };
+          allNotesToDelete.forEach(noteId => {
+            delete updated[noteId];
+          });
+          return updated;
+        });
+      }
       
       setTrackers(prev => {
         const currentTracker = prev.find(t => t.id === trackerId);
@@ -534,29 +610,130 @@ const TrackerListing = () => {
 
     console.log('[handleToggleDay] Creating/updating answer', { trackerId, dateStr, answer });
 
-    // Check if answer already exists
-    const existingAnswer = trackerAnswers[trackerIdStr]?.find(a => a.date === dateStr);
+    // Check if answer already exists in state - find the latest one if multiple exist
+    const existingAnswersInState = trackerAnswers[trackerIdStr]?.filter(a => a.date === dateStr) || [];
+    let existingAnswer = existingAnswersInState.length > 0 
+      ? existingAnswersInState.sort((a, b) => {
+          // Sort by ID (assuming newer notes have higher IDs or use createdAt if available)
+          // For now, just take the last one in the array (most recently added to state)
+          return existingAnswersInState.indexOf(b) - existingAnswersInState.indexOf(a);
+        })[0]
+      : null;
+    
+    // If not found in state, search through rawNotes to find all existing notes with this date
+    let existingNoteId = null;
+    if (existingAnswer && existingAnswer.id) {
+      existingNoteId = existingAnswer.id;
+    } else {
+      // Collect all matching notes from rawNotes
+      const matchingNotesFromCache = [];
+      for (const [noteId, content] of Object.entries(rawNotes)) {
+        const lines = content.split('\n');
+        const noteDate = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
+        const noteLink = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
+        if (noteDate === dateStr && String(noteLink) === trackerIdStr) {
+          matchingNotesFromCache.push({ id: noteId, content });
+        }
+      }
+      
+      // If found in cache, use the one with the highest ID (assuming newer notes have higher IDs)
+      if (matchingNotesFromCache.length > 0) {
+        // Sort by ID (assuming newer = higher ID) or use note creation order
+        // For now, just take the first one found, but we'll check API for the latest
+        existingNoteId = matchingNotesFromCache[0].id;
+        existingAnswer = { id: existingNoteId, date: dateStr, answer: '', value: '' };
+      }
+      
+      // Always check the API to find the latest note (even if found in cache)
+      try {
+        console.log('[handleToggleDay] Searching API for existing notes', { trackerId, dateStr });
+        const response = await loadNotes();
+        const notes = Array.isArray(response) ? response : (response?.notes || []);
+        
+        // Find ALL tracker answer notes with matching date and tracker link
+        const matchingNotes = notes.filter(note => {
+          if (!note.content) return false;
+          const lines = note.content.split('\n');
+          const hasTrackerAnswer = lines.some(line => line === 'meta::tracker_answer');
+          if (!hasTrackerAnswer) return false;
+          
+          const noteDate = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
+          const noteLink = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
+          return noteDate === dateStr && String(noteLink) === trackerIdStr;
+        });
+        
+        if (matchingNotes.length > 0) {
+          // Sort by createdAt (newest first) or by ID (assuming newer = higher ID)
+          const sortedNotes = matchingNotes.sort((a, b) => {
+            // Prefer createdAt if available
+            if (a.createdAt && b.createdAt) {
+              return new Date(b.createdAt) - new Date(a.createdAt);
+            }
+            // Fallback to ID comparison (assuming newer notes have higher IDs)
+            return String(b.id).localeCompare(String(a.id));
+          });
+          
+          // Use the most recent note
+          const latestNote = sortedNotes[0];
+          existingNoteId = latestNote.id;
+          existingAnswer = { id: latestNote.id, date: dateStr, answer: '', value: '' };
+          
+          // Add all matching notes to rawNotes for future lookups
+          setRawNotes(prev => {
+            const updated = { ...prev };
+            matchingNotes.forEach(note => {
+              if (note.content) {
+                updated[note.id] = note.content;
+              }
+            });
+            return updated;
+          });
+          
+          console.log('[handleToggleDay] Found existing notes in API', { 
+            totalMatches: matchingNotes.length,
+            latestNoteId: existingNoteId,
+            dateStr,
+            allNoteIds: matchingNotes.map(n => n.id)
+          });
+          
+          // If there are multiple notes, log a warning
+          if (matchingNotes.length > 1) {
+            console.warn('[handleToggleDay] Multiple notes found for same date, using latest', {
+              dateStr,
+              trackerId,
+              totalNotes: matchingNotes.length,
+              latestNoteId: existingNoteId,
+              allNoteIds: matchingNotes.map(n => n.id)
+            });
+          }
+        }
+      } catch (error) {
+        console.error('[handleToggleDay] Error searching API for existing note', { error });
+      }
+    }
+    
     console.log('[handleToggleDay] Existing answer check', { 
       trackerId, 
       dateStr, 
       hasExistingAnswer: !!existingAnswer,
-      existingAnswerId: existingAnswer?.id 
+      existingAnswerId: existingAnswer?.id,
+      foundInRawNotes: !!existingNoteId && !trackerAnswers[trackerIdStr]?.find(a => a.date === dateStr)
     });
 
     try {
       let response;
-      if (existingAnswer && existingAnswer.id) {
+      if (existingNoteId) {
         // Update existing note
         console.log('[handleToggleDay] Updating existing note', { 
-          noteId: existingAnswer.id, 
+          noteId: existingNoteId, 
           newAnswer: answer 
         });
         
         // Get the existing note content from rawNotes
-        const existingContent = rawNotes[existingAnswer.id];
+        const existingContent = rawNotes[existingNoteId];
         if (!existingContent) {
           console.error('[handleToggleDay] ERROR: Cannot find existing note content', { 
-            answerId: existingAnswer.id,
+            noteId: existingNoteId,
             availableIds: Object.keys(rawNotes).slice(0, 5)
           });
           // Fallback: try to create a new note instead
@@ -574,22 +751,22 @@ const TrackerListing = () => {
           const updatedContent = updatedLines.join('\n');
           
           console.log('[handleToggleDay] Updating note with full content', { 
-            noteId: existingAnswer.id,
+            noteId: existingNoteId,
             oldContentPreview: existingContent.substring(0, 100),
             newContentPreview: updatedContent.substring(0, 100)
           });
           
-          await updateNoteById(existingAnswer.id, updatedContent);
-          response = { id: existingAnswer.id }; // Use existing ID
+          await updateNoteById(existingNoteId, updatedContent);
+          response = { id: existingNoteId }; // Use existing ID
           
           // Update rawNotes to reflect the new content immediately
           setRawNotes(prev => ({
             ...prev,
-            [existingAnswer.id]: updatedContent
+            [existingNoteId]: updatedContent
           }));
           
           console.log('[handleToggleDay] Note updated successfully', { 
-            noteId: existingAnswer.id 
+            noteId: existingNoteId 
           });
         }
       } else {
@@ -597,6 +774,15 @@ const TrackerListing = () => {
         console.log('[handleToggleDay] Creating new note', { trackerId, dateStr, answer });
         response = await createTrackerAnswerNote(trackerId, answer, dateStr);
         console.log('[handleToggleDay] createTrackerAnswerNote response', { response });
+        
+        // Add newly created note to rawNotes for future lookups
+        if (response && response.id && response.content) {
+          setRawNotes(prev => ({
+            ...prev,
+            [response.id]: response.content
+          }));
+          console.log('[handleToggleDay] Added new note to rawNotes', { noteId: response.id });
+        }
       }
       
       if (response && response.id) {

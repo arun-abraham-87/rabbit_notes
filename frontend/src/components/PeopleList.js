@@ -167,13 +167,20 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const allNotesByTag = useMemo(() => {
     const grouped = {};
     allTags.forEach(tag => {
-      grouped[tag] = filteredallNotes.filter(note => {
+      const notesForTag = filteredallNotes.filter(note => {
         const noteTags = note.content
           .split('\n')
           .filter(line => line.startsWith('meta::tag::'))
           .map(line => line.split('::')[2]);
         return noteTags.includes(tag);
       });
+      // Sort alphabetically by person name
+      notesForTag.sort((a, b) => {
+        const nameA = (a.content.split('\n')[0] || '').trim().toLowerCase();
+        const nameB = (b.content.split('\n')[0] || '').trim().toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      grouped[tag] = notesForTag;
     });
     return grouped;
   }, [filteredallNotes, allTags]);

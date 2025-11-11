@@ -296,7 +296,7 @@ const StockPrice = () => {
     return (
       <div className="p-4 rounded-md bg-gray-100 shadow-md w-fit">
         <div className="flex items-center justify-center h-16">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <div className="text-gray-500 text-sm">Loading...</div>
         </div>
       </div>
     );
@@ -318,7 +318,7 @@ const StockPrice = () => {
       <div className="relative w-64 min-h-[160px]">
         {/* Front of card */}
         <div 
-          className={`w-full p-4 rounded-md bg-gray-100 shadow-md transition-all duration-500 ${
+          className={`w-full p-4 rounded-md bg-gray-100 shadow-md ${
             isFlipped ? 'opacity-0 pointer-events-none absolute' : 'opacity-100 relative'
           }`}
         >
@@ -336,7 +336,7 @@ const StockPrice = () => {
               }}
               disabled={isRefreshing}
             >
-              <ArrowPathIcon className={`h-5 w-5 text-gray-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <ArrowPathIcon className="h-5 w-5 text-gray-600" />
             </button>
           </div>
           <div className="mt-2 text-xs text-gray-600">
@@ -356,7 +356,7 @@ const StockPrice = () => {
 
         {/* Back of card */}
         <div 
-          className={`w-full p-4 rounded-md bg-gray-100 shadow-md transition-all duration-500 ${
+          className={`w-full p-4 rounded-md bg-gray-100 shadow-md ${
             isFlipped ? 'opacity-100 relative' : 'opacity-0 pointer-events-none absolute'
           }`}
         >

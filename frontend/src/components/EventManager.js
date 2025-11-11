@@ -1156,9 +1156,9 @@ const EventManager = ({ selectedDate, onClose, type = 'all', notes, setActivePag
                   >
                     <PencilIcon className="h-4 w-4" />
                   </button>
-                  {eventDate && (
+                  {originalDate && (
                     <a
-                      href={`https://photos.google.com/search/${moment(eventDate).format('YYYY-MM-DD')}`}
+                      href={`https://photos.google.com/search/${moment(originalDate).format('YYYY-MM-DD')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}

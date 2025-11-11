@@ -775,9 +775,9 @@ const CalendarView = ({ events, onAcknowledgeEvent, onEventUpdated, notes, onAdd
                                       >
                                         <PencilIcon className="h-5 w-5" />
                                       </button>
-                                      {occurrence.date && (
+                                      {occurrence.event.dateTime && (
                                         <a
-                                          href={`https://photos.google.com/search/${moment(occurrence.date).format('YYYY-MM-DD')}`}
+                                          href={`https://photos.google.com/search/${moment(occurrence.event.dateTime).format('YYYY-MM-DD')}`}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           onClick={(e) => e.stopPropagation()}

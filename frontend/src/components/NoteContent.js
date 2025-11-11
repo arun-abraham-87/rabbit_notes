@@ -13,6 +13,7 @@ import { reorderMetaTags } from '../utils/MetaTagUtils';
 import { checkText } from '../utils/languageTool';
 import { ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
+import { saveNoteToHistory, getNoteFromHistory } from '../utils/NoteHistoryUtils';
 
 /**
  * NoteContent - renders the body of a note, including headings, lines, inline editors,
@@ -333,6 +334,10 @@ export default function NoteContent({
     };
 
     const handleTextClick = (idx) => {
+        // Save note to history when inline editing starts
+        saveNoteToHistory(note);
+        console.log(`[NoteContent] Saved note ${note.id} to history before inline editing`);
+        
         // Get the original line content for editing
         const rawLines = getRawLines(note.content);
         const originalLine = rawLines[idx];
@@ -351,7 +356,7 @@ export default function NoteContent({
         setEditedLineContent(originalLine);
     };
 
-    const handleSaveEdit = (newText, idx, isH1, isH2) => {
+    const handleSaveEdit = async (newText, idx, isH1, isH2) => {
         const lines = note.content.split('\n');
         if (isH1) {
             lines[idx] = `###${newText}###`;
@@ -362,19 +367,79 @@ export default function NoteContent({
         }
         const updatedContent = lines.join('\n');
         const reorderedContent = reorderMetaTags(updatedContent);
-        updateNote(note.id, reorderedContent);
+        
+        // Get saved note from history for undo
+        const savedNote = getNoteFromHistory(note.id);
+        
+        await updateNote(note.id, reorderedContent);
         setEditingLine({ noteId: null, lineIndex: null });
         setEditedLineContent('');
+        
+        // Show undo toast notification after save
+        if (savedNote) {
+          const toastId = toast.success(
+            <div className="flex items-center gap-3">
+              <span>Line saved</span>
+              <button
+                onClick={async () => {
+                  // Restore the note from history
+                  await updateNote(note.id, savedNote.content);
+                  toast.dismiss(toastId);
+                  toast.success('Line restored to previous version');
+                }}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium"
+              >
+                Undo
+              </button>
+            </div>,
+            {
+              autoClose: 10000,
+              closeButton: true,
+            }
+          );
+        }
     };
 
-    const handleDeleteLine = (idx) => {
+    const handleDeleteLine = async (idx) => {
+        // Save note to history before deleting line
+        saveNoteToHistory(note);
+        console.log(`[NoteContent] Saved note ${note.id} to history before deleting line`);
+        
         const lines = note.content.split('\n');
         lines.splice(idx, 1); // Remove the line at index idx
         const updatedContent = lines.join('\n');
         const reorderedContent = reorderMetaTags(updatedContent);
-        updateNote(note.id, reorderedContent);
+        
+        // Get saved note from history for undo
+        const savedNote = getNoteFromHistory(note.id);
+        
+        await updateNote(note.id, reorderedContent);
         setEditingLine({ noteId: null, lineIndex: null });
         setEditedLineContent('');
+        
+        // Show undo toast notification after delete
+        if (savedNote) {
+          const toastId = toast.success(
+            <div className="flex items-center gap-3">
+              <span>Line deleted</span>
+              <button
+                onClick={async () => {
+                  // Restore the note from history
+                  await updateNote(note.id, savedNote.content);
+                  toast.dismiss(toastId);
+                  toast.success('Line restored');
+                }}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium"
+              >
+                Undo
+              </button>
+            </div>,
+            {
+              autoClose: 10000,
+              closeButton: true,
+            }
+          );
+        }
     };
 
     const handleMoveH1ToTop = (idx) => {
@@ -962,7 +1027,11 @@ export default function NoteContent({
         updateNote(note.id, newContent);
     };
 
-    const handleBulkDelete = () => {
+    const handleBulkDelete = async () => {
+        // Save note to history before bulk delete
+        saveNoteToHistory(note);
+        console.log(`[NoteContent] Saved note ${note.id} to history before bulk delete`);
+        
         const lines = note.content.split('\n');
         const selectedIndices = Array.from(selectedRows).sort((a, b) => b - a); // Sort in descending order
         
@@ -973,11 +1042,40 @@ export default function NoteContent({
         
         const updatedContent = lines.join('\n');
         const reorderedContent = reorderMetaTags(updatedContent);
-        updateNote(note.id, reorderedContent);
+        
+        // Get saved note from history for undo
+        const savedNote = getNoteFromHistory(note.id);
+        
+        await updateNote(note.id, reorderedContent);
         
         // Reset bulk delete mode
         setBulkDeleteMode(false);
         setSelectedRows(new Set());
+        
+        // Show undo toast notification after bulk delete
+        if (savedNote) {
+          const deletedCount = selectedIndices.length;
+          const toastId = toast.success(
+            <div className="flex items-center gap-3">
+              <span>{deletedCount} line{deletedCount > 1 ? 's' : ''} deleted</span>
+              <button
+                onClick={async () => {
+                  // Restore the note from history
+                  await updateNote(note.id, savedNote.content);
+                  toast.dismiss(toastId);
+                  toast.success(`${deletedCount} line${deletedCount > 1 ? 's' : ''} restored`);
+                }}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium"
+              >
+                Undo
+              </button>
+            </div>,
+            {
+              autoClose: 10000,
+              closeButton: true,
+            }
+          );
+        }
     };
 
     // Drag and drop handlers

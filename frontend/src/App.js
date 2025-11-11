@@ -755,7 +755,7 @@ const AppContent = () => {
                 enableMultiContainer={false}
                 preventDuplicates={true}
               />
-              <NoteEditorModal addNote={addNote} updateNote={updateNote} />
+              <NoteEditorModal addNote={addNote} updateNote={updateNote} allNotes={allNotes} />
               {showPastePopup && (
                 <TextPastePopup
                   isOpen={showPastePopup}

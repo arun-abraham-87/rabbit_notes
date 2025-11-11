@@ -61,6 +61,7 @@ const Settings = ({ onClose, settings, setSettings }) => {
   const [quickPasteEnabled, setQuickPasteEnabled] = useState(true);
   const [developerMode, setDeveloperMode] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
+  const [noteCardOptions, setNoteCardOptions] = useState(defaultSettings.noteCardOptions);
 
   // Load settings on component mount
   useEffect(() => {
@@ -130,8 +131,16 @@ const Settings = ({ onClose, settings, setSettings }) => {
         }
         
         // Set developer mode from settings
-        
         setDeveloperMode(mergedSettings.developerMode || false);
+        
+        // Load note card options from settings
+        if (mergedSettings.noteCardOptions) {
+          // Merge with defaults to ensure all options are present
+          const mergedOptions = { ...defaultSettings.noteCardOptions, ...mergedSettings.noteCardOptions };
+          setNoteCardOptions(mergedOptions);
+        } else {
+          setNoteCardOptions(defaultSettings.noteCardOptions);
+        }
         
       } catch (error) {
         console.error('Failed to load settings:', error);
@@ -325,10 +334,11 @@ const Settings = ({ onClose, settings, setSettings }) => {
       localStorage.setItem('navbarPagesOrder', JSON.stringify(navbarPagesOrder));
       localStorage.setItem('quickPasteEnabled', quickPasteEnabled);
       
-      // Update settings with developer mode
+      // Update settings with developer mode and note card options
       const updatedSettings = {
         ...settings,
-        developerMode: developerMode
+        developerMode: developerMode,
+        noteCardOptions: noteCardOptions
       };
       
       
@@ -626,6 +636,98 @@ const Settings = ({ onClose, settings, setSettings }) => {
             <p className="text-xs text-gray-500 mt-2 flex-shrink-0">
               Main Bar: {Object.values(navbarMainBarPages).filter(v => v === true).length} / 10 selected
             </p>
+            </div>
+          </div>
+
+          {/* Note Card Options Configuration */}
+          <div className="border-b pb-4">
+            <h3 className="text-lg font-semibold mb-3 text-gray-700">Note Card Options</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Configure which options appear on note cards and whether they show directly on the card or in the "More" section.
+            </p>
+            
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {Object.entries(noteCardOptions).map(([key, config]) => {
+                const optionLabels = {
+                  watch: 'Watch',
+                  pin: 'Pin Note',
+                  sensitive: 'Sensitive',
+                  bookmark: 'Bookmark',
+                  abbreviation: 'Abbreviation',
+                  workstream: 'Workstream',
+                  removeAllTags: 'Remove All Tags',
+                  convertToBookmark: 'Convert to Bookmark',
+                  todo: 'Todo',
+                  todoHigh: 'Todo - High Priority',
+                  todoMedium: 'Todo - Medium Priority',
+                  todoLow: 'Todo - Low Priority',
+                  pinLines: 'Pin Lines',
+                  linkNote: 'Link Note',
+                  merge: 'Merge/Select',
+                  copy: 'Copy to Clipboard',
+                  rawNote: 'View Raw Note',
+                  edit: 'Edit',
+                  delete: 'Delete'
+                };
+                
+                return (
+                  <div key={key} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3 flex-1">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={config.visible}
+                          onChange={(e) => {
+                            setNoteCardOptions(prev => ({
+                              ...prev,
+                              [key]: { ...prev[key], visible: e.target.checked }
+                            }));
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          {optionLabels[key] || key}
+                        </span>
+                      </label>
+                    </div>
+                    
+                    {config.visible && (
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`location-${key}`}
+                            checked={config.location === 'card'}
+                            onChange={() => {
+                              setNoteCardOptions(prev => ({
+                                ...prev,
+                                [key]: { ...prev[key], location: 'card' }
+                              }));
+                            }}
+                            className="text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-xs text-gray-600">Card</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`location-${key}`}
+                            checked={config.location === 'more'}
+                            onChange={() => {
+                              setNoteCardOptions(prev => ({
+                                ...prev,
+                                [key]: { ...prev[key], location: 'more' }
+                              }));
+                            }}
+                            className="text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-xs text-gray-600">More</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

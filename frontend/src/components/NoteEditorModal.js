@@ -15,11 +15,13 @@ import { getSettings, defaultSettings, loadTags } from '../utils/ApiUtils';
 import moment from 'moment';
 import { reorderMetaTags } from '../utils/MetaTagUtils';
 import { DevModeInfo } from '../utils/DevUtils';
+import { saveNoteToHistory, getNoteFromHistory } from '../utils/NoteHistoryUtils';
+import { toast } from 'react-toastify';
 
 // API Base URL for consistent API calls
 const API_BASE_URL = 'http://localhost:5001/api';
 
-const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
+const NoteEditorModal = ({ addNote, updateNote, customNote = 'None', allNotes = [] }) => {
   const { isOpen, initialContent, mode, noteId, metaTags, closeEditor } = useNoteEditor();
   
   const [settings, setSettings] = useState({});
@@ -192,6 +194,19 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, closeEditor]);
+
+  // Save note to history when editing starts
+  useEffect(() => {
+    if (isOpen && mode === 'edit' && noteId) {
+      // Find the full note object from allNotes
+      const note = allNotes.find(n => n.id === noteId);
+      if (note) {
+        // Save the full note (including all properties) to history
+        saveNoteToHistory(note);
+        console.log(`[NoteEditorModal] Saved note ${noteId} to history before editing`);
+      }
+    }
+  }, [isOpen, mode, noteId, allNotes]);
 
   // Focus the modal when it opens and reset image state
   useEffect(() => {
@@ -390,6 +405,33 @@ const NoteEditorModal = ({ addNote, updateNote, customNote = 'None' }) => {
         updateNote(noteId, reorderedContent);
         if (selectedMetaTags.some(tag => tag.startsWith('meta::watch'))) {
           addCadenceLineToNote(noteId, {}, true);
+        }
+        // Show undo toast notification after save
+        const savedNote = getNoteFromHistory(noteId);
+        if (savedNote) {
+          // Create a custom toast with undo button
+          const toastId = toast.success(
+            <div className="flex items-center gap-3">
+              <span>Note saved</span>
+              <button
+                onClick={async () => {
+                  // Restore the note from history
+                  await updateNote(noteId, savedNote.content);
+                  toast.dismiss(toastId);
+                  toast.success('Note restored to previous version');
+                }}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium"
+              >
+                Undo
+              </button>
+            </div>,
+            {
+              autoClose: 10000,
+              closeButton: true,
+            }
+          );
+        } else {
+          toast.success('Note saved');
         }
       } else {
         addNote(reorderedContent);

@@ -430,6 +430,27 @@ export const defaultSettings = {
     todos: 0,
     meetings: 0,
     events: 0
+  },
+  noteCardOptions: {
+    watch: { visible: true, location: 'card' },
+    pin: { visible: true, location: 'card' },
+    sensitive: { visible: true, location: 'card' },
+    bookmark: { visible: true, location: 'more' },
+    abbreviation: { visible: true, location: 'more' },
+    workstream: { visible: true, location: 'more' },
+    removeAllTags: { visible: true, location: 'more' },
+    convertToBookmark: { visible: true, location: 'more' },
+    todo: { visible: true, location: 'more' },
+    todoHigh: { visible: true, location: 'more' },
+    todoMedium: { visible: true, location: 'more' },
+    todoLow: { visible: true, location: 'more' },
+    pinLines: { visible: true, location: 'more' },
+    linkNote: { visible: true, location: 'card' },
+    merge: { visible: true, location: 'card' },
+    copy: { visible: true, location: 'card' },
+    rawNote: { visible: true, location: 'card' },
+    edit: { visible: true, location: 'card' },
+    delete: { visible: true, location: 'card' }
   }
 };
 

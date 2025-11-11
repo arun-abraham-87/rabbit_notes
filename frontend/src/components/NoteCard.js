@@ -786,6 +786,7 @@ const NoteCard = ({
           toggleNoteSelection={toggleNoteSelection}
           updateNote={updateNote}
           focusMode={focusMode}
+          settings={settings}
         />
       </div>
     </div>

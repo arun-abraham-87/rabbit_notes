@@ -60,8 +60,41 @@ const NoteFooter = ({
   selectedNotes,
   toggleNoteSelection,
   updateNote,
-  focusMode = false
+  focusMode = false,
+  settings = {}
 }) => {
+  // Get note card options configuration, with defaults
+  const noteCardOptions = settings?.noteCardOptions || {
+    watch: { visible: true, location: 'card' },
+    pin: { visible: true, location: 'card' },
+    sensitive: { visible: true, location: 'card' },
+    bookmark: { visible: true, location: 'more' },
+    abbreviation: { visible: true, location: 'more' },
+    workstream: { visible: true, location: 'more' },
+    removeAllTags: { visible: true, location: 'more' },
+    convertToBookmark: { visible: true, location: 'more' },
+    todo: { visible: true, location: 'more' },
+    todoHigh: { visible: true, location: 'more' },
+    todoMedium: { visible: true, location: 'more' },
+    todoLow: { visible: true, location: 'more' },
+    pinLines: { visible: true, location: 'more' },
+    linkNote: { visible: true, location: 'card' },
+    merge: { visible: true, location: 'card' },
+    copy: { visible: true, location: 'card' },
+    rawNote: { visible: true, location: 'card' },
+    edit: { visible: true, location: 'card' },
+    delete: { visible: true, location: 'card' }
+  };
+  
+  // Helper function to check if an option should be shown
+  const shouldShowOption = (optionKey) => {
+    return noteCardOptions[optionKey]?.visible !== false;
+  };
+  
+  // Helper function to check if an option should be on card or in more
+  const getOptionLocation = (optionKey) => {
+    return noteCardOptions[optionKey]?.location || 'card';
+  };
   const [showPinPopup, setShowPinPopup] = useState(false);
   const [selectedPinLines, setSelectedPinLines] = useState([]);
   const [showRawNote, setShowRawNote] = useState(false);
@@ -376,270 +409,504 @@ const NoteFooter = ({
 
 
         {/* Watch, Pin, and Sensitive Group - Keep these in right panel */}
-        <div className="flex items-center space-x-1 px-2 py-1 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <Tooltip text="Watch">
-            <button
-              onClick={() => handleAction('watch')}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::watch::') ? 'bg-green-100' : ''
-                }`}
-            >
-              <EyeIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500 hover:text-green-500'
-                }`} />
-            </button>
-          </Tooltip>
-
-          <Tooltip text={note.content.includes('meta::notes_pinned') ? 'Unpin Note' : 'Pin Note to Right Panel'}>
-            <button
-              onClick={handlePinNote}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::notes_pinned') ? 'bg-red-100' : ''
-                }`}
-            >
-              <StarIcon className={`h-4 w-4 transition-colors ${note.content.includes('meta::notes_pinned') ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
-                }`} />
-            </button>
-          </Tooltip>
-
-          <Tooltip text={note.content.includes('meta::sensitive') ? 'Remove Sensitive Mark' : 'Mark as Sensitive'}>
-            <button
-              onClick={handleSensitiveAction}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${note.content.includes('meta::sensitive') ? 'bg-orange-100' : ''
-                }`}
-            >
-              <span className={`h-4 w-4 text-xs font-semibold flex items-center justify-center transition-colors ${note.content.includes('meta::sensitive') ? 'text-orange-500' : 'text-gray-500 hover:text-orange-500'
-                }`}>
-                S
-              </span>
-            </button>
-          </Tooltip>
-        </div>
-
-        {/* Separator */}
-        <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-
-        {/* More Actions Dropdown */}
-        <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200" data-more-actions>
-          <div className="relative">
-            <Tooltip text="More Actions">
+        {(shouldShowOption('watch') && getOptionLocation('watch') === 'card') ||
+         (shouldShowOption('pin') && getOptionLocation('pin') === 'card') ||
+         (shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'card') ? (
+          <div className="flex items-center space-x-1 px-2 py-1 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            {shouldShowOption('watch') && getOptionLocation('watch') === 'card' && (
               <button
-                onClick={() => setShowMoreActions(!showMoreActions)}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                onClick={() => handleAction('watch')}
+                className={`flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs ${note.content.includes('meta::watch::') ? 'bg-green-100 text-green-700' : 'text-gray-600'
+                  }`}
               >
-                <ChevronDownIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
+                <EyeIcon className={`h-4 w-4 ${note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500'
+                  }`} />
+                <span>Watch</span>
               </button>
-            </Tooltip>
-            
-            {showMoreActions && (
-              <div className="absolute bottom-full right-0 mb-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      handleAction('bookmark');
-                      setShowMoreActions(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                  >
-                    <BookmarkIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::bookmark::') ? 'text-yellow-500' : 'text-gray-500'}`} />
-                    Bookmark
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      handleAction('abbreviation');
-                      setShowMoreActions(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                  >
-                    <TagIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::abbreviation::') ? 'text-purple-500' : 'text-gray-500'}`} />
-                    Mark as Abbreviation
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      handleAction('workstream');
-                      setShowMoreActions(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                  >
-                    <FolderIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::workstream::') ? 'text-indigo-500' : 'text-gray-500'}`} />
-                    Workstream
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      setShowRemoveTagsConfirm(true);
-                      setShowMoreActions(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                  >
-                    <XMarkIcon className="h-4 w-4 mr-2 text-gray-500" />
-                    Remove All Tags
-                  </button>
-                  
+            )}
 
-                  
-                  <button
-                    onClick={() => {
-                      setShowConvertToBookmarkModal(true);
-                      setShowMoreActions(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                  >
-                    <GlobeAltIcon className="h-4 w-4 mr-2 text-gray-500" />
-                    Convert to Web Bookmark
-                  </button>
-                  
-                  <div className="border-t border-gray-200 my-1"></div>
-                  
-                  <button
-                    onClick={() => {
-                      handleTodoAction();
-                      setShowMoreActions(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                  >
-                    <ClockIcon className={`h-4 w-4 mr-2 ${isTodo ? 'text-blue-500' : 'text-gray-500'}`} />
-                    {isTodo ? 'Remove Todo Status' : 'Mark as Todo'}
-                  </button>
-                  
-                  {isTodo && (
-                    <>
-                      <button
-                        onClick={() => {
-                          handleTodoAction('high');
-                          setShowMoreActions(false);
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center pl-6"
-                      >
-                        <FlagIcon className={`h-4 w-4 mr-2 ${currentPriority === 'high' ? 'text-red-500' : 'text-red-400'}`} />
-                        High Priority
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          handleTodoAction('medium');
-                          setShowMoreActions(false);
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center pl-6"
-                      >
-                        <FlagIcon className={`h-4 w-4 mr-2 ${currentPriority === 'medium' ? 'text-yellow-500' : 'text-yellow-400'}`} />
-                        Medium Priority
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          handleTodoAction('low');
-                          setShowMoreActions(false);
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center pl-6"
-                      >
-                        <FlagIcon className={`h-4 w-4 mr-2 ${currentPriority === 'low' ? 'text-blue-500' : 'text-blue-400'}`} />
-                        Low Priority
-                      </button>
-                    </>
-                  )}
-                  
-                  <div className="border-t border-gray-200 my-1"></div>
-                  
-                  <button
-                    onClick={() => {
-                      setShowPinPopup(!showPinPopup);
-                      setShowMoreActions(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
-                  >
-                    <MapPinIcon className={`h-4 w-4 mr-2 ${showPinPopup ? 'text-blue-500' : 'text-gray-500'}`} />
-                    Pin Lines
-                  </button>
-                </div>
-              </div>
+            {shouldShowOption('pin') && getOptionLocation('pin') === 'card' && (
+              <button
+                onClick={handlePinNote}
+                className={`flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs ${note.content.includes('meta::notes_pinned') ? 'bg-red-100 text-red-700' : 'text-gray-600'
+                  }`}
+              >
+                <StarIcon className={`h-4 w-4 ${note.content.includes('meta::notes_pinned') ? 'text-red-500' : 'text-gray-500'
+                  }`} />
+                <span>Pin</span>
+              </button>
+            )}
+
+            {shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'card' && (
+              <button
+                onClick={handleSensitiveAction}
+                className={`flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs ${note.content.includes('meta::sensitive') ? 'bg-orange-100 text-orange-700' : 'text-gray-600'
+                  }`}
+              >
+                <span className={`text-xs font-semibold ${note.content.includes('meta::sensitive') ? 'text-orange-500' : 'text-gray-500'
+                  }`}>
+                  S
+                </span>
+                <span>Sensitive</span>
+              </button>
             )}
           </div>
-        </div>
+        ) : null}
 
         {/* Separator */}
-        <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+        {((shouldShowOption('watch') && getOptionLocation('watch') === 'card') ||
+          (shouldShowOption('pin') && getOptionLocation('pin') === 'card') ||
+          (shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'card')) &&
+         ((shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card') ||
+          (shouldShowOption('merge') && getOptionLocation('merge') === 'card') ||
+          (shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
+          (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card') ||
+          (shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
+          (shouldShowOption('delete') && getOptionLocation('delete') === 'card')) ? (
+          <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+        ) : null}
 
         {/* Link Group */}
-        <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <Tooltip text="Link Note">
-            <button
-              onClick={() => {
-                setLinkingNoteId(note.id);
-                setLinkSearchTerm('');
-                setLinkPopupVisible(true);
-              }}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <LinkIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
-            </button>
-          </Tooltip>
+        {((shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card') ||
+          (shouldShowOption('merge') && getOptionLocation('merge') === 'card')) ? (
+          <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            {shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card' && (
+              <button
+                onClick={() => {
+                  setLinkingNoteId(note.id);
+                  setLinkSearchTerm('');
+                  setLinkPopupVisible(true);
+                }}
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs text-gray-600"
+              >
+                <LinkIcon className="h-4 w-4 text-gray-500" />
+                <span>Link</span>
+              </button>
+            )}
 
-          <Tooltip text={selectedNotes.length === 0 ? 'Start Merge' : selectedNotes.includes(note.id) ? 'Unselect for Merge' : 'Select for Merge'}>
-            <button
-              onClick={() => toggleNoteSelection(note.id)}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${selectedNotes.includes(note.id) ? 'bg-blue-100' : ''
-                }`}
-            >
-              <ArrowsPointingInIcon className={`h-4 w-4 transition-colors ${selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-                }`} />
-            </button>
-          </Tooltip>
-        </div>
+            {shouldShowOption('merge') && getOptionLocation('merge') === 'card' && (
+              <button
+                onClick={() => toggleNoteSelection(note.id)}
+                className={`flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs ${selectedNotes.includes(note.id) ? 'bg-blue-100 text-blue-700' : 'text-gray-600'
+                  }`}
+              >
+                <ArrowsPointingInIcon className={`h-4 w-4 ${selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500'
+                  }`} />
+                <span>Merge</span>
+              </button>
+            )}
+          </div>
+        ) : null}
 
         {/* Separator */}
-        <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+        {((shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card') ||
+          (shouldShowOption('merge') && getOptionLocation('merge') === 'card')) &&
+         ((shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
+          (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card') ||
+          (shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
+          (shouldShowOption('delete') && getOptionLocation('delete') === 'card')) ? (
+          <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+        ) : null}
 
         {/* View and Copy Group */}
-        <div className="flex items-center space-x-1 px-2 py-1 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <Tooltip text="Copy to Clipboard">
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(note.content);
-                toast.success('Note content copied to clipboard!');
-              }}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <ClipboardIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
-            </button>
-          </Tooltip>
+        {((shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
+          (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card')) ? (
+          <div className="flex items-center space-x-1 px-2 py-1 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            {shouldShowOption('copy') && getOptionLocation('copy') === 'card' && (
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(note.content);
+                  toast.success('Note content copied to clipboard!');
+                }}
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs text-gray-600"
+              >
+                <ClipboardIcon className="h-4 w-4 text-gray-500" />
+                <span>Copy</span>
+              </button>
+            )}
 
-          <Tooltip text="View Raw Note">
-            <button
-              onClick={() => setShowRawNote(!showRawNote)}
-              className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${showRawNote ? 'bg-gray-100' : ''
-                }`}
-            >
-              <CodeBracketIcon className={`h-4 w-4 transition-colors ${showRawNote ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-                }`} />
-            </button>
-          </Tooltip>
-
-
-        </div>
+            {shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card' && (
+              <button
+                onClick={() => setShowRawNote(!showRawNote)}
+                className={`flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs ${showRawNote ? 'bg-gray-100 text-blue-700' : 'text-gray-600'
+                  }`}
+              >
+                <CodeBracketIcon className={`h-4 w-4 ${showRawNote ? 'text-blue-500' : 'text-gray-500'
+                  }`} />
+                <span>Raw</span>
+              </button>
+            )}
+          </div>
+        ) : null}
 
         {/* Separator */}
-        <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+        {((shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
+          (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card')) &&
+         ((shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
+          (shouldShowOption('delete') && getOptionLocation('delete') === 'card')) ? (
+          <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+        ) : null}
 
         {/* Edit/Delete Group */}
-        <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <Tooltip text="Edit Note">
-            <button
-              onClick={() => setPopupNoteText(note.id)}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <PencilIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
-            </button>
-          </Tooltip>
+        {((shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
+          (shouldShowOption('delete') && getOptionLocation('delete') === 'card')) ? (
+          <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            {shouldShowOption('edit') && getOptionLocation('edit') === 'card' && (
+              <button
+                onClick={() => setPopupNoteText(note.id)}
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs text-gray-600"
+              >
+                <PencilIcon className="h-4 w-4 text-gray-500" />
+                <span>Edit</span>
+              </button>
+            )}
 
-          <Tooltip text="Delete Note">
-            <button
-              onClick={() => handleDelete(note.id)}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <TrashIcon className="h-4 w-4 text-gray-500 hover:text-red-500 transition-colors" />
-            </button>
-          </Tooltip>
-        </div>
+            {shouldShowOption('delete') && getOptionLocation('delete') === 'card' && (
+              <button
+                onClick={() => handleDelete(note.id)}
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-gray-100 rounded transition-colors text-xs text-gray-600 hover:text-red-600"
+              >
+                <TrashIcon className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                <span>Delete</span>
+              </button>
+            )}
+          </div>
+        ) : null}
+
+        {/* Separator before More Actions */}
+        {(() => {
+          const hasCardOptions = (shouldShowOption('watch') && getOptionLocation('watch') === 'card') ||
+            (shouldShowOption('pin') && getOptionLocation('pin') === 'card') ||
+            (shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'card') ||
+            (shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'card') ||
+            (shouldShowOption('merge') && getOptionLocation('merge') === 'card') ||
+            (shouldShowOption('copy') && getOptionLocation('copy') === 'card') ||
+            (shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'card') ||
+            (shouldShowOption('edit') && getOptionLocation('edit') === 'card') ||
+            (shouldShowOption('delete') && getOptionLocation('delete') === 'card');
+          
+          const hasMoreOptions = [
+            'watch', 'pin', 'sensitive', 'bookmark', 'abbreviation', 'workstream',
+            'removeAllTags', 'convertToBookmark', 'todo', 'todoHigh', 'todoMedium',
+            'todoLow', 'pinLines', 'linkNote', 'merge', 'copy', 'rawNote', 'edit', 'delete'
+          ].some(key => shouldShowOption(key) && getOptionLocation(key) === 'more');
+          
+          return hasCardOptions && hasMoreOptions;
+        })() ? (
+          <div className="h-6 w-px bg-gray-200 mx-px opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+        ) : null}
+
+        {/* More Actions Dropdown - Last button on the panel */}
+        {/* Show More Actions button if any option is configured to be in 'more' */}
+        {(() => {
+          const hasMoreOptions = [
+            'watch', 'pin', 'sensitive', 'bookmark', 'abbreviation', 'workstream',
+            'removeAllTags', 'convertToBookmark', 'todo', 'todoHigh', 'todoMedium',
+            'todoLow', 'pinLines', 'linkNote', 'merge', 'copy', 'rawNote', 'edit', 'delete'
+          ].some(key => shouldShowOption(key) && getOptionLocation(key) === 'more');
+          
+          return hasMoreOptions ? (
+            <div className="flex items-center space-x-1 px-2 py-1 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200" data-more-actions>
+              <div className="relative">
+                <Tooltip text="More Actions">
+                  <button
+                    onClick={() => setShowMoreActions(!showMoreActions)}
+                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <ChevronDownIcon className="h-4 w-4 text-gray-500 hover:text-blue-500 transition-colors" />
+                  </button>
+                </Tooltip>
+                
+                {showMoreActions && (
+                  <div className="absolute bottom-full right-0 mb-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <div className="py-1">
+                      {shouldShowOption('bookmark') && getOptionLocation('bookmark') === 'more' && (
+                        <button
+                          onClick={() => {
+                            handleAction('bookmark');
+                            setShowMoreActions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                        >
+                          <BookmarkIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::bookmark::') ? 'text-yellow-500' : 'text-gray-500'}`} />
+                          Bookmark
+                        </button>
+                      )}
+                      
+                      {shouldShowOption('abbreviation') && getOptionLocation('abbreviation') === 'more' && (
+                        <button
+                          onClick={() => {
+                            handleAction('abbreviation');
+                            setShowMoreActions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                        >
+                          <TagIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::abbreviation::') ? 'text-purple-500' : 'text-gray-500'}`} />
+                          Mark as Abbreviation
+                        </button>
+                      )}
+                      
+                      {shouldShowOption('workstream') && getOptionLocation('workstream') === 'more' && (
+                        <button
+                          onClick={() => {
+                            handleAction('workstream');
+                            setShowMoreActions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                        >
+                          <FolderIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::workstream::') ? 'text-indigo-500' : 'text-gray-500'}`} />
+                          Workstream
+                        </button>
+                      )}
+                      
+                      {shouldShowOption('removeAllTags') && getOptionLocation('removeAllTags') === 'more' && (
+                        <button
+                          onClick={() => {
+                            setShowRemoveTagsConfirm(true);
+                            setShowMoreActions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                        >
+                          <XMarkIcon className="h-4 w-4 mr-2 text-gray-500" />
+                          Remove All Tags
+                        </button>
+                      )}
+                      
+                      {shouldShowOption('convertToBookmark') && getOptionLocation('convertToBookmark') === 'more' && (
+                        <button
+                          onClick={() => {
+                            setShowConvertToBookmarkModal(true);
+                            setShowMoreActions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                        >
+                          <GlobeAltIcon className="h-4 w-4 mr-2 text-gray-500" />
+                          Convert to Web Bookmark
+                        </button>
+                      )}
+                      
+                      {(shouldShowOption('todo') && getOptionLocation('todo') === 'more') ||
+                       (shouldShowOption('todoHigh') && getOptionLocation('todoHigh') === 'more') ||
+                       (shouldShowOption('todoMedium') && getOptionLocation('todoMedium') === 'more') ||
+                       (shouldShowOption('todoLow') && getOptionLocation('todoLow') === 'more') ? (
+                        <>
+                          <div className="border-t border-gray-200 my-1"></div>
+                          
+                          {shouldShowOption('todo') && getOptionLocation('todo') === 'more' && (
+                            <button
+                              onClick={() => {
+                                handleTodoAction();
+                                setShowMoreActions(false);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                            >
+                              <ClockIcon className={`h-4 w-4 mr-2 ${isTodo ? 'text-blue-500' : 'text-gray-500'}`} />
+                              {isTodo ? 'Remove Todo Status' : 'Mark as Todo'}
+                            </button>
+                          )}
+                          
+                          {isTodo && (
+                            <>
+                              {shouldShowOption('todoHigh') && getOptionLocation('todoHigh') === 'more' && (
+                                <button
+                                  onClick={() => {
+                                    handleTodoAction('high');
+                                    setShowMoreActions(false);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center pl-6"
+                                >
+                                  <FlagIcon className={`h-4 w-4 mr-2 ${currentPriority === 'high' ? 'text-red-500' : 'text-red-400'}`} />
+                                  High Priority
+                                </button>
+                              )}
+                              
+                              {shouldShowOption('todoMedium') && getOptionLocation('todoMedium') === 'more' && (
+                                <button
+                                  onClick={() => {
+                                    handleTodoAction('medium');
+                                    setShowMoreActions(false);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center pl-6"
+                                >
+                                  <FlagIcon className={`h-4 w-4 mr-2 ${currentPriority === 'medium' ? 'text-yellow-500' : 'text-yellow-400'}`} />
+                                  Medium Priority
+                                </button>
+                              )}
+                              
+                              {shouldShowOption('todoLow') && getOptionLocation('todoLow') === 'more' && (
+                                <button
+                                  onClick={() => {
+                                    handleTodoAction('low');
+                                    setShowMoreActions(false);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center pl-6"
+                                >
+                                  <FlagIcon className={`h-4 w-4 mr-2 ${currentPriority === 'low' ? 'text-blue-500' : 'text-blue-400'}`} />
+                                  Low Priority
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </>
+                      ) : null}
+                      
+                      {shouldShowOption('pinLines') && getOptionLocation('pinLines') === 'more' && (
+                        <>
+                          <div className="border-t border-gray-200 my-1"></div>
+                          <button
+                            onClick={() => {
+                              setShowPinPopup(!showPinPopup);
+                              setShowMoreActions(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                          >
+                            <MapPinIcon className={`h-4 w-4 mr-2 ${showPinPopup ? 'text-blue-500' : 'text-gray-500'}`} />
+                            Pin Lines
+                          </button>
+                        </>
+                      )}
+                      
+                      {/* Options that can be moved from card to more */}
+                      {shouldShowOption('watch') && getOptionLocation('watch') === 'more' && (
+                        <>
+                          <div className="border-t border-gray-200 my-1"></div>
+                          <button
+                            onClick={() => {
+                              handleAction('watch');
+                              setShowMoreActions(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                          >
+                            <EyeIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::watch::') ? 'text-green-500' : 'text-gray-500'}`} />
+                            Watch
+                          </button>
+                        </>
+                      )}
+                      
+                      {shouldShowOption('pin') && getOptionLocation('pin') === 'more' && (
+                        <button
+                          onClick={() => {
+                            handlePinNote();
+                            setShowMoreActions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                        >
+                          <StarIcon className={`h-4 w-4 mr-2 ${note.content.includes('meta::notes_pinned') ? 'text-red-500' : 'text-gray-500'}`} />
+                          {note.content.includes('meta::notes_pinned') ? 'Unpin Note' : 'Pin Note'}
+                        </button>
+                      )}
+                      
+                      {shouldShowOption('sensitive') && getOptionLocation('sensitive') === 'more' && (
+                        <button
+                          onClick={() => {
+                            handleSensitiveAction();
+                            setShowMoreActions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                        >
+                          <span className={`h-4 w-4 text-xs font-semibold flex items-center justify-center mr-2 ${note.content.includes('meta::sensitive') ? 'text-orange-500' : 'text-gray-500'}`}>
+                            S
+                          </span>
+                          {note.content.includes('meta::sensitive') ? 'Remove Sensitive' : 'Mark as Sensitive'}
+                        </button>
+                      )}
+                      
+                      {shouldShowOption('linkNote') && getOptionLocation('linkNote') === 'more' && (
+                        <>
+                          <div className="border-t border-gray-200 my-1"></div>
+                          <button
+                            onClick={() => {
+                              setLinkingNoteId(note.id);
+                              setLinkSearchTerm('');
+                              setLinkPopupVisible(true);
+                              setShowMoreActions(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                          >
+                            <LinkIcon className="h-4 w-4 mr-2 text-gray-500" />
+                            Link Note
+                          </button>
+                        </>
+                      )}
+                      
+                      {shouldShowOption('merge') && getOptionLocation('merge') === 'more' && (
+                        <button
+                          onClick={() => {
+                            toggleNoteSelection(note.id);
+                            setShowMoreActions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                        >
+                          <ArrowsPointingInIcon className={`h-4 w-4 mr-2 ${selectedNotes.includes(note.id) ? 'text-blue-500' : 'text-gray-500'}`} />
+                          {selectedNotes.includes(note.id) ? 'Unselect for Merge' : 'Select for Merge'}
+                        </button>
+                      )}
+                      
+                      {shouldShowOption('copy') && getOptionLocation('copy') === 'more' && (
+                        <>
+                          <div className="border-t border-gray-200 my-1"></div>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(note.content);
+                              toast.success('Note content copied to clipboard!');
+                              setShowMoreActions(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                          >
+                            <ClipboardIcon className="h-4 w-4 mr-2 text-gray-500" />
+                            Copy to Clipboard
+                          </button>
+                        </>
+                      )}
+                      
+                      {shouldShowOption('rawNote') && getOptionLocation('rawNote') === 'more' && (
+                        <button
+                          onClick={() => {
+                            setShowRawNote(!showRawNote);
+                            setShowMoreActions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                        >
+                          <CodeBracketIcon className={`h-4 w-4 mr-2 ${showRawNote ? 'text-blue-500' : 'text-gray-500'}`} />
+                          View Raw Note
+                        </button>
+                      )}
+                      
+                      {shouldShowOption('edit') && getOptionLocation('edit') === 'more' && (
+                        <>
+                          <div className="border-t border-gray-200 my-1"></div>
+                          <button
+                            onClick={() => {
+                              setPopupNoteText(note.id);
+                              setShowMoreActions(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                          >
+                            <PencilIcon className="h-4 w-4 mr-2 text-gray-500" />
+                            Edit Note
+                          </button>
+                        </>
+                      )}
+                      
+                      {shouldShowOption('delete') && getOptionLocation('delete') === 'more' && (
+                        <button
+                          onClick={() => {
+                            handleDelete(note.id);
+                            setShowMoreActions(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center"
+                        >
+                          <TrashIcon className="h-4 w-4 mr-2 text-gray-500" />
+                          Delete Note
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null;
+        })()}
       </div>
       )}
 

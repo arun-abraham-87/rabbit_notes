@@ -553,17 +553,6 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
       isDevMode={settings?.developerMode || false}
     >
       <div className="w-full flex items-start gap-2" data-note-inline-editor="true">
-        {/* Red X button for deleting the line */}
-        <button
-          onClick={onDelete}
-          className="flex-shrink-0 mt-1 w-5 h-5 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors duration-150"
-          title="Delete this line"
-        >
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
-        </button>
-        
         {/* Textarea container */}
         <div className="flex-1 relative">
       
@@ -799,6 +788,17 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
             className="px-1.5 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors duration-150 shadow-sm"
           >
             Cancel
+          </button>
+          
+          {/* Red X button for deleting the line */}
+          <button
+            onClick={onDelete}
+            className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors duration-150"
+            title="Delete this line"
+          >
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
           </button>
         </div>
       

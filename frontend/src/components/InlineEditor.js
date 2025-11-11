@@ -27,30 +27,26 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   // Track if this is the initial mount
   const [isInitialMount, setIsInitialMount] = useState(true);
   
-  // Workstream notes dropdown state
-  const [showWorkstreamDropdown, setShowWorkstreamDropdown] = useState(false);
-  const [workstreamSearch, setWorkstreamSearch] = useState('');
+  // Wiki-link dropdown state (Obsidian-style [[ ]])
+  const [showWikiLinkDropdown, setShowWikiLinkDropdown] = useState(false);
+  const [wikiLinkSearch, setWikiLinkSearch] = useState('');
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
-  const [selectedWorkstreamIndex, setSelectedWorkstreamIndex] = useState(0);
+  const [selectedWikiLinkIndex, setSelectedWikiLinkIndex] = useState(0);
   const [triggerPosition, setTriggerPosition] = useState(null); // cursor position when [[ was typed
   
-  // Filter workstream notes based on search
-  const getWorkstreamNotes = (searchTerm = '') => {
-    const workstreamNotes = allNotes.filter(note => 
-      note.content.split('\n').some(line => 
-        line.trim().startsWith('meta::workstream')
-      )
-    );
-    
-    if (!searchTerm) return workstreamNotes.slice(0, 5);
+  // Filter all notes based on search for wiki-link suggestions
+  const getWikiLinkNotes = (searchTerm = '') => {
+    if (!searchTerm) return allNotes.slice(0, 10);
     
     const searchLower = searchTerm.toLowerCase();
-    const filtered = workstreamNotes
+    const filtered = allNotes
       .filter(note => {
         const firstLine = note.content.split('\n')[0]?.toLowerCase() || '';
-        return firstLine.includes(searchLower);
+        const noteId = note.id?.toString().toLowerCase() || '';
+        // Match if search term appears in first line or note ID
+        return firstLine.includes(searchLower) || noteId.includes(searchLower);
       })
-      .slice(0, 5);
+      .slice(0, 10);
       
     return filtered;
   };
@@ -74,16 +70,16 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     return { x, y };
   };
   
-  // Close workstream dropdown
-  const closeWorkstreamDropdown = () => {
-    setShowWorkstreamDropdown(false);
-    setWorkstreamSearch('');
-    setSelectedWorkstreamIndex(0);
+  // Close wiki-link dropdown
+  const closeWikiLinkDropdown = () => {
+    setShowWikiLinkDropdown(false);
+    setWikiLinkSearch('');
+    setSelectedWikiLinkIndex(0);
     setTriggerPosition(null);
   };
   
-  // Insert selected workstream note as hyperlink and create bidirectional links
-  const insertWorkstreamNote = async (note, currentNoteId = null) => {
+  // Insert selected note as wiki-link and create bidirectional links
+  const insertWikiLinkNote = async (note, currentNoteId = null) => {
     if (!inputRef.current || triggerPosition === null) return;
     
     const textarea = inputRef.current;
@@ -92,22 +88,42 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     // Get the first line of the note as the title
     const noteTitle = note.content.split('\n')[0]?.trim() || `Note ${note.id}`;
     
-    // Create a navigation link that filters by note ID in /notes
-    const linkText = `[${noteTitle}](#/notes?note=${note.id})`;
+    // Create a wiki-link in Obsidian style: [[Note Title]]
+    const linkText = `[[${noteTitle}]]`;
     
-    // Replace the [[ and search text with the link
-    const beforeTrigger = displayText.substring(0, triggerPosition);
-    const afterCursor = displayText.substring(currentCursor);
-    const newText = beforeTrigger + linkText + afterCursor;
+    // Find where the ]] is (should be after current cursor or search for it)
+    const textAfterTrigger = displayText.substring(triggerPosition);
+    const closingBracketsIndex = textAfterTrigger.indexOf(']]');
     
-    setDisplayText(newText);
-    closeWorkstreamDropdown();
-    
-    // Position cursor after the inserted link
-    setTimeout(() => {
-      const newCursorPosition = triggerPosition + linkText.length;
-      textarea.setSelectionRange(newCursorPosition, newCursorPosition);
-    }, 0);
+    if (closingBracketsIndex !== -1) {
+      // Replace everything from [[ to ]] with the new link
+      const beforeTrigger = displayText.substring(0, triggerPosition);
+      const afterClosingBrackets = displayText.substring(triggerPosition + closingBracketsIndex + 2);
+      const newText = beforeTrigger + linkText + afterClosingBrackets;
+      
+      setDisplayText(newText);
+      closeWikiLinkDropdown();
+      
+      // Position cursor after the inserted link
+      setTimeout(() => {
+        const newCursorPosition = triggerPosition + linkText.length;
+        textarea.setSelectionRange(newCursorPosition, newCursorPosition);
+      }, 0);
+    } else {
+      // Fallback: replace from trigger position to current cursor
+      const beforeTrigger = displayText.substring(0, triggerPosition);
+      const afterCursor = displayText.substring(currentCursor);
+      const newText = beforeTrigger + linkText + afterCursor;
+      
+      setDisplayText(newText);
+      closeWikiLinkDropdown();
+      
+      // Position cursor after the inserted link
+      setTimeout(() => {
+        const newCursorPosition = triggerPosition + linkText.length;
+        textarea.setSelectionRange(newCursorPosition, newCursorPosition);
+      }, 0);
+    }
 
     // Create bidirectional links if we have the current note context and updateNote function
     if (currentNoteId && updateNote) {
@@ -145,23 +161,23 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
     }
   };
 
-  // Create new workstream note and insert link
-  const createWorkstreamNote = async (searchText, currentNoteId = null) => {
+  // Create new note and insert wiki-link
+  const createNewNoteWithWikiLink = async (searchText, currentNoteId = null) => {
     if (!addNote || !inputRef.current || triggerPosition === null) return;
     
     try {
-      // Create note content with workstream tag
-      const noteContent = `${searchText}\nmeta::workstream::`;
+      // Create note content
+      const noteContent = `${searchText}`;
       
       // Create the new note
       const newNote = await addNote(noteContent);
       
       if (newNote && newNote.id) {
-        // Insert link to the newly created note with bidirectional linking
-        await insertWorkstreamNote(newNote, currentNoteId);
+        // Insert wiki-link to the newly created note with bidirectional linking
+        await insertWikiLinkNote(newNote, currentNoteId);
       }
     } catch (error) {
-      console.error('Error creating workstream note:', error);
+      console.error('Error creating note with wiki-link:', error);
     }
   };
   
@@ -372,36 +388,36 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
   const handleKeyDown = (e) => {
     
     
-    // Handle workstream dropdown navigation
-    if (showWorkstreamDropdown) {
-      const workstreamNotes = getWorkstreamNotes(workstreamSearch);
+    // Handle wiki-link dropdown navigation
+    if (showWikiLinkDropdown) {
+      const wikiLinkNotes = getWikiLinkNotes(wikiLinkSearch);
       
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedWorkstreamIndex(prev => Math.min(prev + 1, workstreamNotes.length - 1));
+        setSelectedWikiLinkIndex(prev => Math.min(prev + 1, wikiLinkNotes.length - 1));
         return;
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedWorkstreamIndex(prev => Math.max(prev - 1, 0));
+        setSelectedWikiLinkIndex(prev => Math.max(prev - 1, 0));
         return;
       } else if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
-        if (workstreamNotes[selectedWorkstreamIndex]) {
-          insertWorkstreamNote(workstreamNotes[selectedWorkstreamIndex], currentNoteId);
-        } else if (workstreamNotes.length === 0 && workstreamSearch.trim()) {
-          // Create new workstream note if no results found
-          createWorkstreamNote(workstreamSearch.trim(), currentNoteId);
+        if (wikiLinkNotes[selectedWikiLinkIndex]) {
+          insertWikiLinkNote(wikiLinkNotes[selectedWikiLinkIndex], currentNoteId);
+        } else if (wikiLinkNotes.length === 0 && wikiLinkSearch.trim()) {
+          // Create new note if no results found
+          createNewNoteWithWikiLink(wikiLinkSearch.trim(), currentNoteId);
         }
         return;
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        closeWorkstreamDropdown();
+        closeWikiLinkDropdown();
         return;
       } else if (e.key === 'Backspace') {
         // Check if we're at the beginning of the search term
         const currentCursor = inputRef.current?.selectionStart || 0;
         if (triggerPosition !== null && currentCursor <= triggerPosition + 2) {
-          closeWorkstreamDropdown();
+          closeWikiLinkDropdown();
         }
       }
     }
@@ -632,37 +648,59 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
           const newValue = e.target.value;
           setDisplayText(newValue);
           
-          // Check for [[ trigger
+          // Check for [[ trigger (Obsidian-style wiki-link)
           const cursorPos = e.target.selectionStart;
           const textBeforeCursor = newValue.substring(0, cursorPos);
+          const textAfterCursor = newValue.substring(cursorPos);
           
-          // Look for [[ pattern
+          // Look for [[ pattern - when user types [[, automatically add ]] and place cursor between
           const lastTwoBrackets = textBeforeCursor.slice(-2);
-          console.log('=== DROPDOWN DEBUG ===');
-          console.log('lastTwoBrackets:', lastTwoBrackets);
-          console.log('showWorkstreamDropdown:', showWorkstreamDropdown);
-          console.log('Should trigger dropdown:', lastTwoBrackets === '[[' && !showWorkstreamDropdown);
           
-          if (lastTwoBrackets === '[[' && !showWorkstreamDropdown) {
-            console.log('Triggering dropdown!');
-            setTriggerPosition(cursorPos - 2);
-            setWorkstreamSearch('');
-            setSelectedWorkstreamIndex(0);
-            setShowWorkstreamDropdown(true);
+          if (lastTwoBrackets === '[[' && !showWikiLinkDropdown) {
+            // Automatically add ]] after [[ and place cursor between them
+            const beforeTrigger = textBeforeCursor.slice(0, -2); // Everything before [[
+            const newText = beforeTrigger + '[[]]' + textAfterCursor;
+            
+            // Calculate positions
+            const triggerPos = cursorPos - 2; // Position of first [
+            const cursorPosAfterInsert = cursorPos; // Cursor will be between [[ and ]]
+            
+            setDisplayText(newText);
+            setTriggerPosition(triggerPos);
+            setWikiLinkSearch('');
+            setSelectedWikiLinkIndex(0);
+            setShowWikiLinkDropdown(true);
             
             // Set dropdown position immediately
             const position = getCursorPosition();
-            console.log('Dropdown position:', position);
             setDropdownPosition(position);
-          } else if (showWorkstreamDropdown && triggerPosition !== null) {
+            
+            // Position cursor between the brackets (after [[, before ]])
+            setTimeout(() => {
+              if (inputRef.current) {
+                inputRef.current.setSelectionRange(cursorPosAfterInsert, cursorPosAfterInsert);
+              }
+            }, 0);
+          } else if (showWikiLinkDropdown && triggerPosition !== null) {
             // Update search term if dropdown is open
-            const searchText = textBeforeCursor.substring(triggerPosition + 2);
-            if (searchText.includes(']') || searchText.includes('\n')) {
-              // Close dropdown if ] or newline is typed
-              closeWorkstreamDropdown();
+            // Get text between [[ and current cursor
+            const textAfterTrigger = textBeforeCursor.substring(triggerPosition);
+            // Find if there's a ]] before the cursor
+            const closingBracketsIndex = textAfterTrigger.indexOf(']]');
+            const relativeCursorPos = cursorPos - triggerPosition;
+            
+            if (closingBracketsIndex !== -1 && closingBracketsIndex < relativeCursorPos) {
+              // If ]] is before cursor, close dropdown
+              closeWikiLinkDropdown();
+            } else if (textAfterTrigger.includes('\n')) {
+              // Close dropdown if newline is typed
+              closeWikiLinkDropdown();
             } else {
-              setWorkstreamSearch(searchText);
-              setSelectedWorkstreamIndex(0);
+              // Get search text between [[ and cursor
+              // textAfterTrigger starts with [[, so we skip those 2 chars
+              const searchText = textAfterTrigger.substring(2, relativeCursorPos);
+              setWikiLinkSearch(searchText);
+              setSelectedWikiLinkIndex(0);
             }
           }
         }}
@@ -802,8 +840,8 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
           </button>
         </div>
       
-      {/* Workstream notes dropdown */}
-      {showWorkstreamDropdown && (
+      {/* Wiki-link notes dropdown (Obsidian-style) */}
+      {showWikiLinkDropdown && (
         <div
           className="fixed bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-w-xs"
           style={{
@@ -815,32 +853,29 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
           }}
         >
           {(() => {
-            console.log('Dropdown is rendering! showWorkstreamDropdown:', showWorkstreamDropdown);
-            console.log('dropdownPosition:', dropdownPosition);
-            console.log('workstreamSearch:', workstreamSearch);
-            const workstreamNotes = getWorkstreamNotes(workstreamSearch);
-            if (workstreamNotes.length === 0) {
+            const wikiLinkNotes = getWikiLinkNotes(wikiLinkSearch);
+            if (wikiLinkNotes.length === 0) {
               return (
                 <div className="p-2">
                   <div className="p-2 text-gray-500 text-sm">
-                    No workstream notes found
+                    No notes found
                   </div>
-                  {workstreamSearch.trim() && (
+                  {wikiLinkSearch.trim() && (
                     <div
                       className="p-2 cursor-pointer text-sm bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 text-blue-700"
-                      onClick={() => createWorkstreamNote(workstreamSearch.trim(), currentNoteId)}
+                      onClick={() => createNewNoteWithWikiLink(wikiLinkSearch.trim(), currentNoteId)}
                     >
-                      <div className="font-medium">Create workstream</div>
-                      <div className="text-xs text-blue-600">"{workstreamSearch.trim()}"</div>
+                      <div className="font-medium">Create note</div>
+                      <div className="text-xs text-blue-600">"{wikiLinkSearch.trim()}"</div>
                     </div>
                   )}
                 </div>
               );
             }
             
-            return workstreamNotes.map((note, index) => {
+            return wikiLinkNotes.map((note, index) => {
               const noteTitle = note.content.split('\n')[0]?.trim() || `Note ${note.id}`;
-              const isSelected = index === selectedWorkstreamIndex;
+              const isSelected = index === selectedWikiLinkIndex;
               
               return (
                 <div
@@ -848,8 +883,8 @@ const InlineEditor = ({ text, setText, onSave, onCancel, onDelete, inputClass = 
                   className={`p-2 cursor-pointer text-sm border-b border-gray-100 last:border-b-0 ${
                     isSelected ? 'bg-blue-100' : 'hover:bg-gray-50'
                   }`}
-                  onClick={() => insertWorkstreamNote(note, currentNoteId)}
-                  onMouseEnter={() => setSelectedWorkstreamIndex(index)}
+                  onClick={() => insertWikiLinkNote(note, currentNoteId)}
+                  onMouseEnter={() => setSelectedWikiLinkIndex(index)}
                 >
                   <div className="truncate">
                     {noteTitle.length > 30 ? noteTitle.substring(0, 30) + '...' : noteTitle}

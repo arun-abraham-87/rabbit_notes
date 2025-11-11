@@ -7,7 +7,7 @@ import React from 'react';
  * @param {string} params.searchTerm - Search term for highlighting
  * @returns {Array<React.ReactElement>} Array of formatted React elements
  */
-export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText }) => {
+export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText, allNotes = [], onNavigateToNote = null }) => {
   
   if (!content) return [];
 
@@ -181,7 +181,9 @@ export const parseNoteContent = ({ content, searchTerm, onAddText, onEditText })
         lineIndex,
         onAddText,
         onEditText,
-        noteContent: content
+        noteContent: content,
+        allNotes,
+        onNavigateToNote
       });
     }
 
@@ -490,7 +492,7 @@ const getLinkTypeIndicator = (url) => {
 /**
  * Parse inline formatting (bold, links, colors)
  */
-const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEditText, noteContent }) => {
+const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEditText, noteContent, allNotes = [], onNavigateToNote = null }) => {
   
   
   
@@ -591,8 +593,24 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
     
     elements.push(urlElement);
   } else {
-    // Process mixed content with markdown links
+    // Process mixed content with wiki-links and markdown links
     let processedText = processedContent;
+    
+    // First, find all wiki-links [[Note Title]]
+    const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
+    let wikiMatch;
+    let wikiLastIndex = 0;
+    const wikiLinkMatches = [];
+    
+    // Collect all wiki-link matches
+    while ((wikiMatch = wikiLinkRegex.exec(processedText)) !== null) {
+      wikiLinkMatches.push({
+        fullMatch: wikiMatch[0],
+        noteTitle: wikiMatch[1],
+        startIndex: wikiMatch.index,
+        endIndex: wikiMatch.index + wikiMatch[0].length
+      });
+    }
     
     // Find all markdown links in the content (including reversed URLs)
     const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
@@ -614,10 +632,178 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
       });
     }
     
+    // Helper function to find note by title
+    const findNoteByTitle = (title) => {
+      if (!allNotes || allNotes.length === 0) return null;
+      const titleLower = title.toLowerCase().trim();
+      return allNotes.find(note => {
+        const firstLine = note.content.split('\n')[0]?.toLowerCase().trim() || '';
+        return firstLine === titleLower || firstLine.includes(titleLower);
+      });
+    };
     
-    
-    // If we found markdown links, process them
-    if (linkMatches.length > 0) {
+    // Process wiki-links first (they take precedence)
+    if (wikiLinkMatches.length > 0) {
+      for (let i = 0; i < wikiLinkMatches.length; i++) {
+        const wikiLinkMatch = wikiLinkMatches[i];
+        
+        // Add text before the wiki-link
+        if (wikiLinkMatch.startIndex > wikiLastIndex) {
+          const textBefore = processedText.slice(wikiLastIndex, wikiLinkMatch.startIndex);
+          if (textBefore) {
+            // Process text before for markdown links and other formatting
+            const tempElements = [];
+            const beforeMarkdownLinks = [];
+            let beforeLastIndex = 0;
+            
+            // Check for markdown links in text before
+            const beforeMarkdownRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+            let beforeMatch;
+            while ((beforeMatch = beforeMarkdownRegex.exec(textBefore)) !== null) {
+              beforeMarkdownLinks.push({
+                fullMatch: beforeMatch[0],
+                customText: beforeMatch[1],
+                url: beforeMatch[2],
+                startIndex: beforeMatch.index,
+                endIndex: beforeMatch.index + beforeMatch[0].length
+              });
+            }
+            
+            if (beforeMarkdownLinks.length > 0) {
+              for (let j = 0; j < beforeMarkdownLinks.length; j++) {
+                const beforeLink = beforeMarkdownLinks[j];
+                if (beforeLink.startIndex > beforeLastIndex) {
+                  const beforeText = textBefore.slice(beforeLastIndex, beforeLink.startIndex);
+                  if (beforeText) {
+                    tempElements.push(...highlightSearchTerm(beforeText, searchTerm, `text-${lineIndex}-before-wiki-${i}-${j}`));
+                  }
+                }
+                const isReversedUrlInMarkdown = hasReversedUrls && beforeLink.url.match(/[^\s]+\/\/[^\s]+ptth/);
+                const originalUrl = isReversedUrlInMarkdown ? reverseString(beforeLink.url) : beforeLink.url;
+                const linkIndicator = getLinkTypeIndicator(originalUrl);
+                tempElements.push(
+                  <span key={`url-${lineIndex}-before-wiki-${i}-${j}`} className="inline-flex items-center gap-1">
+                    <a
+                      href={originalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline hover:text-blue-800"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {linkIndicator ? (
+                        <>
+                          {beforeLink.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+                        </>
+                      ) : beforeLink.customText}
+                    </a>
+                  </span>
+                );
+                beforeLastIndex = beforeLink.endIndex;
+              }
+              if (beforeLastIndex < textBefore.length) {
+                const afterText = textBefore.slice(beforeLastIndex);
+                if (afterText) {
+                  tempElements.push(...highlightSearchTerm(afterText, searchTerm, `text-${lineIndex}-after-markdown-before-wiki-${i}`));
+                }
+              }
+            } else {
+              tempElements.push(...highlightSearchTerm(textBefore, searchTerm, `text-${lineIndex}-before-wiki-${i}`));
+            }
+            elements.push(...tempElements);
+          }
+        }
+        
+        // Find the note by title
+        const linkedNote = findNoteByTitle(wikiLinkMatch.noteTitle);
+        
+        // Add the wiki-link element
+        const wikiLinkElement = (
+          <span
+            key={`wiki-${lineIndex}-${i}`}
+            className={`inline-flex items-center gap-1 ${
+              linkedNote
+                ? 'text-purple-600 hover:text-purple-800 cursor-pointer underline font-medium'
+                : 'text-gray-500 hover:text-gray-700 cursor-not-allowed'
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (linkedNote && onNavigateToNote) {
+                onNavigateToNote(linkedNote.id);
+              }
+            }}
+            title={linkedNote ? `Link to: ${wikiLinkMatch.noteTitle}` : `Note not found: ${wikiLinkMatch.noteTitle}`}
+          >
+            [[{wikiLinkMatch.noteTitle}]]
+          </span>
+        );
+        elements.push(wikiLinkElement);
+        
+        wikiLastIndex = wikiLinkMatch.endIndex;
+      }
+      
+      // Process remaining text after last wiki-link for markdown links
+      if (wikiLastIndex < processedText.length) {
+        const textAfterWiki = processedText.slice(wikiLastIndex);
+        
+        // Check for markdown links in remaining text
+        const afterMarkdownLinks = [];
+        let afterLastIndex = 0;
+        const afterMarkdownRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+        let afterMatch;
+        while ((afterMatch = afterMarkdownRegex.exec(textAfterWiki)) !== null) {
+          afterMarkdownLinks.push({
+            fullMatch: afterMatch[0],
+            customText: afterMatch[1],
+            url: afterMatch[2],
+            startIndex: afterMatch.index,
+            endIndex: afterMatch.index + afterMatch[0].length
+          });
+        }
+        
+        if (afterMarkdownLinks.length > 0) {
+          for (let j = 0; j < afterMarkdownLinks.length; j++) {
+            const afterLink = afterMarkdownLinks[j];
+            if (afterLink.startIndex > afterLastIndex) {
+              const beforeText = textAfterWiki.slice(afterLastIndex, afterLink.startIndex);
+              if (beforeText) {
+                elements.push(...highlightSearchTerm(beforeText, searchTerm, `text-${lineIndex}-after-wiki-${j}`));
+              }
+            }
+            const isReversedUrlInMarkdown = hasReversedUrls && afterLink.url.match(/[^\s]+\/\/[^\s]+ptth/);
+            const originalUrl = isReversedUrlInMarkdown ? reverseString(afterLink.url) : afterLink.url;
+            const linkIndicator = getLinkTypeIndicator(originalUrl);
+            elements.push(
+              <span key={`url-${lineIndex}-after-wiki-${j}`} className="inline-flex items-center gap-1">
+                <a
+                  href={originalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline hover:text-blue-800"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {linkIndicator ? (
+                    <>
+                      {afterLink.customText} <span className="text-xs text-gray-500 font-normal">{linkIndicator}</span>
+                    </>
+                  ) : afterLink.customText}
+                </a>
+              </span>
+            );
+            afterLastIndex = afterLink.endIndex;
+          }
+          if (afterLastIndex < textAfterWiki.length) {
+            const finalText = textAfterWiki.slice(afterLastIndex);
+            if (finalText) {
+              elements.push(...highlightSearchTerm(finalText, searchTerm, `text-${lineIndex}-final`));
+            }
+          }
+        } else {
+          // No markdown links, just process remaining text normally
+          elements.push(...highlightSearchTerm(textAfterWiki, searchTerm, `text-${lineIndex}-after-wiki`));
+        }
+      }
+    } else if (linkMatches.length > 0) {
+      // If we found markdown links but no wiki-links, process them
       for (let i = 0; i < linkMatches.length; i++) {
         const linkMatch = linkMatches[i];
         
@@ -673,11 +859,65 @@ const parseInlineFormatting = ({ content, searchTerm, lineIndex, onAddText, onEd
       if (lastIndex < processedText.length) {
         const textAfter = processedText.slice(lastIndex);
         if (textAfter) {
-          elements.push(...highlightSearchTerm(textAfter, searchTerm, `text-${lineIndex}-after`));
+          // Check for wiki-links in remaining text
+          const afterWikiLinks = [];
+          let afterWikiLastIndex = 0;
+          const afterWikiRegex = /\[\[([^\]]+)\]\]/g;
+          let afterWikiMatch;
+          while ((afterWikiMatch = afterWikiRegex.exec(textAfter)) !== null) {
+            afterWikiLinks.push({
+              fullMatch: afterWikiMatch[0],
+              noteTitle: afterWikiMatch[1],
+              startIndex: afterWikiMatch.index,
+              endIndex: afterWikiMatch.index + afterWikiMatch[0].length
+            });
+          }
+          
+          if (afterWikiLinks.length > 0) {
+            for (let j = 0; j < afterWikiLinks.length; j++) {
+              const afterWikiLink = afterWikiLinks[j];
+              if (afterWikiLink.startIndex > afterWikiLastIndex) {
+                const beforeText = textAfter.slice(afterWikiLastIndex, afterWikiLink.startIndex);
+                if (beforeText) {
+                  elements.push(...highlightSearchTerm(beforeText, searchTerm, `text-${lineIndex}-after-markdown-wiki-${j}`));
+                }
+              }
+              const linkedNote = findNoteByTitle(afterWikiLink.noteTitle);
+              elements.push(
+                <span
+                  key={`wiki-${lineIndex}-after-markdown-${j}`}
+                  className={`inline-flex items-center gap-1 ${
+                    linkedNote
+                      ? 'text-purple-600 hover:text-purple-800 cursor-pointer underline font-medium'
+                      : 'text-gray-500 hover:text-gray-700 cursor-not-allowed'
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (linkedNote && onNavigateToNote) {
+                      onNavigateToNote(linkedNote.id);
+                    }
+                  }}
+                  title={linkedNote ? `Link to: ${afterWikiLink.noteTitle}` : `Note not found: ${afterWikiLink.noteTitle}`}
+                >
+                  [[{afterWikiLink.noteTitle}]]
+                </span>
+              );
+              afterWikiLastIndex = afterWikiLink.endIndex;
+            }
+            if (afterWikiLastIndex < textAfter.length) {
+              const finalText = textAfter.slice(afterWikiLastIndex);
+              if (finalText) {
+                elements.push(...highlightSearchTerm(finalText, searchTerm, `text-${lineIndex}-after-markdown-final`));
+              }
+            }
+          } else {
+            elements.push(...highlightSearchTerm(textAfter, searchTerm, `text-${lineIndex}-after`));
+          }
         }
       }
     } else {
       // No markdown links found, process character by character
+      // (wiki-links would have been processed in the first if block)
       for (let i = 0; i < processedContent.length; i++) {
         const char = processedContent[i];
         const nextChar = processedContent[i + 1];

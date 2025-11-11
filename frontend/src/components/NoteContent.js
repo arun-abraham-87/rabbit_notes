@@ -276,7 +276,11 @@ export default function NoteContent({
         content: note.content, // Pass full content including meta tags for URL reversal detection
         searchTerm: searchQuery,
         onAddText: handleAddText,
-        onEditText: handleEditText
+        onEditText: handleEditText,
+        allNotes: allNotes,
+        onNavigateToNote: (noteId) => {
+            navigate(`/notes?note=${noteId}`);
+        }
     });
     
     // Extract image IDs from meta tags

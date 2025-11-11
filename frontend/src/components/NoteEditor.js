@@ -850,54 +850,9 @@ const NoteEditor = ({isModal=false, objList, note, onSave, onCancel, text, searc
   }
 
   const handleInputChange = (e) => {
-    const selection = window.getSelection();
-    const range = selection.getRangeAt(0);
-
-    // Get the caret position relative to the current node
-    const caretOffset = range.startOffset;
-
-    const inputedText = e.target.value || '';
-
-    //Needed to fix issue of popup showing after deleting all text and popup showing up based on last deleted char
-    if (!inputedText || inputedText.trim().length === 0) {
-        setShowPopup(false);
-        return;
-    }
-
-    const match = inputedText.trim().match(/(\S+)$/); // Match the last word
-    if (match && match[1]) {
-        const filterText = match[1].toLowerCase();
-        let filtered = [];
-
-        // Throttle logic
-        if (filterText !== "") {
-            clearTimeout(throttleRef.current); // Clear the existing timeout
-            throttleRef.current = setTimeout(() => {
-                if (filterText === "cal") {
-                    // Calendar logic here
-                } else {
-                    filtered = objList.filter((tag) =>
-                        tag && tag.text && tag.text.toLowerCase().startsWith(filterText)
-                    );
-
-                    setFilteredTags(filtered.map(tag => tag.text));
-                }
-                if (filtered.length > 0) {
-                    const textarea = textareasRef.current[focusedLineIndex];
-                    if (textarea) {
-                        const { x, y } = getCursorCoordinates(textarea);
-                        setCursorPosition({ x, y: y + 20 });
-                    }
-                    setShowPopup(true);
-                } else {
-                    setShowPopup(false);
-                }
-            }, 300); // 300ms delay for throttling
-        }
-    } else {
-        setShowPopup(false);
-        setSelectedTagIndex(-1);
-    }
+    // Word-based suggestion feature removed - now using Obsidian-style [[ wiki-link autocomplete
+    // The suggestion popup is disabled
+    setShowPopup(false);
   };
 
 

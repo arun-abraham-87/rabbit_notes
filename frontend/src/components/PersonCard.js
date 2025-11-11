@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserIcon, XMarkIcon, CodeBracketIcon, PencilIcon, PhotoIcon, TrashIcon, UserGroupIcon } from '@heroicons/react/24/solid';
+import { UserIcon, XMarkIcon, CodeBracketIcon, PencilIcon, PhotoIcon, TrashIcon, UserGroupIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { updateNoteById, deleteImageById } from '../utils/ApiUtils';
@@ -120,6 +120,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showRelationsModal, setShowRelationsModal] = useState(false);
+  const [viewingPersonInModal, setViewingPersonInModal] = useState(null); // Track which person's relationships we're viewing
 
   const API_BASE_URL = 'http://localhost:5001';
 
@@ -450,12 +451,13 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
   };
 
   // Get reverse relationship label for display
-  const getReverseRelationshipLabel = (relType, otherPersonId) => {
+  const getReverseRelationshipLabel = (relType, otherPersonId, personNote = null) => {
+    const thisPerson = personNote || note;
     const otherPerson = allNotes.find(n => n.id === otherPersonId);
     if (!otherPerson) return relationshipLabels[relType] || relType;
     
     const otherPersonLines = otherPerson.content.split('\n');
-    const thisPersonLines = note.content.split('\n');
+    const thisPersonLines = thisPerson.content.split('\n');
     
     // If this person has "child_of" relationship, check if other person is father or mother
     if (relType === 'child_of') {
@@ -472,10 +474,10 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
       
       // Check if other person has father_of or mother_of pointing to this person
       const hasFatherOf = otherPersonLines.some(line => 
-        line.startsWith(`meta::relationship::father_of::${note.id}`)
+        line.startsWith(`meta::relationship::father_of::${thisPerson.id}`)
       );
       const hasMotherOf = otherPersonLines.some(line => 
-        line.startsWith(`meta::relationship::mother_of::${note.id}`)
+        line.startsWith(`meta::relationship::mother_of::${thisPerson.id}`)
       );
       
       if (hasFatherOf || hasMotherOf) {
@@ -497,6 +499,64 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
     return personId;
   };
 
+  // Helper function to get relationships for any person note
+  const getRelationshipsForPerson = (personNote) => {
+    if (!personNote || !personNote.content) return [];
+    
+    const personLines = personNote.content.split('\n');
+    const directRelationships = personLines
+      .filter(line => line.startsWith('meta::relationship::'))
+      .map(line => {
+        const parts = line.split('::');
+        return {
+          type: parts[2],
+          personId: parts[3]
+        };
+      });
+    
+    // Get reverse relationships
+    const reverse = [];
+    allNotes.forEach(otherNote => {
+      if (otherNote.id === personNote.id) return;
+      
+      const otherLines = otherNote.content.split('\n');
+      const otherRelationships = otherLines
+        .filter(line => line.startsWith('meta::relationship::'))
+        .map(line => {
+          const parts = line.split('::');
+          return {
+            type: parts[2],
+            personId: parts[3]
+          };
+        });
+      
+      otherRelationships.forEach(rel => {
+        if (rel.personId === personNote.id) {
+          const reverseType = getReverseRelationshipType(rel.type);
+          if (reverseType) {
+            reverse.push({
+              type: reverseType,
+              personId: otherNote.id
+            });
+          }
+        }
+      });
+    });
+    
+    // Combine and deduplicate
+    const combined = [...directRelationships];
+    reverse.forEach(revRel => {
+      const exists = directRelationships.some(rel => 
+        rel.type === revRel.type && rel.personId === revRel.personId
+      );
+      if (!exists) {
+        combined.push(revRel);
+      }
+    });
+    
+    return combined;
+  };
+
   // Get all related people as note objects
   const relatedPeople = useMemo(() => {
     const related = [];
@@ -513,8 +573,8 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
     return related;
   }, [allRelationships, allNotes]);
 
-  // Group relationships by category
-  const groupedRelationships = useMemo(() => {
+  // Helper function to group relationships
+  const groupRelationships = (relationships) => {
     const groups = {
       parents: [],      // Child of relationships (parents)
       spouse: [],
@@ -524,7 +584,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
       friends: []
     };
 
-    allRelationships.forEach(rel => {
+    relationships.forEach(rel => {
       const relType = rel.type;
       
       // Parent relationships (child_of, son_of, daughter_of)
@@ -554,7 +614,28 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
     });
 
     return groups;
+  };
+
+  // Group relationships by category
+  const groupedRelationships = useMemo(() => {
+    return groupRelationships(allRelationships);
   }, [allRelationships]);
+
+  // Get relationships for the person being viewed in the modal
+  const modalPerson = viewingPersonInModal || note;
+  const modalPersonRelationships = useMemo(() => {
+    return getRelationshipsForPerson(modalPerson);
+  }, [modalPerson, allNotes]);
+  
+  const modalPersonGroupedRelationships = useMemo(() => {
+    return groupRelationships(modalPersonRelationships);
+  }, [modalPersonRelationships]);
+  
+  const modalPersonName = useMemo(() => {
+    if (!modalPerson || !modalPerson.content) return '';
+    const lines = modalPerson.content.split('\n');
+    return lines[0];
+  }, [modalPerson]);
 
   const renderMetaValue = (info) => {
     if (info.type === 'date') {
@@ -784,6 +865,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
               title="Show relations"
               onClick={(e) => {
                 e.stopPropagation();
+                setViewingPersonInModal(null); // Reset to show this person's relationships
                 setShowRelationsModal(true);
               }}
             >
@@ -1034,36 +1116,51 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Relations for {name}
-              </h2>
+              <div className="flex items-center gap-3">
+                {viewingPersonInModal && (
+                  <button
+                    onClick={() => setViewingPersonInModal(null)}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                    title="Back to {name}"
+                  >
+                    <ArrowLeftIcon className="h-5 w-5" />
+                  </button>
+                )}
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Relations for {modalPersonName}
+                </h2>
+              </div>
               <button
-                onClick={() => setShowRelationsModal(false)}
+                onClick={() => {
+                  setShowRelationsModal(false);
+                  setViewingPersonInModal(null);
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
             
-            {relatedPeople.length === 0 ? (
+            {modalPersonRelationships.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500">No relationships found</p>
               </div>
             ) : (
               <div className="space-y-6">
                 {/* Parent relationships (Child of) */}
-                {groupedRelationships.parents.length > 0 && (
+                {modalPersonGroupedRelationships.parents.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Parents</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {groupedRelationships.parents.map((rel, index) => {
+                      {modalPersonGroupedRelationships.parents.map((rel, index) => {
                         const relatedPerson = allNotes.find(n => n.id === rel.personId);
-                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId, modalPerson);
                         if (!relatedPerson) return null;
                         return (
                           <div
                             key={`parent-${index}`}
-                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white cursor-pointer"
+                            onClick={() => setViewingPersonInModal(relatedPerson)}
                           >
                             <div className="mb-2">
                               <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
@@ -1073,12 +1170,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                             <RelationshipCardPreview 
                               person={relatedPerson} 
                               allNotes={allNotes}
-                              onEdit={(person) => {
-                                if (onEdit) {
-                                  onEdit(person);
-                                  setShowRelationsModal(false);
-                                }
-                              }}
+                              onEdit={null}
                               hidePhotos={hidePhotos}
                             />
                           </div>
@@ -1089,18 +1181,19 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                 )}
 
                 {/* Spouse relationships */}
-                {groupedRelationships.spouse.length > 0 && (
+                {modalPersonGroupedRelationships.spouse.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Spouse</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {groupedRelationships.spouse.map((rel, index) => {
+                      {modalPersonGroupedRelationships.spouse.map((rel, index) => {
                         const relatedPerson = allNotes.find(n => n.id === rel.personId);
-                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId, modalPerson);
                         if (!relatedPerson) return null;
                         return (
                           <div
                             key={`spouse-${index}`}
-                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white cursor-pointer"
+                            onClick={() => setViewingPersonInModal(relatedPerson)}
                           >
                             <div className="mb-2">
                               <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
@@ -1110,12 +1203,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                             <RelationshipCardPreview 
                               person={relatedPerson} 
                               allNotes={allNotes}
-                              onEdit={(person) => {
-                                if (onEdit) {
-                                  onEdit(person);
-                                  setShowRelationsModal(false);
-                                }
-                              }}
+                              onEdit={null}
                               hidePhotos={hidePhotos}
                             />
                           </div>
@@ -1126,18 +1214,19 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                 )}
 
                 {/* Sibling relationships */}
-                {groupedRelationships.siblings.length > 0 && (
+                {modalPersonGroupedRelationships.siblings.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Siblings</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {groupedRelationships.siblings.map((rel, index) => {
+                      {modalPersonGroupedRelationships.siblings.map((rel, index) => {
                         const relatedPerson = allNotes.find(n => n.id === rel.personId);
-                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId, modalPerson);
                         if (!relatedPerson) return null;
                         return (
                           <div
                             key={`sibling-${index}`}
-                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white cursor-pointer"
+                            onClick={() => setViewingPersonInModal(relatedPerson)}
                           >
                             <div className="mb-2">
                               <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
@@ -1147,12 +1236,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                             <RelationshipCardPreview 
                               person={relatedPerson} 
                               allNotes={allNotes}
-                              onEdit={(person) => {
-                                if (onEdit) {
-                                  onEdit(person);
-                                  setShowRelationsModal(false);
-                                }
-                              }}
+                              onEdit={null}
                               hidePhotos={hidePhotos}
                             />
                           </div>
@@ -1163,18 +1247,19 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                 )}
 
                 {/* Children relationships */}
-                {groupedRelationships.children.length > 0 && (
+                {modalPersonGroupedRelationships.children.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Children</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {groupedRelationships.children.map((rel, index) => {
+                      {modalPersonGroupedRelationships.children.map((rel, index) => {
                         const relatedPerson = allNotes.find(n => n.id === rel.personId);
-                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId, modalPerson);
                         if (!relatedPerson) return null;
                         return (
                           <div
                             key={`child-${index}`}
-                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white cursor-pointer"
+                            onClick={() => setViewingPersonInModal(relatedPerson)}
                           >
                             <div className="mb-2">
                               <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
@@ -1184,12 +1269,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                             <RelationshipCardPreview 
                               person={relatedPerson} 
                               allNotes={allNotes}
-                              onEdit={(person) => {
-                                if (onEdit) {
-                                  onEdit(person);
-                                  setShowRelationsModal(false);
-                                }
-                              }}
+                              onEdit={null}
                               hidePhotos={hidePhotos}
                             />
                           </div>
@@ -1200,18 +1280,19 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                 )}
 
                 {/* Grandchildren relationships */}
-                {groupedRelationships.grandchildren.length > 0 && (
+                {modalPersonGroupedRelationships.grandchildren.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Grandchildren</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {groupedRelationships.grandchildren.map((rel, index) => {
+                      {modalPersonGroupedRelationships.grandchildren.map((rel, index) => {
                         const relatedPerson = allNotes.find(n => n.id === rel.personId);
-                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId, modalPerson);
                         if (!relatedPerson) return null;
                         return (
                           <div
                             key={`grandchild-${index}`}
-                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white cursor-pointer"
+                            onClick={() => setViewingPersonInModal(relatedPerson)}
                           >
                             <div className="mb-2">
                               <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
@@ -1221,12 +1302,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                             <RelationshipCardPreview 
                               person={relatedPerson} 
                               allNotes={allNotes}
-                              onEdit={(person) => {
-                                if (onEdit) {
-                                  onEdit(person);
-                                  setShowRelationsModal(false);
-                                }
-                              }}
+                              onEdit={null}
                               hidePhotos={hidePhotos}
                             />
                           </div>
@@ -1237,18 +1313,19 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                 )}
 
                 {/* Friends relationships */}
-                {groupedRelationships.friends.length > 0 && (
+                {modalPersonGroupedRelationships.friends.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Friends & Others</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {groupedRelationships.friends.map((rel, index) => {
+                      {modalPersonGroupedRelationships.friends.map((rel, index) => {
                         const relatedPerson = allNotes.find(n => n.id === rel.personId);
-                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId, modalPerson);
                         if (!relatedPerson) return null;
                         return (
                           <div
                             key={`friend-${index}`}
-                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white cursor-pointer"
+                            onClick={() => setViewingPersonInModal(relatedPerson)}
                           >
                             <div className="mb-2">
                               <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
@@ -1258,12 +1335,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                             <RelationshipCardPreview 
                               person={relatedPerson} 
                               allNotes={allNotes}
-                              onEdit={(person) => {
-                                if (onEdit) {
-                                  onEdit(person);
-                                  setShowRelationsModal(false);
-                                }
-                              }}
+                              onEdit={null}
                               hidePhotos={hidePhotos}
                             />
                           </div>

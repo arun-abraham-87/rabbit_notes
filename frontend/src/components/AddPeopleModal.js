@@ -10,6 +10,8 @@ const API_BASE_URL = 'http://localhost:5001';
 
 const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personNote = null, onDelete, pastedImageFile = null, setAllNotes = null, selectedTags = [] }) => {
   const nameInputRef = useRef(null);
+  const initializedRef = useRef(false);
+  const lastPersonNoteIdRef = useRef(null);
   const [name, setName] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tagList, setTagList] = useState([]);
@@ -98,61 +100,79 @@ const AddPeopleModal = ({ isOpen, onClose, onAdd, onEdit, allNotes = [], personN
     return Array.from(typeSet).map(item => JSON.parse(item)).sort((a, b) => a.name.localeCompare(b.name));
   }, [allNotes]);
 
-  // Prefill fields if editing
+  // Prefill fields if editing - only run when modal opens or personNote changes
   useEffect(() => {
-    if (personNote) {
-      const lines = personNote.content.split('\n');
-      setName(lines[0] || '');
-      // Get tags from meta::tag lines
-      const tagLines = lines.filter(line => line.startsWith('meta::tag::'));
-      setTagList(tagLines.map(line => line.split('::')[2]));
-
-      // Get info types and values
-      const infoLines = lines.filter(line => line.startsWith('meta::info::'));
-      const types = new Set();
-      const values = {};
-      const typeTypes = {};
-      infoLines.forEach(line => {
-        const [_, __, type, typeType, value] = line.split('::');
-        types.add(type);
-        values[type] = value;
-        typeTypes[type] = typeType || 'text';
-      });
-      setInfoTypes(Array.from(types));
-      setInfoValues(values);
-      setInfoTypeTypes(typeTypes);
-      
-      // Get photos from meta::photo lines
-      const photoLines = lines.filter(line => line.startsWith('meta::photo::'));
-      setPhotos(photoLines.map(line => line.replace('meta::photo::', '').trim()));
-      
-      // Get relationships from meta::relationship lines
-      const relationshipLines = lines.filter(line => line.startsWith('meta::relationship::'));
-      const parsedRelationships = relationshipLines.map(line => {
-        const parts = line.split('::');
-        return {
-          type: parts[2], // e.g., 'father_of'
-          personId: parts[3] // person ID
-        };
-      });
-      setRelationships(parsedRelationships);
-    } else {
-      setName('');
-      // If selectedTags are provided, add them to tagList when adding a new person
-      setTagList(selectedTags.length > 0 ? [...selectedTags] : []);
-      setTagInput('');
-      setInfoTypes([]);
-      setInfoValues({});
-      setInfoTypeTypes({});
-      setPhotos([]);
-      setPhotoInput('');
-      setRelationships([]);
+    // Reset initialization flag when modal closes
+    if (!isOpen) {
+      initializedRef.current = false;
+      lastPersonNoteIdRef.current = null;
+      return;
     }
-    setTagError('');
-    setTagFilter('');
-    setNewInfoType('');
-    setNewInfoTypeType('text');
-  }, [personNote, isOpen, selectedTags]);
+    
+    // Only initialize once when modal opens or when editing a different person
+    const currentPersonNoteId = personNote?.id || null;
+    const isDifferentPerson = lastPersonNoteIdRef.current !== currentPersonNoteId;
+    
+    if (!initializedRef.current || isDifferentPerson) {
+      // When editing, use personNote data and don't let selectedTags interfere
+      if (personNote) {
+        const lines = personNote.content.split('\n');
+        setName(lines[0] || '');
+        // Get tags from meta::tag lines
+        const tagLines = lines.filter(line => line.startsWith('meta::tag::'));
+        setTagList(tagLines.map(line => line.split('::')[2]));
+
+        // Get info types and values
+        const infoLines = lines.filter(line => line.startsWith('meta::info::'));
+        const types = new Set();
+        const values = {};
+        const typeTypes = {};
+        infoLines.forEach(line => {
+          const [_, __, type, typeType, value] = line.split('::');
+          types.add(type);
+          values[type] = value;
+          typeTypes[type] = typeType || 'text';
+        });
+        setInfoTypes(Array.from(types));
+        setInfoValues(values);
+        setInfoTypeTypes(typeTypes);
+        
+        // Get photos from meta::photo lines
+        const photoLines = lines.filter(line => line.startsWith('meta::photo::'));
+        setPhotos(photoLines.map(line => line.replace('meta::photo::', '').trim()));
+        
+        // Get relationships from meta::relationship lines
+        const relationshipLines = lines.filter(line => line.startsWith('meta::relationship::'));
+        const parsedRelationships = relationshipLines.map(line => {
+          const parts = line.split('::');
+          return {
+            type: parts[2], // e.g., 'father_of'
+            personId: parts[3] // person ID
+          };
+        });
+        setRelationships(parsedRelationships);
+      } else {
+        // Only reset when adding a new person (not editing)
+        setName('');
+        // If selectedTags are provided, add them to tagList when adding a new person
+        setTagList(selectedTags.length > 0 ? [...selectedTags] : []);
+        setTagInput('');
+        setInfoTypes([]);
+        setInfoValues({});
+        setInfoTypeTypes({});
+        setPhotos([]);
+        setPhotoInput('');
+        setRelationships([]);
+      }
+      setTagError('');
+      setTagFilter('');
+      setNewInfoType('');
+      setNewInfoTypeType('text');
+      
+      initializedRef.current = true;
+      lastPersonNoteIdRef.current = currentPersonNoteId;
+    }
+  }, [isOpen, personNote?.id, selectedTags]); // Depend on isOpen, personNote.id, and selectedTags
 
   // Get all unique tags from all notes
   const existingTags = useMemo(() => {

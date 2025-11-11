@@ -549,6 +549,9 @@ const PeopleList = ({allNotes, setAllNotes}) => {
                       onUpdate={handleUpdatePerson}
                       allNotes={uniqueNotes}
                       hidePhotos={hidePhotos}
+                      onTagClick={(tag) => {
+                        setSelectedTags([tag]);
+                      }}
                     />
                   ))}
                 </div>
@@ -569,6 +572,9 @@ const PeopleList = ({allNotes, setAllNotes}) => {
               onUpdate={handleUpdatePerson}
               allNotes={uniqueNotes}
               hidePhotos={hidePhotos}
+              onTagClick={(tag) => {
+                setSelectedTags([tag]);
+              }}
             />
           ))}
         </div>

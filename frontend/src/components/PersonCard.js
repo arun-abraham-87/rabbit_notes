@@ -109,7 +109,7 @@ const RelationshipCardPreview = ({ person, allNotes, onEdit, hidePhotos = false 
   );
 };
 
-const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes = [], hidePhotos = false }) => {
+const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes = [], hidePhotos = false, onTagClick = null }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showImageUpload, setShowImageUpload] = useState(false);
@@ -705,11 +705,21 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
           {tags.map((tag, index) => (
             <span
               key={index}
-              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
+              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 cursor-pointer hover:bg-indigo-200 transition-colors"
+              onClick={(e) => {
+                // Only trigger tag click if not clicking the remove button
+                if (!e.target.closest('button')) {
+                  onTagClick && onTagClick(tag);
+                }
+              }}
+              title="Click to filter by this tag"
             >
               {tag}
               <button
-                onClick={() => onRemoveTag(note.id, tag)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveTag(note.id, tag);
+                }}
                 className="ml-1 text-indigo-600 hover:text-indigo-800"
                 title="Remove tag"
               >

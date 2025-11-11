@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserIcon, XMarkIcon, CodeBracketIcon, PencilIcon, PhotoIcon, TrashIcon } from '@heroicons/react/24/solid';
+import { UserIcon, XMarkIcon, CodeBracketIcon, PencilIcon, PhotoIcon, TrashIcon, UserGroupIcon } from '@heroicons/react/24/solid';
 import { parseNoteContent } from '../utils/TextUtils';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { updateNoteById, deleteImageById } from '../utils/ApiUtils';
@@ -119,6 +119,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
   const [hoveredRelationship, setHoveredRelationship] = useState(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [showRelationsModal, setShowRelationsModal] = useState(false);
 
   const API_BASE_URL = 'http://localhost:5001';
 
@@ -136,16 +137,19 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
           setIsDragging(false);
           setUploading(false);
         }
+        if (showRelationsModal) {
+          setShowRelationsModal(false);
+        }
       }
     };
 
-    if (showImageModal || showImageUpload) {
+    if (showImageModal || showImageUpload || showRelationsModal) {
       window.addEventListener('keydown', handleEscape);
       return () => {
         window.removeEventListener('keydown', handleEscape);
       };
     }
-  }, [showImageModal, showImageUpload]);
+  }, [showImageModal, showImageUpload, showRelationsModal]);
 
   // Upload image function
   const uploadImage = async (file) => {
@@ -493,12 +497,127 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
     return personId;
   };
 
+  // Get all related people as note objects
+  const relatedPeople = useMemo(() => {
+    const related = [];
+    allRelationships.forEach(rel => {
+      const relatedPerson = allNotes.find(n => n.id === rel.personId);
+      if (relatedPerson) {
+        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+        related.push({
+          person: relatedPerson,
+          relationshipType: relLabel
+        });
+      }
+    });
+    return related;
+  }, [allRelationships, allNotes]);
+
+  // Group relationships by category
+  const groupedRelationships = useMemo(() => {
+    const groups = {
+      parents: [],      // Child of relationships (parents)
+      spouse: [],
+      siblings: [],
+      children: [],     // Son/Daughter relationships (this person's children)
+      grandchildren: [],
+      friends: []
+    };
+
+    allRelationships.forEach(rel => {
+      const relType = rel.type;
+      
+      // Parent relationships (child_of, son_of, daughter_of)
+      if (relType === 'child_of' || relType === 'son_of' || relType === 'daughter_of') {
+        groups.parents.push(rel);
+      }
+      // Spouse relationships
+      else if (relType === 'spouse_of') {
+        groups.spouse.push(rel);
+      }
+      // Sibling relationships
+      else if (relType === 'brother_of' || relType === 'sister_of') {
+        groups.siblings.push(rel);
+      }
+      // Grandchildren relationships
+      else if (relType === 'grandchild_of' || relType === 'grandson_of' || relType === 'granddaughter_of') {
+        groups.grandchildren.push(rel);
+      }
+      // Children relationships (this person's children - father_of, mother_of)
+      else if (relType === 'father_of' || relType === 'mother_of') {
+        groups.children.push(rel);
+      }
+      // Friends relationships (catch-all for others)
+      else {
+        groups.friends.push(rel);
+      }
+    });
+
+    return groups;
+  }, [allRelationships]);
+
   const renderMetaValue = (info) => {
     if (info.type === 'date') {
       const age = getAgeInStringFmt(info.value);
       return `${info.value} (${age})`;
     }
     return info.value;
+  };
+
+  // Helper function to render a relationship button
+  const renderRelationshipButton = (rel, index) => {
+    const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+    const personName = getPersonName(rel.personId);
+    const relatedPerson = allNotes.find(n => n.id === rel.personId);
+    return (
+      <button
+        key={index}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (relatedPerson && onEdit) {
+            onEdit(relatedPerson);
+          }
+        }}
+        onMouseEnter={(e) => {
+          if (relatedPerson) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const popupWidth = 320; // w-80 = 320px
+            const popupHeight = 384; // max-h-96 = 384px
+            
+            // Calculate position - prefer right side, but adjust if needed
+            let x = rect.right + 10;
+            let y = rect.top;
+            
+            // If popup would go off right edge, show on left side
+            if (x + popupWidth > viewportWidth) {
+              x = rect.left - popupWidth - 10;
+            }
+            
+            // If popup would go off bottom, adjust y
+            if (y + popupHeight > viewportHeight) {
+              y = viewportHeight - popupHeight - 10;
+            }
+            
+            // Ensure popup doesn't go off top
+            if (y < 10) {
+              y = 10;
+            }
+            
+            setHoverPosition({ x, y });
+            setHoveredRelationship(relatedPerson);
+          }
+        }}
+        onMouseLeave={() => {
+          setHoveredRelationship(null);
+        }}
+        className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline text-left"
+        title={`Click to view ${personName}`}
+      >
+        {relLabel}: {personName}
+      </button>
+    );
   };
 
   return (
@@ -576,61 +695,48 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
 
           {/* Relationships Section */}
           {allRelationships && allRelationships.length > 0 && (
-            <div className="mt-2 space-y-1">
-              {allRelationships.map((rel, index) => {
-                const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
-                const personName = getPersonName(rel.personId);
-                const relatedPerson = allNotes.find(n => n.id === rel.personId);
-                return (
-                  <button
-                    key={index}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (relatedPerson && onEdit) {
-                        onEdit(relatedPerson);
-                      }
-                    }}
-                    onMouseEnter={(e) => {
-                      if (relatedPerson) {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const viewportWidth = window.innerWidth;
-                        const viewportHeight = window.innerHeight;
-                        const popupWidth = 320; // w-80 = 320px
-                        const popupHeight = 384; // max-h-96 = 384px
-                        
-                        // Calculate position - prefer right side, but adjust if needed
-                        let x = rect.right + 10;
-                        let y = rect.top;
-                        
-                        // If popup would go off right edge, show on left side
-                        if (x + popupWidth > viewportWidth) {
-                          x = rect.left - popupWidth - 10;
-                        }
-                        
-                        // If popup would go off bottom, adjust y
-                        if (y + popupHeight > viewportHeight) {
-                          y = viewportHeight - popupHeight - 10;
-                        }
-                        
-                        // Ensure popup doesn't go off top
-                        if (y < 10) {
-                          y = 10;
-                        }
-                        
-                        setHoverPosition({ x, y });
-                        setHoveredRelationship(relatedPerson);
-                      }
-                    }}
-                    onMouseLeave={() => {
-                      setHoveredRelationship(null);
-                    }}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline text-left"
-                    title={`Click to view ${personName}`}
-                  >
-                    {relLabel}: {personName}
-                  </button>
-                );
-              })}
+            <div className="mt-2 space-y-1.5">
+              {/* Parent relationships - First line (Child of) */}
+              {groupedRelationships.parents.length > 0 && (
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  {groupedRelationships.parents.map((rel, index) => renderRelationshipButton(rel, `parent-${index}`))}
+                </div>
+              )}
+              
+              {/* Spouse relationships - Second line */}
+              {groupedRelationships.spouse.length > 0 && (
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  {groupedRelationships.spouse.map((rel, index) => renderRelationshipButton(rel, `spouse-${index}`))}
+                </div>
+              )}
+              
+              {/* Sibling relationships - Third line */}
+              {groupedRelationships.siblings.length > 0 && (
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  {groupedRelationships.siblings.map((rel, index) => renderRelationshipButton(rel, `sibling-${index}`))}
+                </div>
+              )}
+              
+              {/* Children relationships - Fourth line */}
+              {groupedRelationships.children.length > 0 && (
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  {groupedRelationships.children.map((rel, index) => renderRelationshipButton(rel, `child-${index}`))}
+                </div>
+              )}
+              
+              {/* Grandchildren relationships - Fifth line */}
+              {groupedRelationships.grandchildren.length > 0 && (
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  {groupedRelationships.grandchildren.map((rel, index) => renderRelationshipButton(rel, `grandchild-${index}`))}
+                </div>
+              )}
+              
+              {/* Friends relationships - Finally */}
+              {groupedRelationships.friends.length > 0 && (
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  {groupedRelationships.friends.map((rel, index) => renderRelationshipButton(rel, `friend-${index}`))}
+                </div>
+              )}
             </div>
           )}
           
@@ -672,6 +778,18 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
           )}
         </div>
         <div className="flex-shrink-0 flex flex-col gap-1">
+          {allRelationships && allRelationships.length > 0 && (
+            <button
+              className="p-1 rounded hover:bg-gray-100"
+              title="Show relations"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowRelationsModal(true);
+              }}
+            >
+              <UserGroupIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600" />
+            </button>
+          )}
           <button
             className="p-1 rounded hover:bg-gray-100"
             title="Show raw note"
@@ -902,6 +1020,261 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
             onEdit={onEdit}
             hidePhotos={hidePhotos}
           />
+        </div>
+      )}
+
+      {/* Show Relations Modal */}
+      {showRelationsModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowRelationsModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Relations for {name}
+              </h2>
+              <button
+                onClick={() => setShowRelationsModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            
+            {relatedPeople.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No relationships found</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Parent relationships (Child of) */}
+                {groupedRelationships.parents.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Parents</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {groupedRelationships.parents.map((rel, index) => {
+                        const relatedPerson = allNotes.find(n => n.id === rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        if (!relatedPerson) return null;
+                        return (
+                          <div
+                            key={`parent-${index}`}
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                          >
+                            <div className="mb-2">
+                              <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
+                                {relLabel}
+                              </span>
+                            </div>
+                            <RelationshipCardPreview 
+                              person={relatedPerson} 
+                              allNotes={allNotes}
+                              onEdit={(person) => {
+                                if (onEdit) {
+                                  onEdit(person);
+                                  setShowRelationsModal(false);
+                                }
+                              }}
+                              hidePhotos={hidePhotos}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Spouse relationships */}
+                {groupedRelationships.spouse.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Spouse</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {groupedRelationships.spouse.map((rel, index) => {
+                        const relatedPerson = allNotes.find(n => n.id === rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        if (!relatedPerson) return null;
+                        return (
+                          <div
+                            key={`spouse-${index}`}
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                          >
+                            <div className="mb-2">
+                              <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
+                                {relLabel}
+                              </span>
+                            </div>
+                            <RelationshipCardPreview 
+                              person={relatedPerson} 
+                              allNotes={allNotes}
+                              onEdit={(person) => {
+                                if (onEdit) {
+                                  onEdit(person);
+                                  setShowRelationsModal(false);
+                                }
+                              }}
+                              hidePhotos={hidePhotos}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sibling relationships */}
+                {groupedRelationships.siblings.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Siblings</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {groupedRelationships.siblings.map((rel, index) => {
+                        const relatedPerson = allNotes.find(n => n.id === rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        if (!relatedPerson) return null;
+                        return (
+                          <div
+                            key={`sibling-${index}`}
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                          >
+                            <div className="mb-2">
+                              <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
+                                {relLabel}
+                              </span>
+                            </div>
+                            <RelationshipCardPreview 
+                              person={relatedPerson} 
+                              allNotes={allNotes}
+                              onEdit={(person) => {
+                                if (onEdit) {
+                                  onEdit(person);
+                                  setShowRelationsModal(false);
+                                }
+                              }}
+                              hidePhotos={hidePhotos}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Children relationships */}
+                {groupedRelationships.children.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Children</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {groupedRelationships.children.map((rel, index) => {
+                        const relatedPerson = allNotes.find(n => n.id === rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        if (!relatedPerson) return null;
+                        return (
+                          <div
+                            key={`child-${index}`}
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                          >
+                            <div className="mb-2">
+                              <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
+                                {relLabel}
+                              </span>
+                            </div>
+                            <RelationshipCardPreview 
+                              person={relatedPerson} 
+                              allNotes={allNotes}
+                              onEdit={(person) => {
+                                if (onEdit) {
+                                  onEdit(person);
+                                  setShowRelationsModal(false);
+                                }
+                              }}
+                              hidePhotos={hidePhotos}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Grandchildren relationships */}
+                {groupedRelationships.grandchildren.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Grandchildren</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {groupedRelationships.grandchildren.map((rel, index) => {
+                        const relatedPerson = allNotes.find(n => n.id === rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        if (!relatedPerson) return null;
+                        return (
+                          <div
+                            key={`grandchild-${index}`}
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                          >
+                            <div className="mb-2">
+                              <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
+                                {relLabel}
+                              </span>
+                            </div>
+                            <RelationshipCardPreview 
+                              person={relatedPerson} 
+                              allNotes={allNotes}
+                              onEdit={(person) => {
+                                if (onEdit) {
+                                  onEdit(person);
+                                  setShowRelationsModal(false);
+                                }
+                              }}
+                              hidePhotos={hidePhotos}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Friends relationships */}
+                {groupedRelationships.friends.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Friends & Others</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {groupedRelationships.friends.map((rel, index) => {
+                        const relatedPerson = allNotes.find(n => n.id === rel.personId);
+                        const relLabel = getReverseRelationshipLabel(rel.type, rel.personId);
+                        if (!relatedPerson) return null;
+                        return (
+                          <div
+                            key={`friend-${index}`}
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                          >
+                            <div className="mb-2">
+                              <span className="text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
+                                {relLabel}
+                              </span>
+                            </div>
+                            <RelationshipCardPreview 
+                              person={relatedPerson} 
+                              allNotes={allNotes}
+                              onEdit={(person) => {
+                                if (onEdit) {
+                                  onEdit(person);
+                                  setShowRelationsModal(false);
+                                }
+                              }}
+                              hidePhotos={hidePhotos}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

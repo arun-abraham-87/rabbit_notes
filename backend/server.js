@@ -683,16 +683,132 @@ app.get('/api/people', (req, res) => {
       }
     });
 
-    const people = allNotes
-      .filter(note => note.content.includes('meta::person::'))
-      .map(note => ({
-        id: note.id,
-        text: note.content.split('\n')[0],
-        type: 'person',
-        count: 1
-      }));
+    // Filter to only person notes
+    let people = allNotes.filter(note => note.content && note.content.includes('meta::person::'));
 
+    // Get query parameters
+    const startsWith = req.query.startsWith; // Filter by first letter (A-Z or 'other' for non-alphabetic)
+    const tags = req.query.tags ? (Array.isArray(req.query.tags) ? req.query.tags : [req.query.tags]) : [];
+    const search = req.query.search ? req.query.search.toLowerCase() : '';
+    const hasPhoto = req.query.hasPhoto === 'true' || req.query.hasPhoto === true;
+    const withoutPhoto = req.query.withoutPhoto === 'true' || req.query.withoutPhoto === true;
+
+    // Filter by starting letter
+    if (startsWith) {
+      if (startsWith === 'other') {
+        // Names that don't start with A-Z
+        people = people.filter(note => {
+          const name = note.content.split('\n')[0] || '';
+          const firstChar = name.trim().charAt(0).toUpperCase();
+          return !firstChar || (firstChar < 'A' || firstChar > 'Z');
+        });
+      } else {
+        // Names starting with specific letter
+        const letter = startsWith.toUpperCase();
+        people = people.filter(note => {
+          const name = note.content.split('\n')[0] || '';
+          const firstChar = name.trim().charAt(0).toUpperCase();
+          return firstChar === letter;
+        });
+      }
+    }
+
+    // Filter by tags
+    if (tags.length > 0) {
+      people = people.filter(note => {
+        const noteTags = note.content
+          .split('\n')
+          .filter(line => line.startsWith('meta::tag::'))
+          .map(line => line.split('::')[2]);
+        
+        // Special case for "no-tags" filter
+        if (tags.includes('no-tags')) {
+          return noteTags.length === 0;
+        }
+        
+        // Regular tag filtering - at least one tag must match
+        return tags.some(tag => noteTags.includes(tag));
+      });
+    }
+
+    // Filter by search query
+    if (search) {
+      const searchWords = search.trim().split(/\s+/).filter(word => word.length > 0);
+      if (searchWords.length > 0) {
+        people = people.filter(note => {
+          const name = note.content.split('\n')[0] || '';
+          const nameLower = name.toLowerCase();
+          return searchWords.some(word => nameLower.includes(word));
+        });
+      }
+    }
+
+    // Filter by photo
+    if (hasPhoto) {
+      people = people.filter(note => {
+        return note.content.split('\n').some(line => line.startsWith('meta::photo::'));
+      });
+    }
+
+    if (withoutPhoto) {
+      people = people.filter(note => {
+        return !note.content.split('\n').some(line => line.startsWith('meta::photo::'));
+      });
+    }
+
+    // Sort alphabetically by name
+    people.sort((a, b) => {
+      const nameA = (a.content.split('\n')[0] || '').trim().toLowerCase();
+      const nameB = (b.content.split('\n')[0] || '').trim().toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
+    // Return full note objects
     res.json(people);
+  } catch (err) {
+    console.error('Error processing the request:', err.message);
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
+  }
+});
+
+// GET: Get all tags from people notes
+app.get('/api/people/tags', (req, res) => {
+  try {
+    const files = fs.readdirSync(NOTES_DIR);
+    let allNotes = [];
+
+    files.forEach((file) => {
+      try {
+        if (file === 'objects.md' || file === 'images') return;
+
+        const notesFilePath = path.join(NOTES_DIR, file);
+        if (fs.lstatSync(notesFilePath).isDirectory()) return;
+
+        const fileContent = fs.readFileSync(notesFilePath, 'utf-8');
+        const notesInFile = JSON.parse(fileContent);
+
+        if (Array.isArray(notesInFile)) {
+          allNotes = allNotes.concat(notesInFile);
+        }
+      } catch (err) {
+        console.error(`Failed to process file: ${file}`, err.message);
+      }
+    });
+
+    // Get all unique tags from person notes
+    const tagSet = new Set();
+    allNotes
+      .filter(note => note.content && note.content.includes('meta::person::'))
+      .forEach(note => {
+        const tagLines = note.content
+          .split('\n')
+          .filter(line => line.startsWith('meta::tag::'))
+          .map(line => line.split('::')[2]);
+        tagLines.forEach(tag => tagSet.add(tag));
+      });
+
+    const tags = Array.from(tagSet).sort();
+    res.json(tags);
   } catch (err) {
     console.error('Error processing the request:', err.message);
     res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });

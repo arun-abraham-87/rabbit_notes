@@ -132,6 +132,8 @@ Start Date: ${startDate}`;
             .map(([day]) => day) : []
         });
         toast.success('Tracker updated successfully');
+        // Close the modal after successful update
+        if (onCancel) onCancel();
       } else {
         // Add new tracker
         const response = await addNewNoteCommon(content, undefined, null);
@@ -383,7 +385,11 @@ Start Date: ${startDate}`;
           <button
             type="button"
             className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            onClick={onCancel}
+            onClick={() => {
+              if (onCancel) {
+                onCancel();
+              }
+            }}
           >
             Cancel
           </button>

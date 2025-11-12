@@ -313,6 +313,57 @@ export const loadPeople = async () => {
     }
 };
 
+export const fetchPeopleWithFilters = async (filters = {}) => {
+    try {
+        const params = new URLSearchParams();
+        
+        if (filters.startsWith) {
+            params.append('startsWith', filters.startsWith);
+        }
+        if (filters.tags && filters.tags.length > 0) {
+            filters.tags.forEach(tag => params.append('tags', tag));
+        }
+        if (filters.search) {
+            params.append('search', filters.search);
+        }
+        if (filters.hasPhoto !== undefined) {
+            params.append('hasPhoto', filters.hasPhoto);
+        }
+        if (filters.withoutPhoto !== undefined) {
+            params.append('withoutPhoto', filters.withoutPhoto);
+        }
+        
+        const queryString = params.toString();
+        const url = queryString 
+            ? `${API_BASE_URL}/people?${queryString}`
+            : `${API_BASE_URL}/people`;
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+            console.warn('Failed to fetch people with filters, returning empty array');
+            return [];
+        }
+        return await response.json();
+    } catch (error) {
+        console.warn('Error fetching people with filters:', error);
+        return [];
+    }
+};
+
+export const fetchPeopleTags = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/people/tags`);
+        if (!response.ok) {
+            console.warn('Failed to fetch people tags, returning empty array');
+            return [];
+        }
+        return await response.json();
+    } catch (error) {
+        console.warn('Error fetching people tags:', error);
+        return [];
+    }
+};
+
 export const getAllTags = async () => {
     const response = await fetch(`${API_BASE_URL}/tags`);
     if (!response.ok) throw new Error('Failed to fetch tags');

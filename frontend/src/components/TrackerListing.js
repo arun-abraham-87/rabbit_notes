@@ -1253,7 +1253,12 @@ const TrackerListing = () => {
             >
               &times;
             </button>
-            <AddTracker onTrackerAdded={handleTrackerAdded} onTrackerUpdated={handleTrackerUpdated} editingTracker={editingTracker} />
+            <AddTracker 
+              onTrackerAdded={handleTrackerAdded} 
+              onTrackerUpdated={handleTrackerUpdated} 
+              editingTracker={editingTracker}
+              onCancel={() => { setShowAddTracker(false); setEditingTracker(null); }}
+            />
           </div>
         </div>
       )}

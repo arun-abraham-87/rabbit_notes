@@ -5,10 +5,9 @@ import { parseNoteContent } from '../utils/TextUtils';
 import AddPeopleModal from './AddPeopleModal';
 import NoteView from './NoteView';
 import PersonCard from './PersonCard';
-import { updateNoteById, createNote, deleteNoteById, deleteNoteWithImages } from '../utils/ApiUtils';
+import { updateNoteById, createNote, deleteNoteById, deleteNoteWithImages, fetchPeopleWithFilters, fetchPeopleTags, loadPeople } from '../utils/ApiUtils';
 
 const PeopleList = ({allNotes, setAllNotes}) => {
-
   const [viewMode, setViewMode] = useState('grid');
   const [selectedTags, setSelectedTags] = useState([]);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
@@ -20,6 +19,14 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const [pastedImageFile, setPastedImageFile] = useState(null);
   const [hidePhotos, setHidePhotos] = useState(false);
   const [showWithoutPhoto, setShowWithoutPhoto] = useState(false);
+  
+  // API-driven state
+  const [selectedLetter, setSelectedLetter] = useState('A');
+  const [people, setPeople] = useState([]);
+  const [allPeopleForRelationships, setAllPeopleForRelationships] = useState([]); // For relationships only
+  const [allTags, setAllTags] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Handle Cmd+V to paste image and open Add People modal
   useEffect(() => {
@@ -73,130 +80,116 @@ const PeopleList = ({allNotes, setAllNotes}) => {
     };
   }, []);
 
-  // Deduplicate notes by ID - single source of truth
-  const uniqueNotes = useMemo(() => {
-    const uniqueNotesMap = new Map();
-    allNotes.forEach(note => {
-      if (note.id && !uniqueNotesMap.has(note.id)) {
-        uniqueNotesMap.set(note.id, note);
+  // Fetch all people for relationships (only once on mount)
+  useEffect(() => {
+    const fetchAllPeopleForRelationships = async () => {
+      try {
+        const allPeople = await loadPeople();
+        setAllPeopleForRelationships(allPeople);
+      } catch (error) {
+        console.error('Error fetching all people for relationships:', error);
       }
-    });
-    return Array.from(uniqueNotesMap.values());
-  }, [allNotes]);
+    };
+    fetchAllPeopleForRelationships();
+  }, []);
 
-  // Get all unique tags from person notes
-  const allTags = useMemo(() => {
-    const tagSet = new Set();
-    uniqueNotes
-      .filter(note => note.content && note.content.includes('meta::person::'))
-      .forEach(note => {
-        const tagLines = note.content
-          .split('\n')
-          .filter(line => line.startsWith('meta::tag::'))
-          .map(line => line.split('::')[2]);
-        tagLines.forEach(tag => tagSet.add(tag));
-      });
-    return Array.from(tagSet).sort();
-  }, [uniqueNotes]);
+  // Fetch tags
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const tags = await fetchPeopleTags();
+        setAllTags(tags);
+      } catch (error) {
+        console.error('Error fetching tags:', error);
+      }
+    };
+    fetchTags();
+  }, []);
 
-  // Filter person notes based on selected filters
-  const filteredallNotes = useMemo(() => {
-    let filtered = uniqueNotes.filter(note => note.content && note.content.includes('meta::person::'));
+  // Fetch people based on filters
+  useEffect(() => {
+    const fetchPeople = async () => {
+      setLoading(true);
+      try {
+        const filters = {
+          startsWith: selectedLetter,
+          tags: selectedTags.length > 0 ? selectedTags : undefined,
+          search: localSearchQuery || undefined,
+          withoutPhoto: showWithoutPhoto || undefined,
+        };
+        
+        // Remove undefined values
+        Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
+        
+        const fetchedPeople = await fetchPeopleWithFilters(filters);
+        setPeople(fetchedPeople);
+      } catch (error) {
+        console.error('Error fetching people:', error);
+        setPeople([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Apply tag filter
-    if (selectedTags.length > 0) {
-      filtered = filtered.filter(note => {
-        // Special case for "No Tags" filter
-        if (selectedTags.includes('no-tags')) {
-          const hasTags = note.content
-            .split('\n')
-            .some(line => line.startsWith('meta::tag::'));
-          return !hasTags;
-        }
+    fetchPeople();
+  }, [selectedLetter, selectedTags, localSearchQuery, showWithoutPhoto]);
 
-        // Regular tag filtering
-        const noteTags = note.content
-          .split('\n')
-          .filter(line => line.startsWith('meta::tag::'))
-          .map(line => line.split('::')[2]);
-        return selectedTags.some(tag => noteTags.includes(tag));
-      });
-    }
-
-    // Apply local search filter - treat each word as a separate search
-    if (localSearchQuery) {
-      const searchWords = localSearchQuery
-        .trim()
-        .split(/\s+/)
-        .filter(word => word.length > 0)
-        .map(word => word.toLowerCase());
+  // Refresh data after mutations
+  const refreshData = async () => {
+    setRefreshing(true);
+    try {
+      // Refresh people list
+      const filters = {
+        startsWith: selectedLetter,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
+        search: localSearchQuery || undefined,
+        withoutPhoto: showWithoutPhoto || undefined,
+      };
+      Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
+      const fetchedPeople = await fetchPeopleWithFilters(filters);
+      setPeople(fetchedPeople);
       
-      if (searchWords.length > 0) {
-        filtered = filtered.filter(note => {
-          // Get person name (first line of content)
-          const lines = note.content.split('\n');
-          const personName = lines[0] || '';
-          const nameLower = personName.toLowerCase();
-          
-          // Check if ANY of the search words match the name (OR logic)
-          return searchWords.some(word => nameLower.includes(word));
-        });
-      }
+      // Refresh all people for relationships
+      const allPeople = await loadPeople();
+      setAllPeopleForRelationships(allPeople);
+      
+      // Refresh tags
+      const tags = await fetchPeopleTags();
+      setAllTags(tags);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setRefreshing(false);
     }
+  };
 
-    // Apply "show without photo" filter
-    if (showWithoutPhoto) {
-      filtered = filtered.filter(note => {
-        const lines = note.content.split('\n');
-        const hasPhoto = lines.some(line => line.startsWith('meta::photo::'));
-        return !hasPhoto;
-      });
-    }
-
-    // Sort alphabetically by person name (first line of content)
-    filtered.sort((a, b) => {
-      const nameA = (a.content.split('\n')[0] || '').trim().toLowerCase();
-      const nameB = (b.content.split('\n')[0] || '').trim().toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-
-    return filtered;
-  }, [uniqueNotes, selectedTags, localSearchQuery, showWithoutPhoto]);
-
-  // Group allNotes by tags for tag view
-  const allNotesByTag = useMemo(() => {
+  // Group people by tags for tag view
+  const peopleByTag = useMemo(() => {
     const grouped = {};
     allTags.forEach(tag => {
-      const notesForTag = filteredallNotes.filter(note => {
+      const peopleForTag = people.filter(note => {
         const noteTags = note.content
           .split('\n')
           .filter(line => line.startsWith('meta::tag::'))
           .map(line => line.split('::')[2]);
         return noteTags.includes(tag);
       });
-      // Sort alphabetically by person name
-      notesForTag.sort((a, b) => {
-        const nameA = (a.content.split('\n')[0] || '').trim().toLowerCase();
-        const nameB = (b.content.split('\n')[0] || '').trim().toLowerCase();
-        return nameA.localeCompare(nameB);
-      });
-      grouped[tag] = notesForTag;
+      grouped[tag] = peopleForTag;
     });
     return grouped;
-  }, [filteredallNotes, allTags]);
+  }, [people, allTags]);
 
-  // Add a function to count people without tags
-  const getPeopleWithoutTags = useMemo(() => {
-    return uniqueNotes.filter(note => {
-      if (!note.content || !note.content.includes('meta::person::')) return false;
+  // Get people without tags
+  const peopleWithoutTags = useMemo(() => {
+    return people.filter(note => {
       return !note.content.split('\n').some(line => line.startsWith('meta::tag::'));
-    }).length;
-  }, [uniqueNotes]);
+    });
+  }, [people]);
 
-  // Get unique tags from filtered notes only
+  // Get filtered tags (tags that appear in current filtered people)
   const filteredTags = useMemo(() => {
     const tagSet = new Set();
-    filteredallNotes.forEach(note => {
+    people.forEach(note => {
       const tagLines = note.content
         .split('\n')
         .filter(line => line.startsWith('meta::tag::'))
@@ -204,51 +197,41 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       tagLines.forEach(tag => tagSet.add(tag));
     });
     return Array.from(tagSet).sort();
-  }, [filteredallNotes]);
+  }, [people]);
 
-  // Summary counts - use filtered results to reflect current filters
-  const totalPeople = filteredallNotes.length;
+  // Summary counts
+  const totalPeople = people.length;
   const totalTags = filteredTags.length;
 
   const clearFilters = () => {
     setSelectedTags([]);
     setLocalSearchQuery('');
     setShowWithoutPhoto(false);
+    setSelectedLetter('A');
   };
-
-  if (!uniqueNotes || uniqueNotes.length === 0) {
-    return (
-      <div className="p-6 space-y-6">
-        <h1 className="text-2xl font-semibold text-gray-900">People</h1>
-        <div className="text-center py-12">
-          <p className="text-gray-500">No people found</p>
-        </div>
-      </div>
-    );
-  }
 
   // Handler for editing a person
   const handleEditPerson = async (id, content) => {
     await updateNoteById(id, content);
-    setAllNotes(allNotes.map(note => note.id === id ? { ...note, content } : note));
+    await refreshData();
     setEditPersonModal({ open: false, personNote: null });
   };
 
   // Handler for updating a person (e.g., when photo is uploaded)
-  const handleUpdatePerson = (updatedNote) => {
-    setAllNotes(allNotes.map(note => note.id === updatedNote.id ? updatedNote : note));
+  const handleUpdatePerson = async (updatedNote) => {
+    await refreshData();
   };
 
   // Handler for deleting a person
   const handleDeletePerson = async (id) => {
     try {
-      const noteToDelete = allNotes.find(note => note.id === id);
+      const noteToDelete = allPeopleForRelationships.find(note => note.id === id);
       if (noteToDelete) {
         await deleteNoteWithImages(id, noteToDelete.content);
       } else {
         await deleteNoteById(id);
       }
-      setAllNotes(allNotes.filter(note => note.id !== id));
+      await refreshData();
       setEditPersonModal({ open: false, personNote: null });
       setDeleteModal({ open: false, noteId: null, personName: '' });
     } catch (error) {
@@ -256,14 +239,11 @@ const PeopleList = ({allNotes, setAllNotes}) => {
     }
   };
 
-
-
   // Handler for adding a new person
   const handleAddPerson = async (content) => {
     try {
       const response = await createNote(content);
-      // response is the full note object, not { content: ... }
-      setAllNotes([...allNotes, response]);
+      await refreshData();
       return response;
     } catch (error) {
       console.error('Error adding person:', error);
@@ -291,7 +271,6 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       }
 
       // Create all people
-      const createdPeople = [];
       for (const name of names) {
         let content = `${name}\nmeta::person::${new Date().toISOString()}`;
         
@@ -300,14 +279,11 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           content += `\nmeta::tag::${tag}`;
         });
 
-        const response = await createNote(content);
-        createdPeople.push(response);
+        await createNote(content);
       }
 
-      // Update state with all created people
-      setAllNotes([...allNotes, ...createdPeople]);
-      
-      return createdPeople;
+      await refreshData();
+      return [];
     } catch (error) {
       console.error('Error bulk adding people:', error);
       throw error;
@@ -323,7 +299,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   // Handler for removing a tag from a person
   const handleRemoveTag = async (noteId, tagToRemove) => {
     try {
-      const note = allNotes.find(n => n.id === noteId);
+      const note = allPeopleForRelationships.find(n => n.id === noteId);
       if (!note) return;
 
       const lines = note.content.split('\n');
@@ -331,11 +307,15 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       const updatedContent = updatedLines.join('\n');
 
       await updateNoteById(noteId, updatedContent);
-      setAllNotes(allNotes.map(n => n.id === noteId ? { ...n, content: updatedContent } : n));
+      await refreshData();
     } catch (error) {
       console.error('Error removing tag:', error);
     }
   };
+
+  // Generate A-Z buttons
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const letters = [...alphabet, 'other'];
 
   return (
     <div className="p-6 space-y-6">
@@ -397,6 +377,24 @@ const PeopleList = ({allNotes, setAllNotes}) => {
         </div>
       </div>
 
+      {/* A-Z Navigation */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-sm font-medium text-gray-700">Filter by letter:</span>
+        {letters.map(letter => (
+          <button
+            key={letter}
+            onClick={() => setSelectedLetter(letter)}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              selectedLetter === letter
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {letter === 'other' ? 'Other' : letter}
+          </button>
+        ))}
+      </div>
+
       {/* Search Bar */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -423,16 +421,16 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       <div className="grid grid-cols-2 gap-4 bg-white rounded-xl border p-4 shadow-sm">
         <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
           <div className="text-xs font-medium text-gray-500">Total</div>
-          <div className="text-2xl font-bold text-gray-900">{totalPeople}</div>
+          <div className="text-2xl font-bold text-gray-900">{loading ? '...' : totalPeople}</div>
         </div>
         <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
           <div className="text-xs font-medium text-indigo-600">Tags</div>
-          <div className="text-2xl font-bold text-indigo-700">{totalTags}</div>
+          <div className="text-2xl font-bold text-indigo-700">{loading ? '...' : totalTags}</div>
         </div>
       </div>
 
       {/* Untagged People Alert */}
-      {getPeopleWithoutTags > 0 && (
+      {!loading && peopleWithoutTags.length > 0 && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
@@ -442,7 +440,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
             </div>
             <div className="ml-3">
               <p className="text-sm text-yellow-700">
-                {getPeopleWithoutTags} {getPeopleWithoutTags === 1 ? 'person' : 'people'} {getPeopleWithoutTags === 1 ? 'has' : 'have'} no tags assigned.
+                {peopleWithoutTags.length} {peopleWithoutTags.length === 1 ? 'person' : 'people'} {peopleWithoutTags.length === 1 ? 'has' : 'have'} no tags assigned.
               </p>
             </div>
           </div>
@@ -488,9 +486,9 @@ const PeopleList = ({allNotes, setAllNotes}) => {
               }`}
             >
               <span>No Tags</span>
-              {getPeopleWithoutTags > 0 && (
+              {!loading && peopleWithoutTags.length > 0 && (
                 <span className="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded-full">
-                  {getPeopleWithoutTags}
+                  {peopleWithoutTags.length}
                 </span>
               )}
             </button>
@@ -510,7 +508,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
             <span>Without Photo</span>
           </button>
         </div>
-        {(selectedTags.length > 0 || localSearchQuery || showWithoutPhoto) && (
+        {(selectedTags.length > 0 || localSearchQuery || showWithoutPhoto || selectedLetter !== 'A') && (
           <button
             onClick={clearFilters}
             className="text-sm text-indigo-600 hover:text-indigo-800 ml-2"
@@ -520,26 +518,33 @@ const PeopleList = ({allNotes, setAllNotes}) => {
         )}
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-12">
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      )}
+
       {/* People List */}
-      {filteredallNotes.length === 0 ? (
+      {!loading && people.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-500">No people found</p>
         </div>
-      ) : viewMode === 'tags' ? (
+      ) : !loading && viewMode === 'tags' ? (
         <div className="space-y-6">
           {allTags.map(tag => {
-            const tagallNotes = allNotesByTag[tag];
-            if (tagallNotes.length === 0) return null;
+            const tagPeople = peopleByTag[tag];
+            if (!tagPeople || tagPeople.length === 0) return null;
             
             return (
               <div key={tag} className="bg-white rounded-lg border p-4">
                 <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
                   <TagIcon className="h-5 w-5 text-indigo-600" />
                   {tag}
-                  <span className="text-sm text-gray-500">({tagallNotes.length})</span>
+                  <span className="text-sm text-gray-500">({tagPeople.length})</span>
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {tagallNotes.map(note => (
+                  {tagPeople.map(note => (
                     <PersonCard
                       key={note.id}
                       note={note}
@@ -547,7 +552,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
                       onEdit={(note) => setEditPersonModal({ open: true, personNote: note })}
                       onRemoveTag={handleRemoveTag}
                       onUpdate={handleUpdatePerson}
-                      allNotes={uniqueNotes}
+                      allNotes={allPeopleForRelationships}
                       hidePhotos={hidePhotos}
                       onTagClick={(tag) => {
                         setSelectedTags([tag]);
@@ -559,9 +564,9 @@ const PeopleList = ({allNotes, setAllNotes}) => {
             );
           })}
         </div>
-      ) : (
+      ) : !loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredallNotes.map(note => (
+          {people.map(note => (
             <PersonCard
               key={note.id}
               note={note}
@@ -570,7 +575,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
               onRemoveTag={handleRemoveTag}
               onDelete={handleDeletePerson}
               onUpdate={handleUpdatePerson}
-              allNotes={uniqueNotes}
+              allNotes={allPeopleForRelationships}
               hidePhotos={hidePhotos}
               onTagClick={(tag) => {
                 setSelectedTags([tag]);
@@ -578,7 +583,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
             />
           ))}
         </div>
-      )}
+      ) : null}
 
       {/* Note View Modal */}
       <NoteView
@@ -592,10 +597,10 @@ const PeopleList = ({allNotes, setAllNotes}) => {
         <AddPeopleModal
           isOpen={addPersonModal.open}
           onClose={handleCloseAddModal}
-          allNotes={allNotes}
+          allNotes={allPeopleForRelationships}
           onAdd={handleAddPerson}
           pastedImageFile={pastedImageFile}
-          setAllNotes={setAllNotes}
+          setAllNotes={setAllPeopleForRelationships}
           selectedTags={selectedTags.filter(tag => tag !== 'no-tags')}
         />
       )}
@@ -607,11 +612,11 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           onClose={() => {
             setEditPersonModal({ open: false, personNote: null });
           }}
-          allNotes={allNotes}
+          allNotes={allPeopleForRelationships}
           onEdit={handleEditPerson}
           onDelete={handleDeletePerson}
           personNote={editPersonModal.personNote}
-          setAllNotes={setAllNotes}
+          setAllNotes={setAllPeopleForRelationships}
         />
       )}
 
@@ -621,7 +626,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           isOpen={bulkAddModal.open}
           onClose={() => setBulkAddModal({ open: false })}
           onBulkAdd={handleBulkAddPeople}
-          allNotes={uniqueNotes}
+          allNotes={allPeopleForRelationships}
         />
       )}
 
@@ -636,21 +641,22 @@ const BulkAddPeopleModal = ({ isOpen, onClose, onBulkAdd, allNotes = [] }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [tagFilter, setTagFilter] = useState('');
+  const [existingTags, setExistingTags] = useState([]);
 
-  // Get all unique tags from all notes
-  const existingTags = useMemo(() => {
-    const tagSet = new Set();
-    allNotes
-      .filter(note => note.content && note.content.includes('meta::person::'))
-      .forEach(note => {
-        const tagLines = note.content
-          .split('\n')
-          .filter(line => line.startsWith('meta::tag::'))
-          .map(line => line.split('::')[2]);
-        tagLines.forEach(tag => tagSet.add(tag));
-      });
-    return Array.from(tagSet).sort();
-  }, [allNotes]);
+  // Fetch existing tags
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const tags = await fetchPeopleTags();
+        setExistingTags(tags);
+      } catch (error) {
+        console.error('Error fetching tags:', error);
+      }
+    };
+    if (isOpen) {
+      fetchTags();
+    }
+  }, [isOpen]);
 
   // Filter existing tags based on input
   const filteredExistingTags = useMemo(() => {
@@ -698,6 +704,7 @@ const BulkAddPeopleModal = ({ isOpen, onClose, onBulkAdd, allNotes = [] }) => {
       // Reset form
       setNamesText('');
       setTagsText('');
+      setTagFilter('');
       setError('');
       onClose();
     } catch (error) {
@@ -859,4 +866,4 @@ const BulkAddPeopleModal = ({ isOpen, onClose, onBulkAdd, allNotes = [] }) => {
   );
 };
 
-export default PeopleList; 
+export default PeopleList;

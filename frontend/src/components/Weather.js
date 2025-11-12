@@ -149,11 +149,11 @@ const Weather = () => {
 
   const getWeatherIcon = (rain, temperature) => {
     if (rain > 0) {
-      return <CloudArrowDownIcon className="h-8 w-8 text-blue-500" />;
+      return <CloudArrowDownIcon className="h-5 w-5 text-blue-500" />;
     } else if (temperature > 25) {
-      return <SunIcon className="h-8 w-8 text-yellow-500" />;
+      return <SunIcon className="h-5 w-5 text-yellow-500" />;
     } else {
-      return <CloudIcon className="h-8 w-8 text-gray-400" />;
+      return <CloudIcon className="h-5 w-5 text-gray-400" />;
     }
   };
 
@@ -237,11 +237,10 @@ const Weather = () => {
   ) : 0;
 
   return (
-    <div className="p-4 rounded-md bg-gray-100 shadow-md space-y-4">
+    <div className="w-full">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-1.5">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Weather</h3>
           <p className="text-xs text-gray-500">
             {loc.latitude.toFixed(4)}°N, {loc.longitude.toFixed(4)}°E
           </p>
@@ -249,23 +248,25 @@ const Weather = () => {
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="p-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+          className="p-1 text-gray-600 hover:text-gray-800 disabled:opacity-50"
           title="Refresh"
         >
-          <ArrowPathIcon className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <ArrowPathIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* Current Weather */}
-      <div className="bg-white rounded-lg p-4 border">
-        <div className="flex items-center justify-between mb-3">
+      {/* Three boxes side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+        {/* Current Weather */}
+        <div className="bg-white rounded-lg p-2 border">
+        <div className="flex items-center justify-between mb-1.5">
           <div>
-            <div className="text-sm text-gray-500">Current</div>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-xs text-gray-500">Current</div>
+            <div className="text-2xl font-bold text-gray-900">
               {current.temperature_2m.toFixed(1)}°C
             </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {formatTime(current.time, loc.timezone)} {current.is_day ? '☀️ Day' : '🌙 Night'}
+            <div className="text-xs text-gray-500 mt-0.5">
+              {formatTime(current.time, loc.timezone)} {current.is_day ? '☀️' : '🌙'}
             </div>
           </div>
           <div>
@@ -277,8 +278,8 @@ const Weather = () => {
         </div>
         
         {/* Current Weather Details */}
-        <div className="border-t pt-3 mt-3 space-y-2">
-          <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="border-t pt-1.5 mt-1.5 space-y-1">
+          <div className="grid grid-cols-2 gap-1 text-xs">
             <div>
               <span className="text-gray-500">Apparent:</span>
               <span className="ml-1 font-medium">{current.apparent_temperature?.toFixed(1)}°C</span>
@@ -292,7 +293,7 @@ const Weather = () => {
               <span className="ml-1 font-medium">{current.wind_speed_10m?.toFixed(1)} km/h</span>
             </div>
             <div>
-              <span className="text-gray-500">Precipitation:</span>
+              <span className="text-gray-500">Precip:</span>
               <span className="ml-1 font-medium text-blue-600">{current.precipitation?.toFixed(1)}mm</span>
             </div>
             {current.rain > 0 && (
@@ -311,35 +312,33 @@ const Weather = () => {
         </div>
 
         {today && (
-          <div className="border-t pt-3 mt-3">
-            <div className="text-xs text-gray-500 mb-2">Today</div>
-            <div className="space-y-2">
+          <div className="border-t pt-1.5 mt-1.5">
+            <div className="text-xs text-gray-500 mb-1">Today</div>
+            <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
                   {today.temperature_2m_max !== undefined && today.temperature_2m_min !== undefined && (
-                    <div className="text-sm text-gray-700">
+                    <div className="text-xs text-gray-700">
                       <span className="font-semibold">{today.temperature_2m_max.toFixed(0)}°</span>
-                      <span className="text-gray-500"> / </span>
+                      <span className="text-gray-500">/</span>
                       <span className="font-semibold">{today.temperature_2m_min.toFixed(0)}°</span>
-                      <span className="text-xs text-gray-500 ml-1">max/min</span>
                     </div>
                   )}
                   {today.apparent_temperature_max !== undefined && today.apparent_temperature_min !== undefined && (
-                    <div className="text-sm text-gray-600">
+                    <div className="text-xs text-gray-600">
                       <span className="font-semibold">Feels {today.apparent_temperature_max.toFixed(0)}°</span>
-                      <span className="text-gray-500"> / </span>
+                      <span className="text-gray-500">/</span>
                       <span className="font-semibold">{today.apparent_temperature_min.toFixed(0)}°</span>
                     </div>
                   )}
                 </div>
                 {todayMaxPrecipitationProbability > 0 && (
-                  <div className="text-sm text-purple-600">
+                  <div className="text-xs text-purple-600">
                     <span className="font-semibold">{todayMaxPrecipitationProbability}%</span>
-                    <span className="text-xs text-gray-500 ml-1">precip</span>
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-2 text-xs">
                 {(today.precipitation_sum > 0 || today.rain_sum > 0) && (
                   <div className="text-blue-600">
                     💧 Precip: {(today.precipitation_sum || today.rain_sum).toFixed(1)}mm
@@ -359,25 +358,25 @@ const Weather = () => {
             </div>
           </div>
         )}
-      </div>
+        </div>
 
-      {/* Hourly Forecast (Next 12 hours) */}
-      <div className="bg-white rounded-lg p-4 border">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Next 12 Hours</h4>
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        {/* Hourly Forecast (Next 12 hours) */}
+        <div className="bg-white rounded-lg p-2 border">
+        <h4 className="text-xs font-semibold text-gray-700 mb-1.5">Next 12 Hours</h4>
+        <div className="space-y-1 max-h-32 overflow-y-auto">
           {next24Hours.slice(0, 12).map((hour, index) => (
             <div
               key={index}
-              className="flex items-center justify-between py-2 border-b last:border-b-0"
+              className="flex items-center justify-between py-1 border-b last:border-b-0"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-16 text-xs text-gray-500">
+              <div className="flex items-center gap-2">
+                <div className="w-12 text-xs text-gray-500">
                   {formatTime(hour.time, loc.timezone)}
                 </div>
-                <div className="w-12">
+                <div className="w-8">
                   {getWeatherIcon(hour.rain, hour.temperature)}
                 </div>
-                <div className="text-sm font-medium text-gray-900">
+                <div className="text-xs font-medium text-gray-900">
                   {hour.temperature.toFixed(1)}°C
                 </div>
               </div>
@@ -411,20 +410,20 @@ const Weather = () => {
             </div>
           ))}
         </div>
-      </div>
+        </div>
 
-      {/* Daily Forecast (Next 7 days) */}
-      <div className="bg-white rounded-lg p-4 border">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">7-Day Forecast</h4>
-        <div className="space-y-2">
+        {/* Daily Forecast (Next 7 days) */}
+        <div className="bg-white rounded-lg p-2 border">
+        <h4 className="text-xs font-semibold text-gray-700 mb-1.5">7-Day Forecast</h4>
+        <div className="space-y-1">
           {next7Days.map((day, index) => (
             <div
               key={index}
-              className="flex items-center justify-between py-2 border-b last:border-b-0"
+              className="flex items-center justify-between py-1 border-b last:border-b-0"
             >
               <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <div className="text-sm font-medium text-gray-900">
+                <div className="flex items-center gap-1">
+                  <div className="text-xs font-medium text-gray-900">
                     {formatDate(day.time, loc.timezone)}
                   </div>
                   <div className="text-xs text-gray-600">
@@ -434,17 +433,9 @@ const Weather = () => {
                       </span>
                     )}
                   </div>
-                  {day.apparent_temperature_max !== undefined && day.apparent_temperature_min !== undefined && (
-                    <div className="text-xs text-gray-500">
-                      (Feels {day.apparent_temperature_max.toFixed(0)}°/{day.apparent_temperature_min.toFixed(0)}°)
-                    </div>
-                  )}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-gray-500 mt-0.5">
                   ☀️ {formatTime(day.sunrise, loc.timezone)} • 🌙 {formatTime(day.sunset, loc.timezone)}
-                  {day.daylight_duration !== undefined && (
-                    <span className="ml-2">({(day.daylight_duration / 3600).toFixed(1)}h daylight)</span>
-                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs flex-wrap">
@@ -469,6 +460,7 @@ const Weather = () => {
               </div>
             </div>
           ))}
+        </div>
         </div>
       </div>
     </div>

@@ -751,7 +751,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
               {showTimezones && (
                 <div className="mb-6 w-full">
                   <div className="bg-white rounded-lg shadow-md border border-gray-200 p-2 sm:p-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 items-start">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 items-start">
                       <div className="space-y-1 sm:space-y-2 flex flex-col">
                         <h3 className="text-sm sm:text-base font-semibold text-gray-900">Stock Information</h3>
                         <div className="w-full">
@@ -764,13 +764,17 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                           <ExchangeRates />
                         </div>
                       </div>
-                      <div className="space-y-1 sm:space-y-2 flex flex-col">
-                        <h3 className="text-sm sm:text-base font-semibold text-gray-900">Weather</h3>
-                        <div className="w-full">
-                          <Weather />
-                        </div>
-                      </div>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Weather Row */}
+              {showTimezones && (
+                <div className="mb-6 w-full">
+                  <div className="bg-white rounded-lg shadow-md border border-gray-200 p-2 sm:p-3">
+                    <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-3">Weather</h3>
+                    <Weather />
                   </div>
                 </div>
               )}

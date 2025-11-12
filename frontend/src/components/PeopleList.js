@@ -25,6 +25,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
   const [people, setPeople] = useState([]);
   const [allPeopleForRelationships, setAllPeopleForRelationships] = useState([]); // For relationships only
   const [allTags, setAllTags] = useState([]);
+  const [fullTotal, setFullTotal] = useState(0); // Total count of all people (unfiltered)
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -80,12 +81,13 @@ const PeopleList = ({allNotes, setAllNotes}) => {
     };
   }, []);
 
-  // Fetch all people for relationships (only once on mount)
+  // Fetch all people for relationships and full total (only once on mount)
   useEffect(() => {
     const fetchAllPeopleForRelationships = async () => {
       try {
         const allPeople = await loadPeople();
         setAllPeopleForRelationships(allPeople);
+        setFullTotal(allPeople.length);
       } catch (error) {
         console.error('Error fetching all people for relationships:', error);
       }
@@ -112,7 +114,8 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       setLoading(true);
       try {
         const filters = {
-          startsWith: selectedLetter,
+          // Only apply letter filter if there's no search query and no tag filters
+          startsWith: (localSearchQuery || selectedTags.length > 0) ? undefined : selectedLetter,
           tags: selectedTags.length > 0 ? selectedTags : undefined,
           search: localSearchQuery || undefined,
           withoutPhoto: showWithoutPhoto || undefined,
@@ -140,7 +143,8 @@ const PeopleList = ({allNotes, setAllNotes}) => {
     try {
       // Refresh people list
       const filters = {
-        startsWith: selectedLetter,
+        // Only apply letter filter if there's no search query and no tag filters
+        startsWith: (localSearchQuery || selectedTags.length > 0) ? undefined : selectedLetter,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         search: localSearchQuery || undefined,
         withoutPhoto: showWithoutPhoto || undefined,
@@ -152,6 +156,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       // Refresh all people for relationships
       const allPeople = await loadPeople();
       setAllPeopleForRelationships(allPeople);
+      setFullTotal(allPeople.length);
       
       // Refresh tags
       const tags = await fetchPeopleTags();
@@ -418,9 +423,13 @@ const PeopleList = ({allNotes, setAllNotes}) => {
       </div>
 
       {/* Summary Grid */}
-      <div className="grid grid-cols-2 gap-4 bg-white rounded-xl border p-4 shadow-sm">
+      <div className="grid grid-cols-3 gap-4 bg-white rounded-xl border p-4 shadow-sm">
         <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
-          <div className="text-xs font-medium text-gray-500">Total</div>
+          <div className="text-xs font-medium text-gray-500">Full Total</div>
+          <div className="text-2xl font-bold text-gray-900">{loading ? '...' : fullTotal}</div>
+        </div>
+        <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">
+          <div className="text-xs font-medium text-gray-500">Filtered</div>
           <div className="text-2xl font-bold text-gray-900">{loading ? '...' : totalPeople}</div>
         </div>
         <div className="flex flex-col items-center p-3 rounded-lg border transition-all duration-200">

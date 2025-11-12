@@ -1644,16 +1644,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             if (!lastRecordedDate) return null;
             
             return (
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">Last recorded:</span>
-                  <span>{moment(lastRecordedDate).format('DD-MM-YYYY')}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">Age:</span>
-                  <span>{lastRecordedAge}</span>
-                </div>
-              </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <span className="font-medium">Last recorded:</span>
+              <span>{moment(lastRecordedDate).format('DD-MM-YYYY')}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="font-medium">Age:</span>
+              <span>{lastRecordedAge}</span>
+            </div>
+          </div>
             );
           }
         })()}

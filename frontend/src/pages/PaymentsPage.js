@@ -382,6 +382,26 @@ const formatDate = (date) => {
   });
 };
 
+// Helper function to get recurrence type display
+const getRecurrenceDisplay = (event) => {
+  if (event.isEveryDaysOccurrence) {
+    return `Every ${event.daysInterval} days`;
+  }
+  if (event.isBiweeklyOccurrence) {
+    return 'Bi-weekly';
+  }
+  if (event.isWeeklyOccurrence) {
+    return 'Weekly';
+  }
+  if (event.recurrence && event.recurrence !== 'none') {
+    return event.recurrence === 'monthly' ? 'Monthly' :
+           event.recurrence === 'weekly' ? 'Weekly' :
+           event.recurrence === 'daily' ? 'Daily' :
+           event.recurrence === 'yearly' ? 'Yearly' : event.recurrence;
+  }
+  return '-';
+};
+
 // Helper function to calculate days until payment
 const getDaysUntil = (date) => {
   if (!date) return null;
@@ -398,7 +418,7 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
-  const [showPastPayments, setShowPastPayments] = useState(false);
+  const [showCompletedPayments, setShowCompletedPayments] = useState(false);
   const [showHelpSection, setShowHelpSection] = useState(false);
   const [showErrorsSection, setShowErrorsSection] = useState(true);
 
@@ -762,6 +782,48 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
       });
   }, [paymentEvents]);
 
+  // Get month name for current month
+  const currentMonthName = useMemo(() => {
+    const now = new Date();
+    const date = new Date(now.getFullYear(), now.getMonth(), 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }, []);
+
+  // Helper function to count occurrences of each day of week in a month
+  const getDaysOfWeekCount = (year, month) => {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const counts = {
+      'Sunday': 0,
+      'Monday': 0,
+      'Tuesday': 0,
+      'Wednesday': 0,
+      'Thursday': 0,
+      'Friday': 0,
+      'Saturday': 0
+    };
+    
+    // Get first and last day of month
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const totalDays = lastDay.getDate();
+    
+    // Count each day of the week
+    for (let day = 1; day <= totalDays; day++) {
+      const date = new Date(year, month, day);
+      const dayOfWeek = date.getDay();
+      const dayName = dayNames[dayOfWeek];
+      counts[dayName]++;
+    }
+    
+    return counts;
+  };
+
+  // Get days of week count for current month
+  const daysOfWeekCurrentMonth = useMemo(() => {
+    const now = new Date();
+    return getDaysOfWeekCount(now.getFullYear(), now.getMonth());
+  }, []);
+
   // Get month name for next month
   const nextMonthName = useMemo(() => {
     const now = new Date();
@@ -769,6 +831,78 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
     const nextMonthYear = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
     const date = new Date(nextMonthYear, nextMonth, 1);
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }, []);
+
+  // Get days of week count for next month
+  const daysOfWeekNextMonth = useMemo(() => {
+    const now = new Date();
+    const nextMonth = now.getMonth() === 11 ? 0 : now.getMonth() + 1;
+    const nextMonthYear = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+    return getDaysOfWeekCount(nextMonthYear, nextMonth);
+  }, []);
+
+  // Get upcoming payments for 2 months from now
+  const upcomingTwoMonths = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const twoMonthsFromNow = currentMonth + 2;
+    let twoMonthsYear = currentYear;
+    let twoMonthsMonth = twoMonthsFromNow;
+    
+    if (twoMonthsFromNow > 11) {
+      twoMonthsMonth = twoMonthsFromNow - 12;
+      twoMonthsYear = currentYear + 1;
+    }
+    
+    return paymentEvents
+      .filter(event => {
+        if (!event.nextOccurrence) return false;
+        const occurrenceDate = new Date(event.nextOccurrence);
+        const occurrenceYear = occurrenceDate.getFullYear();
+        const occurrenceMonth = occurrenceDate.getMonth();
+        
+        // Include payments happening 2 months from now
+        return occurrenceYear === twoMonthsYear && occurrenceMonth === twoMonthsMonth;
+      })
+      .sort((a, b) => {
+        // Sort by next occurrence date (earliest first)
+        if (!a.nextOccurrence && !b.nextOccurrence) return 0;
+        if (!a.nextOccurrence) return 1;
+        if (!b.nextOccurrence) return -1;
+        return new Date(a.nextOccurrence) - new Date(b.nextOccurrence);
+      });
+  }, [paymentEvents]);
+
+  // Get month name for 2 months from now
+  const twoMonthsName = useMemo(() => {
+    const now = new Date();
+    const twoMonthsFromNow = now.getMonth() + 2;
+    let twoMonthsMonth = twoMonthsFromNow;
+    let twoMonthsYear = now.getFullYear();
+    
+    if (twoMonthsFromNow > 11) {
+      twoMonthsMonth = twoMonthsFromNow - 12;
+      twoMonthsYear = now.getFullYear() + 1;
+    }
+    
+    const date = new Date(twoMonthsYear, twoMonthsMonth, 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }, []);
+
+  // Get days of week count for 2 months from now
+  const daysOfWeekTwoMonths = useMemo(() => {
+    const now = new Date();
+    const twoMonthsFromNow = now.getMonth() + 2;
+    let twoMonthsMonth = twoMonthsFromNow;
+    let twoMonthsYear = now.getFullYear();
+    
+    if (twoMonthsFromNow > 11) {
+      twoMonthsMonth = twoMonthsFromNow - 12;
+      twoMonthsYear = now.getFullYear() + 1;
+    }
+    
+    return getDaysOfWeekCount(twoMonthsYear, twoMonthsMonth);
   }, []);
 
   // Filter past payments
@@ -835,8 +969,18 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
     }, 0);
   }, [upcomingNextMonth]);
 
+  // Calculate total for 2 months from now payments
+  const twoMonthsTotal = useMemo(() => {
+    return upcomingTwoMonths.reduce((total, event) => {
+      return total + extractDollarAmount(event.description, event.customFields);
+    }, 0);
+  }, [upcomingTwoMonths]);
+
   // Filter state for next month section
   const [nextMonthSearchQuery, setNextMonthSearchQuery] = useState('');
+
+  // Filter state for 2 months from now section
+  const [twoMonthsSearchQuery, setTwoMonthsSearchQuery] = useState('');
 
   // Filtered next month payments
   const filteredNextMonthPayments = useMemo(() => {
@@ -855,6 +999,24 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
              dateStr.includes(query);
     });
   }, [upcomingNextMonth, nextMonthSearchQuery]);
+
+  // Filtered 2 months from now payments
+  const filteredTwoMonthsPayments = useMemo(() => {
+    if (!twoMonthsSearchQuery.trim()) {
+      return upcomingTwoMonths;
+    }
+
+    const query = twoMonthsSearchQuery.toLowerCase();
+    return upcomingTwoMonths.filter(event => {
+      const description = event.description?.toLowerCase() || '';
+      const amount = extractDollarAmount(event.description, event.customFields).toString();
+      const dateStr = event.nextOccurrence ? formatDate(event.nextOccurrence).toLowerCase() : '';
+
+      return description.includes(query) ||
+             amount.includes(query) ||
+             dateStr.includes(query);
+    });
+  }, [upcomingTwoMonths, twoMonthsSearchQuery]);
 
   // Calculate estimated total for this month
   const estimatedMonthlyTotal = useMemo(() => {
@@ -1221,208 +1383,232 @@ event_$:25`}
           </button>
           
           {showErrorsSection && (
-            <div className="space-y-3">
-              {paymentErrors.map((error) => {
-                const { note, eventDetails, errorReasons, amount } = error;
-                
-                return (
-                  <div
-                    key={note.id}
-                    className="bg-red-50 border-2 border-red-200 rounded-lg p-4"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-red-900 mb-2">
-                          {eventDetails.description || 'Untitled Payment'}
-                        </h3>
-                        
-                        <div className="space-y-1 mb-3">
-                          {errorReasons.map((reason, index) => (
-                            <div key={index} className="flex items-center gap-2 text-sm text-red-700">
-                              <ExclamationTriangleIcon className="h-4 w-4 flex-shrink-0" />
-                              <span>{reason}</span>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        <div className="text-sm text-gray-600 mt-2">
-                          <p><strong>Current amount:</strong> ${amount === 0 || isNaN(amount) || amount === null ? '0.00 (invalid)' : amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                          {eventDetails.dateTime && (
-                            <p><strong>Date:</strong> {eventDetails.dateTime}</p>
-                          )}
-                          {eventDetails.weeklyDays && eventDetails.weeklyDays.length > 0 && (
-                            <p><strong>Weekly days:</strong> {eventDetails.weeklyDays.join(', ')}</p>
-                          )}
-                          {eventDetails.biweeklyDay && (
-                            <p><strong>Bi-weekly day:</strong> {eventDetails.biweeklyDay}</p>
-                          )}
-                          {eventDetails.everyDays && (
-                            <p><strong>Every X days:</strong> {eventDetails.everyDays}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEditEvent({ note, ...eventDetails })}
-                          className="flex-shrink-0 p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="Edit Payment to Fix Error"
-                        >
-                          <PencilIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => handleViewNote(note.id)}
-                          className="flex-shrink-0 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="View in Notes"
-                        >
-                          <DocumentTextIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="bg-white border-2 border-red-200 rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-red-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Description</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Errors</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Details</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paymentErrors.map((error) => {
+                    const { note, eventDetails, errorReasons, amount } = error;
+                    
+                    return (
+                      <tr key={note.id} className="hover:bg-red-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="text-sm font-semibold text-red-900">
+                            {eventDetails.description || 'Untitled Payment'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="space-y-1">
+                            {errorReasons.map((reason, index) => (
+                              <div key={index} className="flex items-center gap-2 text-xs text-red-700">
+                                <ExclamationTriangleIcon className="h-3 w-3 flex-shrink-0" />
+                                <span>{reason}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm text-red-700">
+                            ${amount === 0 || isNaN(amount) || amount === null ? '0.00 (invalid)' : amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="text-xs text-gray-600 space-y-0.5">
+                            {eventDetails.dateTime && (
+                              <p><strong>Date:</strong> {eventDetails.dateTime}</p>
+                            )}
+                            {eventDetails.weeklyDays && eventDetails.weeklyDays.length > 0 && (
+                              <p><strong>Weekly:</strong> {eventDetails.weeklyDays.join(', ')}</p>
+                            )}
+                            {eventDetails.biweeklyDay && (
+                              <p><strong>Bi-weekly:</strong> {eventDetails.biweeklyDay}</p>
+                            )}
+                            {eventDetails.everyDays && (
+                              <p><strong>Every:</strong> {eventDetails.everyDays} days</p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleEditEvent({ note, ...eventDetails })}
+                              className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                              title="Edit Payment to Fix Error"
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleViewNote(note.id)}
+                              className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="View in Notes"
+                            >
+                              <DocumentTextIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
       )}
 
       {/* Completed Payments This Month */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <CalendarIcon className="h-6 w-6 text-green-600" />
-          Completed Payments This Month ({completedThisMonth.length})
-        </h2>
-        
-        {completedThisMonth.length > 0 && (
-          <div className="mb-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="text-sm text-green-700 font-medium mb-1">Total Completed This Month</div>
-              <div className="text-2xl font-bold text-green-700">
-                ${completedMonthlyTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {completedThisMonth.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
-            <p>No payments completed this month yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {completedThisMonth.map((event) => {
-              const amount = extractDollarAmount(event.description, event.customFields);
-              
-              const uniqueKey = event.nextOccurrence 
-                ? `${event.note.id}-${new Date(event.nextOccurrence).getTime()}`
-                : event.note.id;
-              
-              return (
-                <div
-                  key={uniqueKey}
-                  className="bg-green-50 border border-green-200 rounded-lg p-4 opacity-90 hover:opacity-100 transition-opacity"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        {event.nextOccurrence && (
-                          <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded font-medium">
-                            {formatDate(event.nextOccurrence)}
-                          </span>
-                        )}
-                        <span className="text-xs text-green-600 bg-green-200 px-2 py-1 rounded font-medium">
-                          Completed
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-green-900 mb-1">
-                        {event.description || 'Untitled Payment'}
-                      </h3>
-                      <div className="flex items-center gap-4 mt-2">
-                        <span className={`text-xl font-bold ${amount > 0 ? 'text-green-700' : 'text-gray-400'}`}>
-                          ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                        {event.recurrence && event.recurrence !== 'none' && (
-                          <span className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded">
-                            {event.recurrence === 'monthly' ? 'Monthly' :
-                             event.recurrence === 'weekly' ? 'Weekly' :
-                             event.recurrence === 'daily' ? 'Daily' :
-                             event.recurrence === 'yearly' ? 'Yearly' : event.recurrence}
-                          </span>
-                        )}
-                        {event.isBiweeklyOccurrence && (
-                          <span className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded">
-                            Bi-weekly
-                          </span>
-                        )}
-                        {event.isEveryDaysOccurrence && (
-                          <span className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded">
-                            Every {event.daysInterval} days
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleEditEvent(event)}
-                        className="flex-shrink-0 p-2 text-green-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Edit Payment"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleViewNote(event.note.id)}
-                        className="flex-shrink-0 p-2 text-green-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="View in Notes"
-                      >
-                        <DocumentTextIcon className="h-5 w-5" />
-                      </button>
-                    </div>
+      {completedThisMonth.length > 0 && (
+        <div className="mb-8">
+          <button
+            onClick={() => setShowCompletedPayments(!showCompletedPayments)}
+            className="flex items-center gap-2 text-lg font-semibold text-gray-700 mb-4 hover:text-gray-900 transition-colors"
+          >
+            <CalendarIcon className="h-6 w-6 text-green-600" />
+            <span className={`transform transition-transform ${showCompletedPayments ? 'rotate-90' : ''}`}>▶</span>
+            Completed Payments This Month ({completedThisMonth.length})
+          </button>
+          
+          {showCompletedPayments && (
+            <>
+              <div className="mb-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="text-sm text-green-700 font-medium mb-1">Total Completed This Month</div>
+                  <div className="text-2xl font-bold text-green-700">
+                    ${completedMonthlyTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-green-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Description</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Amount</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Recurrence</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {completedThisMonth.map((event) => {
+                      const amount = extractDollarAmount(event.description, event.customFields);
+                      const uniqueKey = event.nextOccurrence 
+                        ? `${event.note.id}-${new Date(event.nextOccurrence).getTime()}`
+                        : event.note.id;
+                      
+                      return (
+                        <tr key={uniqueKey} className="hover:bg-green-50 transition-colors">
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex flex-col">
+                              {event.nextOccurrence && (
+                                <span className="text-sm text-green-700 font-medium">
+                                  {formatDate(event.nextOccurrence)}
+                                </span>
+                              )}
+                              <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded mt-1 inline-block w-fit">
+                                Completed
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="text-sm font-medium text-gray-900">
+                              {event.description || 'Untitled Payment'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className={`text-sm font-bold ${amount > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                              ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="text-xs text-gray-600">
+                              {getRecurrenceDisplay(event)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleEditEvent(event)}
+                                className="p-1.5 text-green-700 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                title="Edit Payment"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleViewNote(event.note.id)}
+                                className="p-1.5 text-green-700 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                title="View in Notes"
+                              >
+                                <DocumentTextIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Upcoming Payments This Month */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
           <CalendarIcon className="h-6 w-6 text-blue-600" />
-          Upcoming Payments This Month
+          Upcoming Payments This Month - {currentMonthName}
         </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          {Object.entries(daysOfWeekCurrentMonth).map(([day, count], index) => (
+            <span key={day}>
+              {day} ({count}){index < Object.keys(daysOfWeekCurrentMonth).length - 1 ? ', ' : ''}
+            </span>
+          ))}
+        </p>
         
         {upcomingThisMonth.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
             <p>No upcoming payments found.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {upcomingThisMonth.map((event) => {
-              const amount = extractDollarAmount(event.description, event.customFields);
-              const daysUntil = event.daysUntil;
-              
-              // Determine if it's this month or future month
-              const now = new Date();
-              const occurrenceDate = event.nextOccurrence ? new Date(event.nextOccurrence) : null;
-              const isThisMonth = occurrenceDate && 
-                occurrenceDate.getFullYear() === now.getFullYear() && 
-                occurrenceDate.getMonth() === now.getMonth();
-              
-              const uniqueKey = event.nextOccurrence 
-                ? `${event.note.id}-${new Date(event.nextOccurrence).getTime()}`
-                : event.note.id;
-              
-              return (
-                <div
-                  key={uniqueKey}
-                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-blue-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Description</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Days Until</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Recurrence</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {upcomingThisMonth.map((event) => {
+                  const amount = extractDollarAmount(event.description, event.customFields);
+                  const daysUntil = event.daysUntil;
+                  const occurrenceDate = event.nextOccurrence ? new Date(event.nextOccurrence) : null;
+                  
+                  const uniqueKey = event.nextOccurrence 
+                    ? `${event.note.id}-${new Date(event.nextOccurrence).getTime()}`
+                    : event.note.id;
+                  
+                  return (
+                    <tr key={uniqueKey} className="hover:bg-blue-50 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {occurrenceDate && (
-                          <span className={`text-sm font-medium px-3 py-1 rounded ${
+                          <span className={`text-sm font-medium px-2 py-1 rounded ${
                             daysUntil === 0 ? 'bg-red-100 text-red-700' :
                             daysUntil !== null && daysUntil <= 3 ? 'bg-orange-100 text-orange-700' :
                             'bg-blue-100 text-blue-700'
@@ -1430,76 +1616,71 @@ event_$:25`}
                             {formatDate(occurrenceDate)}
                           </span>
                         )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-medium text-gray-900">
+                          {event.description || 'Untitled Payment'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`text-sm font-bold ${amount > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                          ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {daysUntil !== null && (
                           <span className="text-sm text-gray-600">
                             {daysUntil === 0 ? 'Due today' : 
                              daysUntil === 1 ? 'Due tomorrow' :
-                             daysUntil > 0 ? `${daysUntil} days away` : ''}
+                             daysUntil > 0 ? `${daysUntil} days` : ''}
                           </span>
                         )}
-                        {!isThisMonth && occurrenceDate && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            {occurrenceDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        {event.description || 'Untitled Payment'}
-                      </h3>
-                      <div className="flex items-center gap-4 mt-2">
-                        <span className={`text-xl font-bold ${amount > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                          ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs text-gray-600">
+                          {getRecurrenceDisplay(event)}
                         </span>
-                        {event.recurrence && event.recurrence !== 'none' && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            {event.recurrence === 'monthly' ? 'Monthly' :
-                             event.recurrence === 'weekly' ? 'Weekly' :
-                             event.recurrence === 'daily' ? 'Daily' :
-                             event.recurrence === 'yearly' ? 'Yearly' : event.recurrence}
-                          </span>
-                        )}
-                        {event.isBiweeklyOccurrence && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            Bi-weekly
-                          </span>
-                        )}
-                        {event.isEveryDaysOccurrence && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            Every {event.daysInterval} days
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleEditEvent(event)}
-                        className="flex-shrink-0 p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Edit Payment"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleViewNote(event.note.id)}
-                        className="flex-shrink-0 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="View in Notes"
-                      >
-                        <DocumentTextIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditEvent(event)}
+                            className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                            title="Edit Payment"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleViewNote(event.note.id)}
+                            className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="View in Notes"
+                          >
+                            <DocumentTextIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
       {/* Upcoming Payments Next Month */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
           <CalendarIcon className="h-6 w-6 text-indigo-600" />
           Upcoming Payments - {nextMonthName}
         </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          {Object.entries(daysOfWeekNextMonth).map(([day, count], index) => (
+            <span key={day}>
+              {day} ({count}){index < Object.keys(daysOfWeekNextMonth).length - 1 ? ', ' : ''}
+            </span>
+          ))}
+        </p>
         
         {/* Total Summary */}
         <div className="mb-4">
@@ -1547,166 +1728,225 @@ event_$:25`}
             <p>No payments found matching your search.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredNextMonthPayments.map((event) => {
-              const amount = extractDollarAmount(event.description, event.customFields);
-              const daysUntil = event.daysUntil;
-              const occurrenceDate = event.nextOccurrence ? new Date(event.nextOccurrence) : null;
-              
-              const uniqueKey = event.nextOccurrence 
-                ? `${event.note.id}-${new Date(event.nextOccurrence).getTime()}`
-                : event.note.id;
-              
-              return (
-                <div
-                  key={uniqueKey}
-                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow opacity-90"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-indigo-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Description</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Days Until</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Recurrence</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredNextMonthPayments.map((event) => {
+                  const amount = extractDollarAmount(event.description, event.customFields);
+                  const daysUntil = event.daysUntil;
+                  const occurrenceDate = event.nextOccurrence ? new Date(event.nextOccurrence) : null;
+                  
+                  const uniqueKey = event.nextOccurrence 
+                    ? `${event.note.id}-${new Date(event.nextOccurrence).getTime()}`
+                    : event.note.id;
+                  
+                  return (
+                    <tr key={uniqueKey} className="hover:bg-indigo-50 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {occurrenceDate && (
-                          <span className="text-sm font-medium px-3 py-1 rounded bg-indigo-100 text-indigo-700">
+                          <span className="text-sm font-medium px-2 py-1 rounded bg-indigo-100 text-indigo-700">
                             {formatDate(occurrenceDate)}
                           </span>
                         )}
-                        {daysUntil !== null && (
-                          <span className="text-sm text-gray-600">
-                            {daysUntil > 0 ? `${daysUntil} days away` : ''}
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        {event.description || 'Untitled Payment'}
-                      </h3>
-                      <div className="flex items-center gap-4 mt-2">
-                        <span className={`text-xl font-bold ${amount > 0 ? 'text-indigo-600' : 'text-gray-400'}`}>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-medium text-gray-900">
+                          {event.description || 'Untitled Payment'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`text-sm font-bold ${amount > 0 ? 'text-indigo-600' : 'text-gray-400'}`}>
                           ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
-                        {event.recurrence && event.recurrence !== 'none' && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            {event.recurrence === 'monthly' ? 'Monthly' :
-                             event.recurrence === 'weekly' ? 'Weekly' :
-                             event.recurrence === 'daily' ? 'Daily' :
-                             event.recurrence === 'yearly' ? 'Yearly' : event.recurrence}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {daysUntil !== null && daysUntil > 0 && (
+                          <span className="text-sm text-gray-600">
+                            {daysUntil} days
                           </span>
                         )}
-                        {event.isBiweeklyOccurrence && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            Bi-weekly
-                          </span>
-                        )}
-                        {event.isEveryDaysOccurrence && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            Every {event.daysInterval} days
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleEditEvent(event)}
-                        className="flex-shrink-0 p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Edit Payment"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleViewNote(event.note.id)}
-                        className="flex-shrink-0 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="View in Notes"
-                      >
-                        <DocumentTextIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs text-gray-600">
+                          {getRecurrenceDisplay(event)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditEvent(event)}
+                            className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                            title="Edit Payment"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleViewNote(event.note.id)}
+                            className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="View in Notes"
+                          >
+                            <DocumentTextIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* Past Payments (Collapsible) */}
-      {pastPayments.length > 0 && (
-        <div className="mb-8">
-          <button
-            onClick={() => setShowPastPayments(!showPastPayments)}
-            className="flex items-center gap-2 text-lg font-semibold text-gray-700 mb-4 hover:text-gray-900 transition-colors"
-          >
-            <span className={`transform transition-transform ${showPastPayments ? 'rotate-90' : ''}`}>▶</span>
-            Past Payments ({pastPayments.length})
-          </button>
-          
-          {showPastPayments && (
-            <div className="space-y-3">
-              {pastPayments.map((event) => {
-                const amount = extractDollarAmount(event.description, event.customFields);
-                
-                const uniqueKey = event.nextOccurrence 
-                  ? `${event.note.id}-${new Date(event.nextOccurrence).getTime()}`
-                  : event.note.id;
-                
-                return (
-                  <div
-                    key={uniqueKey}
-                    className="bg-white border border-gray-200 rounded-lg p-4 opacity-75 hover:opacity-100 transition-opacity"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          {event.nextOccurrence && (
-                            <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded font-medium">
-                              {formatDate(event.nextOccurrence)}
-                            </span>
-                          )}
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-700 mb-1">
-                          {event.description || 'Untitled Payment'}
-                        </h3>
-                        <div className="flex items-center gap-4 mt-2">
-                          <span className={`text-xl font-bold ${amount > 0 ? 'text-gray-600' : 'text-gray-400'}`}>
-                            ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                          {event.recurrence && event.recurrence !== 'none' && (
-                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                              {event.recurrence === 'monthly' ? 'Monthly' :
-                               event.recurrence === 'weekly' ? 'Weekly' :
-                               event.recurrence === 'daily' ? 'Daily' :
-                               event.recurrence === 'yearly' ? 'Yearly' : event.recurrence}
-                            </span>
-                          )}
-                          {event.isBiweeklyOccurrence && (
-                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                              Bi-weekly
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEditEvent(event)}
-                          className="flex-shrink-0 p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="Edit Payment"
-                        >
-                          <PencilIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => handleViewNote(event.note.id)}
-                          className="flex-shrink-0 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="View in Notes"
-                        >
-                          <DocumentTextIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+      {/* Upcoming Payments - 2 Months From Now */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
+          <CalendarIcon className="h-6 w-6 text-purple-600" />
+          Upcoming Payments - {twoMonthsName}
+        </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          {Object.entries(daysOfWeekTwoMonths).map(([day, count], index) => (
+            <span key={day}>
+              {day} ({count}){index < Object.keys(daysOfWeekTwoMonths).length - 1 ? ', ' : ''}
+            </span>
+          ))}
+        </p>
+        
+        {/* Total Summary */}
+        <div className="mb-4">
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="text-sm text-purple-700 font-medium mb-1">Total for {twoMonthsName}</div>
+            <div className="text-2xl font-bold text-purple-700">
+              ${twoMonthsTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-          )}
+            <div className="text-xs text-purple-600 mt-1">
+              {upcomingTwoMonths.length} payment{upcomingTwoMonths.length !== 1 ? 's' : ''} scheduled
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* Search/Filter Box for 2 Months From Now */}
+        {upcomingTwoMonths.length > 0 && (
+          <div className="mb-4">
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder={`Search ${twoMonthsName} payments...`}
+                value={twoMonthsSearchQuery}
+                onChange={(e) => setTwoMonthsSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              />
+              {twoMonthsSearchQuery && (
+                <button
+                  onClick={() => setTwoMonthsSearchQuery('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {upcomingTwoMonths.length === 0 ? (
+          <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
+            <p>No payments scheduled for {twoMonthsName}.</p>
+          </div>
+        ) : filteredTwoMonthsPayments.length === 0 ? (
+          <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
+            <p>No payments found matching your search.</p>
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-purple-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Description</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Days Until</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Recurrence</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredTwoMonthsPayments.map((event) => {
+                  const amount = extractDollarAmount(event.description, event.customFields);
+                  const daysUntil = event.daysUntil;
+                  const occurrenceDate = event.nextOccurrence ? new Date(event.nextOccurrence) : null;
+                  
+                  const uniqueKey = event.nextOccurrence 
+                    ? `${event.note.id}-${new Date(event.nextOccurrence).getTime()}`
+                    : event.note.id;
+                  
+                  return (
+                    <tr key={uniqueKey} className="hover:bg-purple-50 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {occurrenceDate && (
+                          <span className="text-sm font-medium px-2 py-1 rounded bg-purple-100 text-purple-700">
+                            {formatDate(occurrenceDate)}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-medium text-gray-900">
+                          {event.description || 'Untitled Payment'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`text-sm font-bold ${amount > 0 ? 'text-purple-600' : 'text-gray-400'}`}>
+                          ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {daysUntil !== null && daysUntil > 0 && (
+                          <span className="text-sm text-gray-600">
+                            {daysUntil} days
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs text-gray-600">
+                          {getRecurrenceDisplay(event)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditEvent(event)}
+                            className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                            title="Edit Payment"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleViewNote(event.note.id)}
+                            className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="View in Notes"
+                          >
+                            <DocumentTextIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* EditEventModal for adding/editing payments */}
       <EditEventModal

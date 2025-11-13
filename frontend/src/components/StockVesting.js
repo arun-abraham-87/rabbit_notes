@@ -11,6 +11,8 @@ const StockVesting = ({ notes }) => {
   const [activeTab, setActiveTab] = useState('future');
   const [monthsToShow, setMonthsToShow] = useState(3);
   const [stockPrice, setStockPrice] = useState(null);
+  const [sliderPrice, setSliderPrice] = useState(null);
+  const [defaultStockPrice, setDefaultStockPrice] = useState(null);
   const [currency, setCurrency] = useState('USD');
   const [conversionRate, setConversionRate] = useState(null);
   const [showConversionModal, setShowConversionModal] = useState(false);
@@ -34,7 +36,19 @@ const StockVesting = ({ notes }) => {
       
       if (hoursSinceLastUpdate < 24) {
         setStockPrice(cachedPrice);
+        setDefaultStockPrice(cachedPrice);
+        setSliderPrice(cachedPrice);
+      } else {
+        // If no cached price or cache expired, use default of 65.47
+        const defaultPrice = 65.47;
+        setDefaultStockPrice(defaultPrice);
+        setSliderPrice(defaultPrice);
       }
+    } else {
+      // If no cached data, use default of 65.47
+      const defaultPrice = 65.47;
+      setDefaultStockPrice(defaultPrice);
+      setSliderPrice(defaultPrice);
     }
 
     // Get conversion rate from localStorage
@@ -51,8 +65,10 @@ const StockVesting = ({ notes }) => {
   }, []);
 
   const calculateMonetaryValue = (quantity) => {
-    if (!stockPrice) return null;
-    let value = quantity * stockPrice;
+    // Use sliderPrice if available, otherwise fall back to stockPrice
+    const priceToUse = sliderPrice !== null ? sliderPrice : stockPrice;
+    if (!priceToUse) return null;
+    let value = quantity * priceToUse;
     
     // Apply currency conversion if needed
     if (currency === 'AUD' && conversionRate) {
@@ -773,19 +789,56 @@ const StockVesting = ({ notes }) => {
         </div>
       )}
 
-      {/* Stock Price Note */}
-      {stockPrice && (
-        <div className="mb-4 text-sm text-gray-600">
-          Note: All monetary values are calculated using the current stock price of {currency === 'USD' ? '$' : 'A$'}{stockPrice.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          })} per share
-          {currency === 'AUD' && conversionRate && (
-            <span> (converted at {conversionRate.toFixed(4)} USD/AUD)</span>
-          )}
-          {applyTax && taxRate && (
-            <span> (after {taxRate * 100}% tax)</span>
-          )}
+      {/* Stock Price Note with Slider */}
+      {(stockPrice || sliderPrice !== null) && (
+        <div className="mb-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="text-sm text-gray-600">
+              Note: All monetary values are calculated using the current stock price of {currency === 'USD' ? '$' : 'A$'}
+              <span className="font-semibold ml-1">
+                {(sliderPrice !== null ? sliderPrice : stockPrice).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </span>
+              {' '}per share
+              {currency === 'AUD' && conversionRate && (
+                <span> (converted at {conversionRate.toFixed(4)} USD/AUD)</span>
+              )}
+              {applyTax && taxRate && (
+                <span> (after {taxRate * 100}% tax)</span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 flex-1 min-w-[300px]">
+              <label className="text-sm text-gray-600 whitespace-nowrap">
+                Price: {currency === 'USD' ? '$' : 'A$'}
+                <span className="font-semibold ml-1">
+                  {(sliderPrice !== null ? sliderPrice : stockPrice || 65.47).toFixed(2)}
+                </span>
+              </label>
+              <input
+                type="range"
+                min="30"
+                max="120"
+                step="0.01"
+                value={sliderPrice !== null ? sliderPrice : (stockPrice || 65.47)}
+                onChange={(e) => setSliderPrice(parseFloat(e.target.value))}
+                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                style={{
+                  background: `linear-gradient(to right, #4F46E5 0%, #4F46E5 ${((sliderPrice !== null ? sliderPrice : (stockPrice || 65.47)) - 30) / (120 - 30) * 100}%, #E5E7EB ${((sliderPrice !== null ? sliderPrice : (stockPrice || 65.47)) - 30) / (120 - 30) * 100}%, #E5E7EB 100%)`
+                }}
+              />
+              <button
+                onClick={() => {
+                  const resetPrice = defaultStockPrice !== null ? defaultStockPrice : (stockPrice || 65.47);
+                  setSliderPrice(resetPrice);
+                }}
+                className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors whitespace-nowrap"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
         </div>
       )}
       

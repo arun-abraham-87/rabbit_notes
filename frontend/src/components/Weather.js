@@ -237,13 +237,44 @@ const Weather = () => {
   ) : 0;
 
   return (
-    <div className="w-full">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-1.5">
-        <div>
-          <p className="text-xs text-gray-500">
-            {loc.latitude.toFixed(4)}°N, {loc.longitude.toFixed(4)}°E
-          </p>
+    <div className="w-full group">
+      {/* Collapsed View - Current Weather Only (Wide Format) */}
+      <div className="bg-white rounded-lg p-2 border flex items-center justify-between group-hover:hidden transition-all">
+        <div className="flex items-center gap-4 flex-1">
+          <div className="flex items-center gap-3">
+            {getWeatherIcon(
+              next24Hours[0]?.rain || 0,
+              current.temperature_2m
+            )}
+            <div>
+              <div className="text-xl font-bold text-gray-900">
+                {current.temperature_2m.toFixed(1)}°C
+              </div>
+              {current.apparent_temperature !== undefined && (
+                <div className="text-xs text-gray-600">
+                  Feels like {current.apparent_temperature.toFixed(1)}°C
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-4 text-xs text-gray-600">
+            <div>
+              <span className="text-gray-500">Humidity:</span> {current.relative_humidity_2m?.toFixed(0)}%
+            </div>
+            <div>
+              <span className="text-gray-500">Wind:</span> {current.wind_speed_10m?.toFixed(1)} km/h
+            </div>
+            {current.precipitation > 0 && (
+              <div className="text-blue-600">
+                <span className="text-gray-500">Precip:</span> {current.precipitation.toFixed(1)}mm
+              </div>
+            )}
+            {today && today.temperature_2m_max !== undefined && today.temperature_2m_min !== undefined && (
+              <div>
+                <span className="text-gray-500">Today:</span> {today.temperature_2m_max.toFixed(0)}°/{today.temperature_2m_min.toFixed(0)}°
+              </div>
+            )}
+          </div>
         </div>
         <button
           onClick={handleRefresh}
@@ -255,16 +286,40 @@ const Weather = () => {
         </button>
       </div>
 
-      {/* Three boxes side by side */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+      {/* Expanded View - Full Details (Shown on Hover) */}
+      <div className="hidden group-hover:block">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-1.5">
+          <div>
+            <p className="text-xs text-gray-500">
+              {loc.latitude.toFixed(4)}°N, {loc.longitude.toFixed(4)}°E
+            </p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-1 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+            title="Refresh"
+          >
+            <ArrowPathIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+
+        {/* Three boxes side by side */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-stretch">
         {/* Current Weather */}
-        <div className="bg-white rounded-lg p-2 border">
+        <div className="bg-white rounded-lg p-2 border flex flex-col">
         <div className="flex items-center justify-between mb-1.5">
           <div>
             <div className="text-xs text-gray-500">Current</div>
             <div className="text-2xl font-bold text-gray-900">
               {current.temperature_2m.toFixed(1)}°C
             </div>
+            {current.apparent_temperature !== undefined && (
+              <div className="text-xs text-gray-600 mt-0.5">
+                Feels like {current.apparent_temperature.toFixed(1)}°C
+              </div>
+            )}
             <div className="text-xs text-gray-500 mt-0.5">
               {formatTime(current.time, loc.timezone)} {current.is_day ? '☀️' : '🌙'}
             </div>
@@ -361,9 +416,28 @@ const Weather = () => {
         </div>
 
         {/* Hourly Forecast (Next 12 hours) */}
-        <div className="bg-white rounded-lg p-2 border">
+        <div className="bg-white rounded-lg p-2 border flex flex-col">
         <h4 className="text-xs font-semibold text-gray-700 mb-1.5">Next 12 Hours</h4>
-        <div className="space-y-1 max-h-32 overflow-y-auto">
+        
+        {/* Column Headers */}
+        <div className="mb-1 pb-1 border-b text-xs font-semibold text-gray-600">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-12">Time</div>
+              <div className="w-8">Icon</div>
+              <div>Temp</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-purple-600 w-8 text-center">Prob%</div>
+              <div className="text-gray-500 w-8 text-center">Feels</div>
+              <div className="text-blue-600 w-10 text-center">Precip</div>
+              <div className="text-blue-600 w-10 text-center">Rain</div>
+              <div className="text-blue-600 w-10 text-center">Shower</div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="space-y-1 flex-1 overflow-y-auto">
           {next24Hours.slice(0, 12).map((hour, index) => (
             <div
               key={index}
@@ -381,31 +455,21 @@ const Weather = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                {hour.precipitation_probability !== undefined && hour.precipitation_probability > 0 && (
-                  <div className="text-purple-600" title="Precipitation probability">
-                    {hour.precipitation_probability}%
-                  </div>
-                )}
-                {hour.apparent_temperature !== undefined && (
-                  <div className="text-gray-500" title="Feels like">
-                    {hour.apparent_temperature.toFixed(0)}°
-                  </div>
-                )}
-                {hour.precipitation > 0 && (
-                  <div className="text-blue-600" title="Precipitation">
-                    {hour.precipitation.toFixed(1)}mm
-                  </div>
-                )}
-                {hour.rain > 0 && (
-                  <div className="text-blue-600" title="Rain">
-                    🌧️ {hour.rain.toFixed(1)}mm
-                  </div>
-                )}
-                {hour.showers > 0 && (
-                  <div className="text-blue-600" title="Showers">
-                    💧 {hour.showers.toFixed(1)}mm
-                  </div>
-                )}
+                <div className="text-purple-600 w-8 text-center">
+                  {hour.precipitation_probability !== undefined ? hour.precipitation_probability : '-'}
+                </div>
+                <div className="text-gray-500 w-8 text-center">
+                  {hour.apparent_temperature !== undefined ? hour.apparent_temperature.toFixed(0) + '°' : '-'}
+                </div>
+                <div className="text-blue-600 w-10 text-center">
+                  {hour.precipitation > 0 ? hour.precipitation.toFixed(1) : '-'}
+                </div>
+                <div className="text-blue-600 w-10 text-center">
+                  {hour.rain > 0 ? '🌧️' + hour.rain.toFixed(1) : '-'}
+                </div>
+                <div className="text-blue-600 w-10 text-center">
+                  {hour.showers > 0 ? '💧' + hour.showers.toFixed(1) : '-'}
+                </div>
               </div>
             </div>
           ))}
@@ -413,9 +477,9 @@ const Weather = () => {
         </div>
 
         {/* Daily Forecast (Next 7 days) */}
-        <div className="bg-white rounded-lg p-2 border">
+        <div className="bg-white rounded-lg p-2 border flex flex-col">
         <h4 className="text-xs font-semibold text-gray-700 mb-1.5">7-Day Forecast</h4>
-        <div className="space-y-1">
+        <div className="space-y-1 flex-1 overflow-y-auto">
           {next7Days.map((day, index) => (
             <div
               key={index}
@@ -460,6 +524,7 @@ const Weather = () => {
               </div>
             </div>
           ))}
+        </div>
         </div>
         </div>
       </div>

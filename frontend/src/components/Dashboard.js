@@ -746,6 +746,104 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                   <TimeZoneDisplay selectedTimezones={selectedTimezones} />
                 </div>
               )}
+
+              {/* Daylight Saving Info for Melbourne */}
+              {showTimezones && (() => {
+                // Calculate next DST change for Melbourne (Australia/Melbourne)
+                const getNextDSTChange = () => {
+                  const now = new Date();
+                  const currentYear = now.getFullYear();
+                  const nextYear = currentYear + 1;
+                  
+                  // DST ends: First Sunday in April at 3:00 AM (clocks go back 1 hour)
+                  // DST starts: First Sunday in October at 2:00 AM (clocks go forward 1 hour)
+                  
+                  const getFirstSundayOfMonth = (year, month) => {
+                    const firstDay = new Date(year, month, 1);
+                    const dayOfWeek = firstDay.getDay();
+                    const daysToAdd = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+                    return new Date(year, month, 1 + daysToAdd);
+                  };
+                  
+                  // Get DST end date (April) for current and next year
+                  const dstEndCurrent = getFirstSundayOfMonth(currentYear, 3); // April = month 3
+                  dstEndCurrent.setHours(3, 0, 0, 0);
+                  
+                  const dstEndNext = getFirstSundayOfMonth(nextYear, 3);
+                  dstEndNext.setHours(3, 0, 0, 0);
+                  
+                  // Get DST start date (October) for current and next year
+                  const dstStartCurrent = getFirstSundayOfMonth(currentYear, 9); // October = month 9
+                  dstStartCurrent.setHours(2, 0, 0, 0);
+                  
+                  const dstStartNext = getFirstSundayOfMonth(nextYear, 9);
+                  dstStartNext.setHours(2, 0, 0, 0);
+                  
+                  // Find the next DST change
+                  let nextChange = null;
+                  let changeType = '';
+                  
+                  if (now < dstEndCurrent) {
+                    nextChange = dstEndCurrent;
+                    changeType = 'ends';
+                  } else if (now < dstStartCurrent) {
+                    nextChange = dstStartCurrent;
+                    changeType = 'starts';
+                  } else if (now < dstEndNext) {
+                    nextChange = dstEndNext;
+                    changeType = 'ends';
+                  } else {
+                    nextChange = dstStartNext;
+                    changeType = 'starts';
+                  }
+                  
+                  return { date: nextChange, type: changeType };
+                };
+                
+                const dstInfo = getNextDSTChange();
+                const formatDate = (date) => {
+                  return new Intl.DateTimeFormat('en-AU', {
+                    timeZone: 'Australia/Melbourne',
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                  }).format(date);
+                };
+                
+                return (
+                  <div className="mb-6 w-full">
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3 flex-1">
+                          <h3 className="text-sm font-medium text-blue-800">
+                            Next Daylight Saving Change - Melbourne 🇦🇺
+                          </h3>
+                          <div className="mt-1 text-sm text-blue-700">
+                            <p>
+                              Daylight Saving {dstInfo.type === 'starts' ? 'starts' : 'ends'} on{' '}
+                              <span className="font-semibold">{formatDate(dstInfo.date)}</span>
+                            </p>
+                            <p className="text-xs mt-1 text-blue-600">
+                              {dstInfo.type === 'starts' 
+                                ? 'Clocks will go forward 1 hour (2:00 AM → 3:00 AM)'
+                                : 'Clocks will go back 1 hour (3:00 AM → 2:00 AM)'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
               
               {/* Stock Information Row */}
               {showTimezones && (

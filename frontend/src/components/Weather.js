@@ -237,9 +237,9 @@ const Weather = () => {
   ) : 0;
 
   return (
-    <div className="w-full group">
+    <div className="w-full group relative">
       {/* Collapsed View - Current Weather Only (Wide Format) */}
-      <div className="bg-white rounded-lg p-2 border flex items-center justify-between group-hover:hidden transition-all">
+      <div className="bg-white rounded-lg p-2 border flex items-center justify-between group-hover:opacity-0 group-hover:pointer-events-none transition-opacity duration-200 delay-300">
         <div className="flex items-center gap-4 flex-1">
           <div className="flex items-center gap-3">
             {getWeatherIcon(
@@ -287,7 +287,7 @@ const Weather = () => {
       </div>
 
       {/* Expanded View - Full Details (Shown on Hover) */}
-      <div className="hidden group-hover:block">
+      <div className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200 delay-300 absolute top-0 left-0 right-0 z-10 bg-white rounded-lg p-2 border shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between mb-1.5">
           <div>

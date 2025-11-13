@@ -314,82 +314,116 @@ const StockPrice = () => {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="relative w-64 min-h-[160px]">
-        {/* Front of card */}
-        <div 
-          className={`w-full p-4 rounded-md bg-gray-100 shadow-md ${
-            isFlipped ? 'opacity-0 pointer-events-none absolute' : 'opacity-100 relative'
-          }`}
-        >
-          <div className="mb-2">
-            <h2 className="text-lg font-bold">{SYMBOL} Stock Price</h2>
+    <div className="w-full group relative">
+      {/* Collapsed View - Essential Info Only (Wide Format) */}
+      <div className="bg-white rounded-lg p-2 border flex items-center justify-between group-hover:opacity-0 group-hover:pointer-events-none transition-opacity duration-200 delay-300">
+        <div className="flex items-center gap-4 flex-1">
+          <div>
+            <div className="text-xs text-gray-500">{SYMBOL} Stock</div>
+            <div className="text-xl font-bold text-green-700">${price?.toFixed(2)}</div>
           </div>
-          <div className="flex items-center gap-2">
-            <p className="text-green-700 text-xl">${price?.toFixed(2)}</p>
-            <button 
-              className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-              title="Refresh price"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRefresh();
-              }}
-              disabled={isRefreshing}
-            >
-              <ArrowPathIcon className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-          <div className="mt-2 text-xs text-gray-600">
-            <p>API Calls Today: {apiCalls}</p>
-            <p>Last Updated: {new Date(JSON.parse(localStorage.getItem('stockPriceData') || '{"timestamp":0}').timestamp).toLocaleString()}</p>
-            <p className={`mt-1 ${marketStatus.includes('Open') ? 'text-green-600' : 'text-red-600'}`}>
-              {marketStatus}
-            </p>
-          </div>
-          <button 
-            className="absolute top-2 right-2 p-1 hover:bg-gray-200 rounded-full transition-colors"
-            onClick={() => setIsFlipped(true)}
-          >
-            <InformationCircleIcon className="h-5 w-5 text-gray-600" />
-          </button>
-        </div>
-
-        {/* Back of card */}
-        <div 
-          className={`w-full p-4 rounded-md bg-gray-100 shadow-md ${
-            isFlipped ? 'opacity-100 relative' : 'opacity-0 pointer-events-none absolute'
-          }`}
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold">Total Assets</h2>
-            <button 
-              className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-              onClick={() => setIsFlipped(false)}
-              title="Flip back"
-            >
-              <XMarkIcon className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-          <div className="space-y-4">
+          <div className="flex items-center gap-4 text-xs text-gray-600">
             <div>
-              <p className="text-sm text-gray-600">Calculation</p>
-              <p className="text-lg font-mono">
-                <span 
-                  className="cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={() => openEditPopup('shares', shares)}
+              <span className="text-gray-500">Total Value:</span> ${totalValue.toFixed(2)}
+            </div>
+            <div className={marketStatus.includes('Open') ? 'text-green-600' : 'text-red-600'}>
+              {marketStatus.split(' - ')[0]}
+            </div>
+          </div>
+        </div>
+        <button 
+          className="p-1 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+          title="Refresh price"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleRefresh();
+          }}
+          disabled={isRefreshing}
+        >
+          <ArrowPathIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* Expanded View - Full Details (Shown on Hover) */}
+      <div className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200 delay-300 absolute top-0 left-0 right-0 z-10 bg-white rounded-lg p-2 border shadow-lg">
+        <div className="space-y-4">
+          <div className="relative w-64 min-h-[160px]">
+            {/* Front of card */}
+            <div 
+              className={`w-full p-4 rounded-md bg-gray-100 shadow-md ${
+                isFlipped ? 'opacity-0 pointer-events-none absolute' : 'opacity-100 relative'
+              }`}
+            >
+              <div className="mb-2">
+                <h2 className="text-lg font-bold">{SYMBOL} Stock Price</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-green-700 text-xl">${price?.toFixed(2)}</p>
+                <button 
+                  className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                  title="Refresh price"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefresh();
+                  }}
+                  disabled={isRefreshing}
                 >
-                  {shares}
-                </span>
-                {' × $'}{price?.toFixed(2)}
-                {' × '}
-                <span 
-                  className="cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={() => openEditPopup('multiplier', multiplier)}
+                  <ArrowPathIcon className="h-5 w-5 text-gray-600" />
+                </button>
+              </div>
+              <div className="mt-2 text-xs text-gray-600">
+                <p>API Calls Today: {apiCalls}</p>
+                <p>Last Updated: {new Date(JSON.parse(localStorage.getItem('stockPriceData') || '{"timestamp":0}').timestamp).toLocaleString()}</p>
+                <p className={`mt-1 ${marketStatus.includes('Open') ? 'text-green-600' : 'text-red-600'}`}>
+                  {marketStatus}
+                </p>
+              </div>
+              <button 
+                className="absolute top-2 right-2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+                onClick={() => setIsFlipped(true)}
+              >
+                <InformationCircleIcon className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
+
+            {/* Back of card */}
+            <div 
+              className={`w-full p-4 rounded-md bg-gray-100 shadow-md ${
+                isFlipped ? 'opacity-100 relative' : 'opacity-0 pointer-events-none absolute'
+              }`}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold">Total Assets</h2>
+                <button 
+                  className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                  onClick={() => setIsFlipped(false)}
+                  title="Flip back"
                 >
-                  {multiplier.toFixed(2)}
-                </span>
-                {' = $'}{totalValue.toFixed(2)}
-              </p>
+                  <XMarkIcon className="h-5 w-5 text-gray-600" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-600">Calculation</p>
+                  <p className="text-lg font-mono">
+                    <span 
+                      className="cursor-pointer hover:text-blue-600 transition-colors"
+                      onClick={() => openEditPopup('shares', shares)}
+                    >
+                      {shares}
+                    </span>
+                    {' × $'}{price?.toFixed(2)}
+                    {' × '}
+                    <span 
+                      className="cursor-pointer hover:text-blue-600 transition-colors"
+                      onClick={() => openEditPopup('multiplier', multiplier)}
+                    >
+                      {multiplier.toFixed(2)}
+                    </span>
+                    {' = $'}{totalValue.toFixed(2)}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -262,140 +262,172 @@ const ExchangeRates = () => {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="w-72">
-        <div className="w-full p-4 rounded-md bg-gray-100 shadow-md">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-lg font-bold truncate">INR Exchange Rates</h2>
-            <button 
-              className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-              title="Refresh rates"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <ArrowPathIcon className={`h-5 w-5 text-gray-600 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-          <div className="space-y-3">
-            {/* USD Rate */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <span className="text-gray-600 text-sm">1 USD =</span>
-                  <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.usdToInr?.toFixed(2) || '0.00'}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {notes.usd && (
-                    <button
-                      onClick={() => handleDeleteNote('usd')}
-                      className="p-0.5 hover:bg-gray-200 rounded transition-colors"
-                      title="Delete note"
-                    >
-                      <XMarkIcon className="h-3 w-3 text-gray-500" />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleEditNote('usd')}
-                    className="p-0.5 hover:bg-gray-200 rounded transition-colors"
-                    title={notes.usd ? 'Edit note' : 'Add note'}
-                  >
-                    <PencilIcon className="h-3 w-3 text-gray-500" />
-                  </button>
-                </div>
+    <div className="w-full group relative">
+      {/* Collapsed View - Essential Info Only (Wide Format) */}
+      <div className="bg-white rounded-lg p-2 border flex items-center justify-between group-hover:opacity-0 group-hover:pointer-events-none transition-opacity duration-200 delay-300">
+        <div className="flex items-center gap-4 flex-1">
+          <div>
+            <div className="text-xs text-gray-500">INR Exchange Rates</div>
+            <div className="flex items-center gap-3 text-sm">
+              <div>
+                <span className="text-gray-600">USD:</span>
+                <span className="text-green-700 font-medium ml-1">₹{rates?.usdToInr?.toFixed(2) || '0.00'}</span>
               </div>
-              {editingNote === 'usd' ? (
-                <div className="space-y-1">
-                  <textarea
-                    value={tempNote}
-                    onChange={(e) => setTempNote(e.target.value)}
-                    className="w-full text-xs p-1 border border-gray-300 rounded resize-none"
-                    rows="2"
-                    placeholder="Add a note for USD rate..."
-                    autoFocus
-                  />
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => handleSaveNote('usd')}
-                      className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={handleCancelEdit}
-                      className="px-2 py-0.5 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : notes.usd ? (
-                <div className="text-xs text-gray-600 italic bg-gray-50 p-1 rounded border border-gray-200">
-                  {notes.usd}
-                </div>
-              ) : null}
-            </div>
-            
-            {/* AUD Rate */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <span className="text-gray-600 text-sm">1 AUD =</span>
-                  <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.audToInr?.toFixed(2) || '0.00'}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {notes.aud && (
-                    <button
-                      onClick={() => handleDeleteNote('aud')}
-                      className="p-0.5 hover:bg-gray-200 rounded transition-colors"
-                      title="Delete note"
-                    >
-                      <XMarkIcon className="h-3 w-3 text-gray-500" />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleEditNote('aud')}
-                    className="p-0.5 hover:bg-gray-200 rounded transition-colors"
-                    title={notes.aud ? 'Edit note' : 'Add note'}
-                  >
-                    <PencilIcon className="h-3 w-3 text-gray-500" />
-                  </button>
-                </div>
+              <div>
+                <span className="text-gray-600">AUD:</span>
+                <span className="text-green-700 font-medium ml-1">₹{rates?.audToInr?.toFixed(2) || '0.00'}</span>
               </div>
-              {editingNote === 'aud' ? (
-                <div className="space-y-1">
-                  <textarea
-                    value={tempNote}
-                    onChange={(e) => setTempNote(e.target.value)}
-                    className="w-full text-xs p-1 border border-gray-300 rounded resize-none"
-                    rows="2"
-                    placeholder="Add a note for AUD rate..."
-                    autoFocus
-                  />
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => handleSaveNote('aud')}
-                      className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={handleCancelEdit}
-                      className="px-2 py-0.5 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : notes.aud ? (
-                <div className="text-xs text-gray-600 italic bg-gray-50 p-1 rounded border border-gray-200">
-                  {notes.aud}
-                </div>
-              ) : null}
             </div>
           </div>
-          <div className="mt-4 text-xs text-gray-500 space-y-1">
-            <div>API Calls Today: {apiCalls}</div>
-            <div className="truncate max-w-[180px]">Last updated: {new Date(rates?.timestamp).toLocaleString()}</div>
+        </div>
+        <button 
+          className="p-1 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+          title="Refresh rates"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+        >
+          <ArrowPathIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* Expanded View - Full Details (Shown on Hover) */}
+      <div className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200 delay-300 absolute top-0 left-0 right-0 z-10 bg-white rounded-lg p-2 border shadow-lg">
+        <div className="space-y-4">
+          <div className="w-72">
+            <div className="w-full p-4 rounded-md bg-gray-100 shadow-md">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-lg font-bold truncate">INR Exchange Rates</h2>
+                <button 
+                  className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                  title="Refresh rates"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                >
+                  <ArrowPathIcon className={`h-5 w-5 text-gray-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              <div className="space-y-3">
+                {/* USD Rate */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="text-gray-600 text-sm">1 USD =</span>
+                      <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.usdToInr?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {notes.usd && (
+                        <button
+                          onClick={() => handleDeleteNote('usd')}
+                          className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                          title="Delete note"
+                        >
+                          <XMarkIcon className="h-3 w-3 text-gray-500" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleEditNote('usd')}
+                        className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                        title={notes.usd ? 'Edit note' : 'Add note'}
+                      >
+                        <PencilIcon className="h-3 w-3 text-gray-500" />
+                      </button>
+                    </div>
+                  </div>
+                  {editingNote === 'usd' ? (
+                    <div className="space-y-1">
+                      <textarea
+                        value={tempNote}
+                        onChange={(e) => setTempNote(e.target.value)}
+                        className="w-full text-xs p-1 border border-gray-300 rounded resize-none"
+                        rows="2"
+                        placeholder="Add a note for USD rate..."
+                        autoFocus
+                      />
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleSaveNote('usd')}
+                          className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-2 py-0.5 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : notes.usd ? (
+                    <div className="text-xs text-gray-600 italic bg-gray-50 p-1 rounded border border-gray-200">
+                      {notes.usd}
+                    </div>
+                  ) : null}
+                </div>
+                
+                {/* AUD Rate */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="text-gray-600 text-sm">1 AUD =</span>
+                      <span className="text-green-700 font-medium text-sm ml-1">₹{rates?.audToInr?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {notes.aud && (
+                        <button
+                          onClick={() => handleDeleteNote('aud')}
+                          className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                          title="Delete note"
+                        >
+                          <XMarkIcon className="h-3 w-3 text-gray-500" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleEditNote('aud')}
+                        className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                        title={notes.aud ? 'Edit note' : 'Add note'}
+                      >
+                        <PencilIcon className="h-3 w-3 text-gray-500" />
+                      </button>
+                    </div>
+                  </div>
+                  {editingNote === 'aud' ? (
+                    <div className="space-y-1">
+                      <textarea
+                        value={tempNote}
+                        onChange={(e) => setTempNote(e.target.value)}
+                        className="w-full text-xs p-1 border border-gray-300 rounded resize-none"
+                        rows="2"
+                        placeholder="Add a note for AUD rate..."
+                        autoFocus
+                      />
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleSaveNote('aud')}
+                          className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-2 py-0.5 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : notes.aud ? (
+                    <div className="text-xs text-gray-600 italic bg-gray-50 p-1 rounded border border-gray-200">
+                      {notes.aud}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <div className="mt-4 text-xs text-gray-500 space-y-1">
+                <div>API Calls Today: {apiCalls}</div>
+                <div className="truncate max-w-[180px]">Last updated: {new Date(rates?.timestamp).toLocaleString()}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

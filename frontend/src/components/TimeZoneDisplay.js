@@ -236,7 +236,7 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
     const color = (hourNum >= 6 && hourNum < 18) ? 'text-green-500' : 'text-orange-500';
 
     return (
-      <div className={`${cardBgClasses} shadow-md rounded-lg p-2 sm:p-3 w-fit overflow-hidden`}>
+      <div className={`${cardBgClasses} shadow-md rounded-lg p-2 sm:p-3 flex-1 overflow-hidden`}>
         <div className="flex justify-between items-center mb-1 gap-3">
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <span className="text-xs sm:text-sm font-bold whitespace-nowrap">
@@ -369,7 +369,7 @@ const TimeZoneDisplay = ({ selectedTimezones = [] }) => {
 
   return (
     <div className="bg-gray-100 p-2 sm:p-3 rounded-lg">
-      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+      <div className="flex gap-1.5 sm:gap-2">
         {enrichedZones.map(({ label, timeZone }) => (
           <ZoneCard key={label} label={label} timeZone={timeZone} />
         ))}

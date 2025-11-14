@@ -271,6 +271,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         showOnlyDeadlines: filterState.showOnlyDeadlines || false,
         showTodaysEventsOnly: filterState.showTodaysEventsOnly || false,
         excludePurchases: filterState.excludePurchases !== undefined ? filterState.excludePurchases : true,
+        excludeRecurringPayments: filterState.excludeRecurringPayments !== undefined ? filterState.excludeRecurringPayments : true,
         excludeTimelineLinked: filterState.excludeTimelineLinked !== undefined ? filterState.excludeTimelineLinked : false,
         showPastEvents: filterState.showPastEvents || false,
         negateTags: filterState.negateTags || false
@@ -286,6 +287,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         showOnlyDeadlines: false,
         showTodaysEventsOnly: false,
         excludePurchases: true,
+        excludeRecurringPayments: true,
         excludeTimelineLinked: false,
         showPastEvents: false,
         negateTags: false
@@ -344,6 +346,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     showOnlyDeadlines: false,
     showTodaysEventsOnly: false,
     excludePurchases: false,
+    excludeRecurringPayments: false,
     excludeTimelineLinked: false,
     showPastEvents: false,
     negateTags: false
@@ -376,6 +379,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
   const [none, setNone] = useState(0);
   const [showOnlyDeadlines, setShowOnlyDeadlines] = useState(initialState.showOnlyDeadlines);
   const [excludePurchases, setExcludePurchases] = useState(initialState.excludePurchases);
+  const [excludeRecurringPayments, setExcludeRecurringPayments] = useState(initialState.excludeRecurringPayments);
   const [excludeTimelineLinked, setExcludeTimelineLinked] = useState(initialState.excludeTimelineLinked);
   const [isBulkLoadOpen, setIsBulkLoadOpen] = useState(false);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
@@ -438,6 +442,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         showOnlyDeadlines,
         showTodaysEventsOnly,
         excludePurchases,
+        excludeRecurringPayments,
         excludeTimelineLinked,
         showPastEvents,
         negateTags
@@ -458,6 +463,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       showOnlyDeadlines,
       showTodaysEventsOnly,
       excludePurchases,
+      excludeRecurringPayments,
       excludeTimelineLinked,
       showPastEvents,
       negateTags
@@ -474,6 +480,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       setShowOnlyDeadlines(savedFiltersRef.current.showOnlyDeadlines);
       setShowTodaysEventsOnly(savedFiltersRef.current.showTodaysEventsOnly);
       setExcludePurchases(savedFiltersRef.current.excludePurchases);
+      setExcludeRecurringPayments(savedFiltersRef.current.excludeRecurringPayments);
       setExcludeTimelineLinked(savedFiltersRef.current.excludeTimelineLinked);
       setShowPastEvents(savedFiltersRef.current.showPastEvents);
       setNegateTags(savedFiltersRef.current.negateTags);
@@ -490,6 +497,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
     setShowOnlyDeadlines(false);
     setShowTodaysEventsOnly(false);
     setExcludePurchases(false);
+    setExcludeRecurringPayments(false);
     setExcludeTimelineLinked(false);
     setShowPastEvents(true);
     setNegateTags(false);
@@ -776,6 +784,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
       setShowOnlyDeadlines(false);
       setShowTodaysEventsOnly(false);
       setExcludePurchases(false);
+      setExcludeRecurringPayments(false);
       setExcludeTimelineLinked(false);
       setNegateTags(false);
       if (noteIdParam !== filterByNoteId) {
@@ -889,6 +898,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           const isPurchase = tags.some(tag => tag.toLowerCase() === 'purchase');
           const matchesPurchaseFilter = excludePurchases ? !isPurchase : true;
           
+          // Handle recurring payments filtering
+          const isRecurringPayment = tags.some(tag => tag.toLowerCase() === 'recurring_payment');
+          const matchesRecurringPaymentFilter = excludeRecurringPayments ? !isRecurringPayment : true;
+          
           // Handle timeline-linked filtering
           const isTimelineLinked = note.content.includes('meta::linked_to_timeline::');
           const matchesTimelineFilter = excludeTimelineLinked ? !isTimelineLinked : true;
@@ -904,14 +917,14 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
             matchesDate = matchesDate && (eventDate.getDate() === parseInt(selectedDay));
           }
 
-          return isPast && matchesSearch && matchesTags && matchesDate && matchesPurchaseFilter && matchesTimelineFilter;
+          return isPast && matchesSearch && matchesTags && matchesDate && matchesPurchaseFilter && matchesRecurringPaymentFilter && matchesTimelineFilter;
         }).length;
       
       setPastEventsCount(pastEvents);
     } else {
       setPastEventsCount(0);
     }
-  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, excludeTimelineLinked, filterByNoteId, location.search, location.hash, negateTags]);
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, excludeRecurringPayments, excludeTimelineLinked, filterByNoteId, location.search, location.hash, negateTags]);
 
   useEffect(() => {
     console.log('[EventsPage] useEffect for getCalendarEvents triggered:', {
@@ -985,6 +998,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           const isPurchase = tags.some(tag => tag.toLowerCase() === 'purchase');
           const matchesPurchaseFilter = excludePurchases ? !isPurchase : true;
           
+          // Handle recurring payments filtering
+          const isRecurringPayment = tags.some(tag => tag.toLowerCase() === 'recurring_payment');
+          const matchesRecurringPaymentFilter = excludeRecurringPayments ? !isRecurringPayment : true;
+          
           // Handle timeline-linked filtering
           const isTimelineLinked = note.content.includes('meta::linked_to_timeline::');
           const matchesTimelineFilter = excludeTimelineLinked ? !isTimelineLinked : true;
@@ -1000,14 +1017,14 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
             matchesDate = matchesDate && (eventDate.getDate() === parseInt(selectedDay));
           }
 
-          return isPast && matchesSearch && matchesTags && matchesDate && matchesPurchaseFilter && matchesTimelineFilter;
+          return isPast && matchesSearch && matchesTags && matchesDate && matchesPurchaseFilter && matchesRecurringPaymentFilter && matchesTimelineFilter;
         }).length;
       
       setPastEventsCount(pastEvents);
     } else {
       setPastEventsCount(0);
     }
-  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, excludeTimelineLinked, filterByNoteId, location.search, location.hash, negateTags]);
+  }, [allNotes, searchQuery, selectedTags, showOnlyDeadlines, selectedMonth, selectedDay, selectedYear, excludePurchases, excludeRecurringPayments, excludeTimelineLinked, filterByNoteId, location.search, location.hash, negateTags]);
 
   const getCalendarEvents = () => {
     console.log('[EventsPage] getCalendarEvents called:', {
@@ -1120,6 +1137,10 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
         const isPurchase = tags.some(tag => tag.toLowerCase() === 'purchase');
         const matchesPurchaseFilter = excludePurchases ? !isPurchase : true;
         
+        // Handle recurring payments filtering
+        const isRecurringPayment = tags.some(tag => tag.toLowerCase() === 'recurring_payment');
+        const matchesRecurringPaymentFilter = excludeRecurringPayments ? !isRecurringPayment : true;
+        
         // Handle timeline-linked filtering
         const isTimelineLinked = note.content.includes('meta::linked_to_timeline::');
         const matchesTimelineFilter = excludeTimelineLinked ? !isTimelineLinked : true;
@@ -1194,7 +1215,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
 
         // If no tags are selected, show all events
         if (selectedTags.length === 0) {
-          return matchesSearch && matchesDeadline && matchesDate && matchesPurchaseFilter && matchesTimelineFilter;
+          return matchesSearch && matchesDeadline && matchesDate && matchesPurchaseFilter && matchesRecurringPaymentFilter && matchesTimelineFilter;
         }
         // Tag filtering logic
         let matchesTags;
@@ -1224,7 +1245,7 @@ const EventsPage = ({ allNotes, setAllNotes }) => {
           });
         }
         
-        return matchesSearch && matchesTags && matchesDeadline && matchesDate && matchesPurchaseFilter && matchesTimelineFilter;
+        return matchesSearch && matchesTags && matchesDeadline && matchesDate && matchesPurchaseFilter && matchesRecurringPaymentFilter && matchesTimelineFilter;
       });
 
     // Calculate totals for different recurrence types
@@ -1575,6 +1596,17 @@ event_tags:${expense.tag.join(',')}`;
               Exclude Purchases
             </label>
 
+            {/* Exclude Recurring Payments Checkbox */}
+            <label className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={excludeRecurringPayments}
+                onChange={(e) => setExcludeRecurringPayments(e.target.checked)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              Exclude Recurring Payments
+            </label>
+
             {/* Exclude Timeline-Linked Events Checkbox */}
             <label className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
               <input
@@ -1641,7 +1673,7 @@ event_tags:${expense.tag.join(',')}`;
         )}
 
         {/* Active Filters Note */}
-        {(searchQuery || selectedTags.length > 0 || showOnlyDeadlines || showTodaysEventsOnly || selectedMonth || selectedDay || selectedYear || excludePurchases) && (
+        {(searchQuery || selectedTags.length > 0 || showOnlyDeadlines || showTodaysEventsOnly || selectedMonth || selectedDay || selectedYear || excludePurchases || excludeRecurringPayments) && (
           <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-md border border-gray-200">
             <ListBulletIcon className="h-5 w-5 text-gray-500" />
             <span className="font-medium">Filters Applied:</span>
@@ -1689,6 +1721,11 @@ event_tags:${expense.tag.join(',')}`;
                   Excluding Purchases
                 </span>
               )}
+              {excludeRecurringPayments && (
+                <span className="px-2 py-1 bg-white rounded border text-gray-700">
+                  Excluding Recurring Payments
+                </span>
+              )}
             </div>
             <button
               onClick={() => {
@@ -1700,6 +1737,7 @@ event_tags:${expense.tag.join(',')}`;
                 setSelectedDay('');
                 setSelectedYear('');
                 setExcludePurchases(true);
+                setExcludeRecurringPayments(true);
                 setExcludeTimelineLinked(false);
                 setNegateTags(false);
               }}

@@ -191,7 +191,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
     });
   }, [people]);
 
-  // Get filtered tags (tags that appear in current filtered people)
+  // Get filtered tags (tags that appear in current filtered people) - sorted alphabetically
   const filteredTags = useMemo(() => {
     const tagSet = new Set();
     people.forEach(note => {
@@ -201,7 +201,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
         .map(line => line.split('::')[2]);
       tagLines.forEach(tag => tagSet.add(tag));
     });
-    return Array.from(tagSet).sort();
+    return Array.from(tagSet).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   }, [people]);
 
   // Summary counts
@@ -407,7 +407,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
         </div>
         <input
           type="text"
-          placeholder="Search people..."
+          placeholder="Filter by name..."
           value={localSearchQuery}
           onChange={(e) => setLocalSearchQuery(e.target.value)}
           className="block w-full pl-10 pr-8 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
@@ -461,7 +461,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
         <div>
           <h4 className="text-sm font-medium text-gray-700 mb-2">Tags</h4>
           <div className="flex flex-wrap gap-2">
-            {allTags.map(tag => (
+            {[...allTags].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).map(tag => (
               <button
                 key={tag}
                 onClick={() => {

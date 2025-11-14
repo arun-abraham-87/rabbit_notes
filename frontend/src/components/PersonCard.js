@@ -797,6 +797,25 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
             ))}
           </div>
         )}
+        
+        {/* Tags */}
+        {tags && tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1 justify-center">
+            {tags.slice(0, 3).map((tag, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700"
+              >
+                {tag}
+              </span>
+            ))}
+            {tags.length > 3 && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium text-gray-500">
+                +{tags.length - 3}
+              </span>
+            )}
+          </div>
+        )}
       </div>
       
       {/* Action buttons - positioned at bottom */}

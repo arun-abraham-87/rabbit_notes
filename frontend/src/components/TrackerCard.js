@@ -1323,60 +1323,79 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           // Reverse to show latest on the rightmost side
           const displayAnswers = [...lastSevenAnswers].reverse();
           
+          // Calculate days from last logging for adhoc_date
+          let daysFromLastLogging = null;
+          if (isAdhocDate && sortedAnswers.length > 0) {
+            const lastAnswer = sortedAnswers[0]; // Most recent answer
+            const lastDate = moment(lastAnswer.date);
+            const today = moment();
+            daysFromLastLogging = today.diff(lastDate, 'days');
+          }
+          
           return (
-            <div className="flex gap-2 justify-center items-center">
-              {displayAnswers.length === 0 ? (
-                <div className="text-center text-gray-400 text-sm py-4">No events recorded yet</div>
-              ) : (
-                <>
-                  {displayAnswers.map((answer) => {
-                    const dateMoment = moment(answer.date);
-                    const dateStr = answer.date;
-                    const isToday = dateMoment.format('YYYY-MM-DD') === now.format('YYYY-MM-DD');
-                    const weekdayLabel = dateMoment.format('ddd');
-                    const monthLabel = dateMoment.format('MMM YYYY');
-                    const dayNumber = dateMoment.date();
-                    
-                    const displayValue = isAdhocValue ? (answer.value || answer.answer || '') : null;
-                    
-                    return (
-                      <div key={answer.id || answer.date} className="flex flex-col items-center w-10">
-                        <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{weekdayLabel}</span>
-                        <button
-                          onClick={() => {
-                            if (isAdhocDate) {
-                              setAdhocDate(answer.date);
-                              setAdhocNotes(answer.notes || '');
-                              setEditingAdhocAnswer(answer);
-                              setShowAdhocDateModal(true);
-                            } else {
-                              setAdhocDate(answer.date);
-                              setAdhocValue(answer.value || answer.answer || '');
-                              setAdhocNotes(answer.notes || '');
-                              setEditingAdhocAnswer(answer);
-                              setShowAdhocValueModal(true);
-                            }
-                          }}
-                          className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full
-                            ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
-                            bg-green-300
-                          `}
-                          title={`${dateMoment.format('MMM D, YYYY')}${isAdhocValue ? ` - Value: ${answer.value || answer.answer}` : ''}${answer.notes ? ` - ${answer.notes}` : ''}`}
-                        >
-                          {dayNumber}
-                        </button>
-                        {monthLabel && (
-                          <span className="text-[10px] text-gray-400 mt-0.5 text-center w-full">{monthLabel}</span>
-                        )}
-                        {isAdhocValue && displayValue && (
-                          <span className="text-[10px] text-gray-700 font-medium mt-0.5 text-center w-full truncate" title={displayValue}>
-                            {displayValue.length > 6 ? `${displayValue.substring(0, 6)}...` : displayValue}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2 justify-center items-center">
+                {displayAnswers.length === 0 ? (
+                  <div className="text-center text-gray-400 text-sm py-4">No events recorded yet</div>
+                ) : (
+                  <>
+                    {displayAnswers.map((answer) => {
+                      const dateMoment = moment(answer.date);
+                      const dateStr = answer.date;
+                      const isToday = dateMoment.format('YYYY-MM-DD') === now.format('YYYY-MM-DD');
+                      const weekdayLabel = dateMoment.format('ddd');
+                      const monthLabel = dateMoment.format('MMM YYYY');
+                      const dayNumber = dateMoment.date();
+                      
+                      const displayValue = isAdhocValue ? (answer.value || answer.answer || '') : null;
+                      
+                      return (
+                        <div key={answer.id || answer.date} className="flex flex-col items-center w-10">
+                          <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{weekdayLabel}</span>
+                          <button
+                            onClick={() => {
+                              if (isAdhocDate) {
+                                setAdhocDate(answer.date);
+                                setAdhocNotes(answer.notes || '');
+                                setEditingAdhocAnswer(answer);
+                                setShowAdhocDateModal(true);
+                              } else {
+                                setAdhocDate(answer.date);
+                                setAdhocValue(answer.value || answer.answer || '');
+                                setAdhocNotes(answer.notes || '');
+                                setEditingAdhocAnswer(answer);
+                                setShowAdhocValueModal(true);
+                              }
+                            }}
+                            className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full
+                              ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
+                              bg-green-300
+                            `}
+                            title={`${dateMoment.format('MMM D, YYYY')}${isAdhocValue ? ` - Value: ${answer.value || answer.answer}` : ''}${answer.notes ? ` - ${answer.notes}` : ''}`}
+                          >
+                            {dayNumber}
+                          </button>
+                          {monthLabel && (
+                            <span className="text-[10px] text-gray-400 mt-0.5 text-center w-full">{monthLabel}</span>
+                          )}
+                          {isAdhocValue && displayValue && (
+                            <span className="text-[10px] text-gray-700 font-medium mt-0.5 text-center w-full truncate" title={displayValue}>
+                              {displayValue.length > 6 ? `${displayValue.substring(0, 6)}...` : displayValue}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+              {/* Days from last logging - only for adhoc_date */}
+              {isAdhocDate && daysFromLastLogging !== null && (
+                <div className="bg-gray-100 border border-gray-300 rounded px-3 py-2 text-center">
+                  <span className="text-xs text-gray-700 font-medium">
+                    {daysFromLastLogging === 0 ? 'Today' : `${daysFromLastLogging} day${daysFromLastLogging !== 1 ? 's' : ''} from last logging`}
+                  </span>
+                </div>
               )}
             </div>
           );

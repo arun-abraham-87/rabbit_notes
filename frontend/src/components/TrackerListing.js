@@ -307,6 +307,11 @@ const TrackerListing = () => {
     setShowAddTracker(false);
   };
 
+  const handleTrackerConverted = (trackerId, newType) => {
+    // Reload trackers to get the updated type
+    loadTrackers();
+  };
+
   const handleEditTracker = (tracker) => {
     setEditingTracker(tracker);
     setShowAddTracker(true);
@@ -1041,6 +1046,7 @@ const TrackerListing = () => {
             isFocusMode={isFocusMode}
             isDevMode={isDevMode}
             onRefresh={loadTrackers}
+            onTrackerConverted={handleTrackerConverted}
           />
         ) : groupBy === 'cadence' ? (
           // Render cadence-based groups
@@ -1056,6 +1062,7 @@ const TrackerListing = () => {
                   isFocusMode={isFocusMode}
                   isDevMode={isDevMode}
                   onRefresh={loadTrackers}
+                  onTrackerConverted={handleTrackerConverted}
                 />
               </div>
             )}
@@ -1070,6 +1077,7 @@ const TrackerListing = () => {
                   isFocusMode={isFocusMode}
                   isDevMode={isDevMode}
                   onRefresh={loadTrackers}
+                  onTrackerConverted={handleTrackerConverted}
                 />
               </div>
             )}
@@ -1084,6 +1092,7 @@ const TrackerListing = () => {
                   isFocusMode={isFocusMode}
                   isDevMode={isDevMode}
                   onRefresh={loadTrackers}
+                  onTrackerConverted={handleTrackerConverted}
                 />
               </div>
             )}
@@ -1098,6 +1107,7 @@ const TrackerListing = () => {
                   isFocusMode={isFocusMode}
                   isDevMode={isDevMode}
                   onRefresh={loadTrackers}
+                  onTrackerConverted={handleTrackerConverted}
                 />
               </div>
             )}
@@ -1112,6 +1122,7 @@ const TrackerListing = () => {
                   isFocusMode={isFocusMode}
                   isDevMode={isDevMode}
                   onRefresh={loadTrackers}
+                  onTrackerConverted={handleTrackerConverted}
                 />
               </div>
             )}
@@ -1132,6 +1143,7 @@ const TrackerListing = () => {
                     isFocusMode={isFocusMode}
                     isDevMode={isDevMode}
                     onRefresh={loadTrackers}
+                    onTrackerConverted={handleTrackerConverted}
                   />
                 </div>
               );

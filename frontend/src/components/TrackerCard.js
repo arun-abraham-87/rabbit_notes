@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+import { updateNoteById, deleteNoteById, getNoteById, addNewNoteCommon } from '../utils/ApiUtils';
 import { createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
-import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon, PlusIcon, TrashIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import { Line } from 'react-chartjs-2';
 import moment from 'moment';
+import { toast } from 'react-hot-toast';
 
 function getLastSevenDays() {
   const days = [];
@@ -73,7 +74,7 @@ function formatMonthDateString(date) {
   return moment(date).format('YYYY-MM-01');
 }
 
-export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh }) {
+export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted }) {
   const navigate = useNavigate();
   
   // Debug: Log answers received
@@ -157,6 +158,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [adhocNotes, setAdhocNotes] = useState('');
   const [adhocValue, setAdhocValue] = useState('');
   const [editingAdhocAnswer, setEditingAdhocAnswer] = useState(null);
+  const [showConvertMenu, setShowConvertMenu] = useState(false);
 
   const handleDateClick = (date, dateStr) => {
     console.log('[TrackerCard.handleDateClick] START', { 
@@ -551,6 +553,348 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     }
   };
 
+  // Handler to convert tracker type
+  const handleConvertTrackerType = async (newType) => {
+    try {
+      // Get the current tracker note
+      let trackerNote;
+      let trackerContent = null;
+      
+      try {
+        trackerNote = await getNoteById(tracker.id);
+        if (trackerNote && trackerNote.content) {
+          trackerContent = trackerNote.content;
+        }
+      } catch (fetchError) {
+        console.warn(`Failed to fetch tracker note ${tracker.id} for conversion, reconstructing from tracker object:`, fetchError);
+        // If the note doesn't exist, reconstruct it from the tracker object
+        const contentLines = [];
+        if (tracker.title) contentLines.push(`Title: ${tracker.title}`);
+        if (tracker.question) contentLines.push(`Question: ${tracker.question}`);
+        // Use the new type instead of the old one
+        contentLines.push(`Type: ${newType}`);
+        if (tracker.cadence) contentLines.push(`Cadence: ${tracker.cadence}`);
+        if (tracker.days && tracker.days.length > 0) {
+          contentLines.push(`Days: ${tracker.days.join(', ')}`);
+        }
+        if (tracker.startDate) contentLines.push(`Start Date: ${tracker.startDate}`);
+        if (tracker.endDate) contentLines.push(`End Date: ${tracker.endDate}`);
+        contentLines.push('meta::tracker');
+        
+        trackerContent = contentLines.join('\n');
+        console.log('Reconstructed tracker content from tracker object for conversion');
+      }
+      
+      if (!trackerContent) {
+        alert('Unable to get tracker content. The tracker may have been deleted.');
+        return;
+      }
+      
+      // Update the Type field in the note content
+      const lines = trackerContent.split('\n');
+      const updatedLines = lines.map(line => {
+        if (line.startsWith('Type:')) {
+          return `Type: ${newType}`;
+        }
+        return line;
+      });
+      
+      const updatedContent = updatedLines.join('\n');
+      
+      // Update the tracker note (or create it if it doesn't exist)
+      if (trackerNote && trackerNote.id) {
+        // Note exists, update it
+        await updateNoteById(tracker.id, updatedContent);
+      } else {
+        // Note doesn't exist, try to update anyway (in case it was just created)
+        try {
+          await updateNoteById(tracker.id, updatedContent);
+        } catch (updateError) {
+          // If update fails, create a new note
+          console.warn(`Could not update tracker note ${tracker.id}, creating new note:`, updateError);
+          const newNote = await addNewNoteCommon(updatedContent, [], null);
+          console.log(`Created new tracker note with ID: ${newNote.id} (original ID was: ${tracker.id})`);
+          // Note: The tracker object will still reference the old ID, but the refresh should handle this
+        }
+      }
+      
+      // Notify parent component to refresh
+      if (onTrackerConverted) {
+        onTrackerConverted(tracker.id, newType);
+      }
+      
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      setShowConvertMenu(false);
+      toast.success(`Tracker converted to ${newType === 'adhoc_date' ? 'Adhoc Date' : 'Adhoc Value'}`);
+    } catch (error) {
+      console.error('Error converting tracker type:', error);
+      alert('Failed to convert tracker type');
+    }
+  };
+
+  // Handler to duplicate tracker
+  const handleDuplicateTracker = async () => {
+    try {
+      // Validate tracker ID
+      if (!tracker || !tracker.id) {
+        alert('Invalid tracker: missing ID');
+        return;
+      }
+      
+      console.log(`Starting duplication for tracker ${tracker.id} (${tracker.title})`);
+      
+      // Get the current tracker note
+      let trackerNote;
+      let trackerContent = null;
+      
+      try {
+        trackerNote = await getNoteById(tracker.id);
+        if (trackerNote && trackerNote.content) {
+          trackerContent = trackerNote.content;
+        }
+      } catch (fetchError) {
+        console.warn(`Failed to fetch tracker note ${tracker.id}, reconstructing from tracker object:`, fetchError);
+        // If the note doesn't exist, reconstruct it from the tracker object
+        // This handles cases where the note was deleted but the tracker object still exists
+        const contentLines = [];
+        if (tracker.title) contentLines.push(`Title: ${tracker.title}`);
+        if (tracker.question) contentLines.push(`Question: ${tracker.question}`);
+        if (tracker.type) contentLines.push(`Type: ${tracker.type}`);
+        if (tracker.cadence) contentLines.push(`Cadence: ${tracker.cadence}`);
+        if (tracker.days && tracker.days.length > 0) {
+          contentLines.push(`Days: ${tracker.days.join(', ')}`);
+        }
+        if (tracker.startDate) contentLines.push(`Start Date: ${tracker.startDate}`);
+        if (tracker.endDate) contentLines.push(`End Date: ${tracker.endDate}`);
+        contentLines.push('meta::tracker');
+        
+        trackerContent = contentLines.join('\n');
+        console.log('Reconstructed tracker content from tracker object');
+      }
+      
+      if (!trackerContent) {
+        alert('Unable to get tracker content. The tracker may have been deleted.');
+        return;
+      }
+      
+      // Parse the tracker note content
+      const lines = trackerContent.split('\n');
+      const updatedLines = lines.map(line => {
+        // Add "duplicate" to the title
+        if (line.startsWith('Title:')) {
+          const currentTitle = line.replace('Title:', '').trim();
+          return `Title: ${currentTitle} duplicate`;
+        }
+        // Remove any existing meta::link to break the link to original tracker
+        if (line.startsWith('meta::link:')) {
+          return ''; // Remove the link line, it will be set when the note is created
+        }
+        return line;
+      }).filter(line => line !== ''); // Remove empty lines
+      
+      const duplicatedContent = updatedLines.join('\n');
+      
+      // Create the duplicated tracker note
+      const newTrackerNote = await addNewNoteCommon(duplicatedContent, [], null);
+      
+      if (!newTrackerNote || !newTrackerNote.id) {
+        alert('Failed to create duplicated tracker');
+        return;
+      }
+      
+      const newTrackerId = newTrackerNote.id;
+      
+      // Debug: Log answers array
+      console.log(`[Duplicate] Answers array for tracker ${tracker.id}:`, answers);
+      console.log(`[Duplicate] Answers length:`, answers ? answers.length : 0);
+      
+      // Duplicate all answer notes
+      if (answers && answers.length > 0) {
+        console.log(`[Duplicate] Processing ${answers.length} answers...`);
+        const validAnswers = answers.filter(answer => {
+          // Filter out invalid answers
+          if (!answer || !answer.id) {
+            console.warn(`[Duplicate] Filtering out answer without ID:`, answer);
+            return false;
+          }
+          // Additional validation: ensure ID is a string/number, not an object
+          if (typeof answer.id !== 'string' && typeof answer.id !== 'number') {
+            console.warn('[Duplicate] Invalid answer ID format:', answer.id, typeof answer.id);
+            return false;
+          }
+          console.log(`[Duplicate] Valid answer found:`, { id: answer.id, date: answer.date, answer: answer.answer });
+          return true;
+        });
+        console.log(`[Duplicate] Attempting to duplicate ${validAnswers.length} answer notes for tracker ${tracker.id} (filtered from ${answers.length} total)`);
+        
+        // Use Promise.allSettled instead of Promise.all to handle individual failures
+        const duplicatePromises = validAnswers.map(async (answer) => {
+          try {
+            // Validate answer ID before attempting fetch
+            const answerId = String(answer.id).trim();
+            if (!answerId || answerId === 'undefined' || answerId === 'null') {
+              console.warn(`Invalid answer ID, skipping:`, answer);
+              return { success: false, answerId: answer.id };
+            }
+            
+            // Get the original answer note
+            let answerNote;
+            let answerContent = null;
+            
+            try {
+              answerNote = await getNoteById(answerId);
+              if (answerNote && answerNote.content) {
+                answerContent = answerNote.content;
+              }
+            } catch (fetchError) {
+              // If note doesn't exist, reconstruct it from the answer object
+              console.warn(`Answer note ${answerId} could not be fetched, reconstructing from answer object:`, fetchError.message);
+              
+              // Reconstruct answer content from answer object data
+              const answerValue = answer.answer || answer.value || '';
+              const answerDate = answer.date || '';
+              const answerNotes = answer.notes || '';
+              
+              if (!answerValue || !answerDate) {
+                console.warn(`[Duplicate] Cannot reconstruct answer - missing value or date:`, answer);
+                return { success: false, answerId: answerId };
+              }
+              
+              // Build the answer content similar to createTrackerAnswerNote
+              const contentLines = [
+                `Answer: ${answerValue}`,
+                `Date: ${answerDate}`,
+                `recorded_on_date: ${answerDate}`,
+                `meta::link:${newTrackerId}`,
+                `meta::tracker_answer`
+              ];
+              
+              if (answerNotes && answerNotes.trim()) {
+                contentLines.push(`Notes: ${answerNotes.trim()}`);
+              }
+              
+              answerContent = contentLines.join('\n');
+              console.log(`[Duplicate] Reconstructed answer content from answer object:`, answerContent);
+            }
+            
+            if (!answerContent) {
+              console.warn(`Answer note ${answerId} has no content, skipping`);
+              return { success: false, answerId: answerId };
+            }
+            
+            // Parse and update the answer note content
+            const answerLines = answerContent.split('\n');
+            console.log(`[Duplicate] Answer content (first 10 lines):`, answerLines.slice(0, 10));
+            
+            // Verify required fields exist
+            const hasAnswer = answerLines.some(line => line.startsWith('Answer:'));
+            const hasDate = answerLines.some(line => line.startsWith('Date:'));
+            const hasLink = answerLines.some(line => line.startsWith('meta::link:'));
+            const hasTrackerAnswer = answerLines.some(line => line === 'meta::tracker_answer');
+            
+            console.log(`[Duplicate] Answer note structure check:`, {
+              hasAnswer,
+              hasDate,
+              hasLink,
+              hasTrackerAnswer,
+              totalLines: answerLines.length
+            });
+            
+            if (!hasAnswer || !hasDate || !hasLink || !hasTrackerAnswer) {
+              console.warn(`[Duplicate] Answer note ${answerId} is missing required fields!`, {
+                hasAnswer,
+                hasDate,
+                hasLink,
+                hasTrackerAnswer
+              });
+            }
+            
+            const updatedAnswerLines = answerLines.map(line => {
+              // Update the meta::link to point to the new tracker
+              if (line.startsWith('meta::link:')) {
+                console.log(`[Duplicate] Updating meta::link from ${line} to meta::link:${newTrackerId}`);
+                return `meta::link:${newTrackerId}`;
+              }
+              return line;
+            });
+            
+            const duplicatedAnswerContent = updatedAnswerLines.join('\n');
+            console.log(`[Duplicate] Duplicated answer content:`, duplicatedAnswerContent);
+            console.log(`[Duplicate] Duplicated answer content (first 10 lines):`, duplicatedAnswerContent.split('\n').slice(0, 10));
+            
+            // Create the duplicated answer note
+            console.log(`[Duplicate] Creating duplicated answer note with content:`, duplicatedAnswerContent.substring(0, 200));
+            const duplicatedAnswer = await addNewNoteCommon(duplicatedAnswerContent, [], null);
+            console.log(`[Duplicate] Successfully duplicated answer ${answerId} -> ${duplicatedAnswer.id}`);
+            return { success: true, answerId: answerId, newAnswerId: duplicatedAnswer.id };
+          } catch (error) {
+            console.error(`Error duplicating answer ${answer.id}:`, error);
+            // Continue with other answers even if one fails
+            return { success: false, answerId: answer.id, error: error.message };
+          }
+        });
+        
+        // Use Promise.allSettled to ensure all promises complete even if some fail
+        console.log(`[Duplicate] Waiting for ${duplicatePromises.length} answer duplications to complete...`);
+        const results = await Promise.allSettled(duplicatePromises);
+        
+        // Log detailed results
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            if (result.value && result.value.success) {
+              console.log(`[Duplicate] ✓ Answer ${index + 1} duplicated successfully: ${result.value.answerId} -> ${result.value.newAnswerId}`);
+            } else {
+              console.error(`[Duplicate] ✗ Answer ${index + 1} failed:`, result.value);
+            }
+          } else {
+            console.error(`[Duplicate] ✗ Answer ${index + 1} rejected:`, result.reason);
+          }
+        });
+        
+        const successfulDuplicates = results.filter(r => 
+          r.status === 'fulfilled' && r.value && r.value.success === true
+        ).length;
+        const failedDuplicates = results.filter(r => 
+          r.status === 'rejected' || (r.status === 'fulfilled' && (!r.value || r.value.success === false))
+        ).length;
+        console.log(`[Duplicate] Duplication complete: ${successfulDuplicates} succeeded, ${failedDuplicates} failed out of ${validAnswers.length} answer notes`);
+        
+        // Show appropriate success message
+        if (validAnswers.length > 0) {
+          if (successfulDuplicates === validAnswers.length) {
+            toast.success(`Tracker duplicated successfully with all ${successfulDuplicates} answers`);
+          } else if (successfulDuplicates > 0) {
+            toast.success(`Tracker duplicated with ${successfulDuplicates} out of ${validAnswers.length} answers (${failedDuplicates} skipped)`);
+          } else {
+            toast.error(`Tracker duplicated, but no answers could be duplicated (${failedDuplicates} failed). Check console for details.`);
+          }
+        } else {
+          toast.success('Tracker duplicated successfully (no answers to duplicate)');
+        }
+      } else {
+        console.warn(`[Duplicate] No answers to duplicate. Answers array:`, answers);
+        toast.success('Tracker duplicated successfully (no answers to duplicate)');
+      }
+      
+      // Wait a bit before refreshing to ensure all notes are saved
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Refresh the tracker list
+      if (onRefresh) {
+        console.log('[Duplicate] Refreshing tracker list...');
+        onRefresh();
+      }
+      
+      setShowConvertMenu(false);
+    } catch (error) {
+      console.error('Error duplicating tracker:', error);
+      alert('Failed to duplicate tracker');
+    }
+  };
+
   // Month stats
   const now = moment();
   const currentMonthStats = getMonthStats(
@@ -886,6 +1230,52 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             >
               <PencilIcon className="h-5 w-5" />
             </button>
+            {/* Convert Type Menu */}
+            <div className="relative">
+              <button
+                onClick={() => setShowConvertMenu(!showConvertMenu)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                title="Convert tracker type"
+              >
+                <EllipsisVerticalIcon className="h-5 w-5" />
+              </button>
+              {showConvertMenu && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowConvertMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-200">
+                        Convert to Adhoc
+                      </div>
+                      <button
+                        onClick={() => handleConvertTrackerType('adhoc_date')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Adhoc Date
+                      </button>
+                      <button
+                        onClick={() => handleConvertTrackerType('adhoc_value')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Adhoc Value
+                      </button>
+                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-t border-gray-200 mt-1">
+                        Actions
+                      </div>
+                      <button
+                        onClick={() => handleDuplicateTracker()}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Duplicate Tracker
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <button
               onClick={() => navigate(`/tracker-stats-analysis?tracker=${tracker.id}`)}
               className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"

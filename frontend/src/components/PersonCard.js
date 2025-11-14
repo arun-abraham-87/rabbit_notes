@@ -51,11 +51,11 @@ const RelationshipCardPreview = ({ person, allNotes, onEdit, hidePhotos = false 
               <img
                 src={photos[0]}
                 alt={name}
-                className="h-16 w-16 rounded-lg object-cover"
+                className="h-24 w-24 rounded-lg object-cover"
               />
             ) : (
-              <div className="h-16 w-16 rounded-lg bg-gray-200 flex items-center justify-center">
-                <UserIcon className="h-8 w-8 text-gray-400" />
+              <div className="h-24 w-24 rounded-lg bg-gray-200 flex items-center justify-center">
+                <UserIcon className="h-12 w-12 text-gray-400" />
               </div>
             )}
           </div>
@@ -729,7 +729,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
           {photos && photos.length > 0 ? (
             <button
               type="button"
-              className="block w-24 h-24 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center hover:border-gray-300 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="block w-40 h-40 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center hover:border-gray-300 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
               title="View photo"
               onClick={(e) => {
                 e.stopPropagation();
@@ -749,21 +749,21 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                   }
                 }}
               />
-              <div className="hidden w-24 h-24 rounded-lg bg-gray-100 items-center justify-center">
-                <UserIcon className="h-12 w-12 text-gray-400" />
+              <div className="hidden w-40 h-40 rounded-lg bg-gray-100 items-center justify-center">
+                <UserIcon className="h-16 w-16 text-gray-400" />
               </div>
             </button>
           ) : (
             <button
               type="button"
-              className="w-24 h-24 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 border border-dashed border-gray-300 hover:border-gray-400"
+              className="w-40 h-40 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 border border-dashed border-gray-300 hover:border-gray-400"
               title="Click to upload photo"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowImageUpload(true);
               }}
             >
-              <UserIcon className="h-12 w-12 text-gray-400" />
+              <UserIcon className="h-16 w-16 text-gray-400" />
             </button>
           )}
         </div>

@@ -471,13 +471,18 @@ const PeopleList = ({allNotes, setAllNotes}) => {
                       : [...prev, tag]
                   );
                 }}
-                className={`px-2 py-1 text-sm rounded-md ${
+                className={`px-2 py-1 text-sm rounded-md flex items-center gap-1 ${
                   selectedTags.includes(tag)
                     ? 'bg-indigo-100 text-indigo-700'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {tag}
+                <span>{tag}</span>
+                {!loading && peopleByTag[tag] && peopleByTag[tag].length > 0 && (
+                  <span className="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded-full">
+                    {peopleByTag[tag].length}
+                  </span>
+                )}
               </button>
             ))}
             <button

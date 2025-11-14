@@ -1230,52 +1230,6 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             >
               <PencilIcon className="h-5 w-5" />
             </button>
-            {/* Convert Type Menu */}
-            <div className="relative">
-              <button
-                onClick={() => setShowConvertMenu(!showConvertMenu)}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-                title="Convert tracker type"
-              >
-                <EllipsisVerticalIcon className="h-5 w-5" />
-              </button>
-              {showConvertMenu && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-40" 
-                    onClick={() => setShowConvertMenu(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                    <div className="py-1">
-                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-200">
-                        Convert to Adhoc
-                      </div>
-                      <button
-                        onClick={() => handleConvertTrackerType('adhoc_date')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Adhoc Date
-                      </button>
-                      <button
-                        onClick={() => handleConvertTrackerType('adhoc_value')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Adhoc Value
-                      </button>
-                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-t border-gray-200 mt-1">
-                        Actions
-                      </div>
-                      <button
-                        onClick={() => handleDuplicateTracker()}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Duplicate Tracker
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
             <button
               onClick={() => navigate(`/tracker-stats-analysis?tracker=${tracker.id}`)}
               className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
@@ -1341,6 +1295,52 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             >
               <PlusIcon className="h-5 w-5" />
             </button>
+            {/* Convert Type Menu - Moved to last position */}
+            <div className="relative">
+              <button
+                onClick={() => setShowConvertMenu(!showConvertMenu)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                title="Convert tracker type"
+              >
+                <EllipsisVerticalIcon className="h-5 w-5" />
+              </button>
+              {showConvertMenu && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowConvertMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-200">
+                        Convert to Adhoc
+                      </div>
+                      <button
+                        onClick={() => handleConvertTrackerType('adhoc_date')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Adhoc Date
+                      </button>
+                      <button
+                        onClick={() => handleConvertTrackerType('adhoc_value')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Adhoc Value
+                      </button>
+                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-t border-gray-200 mt-1">
+                        Actions
+                      </div>
+                      <button
+                        onClick={() => handleDuplicateTracker()}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Duplicate Tracker
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

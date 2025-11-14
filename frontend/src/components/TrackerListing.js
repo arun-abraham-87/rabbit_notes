@@ -312,6 +312,13 @@ const TrackerListing = () => {
     loadTrackers();
   };
 
+  const handleTrackerDeleted = (trackerId) => {
+    // Remove the tracker from state immediately
+    setTrackers(prevTrackers => prevTrackers.filter(tracker => tracker.id !== trackerId));
+    // Also reload trackers to ensure consistency
+    loadTrackers();
+  };
+
   const handleEditTracker = (tracker) => {
     setEditingTracker(tracker);
     setShowAddTracker(true);
@@ -1279,6 +1286,7 @@ const TrackerListing = () => {
               onTrackerUpdated={handleTrackerUpdated} 
               editingTracker={editingTracker}
               onCancel={() => { setShowAddTracker(false); setEditingTracker(null); }}
+              onTrackerDeleted={handleTrackerDeleted}
             />
           </div>
         </div>

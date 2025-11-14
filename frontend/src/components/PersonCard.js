@@ -701,9 +701,21 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
     );
   };
 
+  // Extract pronouns and job title from metaInfo
+  const pronouns = metaInfo.find(info => 
+    info.name && (info.name.toLowerCase().includes('pronoun') || info.name.toLowerCase() === 'pronouns')
+  );
+  const jobTitle = metaInfo.find(info => 
+    info.name && (info.name.toLowerCase().includes('job') || info.name.toLowerCase().includes('title') || info.name.toLowerCase().includes('role'))
+  );
+  const otherMetaInfo = metaInfo.filter(info => 
+    !(info.name && (info.name.toLowerCase().includes('pronoun') || info.name.toLowerCase() === 'pronouns' || 
+      info.name.toLowerCase().includes('job') || info.name.toLowerCase().includes('title') || info.name.toLowerCase().includes('role')))
+  );
+
   return (
     <div 
-      className={`relative bg-white rounded-lg border p-6 shadow-sm flex flex-col hover:shadow-md transition-shadow h-full ${
+      className={`relative bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex flex-col items-center hover:shadow-md transition-shadow h-full ${
         isDraggingOver ? 'border-indigo-500 border-2 bg-indigo-50' : ''
       }`}
       onDragOver={handleCardDragOver}
@@ -711,13 +723,13 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
       onDragLeave={handleCardDragLeave}
       onDrop={handleCardDrop}
     >
-      <div className="flex items-start gap-3 flex-grow">
-        {!hidePhotos && (
-        <div className="flex-shrink-0">
-            {photos && photos.length > 0 ? (
+      {/* Profile Picture - Centered at top */}
+      {!hidePhotos && (
+        <div className="mb-3">
+          {photos && photos.length > 0 ? (
             <button
               type="button"
-              className="block h-32 w-32 rounded-lg overflow-hidden border-2 border-indigo-200 bg-indigo-100 flex items-center justify-center hover:border-indigo-400 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="block w-24 h-24 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center hover:border-gray-300 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
               title="View photo"
               onClick={(e) => {
                 e.stopPropagation();
@@ -729,7 +741,7 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
               <img
                 src={photos[0]}
                 alt={name}
-                className="h-full w-full object-cover"
+                className="w-full h-full object-cover"
                 onError={(e) => {
                   e.target.style.display = 'none';
                   if (e.target.nextSibling) {
@@ -737,198 +749,98 @@ const PersonCard = ({ note, onShowRaw, onEdit, onRemoveTag, onUpdate, allNotes =
                   }
                 }}
               />
-              <div className="hidden h-32 w-32 rounded-lg bg-indigo-100 items-center justify-center">
-                <UserIcon className="h-16 w-16 text-indigo-600" />
+              <div className="hidden w-24 h-24 rounded-lg bg-gray-100 items-center justify-center">
+                <UserIcon className="h-12 w-12 text-gray-400" />
               </div>
             </button>
           ) : (
             <button
               type="button"
-              className="h-32 w-32 rounded-lg bg-indigo-100 flex items-center justify-center hover:bg-indigo-200 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 border-2 border-dashed border-indigo-300 hover:border-indigo-400"
+              className="w-24 h-24 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 border border-dashed border-gray-300 hover:border-gray-400"
               title="Click to upload photo"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowImageUpload(true);
               }}
             >
-              <UserIcon className="h-16 w-16 text-indigo-600" />
+              <UserIcon className="h-12 w-12 text-gray-400" />
             </button>
           )}
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <h3 className="text-base font-medium text-gray-900 break-words">
-            {parseNoteContent({ content: name, searchQuery: "" }).map((element, idx) => (
-              <React.Fragment key={idx}>{element}</React.Fragment>
-            ))}
-          </h3>
-        
-          {/* Meta Info Section */}
-          {metaInfo.length > 0 && (
-            <div className="mt-2 space-y-1">
-              {metaInfo.map((info, index) => (
-                <p key={index} className="text-xs text-gray-500">
-                  {info.name}: {renderMetaValue(info)}
-                </p>
-              ))}
-            </div>
-          )}
-
-          {/* Relationships Section */}
-          {allRelationships && allRelationships.length > 0 && (
-            <div className="mt-2 space-y-1.5">
-              {/* Parent relationships - First line (Child of) */}
-              {groupedRelationships.parents.length > 0 && (
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  {groupedRelationships.parents.map((rel, index) => renderRelationshipButton(rel, `parent-${index}`))}
-                </div>
-              )}
-              
-              {/* Spouse relationships - Second line */}
-              {groupedRelationships.spouse.length > 0 && (
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  {groupedRelationships.spouse.map((rel, index) => renderRelationshipButton(rel, `spouse-${index}`))}
-                </div>
-              )}
-              
-              {/* Sibling relationships - Third line */}
-              {groupedRelationships.siblings.length > 0 && (
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  {groupedRelationships.siblings.map((rel, index) => renderRelationshipButton(rel, `sibling-${index}`))}
-                </div>
-              )}
-              
-              {/* Children relationships - Fourth line */}
-              {groupedRelationships.children.length > 0 && (
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  {groupedRelationships.children.map((rel, index) => renderRelationshipButton(rel, `child-${index}`))}
-                </div>
-              )}
-              
-              {/* Grandchildren relationships - Fifth line */}
-              {groupedRelationships.grandchildren.length > 0 && (
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  {groupedRelationships.grandchildren.map((rel, index) => renderRelationshipButton(rel, `grandchild-${index}`))}
-                </div>
-              )}
-              
-              {/* Friends relationships - Finally */}
-              {groupedRelationships.friends.length > 0 && (
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
-                  {groupedRelationships.friends.map((rel, index) => renderRelationshipButton(rel, `friend-${index}`))}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Additional Photos Section (skip first photo as it's shown as headshot) */}
-          {!hidePhotos && photos && photos.length > 1 && (
-            <div className="mt-3">
-              <div className="flex flex-wrap gap-2">
-                {photos.slice(1).map((photo, index) => (
-                  <button
-                    key={index + 1}
-                    type="button"
-                    className="relative group focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded"
-                    title={photo}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedImage(photo);
-                      setImageSize({ width: 0, height: 0 });
-                      setShowImageModal(true);
-                    }}
-                  >
-                    <img
-                      src={photo}
-                      alt={`Photo ${index + 2}`}
-                      className="h-16 w-16 object-cover rounded border border-gray-200 hover:border-indigo-400 transition-colors"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        if (e.target.nextSibling) {
-                          e.target.nextSibling.style.display = 'flex';
-                        }
-                      }}
-                    />
-                    <div className="hidden h-16 w-16 bg-gray-100 border border-gray-200 rounded items-center justify-center">
-                      <PhotoIcon className="h-6 w-6 text-gray-400" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="flex-shrink-0 flex flex-col gap-1">
-          {allRelationships && allRelationships.length > 0 && (
-            <button
-              className="p-1 rounded hover:bg-gray-100"
-              title="Show relations"
-              onClick={(e) => {
-                e.stopPropagation();
-                setViewingPersonInModal(null); // Reset to show this person's relationships
-                setShowRelationsModal(true);
-              }}
-            >
-              <UserGroupIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600" />
-            </button>
-          )}
-          <button
-            className="p-1 rounded hover:bg-gray-100"
-            title="Show raw note"
-            onClick={() => onShowRaw(note.content)}
-          >
-            <CodeBracketIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600" />
-          </button>
-          <button
-            className="p-1 rounded hover:bg-gray-100"
-            title="Edit person"
-            onClick={() => onEdit(note)}
-          >
-            <PencilIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600" />
-          </button>
-          {name && (
-            <a
-              href={`https://www.facebook.com/search/top/?q=${encodeURIComponent(name)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="px-2 py-1 rounded hover:bg-gray-100 text-xs font-medium text-gray-400 hover:text-blue-600"
-              title="Search on Facebook"
-            >
-              FB
-            </a>
-          )}
-        </div>
-      </div>
-      {tags && tags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1">
-          {tags.map((tag, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 cursor-pointer hover:bg-indigo-200 transition-colors"
-              onClick={(e) => {
-                // Only trigger tag click if not clicking the remove button
-                if (!e.target.closest('button')) {
-                  onTagClick && onTagClick(tag);
-                }
-              }}
-              title="Click to filter by this tag"
-            >
-              {tag}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemoveTag(note.id, tag);
-                }}
-                className="ml-1 text-indigo-600 hover:text-indigo-800"
-                title="Remove tag"
-              >
-                <XMarkIcon className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
         </div>
       )}
+      
+      {/* Name */}
+      <div className="w-full text-center mb-2">
+        <h3 className="text-sm font-medium text-gray-900 break-words">
+          {parseNoteContent({ content: name, searchQuery: "" }).map((element, idx) => (
+            <React.Fragment key={idx}>{element}</React.Fragment>
+          ))}
+        </h3>
+        
+        {/* Pronouns */}
+        {pronouns && (
+          <p className="text-xs text-gray-500 mt-1">{pronouns.value}</p>
+        )}
+        
+        {/* Job Title */}
+        {jobTitle && (
+          <p className="text-xs text-gray-600 mt-1 line-clamp-2">{jobTitle.value}</p>
+        )}
+        
+        {/* Other Meta Info (limited) */}
+        {otherMetaInfo.length > 0 && (
+          <div className="mt-1 space-y-0.5">
+            {otherMetaInfo.slice(0, 2).map((info, index) => (
+              <p key={index} className="text-xs text-gray-500 line-clamp-1">
+                {info.value}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {/* Action buttons - positioned at bottom */}
+      <div className="mt-auto w-full flex justify-center gap-1 pt-2 border-t border-gray-100">
+        {allRelationships && allRelationships.length > 0 && (
+          <button
+            className="p-1.5 rounded hover:bg-gray-100"
+            title="Show relations"
+            onClick={(e) => {
+              e.stopPropagation();
+              setViewingPersonInModal(null); // Reset to show this person's relationships
+              setShowRelationsModal(true);
+            }}
+          >
+            <UserGroupIcon className="h-4 w-4 text-gray-400 hover:text-indigo-600" />
+          </button>
+        )}
+        <button
+          className="p-1.5 rounded hover:bg-gray-100"
+          title="Show raw note"
+          onClick={() => onShowRaw(note.content)}
+        >
+          <CodeBracketIcon className="h-4 w-4 text-gray-400 hover:text-indigo-600" />
+        </button>
+        <button
+          className="p-1.5 rounded hover:bg-gray-100"
+          title="Edit person"
+          onClick={() => onEdit(note)}
+        >
+          <PencilIcon className="h-4 w-4 text-gray-400 hover:text-indigo-600" />
+        </button>
+        {name && (
+          <a
+            href={`https://www.facebook.com/search/top/?q=${encodeURIComponent(name)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="px-2 py-1 rounded hover:bg-gray-100 text-xs font-medium text-gray-400 hover:text-blue-600"
+            title="Search on Facebook"
+          >
+            FB
+          </a>
+        )}
+      </div>
 
       {/* Image Modal */}
       {showImageModal && selectedImage && (

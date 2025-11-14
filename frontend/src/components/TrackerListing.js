@@ -72,6 +72,7 @@ const TrackerListing = () => {
     const saved = localStorage.getItem('trackerPageCollapsedGroups');
     return saved ? JSON.parse(saved) : {};
   });
+  const [showOverdueAlert, setShowOverdueAlert] = useState(true);
   const [trackerStats, setTrackerStats] = useState({});
   const [showAnswers, setShowAnswers] = useState(null);
   const [trackerAnswers, setTrackerAnswers] = useState({});
@@ -1298,8 +1299,32 @@ const TrackerListing = () => {
 
   const totalCount = filteredTrackers.length;
 
+  // Calculate number of overdue trackers
+  const overdueCount = trackers.filter(tracker => isTrackerOverdue(tracker)).length;
+
   return (
     <div className="p-8">
+      {/* Overdue Trackers Alert */}
+      {showOverdueAlert && overdueCount > 0 && (
+        <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-sm relative">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+              <p className="text-sm font-medium text-red-800">
+                There {overdueCount === 1 ? 'is' : 'are'} <span className="font-bold">{overdueCount}</span> overdue tracker{overdueCount !== 1 ? 's' : ''} (>15 days since last entry)
+              </p>
+            </div>
+            <button
+              onClick={() => setShowOverdueAlert(false)}
+              className="text-red-400 hover:text-red-600 transition-colors"
+              aria-label="Dismiss alert"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Trackers</h1>
         <div className="flex gap-3">

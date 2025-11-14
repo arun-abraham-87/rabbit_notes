@@ -552,7 +552,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
                   {tag}
                   <span className="text-sm text-gray-500">({tagPeople.length})</span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {tagPeople.map(note => (
                     <PersonCard
                       key={note.id}
@@ -574,7 +574,7 @@ const PeopleList = ({allNotes, setAllNotes}) => {
           })}
         </div>
       ) : !loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {people.map(note => (
             <PersonCard
               key={note.id}

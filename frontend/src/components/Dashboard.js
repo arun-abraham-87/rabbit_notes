@@ -180,6 +180,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
   const [eventTextFilter, setEventTextFilter] = useState(''); // Text filter for events
   const eventSearchInputRef = useRef(null); // <-- Add ref for search input
   const [lastLoginTime, setLastLoginTime] = useState(null);
+  const [activePopup, setActivePopup] = useState(null); // Track which popup is active: 'stock', 'exchange', 'weather', or null
   
   // Refs for scroll containers
   const eventsScrollRef = useRef(null);
@@ -695,7 +696,57 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
               
               {/* First Row: Date and Current Time */}
               <div className="flex items-center gap-6 mb-4">
-                <h1 className="text-3xl font-bold">{formattedDate}</h1>
+                <div className="relative group">
+                  <h1 className="text-3xl font-bold cursor-pointer">{formattedDate}</h1>
+                  
+                  {/* Time Until Year End Card - appears on hover */}
+                  <div className="absolute left-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-6 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    {(() => {
+                      const facts = getFunFacts();
+                      let yearCountdown = `${facts.daysToEndOfYear} days`;
+                      if (facts.weeksToEndOfYear > 0) {
+                        yearCountdown += ` / ${facts.weeksToEndOfYear} weeks`;
+                      }
+                      if (facts.monthsToEndOfYear > 0) {
+                        yearCountdown += ` / ${facts.monthsToEndOfYear} month${facts.monthsToEndOfYear > 1 ? 's' : ''}`;
+                      }
+                      
+                      return (
+                        <>
+                          {/* Title */}
+                          <h2 className="text-lg font-semibold text-gray-800 mb-4">Time Until Year End</h2>
+                          
+                          {/* Main Countdown */}
+                          <div className="text-2xl font-bold text-blue-600 mb-4">
+                            {yearCountdown}
+                          </div>
+                          
+                          {/* Remaining Section */}
+                          <div className="mb-4">
+                            <div className="text-sm text-gray-500 mb-2">Remaining</div>
+                            <div className="space-y-1 text-sm text-gray-700">
+                              {facts.daysToEndOfMonth > 0 && (
+                                <div>{facts.daysToEndOfMonth} days to end of month</div>
+                              )}
+                              {facts.daysToEndOfWeek > 0 && (
+                                <div>{facts.daysToEndOfWeek} days to end of week</div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Progress Bar */}
+                          <div className="mt-4">
+                            <div className="bg-green-500 rounded-lg px-4 py-2">
+                              <div className="text-white text-sm font-medium">
+                                {facts.yearProgress}% through the year
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
                 <div className="flex items-center gap-4">
                   <div className="text-base font-medium">{formattedTime}</div>
                   <div className="flex items-center gap-1 text-sm text-gray-500">
@@ -703,41 +754,6 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                     <span>{baseTimezoneLabel}</span>
                   </div>
                 </div>
-              </div>
-              
-              {/* Fun Facts Line */}
-              <div className="text-sm text-gray-600 mb-4 text-center">
-                {(() => {
-                  const facts = getFunFacts();
-                  const factItems = [];
-                  
-                  // End of year countdown (days/weeks/months)
-                  if (facts.daysToEndOfYear > 0) {
-                    let yearCountdown = `${facts.daysToEndOfYear} days`;
-                    if (facts.weeksToEndOfYear > 0) {
-                      yearCountdown += ` / ${facts.weeksToEndOfYear} weeks`;
-                    }
-                    if (facts.monthsToEndOfYear > 0) {
-                      yearCountdown += ` / ${facts.monthsToEndOfYear} months`;
-                    }
-                    factItems.push(`${yearCountdown} to end of year`);
-                  }
-                  
-                  // End of month countdown
-                  if (facts.daysToEndOfMonth > 0) {
-                    factItems.push(`${facts.daysToEndOfMonth} days to end of month`);
-                  }
-                  
-                  // End of week countdown
-                  if (facts.daysToEndOfWeek > 0) {
-                    factItems.push(`${facts.daysToEndOfWeek} days to end of week`);
-                  }
-                  
-                  // Year progress
-                  factItems.push(`${facts.yearProgress}% through the year`);
-                  
-                  return factItems.join(' • ');
-                })()}
               </div>
               
               {/* Timezone Cards Display */}
@@ -845,34 +861,103 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                 );
               })()}
               
-              {/* Stock Information Row */}
+              {/* Stock Information, Exchange Rates, and Weather - Button Row */}
               {showTimezones && (
                 <div className="mb-6 w-full">
-                  <div className="bg-white rounded-lg shadow-md border border-gray-200 p-2 sm:p-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 items-start">
-                      <div className="space-y-1 sm:space-y-2 flex flex-col">
-                        <h3 className="text-sm sm:text-base font-semibold text-gray-900">Stock Information</h3>
-                        <div className="w-full">
-                          <StockPrice />
+                  <div className="flex justify-center gap-4">
+                    {/* Stock Information Button */}
+                    <div 
+                      className="relative group flex-1 max-w-xs"
+                      onMouseEnter={() => setActivePopup('stock')}
+                      onMouseLeave={() => {
+                        // Only clear if this is still the active one
+                        if (activePopup === 'stock') {
+                          setActivePopup(null);
+                        }
+                      }}
+                    >
+                      <button className="w-full px-4 py-3 bg-white rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 transition-colors">
+                        <div className="text-sm font-semibold text-gray-900 mb-1">Stock Information</div>
+                        <div className="text-xs text-gray-600">
+                          {(() => {
+                            try {
+                              const cachedData = localStorage.getItem('stockPriceData');
+                              if (cachedData) {
+                                const { price } = JSON.parse(cachedData);
+                                return `$${price?.toFixed(2) || 'Loading...'}`;
+                              }
+                            } catch (e) {}
+                            return 'Loading...';
+                          })()}
                         </div>
-                      </div>
-                      <div className="space-y-1 sm:space-y-2 flex flex-col">
-                        <h3 className="text-sm sm:text-base font-semibold text-gray-900">Exchange Rates</h3>
-                        <div className="w-full">
-                          <ExchangeRates />
-                        </div>
+                      </button>
+                      <div className={`absolute left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${
+                        activePopup === 'stock' ? 'opacity-100 visible' : 'opacity-0 invisible'
+                      }`}>
+                        <StockPrice forceExpanded={true} />
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Weather Row */}
-              {showTimezones && (
-                <div className="mb-6 w-full">
-                  <div className="bg-white rounded-lg shadow-md border border-gray-200 p-2 sm:p-3">
-                    <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-3">Weather</h3>
-                    <Weather />
+                    {/* Exchange Rates Button */}
+                    <div 
+                      className="relative group flex-1 max-w-xs"
+                      onMouseEnter={() => setActivePopup('exchange')}
+                      onMouseLeave={() => {
+                        // Only clear if this is still the active one
+                        if (activePopup === 'exchange') {
+                          setActivePopup(null);
+                        }
+                      }}
+                    >
+                      <button className="w-full px-4 py-3 bg-white rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 transition-colors">
+                        <div className="text-sm font-semibold text-gray-900 mb-1">Exchange Rates</div>
+                        <div className="text-xs text-gray-600">
+                          {(() => {
+                            try {
+                              const cachedData = localStorage.getItem('exchangeRatesData');
+                              if (cachedData) {
+                                const { usdToInr, audToInr } = JSON.parse(cachedData);
+                                return `USD: ₹${usdToInr?.toFixed(2) || '0.00'} | AUD: ₹${audToInr?.toFixed(2) || '0.00'}`;
+                              }
+                            } catch (e) {}
+                            return 'Loading...';
+                          })()}
+                        </div>
+                      </button>
+                      <div className={`absolute left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${
+                        activePopup === 'exchange' ? 'opacity-100 visible' : 'opacity-0 invisible'
+                      }`}>
+                        <ExchangeRates forceExpanded={true} />
+                      </div>
+                    </div>
+
+                    {/* Weather Button */}
+                    <div 
+                      className="relative group flex-1 max-w-xs"
+                      onMouseEnter={() => setActivePopup('weather')}
+                      onMouseLeave={() => {
+                        // Only clear if this is still the active one
+                        if (activePopup === 'weather') {
+                          setActivePopup(null);
+                        }
+                      }}
+                    >
+                      <button className="w-full px-4 py-3 bg-white rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 transition-colors">
+                        <div className="text-sm font-semibold text-gray-900 mb-1">Weather</div>
+                        <div className="text-xs text-gray-600">
+                          {(() => {
+                            // Weather data is fetched by the component, so we'll show a simple indicator
+                            // The component will show full data on hover
+                            return 'Hover for details';
+                          })()}
+                        </div>
+                      </button>
+                      <div className={`absolute right-0 top-full mt-2 w-[700px] bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${
+                        activePopup === 'weather' ? 'opacity-100 visible' : 'opacity-0 invisible'
+                      }`}>
+                        <Weather forceExpanded={true} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

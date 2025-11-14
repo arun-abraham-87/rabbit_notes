@@ -6,7 +6,7 @@ import { InformationCircleIcon, ArrowPathIcon, XMarkIcon } from '@heroicons/reac
 
 const SYMBOL = 'XYZ'; // e.g., Apple Inc.
 
-const StockPrice = () => {
+const StockPrice = ({ forceExpanded = false }) => {
   const [price, setPrice] = useState(null);
   const [error, setError] = useState('');
   const [apiKey, setApiKey] = useState(null);
@@ -316,6 +316,7 @@ const StockPrice = () => {
   return (
     <div className="w-full group relative">
       {/* Collapsed View - Essential Info Only (Wide Format) */}
+      {!forceExpanded && (
       <div className="bg-white rounded-lg p-2 border flex items-center justify-between group-hover:opacity-0 group-hover:pointer-events-none transition-opacity duration-200 delay-300">
         <div className="flex items-center gap-4 flex-1">
           <div>
@@ -343,9 +344,10 @@ const StockPrice = () => {
           <ArrowPathIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
       </div>
+      )}
 
       {/* Expanded View - Full Details (Shown on Hover) */}
-      <div className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200 delay-300 absolute top-0 left-0 right-0 z-10 bg-white rounded-lg p-2 border shadow-lg">
+      <div className={`${forceExpanded ? 'opacity-100 pointer-events-auto relative' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto absolute top-0 left-0 right-0 z-10'} transition-opacity duration-200 delay-300 bg-white rounded-lg p-2 border shadow-lg`}>
         <div className="space-y-4">
           <div className="relative w-64 min-h-[160px]">
             {/* Front of card */}

@@ -142,6 +142,7 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const [customDate, setCustomDate] = useState(moment().format('YYYY-MM-DD'));
   const [customValue, setCustomValue] = useState('');
   const [customExistingAnswer, setCustomExistingAnswer] = useState(null);
+  const [selectedEntries, setSelectedEntries] = useState(new Set()); // Set of answer IDs
   // State for monthly modal pending changes (date -> answer value: 'yes', 'no', string value, or null for remove)
   const [monthlyModalPendingChanges, setMonthlyModalPendingChanges] = useState({});
   // State for value input popup in monthly modal
@@ -550,6 +551,64 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     } catch (error) {
       console.error('Error deleting adhoc answer:', error);
       alert('Failed to delete event');
+    }
+  };
+
+  // Handler to toggle selection of an entry
+  const handleToggleEntrySelection = (answerId) => {
+    setSelectedEntries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(answerId)) {
+        newSet.delete(answerId);
+      } else {
+        newSet.add(answerId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handler to select all entries
+  const handleSelectAll = (filteredAnswers) => {
+    const allIds = filteredAnswers
+      .filter(ans => ans.id) // Only select entries with valid IDs (can be deleted)
+      .map(ans => ans.id);
+    setSelectedEntries(new Set(allIds));
+  };
+
+  // Handler to deselect all entries
+  const handleDeselectAll = () => {
+    setSelectedEntries(new Set());
+  };
+
+  // Handler to delete all selected entries
+  const handleDeleteSelected = async (filteredAnswers) => {
+    const selectedCount = selectedEntries.size;
+    if (selectedCount === 0) {
+      alert('No entries selected');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedCount} selected entry/entries?`)) {
+      return;
+    }
+
+    try {
+      // Delete all selected entries
+      const deletePromises = Array.from(selectedEntries).map(id => deleteNoteById(id));
+      await Promise.all(deletePromises);
+      
+      // Clear selections
+      setSelectedEntries(new Set());
+      
+      // Reload trackers to refresh the list
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      toast.success(`Successfully deleted ${selectedCount} entry/entries`);
+    } catch (error) {
+      console.error('Error deleting selected entries:', error);
+      alert('Failed to delete some entries');
     }
   };
 
@@ -1196,6 +1255,17 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   const lastRecordedYesAge = lastRecordedYesDate ? calculateAge(lastRecordedYesDate) : null;
   const lastRecordedNoDate = getLastRecordedNo();
   const lastRecordedNoAge = lastRecordedNoDate ? calculateAge(lastRecordedNoDate) : null;
+  
+  // Calculate days since last entry
+  const getDaysSinceLastEntry = () => {
+    if (!lastRecordedDate) return null;
+    const today = moment();
+    const lastDate = moment(lastRecordedDate);
+    return today.diff(lastDate, 'days');
+  };
+  
+  const daysSinceLastEntry = getDaysSinceLastEntry();
+  const isOverdue = daysSinceLastEntry !== null && daysSinceLastEntry > 15;
 
   const handleCopyToClipboard = async () => {
     try {
@@ -1208,7 +1278,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4">
+    <div className="bg-white rounded-lg shadow-sm p-4 relative">
+      {/* Red overdue indicator */}
+      {isOverdue && (
+        <div className="absolute top-2 left-2 w-3 h-3 bg-red-500 rounded-full z-10" title={`Overdue: ${daysSinceLastEntry} days since last entry`}></div>
+      )}
       <div className="flex justify-between items-start mb-4">
         <div>
           <div className="flex items-center gap-2">
@@ -1354,14 +1428,16 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
           // Sort answers by date (most recent first) and take last 7
           const sortedAnswers = [...answers].sort((a, b) => new Date(b.date) - new Date(a.date));
           const lastSevenAnswers = sortedAnswers.slice(0, 7);
+          // Reverse to show latest on the rightmost side
+          const displayAnswers = [...lastSevenAnswers].reverse();
           
           return (
             <div className="flex gap-2 justify-center items-center">
-              {lastSevenAnswers.length === 0 ? (
+              {displayAnswers.length === 0 ? (
                 <div className="text-center text-gray-400 text-sm py-4">No events recorded yet</div>
               ) : (
                 <>
-                  {lastSevenAnswers.map((answer) => {
+                  {displayAnswers.map((answer) => {
                     const dateMoment = moment(answer.date);
                     const dateStr = answer.date;
                     const isToday = dateMoment.format('YYYY-MM-DD') === now.format('YYYY-MM-DD');
@@ -1883,12 +1959,40 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                 onClick={() => {
                   setShowLastValuesModal(false);
                   setYesNoFilter('both');
+                  setSelectedEntries(new Set());
                 }}
                 aria-label="Close"
               >
                 &times;
               </button>
               <h2 className="text-lg font-semibold mb-4 text-center">All Recorded Values</h2>
+              
+              {/* Selection controls */}
+              <div className="flex gap-2 justify-between items-center mb-4">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleSelectAll(filteredAnswers)}
+                    className="px-3 py-1 text-xs rounded-md bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    onClick={handleDeselectAll}
+                    className="px-3 py-1 text-xs rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                  >
+                    Deselect All
+                  </button>
+                </div>
+                {selectedEntries.size > 0 && (
+                  <button
+                    onClick={() => handleDeleteSelected(filteredAnswers)}
+                    className="px-3 py-1 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center gap-1"
+                  >
+                    <TrashIcon className="h-3 w-3" />
+                    Delete Selected ({selectedEntries.size})
+                  </button>
+                )}
+              </div>
               
               {/* Filter buttons for yes/no trackers */}
               {isYesNoTracker && (
@@ -1939,19 +2043,32 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                         </h3>
                         {yearAnswers.map(ans => {
                           const age = calculateAge(ans.date);
+                          const answerId = ans.id || ans.date;
+                          const isSelected = ans.id ? selectedEntries.has(ans.id) : false;
+                          const hasValidId = !!ans.id; // Only allow selection if entry has a valid ID
                           return (
-                            <div key={ans.id || ans.date} className="flex justify-between items-center px-2 py-1 border-b last:border-b-0">
-                              <div className="flex flex-col">
-                                <span className="text-[11px] text-gray-500">
-                                  {moment(ans.date).format('DD-MM-YYYY')}
-                                </span>
-                                <span className="text-[10px] text-gray-400 mt-0.5">
-                                  Age: {age}
+                            <div key={answerId} className="flex items-center gap-2 px-2 py-1 border-b last:border-b-0 hover:bg-gray-50">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => hasValidId && handleToggleEntrySelection(ans.id)}
+                                disabled={!hasValidId}
+                                className={`h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer ${!hasValidId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                title={!hasValidId ? 'This entry cannot be deleted' : ''}
+                              />
+                              <div className="flex justify-between items-center flex-1">
+                                <div className="flex flex-col">
+                                  <span className="text-[11px] text-gray-500">
+                                    {moment(ans.date).format('DD-MM-YYYY')}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400 mt-0.5">
+                                    Age: {age}
+                                  </span>
+                                </div>
+                                <span className="font-mono text-[13px] text-gray-800">
+                                  {ans.value !== undefined ? ans.value : (ans.answer !== undefined ? (ans.answer === 'yes' ? 'Yes' : ans.answer === 'no' ? 'No' : ans.answer) : '')}
                                 </span>
                               </div>
-                              <span className="font-mono text-[13px] text-gray-800">
-                                {ans.value !== undefined ? ans.value : (ans.answer !== undefined ? (ans.answer === 'yes' ? 'Yes' : ans.answer === 'no' ? 'No' : ans.answer) : '')}
-                              </span>
                             </div>
                           );
                         })}

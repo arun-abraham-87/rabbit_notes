@@ -59,6 +59,7 @@ const TrackerListing = () => {
   const [editingTracker, setEditingTracker] = useState(null);
   const [filterCadence, setFilterCadence] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [filterOverdue, setFilterOverdue] = useState(false);
   const [groupBy, setGroupBy] = useState('none'); // 'none', 'cadence', or 'type'
   const [trackerStats, setTrackerStats] = useState({});
   const [showAnswers, setShowAnswers] = useState(null);
@@ -940,14 +941,34 @@ const TrackerListing = () => {
     return relevantDateStr >= tracker.startDate;
   }
 
-  // Filter trackers based on search term, cadence, and type
+  // Helper function to check if a tracker is overdue (>15 days since last entry)
+  const isTrackerOverdue = (tracker) => {
+    const trackerId = String(tracker.id);
+    const answers = trackerAnswers[trackerId] || [];
+    if (answers.length === 0) return false; // No entries, not overdue
+    
+    // Find the most recent answer
+    const sortedAnswers = [...answers].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const lastAnswer = sortedAnswers[0];
+    if (!lastAnswer || !lastAnswer.date) return false;
+    
+    // Calculate days since last entry
+    const today = moment();
+    const lastDate = moment(lastAnswer.date);
+    const daysSince = today.diff(lastDate, 'days');
+    
+    return daysSince > 15;
+  };
+
+  // Filter trackers based on search term, cadence, type, and overdue status
   const filteredTrackers = trackers.filter(tracker => {
     // Fuzzy search on title and question
     const matchesSearch = fuzzyMatch(tracker.title || '', searchTerm) ||
                          fuzzyMatch(tracker.question || '', searchTerm);
     const matchesCadence = filterCadence === 'all' || tracker.cadence === filterCadence;
     const matchesType = filterType === 'all' || tracker.type === filterType;
-    return matchesSearch && matchesCadence && matchesType;
+    const matchesOverdue = !filterOverdue || isTrackerOverdue(tracker);
+    return matchesSearch && matchesCadence && matchesType && matchesOverdue;
   }).sort((a, b) => {
     // Sort by name (title)
     const nameA = (a.title || '').toLowerCase();
@@ -1228,40 +1249,54 @@ const TrackerListing = () => {
           </svg>
         </div>
         
-        {/* Group By Buttons */}
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">Group by:</label>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setGroupBy('none')}
-              className={`px-3 py-2 rounded-lg transition-colors ${
-                groupBy === 'none'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              None
-            </button>
-            <button
-              onClick={() => setGroupBy('cadence')}
-              className={`px-3 py-2 rounded-lg transition-colors ${
-                groupBy === 'cadence'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Cadence
-            </button>
-            <button
-              onClick={() => setGroupBy('type')}
-              className={`px-3 py-2 rounded-lg transition-colors ${
-                groupBy === 'type'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Type
-            </button>
+        {/* Filter Options */}
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* Overdue Filter */}
+          <label className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={filterOverdue}
+              onChange={(e) => setFilterOverdue(e.target.checked)}
+              className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-700">Show Overdue Only</span>
+          </label>
+          
+          {/* Group By Buttons */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Group by:</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setGroupBy('none')}
+                className={`px-3 py-2 rounded-lg transition-colors ${
+                  groupBy === 'none'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                None
+              </button>
+              <button
+                onClick={() => setGroupBy('cadence')}
+                className={`px-3 py-2 rounded-lg transition-colors ${
+                  groupBy === 'cadence'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Cadence
+              </button>
+              <button
+                onClick={() => setGroupBy('type')}
+                className={`px-3 py-2 rounded-lg transition-colors ${
+                  groupBy === 'type'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Type
+              </button>
+            </div>
           </div>
         </div>
       </div>

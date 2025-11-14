@@ -14,6 +14,7 @@ import {
   ChartBarIcon,
   TrashIcon
 } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import AddTracker from './AddTracker';
 import { getAgeInStringFmt } from '../utils/DateUtils';
 import { Line, Pie } from 'react-chartjs-2';
@@ -59,8 +60,18 @@ const TrackerListing = () => {
   const [editingTracker, setEditingTracker] = useState(null);
   const [filterCadence, setFilterCadence] = useState('all');
   const [filterType, setFilterType] = useState('all');
-  const [filterOverdue, setFilterOverdue] = useState(false);
-  const [groupBy, setGroupBy] = useState('none'); // 'none', 'cadence', or 'type'
+  const [filterOverdue, setFilterOverdue] = useState(() => {
+    const saved = localStorage.getItem('trackerPageFilterOverdue');
+    return saved === 'true';
+  });
+  const [groupBy, setGroupBy] = useState(() => {
+    const saved = localStorage.getItem('trackerPageGroupBy');
+    return saved || 'none'; // 'none', 'cadence', or 'type'
+  });
+  const [collapsedGroups, setCollapsedGroups] = useState(() => {
+    const saved = localStorage.getItem('trackerPageCollapsedGroups');
+    return saved ? JSON.parse(saved) : {};
+  });
   const [trackerStats, setTrackerStats] = useState({});
   const [showAnswers, setShowAnswers] = useState(null);
   const [trackerAnswers, setTrackerAnswers] = useState({});
@@ -86,6 +97,29 @@ const TrackerListing = () => {
       localStorage.removeItem('trackerPageSearchTerm');
     }
   }, [searchTerm]);
+
+  // Save groupBy to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('trackerPageGroupBy', groupBy);
+  }, [groupBy]);
+
+  // Save filterOverdue to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('trackerPageFilterOverdue', filterOverdue.toString());
+  }, [filterOverdue]);
+
+  // Save collapsedGroups to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('trackerPageCollapsedGroups', JSON.stringify(collapsedGroups));
+  }, [collapsedGroups]);
+
+  // Toggle collapse state for a group
+  const toggleGroupCollapse = (groupKey) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey]
+    }));
+  };
 
   const loadTrackers = async () => {
     try {
@@ -1081,77 +1115,142 @@ const TrackerListing = () => {
           <>
             {groups.yearly && groups.yearly.length > 0 && (
               <div className="ml-8">
-                <h3 className="text-lg font-semibold mt-4 mb-2">Yearly</h3>
-                <TrackerGrid 
-                  trackers={groups.yearly} 
-                  onToggleDay={handleToggleDay} 
-                  trackerAnswers={trackerAnswers} 
-                  onEdit={handleEditTracker}
-                  isFocusMode={isFocusMode}
-                  isDevMode={isDevMode}
-                  onRefresh={loadTrackers}
-                  onTrackerConverted={handleTrackerConverted}
-                />
+                <button
+                  onClick={() => toggleGroupCollapse('yearly')}
+                  className="flex items-center gap-2 text-lg font-semibold mt-4 mb-2 hover:text-blue-600 transition-colors"
+                >
+                  {collapsedGroups['yearly'] ? (
+                    <ChevronRightIcon className="h-5 w-5" />
+                  ) : (
+                    <ChevronDownIcon className="h-5 w-5" />
+                  )}
+                  Yearly ({groups.yearly.length})
+                </button>
+                {!collapsedGroups['yearly'] && (
+                  <TrackerGrid 
+                    trackers={groups.yearly} 
+                    onToggleDay={handleToggleDay} 
+                    trackerAnswers={trackerAnswers} 
+                    onEdit={handleEditTracker}
+                    isFocusMode={isFocusMode}
+                    isDevMode={isDevMode}
+                    onRefresh={loadTrackers}
+                    onTrackerConverted={handleTrackerConverted}
+                    onTrackerDeleted={handleTrackerDeleted}
+                  />
+                )}
               </div>
             )}
             {groups.monthly && groups.monthly.length > 0 && (
               <div className="ml-8">
-                <h3 className="text-lg font-semibold mt-4 mb-2">Monthly</h3>
-                <TrackerGrid 
-                  trackers={groups.monthly} 
-                  onToggleDay={handleToggleDay} 
-                  trackerAnswers={trackerAnswers} 
-                  onEdit={handleEditTracker}
-                  isFocusMode={isFocusMode}
-                  isDevMode={isDevMode}
-                  onRefresh={loadTrackers}
-                  onTrackerConverted={handleTrackerConverted}
-                />
+                <button
+                  onClick={() => toggleGroupCollapse('monthly')}
+                  className="flex items-center gap-2 text-lg font-semibold mt-4 mb-2 hover:text-blue-600 transition-colors"
+                >
+                  {collapsedGroups['monthly'] ? (
+                    <ChevronRightIcon className="h-5 w-5" />
+                  ) : (
+                    <ChevronDownIcon className="h-5 w-5" />
+                  )}
+                  Monthly ({groups.monthly.length})
+                </button>
+                {!collapsedGroups['monthly'] && (
+                  <TrackerGrid 
+                    trackers={groups.monthly} 
+                    onToggleDay={handleToggleDay} 
+                    trackerAnswers={trackerAnswers} 
+                    onEdit={handleEditTracker}
+                    isFocusMode={isFocusMode}
+                    isDevMode={isDevMode}
+                    onRefresh={loadTrackers}
+                    onTrackerConverted={handleTrackerConverted}
+                    onTrackerDeleted={handleTrackerDeleted}
+                  />
+                )}
               </div>
             )}
             {groups.weekly && groups.weekly.length > 0 && (
               <div className="ml-8">
-                <h3 className="text-lg font-semibold mt-4 mb-2">Weekly</h3>
-                <TrackerGrid 
-                  trackers={groups.weekly} 
-                  onToggleDay={handleToggleDay} 
-                  trackerAnswers={trackerAnswers} 
-                  onEdit={handleEditTracker}
-                  isFocusMode={isFocusMode}
-                  isDevMode={isDevMode}
-                  onRefresh={loadTrackers}
-                  onTrackerConverted={handleTrackerConverted}
-                />
+                <button
+                  onClick={() => toggleGroupCollapse('weekly')}
+                  className="flex items-center gap-2 text-lg font-semibold mt-4 mb-2 hover:text-blue-600 transition-colors"
+                >
+                  {collapsedGroups['weekly'] ? (
+                    <ChevronRightIcon className="h-5 w-5" />
+                  ) : (
+                    <ChevronDownIcon className="h-5 w-5" />
+                  )}
+                  Weekly ({groups.weekly.length})
+                </button>
+                {!collapsedGroups['weekly'] && (
+                  <TrackerGrid 
+                    trackers={groups.weekly} 
+                    onToggleDay={handleToggleDay} 
+                    trackerAnswers={trackerAnswers} 
+                    onEdit={handleEditTracker}
+                    isFocusMode={isFocusMode}
+                    isDevMode={isDevMode}
+                    onRefresh={loadTrackers}
+                    onTrackerConverted={handleTrackerConverted}
+                    onTrackerDeleted={handleTrackerDeleted}
+                  />
+                )}
               </div>
             )}
             {groups.daily && groups.daily.length > 0 && (
               <div className="ml-8">
-                <h3 className="text-lg font-semibold mt-4 mb-2">Daily</h3>
-                <TrackerGrid 
-                  trackers={groups.daily} 
-                  onToggleDay={handleToggleDay} 
-                  trackerAnswers={trackerAnswers} 
-                  onEdit={handleEditTracker}
-                  isFocusMode={isFocusMode}
-                  isDevMode={isDevMode}
-                  onRefresh={loadTrackers}
-                  onTrackerConverted={handleTrackerConverted}
-                />
+                <button
+                  onClick={() => toggleGroupCollapse('daily')}
+                  className="flex items-center gap-2 text-lg font-semibold mt-4 mb-2 hover:text-blue-600 transition-colors"
+                >
+                  {collapsedGroups['daily'] ? (
+                    <ChevronRightIcon className="h-5 w-5" />
+                  ) : (
+                    <ChevronDownIcon className="h-5 w-5" />
+                  )}
+                  Daily ({groups.daily.length})
+                </button>
+                {!collapsedGroups['daily'] && (
+                  <TrackerGrid 
+                    trackers={groups.daily} 
+                    onToggleDay={handleToggleDay} 
+                    trackerAnswers={trackerAnswers} 
+                    onEdit={handleEditTracker}
+                    isFocusMode={isFocusMode}
+                    isDevMode={isDevMode}
+                    onRefresh={loadTrackers}
+                    onTrackerConverted={handleTrackerConverted}
+                    onTrackerDeleted={handleTrackerDeleted}
+                  />
+                )}
               </div>
             )}
             {groups.custom && groups.custom.length > 0 && (
               <div className="ml-8">
-                <h3 className="text-lg font-semibold mt-4 mb-2">Custom</h3>
-                <TrackerGrid 
-                  trackers={groups.custom} 
-                  onToggleDay={handleToggleDay} 
-                  trackerAnswers={trackerAnswers} 
-                  onEdit={handleEditTracker}
-                  isFocusMode={isFocusMode}
-                  isDevMode={isDevMode}
-                  onRefresh={loadTrackers}
-                  onTrackerConverted={handleTrackerConverted}
-                />
+                <button
+                  onClick={() => toggleGroupCollapse('custom')}
+                  className="flex items-center gap-2 text-lg font-semibold mt-4 mb-2 hover:text-blue-600 transition-colors"
+                >
+                  {collapsedGroups['custom'] ? (
+                    <ChevronRightIcon className="h-5 w-5" />
+                  ) : (
+                    <ChevronDownIcon className="h-5 w-5" />
+                  )}
+                  Custom ({groups.custom.length})
+                </button>
+                {!collapsedGroups['custom'] && (
+                  <TrackerGrid 
+                    trackers={groups.custom} 
+                    onToggleDay={handleToggleDay} 
+                    trackerAnswers={trackerAnswers} 
+                    onEdit={handleEditTracker}
+                    isFocusMode={isFocusMode}
+                    isDevMode={isDevMode}
+                    onRefresh={loadTrackers}
+                    onTrackerConverted={handleTrackerConverted}
+                    onTrackerDeleted={handleTrackerDeleted}
+                  />
+                )}
               </div>
             )}
           </>
@@ -1160,19 +1259,33 @@ const TrackerListing = () => {
           Object.keys(groups).sort().map(typeKey => {
             const typeTrackers = groups[typeKey];
             if (typeTrackers && typeTrackers.length > 0) {
+              const isCollapsed = collapsedGroups[typeKey];
               return (
                 <div key={typeKey} className="ml-8">
-                  <h3 className="text-lg font-semibold mt-4 mb-2">{formatGroupTitle(typeKey)}</h3>
-                  <TrackerGrid 
-                    trackers={typeTrackers} 
-                    onToggleDay={handleToggleDay} 
-                    trackerAnswers={trackerAnswers} 
-                    onEdit={handleEditTracker}
-                    isFocusMode={isFocusMode}
-                    isDevMode={isDevMode}
-                    onRefresh={loadTrackers}
-                    onTrackerConverted={handleTrackerConverted}
-                  />
+                  <button
+                    onClick={() => toggleGroupCollapse(typeKey)}
+                    className="flex items-center gap-2 text-lg font-semibold mt-4 mb-2 hover:text-blue-600 transition-colors"
+                  >
+                    {isCollapsed ? (
+                      <ChevronRightIcon className="h-5 w-5" />
+                    ) : (
+                      <ChevronDownIcon className="h-5 w-5" />
+                    )}
+                    {formatGroupTitle(typeKey)} ({typeTrackers.length})
+                  </button>
+                  {!isCollapsed && (
+                    <TrackerGrid 
+                      trackers={typeTrackers} 
+                      onToggleDay={handleToggleDay} 
+                      trackerAnswers={trackerAnswers} 
+                      onEdit={handleEditTracker}
+                      isFocusMode={isFocusMode}
+                      isDevMode={isDevMode}
+                      onRefresh={loadTrackers}
+                      onTrackerConverted={handleTrackerConverted}
+                      onTrackerDeleted={handleTrackerDeleted}
+                    />
+                  )}
                 </div>
               );
             }
@@ -1309,13 +1422,6 @@ const TrackerListing = () => {
       {showAddTracker && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">
-            <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-              onClick={() => { setShowAddTracker(false); setEditingTracker(null); }}
-              aria-label="Close"
-            >
-              &times;
-            </button>
             <AddTracker 
               onTrackerAdded={handleTrackerAdded} 
               onTrackerUpdated={handleTrackerUpdated} 

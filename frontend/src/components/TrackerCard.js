@@ -74,7 +74,7 @@ function formatMonthDateString(date) {
   return moment(date).format('YYYY-MM-01');
 }
 
-export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted }) {
+export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh, onTrackerConverted, onTrackerDeleted }) {
   const navigate = useNavigate();
   
   // Debug: Log answers received
@@ -1035,133 +1035,6 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     return [];
   }
 
-  // --- Cadence-aware current streak calculation ---
-  function getCadenceStreak(tracker, answers) {
-    if (!answers || answers.length === 0) return 0;
-    
-    // For yes/no type trackers, create a map of dates to their answers
-    const isYesNoType = tracker.type && tracker.type.toLowerCase().includes('yes');
-    const answerMap = new Map();
-    answers.forEach(a => {
-      const dateStr = moment(a.date).format('YYYY-MM-DD');
-      answerMap.set(dateStr, a.answer?.toLowerCase() || a.value);
-    });
-    
-    const cadence = tracker.cadence ? tracker.cadence.toLowerCase() : 'daily';
-    let streak = 0;
-    
-    if (cadence === 'weekly' && tracker.days && tracker.days.length > 0) {
-      let selectedDays = tracker.days.map(d => {
-        if (typeof d === 'string') {
-          const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(d.toLowerCase().slice(0,3));
-          return idx >= 0 ? idx : d;
-        }
-        return d;
-      }).filter(d => typeof d === 'number' && d >= 0 && d <= 6);
-      
-      const relevantDates = [];
-      const today = moment().subtract(1, 'days');
-      let d = moment(today).startOf('day');
-      let safety = 0;
-      while (relevantDates.length < 100 && safety < 366) {
-        if (selectedDays.includes(d.day())) {
-          relevantDates.unshift(moment(d));
-        }
-        d.subtract(1, 'days');
-        safety++;
-      }
-      
-      for (let i = relevantDates.length - 1; i >= 0; i--) {
-        const dateStr = relevantDates[i].format('YYYY-MM-DD');
-        const answer = answerMap.get(dateStr);
-        if (isYesNoType) {
-          if (answer === 'yes') {
-            streak++;
-          } else {
-            break;
-          }
-        } else if (answer !== undefined) {
-          streak++;
-        } else {
-          break;
-        }
-      }
-      return streak;
-    } else if (cadence === 'monthly') {
-      const months = [];
-      const today = moment().subtract(1, 'days');
-      for (let i = 0; i < 24; i++) {
-        months.unshift(moment(today).subtract(i, 'months').startOf('month'));
-      }
-      for (let i = months.length - 1; i >= 0; i--) {
-        const monthStr = months[i].format('YYYY-MM');
-        const monthAnswers = Array.from(answerMap.entries())
-          .filter(([date]) => date.startsWith(monthStr))
-          .map(([, answer]) => answer);
-        
-        if (isYesNoType) {
-          if (monthAnswers.includes('yes')) {
-            streak++;
-          } else {
-            break;
-          }
-        } else if (monthAnswers.length > 0) {
-          streak++;
-        } else {
-          break;
-        }
-      }
-      return streak;
-    } else if (cadence === 'yearly') {
-      const years = [];
-      const today = moment().subtract(1, 'days');
-      for (let i = 0; i < 10; i++) {
-        years.unshift(today.year() - i);
-      }
-      for (let i = years.length - 1; i >= 0; i--) {
-        const yearStr = years[i].toString();
-        const yearAnswers = Array.from(answerMap.entries())
-          .filter(([date]) => date.startsWith(yearStr))
-          .map(([, answer]) => answer);
-        
-        if (isYesNoType) {
-          if (yearAnswers.includes('yes')) {
-            streak++;
-          } else {
-            break;
-          }
-        } else if (yearAnswers.length > 0) {
-          streak++;
-        } else {
-          break;
-        }
-      }
-      return streak;
-    } else {
-      // Daily: consecutive calendar days
-      let d = moment().subtract(1, 'days').startOf('day');
-      while (true) {
-        const dateStr = d.format('YYYY-MM-DD');
-        const answer = answerMap.get(dateStr);
-        
-        if (isYesNoType) {
-          if (answer === 'yes') {
-            streak++;
-          } else {
-            break;
-          }
-        } else if (answer !== undefined) {
-          streak++;
-        } else {
-          break;
-        }
-        
-        d.subtract(1, 'days');
-      }
-      return streak;
-    }
-  }
-  const currentStreak = getCadenceStreak(tracker, answers);
 
   // Calculate age in years, months, and days
   const calculateAge = (date) => {
@@ -1287,11 +1160,6 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold text-gray-900">{tracker.title}</h3>
-            {currentStreak > 1 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 ml-1" title="Current streak">
-                🔥 {currentStreak}-day streak
-              </span>
-            )}
           </div>
           <p className="text-sm text-gray-600">{tracker.question}</p>
         </div>
@@ -1304,6 +1172,30 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             >
               <PencilIcon className="h-5 w-5" />
             </button>
+            {onTrackerDeleted && (
+              <button
+                onClick={async () => {
+                  if (window.confirm('Are you sure you want to delete this tracker?')) {
+                    try {
+                      await deleteNoteById(tracker.id);
+                      if (onTrackerDeleted) {
+                        onTrackerDeleted(tracker.id);
+                      }
+                      if (onRefresh) {
+                        onRefresh();
+                      }
+                    } catch (error) {
+                      console.error('Error deleting tracker:', error);
+                      alert('Failed to delete tracker');
+                    }
+                  }
+                }}
+                className="p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
+                title="Delete tracker"
+              >
+                <TrashIcon className="h-5 w-5" />
+              </button>
+            )}
             <button
               onClick={() => navigate(`/tracker-stats-analysis?tracker=${tracker.id}`)}
               className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
@@ -1445,6 +1337,8 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                     const monthLabel = dateMoment.format('MMM YYYY');
                     const dayNumber = dateMoment.date();
                     
+                    const displayValue = isAdhocValue ? (answer.value || answer.answer || '') : null;
+                    
                     return (
                       <div key={answer.id || answer.date} className="flex flex-col items-center w-10">
                         <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{weekdayLabel}</span>
@@ -1473,6 +1367,11 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                         </button>
                         {monthLabel && (
                           <span className="text-[10px] text-gray-400 mt-0.5 text-center w-full">{monthLabel}</span>
+                        )}
+                        {isAdhocValue && displayValue && (
+                          <span className="text-[10px] text-gray-700 font-medium mt-0.5 text-center w-full truncate" title={displayValue}>
+                            {displayValue.length > 6 ? `${displayValue.substring(0, 6)}...` : displayValue}
+                          </span>
                         )}
                       </div>
                     );
@@ -1951,6 +1850,29 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
         // Sort years descending
         const sortedYears = Object.keys(groupedByYear).sort((a, b) => parseInt(b) - parseInt(a));
         
+        // Create a map of dates to background colors for highlighting same-day records
+        const dateColorMap = new Map();
+        const backgroundColors = [
+          'bg-blue-50',
+          'bg-green-50',
+          'bg-yellow-50',
+          'bg-purple-50',
+          'bg-pink-50',
+          'bg-indigo-50',
+          'bg-orange-50',
+          'bg-cyan-50'
+        ];
+        let colorIndex = 0;
+        
+        // Assign colors to dates
+        filteredAnswers.forEach(ans => {
+          const dateStr = moment(ans.date).format('YYYY-MM-DD');
+          if (!dateColorMap.has(dateStr)) {
+            dateColorMap.set(dateStr, backgroundColors[colorIndex % backgroundColors.length]);
+            colorIndex++;
+          }
+        });
+        
         return (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg relative max-h-[80vh] overflow-y-auto">
@@ -2046,8 +1968,10 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                           const answerId = ans.id || ans.date;
                           const isSelected = ans.id ? selectedEntries.has(ans.id) : false;
                           const hasValidId = !!ans.id; // Only allow selection if entry has a valid ID
+                          const dateStr = moment(ans.date).format('YYYY-MM-DD');
+                          const bgColor = dateColorMap.get(dateStr) || '';
                           return (
-                            <div key={answerId} className="flex items-center gap-2 px-2 py-1 border-b last:border-b-0 hover:bg-gray-50">
+                            <div key={answerId} className={`flex items-center gap-2 px-2 py-1 border-b last:border-b-0 ${bgColor} hover:opacity-80 transition-opacity`}>
                               <input
                                 type="checkbox"
                                 checked={isSelected}
@@ -2486,30 +2410,6 @@ function EnhancedStats({ answers, tracker }) {
     return <div className="text-gray-400 italic text-center">No check-ins yet.</div>;
   }
 
-  // Normalize and deduplicate dates
-  const dateSet = new Set(answers.map(a => moment(a.date).format('YYYY-MM-DD')));
-  const sortedDates = Array.from(dateSet).sort();
-
-  // Longest streak calculation (robust)
-  let longest = 0, current = 0;
-  let prev = null;
-  sortedDates.forEach(dateStr => {
-    if (!prev) {
-      current = 1;
-    } else {
-      const prevDate = moment(prev);
-      const currDate = moment(dateStr);
-      const diff = currDate.diff(prevDate, 'days');
-      if (diff === 1) {
-        current++;
-      } else {
-        current = 1;
-      }
-    }
-    if (current > longest) longest = current;
-    prev = dateStr;
-  });
-
   // Sort answers by date ascending
   const sorted = [...answers].sort((a, b) => new Date(a.date) - new Date(b.date));
   const firstDate = sorted[0]?.date;
@@ -2605,8 +2505,6 @@ function EnhancedStats({ answers, tracker }) {
         )}
         <div><span className="font-semibold">First Check-in:</span> {firstDate && new Date(firstDate).toLocaleDateString()}</div>
         <div><span className="font-semibold">Last Check-in:</span> {lastDate && new Date(lastDate).toLocaleDateString()}</div>
-        <div><span className="font-semibold">Current Streak:</span> {longest}</div>
-        <div><span className="font-semibold">Longest Streak:</span> {longest}</div>
         {completionRate !== null && (
           <div className="col-span-2"><span className="font-semibold">Completion Rate:</span> {completionRate.toFixed(1)}%</div>
         )}

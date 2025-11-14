@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { addNewNoteCommon, updateNoteById, deleteNoteById } from '../utils/ApiUtils';
+import { addNewNoteCommon, updateNoteById } from '../utils/ApiUtils';
 import { toast } from 'react-toastify';
 import {
-  XMarkIcon,
-  CheckIcon,
   ExclamationCircleIcon
 } from '@heroicons/react/24/solid';
 
@@ -29,7 +27,6 @@ const AddTracker = ({ onTrackerAdded, onTrackerUpdated, editingTracker, onCancel
   });
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Populate form fields when editing
   useEffect(() => {
@@ -179,22 +176,6 @@ Start Date: ${startDate}`;
     }
   };
 
-  const handleDelete = async () => {
-    if (!editingTracker) return;
-    try {
-      setIsSubmitting(true);
-      await deleteNoteById(editingTracker.id);
-      if (onTrackerDeleted) onTrackerDeleted(editingTracker.id);
-      if (onCancel) onCancel();
-      toast.success('Tracker deleted successfully');
-    } catch (error) {
-      console.error('Error deleting tracker:', error);
-      toast.error('Failed to delete tracker');
-    } finally {
-      setIsSubmitting(false);
-      setShowDeleteConfirm(false);
-    }
-  };
 
   return (
     <div className="w-full rounded-lg border bg-card text-card-foreground shadow-sm p-6">
@@ -351,56 +332,49 @@ Start Date: ${startDate}`;
         )}
 
         <div className="flex justify-end gap-4 mt-6">
-          {editingTracker && (
+          {editingTracker ? (
+            <>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={isSubmitting}
+              >
+                Update
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                onClick={() => {
+                  if (onCancel) {
+                    onCancel();
+                  }
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
             <>
               <button
                 type="button"
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                onClick={() => setShowDeleteConfirm(true)}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                onClick={() => {
+                  if (onCancel) {
+                    onCancel();
+                  }
+                }}
               >
-                Delete
+                Cancel
               </button>
-              {showDeleteConfirm && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-                  <div className="bg-white rounded-lg p-6 max-w-sm w-full flex flex-col items-center">
-                    <ExclamationCircleIcon className="h-10 w-10 text-red-500 mb-2" />
-                    <div className="mb-4 text-center">Are you sure you want to delete this tracker?</div>
-                    <div className="flex gap-4">
-                      <button
-                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                        onClick={() => setShowDeleteConfirm(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                        onClick={handleDelete}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={isSubmitting}
+              >
+                Add Tracker
+              </button>
             </>
           )}
-          <button
-            type="button"
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            onClick={() => {
-              if (onCancel) {
-                onCancel();
-              }
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            {editingTracker ? 'Update Tracker' : 'Add Tracker'}
-          </button>
         </div>
       </form>
     </div>

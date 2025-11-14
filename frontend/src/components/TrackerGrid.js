@@ -1,7 +1,7 @@
 import React from 'react';
 import TrackerCard from './TrackerCard';
 
-export default function TrackerGrid({ trackers, onToggleDay, trackerAnswers = {}, onEdit, isFocusMode, isDevMode }) {
+export default function TrackerGrid({ trackers, onToggleDay, trackerAnswers = {}, onEdit, isFocusMode, isDevMode, onRefresh }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
       {trackers.map(tracker => (
@@ -13,6 +13,7 @@ export default function TrackerGrid({ trackers, onToggleDay, trackerAnswers = {}
           onEdit={onEdit}
           isFocusMode={isFocusMode}
           isDevMode={isDevMode}
+          onRefresh={onRefresh}
         />
       ))}
     </div>

@@ -133,6 +133,7 @@ const TrackerListing = () => {
         const link = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
         const answerValue = lines.find(line => line.startsWith('Answer:'))?.replace('Answer:', '').trim();
         const date = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
+        const notes = lines.find(line => line.startsWith('Notes:'))?.replace('Notes:', '').trim() || '';
         
         if (link && answerValue && date) {
           // Find the tracker by ID, handling type mismatches (string vs number)
@@ -196,6 +197,7 @@ const TrackerListing = () => {
               date,
               answer: answerValue,
               value: answerValue, // Also set value for consistency
+              notes: notes, // Include notes
               age: getAgeInStringFmt(new Date(date))
             });
             rawNotesByAnswer[answer.id] = answer.content;
@@ -1038,6 +1040,7 @@ const TrackerListing = () => {
             onEdit={handleEditTracker}
             isFocusMode={isFocusMode}
             isDevMode={isDevMode}
+            onRefresh={loadTrackers}
           />
         ) : groupBy === 'cadence' ? (
           // Render cadence-based groups
@@ -1052,6 +1055,7 @@ const TrackerListing = () => {
                   onEdit={handleEditTracker}
                   isFocusMode={isFocusMode}
                   isDevMode={isDevMode}
+                  onRefresh={loadTrackers}
                 />
               </div>
             )}
@@ -1065,6 +1069,7 @@ const TrackerListing = () => {
                   onEdit={handleEditTracker}
                   isFocusMode={isFocusMode}
                   isDevMode={isDevMode}
+                  onRefresh={loadTrackers}
                 />
               </div>
             )}
@@ -1078,6 +1083,7 @@ const TrackerListing = () => {
                   onEdit={handleEditTracker}
                   isFocusMode={isFocusMode}
                   isDevMode={isDevMode}
+                  onRefresh={loadTrackers}
                 />
               </div>
             )}
@@ -1091,6 +1097,7 @@ const TrackerListing = () => {
                   onEdit={handleEditTracker}
                   isFocusMode={isFocusMode}
                   isDevMode={isDevMode}
+                  onRefresh={loadTrackers}
                 />
               </div>
             )}
@@ -1104,6 +1111,7 @@ const TrackerListing = () => {
                   onEdit={handleEditTracker}
                   isFocusMode={isFocusMode}
                   isDevMode={isDevMode}
+                  onRefresh={loadTrackers}
                 />
               </div>
             )}
@@ -1123,6 +1131,7 @@ const TrackerListing = () => {
                     onEdit={handleEditTracker}
                     isFocusMode={isFocusMode}
                     isDevMode={isDevMode}
+                    onRefresh={loadTrackers}
                   />
                 </div>
               );

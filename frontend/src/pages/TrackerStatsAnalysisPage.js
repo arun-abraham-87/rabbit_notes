@@ -38,6 +38,10 @@ function EnhancedStats({ answers, tracker }) {
   // Check if this is a yes/no tracker
   const isYesNoTracker = tracker.type && tracker.type.toLowerCase().includes('yes');
   
+  // Check if this is an adhoc tracker
+  const isAdhocDate = tracker.type && tracker.type.toLowerCase() === 'adhoc_date';
+  const isAdhocValue = tracker.type && tracker.type.toLowerCase() === 'adhoc_value';
+  
   // Filter answers based on time filter
   const getFilteredAnswers = () => {
     // When "all" is selected, return all answers without date filtering
@@ -204,12 +208,15 @@ function EnhancedStats({ answers, tracker }) {
   // Check if this is a value-based tracker
   const isValueTracker = tracker.type && tracker.type.toLowerCase() === 'value';
   
-  // Calculate total range for value-based trackers
+  // For adhoc trackers, treat them as value trackers for chart purposes
+  const shouldUseValueChart = isValueTracker || isAdhocValue;
+  
+  // Calculate total range for value-based trackers (including adhoc_value)
   let firstValue = null;
   let lastValue = null;
   let valueDifference = null;
   
-  if (isValueTracker && sorted.length > 0) {
+  if ((isValueTracker || isAdhocValue) && sorted.length > 0) {
     // Extract numeric values from answers
     const values = sorted
       .map(ans => {
@@ -255,14 +262,21 @@ function EnhancedStats({ answers, tracker }) {
     answeredDatesMap.set(dateKey, ans);
   });
   
-  // Prepare chart data with all dates
-  // For "All Events", show all dates; for other filters, limit to last 200 days if too many
-  const maxDaysToShow = timeFilter === 'all' ? Infinity : 200;
-  let datesToShow = allDates.length > maxDaysToShow ? allDates.slice(-maxDaysToShow) : allDates;
-  
-  // If excludeUnmarked is true, filter out dates that don't have answers
-  if (excludeUnmarked) {
-    datesToShow = datesToShow.filter(date => answeredDatesMap.has(date));
+  // For adhoc trackers, only show dates that have answers (no need for all dates in range)
+  let datesToShow;
+  if (isAdhocDate || isAdhocValue) {
+    // For adhoc trackers, only show the dates that have events
+    datesToShow = sorted.map(ans => moment(ans.date).format('YYYY-MM-DD'));
+  } else {
+    // For regular trackers, prepare chart data with all dates
+    // For "All Events", show all dates; for other filters, limit to last 200 days if too many
+    const maxDaysToShow = timeFilter === 'all' ? Infinity : 200;
+    datesToShow = allDates.length > maxDaysToShow ? allDates.slice(-maxDaysToShow) : allDates;
+    
+    // If excludeUnmarked is true, filter out dates that don't have answers
+    if (excludeUnmarked) {
+      datesToShow = datesToShow.filter(date => answeredDatesMap.has(date));
+    }
   }
   
   const chartLabels = datesToShow.map(date => moment(date).format('DD MMM YYYY'));
@@ -271,7 +285,7 @@ function EnhancedStats({ answers, tracker }) {
     labels: chartLabels,
     datasets: [
       {
-        label: isYesNoTracker ? 'Yes' : 'Value',
+        label: isYesNoTracker ? 'Yes' : (isAdhocDate ? 'Event' : 'Value'),
         data: datesToShow.map(date => {
           const answer = answeredDatesMap.get(date);
           if (answer) {
@@ -279,40 +293,53 @@ function EnhancedStats({ answers, tracker }) {
               // For yes/no: yes = 1 (above), no = -1 (below)
               if (answer.answer.toLowerCase() === 'yes') return 1;
               if (answer.answer.toLowerCase() === 'no') return -1;
+              // For adhoc_date, just return 1 to show a bar
+              if (isAdhocDate) return 1;
+              // For adhoc_value, try to parse the answer as a number
+              if (isAdhocValue) {
+                const numValue = parseFloat(answer.answer);
+                return !isNaN(numValue) ? numValue : 0;
+              }
               return parseFloat(answer.answer) || 0;
             }
-            if (answer.value !== undefined) return parseFloat(answer.value) || 0;
+            if (answer.value !== undefined) {
+              // For adhoc_value and value trackers, return the numeric value
+              const numValue = parseFloat(answer.value);
+              return !isNaN(numValue) ? numValue : 0;
+            }
           }
           // For unmarked dates in yes/no trackers, show as 0 (yellow indicator)
           // For other trackers, show as null (gap in line)
           return isYesNoTracker ? 0 : null;
         }),
-        // For yes/no trackers, use conditional colors per bar
-        backgroundColor: isYesNoTracker
+        // For yes/no and adhoc_date trackers, use conditional colors per bar
+        backgroundColor: (isYesNoTracker || isAdhocDate)
           ? datesToShow.map(date => {
               const answer = answeredDatesMap.get(date);
               if (!answer) return 'rgba(234, 179, 8, 0.3)'; // Yellow for unmarked
+              if (isAdhocDate) return 'rgba(59, 130, 246, 0.8)'; // Blue for adhoc_date events
               const answerValue = typeof answer.answer === 'string' ? answer.answer.toLowerCase() : '';
               return answerValue === 'yes' ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)';
             })
           : datesToShow.map(date => {
               return answeredDatesMap.has(date) ? 'rgba(34, 197, 94, 0.2)' : 'rgba(234, 179, 8, 0.3)';
             }),
-        borderColor: isYesNoTracker
+        borderColor: (isYesNoTracker || isAdhocDate)
           ? datesToShow.map(date => {
               const answer = answeredDatesMap.get(date);
               if (!answer) return 'rgba(234, 179, 8, 0.8)'; // Yellow border for unmarked
+              if (isAdhocDate) return 'rgb(59, 130, 246)'; // Blue border for adhoc_date events
               const answerValue = typeof answer.answer === 'string' ? answer.answer.toLowerCase() : '';
               return answerValue === 'yes' ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)';
             })
           : datesToShow.map(date => {
               return answeredDatesMap.has(date) ? 'rgb(34, 197, 94)' : 'rgba(234, 179, 8, 0.8)';
             }),
-        borderWidth: isYesNoTracker ? 1 : 1,
-        // Line chart specific properties
-        tension: isYesNoTracker ? undefined : 0.2,
-        fill: isYesNoTracker ? false : true,
-        pointRadius: isYesNoTracker ? undefined : 2,
+        borderWidth: (isYesNoTracker || isAdhocDate) ? 1 : 1,
+        // Line chart specific properties (for value and adhoc_value trackers)
+        tension: (isYesNoTracker || isAdhocDate) ? undefined : 0.2,
+        fill: (isYesNoTracker || isAdhocDate) ? false : true,
+        pointRadius: (isYesNoTracker || isAdhocDate) ? undefined : 2,
       },
     ],
   };
@@ -329,6 +356,11 @@ function EnhancedStats({ answers, tracker }) {
               if (context.parsed.y === 0 || context.parsed.y === null) return 'Unmarked';
               return '';
             }
+            if (isAdhocDate) {
+              // For adhoc_date, show the date in tooltip
+              const dateLabel = context.label;
+              return `Event on ${dateLabel}`;
+            }
             if (context.parsed.y === null) return 'Unmarked';
             return context.parsed.y;
           }
@@ -337,9 +369,9 @@ function EnhancedStats({ answers, tracker }) {
     },
     scales: {
       y: {
-        beginAtZero: tracker.type && tracker.type.toLowerCase().includes('yes') ? false : true,
+        beginAtZero: (tracker.type && tracker.type.toLowerCase().includes('yes')) || isAdhocDate ? false : true,
         ticks: {
-          stepSize: tracker.type && tracker.type.toLowerCase().includes('yes') ? 1 : undefined,
+          stepSize: (tracker.type && tracker.type.toLowerCase().includes('yes')) || isAdhocDate ? 1 : undefined,
           callback: function(value) {
             if (tracker.type && tracker.type.toLowerCase().includes('yes')) {
               if (value === 1) return 'Yes';
@@ -347,11 +379,15 @@ function EnhancedStats({ answers, tracker }) {
               if (value === 0) return '';
               return '';
             }
+            if (isAdhocDate) {
+              // For adhoc_date, hide y-axis labels since all bars are the same height
+              return '';
+            }
             return value;
           }
         },
-        min: tracker.type && tracker.type.toLowerCase().includes('yes') ? -1 : undefined,
-        max: tracker.type && tracker.type.toLowerCase().includes('yes') ? 1 : undefined,
+        min: tracker.type && tracker.type.toLowerCase().includes('yes') ? -1 : (isAdhocDate ? 0 : undefined),
+        max: tracker.type && tracker.type.toLowerCase().includes('yes') ? 1 : (isAdhocDate ? 1 : undefined),
       }
     }
   };
@@ -378,16 +414,18 @@ function EnhancedStats({ answers, tracker }) {
           </button>
         ))}
         
-        {/* Exclude Unmarked Checkbox */}
-        <label className="flex items-center gap-2 px-3 py-1 text-xs bg-white border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 ml-auto">
-          <input
-            type="checkbox"
-            checked={excludeUnmarked}
-            onChange={(e) => setExcludeUnmarked(e.target.checked)}
-            className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
-          />
-          <span className="text-gray-700">Exclude Unmarked</span>
-        </label>
+        {/* Exclude Unmarked Checkbox - Only show for non-adhoc trackers */}
+        {!isAdhocDate && !isAdhocValue && (
+          <label className="flex items-center gap-2 px-3 py-1 text-xs bg-white border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 ml-auto">
+            <input
+              type="checkbox"
+              checked={excludeUnmarked}
+              onChange={(e) => setExcludeUnmarked(e.target.checked)}
+              className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+            />
+            <span className="text-gray-700">Exclude Unmarked</span>
+          </label>
+        )}
       </div>
       
       {/* Stats Section */}
@@ -457,7 +495,7 @@ function EnhancedStats({ answers, tracker }) {
             <span className="font-semibold">Total Duration:</span> {totalDuration} (from first check-in to today)
           </div>
         )}
-        {isValueTracker && firstValue !== null && lastValue !== null && (
+        {(isValueTracker || isAdhocValue) && firstValue !== null && lastValue !== null && (
           <div>
             <span className="font-semibold">Total Range:</span> {firstValue} to {lastValue} ({valueDifference >= 0 ? '+' : ''}{valueDifference.toFixed(2)})
           </div>
@@ -478,7 +516,7 @@ function EnhancedStats({ answers, tracker }) {
       
       {/* Chart */}
       <div className="mb-4">
-        {isYesNoTracker ? (
+        {(isYesNoTracker || isAdhocDate) ? (
           <Bar data={chartData} options={chartOptions} height={120} />
         ) : (
           <Line data={chartData} options={chartOptions} height={120} />
@@ -660,6 +698,7 @@ const TrackerStatsAnalysisPage = () => {
         const link = lines.find(line => line.startsWith('meta::link:'))?.replace('meta::link:', '').trim();
         const answerValue = lines.find(line => line.startsWith('Answer:'))?.replace('Answer:', '').trim();
         const date = lines.find(line => line.startsWith('Date:'))?.replace('Date:', '').trim();
+        const notes = lines.find(line => line.startsWith('Notes:'))?.replace('Notes:', '').trim() || '';
         
         if (link && answerValue && date) {
           if (!answersByTracker[link]) {
@@ -670,6 +709,7 @@ const TrackerStatsAnalysisPage = () => {
             date,
             answer: answerValue,
             value: answerValue, // For value trackers, answer and value are the same
+            notes: notes, // Include notes
             age: getAgeInStringFmt(new Date(date))
           });
         }

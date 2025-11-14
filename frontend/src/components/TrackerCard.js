@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateNoteById, deleteNoteById } from '../utils/ApiUtils';
-import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { createTrackerAnswerNote } from '../utils/TrackerQuestionUtils';
+import { ChartBarIcon, CalendarIcon, ArrowPathIcon, PencilIcon, ClockIcon, ClipboardIcon, ClipboardDocumentCheckIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Line } from 'react-chartjs-2';
 import moment from 'moment';
 
@@ -72,7 +73,7 @@ function formatMonthDateString(date) {
   return moment(date).format('YYYY-MM-01');
 }
 
-export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode }) {
+export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit, isFocusMode, isDevMode, onRefresh }) {
   const navigate = useNavigate();
   
   // Debug: Log answers received
@@ -149,6 +150,13 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
     value: '',
     dateObj: null
   });
+  // State for adhoc modals
+  const [showAdhocDateModal, setShowAdhocDateModal] = useState(false);
+  const [showAdhocValueModal, setShowAdhocValueModal] = useState(false);
+  const [adhocDate, setAdhocDate] = useState(moment().format('YYYY-MM-DD'));
+  const [adhocNotes, setAdhocNotes] = useState('');
+  const [adhocValue, setAdhocValue] = useState('');
+  const [editingAdhocAnswer, setEditingAdhocAnswer] = useState(null);
 
   const handleDateClick = (date, dateStr) => {
     console.log('[TrackerCard.handleDateClick] START', { 
@@ -462,6 +470,85 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
       trackerId: tracker.id, 
       selectedDate 
     });
+  };
+
+  // Handler for adhoc date submission
+  const handleAdhocDateSubmit = async () => {
+    if (!adhocDate) {
+      alert('Please select a date');
+      return;
+    }
+
+    try {
+      if (editingAdhocAnswer && editingAdhocAnswer.id) {
+        // Update existing note
+        const updatedContent = `Answer: ${adhocDate}\nDate: ${adhocDate}\nrecorded_on_date: ${adhocDate}\nmeta::link:${tracker.id}\nmeta::tracker_answer${adhocNotes.trim() ? `\nNotes: ${adhocNotes.trim()}` : ''}`;
+        await updateNoteById(editingAdhocAnswer.id, updatedContent);
+      } else {
+        // Create new note
+        await createTrackerAnswerNote(tracker.id, adhocDate, adhocDate, adhocNotes);
+      }
+      // Reload trackers to refresh the list
+      if (onRefresh) {
+        onRefresh();
+      }
+      setShowAdhocDateModal(false);
+      setAdhocDate(moment().format('YYYY-MM-DD'));
+      setAdhocNotes('');
+      setEditingAdhocAnswer(null);
+    } catch (error) {
+      console.error('Error saving adhoc date:', error);
+      alert('Failed to save event');
+    }
+  };
+
+  // Handler for adhoc value submission
+  const handleAdhocValueSubmit = async () => {
+    if (!adhocDate) {
+      alert('Please select a date');
+      return;
+    }
+    if (!adhocValue.trim()) {
+      alert('Please enter a value');
+      return;
+    }
+
+    try {
+      if (editingAdhocAnswer && editingAdhocAnswer.id) {
+        // Update existing note
+        const updatedContent = `Answer: ${adhocValue.trim()}\nDate: ${adhocDate}\nrecorded_on_date: ${adhocDate}\nmeta::link:${tracker.id}\nmeta::tracker_answer${adhocNotes.trim() ? `\nNotes: ${adhocNotes.trim()}` : ''}`;
+        await updateNoteById(editingAdhocAnswer.id, updatedContent);
+      } else {
+        // Create new note
+        await createTrackerAnswerNote(tracker.id, adhocValue.trim(), adhocDate, adhocNotes);
+      }
+      // Reload trackers to refresh the list
+      if (onRefresh) {
+        onRefresh();
+      }
+      setShowAdhocValueModal(false);
+      setAdhocDate(moment().format('YYYY-MM-DD'));
+      setAdhocValue('');
+      setAdhocNotes('');
+      setEditingAdhocAnswer(null);
+    } catch (error) {
+      console.error('Error saving adhoc value:', error);
+      alert('Failed to save event');
+    }
+  };
+
+  // Handler to delete adhoc answer
+  const handleDeleteAdhocAnswer = async (answerId, dateStr) => {
+    try {
+      await deleteNoteById(answerId);
+      // Reload trackers to refresh the list
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error deleting adhoc answer:', error);
+      alert('Failed to delete event');
+    }
   };
 
   // Month stats
@@ -822,39 +909,126 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             </button>
             <button
               onClick={() => {
-                const today = moment().format('YYYY-MM-DD');
-                setCustomDate(today);
-                setCustomValue('');
-                const existing = getAnswerForDate(today);
-                setCustomExistingAnswer(existing);
-                if (existing) {
-                  const type = tracker.type ? tracker.type.toLowerCase() : '';
-                  if (type === 'value') {
-                    setCustomValue(existing.value || existing.answer || '');
-                  } else if (type === 'yes,no' || type === 'yesno' || type === 'yes/no') {
-                    setCustomValue(existing.answer || '');
+                const type = tracker.type ? tracker.type.toLowerCase() : '';
+                const isAdhocDate = type === 'adhoc_date';
+                const isAdhocValue = type === 'adhoc_value';
+                
+                if (isAdhocDate) {
+                  setAdhocDate(moment().format('YYYY-MM-DD'));
+                  setAdhocNotes('');
+                  setEditingAdhocAnswer(null);
+                  setShowAdhocDateModal(true);
+                } else if (isAdhocValue) {
+                  setAdhocDate(moment().format('YYYY-MM-DD'));
+                  setAdhocValue('');
+                  setAdhocNotes('');
+                  setEditingAdhocAnswer(null);
+                  setShowAdhocValueModal(true);
+                } else {
+                  const today = moment().format('YYYY-MM-DD');
+                  setCustomDate(today);
+                  setCustomValue('');
+                  const existing = getAnswerForDate(today);
+                  setCustomExistingAnswer(existing);
+                  if (existing) {
+                    if (type === 'value') {
+                      setCustomValue(existing.value || existing.answer || '');
+                    } else if (type === 'yes,no' || type === 'yesno' || type === 'yes/no') {
+                      setCustomValue(existing.answer || '');
+                    }
                   }
+                  setShowCustomDateModal(true);
                 }
-                setShowCustomDateModal(true);
               }}
               className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-              title="Enter value for custom date"
+              title={(() => {
+                const type = tracker.type ? tracker.type.toLowerCase() : '';
+                if (type === 'adhoc_date' || type === 'adhoc_value') {
+                  return 'Add Event';
+                }
+                return 'Enter value for custom date';
+              })()}
             >
               <PlusIcon className="h-5 w-5" />
             </button>
           </div>
         )}
       </div>
-      <div className="flex gap-2 justify-center items-center">
-        {/* Left chevron for previous 7 */}
-        <button
-          className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
-          onClick={() => setDateOffset(offset => Math.max(0, offset + 1))}
-          aria-label="Show previous 7"
-        >
-          <span className="text-xl">&#8592;</span>
-        </button>
-        {getButtonsWithOffset().map((item, idx) => {
+      {/* For adhoc trackers, show last 7 events as round buttons */}
+      {(() => {
+        const type = tracker.type ? tracker.type.toLowerCase() : '';
+        const isAdhocDate = type === 'adhoc_date';
+        const isAdhocValue = type === 'adhoc_value';
+        
+        if (isAdhocDate || isAdhocValue) {
+          // Sort answers by date (most recent first) and take last 7
+          const sortedAnswers = [...answers].sort((a, b) => new Date(b.date) - new Date(a.date));
+          const lastSevenAnswers = sortedAnswers.slice(0, 7);
+          
+          return (
+            <div className="flex gap-2 justify-center items-center">
+              {lastSevenAnswers.length === 0 ? (
+                <div className="text-center text-gray-400 text-sm py-4">No events recorded yet</div>
+              ) : (
+                <>
+                  {lastSevenAnswers.map((answer) => {
+                    const dateMoment = moment(answer.date);
+                    const dateStr = answer.date;
+                    const isToday = dateMoment.format('YYYY-MM-DD') === now.format('YYYY-MM-DD');
+                    const weekdayLabel = dateMoment.format('ddd');
+                    const monthLabel = dateMoment.format('MMM YYYY');
+                    const dayNumber = dateMoment.date();
+                    
+                    return (
+                      <div key={answer.id || answer.date} className="flex flex-col items-center w-10">
+                        <span className="text-[10px] text-gray-400 mb-0.5 text-center w-full">{weekdayLabel}</span>
+                        <button
+                          onClick={() => {
+                            if (isAdhocDate) {
+                              setAdhocDate(answer.date);
+                              setAdhocNotes(answer.notes || '');
+                              setEditingAdhocAnswer(answer);
+                              setShowAdhocDateModal(true);
+                            } else {
+                              setAdhocDate(answer.date);
+                              setAdhocValue(answer.value || answer.answer || '');
+                              setAdhocNotes(answer.notes || '');
+                              setEditingAdhocAnswer(answer);
+                              setShowAdhocValueModal(true);
+                            }
+                          }}
+                          className={`w-8 h-8 border flex items-center justify-center text-sm rounded-full
+                            ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-300'}
+                            bg-green-300
+                          `}
+                          title={`${dateMoment.format('MMM D, YYYY')}${isAdhocValue ? ` - Value: ${answer.value || answer.answer}` : ''}${answer.notes ? ` - ${answer.notes}` : ''}`}
+                        >
+                          {dayNumber}
+                        </button>
+                        {monthLabel && (
+                          <span className="text-[10px] text-gray-400 mt-0.5 text-center w-full">{monthLabel}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          );
+        }
+        
+        // Regular trackers - show date buttons
+        return (
+          <div className="flex gap-2 justify-center items-center">
+            {/* Left chevron for previous 7 */}
+            <button
+              className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+              onClick={() => setDateOffset(offset => Math.max(0, offset + 1))}
+              aria-label="Show previous 7"
+            >
+              <span className="text-xl">&#8592;</span>
+            </button>
+            {getButtonsWithOffset().map((item, idx) => {
           let dateStr, label, isToday = false, done = false, monthLabel = '', weekdayLabel = '';
           if (buttonType === 'day') {
             dateStr = item.format('YYYY-MM-DD');
@@ -923,27 +1097,29 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
             </div>
           );
         })}
-        {/* Right chevron for next 7 (move forward towards today) */}
-        {dateOffset > 0 && (
-          <button
-            className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
-            onClick={() => setDateOffset(offset => Math.max(0, offset - 1))}
-            aria-label="Show next 7"
-          >
-            <span className="text-xl">&#8594;</span>
-          </button>
-        )}
-        {/* Refresh icon to reset to default if offset > 0 */}
-        {dateOffset > 0 && (
-          <button
-            className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
-            onClick={() => setDateOffset(0)}
-            aria-label="Reset to current"
-          >
-            <ArrowPathIcon className="h-5 w-5 text-gray-500" />
-          </button>
-        )}
-      </div>
+            {/* Right chevron for next 7 (move forward towards today) */}
+            {dateOffset > 0 && (
+              <button
+                className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+                onClick={() => setDateOffset(offset => Math.max(0, offset - 1))}
+                aria-label="Show next 7"
+              >
+                <span className="text-xl">&#8594;</span>
+              </button>
+            )}
+            {/* Refresh icon to reset to default if offset > 0 */}
+            {dateOffset > 0 && (
+              <button
+                className="p-1 rounded-full hover:bg-gray-200 focus:outline-none"
+                onClick={() => setDateOffset(0)}
+                aria-label="Reset to current"
+              >
+                <ArrowPathIcon className="h-5 w-5 text-gray-500" />
+              </button>
+            )}
+          </div>
+        );
+      })()}
       {/* Monthly Check-ins Modal */}
       {showMonthlyModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1609,6 +1785,115 @@ export default function TrackerCard({ tracker, onToggleDay, answers = [], onEdit
                   Submit
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Adhoc Date Modal */}
+      {showAdhocDateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-semibold mb-4">{editingAdhocAnswer ? 'Edit Event' : 'Add Event'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date:</label>
+                <input
+                  type="date"
+                  value={adhocDate}
+                  onChange={(e) => setAdhocDate(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  max={moment().format('YYYY-MM-DD')}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional):</label>
+                <textarea
+                  value={adhocNotes}
+                  onChange={(e) => setAdhocNotes(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  rows="4"
+                  placeholder="Enter any details about this event..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-4 mt-6">
+              <button
+                onClick={() => {
+                  setShowAdhocDateModal(false);
+                  setAdhocDate(moment().format('YYYY-MM-DD'));
+                  setAdhocNotes('');
+                  setEditingAdhocAnswer(null);
+                }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAdhocDateSubmit}
+                className="px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-colors"
+              >
+                {editingAdhocAnswer ? 'Update' : 'Add'} Event
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Adhoc Value Modal */}
+      {showAdhocValueModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-semibold mb-4">{editingAdhocAnswer ? 'Edit Event' : 'Add Event'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date:</label>
+                <input
+                  type="date"
+                  value={adhocDate}
+                  onChange={(e) => setAdhocDate(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  max={moment().format('YYYY-MM-DD')}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Value:</label>
+                <input
+                  type="text"
+                  value={adhocValue}
+                  onChange={(e) => setAdhocValue(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  placeholder="Enter value"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional):</label>
+                <textarea
+                  value={adhocNotes}
+                  onChange={(e) => setAdhocNotes(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  rows="4"
+                  placeholder="Enter any details about this event..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-4 mt-6">
+              <button
+                onClick={() => {
+                  setShowAdhocValueModal(false);
+                  setAdhocDate(moment().format('YYYY-MM-DD'));
+                  setAdhocValue('');
+                  setAdhocNotes('');
+                  setEditingAdhocAnswer(null);
+                }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAdhocValueSubmit}
+                className="px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-colors"
+              >
+                {editingAdhocAnswer ? 'Update' : 'Add'} Event
+              </button>
             </div>
           </div>
         </div>

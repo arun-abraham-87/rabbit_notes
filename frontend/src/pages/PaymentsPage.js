@@ -106,7 +106,26 @@ const getEventDetails = (content) => {
     }
   }
   
-  return { description, dateTime, tags, customFields, recurrence, weeklyDays, biweeklyDay, everyDays, notes };
+  // Find monthly field from event_notes (like event_notes:monthly:15)
+  // Handle cases where event_notes might be duplicated (e.g., event_notes:event_notes:monthly:15)
+  let monthlyDay = null;
+  let processedNotesForMonthly = notes;
+  // Remove any duplicate "event_notes:" prefix if present
+  while (processedNotesForMonthly && processedNotesForMonthly.toLowerCase().startsWith('event_notes:')) {
+    processedNotesForMonthly = processedNotesForMonthly.substring('event_notes:'.length);
+  }
+  
+  if (processedNotesForMonthly && processedNotesForMonthly.toLowerCase().startsWith('monthly:')) {
+    const monthlyValue = processedNotesForMonthly.split(':')[1]?.trim();
+    if (monthlyValue) {
+      const day = parseInt(monthlyValue, 10);
+      if (!isNaN(day) && day >= 1 && day <= 31) {
+        monthlyDay = day;
+      }
+    }
+  }
+  
+  return { description, dateTime, tags, customFields, recurrence, weeklyDays, biweeklyDay, everyDays, monthlyDay, notes };
 };
 
 // Helper function to extract dollar amount from event data
@@ -172,6 +191,27 @@ const getDatesForDaysOfWeek = (dayNumbers, month, year) => {
       dates.push(new Date(currentDate));
     }
     currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return dates;
+};
+
+// Helper function to get dates for a specific day of month
+const getDatesForDayOfMonth = (dayOfMonth, month, year) => {
+  const dates = [];
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  
+  // Get the last day of the month to handle months with fewer days
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+  const targetDay = Math.min(dayOfMonth, lastDayOfMonth);
+  
+  const targetDate = new Date(year, month, targetDay);
+  targetDate.setHours(0, 0, 0, 0);
+  
+  // Only include if the date is on or after today
+  if (targetDate >= now) {
+    dates.push(targetDate);
   }
   
   return dates;
@@ -393,6 +433,9 @@ const getRecurrenceDisplay = (event) => {
   if (event.isWeeklyOccurrence) {
     return 'Weekly';
   }
+  if (event.isMonthlyOccurrence && event.monthlyDay) {
+    return `Monthly (day ${event.monthlyDay})`;
+  }
   if (event.recurrence && event.recurrence !== 'none') {
     return event.recurrence === 'monthly' ? 'Monthly' :
            event.recurrence === 'weekly' ? 'Weekly' :
@@ -459,8 +502,8 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
   // Helper function to check if a payment has errors
   const hasPaymentErrors = useCallback((eventDetails) => {
     const amount = extractDollarAmount(eventDetails.description, eventDetails.customFields);
-    const { dateTime, weeklyDays, biweeklyDay, everyDays } = eventDetails;
-    const hasValidCadence = (weeklyDays && weeklyDays.length > 0) || biweeklyDay || everyDays || dateTime;
+    const { dateTime, weeklyDays, biweeklyDay, everyDays, monthlyDay } = eventDetails;
+    const hasValidCadence = (weeklyDays && weeklyDays.length > 0) || biweeklyDay || everyDays || monthlyDay || dateTime;
     
     // Check for missing or invalid cadence
     if (!hasValidCadence) {
@@ -645,9 +688,42 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
           }
         }
         
+        // Handle monthly:day format (e.g., event_notes:monthly:15)
+        if (eventDetails.monthlyDay) {
+          // Skip if this payment has errors (will be shown in errors section only)
+          if (hasPaymentErrors(eventDetails)) {
+            return;
+          }
+          
+          // Get dates for the specified day of month for current and next month
+          const datesThisMonth = getDatesForDayOfMonth(eventDetails.monthlyDay, currentMonth, currentYear);
+          
+          // Always get dates for next month to show upcoming payments
+          const nextMonthNum = currentMonth === 11 ? 0 : currentMonth + 1;
+          const nextMonthYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+          const datesNextMonth = getDatesForDayOfMonth(eventDetails.monthlyDay, nextMonthNum, nextMonthYear);
+          
+          // Combine all dates (both current month and next month)
+          const allDates = [...datesThisMonth, ...datesNextMonth]
+            .sort((a, b) => a - b);
+          
+          // Create an event for each date occurrence
+          allDates.forEach(date => {
+            events.push({
+              note,
+              ...eventDetails,
+              nextOccurrence: date,
+              daysUntil: getDaysUntil(date),
+              isMonthlyOccurrence: true
+            });
+          });
+          
+          return; // Skip regular handling for monthly:day
+        }
+        
         // Regular monthly payment handling
         {
-          // Regular payment handling (monthly based on day, etc.)
+          // Regular payment handling (monthly based on day from event_date, etc.)
           // Skip if this payment has errors (will be shown in errors section only)
           if (hasPaymentErrors(eventDetails)) {
             return;
@@ -1061,15 +1137,20 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
         }
         
         const amount = extractDollarAmount(eventDetails.description, eventDetails.customFields);
-        const { dateTime, weeklyDays, biweeklyDay, everyDays } = eventDetails;
-        const hasValidCadence = (weeklyDays && weeklyDays.length > 0) || biweeklyDay || everyDays || dateTime;
+        const { dateTime, weeklyDays, biweeklyDay, everyDays, monthlyDay } = eventDetails;
+        const hasValidCadence = (weeklyDays && weeklyDays.length > 0) || biweeklyDay || everyDays || monthlyDay || dateTime;
         
         // Check for errors
         const errorReasons = [];
         
         // Check for missing or invalid cadence
         if (!hasValidCadence) {
-          errorReasons.push('Missing cadence (no date or weekly/bi-weekly/every X days specified)');
+          errorReasons.push('Missing cadence (no date or weekly/bi-weekly/every X days/monthly specified)');
+        } else if (monthlyDay) {
+          // For monthly:day, validate the day is between 1 and 31
+          if (monthlyDay < 1 || monthlyDay > 31 || isNaN(monthlyDay)) {
+            errorReasons.push(`Invalid monthly day (${monthlyDay}). Must be between 1 and 31.`);
+          }
         } else if (everyDays) {
           // For every X days, need both dateTime and valid days interval
           if (!dateTime) {
@@ -1181,15 +1262,33 @@ const PaymentsPage = ({ allNotes, onCreateNote, setAllNotes }) => {
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-2">Monthly Payments (Based on Day of Month)</h4>
                   <p className="mb-2">For payments that occur on a specific day of each month:</p>
-                  <pre className="bg-gray-800 text-green-400 p-3 rounded-md overflow-x-auto mb-2">
+                  
+                  <div className="mb-3">
+                    <p className="mb-1"><strong>Format 1 (from event_date):</strong></p>
+                    <pre className="bg-gray-800 text-green-400 p-3 rounded-md overflow-x-auto">
 {`event_description:Rent Payment
 event_date:2025-01-15
 event_tags:recurring_payment
 event_$:1200`}
-                  </pre>
-                  <p className="text-xs text-gray-600">
-                    This will show the payment on the <strong>15th</strong> of every month. The day from the event_date is used for all future months.
-                  </p>
+                    </pre>
+                    <p className="text-xs text-gray-600 mt-1">
+                      This will show the payment on the <strong>15th</strong> of every month. The day from the event_date is used for all future months.
+                    </p>
+                  </div>
+
+                  <div className="mb-3">
+                    <p className="mb-1"><strong>Format 2 (explicit monthly:day):</strong></p>
+                    <pre className="bg-gray-800 text-green-400 p-3 rounded-md overflow-x-auto">
+{`event_description:Rent Payment
+event_date:2025-01-01
+event_tags:recurring_payment
+event_notes:monthly:15
+event_$:1200`}
+                    </pre>
+                    <p className="text-xs text-gray-600 mt-1">
+                      This will show the payment on the <strong>15th</strong> of every month. The day is explicitly specified in event_notes:monthly:15 (day can be 1-31).
+                    </p>
+                  </div>
                 </div>
 
                 <div>
@@ -1291,6 +1390,7 @@ event_$:25`}
                     <li><code className="bg-yellow-100 px-1 rounded">event_notes:weekly:day</code> Optional: for weekly payments (comma-separated days)</li>
                     <li><code className="bg-yellow-100 px-1 rounded">event_notes:biweekly:day</code> Optional: for bi-weekly payments (single day of week, requires event_date as start date)</li>
                     <li><code className="bg-yellow-100 px-1 rounded">event_notes:every:X</code> or <code className="bg-yellow-100 px-1 rounded">event_notes:everyXdays</code> Optional: for payments every X days (requires event_date as start date)</li>
+                    <li><code className="bg-yellow-100 px-1 rounded">event_notes:monthly:day</code> Optional: for monthly payments on a specific day of the month (1-31)</li>
                     <li><code className="bg-yellow-100 px-1 rounded">event_$:</code> Optional: amount in dollars</li>
                   </ul>
                 </div>

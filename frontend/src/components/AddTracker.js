@@ -257,6 +257,8 @@ Start Date: ${startDate}`;
             <option value="Yes,No">Yes/No</option>
             <option value="value">Value</option>
             <option value="value_time">Time</option>
+            <option value="adhoc_date">Adhoc Date</option>
+            <option value="adhoc_value">Adhoc Value</option>
           </select>
         </div>
 

@@ -147,13 +147,23 @@ const Weather = ({ forceExpanded = false }) => {
     }).format(date);
   };
 
-  const getWeatherIcon = (rain, temperature) => {
-    if (rain > 0) {
-      return <CloudArrowDownIcon className="h-5 w-5 text-blue-500" />;
+  const getWeatherIcon = (rain, precipitation, temperature) => {
+    if (rain > 0 || precipitation > 0) {
+      return <CloudArrowDownIcon className="h-6 w-6 text-blue-500" />;
     } else if (temperature > 25) {
-      return <SunIcon className="h-5 w-5 text-yellow-500" />;
+      return <SunIcon className="h-6 w-6 text-yellow-500" />;
     } else {
-      return <CloudIcon className="h-5 w-5 text-gray-400" />;
+      return <CloudIcon className="h-6 w-6 text-gray-400" />;
+    }
+  };
+
+  const getWeatherCondition = (rain, precipitation, temperature) => {
+    if (rain > 0 || precipitation > 0) {
+      return 'Showers';
+    } else if (temperature > 25) {
+      return 'Sunny';
+    } else {
+      return 'Partly Cloudy';
     }
   };
 
@@ -224,17 +234,6 @@ const Weather = ({ forceExpanded = false }) => {
 
   // Get today's data (first day)
   const today = next7Days[0] || null;
-  
-  // Calculate today's max precipitation probability from hourly data
-  const todayMaxPrecipitationProbability = today ? Math.max(
-    ...next24Hours
-      .filter(hour => {
-        const hourDate = new Date(hour.time);
-        const todayDate = new Date(today.time);
-        return hourDate.toDateString() === todayDate.toDateString();
-      })
-      .map(hour => hour.precipitation_probability || 0)
-  ) : 0;
 
   return (
     <div className="w-full group relative">
@@ -245,6 +244,7 @@ const Weather = ({ forceExpanded = false }) => {
           <div className="flex items-center gap-3">
             {getWeatherIcon(
               next24Hours[0]?.rain || 0,
+              next24Hours[0]?.precipitation || 0,
               current.temperature_2m
             )}
             <div>
@@ -288,246 +288,158 @@ const Weather = ({ forceExpanded = false }) => {
       </div>
       )}
 
-      {/* Expanded View - Full Details (Shown on Hover) */}
-      <div className={`${forceExpanded ? 'opacity-100 pointer-events-auto relative' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto absolute top-0 left-0 right-0 z-10'} transition-opacity duration-200 delay-300 bg-white rounded-lg p-2 border shadow-lg`}>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-1.5">
-          <div>
-            <p className="text-xs text-gray-500">
-              {loc.latitude.toFixed(4)}°N, {loc.longitude.toFixed(4)}°E
-            </p>
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="p-1 text-gray-600 hover:text-gray-800 disabled:opacity-50"
-            title="Refresh"
-          >
-            <ArrowPathIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+      {/* Expanded View - Full Details (Shown on Hover or forceExpanded) */}
+      <div className={`${forceExpanded ? 'opacity-100 pointer-events-auto relative' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto absolute top-0 left-0 right-0 z-10'} transition-opacity duration-200 delay-300 bg-gray-50 rounded-lg p-4 border shadow-lg`}>
+        {/* Three-column layout */}
+        <div className="grid grid-cols-3 gap-4">
+          {/* Current Section */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Current</h3>
+            
+            {/* Location and Time */}
+            <div className="mb-3 text-xs text-gray-500">
+              <div>Location: {loc.latitude > 0 ? loc.latitude.toFixed(4) + '°N' : Math.abs(loc.latitude).toFixed(4) + '°S'}, {loc.longitude > 0 ? loc.longitude.toFixed(4) + '°E' : Math.abs(loc.longitude).toFixed(4) + '°W'}</div>
+              <div>{formatTime(current.time, loc.timezone)}</div>
+            </div>
 
-        {/* Three boxes side by side */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-stretch">
-        {/* Current Weather */}
-        <div className="bg-white rounded-lg p-2 border flex flex-col">
-        <div className="flex items-center justify-between mb-1.5">
-          <div>
-            <div className="text-xs text-gray-500">Current</div>
-            <div className="text-2xl font-bold text-gray-900">
-              {current.temperature_2m.toFixed(1)}°C
-            </div>
-            {current.apparent_temperature !== undefined && (
-              <div className="text-xs text-gray-600 mt-0.5">
-                Feels like {current.apparent_temperature.toFixed(1)}°C
+            {/* Main Temperature Display */}
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start gap-2">
+                {current.is_day && <SunIcon className="h-5 w-5 text-yellow-500 mt-1" />}
+                <div>
+                  <div className="text-4xl font-bold text-gray-900">
+                    {current.temperature_2m.toFixed(1)}°C
+                  </div>
+                  {current.apparent_temperature !== undefined && (
+                    <div className="text-sm text-gray-600 mt-1">
+                      Feels like {current.apparent_temperature.toFixed(1)}°C
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-            <div className="text-xs text-gray-500 mt-0.5">
-              {formatTime(current.time, loc.timezone)} {current.is_day ? '☀️' : '🌙'}
-            </div>
-          </div>
-          <div>
-            {getWeatherIcon(
-              next24Hours[0]?.rain || 0,
-              current.temperature_2m
-            )}
-          </div>
-        </div>
-        
-        {/* Current Weather Details */}
-        <div className="border-t pt-1.5 mt-1.5 space-y-1">
-          <div className="grid grid-cols-2 gap-1 text-xs">
-            <div>
-              <span className="text-gray-500">Apparent:</span>
-              <span className="ml-1 font-medium">{current.apparent_temperature?.toFixed(1)}°C</span>
-            </div>
-            <div>
-              <span className="text-gray-500">Humidity:</span>
-              <span className="ml-1 font-medium">{current.relative_humidity_2m?.toFixed(0)}%</span>
-            </div>
-            <div>
-              <span className="text-gray-500">Wind:</span>
-              <span className="ml-1 font-medium">{current.wind_speed_10m?.toFixed(1)} km/h</span>
-            </div>
-            <div>
-              <span className="text-gray-500">Precip:</span>
-              <span className="ml-1 font-medium text-blue-600">{current.precipitation?.toFixed(1)}mm</span>
-            </div>
-            {current.rain > 0 && (
-              <div>
-                <span className="text-gray-500">Rain:</span>
-                <span className="ml-1 font-medium text-blue-600">{current.rain.toFixed(1)}mm</span>
+              <div className="mt-2">
+                {getWeatherIcon(current.rain, current.precipitation, current.temperature_2m)}
               </div>
-            )}
-            {current.showers > 0 && (
-              <div>
-                <span className="text-gray-500">Showers:</span>
-                <span className="ml-1 font-medium text-blue-600">{current.showers.toFixed(1)}mm</span>
-              </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        {today && (
-          <div className="border-t pt-1.5 mt-1.5">
-            <div className="text-xs text-gray-500 mb-1">Today</div>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {today.temperature_2m_max !== undefined && today.temperature_2m_min !== undefined && (
+            {/* Current Conditions */}
+            <div className="space-y-1.5 mb-4 text-xs text-gray-700">
+              <div>
+                <span className="text-gray-500">Humidity:</span> {current.relative_humidity_2m?.toFixed(0)}%
+              </div>
+              <div>
+                <span className="text-gray-500">Wind:</span> {current.wind_speed_10m?.toFixed(1)} km/h
+              </div>
+              <div>
+                <span className="text-gray-500">Precipitation:</span> {current.precipitation?.toFixed(1)}mm
+              </div>
+            </div>
+
+            {/* Today's Forecast Sub-section */}
+            {today && (
+              <div className="border-t border-gray-200 pt-3 mt-3">
+                <div className="text-xs font-semibold text-gray-700 mb-2">Today's Forecast</div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium text-gray-900">
+                    {today.temperature_2m_max?.toFixed(0)}°/{today.temperature_2m_min?.toFixed(0)}° 
+                    <span className="text-xs text-gray-600 ml-1">
+                      Feels {today.apparent_temperature_max?.toFixed(0)}/{today.apparent_temperature_min?.toFixed(0)}°
+                    </span>
+                  </div>
+                  <div>
+                    {getWeatherIcon(today.rain_sum, today.precipitation_sum, today.temperature_2m_max)}
+                  </div>
+                </div>
+                <div className="space-y-1 text-xs text-gray-600">
+                  <div>
+                    <span className="text-gray-500">Humidity:</span> {current.relative_humidity_2m?.toFixed(0)}%
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Precip:</span> {today.precipitation_sum?.toFixed(1)}mm
+                  </div>
+                  {today.showers_sum > 0 && (
+                    <div>
+                      <span className="text-gray-500">Showers:</span> {today.showers_sum.toFixed(1)}mm
+                    </div>
+                  )}
+                  {today.daylight_duration !== undefined && (
+                    <div>
+                      <span className="text-gray-500">Daylight:</span> {(today.daylight_duration / 3600).toFixed(1)}h
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Next 24 Hours Section */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Next 24 Hours</h3>
+            
+            {/* Hourly Grid - Compact layout */}
+            <div className="grid grid-cols-4 gap-1.5">
+              {next24Hours.slice(0, 24).map((hour, index) => (
+                <div key={index} className="flex flex-col items-center text-center p-1">
+                  <div className="text-[10px] text-gray-500 mb-0.5 w-full truncate">
+                    {formatTime(hour.time, loc.timezone).replace(':00 ', ' ')}
+                  </div>
+                  <div className="mb-0.5">
+                    {getWeatherIcon(hour.rain, hour.precipitation, hour.temperature)}
+                  </div>
+                  <div className="text-[11px] font-medium text-gray-900 mb-0.5">
+                    {hour.temperature.toFixed(1)}°C
+                  </div>
+                  <div className="text-[10px] text-purple-600 font-medium">
+                    {hour.precipitation_probability !== undefined ? Math.round(hour.precipitation_probability) + '%' : '0%'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 7-Day Forecast Section */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-900">7-Day Forecast</h3>
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="p-1 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                title="Refresh"
+              >
+                <ArrowPathIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+            
+            <div className="space-y-2.5">
+              {next7Days.map((day, index) => (
+                <div
+                  key={index}
+                  className="border-b border-gray-100 pb-2.5 last:border-b-0 last:pb-0"
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="text-xs font-medium text-gray-900">
+                      {formatDate(day.time, loc.timezone)}
+                    </div>
+                    <div className="text-xs font-medium text-gray-900">
+                      {day.temperature_2m_max?.toFixed(0)}°/{day.temperature_2m_min?.toFixed(0)}°
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
                     <div className="text-xs text-gray-700">
-                      <span className="font-semibold">{today.temperature_2m_max.toFixed(0)}°</span>
-                      <span className="text-gray-500">/</span>
-                      <span className="font-semibold">{today.temperature_2m_min.toFixed(0)}°</span>
+                      {getWeatherCondition(day.rain_sum, day.precipitation_sum, day.temperature_2m_max)}
                     </div>
-                  )}
-                  {today.apparent_temperature_max !== undefined && today.apparent_temperature_min !== undefined && (
-                    <div className="text-xs text-gray-600">
-                      <span className="font-semibold">Feels {today.apparent_temperature_max.toFixed(0)}°</span>
-                      <span className="text-gray-500">/</span>
-                      <span className="font-semibold">{today.apparent_temperature_min.toFixed(0)}°</span>
+                    <div className="flex items-center gap-2">
+                      {getWeatherIcon(day.rain_sum, day.precipitation_sum, day.temperature_2m_max)}
                     </div>
-                  )}
+                  </div>
+                  <div className="text-[10px] text-gray-500 mt-1">
+                    Wind {day.wind_speed_10m_max?.toFixed(0)} km/h
+                  </div>
                 </div>
-                {todayMaxPrecipitationProbability > 0 && (
-                  <div className="text-xs text-purple-600">
-                    <span className="font-semibold">{todayMaxPrecipitationProbability}%</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                {(today.precipitation_sum > 0 || today.rain_sum > 0) && (
-                  <div className="text-blue-600">
-                    💧 Precip: {(today.precipitation_sum || today.rain_sum).toFixed(1)}mm
-                  </div>
-                )}
-                {today.showers_sum > 0 && (
-                  <div className="text-blue-600">
-                    🌧️ Showers: {today.showers_sum.toFixed(1)}mm
-                  </div>
-                )}
-                {today.daylight_duration !== undefined && (
-                  <div className="text-gray-600">
-                    ☀️ Daylight: {(today.daylight_duration / 3600).toFixed(1)}h
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
           </div>
-        )}
-        </div>
-
-        {/* Hourly Forecast (Next 12 hours) */}
-        <div className="bg-white rounded-lg p-2 border flex flex-col">
-        <h4 className="text-xs font-semibold text-gray-700 mb-1.5">Next 12 Hours</h4>
-        
-        {/* Column Headers */}
-        <div className="mb-1 pb-1 border-b text-xs font-semibold text-gray-600">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-12">Time</div>
-              <div className="w-8">Icon</div>
-              <div>Temp</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="text-purple-600 w-8 text-center">Prob%</div>
-              <div className="text-gray-500 w-8 text-center">Feels</div>
-              <div className="text-blue-600 w-10 text-center">Precip</div>
-              <div className="text-blue-600 w-10 text-center">Rain</div>
-              <div className="text-blue-600 w-10 text-center">Shower</div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="space-y-1 flex-1 overflow-y-auto">
-          {next24Hours.slice(0, 12).map((hour, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between py-1 border-b last:border-b-0"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-12 text-xs text-gray-500">
-                  {formatTime(hour.time, loc.timezone)}
-                </div>
-                <div className="w-8">
-                  {getWeatherIcon(hour.rain, hour.temperature)}
-                </div>
-                <div className="text-xs font-medium text-gray-900">
-                  {hour.temperature.toFixed(1)}°C
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="text-purple-600 w-8 text-center">
-                  {hour.precipitation_probability !== undefined ? hour.precipitation_probability : '-'}
-                </div>
-                <div className="text-gray-500 w-8 text-center">
-                  {hour.apparent_temperature !== undefined ? hour.apparent_temperature.toFixed(0) + '°' : '-'}
-                </div>
-                <div className="text-blue-600 w-10 text-center">
-                  {hour.precipitation > 0 ? hour.precipitation.toFixed(1) : '-'}
-                </div>
-                <div className="text-blue-600 w-10 text-center">
-                  {hour.rain > 0 ? '🌧️' + hour.rain.toFixed(1) : '-'}
-                </div>
-                <div className="text-blue-600 w-10 text-center">
-                  {hour.showers > 0 ? '💧' + hour.showers.toFixed(1) : '-'}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        </div>
-
-        {/* Daily Forecast (Next 7 days) */}
-        <div className="bg-white rounded-lg p-2 border flex flex-col">
-        <h4 className="text-xs font-semibold text-gray-700 mb-1.5">7-Day Forecast</h4>
-        <div className="space-y-1 flex-1 overflow-y-auto">
-          {next7Days.map((day, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between py-1 border-b last:border-b-0"
-            >
-              <div className="flex-1">
-                <div className="flex items-center gap-1">
-                  <div className="text-xs font-medium text-gray-900">
-                    {formatDate(day.time, loc.timezone)}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {day.temperature_2m_max !== undefined && day.temperature_2m_min !== undefined && (
-                      <span>
-                        {day.temperature_2m_max.toFixed(0)}°/{day.temperature_2m_min.toFixed(0)}°
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  ☀️ {formatTime(day.sunrise, loc.timezone)} • 🌙 {formatTime(day.sunset, loc.timezone)}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-xs flex-wrap">
-                {(day.precipitation_sum > 0 || day.rain_sum > 0) && (
-                  <div className="text-blue-600" title="Precipitation">
-                    💧 {(day.precipitation_sum || day.rain_sum).toFixed(1)}mm
-                  </div>
-                )}
-                {day.showers_sum > 0 && (
-                  <div className="text-blue-600" title="Showers">
-                    🌧️ {day.showers_sum.toFixed(1)}mm
-                  </div>
-                )}
-                <div className="text-gray-600" title="Wind speed">
-                  💨 {day.wind_speed_10m_max.toFixed(1)} km/h
-                </div>
-                {day.wind_gusts_10m_max > day.wind_speed_10m_max && (
-                  <div className="text-gray-500" title="Wind gusts">
-                    💨💨 {day.wind_gusts_10m_max.toFixed(1)} km/h
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-        </div>
         </div>
       </div>
     </div>
@@ -535,4 +447,3 @@ const Weather = ({ forceExpanded = false }) => {
 };
 
 export default Weather;
-

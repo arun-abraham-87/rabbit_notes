@@ -8,7 +8,7 @@ import ConfirmationModal from './ConfirmationModal';
 const persistentTimelinesRef = { current: [] };
 const persistentTimelineLinkQueues = { current: new Map() };
 
-const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '', onTimelineUpdated, initialTimelineId = null, focusOnNotesField = false }) => {
+const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, onDelete, notes, isAddDeadline = false, prePopulatedTags = '', onTimelineUpdated, initialTimelineId = null, focusOnNotesField = false, isInformationPage = false }) => {
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -44,8 +44,14 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       // Reset normal edit mode
       setNormalEditMode(false);
       setNormalEditContent('');
-      // Show validation errors for empty required fields on new event
-      setValidationErrors({ description: true, eventDate: true });
+      // For Information page, set default date to 1/1/2100
+      if (isInformationPage) {
+        setEventDate('2100-01-01');
+        setValidationErrors({ description: true, eventDate: false });
+      } else {
+        // Show validation errors for empty required fields on new event
+        setValidationErrors({ description: true, eventDate: true });
+      }
       return;
     }
     
@@ -140,7 +146,7 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
       description: !parsedDescription,
       eventDate: !parsedEventDate
     });
-  }, [note]);
+  }, [note, isInformationPage]);
 
   // Load timelines when modal opens
   useEffect(() => {
@@ -557,6 +563,10 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
     if (isDeadline) {
       content += `\nmeta::event_deadline:true`;
     }
+    // For Information page, add meta::info:: tag
+    if (isInformationPage) {
+      content += `\nmeta::info::`;
+    }
 
     // Save the event and get the result
     const savedEvent = await onSave(content);
@@ -848,18 +858,20 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
               // Form edit mode: show structured form
               <>
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isDeadline"
-                  checked={isDeadline}
-                  onChange={(e) => setIsDeadline(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="isDeadline" className="text-sm text-gray-600">
-                  Mark as deadline
-                </label>
-              </div>
+              {!(isInformationPage && !note) && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isDeadline"
+                    checked={isDeadline}
+                    onChange={(e) => setIsDeadline(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="isDeadline" className="text-sm text-gray-600">
+                    Mark as deadline
+                  </label>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -892,133 +904,137 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location (optional)
-                </label>
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Event location..."
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-sm font-medium text-gray-700">
-                  Event Date
-                </label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const today = new Date();
-                        const formattedDate = today.toISOString().split('T')[0];
-                        setEventDate(formattedDate);
-                        if (validationErrors.eventDate) {
-                          setValidationErrors(prev => ({ ...prev, eventDate: false }));
-                        }
-                      }}
-                      className="px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded hover:bg-blue-100 border border-blue-200 transition-colors"
-                      title="Set to today's date"
-                    >
-                      Today
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const yesterday = new Date();
-                        yesterday.setDate(yesterday.getDate() - 1);
-                        const formattedDate = yesterday.toISOString().split('T')[0];
-                        setEventDate(formattedDate);
-                        if (validationErrors.eventDate) {
-                          setValidationErrors(prev => ({ ...prev, eventDate: false }));
-                        }
-                      }}
-                      className="px-2 py-1 text-xs font-medium bg-gray-50 text-gray-700 rounded hover:bg-gray-100 border border-gray-200 transition-colors"
-                      title="Set to yesterday's date"
-                    >
-                      Yesterday
-                    </button>
+              {!(isInformationPage && !note) && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Location (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Event location..."
+                    />
                   </div>
-                </div>
-                <input
-                  type="date"
-                  value={eventDate}
-                  onChange={(e) => {
-                    handleDateChange(e);
-                    if (validationErrors.eventDate && e.target.value) {
-                      setValidationErrors(prev => ({ ...prev, eventDate: false }));
-                    }
-                  }}
-                  onBlur={() => {
-                    if (!eventDate) {
-                      setValidationErrors(prev => ({ ...prev, eventDate: true }));
-                    }
-                  }}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                    validationErrors.eventDate 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                />
-                {validationErrors.eventDate && (
-                  <p className="mt-1 text-sm text-red-600">Event date is required</p>
-                )}
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  End Date (optional)
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={eventDate}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-sm font-medium text-gray-700">
+                      Event Date
+                    </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const today = new Date();
+                            const formattedDate = today.toISOString().split('T')[0];
+                            setEventDate(formattedDate);
+                            if (validationErrors.eventDate) {
+                              setValidationErrors(prev => ({ ...prev, eventDate: false }));
+                            }
+                          }}
+                          className="px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded hover:bg-blue-100 border border-blue-200 transition-colors"
+                          title="Set to today's date"
+                        >
+                          Today
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const yesterday = new Date();
+                            yesterday.setDate(yesterday.getDate() - 1);
+                            const formattedDate = yesterday.toISOString().split('T')[0];
+                            setEventDate(formattedDate);
+                            if (validationErrors.eventDate) {
+                              setValidationErrors(prev => ({ ...prev, eventDate: false }));
+                            }
+                          }}
+                          className="px-2 py-1 text-xs font-medium bg-gray-50 text-gray-700 rounded hover:bg-gray-100 border border-gray-200 transition-colors"
+                          title="Set to yesterday's date"
+                        >
+                          Yesterday
+                        </button>
+                      </div>
+                    </div>
+                    <input
+                      type="date"
+                      value={eventDate}
+                      onChange={(e) => {
+                        handleDateChange(e);
+                        if (validationErrors.eventDate && e.target.value) {
+                          setValidationErrors(prev => ({ ...prev, eventDate: false }));
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!eventDate) {
+                          setValidationErrors(prev => ({ ...prev, eventDate: true }));
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                        validationErrors.eventDate 
+                          ? 'border-red-500 focus:ring-red-500' 
+                          : 'border-gray-300 focus:ring-blue-500'
+                      }`}
+                    />
+                    {validationErrors.eventDate && (
+                      <p className="mt-1 text-sm text-red-600">Event date is required</p>
+                    )}
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Price ($) (optional)
-                </label>
-                <input
-                  type="number"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter price..."
-                  min="0"
-                  step="0.01"
-                />
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Date (optional)
+                    </label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      min={eventDate}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Link to Timeline (optional)
-                </label>
-                <select
-                  value={selectedTimeline}
-                  onChange={(e) => setSelectedTimeline(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">No timeline</option>
-                  {timelines.map(timeline => (
-                    <option key={timeline.id} value={timeline.id}>
-                      {timeline.title}
-                    </option>
-                  ))}
-                </select>
-                {timelines.length === 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    No timelines found. Create a timeline by adding <code className="bg-gray-200 px-1 rounded">meta::timeline</code> to a note.
-                  </p>
-                )}
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Price ($) (optional)
+                    </label>
+                    <input
+                      type="number"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter price..."
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Link to Timeline (optional)
+                    </label>
+                    <select
+                      value={selectedTimeline}
+                      onChange={(e) => setSelectedTimeline(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">No timeline</option>
+                      {timelines.map(timeline => (
+                        <option key={timeline.id} value={timeline.id}>
+                          {timeline.title}
+                        </option>
+                      ))}
+                    </select>
+                    {timelines.length === 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        No timelines found. Create a timeline by adding <code className="bg-gray-200 px-1 rounded">meta::timeline</code> to a note.
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1034,10 +1050,11 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tags
-                </label>
+              {!(isInformationPage && !note) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tags
+                  </label>
                 {existingTags.length > 0 && (
                   <div className="mb-2">
                     <p className="text-xs text-gray-500 mb-1">Existing tags:</p>
@@ -1093,7 +1110,8 @@ const EditEventModal = ({ isOpen, note, onSave, onCancel, onSwitchToNormalEdit, 
                     ))}
                   </div>
                 )}
-              </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex justify-between">

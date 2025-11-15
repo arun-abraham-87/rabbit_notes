@@ -765,6 +765,7 @@ export default function InformationPage({ notes = [], setAllNotes, allNotes }) {
           onCancel={handleCancel}
           notes={allNotes}
           prePopulatedTags="life_info"
+          isInformationPage={true}
         />
       )}
 

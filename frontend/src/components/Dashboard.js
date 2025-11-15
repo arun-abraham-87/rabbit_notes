@@ -955,7 +955,7 @@ const Dashboard = ({notes, setNotes, setActivePage}) => {
                             })()}
                           </div>
                         </button>
-                        <div className={`absolute right-0 top-full mt-2 w-[700px] bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50 transition-all duration-200 ${
+                        <div className={`absolute right-0 top-full mt-2 w-[1100px] bg-transparent z-50 transition-all duration-200 ${
                           activePopup === 'weather' ? 'opacity-100 visible' : 'opacity-0 invisible'
                         }`}>
                           <Weather forceExpanded={true} />
